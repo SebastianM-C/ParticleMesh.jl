@@ -1,0 +1,3 @@
+# Subpackages
+
+Planned, in the order they are expected to appear: `ParticleMeshCore` (particles, grids, transfers, KernelAbstractions kernels, time-loop harness), `ParticleMeshElectrostatic` (the electrostatic PIC module and the 1D benchmark set), `Wakefields` (electromagnetic PIC for laser-wakefield acceleration: Yee, Esirkepov, moving window, antenna), `ParticleMeshMTK` (symbolic front-end), `ParticleMeshReactant` (Reactant path and the stress-test suite), `RunManifests` (run provenance, lifted from an earlier project). Each is a package of its own with its own tests and a member of the root Pkg workspace, so all share the committed root `Manifest.toml`; the umbrella reaches them through `[sources]` with relative paths.

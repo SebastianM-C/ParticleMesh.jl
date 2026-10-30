@@ -1,0 +1,6 @@
+[deps]
+ParticleMesh = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+ParticleMesh = {path = ".."}

@@ -1,0 +1,10 @@
+name = "ParticleMesh"
+uuid = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
+authors = ["Sebastian Micluța-Câmpeanu <sebastian.mc95@proton.me>"]
+version = "0.1.0-DEV"
+
+[workspace]
+projects = ["test", "docs", "benchmark"]
+
+[compat]
+julia = "1.13"

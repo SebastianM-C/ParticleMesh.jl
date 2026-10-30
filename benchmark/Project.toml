@@ -1,0 +1,6 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+ParticleMesh = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
+
+[sources]
+ParticleMesh = {path = ".."}

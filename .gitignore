@@ -1,0 +1,12 @@
+Manifest*.toml
+!/Manifest.toml
+!/scripts/Manifest.toml
+.claude/worktrees/
+.claude/settings.local.json
+trace/build/
+scripts/runs/
+benchmark/results/
+docs/build/
+*.cov
+*.jl.*.cov
+.DS_Store
