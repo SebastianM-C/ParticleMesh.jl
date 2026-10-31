@@ -8,7 +8,7 @@ WP-011's first acceptance item asks T-130 to T-145 to pass unchanged on 1 and 4 
 
 Options: (a) keep WP-011 `active` until the upstream fix or a workaround lands; (b) count the item as met for the code WP-011 changed, and track T-144 at more than one thread in the upstream issue; (c) work around it in the engine (a sort algorithm or task count that does not allocate), which changes the Reference mode's performance and is outside WP-011's scope.
 
-Assumption: (a). WP-011 stays `active` with this as its one open acceptance item; T-144's assertion is unchanged and the CPU CI, which runs one thread, passes.
+Status: resolved. Decision (the owner's, given in a session): (b). The GPU path is the one that matters, so the threaded CPU sort's allocation does not hold WP-011 open. T-144's two checks are `@test_broken` naming #82 when `Threads.nthreads() > 1` in `Reference()` mode, where both fail (4 threads: 17712 B at (32, 16), 79840 B at (32, 256), 30688 B at (128, 16)); `Fast()` allocates nothing at any thread count and keeps the plain assertion. An upstream fix shows up as an unexpected pass. WP-011 is `done`. A CI job that runs the suite with 4 threads is a separate workflow commit, pushed by the owner.
 
 ## 2. `fd_scan` takes the AD value as a keyword
 
