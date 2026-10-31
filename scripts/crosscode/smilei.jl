@@ -82,6 +82,8 @@ function smilei_parameters(case)
         velocity = s["velocity"]
         velocity in ("maxwellian", "cold") || error("unknown velocity loading $velocity")
         velocity == "maxwellian" && vth <= 0 && error("$(s["name"]): maxwellian needs thermal_velocity > 0")
+        any(!iszero, get(s, "transverse_drift", (0, 0))) &&
+            error("$(s["name"]): transverse_drift is not passed to Smilei yet (cross-code stage 2)")
         (; name = s["name"],
            charge = Float64(s["charge"]),
            mass = m,

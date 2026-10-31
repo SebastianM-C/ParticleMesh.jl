@@ -1,0 +1,53 @@
+{
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "rows": [
+    {
+      "case": "landau",
+      "mode": "Reference()",
+      "ns_per_particle_step": 145.75142311096192,
+      "particles": 262144,
+      "seconds": 1.910393053,
+      "threads": 1
+    },
+    {
+      "case": "landau",
+      "mode": "Fast()",
+      "ns_per_particle_step": 111.42186836242675,
+      "particles": 262144,
+      "seconds": 1.460428713,
+      "threads": 1
+    },
+    {
+      "case": "two-stream",
+      "mode": "Reference()",
+      "ns_per_particle_step": 142.0103859375,
+      "particles": 256000,
+      "seconds": 1.81773294,
+      "threads": 1
+    },
+    {
+      "case": "two-stream",
+      "mode": "Fast()",
+      "ns_per_particle_step": 115.56350765625001,
+      "particles": 256000,
+      "seconds": 1.479212898,
+      "threads": 1
+    },
+    {
+      "case": "weibel",
+      "mode": "Reference()",
+      "ns_per_particle_step": 127.67450775146486,
+      "particles": 131072,
+      "seconds": 0.836727654,
+      "threads": 1
+    },
+    {
+      "case": "weibel",
+      "mode": "Fast()",
+      "ns_per_particle_step": 112.33433456420899,
+      "particles": 131072,
+      "seconds": 0.736194295,
+      "threads": 1
+    }
+  ]
+}

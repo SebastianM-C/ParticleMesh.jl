@@ -1,0 +1,79 @@
+# Cold symmetric Weibel (filamentation) instability, 1D periodic, k along x, beams along y, immobile ions.
+# Units (A1): every quantity is in normalized units with ω₀ as reference: time 1/ω₀, length c/ω₀,
+# velocity c, density n_c, field mₑcω₀/e. Total electron density 1 n_c, so ω_p = ω₀.
+# Two cold electron beams of 0.5 n_c each at ±0.3 c along y, seeded by opposite density perturbations
+# (the net density stays uniform, so no Ex; the net current q·n₀·v₀·α·cos(kx) seeds Bz), in a box of one
+# wavelength of k = 2 ω₀/c. Defined by WP-014; no Smilei run yet (cross-code stage 2).
+# Schema: scripts/crosscode/README.md, version 1 with the per-species `transverse_drift`. A proposal.
+
+schema = 1
+name = "weibel"
+description = "Cold symmetric Weibel instability, beams at ±0.3 c along y, k = 2 ω_p/c along x, immobile ions"
+
+[grid]
+length = 3.141592653589793        # 2π/k, k = 2 ω₀/c = 2 ω_p/c
+cells = 128                       # Δx = 0.02454 c/ω₀
+boundaries = "periodic"
+
+[time]
+dt = 0.023316507975861746         # 0.95 Δx (CFL of the 1D Yee solver: Δt < Δx)
+t_end = 40.0
+
+[numerics]
+shape_order = 2
+current_deposition = "esirkepov"
+filter_passes = 0
+precision = "Float64"
+random_seed = 20261031
+
+[[species]]
+name = "beam_plus"
+charge = -1.0
+mass = 1.0
+density = 0.5
+particles_per_cell = 64
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = 0.0                       # along x
+transverse_drift = [0.3, 0.0]     # [v_y, v_z] in c
+mobile = true
+perturbation = { amplitude = 0.001, mode = 1 }
+
+[[species]]
+name = "beam_minus"
+charge = -1.0
+mass = 1.0
+density = 0.5
+particles_per_cell = 64
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = 0.0
+transverse_drift = [-0.3, 0.0]
+mobile = true
+perturbation = { amplitude = -0.001, mode = 1 }   # opposite to beam_plus: the net density stays uniform
+
+[[species]]
+name = "ion"
+charge = 1.0
+mass = 1836.0
+density = 1.0
+particles_per_cell = 1
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = 0.0
+mobile = false
+
+[diagnostics]
+scalars_every = 4
+fields_every = 32
+fields = ["Ey", "Bz", "Rho"]
+
+[observables.growth_rate]
+signal = "Uelm_Bz"                # field energy of Bz
+method = "exponential_window"     # least-squares fit of log U over the window; slope = 2γ
+window = [1.0e-4, 1.0e-2]         # U between these fractions of max U (before saturation), chosen before the run
+theory = 0.2637254682112319       # γ / ω_p, field amplitude, cold fluid with the relativistic factors γ₀ and γ₀³
+formula = "X² − A X − B = 0 with X = ω², A = k² + ω_p²/γ₀³, B = ω_p² v₀² k²/γ₀; γ = √(−X₋), X₋ = (A − √(A² + 4B))/2; derived in the header of lib/ParticleMeshElectromagnetic/test/theory.jl (T-216), unverified against the literature"

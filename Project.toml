@@ -4,7 +4,7 @@ authors = ["Sebastian Micluța-Câmpeanu <sebastian.mc95@proton.me>"]
 version = "0.1.0-DEV"
 
 [workspace]
-projects = ["test", "docs", "benchmark", "lib/ParticleMeshCore"]
+projects = ["test", "docs", "benchmark", "lib/ParticleMeshCore", "lib/ParticleMeshElectromagnetic"]
 
 [deps]
 ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"

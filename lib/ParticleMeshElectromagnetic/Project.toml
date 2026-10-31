@@ -1,0 +1,21 @@
+name = "ParticleMeshElectromagnetic"
+uuid = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
+version = "0.1.0-DEV"
+authors = ["Sebastian Micluța-Câmpeanu <sebastian.mc95@proton.me>"]
+
+[workspace]
+projects = ["test"]
+
+[deps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"
+
+[sources]
+ParticleMeshCore = {path = "../ParticleMeshCore"}
+
+[compat]
+Adapt = "4"
+KernelAbstractions = "0.10"
+ParticleMeshCore = "0.1"
+julia = "1.13"
