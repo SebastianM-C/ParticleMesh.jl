@@ -44,7 +44,7 @@ A1 normalized units, ω₀ reference, SI in the user layer · A2 baseline scheme
 ## 4. Design decisions still open, by when they bite
 
 ### Before the cloud sessions start
-1. **Repository topology and naming.** Closed: monorepo with `lib/` subpackages in a Pkg workspace (F1); Julia 1.13; no EDM dependency at first, direct dependencies on LaserTypes.jl and GPUDiagnostics.jl, RunManifests lifted out of EDM; `ParticleMesh.jl` at https://github.com/SebastianM-C/ParticleMesh.jl, agents in worktrees under `.claude/worktrees/`, created by the launcher for factory sessions and through EnterWorktree for interactive ones (A6).
+1. **Repository topology and naming.** Closed: monorepo with `lib/` subpackages in a Pkg workspace (F1); Julia 1.13; no EDM dependency at first, direct dependencies on LaserTypes.jl and GPUDiagnostics.jl, RunManifests lifted out of EDM; `ParticleMesh.jl` at https://github.com/SebastianM-C/ParticleMesh.jl, agents in worktrees under `.claude/worktrees/` (A6).
 2. **Trace schema and tooling.** Closed: goal files in `docs/goals/`, TOML front matter on work packages, test tags, staleness by git blob id, one checker script (`trace/README.md`).
 3. **Role roster.** The actual subagent definitions: implementer, numerics reviewer, plot inspector, overseer; model, effort, tool allowlists, permission rules per machine, budget per role.
 4. **Cloud environment.** Setup script within the five-minute cache window, the Julia allowlist, the depot strategy for the SciML stack (SessionStart hook versus a prebuilt Docker depot image), environment variables, what secrets if any.

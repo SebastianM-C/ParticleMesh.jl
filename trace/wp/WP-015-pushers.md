@@ -9,7 +9,7 @@ adds_dependencies = ["SciMLBase", "OrdinaryDiffEqCore", "OrdinaryDiffEqVerner"]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A10 = "66d01e20241b6a7137b53d5c2346b113ac0d3e71"
 A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
-A6 = "344832ac0e32f874b8cbaa674a2282ee40a05d9c"
+A6 = "ea80cb6a8044e825be16a39e91d6c45b6dfdb6f9"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 +++
