@@ -1,0 +1,45 @@
+case = "landau"
+case_source = "scripts/crosscode/cases/landau.toml"
+code = "smilei"
+commit = "ae2eb5a0140ad67237f4b96f66a82037fb91df44"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:e8bc34fa6893490f2d6b338ed8be6fde98341e0ba1a86ff9294176e747751058"
+run = "smilei-landau-d7d19f86"
+updated = "2026-10-31T17:49:48.590Z"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "analysis host (the run did not record it; same machine for runner runs)"
+threads = "8, cpus: 8"
+
+[image]
+id = "localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:d7d19f863edd3f1003b69e90000f1c8683075451eab0a730ba64d720d2803a0e"
+"run.sh" = "sha256:4eeda89f58b210351505848768db2c6415aea8b0a1c0990f2cf7abe1ed38234c"
+"smilei.py" = "sha256:daa197b3958d9cc4dc9ce096977879a6495072dc7a10cc1cb717068d57e675ed"
+
+[observables]
+case = "landau"
+fit_points = 5
+fit_range = [4.7478992778807925, 13.764694960073452]
+measured = 0.14453088013726126
+measured_frequency = 1.3936625667560147
+measured_from_mode = 0.1698763079177247
+measured_from_mode_stderr = 0.015580643612814409
+measured_stderr = 0.012977460972574678
+noise_floor = 1.2005728243e-10
+observable = "damping_rate"
+relative_difference = -0.05756792815110514
+theory = 0.1533594669096052
+theory_frequency = 1.4156618886045358
+
+[outputs]
+"Fields0.h5" = "sha256:d20a0cf493b7debdeedf4611e1a86a06e9fecf21410dcb0980fea282ef1a1d38"
+"container.txt" = "sha256:44c5de93f3919f63270386114170ac67e61a3056c818ecc010873142141434af"
+"scalars.txt" = "sha256:86a3499196efa5bdbc1c4a0d2ffa597d8274d100861f8386405bf78b486d99d8"
+"smilei.log" = "sha256:c3e1ecc2d6122a8ea54640269181217e736c51d2961464802f82cd11e10adcd8"

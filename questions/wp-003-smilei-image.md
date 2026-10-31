@@ -4,6 +4,8 @@ Work package: `trace/wp/WP-003-crosscode-runs.md`. Files: `scripts/crosscode/con
 
 ## 1. The image has to be built by the owner
 
+Status: resolved. The owner built `localhost/particlemesh-smilei:e4f0148b8952fc87` (image id `7030c120c62c…`), and the runs are in `reports/crosscode-smilei-1d/`.
+
 The sandbox cannot build images, and the runs need one. The recipe is `scripts/crosscode/containers/smilei.Containerfile` (build context `scripts/crosscode/containers/`, extra files in `scripts/crosscode/containers/smilei/`); the build command and the tag convention are in `scripts/crosscode/containers/README.md`.
 
 Assumption I proceeded on: the PR carries the recipe, the case files, the generator, the reader and the analysis, with the runs marked absent in `reports/crosscode-smilei-1d/README.md` until the image exists. The runs are then requested from the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`) and committed in a follow-up commit or PR.

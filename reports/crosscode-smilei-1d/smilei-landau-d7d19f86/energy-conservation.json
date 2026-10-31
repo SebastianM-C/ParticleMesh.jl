@@ -1,0 +1,8 @@
+{
+  "Uelm0": 1.5673179178e-7,
+  "Ukin0": 0.0023559648147,
+  "Utot0": 0.0023561215465,
+  "final_relative_change": -3.955653304028877e-8,
+  "max_abs_relative_change": 3.547779617174257e-7,
+  "plot": "relative change of the total energy versus time"
+}

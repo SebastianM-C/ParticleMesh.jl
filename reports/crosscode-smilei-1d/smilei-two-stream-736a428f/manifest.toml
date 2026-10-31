@@ -1,0 +1,47 @@
+case = "two-stream"
+case_source = "scripts/crosscode/cases/two-stream.toml"
+code = "smilei"
+commit = "4da64a34a0efeca0bd4ca7f77b3bc749e24e16a1"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:e8bc34fa6893490f2d6b338ed8be6fde98341e0ba1a86ff9294176e747751058"
+run = "smilei-two-stream-736a428f"
+updated = "2026-10-31T17:43:50.812Z"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "analysis host (the run did not record it; same machine for runner runs)"
+threads = "16, cpus: 16"
+
+[image]
+id = "localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:736a428fe67b795543c2c1380a73c94a115d4ec803fb81d59b0089293814a817"
+"run.sh" = "sha256:e191d9c153d98f3e7b2b5843feb9f0c21f90bec6dd60765d4df15d8052fa9edc"
+"smilei.py" = "sha256:01d07c824a3bb0b1d4d046062a50e8a61d78b9866e78354117796b3936438afe"
+
+[observables]
+case = "two-stream"
+fit_points = 164
+fit_range = [13.7985612, 18.7636064]
+measured = 0.3456117386682293
+measured_from_mode = 0.33698757264595997
+measured_from_mode_stderr = 0.002521121878973574
+measured_stderr = 0.0009017230174078563
+observable = "growth_rate"
+relative_difference = -0.015002548018342506
+theory = 0.35087576924479724
+theory_nonrelativistic = 0.3535533905932736
+
+    [observables.saturation]
+    U = 0.0019114015889
+    t = 24.9470676
+
+[outputs]
+"Fields0.h5" = "sha256:dde7cf0009235bad12a010dd351711b9d8a17d2b9e882fee6d021c91702a1c3f"
+"container.txt" = "sha256:da64811cf44da3bda92463887d079a85b9ec9289e9e8ca417c7be05daf90230b"
+"scalars.txt" = "sha256:f210fa306d4985d72426f419e9825c1b703ef9903ef3dcedc55b67f087640465"
+"smilei.log" = "sha256:6f2ec39f5827efe893c145cda73934e998996a8a3fe45ec7beb268b1531699fd"
