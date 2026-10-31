@@ -1,6 +1,6 @@
 +++
 id = "WP-004"
-status = "proposed"
+status = "parked"
 goals = ["A1", "A6", "A7", "A8", "A9"]
 depends_on = []
 adds_dependencies = ["KernelAbstractions", "Atomix", "Adapt", "AcceleratedKernels", "PreallocationTools", "ForwardDiff", "DoubleFloats"]
@@ -13,6 +13,8 @@ A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 A9 = "c4a9112c185bc4f4af5c969b185524cc74321372"
 +++
 # WP-004: engine core, mesh: bootstrap, grid, field sets, guard fill
+
+Parked (A0: contracts are written from working code). The spike WP-010 builds a 1D electrostatic PIC first and tests the contracts below as proposals; this package is re-derived from the spike's write-up, kept or withdrawn, before it is dispatched.
 
 The first engine package. It creates `lib/ParticleMeshCore` with its whole dependency set and the test scaffolding every later core package uses, and implements the mesh side of the engine. The contracts are `docs/plan/architecture-draft.md` §0.7 items 1 to 4, 9, 10, 13, 16 to 19; read §0.4 and §0.7 in full before starting.
 

@@ -1,6 +1,6 @@
 +++
 id = "WP-008"
-status = "proposed"
+status = "parked"
 goals = ["A7", "A8", "A9"]
 depends_on = ["WP-007"]
 adds_dependencies = ["SciMLBase", "RecursiveArrayTools", "OrdinaryDiffEqFunctionMap"]
@@ -11,6 +11,8 @@ A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 A9 = "c4a9112c185bc4f4af5c969b185524cc74321372"
 +++
 # WP-008: engine core, harness: step! as a SciML DiscreteProblem
+
+Parked (A0: contracts are written from working code). The spike WP-010 builds a 1D electrostatic PIC first and tests the contracts below as proposals; this package is re-derived from the spike's write-up, kept or withdrawn, before it is dispatched.
 
 The SciML entry point (A9: SciML is the main integration goal). Contracts: `docs/plan/architecture-draft.md` §0.6, §0.7 item 11; `docs/plan/sciml-reuse.md` §1.
 
