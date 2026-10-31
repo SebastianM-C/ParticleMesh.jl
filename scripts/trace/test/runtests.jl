@@ -1,72 +1,91 @@
-# Tests of the trace tooling: julia +1.13 --project=scripts scripts/trace/test/runtests.jl
-using Test, TOML
+# Tests of the trace checker: julia +1.13 --project=scripts scripts/trace/test/runtests.jl
+using Test
 
 include(joinpath(@__DIR__, "..", "Trace.jl"))
 using .Trace
 
 const ROOT = dirname(dirname(dirname(@__DIR__)))
-const RECORDS = joinpath(ROOT, "trace", "records")
 
-function copy_records()
-    dir = mktempdir()
-    for f in readdir(RECORDS)
-        cp(joinpath(RECORDS, f), joinpath(dir, f))
+# A small repository: two goals, two packages, one test file, a root Project.toml.
+function fixture()
+    root = mktempdir()
+    mkpath(joinpath(root, "docs", "goals"))
+    mkpath(joinpath(root, "trace", "wp"))
+    mkpath(joinpath(root, "test"))
+    write(joinpath(root, "docs", "goals", "A1-units.md"), "# A1. Units\n\nNormalized units.\n")
+    write(joinpath(root, "docs", "goals", "A2-scheme.md"), "# A2. Scheme\n\nYee and Boris.\n")
+    write(joinpath(root, "docs", "goals", "README.md"), "not a goal\n")
+    for (id, goals, deps) in (("WP-001", ["A1"], String[]), ("WP-002", ["A1", "A2"], ["WP-001"]))
+        deps_toml = isempty(deps) ? "[]" : "[" * join(repr.(deps), ", ") * "]"
+        write(joinpath(root, "trace", "wp", "$id-x.md"),
+            "+++\nid = \"$id\"\nstatus = \"proposed\"\ngoals = [$(join(repr.(goals), ", "))]\n" *
+            "depends_on = $deps_toml\n+++\n# $id: x\n\nBody.\n")
     end
-    return dir
+    write(joinpath(root, "test", "runtests.jl"),
+        "@testset \"T-001 one [A1]\" begin end\n@testset \"T-002 two [WP-002]\" begin end\n")
+    write(joinpath(root, "Project.toml"), "name = \"X\"\n[deps]\nTest = \"8dfed614-e22c-5e08-85e1-65c5234f0b40\"\n")
+    return root
 end
 
-stale_ids(b) = Set(id for id in keys(b.records) if Trace.isstale(b, id))
-
-@testset "T-001 trace staleness propagates [R-014]" begin
-    dir = copy_records()
-    before = build(dir, ROOT)
-    @test isempty(before.mismatched)
-    @test isempty(stale_ids(before))
-
-    path = joinpath(dir, "R-014.toml")
-    text = read(path, String)
-    write(path, replace(text, "statement = \"\"\"" => "statement = \"\"\"Edited. "; count = 1))
-    unstamped = build(dir, ROOT)
-    @test unstamped.mismatched == Set(["R-014"])
-    @test any(contains("R-014: hash mismatch"), unstamped.errors)
-
-    stamp!(path, first(load_records(dir)))
-    b = build(dir, ROOT)
-    @test isempty(b.mismatched)
-    @test sort(b.errors) == sort(before.errors)
-    @test stale_ids(b) == Set(["D-013", "WP-001", "T-001", "T-002"])
-    @test b.direct["D-013"] == ["R-014"]
-    @test b.direct["WP-001"] == ["R-014"]
-    @test b.via["WP-001"] == ["D-013"]
-    for id in ("R-014", "R-001", "R-008", "D-001", "D-006", "I-001", "T-000")
-        @test !Trace.isstale(b, id)
-    end
-    @test any(contains("D-013 is accepted and stale"), b.warnings)
-    @test contains(summary_text(b), "D-013  (upstream changed: R-014)")
-
-    # Re-reviewing D-013 clears its staleness; WP-001 still links R-014 directly.
-    stamp!(joinpath(dir, "D-013.toml"), first(load_records(dir)); review = true)
-    after = build(dir, ROOT)
-    @test !Trace.isstale(after, "D-013")
-    @test after.direct["WP-001"] == ["R-014"]
-    @test !haskey(after.via, "WP-001")
+refresh_all(root) = for f in readdir(joinpath(root, "trace", "wp"))
+    refresh!(joinpath(root, "trace", "wp", f), first(load_goals(joinpath(root, "docs", "goals"))))
 end
 
-@testset "T-002 trace hashes are canonical [R-014]" begin
-    data = TOML.parsefile(joinpath(RECORDS, "D-004.toml"))
-    h = record_hash(data)
-    @test h == data["hash"]
+@testset "T-001 a goal edit marks exactly the packages that serve it stale [A0]" begin
+    root = fixture()
+    r = check(root)
+    @test any(contains("no checked entry for A1"), r.errors)
+    refresh_all(root)
+    r = check(root)
+    @test isempty(r.errors)
+    @test isempty(r.stale)
 
-    reversed = sort!([k for k in keys(data) if !(k in ("hash", "upstream"))]; rev = true)
-    @test record_hash(TOML.parse(render_record(data; order = reversed))) == h
-    io = IOBuffer()
-    TOML.print(io, data; sorted = true)
-    @test record_hash(TOML.parse(String(take!(io)))) == h
+    path = joinpath(root, "docs", "goals", "A2-scheme.md")
+    write(path, read(path, String) * "Esirkepov current.\n")
+    r = check(root)
+    @test isempty(r.errors)
+    @test r.stale == Dict("WP-002" => ["A2"])
 
-    @test canonical(Dict("a" => 1, "b" => [1, 2])) == canonical(Dict("b" => [1, 2], "a" => 1))
-    @test record_hash(merge(data, Dict("hash" => "x", "upstream" => Dict("R-001" => "y")))) == h
-    @test record_hash(merge(data, Dict("decision" => "a\r\nb"))) ==
-        record_hash(merge(data, Dict("decision" => "a\nb")))
-    @test record_hash(merge(data, Dict("title" => data["title"] * "!"))) != h
-    @test record_hash(merge(data, Dict("derived_from" => reverse(data["derived_from"])))) != h
+    # Checking WP-002 against the new A2 clears it; the body is kept as it was.
+    wp = joinpath(root, "trace", "wp", "WP-002-x.md")
+    refresh!(wp, first(load_goals(joinpath(root, "docs", "goals"))))
+    @test isempty(check(root).stale)
+    @test endswith(read(wp, String), "+++\n# WP-002: x\n\nBody.\n")
+
+    # A withdrawn package is never stale.
+    write(path, read(path, String) * "Quadratic shapes.\n")
+    write(wp, replace(read(wp, String), "status = \"proposed\"" => "status = \"withdrawn\""))
+    @test isempty(check(root).stale)
+end
+
+@testset "T-002 checked entries are git blob ids [A0]" begin
+    @test blob_id(Vector{UInt8}("")) == "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    @test blob_id(Vector{UInt8}("hello\n")) == "ce013625030ba8dba906f756967f9e9ca394464a"
+    if Sys.which("git") !== nothing
+        f = joinpath(ROOT, "docs", "goals", "A1-units.md")
+        @test blob_id(f) == readchomp(`git hash-object $f`)
+    end
+end
+
+@testset "T-003 broken links, tags and engine dependencies are errors [A0, A9]" begin
+    root = fixture()
+    refresh_all(root)
+    write(joinpath(root, "test", "more.jl"),
+        "@testset \"T-001 again [A1]\" begin end\n@testset \"T-004 untagged\" begin end\n" *
+        "@testset \"T-005 bad [A7]\" begin end\n")
+    wp = joinpath(root, "trace", "wp", "WP-002-x.md")
+    write(wp, replace(read(wp, String), "depends_on = [\"WP-001\"]" => "depends_on = [\"WP-009\"]"))
+    write(joinpath(root, "Project.toml"), "name = \"X\"\n[deps]\nMolly = \"aa0f7f06-fcc0-5ec4-a7f3-a573f33f9c4c\"\n")
+    errors = check(root).errors
+    @test any(contains("T-001 is already used"), errors)
+    @test any(contains("T-004 names no goal"), errors)
+    @test any(contains("tags unknown id A7"), errors)
+    @test any(contains("unknown package WP-009"), errors)
+    @test any(contains("must not depend on Molly"), errors)
+    @test length(errors) == 5
+end
+
+@testset "T-004 the repository passes its own check [A0]" begin
+    r = check(ROOT)
+    @test isempty(r.errors)
 end

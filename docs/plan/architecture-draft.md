@@ -1,6 +1,6 @@
 # ParticleMesh: architecture draft
 
-Companion to `landscape-and-requirements.md`. Status: design record; §0 and the decisions A1 to A14 in `open-items.md` are binding.
+Companion to `landscape-and-requirements.md`. Status: design record; §0 and the goals and decisions in `docs/goals/` are binding; §0 is derived work and changes through pull requests like any other plan text, while `docs/goals/` changes only with the owner.
 
 Constraints:
 - keep a symbolic-numeric angle possible without blocking on it;
@@ -108,7 +108,7 @@ L0 and L1 have no symbolic dependency and are the first deliverable. L3 is an op
 
 Data layout
 - Fields: one `AbstractArray{T,N}` per component (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz, ρ optional), Yee offsets carried as type-level `Val` tuples, guard cells sized by the shape-function order. 2D is 3D with one collapsed axis (2D3V): all field and momentum components exist, variation only along the resolved axes. This is how Smilei and PIConGPU do it and keeps one kernel source for N = 1, 2, 3.
-- Particles (per species): SoA buffers with `cell::Int32` per axis plus an in-cell offset `T` in [0, 1), momentum `T × 3`, weight, alive mask, optional tag. The cell+offset split is what keeps FP32 usable over a long moving window (PIConGPU layout); FP32 is required on the 4080 SUPER (FP64 at 1/64 rate), FP64 is available on rented datacenter GPUs (MI300X, NVIDIA data-center cards). `T` is a type parameter throughout and is chosen at the user level; nothing assumes Float64 or Float32. The same kernels must run with Float32, Float64, DoubleFloats (Double32 is the useful one on consumer GPUs, since it keeps FP32 throughput) and ForwardDiff duals; the deposition kernel selects its accumulation path by a trait on `T` (atomics for primitives and, component-wise, for duals; sorted segmented reduction for compensated types whose addition is not component-wise associative). See `open-items.md` A8.
+- Particles (per species): SoA buffers with `cell::Int32` per axis plus an in-cell offset `T` in [0, 1), momentum `T × 3`, weight, alive mask, optional tag. The cell+offset split is what keeps FP32 usable over a long moving window (PIConGPU layout); FP32 is required on the 4080 SUPER (FP64 at 1/64 rate), FP64 is available on rented datacenter GPUs (MI300X, NVIDIA data-center cards). `T` is a type parameter throughout and is chosen at the user level; nothing assumes Float64 or Float32. The same kernels must run with Float32, Float64, DoubleFloats (Double32 is the useful one on consumer GPUs, since it keeps FP32 throughput) and ForwardDiff duals; the deposition kernel selects its accumulation path by a trait on `T` (atomics for primitives and, component-wise, for duals; sorted segmented reduction for compensated types whose addition is not component-wise associative). See `docs/goals/A8-element-type.md`.
 - Fixed-capacity buffers with periodic compaction and cell sorting (supercells). Sorting also enables a deposition variant without atomics (segmented reduction), which matters for the Reactant path and for deterministic bitwise reproducibility.
 
 Kernels (KernelAbstractions, `foreachindex` style as in EDM)

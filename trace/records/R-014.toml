@@ -1,9 +1,0 @@
-id = "R-014"
-title = "Traceability as content-addressed records"
-status = "accepted"
-source = "docs/plan/factory-and-observability.md section 1 (section 6 of landscape-and-requirements.md has no such requirement)"
-statement = """Requirements, decisions, interface contracts, work packages, tests, runs and agent sessions are records, one file each under trace/. Every record stores a content hash of itself and the hashes of the upstream records it was derived from at the time it was written. A builder recomputes the hashes and marks a record stale when a recorded upstream hash no longer matches; staleness propagates downstream. A record leaves the stale state only when it is re-reviewed and its upstream hashes are rewritten. Testsets carry their trace ids in their names, and CI fails on an untraced test."""
-rationale = """A significant part of the implementation is done by autonomous agents with a human reviewing, so how requirements propagate into decisions, work, tests and runs is a first-class deliverable. After an edit to a requirement, the builder lists every decision, interface, work package, test and run that must be re-reviewed, and nothing else."""
-hash = "sha256:3763c6fa321dde766d7e8a49937545e3706181b8b04c940d9c7c1a0383b0ab7f"
-
-[upstream]

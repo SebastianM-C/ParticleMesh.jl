@@ -1,9 +1,0 @@
-id = "R-009"
-title = "Automatic differentiation"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R9"
-statement = """ForwardDiff Duals end-to-end in phases 1 to 3; Enzyme/Reactant reverse mode in phase 4 with per-step checkpointing."""
-rationale = """The plan text gives no rationale in section 6; R3 (at most 20 parameters) is why forward mode suffices."""
-hash = "sha256:12ea0a09b9330dc29642de33aad21dd53edc8aed4b1f3b27e6b1d925bdde8121"
-
-[upstream]

@@ -109,9 +109,8 @@ How it is used: run it once with the plan documents as `args`, save it with `s`,
 ## What the factory's workflows would look like
 
 - `plan-review` (above): read-only review of the planning documents.
-- `plan-packages`: cuts the next work packages from a named slice of the plan. Three planners (interface-first, validation-first, risk-first) propose, one judge merges and orders, two refuters per package try to reject it for scope and for plan compliance, and a writer saves the survivors as records under `trace/wp/`. The caller passes the slice, the first free package number and the date, reads the files, and opens the PR; it merges on the automated review, and the digest lists the new packages for the owner to veto by editing or reverting a record.
+- `plan-packages`, two modes. `cut` takes the next work packages from a named slice of the goals and the plan: three planners (interface-first, validation-first, risk-first) propose, one judge merges and orders, two refuters per package try to reject it for scope and for goal compliance, and a writer saves the survivors under `trace/wp/`. `rederive` runs after a goal edit, on the stale packages `scripts/trace/build.jl` lists: one agent per package confirms, edits, splits or withdraws it and fixes the plan text that cites the goal, one refuter checks the result. The caller refreshes the `[checked]` entries of the packages that hold (`build.jl --refresh`), and opens the PR; it merges on the automated review, and the digest lists the packages for the owner to veto.
 - `wp-implement`: for one work package, an implementer agent in a worktree (role from `.claude/agents/`), then a test-runner stage, then a plot-inspector stage reading the standard plots and their sidecars, then two reviewers with distinct lenses, then a report; the script writes nothing itself, the agents commit on a branch.
-- `trace-rebuild`: regenerate the trace graph, list stale nodes, open one re-validation task per stale node.
-- `cross-code-validate`: run the matched case in ParticleMesh, Smilei and PIConGPU on the local GPU, produce the overlay plots, judge agreement against the tolerances in the requirement.
+- `cross-code-validate`: run the matched case in ParticleMesh, Smilei and PIConGPU on the local GPU, produce the overlay plots, judge agreement against the tolerances of A7.
 
-Each is a saved file in the repository, versioned with the code, and each run is a session record in the trace layer.
+Each is a saved file in the repository, versioned with the code; its cost and usage come from telemetry.

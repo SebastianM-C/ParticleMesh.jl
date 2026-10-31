@@ -1,9 +1,0 @@
-id = "R-007"
-title = "Validation suite"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R7"
-statement = """Classic 1D benchmarks, 1D wake versus analytic, 2D LWFA versus Smilei, gradient versus finite differences at every level."""
-rationale = """The plan text gives no rationale beyond the statement."""
-hash = "sha256:a61103b18e3f71c5cab5e985ac22a0db737ccd0da91f3324afddb2194ccf8f48"
-
-[upstream]

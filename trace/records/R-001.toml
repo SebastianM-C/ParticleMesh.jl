@@ -1,9 +1,0 @@
-id = "R-001"
-title = "Target geometry for the first results"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R1"
-statement = """2D Cartesian first (cheaper, method paper); the envelope model instead of quasi-3D RZ (architecture section 3)."""
-rationale = """2D Cartesian is cheaper and suits a method paper. The reasons for skipping quasi-3D RZ are in architecture-draft.md section 3, "On skipping quasi-3D"."""
-hash = "sha256:2e920b0ad5fe2932e83a9a5ef3b65aad049f7567c444538dd30e3ae95d2c2423"
-
-[upstream]

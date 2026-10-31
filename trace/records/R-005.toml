@@ -1,9 +1,0 @@
-id = "R-005"
-title = "Baseline numerical scheme"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R5"
-statement = """Yee + Boris + Esirkepov, shape order ≥ 2, moving window, binomial filtering; Lehe/PSATD later."""
-rationale = """Shape order at least 2 for gradient smoothness. The plan text gives no further rationale."""
-hash = "sha256:f735db9628da9fa1e534437d4cd1c77dc9c8cd5cb659f2e0532f9ad6d50b17a6"
-
-[upstream]

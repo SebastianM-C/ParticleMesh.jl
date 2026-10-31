@@ -52,30 +52,10 @@ jobs:
         env:
           JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: julia --project=scripts -e 'using Pkg; Pkg.instantiate()'
-      - name: Tests of the trace tooling
+      - name: Tests of the trace checker
         run: julia --project=scripts scripts/trace/test/runtests.jl
-      - name: Hashes, links and untraced tests (stale accepted records only warn)
+      - name: Goal links, test tags and engine dependencies (stale packages only warn)
         run: julia --project=scripts scripts/trace/build.jl --check
-  dependency-guard:
-    name: Dependency files change only on pkg/ branches
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: Compare against the base branch
-        env:
-          BASE: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          changed=$(git diff --name-only "origin/$BASE...HEAD" | grep -E '(^|/)(Project|Manifest[^/]*)\.toml$' || true)
-          if [ -n "$changed" ] && [[ "$HEAD_REF" != pkg/* ]]; then
-            echo "Only the package-manager role changes these files, on a pkg/ branch:" >&2
-            echo "$changed" >&2
-            exit 1
-          fi
-          echo "ok"
   leak-scan:
     name: Reject private infrastructure references
     runs-on: ubuntu-latest
