@@ -11,8 +11,8 @@ A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
 A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
 A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
+A9 = "89b2103e556ff49abca35bdb96e72429b5d30845"
 +++
 # WP-011: engine/module split: the electrostatic step leaves the engine, §0.7 written as contracts from the spike's code
 
@@ -73,7 +73,7 @@ Test ids T-170 to T-179.
 - T-176 `fd_scan` recovers the derivative of an analytic function with a known roundoff level and reports the floor by the documented definition; it throws for a Float32 `x0` or a Float32 return value. T-143 reads its multiple from `tolerances.toml` [A7, WP-011].
 - T-177 the launch keyword [A4, WP-011]: every engine launch accepts `workgroupsize`; in `Reference()` mode, `sort_by_cell!`, `deposit!` and `cumsum_periodic!` give bitwise identical results for the default and two explicit sizes, at 1 and 4 threads, per element type.
 - T-144 allocation non-growth still holds with an empty and with a non-empty extras tuple.
-- `julia +1.13 --project=scripts scripts/trace/build.jl --check` passes with WP-004 to WP-007 withdrawn and WP-008 parked. CPU CI is green. The PR states that §0.7 changed (numerics lens), and lists WP-004 to WP-007 as withdrawn and WP-008 as kept parked.
+- The trace check passes with WP-004 to WP-007 withdrawn and WP-008 parked. CPU CI is green. The PR states that §0.7 changed (numerics lens), and lists WP-004 to WP-007 as withdrawn and WP-008 as kept parked.
 
 ## Depends on
 

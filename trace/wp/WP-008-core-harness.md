@@ -7,8 +7,8 @@ adds_dependencies = ["SciMLBase", "RecursiveArrayTools", "OrdinaryDiffEqFunction
 
 [checked]
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
+A9 = "89b2103e556ff49abca35bdb96e72429b5d30845"
 +++
 # WP-008: engine core, harness: step! as a SciML DiscreteProblem
 
@@ -50,4 +50,4 @@ WP-007.
 
 ## Budgets
 
-A7 memory budget: the measured factor of T-104, stated in bytes for a reference size, proposed as the budget's multiplier. Harness overhead per step recorded without a threshold. The multiple of the measured floor for T-105 in `tolerances.toml`, marked "proposed". Tier 2: edits `lib/ParticleMeshCore/Project.toml`, so the owner approves it, and an unattended session opens it as a draft.
+A7 memory budget: the measured factor of T-104, stated in bytes for a reference size, proposed as the budget's multiplier. Harness overhead per step recorded without a threshold. The multiple of the measured floor for T-105 in `tolerances.toml`, marked "proposed". Tier 2 (F4): edits `lib/ParticleMeshCore/Project.toml`.

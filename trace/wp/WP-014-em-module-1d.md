@@ -7,15 +7,15 @@ adds_dependencies = ["ParticleMeshElectromagnetic"]
 
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
-A10 = "66d01e20241b6a7137b53d5c2346b113ac0d3e71"
+A10 = "30906c6b96b63dab1b6d4eab77c5f25dcb8e1213"
 A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
 A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
 A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
-A6 = "ea80cb6a8044e825be16a39e91d6c45b6dfdb6f9"
+A6 = "aff99231bff58eb556176499946572ea44ab38dc"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
+A9 = "89b2103e556ff49abca35bdb96e72429b5d30845"
 +++
 # WP-014: the 1D electromagnetic module: Yee and Boris, Landau and two-stream as edge cases, Weibel as the third A5 case
 
@@ -29,7 +29,7 @@ The module composes its own step: store the old position as extras, push, sort, 
 
 The package is validation-first: Yee against its exact discrete dispersion relation, Boris against exact gyration, the discrete Gauss law to roundoff from continuity, and the transverse fields staying exactly zero in the electrostatic edge cases. After those come Landau and two-stream against linear theory, with the difference to the electrostatic reference recorded without a threshold. The schemes differ by construction (Ampère with a relativistic push against Gauss with a nonrelativistic leapfrog), so no bit or roundoff agreement is expected.
 
-Weibel is defined as cold beams counter-streaming along y with k along x, with a closed-form cold-fluid growth rate, and becomes A5's third 1D case. This package owns the transverse-drift extension of the case schema. Adding a workspace member edits `/Project.toml` and a new `/lib/*/Project.toml`, which are tier-2 paths (A6 layout: a `lib/` subpackage as workspace member), so an unattended session opens the PR as a draft for the owner.
+Weibel is defined as cold beams counter-streaming along y with k along x, with a closed-form cold-fluid growth rate, and becomes A5's third 1D case. This package owns the transverse-drift extension of the case schema. Adding a workspace member edits `/Project.toml` and a new `/lib/*/Project.toml`, which are tier-2 paths (F4).
 
 ## Deliverables
 
@@ -63,7 +63,7 @@ Test ids T-210 to T-229.
 - T-218 Reference mode is bitwise identical across reruns and at `JULIA_NUM_THREADS` = 1 and 4 for a short run of each case [A4, WP-014].
 - T-219 a ForwardDiff derivative of the field energy at a fixed time, with respect to the density perturbation amplitude through the weights (A3), agrees with the `fd_scan` floor within a measured multiple. Float64 Reference, common seeds, on a run long enough for particles to cross cells and the seam [A3, A7, WP-014].
 - T-220 allocation per step after warm-up does not grow with particle count or grid size [A7, WP-014].
-- `build.jl --check` passes and CPU CI is green. The PR is opened as a draft when unattended (tier 2).
+- `build.jl --check` passes and CPU CI is green. Tier 2 (F4).
 
 ## Depends on
 
@@ -71,4 +71,4 @@ WP-011 (the engine contracts: `cumsum_periodic!`, extras, the deposited quantity
 
 ## Budgets
 
-A7: Gauss's law to roundoff, C·eps(T) scaled by n·max|ρ| and the step count, with C measured and proposed. The energy-drift bound over N steps is measured and proposed per case. Gradient agreement is within the proposed multiple of the measured FD floor. Rates against linear theory are recorded as proposals, with no thresholds. Throughput: CPU ns per particle-step of the EM step, Fast and Reference, at 1 and 16 threads, reported with no threshold (the throughput budget is on the GPU). Dependencies (F2): the new workspace member ParticleMeshElectromagnetic, with direct dependencies ParticleMeshCore, KernelAbstractions and Adapt and test dependencies ForwardDiff and Test, all already in the shared Manifest. Tier 2 through the workspace and `Project.toml` edits: owner approval, and a draft if unattended.
+A7: Gauss's law to roundoff, C·eps(T) scaled by n·max|ρ| and the step count, with C measured and proposed. The energy-drift bound over N steps is measured and proposed per case. Gradient agreement is within the proposed multiple of the measured FD floor. Rates against linear theory are recorded as proposals, with no thresholds. Throughput: CPU ns per particle-step of the EM step, Fast and Reference, at 1 and 16 threads, reported with no threshold (the throughput budget is on the GPU). Dependencies (F2): the new workspace member ParticleMeshElectromagnetic, with direct dependencies ParticleMeshCore, KernelAbstractions and Adapt and test dependencies ForwardDiff and Test, all already in the shared Manifest. Tier 2 through the workspace and `Project.toml` edits (F4).

@@ -60,7 +60,7 @@ Surrogate/intermediate objectives worth having in the loop: peak accelerating fi
 | TrixiParticles.jl 0.5.3 + PointNeighbors.jl 0.6.7 | SPH multiphysics with KA kernels (NVIDIA, AMD, Apple); fixed-radius neighbour search with a GPU-compatible `FullGridCellList` (GPU support marked work in progress) | SPH fluids and structures | yes | no | precedent for a KA particle framework; neighbour-search candidate for the pairwise/P³M slot |
 | Ferrite.jl 1.7.0 and an expected MOL Ferrite backend | FEM toolbox; the MOL backend is not public as of 2026-10-30 (no PR or issue found) | unstructured FEM Poisson/Maxwell | not verified | – | geometry-heavy electrostatic problems, not LWFA; a second mesh backend that proves the description/implementation split |
 | FastMultipole.jl 2.3.0 (BYU FLOW Lab), ExaFMMt.jl 0.1.2 | fast multipole for the Laplace kernel; CPU-parallel expansions, CUDA for direct interactions only; ForwardDiff/ReverseDiff-compatible (README) | long-range sums without a mesh | partial | forward/reverse (ForwardDiff, ReverseDiff) | mesh-free option for a pairwise or gravity module's long-range slot; not needed for LWFA |
-| OrdinaryDiffEq PR #4436 (draft, 2026-08-30, updated 2026-10-17) and SimpleDiffEq under Reactant (prior work by the authors) | explicit solves run the ordinary `solve!` loop inside Reactant compilation; untraceable options throw before tracing | – | – | – | the time-loop harness and the reduced models on the Reactant path (architecture §0.6) |
+| OrdinaryDiffEq PR #4436 (draft, 2026-08-30, updated 2026-10-17) and SimpleDiffEq under Reactant (prior work by the authors) | explicit solves run the ordinary `solve!` loop with step control inside Reactant compilation (33 files, an `OrdinaryDiffEqCoreReactantExt` for the traced primitives); untraceable options (implicit algorithms, callbacks, `saveat`, user `tstops`, ...) throw before tracing | – | – | – | the time-loop harness and the reduced models on the Reactant path (architecture §0.6) |
 | Enzyme.jl + KernelAbstractions/CUDA.jl | reverse mode through GPU kernels | – | yes | yes | works in basic cases (KA #924 thread, Oct 2026); open bugs: `cis` in kernels (#3850), `fill!` on CuArray (#3807), tape-type mismatches (#3851); CUDA.jl PR #3150 for `autodiff` inside kernels still open |
 | ForwardDiff Duals in KA kernels | forward mode | – | yes | yes | robust; the right first AD mode for ≤ ~20 parameters |
 | DiffEqGPU.jl | GPU ODE ensembles | – | yes | yes | test-particle ensembles in a frozen wake |
@@ -134,7 +134,7 @@ For ParticleMesh that means: MOL can provide the Maxwell update symbolically if 
 
 ## 5. Proposed approach: a model ladder, with the PIC core written directly
 
-Recommendation: write the PIC core as plain Julia with KernelAbstractions kernels (CUDA on the 4080 SUPER, ROCm on rented MI300X, both backends already exercised by EDM), use ForwardDiff dual numbers through the whole time loop as the first AD mode, and keep MTK/MOL for the reduced models and parameter plumbing. Reverse mode (Enzyme on kernels, or Reactant for a whole-array formulation) is phase 3, once a smooth objective exists and parameter counts justify it.
+Recommendation: write the PIC core as plain Julia with KernelAbstractions kernels (CUDA on the 4080 SUPER, ROCm on rented MI300X, both backends already exercised by EDM), use ForwardDiff dual numbers through the whole time loop as the first AD mode, and keep MTK/MOL for the reduced models and parameter plumbing. Reverse mode (Enzyme on kernels, or Reactant for a whole-array formulation) comes in phase 4 or later (open-items C), once a smooth objective exists and parameter counts justify it.
 
 Why not Reactant first: it is the closest analogue to JAX-in-Cell, but multi-D deposition needs sorting plus scatter-add, exactly the ops with open reverse-mode regressions (Oct 2026). Forward mode with KA kernels has no such dependency and gives bitwise-reproducible gradients.
 
@@ -144,7 +144,7 @@ Model ladder (each level validates the next and already produces optimization re
 1. **2D r-z quasi-static fluid wake + paraxial laser envelope** (the Wake-T class of model; a PDE system where MOL applies at N ~ 10⁴). Adds self-focusing, diffraction, depletion. Cost: seconds. Still fully differentiable on CPU.
 2. **1D3V EM PIC** (KA kernels, Duals, GPU). Validate against JAX-in-Cell's benchmarks (Landau damping, two-stream, Weibel) and against level 0 for the wake. Measure gradient noise vs particle count and horizon.
 3. **2D Cartesian EM PIC** with moving window, density profile, laser antenna, immobile ions, injected test bunch, quadratic/cubic shapes, Esirkepov current, binomial filter. Validate against Smilei/PIConGPU runs (containerized). First real optimization: bunch energy vs (a₀, w₀, τ, focus, n₀, ramp length).
-4. **Quasi-3D RZ modes**, Lehe/PSATD solver for numerical Cherenkov, reverse mode with checkpointing for pulse shaping, smoothed objectives for self-injection.
+4. **Envelope 3D and full 3D on many GPUs** (A0; the envelope model instead of quasi-3D RZ, architecture §3), Lehe/PSATD solver for numerical Cherenkov, reverse mode with checkpointing for pulse shaping, smoothed objectives for self-injection.
 
 ## 6. Requirements
 
@@ -155,17 +155,17 @@ Physics
 - R4 Injection: external bunch and density downramp in scope; ionization injection and QED out of scope for v1.
 
 Numerics
-- R5 Yee + Boris + Esirkepov, shape order ≥ 2 (gradient smoothness), moving window, binomial filtering; Lehe/PSATD later.
-- R6 Precision: FP32 particles on the 4080 SUPER (FP64 is 1/64 rate on Ada), FP64 on rented datacenter GPUs; deposition must be reproducible across both. EDM's precision-floor work applies.
+- R5 Baseline scheme: A2, with a moving window; Lehe/PSATD later.
+- R6 Precision: FP32 particles on the 4080 SUPER (FP64 is 1/64 rate on Ada), FP64 on rented datacenter GPUs; agreement across both is a measured tolerance (A4). EDM's precision-floor work applies.
 - R7 Validation suite: classic 1D benchmarks, 1D wake vs analytic, 2D LWFA vs Smilei, gradient vs finite differences at every level.
 
 Software
 - R8 Package layout: MTK-free GPU core; optional MTK/MOL front-end for the fluid models and for composing with EDM models; LaserTypes.jl for laser definitions; EDM-style run manifests.
 - R9 AD: ForwardDiff Duals end-to-end in phase 1–3; Enzyme/Reactant reverse mode in phase 4 with per-step checkpointing.
 - R10 Optimization layer: Optimization.jl with gradients; BO baseline (optimas or Julia BO) on the same objective for a fair comparison, since BO is what the field uses.
-- R11 Modular physics (A9, architecture §0): an engine (particles, grids, transfers, loop, AD, backends) separate from physics modules (interactions, solvers, pushers, sources); the electromagnetic module, with LWFA on it, as the only physics module and the proof of the split, the electrostatic cases (Landau damping, two-stream) as its edge cases with no transverse fields; EDM as an external-field and force module later; interfaces that do not preclude pairwise, Molly-style interactions.
-- R12 Reactant-compilable core (A9, architecture §0.4): static shapes, masks instead of resizing, both deposition variants, no scalar indexing outside kernels, a Reactant CPU smoke test in CI once Reactant is unparked (A9); a particle-workload stress-test suite across KA-CUDA, Reactant-CUDA and Reactant-CPU as a deliverable in its own right.
-- R13 Problem description separated from numerical implementation (principle, A10): physics modules expressible as descriptions (MTK systems, `PDESystem`, equation types, source and boundary data) with the numerical choices (shape functions, Yee/FEM/DG, pusher, deposition variant, backend) made separately; hand-written kernels are the production path and generated code replaces them one slot at a time.
+- R11 Modular physics: A9, designed in architecture §0.1 (EDM as an external-field and force module later; interfaces that do not preclude pairwise, Molly-style interactions, §0.3).
+- R12 Reactant-compilable core: A9 and the rules of architecture §0.4; the particle-workload stress-test suite of §0.2 is a deliverable in its own right.
+- R13 Problem description separated from numerical implementation: A10, designed in architecture §0.5.
 
 ## 7. Risks
 

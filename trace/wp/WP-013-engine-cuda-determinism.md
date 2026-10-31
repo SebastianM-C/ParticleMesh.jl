@@ -7,10 +7,10 @@ adds_dependencies = ["CUDA"]
 
 [checked]
 A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
-A6 = "ea80cb6a8044e825be16a39e91d6c45b6dfdb6f9"
+A6 = "aff99231bff58eb556176499946572ea44ab38dc"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
+A9 = "89b2103e556ff49abca35bdb96e72429b5d30845"
 +++
 # WP-013: the engine on the RTX 4080 SUPER: CUDA identities, a deterministic scan, Reference mode across launch shapes, Fast against Reference throughput
 
@@ -47,7 +47,7 @@ It uses the launch keyword `workgroupsize` that WP-011 defined for every engine 
 - No edit of `docs/goals/`: the GPU reading of A4 goes to the owner as a question.
 - No warp intrinsics or shared-memory tricks in the Reference kernels (§0.4 rule 5). An optimized Fast variant may exist behind the same interface only if it is measured and documented.
 - No throughput threshold asserted, because A7 asks for a factor of Smilei on the same card, and the Smilei GPU reference is cross-code stage 2.
-- No Reactant (A9). No GPU run outside the runner, no two GPU jobs at once, and no CUDA attempt inside a sandboxed session.
+- No Reactant (A9).
 
 ## Acceptance
 

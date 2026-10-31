@@ -6,24 +6,24 @@ Index of the design record and the zoom-out over the planning documents; the det
 
 | File | What it holds |
 |---|---|
-| `landscape-and-requirements.md` | what exists (Julia, JAX, production PIC, BO practice, reduced models), the MethodOfLines v1 measurements, requirements R1 to R10, risks, sources |
+| `landscape-and-requirements.md` | what exists (Julia, JAX, production PIC, BO practice, reduced models), the MethodOfLines v1 measurements, requirements R1 to R13, risks, sources |
 | `architecture-draft.md` | layers L0 to L4, core numerics, parallel layout, differentiation, symbolic front-end, hardware mapping, order of work |
 | `sciml-reuse.md` | what to reuse from SciML per layer, with what was verified in the package sources |
 | `../goals/` | the owner's aims (A0) and binding decisions (A1 to A10), one file each: the root everything else derives from |
-| `open-items.md` | thin spots (B1 to B11), deferred items, risks, the first cloud-session batch (G), what the implementation team receives (E) |
+| `open-items.md` | thin spots (B1 to B11), deferred items, risks, what the implementation team receives (E) |
 | `factory-and-observability.md` | traceability links, compute topology, platform facts, visualization, budget pools, overseer, human interface, factory shape, factory settings F1 to F4 |
 | `workflows-primer.md` | how saved Claude Code workflows work, the `plan-review` script, the factory's workflow list |
 | `overview.md` | this file |
 
 ## 2. The picture in one pass
 
-Science: differentiable laser-wakefield simulation in Julia, used to optimize a handful of laser and plasma parameters for electron energy, built up a model ladder: 1D wake ODE with a test electron, r-z quasi-static fluid plus envelope, 1D3V PIC, 2D Cartesian PIC with a moving window, then envelope 3D and full 3D on many GPUs. The objective and the gradient-versus-Bayesian question are deliberately still open.
+Science: differentiable laser-wakefield simulation in Julia, built up a model ladder to optimize a handful of laser and plasma parameters (A0; the levels in `landscape-and-requirements.md` §5).
 
-Software: a plain-numeric core (SoA fields and particles, KernelAbstractions kernels, dimension-generic, element type chosen by the user, normalized units with ω₀ as reference), a parallel layer that grows from a no-op exchange to slab decomposition and MPI, a tangent-bundle forward-mode layer for about three parameters, an optional symbolic front-end that reuses the EDM components and MOL's staggered Yee update, and SciML around the loop (the `DiscreteProblem` harness, callbacks, ensembles, DiffEqGPU for test particles, LinearSolve, SciMLSensitivity and Optimization for the reduced models, ModelingToolkit for parameters and composition). Under A9 the package is a generic particle–mesh engine with pluggable physics modules (the electromagnetic module, with LWFA on it, as the only physics module and the proof of the split, the electrostatic cases as its edge cases with no transverse fields; EDM and Molly-style interactions later) and has an explicit long-term role as a showcase and stress test for Julia and Reactant compiler technology; the engine follows rules that keep the Reactant path open from day one (`architecture-draft.md` §0).
+Software: a generic particle–mesh engine with pluggable physics modules, the electromagnetic module with LWFA on it the only one planned (A9, `architecture-draft.md` §0.1); KernelAbstractions kernels, generic in the element type and in normalized units (A8, A1), that keep the Reactant path open (§0.4); SciML around the loop (`sciml-reuse.md`); the layers L0 to L4 in `architecture-draft.md`.
 
-Validation: classic 1D benchmarks with expected numbers, one matched 2D LWFA case run in ParticleMesh, Smilei and PIConGPU for correctness and throughput, conservation residuals, FP32-versus-FP64 drift, gradient checks against finite differences with deterministic deposition.
+Validation: the 1D benchmarks and one matched 2D LWFA case against Smilei and PIConGPU (A5), conservation residuals and gradient checks to the tolerances of A7, FP32-versus-FP64 drift (open-items B5).
 
-Factory: the owner sets the aims and decisions in `docs/goals/`; requirements, interfaces, work packages and tests are derived from them and link back by goal id, and a goal edit marks the packages derived from it stale through git blob ids; implementation by saved Claude Code workflows with pinned roles, on cloud sessions for CPU-only packages and on the local 4080 for GPU packages; a cron-driven Agent SDK loop on the 4080 under an API key for nightly validation; an overseer (a scheduled task now, a Managed Agents deployment later) that reads artifacts and writes a daily digest; a human interface built on risk tiers enforced by GitHub (F4), no blocking questions, one daily digest to veto from and one weekly hour; plots with scalar sidecars as the inspection channel for humans and agents alike; telemetry and hooks for cost and usage.
+Factory: the owner sets the goals and vetoes derived work from the daily digest (A0); the links and staleness are in `trace/README.md`, and the compute split, the overseer, the human interface and the merge policy in `factory-and-observability.md` (§2, §3d, §3e, F4).
 
 ```
  you ──edit docs/goals, answer questions, veto from the digest───────────┐
@@ -39,13 +39,15 @@ Factory: the owner sets the aims and decisions in `docs/goals/`; requirements, i
 
 The full text is in `docs/goals/` (A0 to A10) and in `factory-and-observability.md` section 5 (F1 to F4).
 
-A1 normalized units, ω₀ reference, SI in the user layer · A2 baseline scheme direction (Yee, Boris, Esirkepov, quadratic shapes, antenna laser, immobile ions, quiet start; the written decision set with tests is still owed) · A3 parameters enter through weights and the antenna · A4 deterministic deposition as reference mode, bitwise per element type and backend, counter-based RNG · A5 verify and benchmark against Smilei and PIConGPU · A6 public MIT repository, CPU CI plus a GPU runner · A8 element type generic, DoubleFloats nice-to-have · 2D Cartesian first, envelope instead of RZ, multi-GPU 3D eventual · ForwardDiff first with about three parameters · KA core, EDM reuse, MOL optional · no Checkpointing.jl · Claude Code workflows as the production line, Managed Agents as a bounded track · overseer as a scheduled task first · risk tiers and the daily batch · A9 generic particle–mesh framework, the electromagnetic module as the only physics module planned and the proof of the split, the electrostatic cases as its edge cases, Reactant a declared long-term target, parked until it supports GPUCompiler 2 and KernelAbstractions 0.10, with a CPU smoke test in CI once unparked · A10 problem description separated from numerical implementation, the symbolic front-end as the mechanism, FEM/DG mesh backends admitted but unscheduled. · factory settings: F1 Pkg workspace with committed manifests, `scripts/` as its own environment · F2 any PR may add a dependency, the engine's `Project.toml` is a code-owner path · F3 CairoMakie plots with sidecars, Markdown reports, static state page · F4 merge policy
+A0 Aims · A1 Units and normalization · A2 Baseline numerical scheme · A3 How parameters enter the simulation · A4 Determinism policy · A5 Canonical benchmark cases with numbers · A6 Repository and environment · A7 Acceptance criteria and budgets per work package · A8 Element type is a user-level choice · A9 Scope: a generic particle–mesh framework · A10 Problem description separated from numerical implementation · factory settings: F1 Package environments · F2 Dependencies · F3 Results, plots and reports · F4 Merge policy.
+
+Derived design choices without a goal id (2D Cartesian first with the envelope model instead of quasi-3D RZ, ForwardDiff first with about three parameters, the KernelAbstractions core, no Checkpointing.jl, saved workflows as the production line with Managed Agents as a bounded track) are in `architecture-draft.md` (constraints, §3), `open-items.md` D and `factory-and-observability.md` §4.
 
 ## 4. Design decisions still open, by when they bite
 
-### Before the cloud sessions start
-1. **Repository topology and naming.** Closed: monorepo with `lib/` subpackages in a Pkg workspace (F1); Julia 1.13; no EDM dependency at first, direct dependencies on LaserTypes.jl and GPUDiagnostics.jl, RunManifests lifted out of EDM; `ParticleMesh.jl` at https://github.com/SebastianM-C/ParticleMesh.jl, agents in worktrees under `.claude/worktrees/` (A6).
-2. **Trace schema and tooling.** Closed: goal files in `docs/goals/`, TOML front matter on work packages, test tags, staleness by git blob id, one checker script (`trace/README.md`).
+### Before implementation starts
+1. **Repository topology and naming.** Closed (A6, F1).
+2. **Trace schema and tooling.** Closed (`trace/README.md`).
 3. **Role roster.** The actual subagent definitions: implementer, numerics reviewer, plot inspector, overseer; model, effort, tool allowlists, permission rules per machine, budget per role.
 4. **Cloud environment.** Setup script within the five-minute cache window, the Julia allowlist, the depot strategy for the SciML stack (SessionStart hook versus a prebuilt Docker depot image), environment variables, what secrets if any.
 5. **The written A2 decision set and the A5 benchmark numbers**, committed, so sessions do not guess.
@@ -72,4 +74,4 @@ A1 normalized units, ω₀ reference, SI in the user layer · A2 baseline scheme
 
 ## 5. Suggested order for closing them
 
-Items 1 to 6 come first; they are the input the cloud sessions need. Items 7 to 12 can be written while the cloud sessions run, since they bite only when GPU work starts. Items 13 to 15 are deferred by decision (open-items D); the level-0 reduced model (one of the cloud packages) will produce the first data for it. Items 16 to 19 can wait for evidence.
+Items 1 to 6 come first; they are the input the implementation sessions need. Items 7 to 12 can be written while the CPU-side work runs, since they bite only when GPU work starts. Items 13 to 15 are deferred by decision (open-items D); the level-0 reduced model will produce the first data for it. Items 16 to 19 can wait for evidence.

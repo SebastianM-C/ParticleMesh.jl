@@ -4,7 +4,7 @@ Purpose: what is still open in the plan, and what can wait. The goals and decisi
 
 ## A. Goals and decisions
 
-The aims (A0) and the binding decisions A1 to A10 are in `docs/goals/`, one file each, owned by the owner; the factory settings that were A11 to A14 are F1 to F4 in `factory-and-observability.md` section 5. This document keeps what is still open: thin spots (B), deferred items (C), risks (D), the process premise (F) and the first batch (G).
+The goals are in `docs/goals/` (rules: `docs/goals/README.md`), the factory settings F1 to F4 in `factory-and-observability.md` section 5. This document keeps what is still open: thin spots (B), deferred items (C), risks (D) and the process premise (F).
 
 ## B. Thin spots in the plan (fill in during planning or as the first spike of a phase)
 
@@ -47,10 +47,6 @@ Reactant as a production backend (2D on Reactant-CUDA, sharding, multi-host, TPU
 ## F. Process: agent teams, loops and observability
 
 Premise: the project is also an experiment in software-factory approaches, with a significant part of the implementation done by autonomous agent teams and loops, and a required observability layer that shows how changes to the goals propagate. The aim is stated in `docs/goals/A0-aims.md`; design and platform facts in `factory-and-observability.md`, the links and the staleness check in `trace/README.md`.
-
-## G. First batch: CPU-only packages as cloud sessions
-
-Plan in `factory-and-observability.md` section 3c: local prerequisites (public repo, `CLAUDE.md`, role definitions, cloud environment with the Julia allowlist and a cached setup script), then four or five parallel cloud sessions or Project threads on the CPU-only packages (trace MVP, core skeleton, 1D3V benchmarks with plots, level-0 reduced model, plan review). The goals and decisions in `docs/goals/` and the benchmark numbers of A5 must be in the repository before the sessions start, or they will guess.
 
 ## E. What the implementation team should receive
 

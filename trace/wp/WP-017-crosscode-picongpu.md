@@ -8,7 +8,7 @@ adds_dependencies = []
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
-A6 = "ea80cb6a8044e825be16a39e91d6c45b6dfdb6f9"
+A6 = "aff99231bff58eb556176499946572ea44ab38dc"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 +++
 # WP-017: cross-code stage 2a: PIConGPU on the GPU runner, a 2D case schema, the 1D set as quasi-1D runs, and an oblique 2D Landau case in both codes
@@ -97,7 +97,7 @@ Test ids T-250 to T-259.
 - T-253 the PIConGPU recipe is pinned [A6, WP-017]: the `FROM` line names a digest, and PIConGPU is fetched at a tag or commit, never a branch.
 - T-254 quasi-1D equivalence [A5, WP-017]: the quasi-1D deck has the same per-x-column particle count, density and perturbation as the 1D case, read back from the generated files.
 - The runs, manifests, plots, sidecars, report, review and both question files are in the PR, or the runs are marked absent with the image question.
-- `julia +1.13 --project=scripts scripts/trace/build.jl --check` passes.
+- The trace check passes.
 
 ## Depends on
 

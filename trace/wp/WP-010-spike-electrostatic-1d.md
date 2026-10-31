@@ -12,8 +12,8 @@ A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
 A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
+A9 = "89b2103e556ff49abca35bdb96e72429b5d30845"
 +++
 # WP-010: spike, a 1D periodic electrostatic PIC with a checked gradient
 
@@ -54,7 +54,7 @@ Test ids T-130 to T-159, each named with its id and what it verifies, for exampl
 - T-141: the Landau damping rate and T-142: the two-stream growth rate match linear theory, with the measured relative error recorded in `tolerances.toml` as a proposal and no threshold asserted in this package.
 - T-143: the finite-difference gradient check of deliverable 5: the ForwardDiff derivative agrees with the central differences within a stated multiple of the measured floor (A7), the multiple measured and proposed like every other tolerance. The spike measured a ratio of 0.70 (relative difference 1.94e-9 against a floor of 2.78e-9) and asserts agreement within `C` times the floor, with `C = 1` recorded as a proposed entry in `lib/ParticleMeshCore/test/tolerances.toml` (`gradient.jl` reads it from there).
 - T-144: allocation of one step after warm-up does not grow between two particle counts and two grid sizes.
-- `julia +1.13 --project=scripts scripts/trace/build.jl --check` passes; CI is green; the write-up and the plots with sidecars are in the PR.
+- The trace check passes; CI is green; the write-up and the plots with sidecars are in the PR.
 
 ## Depends on
 
@@ -62,4 +62,4 @@ Nothing. The next packages depend on its write-up.
 
 ## Budgets
 
-CPU timings and scratch recorded without thresholds (A7's throughput budget is on the GPU). Tier 2: the PR edits `/Project.toml` and `/lib/*/Project.toml`, so the owner approves it; a session the owner steers may mark it ready, an unattended one leaves it as a draft.
+CPU timings and scratch recorded without thresholds (A7's throughput budget is on the GPU). Tier 2 (F4): the PR edits `/Project.toml` and `/lib/*/Project.toml`.

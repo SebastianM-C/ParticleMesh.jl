@@ -41,7 +41,7 @@ PIConGPU; the Weibel case, which A5 counts in the 1D set and which waits for sta
 - `T-012 Smilei reader on a synthetic file [WP-003]`: a small HDF5 file written by the test in Smilei's diagnostic layout is read into a table with the documented schema and values.
 - `T-013 container recipe is pinned [WP-003]`: the `FROM` line names a digest and Smilei is fetched at a tag or commit, never a branch.
 - Both cases run through the container, their run manifests, plots and sidecars in the PR, and the report in `reports/`; or, if the image does not exist yet, the question file and the report with the runs marked absent.
-- `julia +1.13 --project=scripts scripts/trace/build.jl --check` passes.
+- The trace check passes.
 
 ## Depends on
 
