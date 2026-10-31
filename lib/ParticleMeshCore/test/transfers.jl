@@ -103,7 +103,8 @@ end
 end
 
 @testset "T-135 Reference and Fast deposition agree per node [A4, A7, WP-010]" begin
-    # Bound per node: C·eps(T)·Σ|contributions to the node|, the Σ|...| computed by depositing |q|w.
+    # Bound per node: C·eps(T)·Σ|contributions to the node|. Every test weight is positive and the
+    # species has one sign of charge, so the sum of magnitudes is |ρR| and the code divides by it.
     C = tolC("T-135")
     for T in (Float32, Float64), shape in SHAPES, stagger in STAGGERS
         ε = eps(T)
