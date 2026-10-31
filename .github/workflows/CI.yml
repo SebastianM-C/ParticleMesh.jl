@@ -23,6 +23,16 @@ jobs:
         run: julia --project -e 'using Pkg; Pkg.update()'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+      - name: Test every lib/ subpackage in its own process (ParticleMeshReactant has its own job)
+        run: |
+          for project in lib/*/Project.toml; do
+            [ -f "$project" ] || continue
+            dir=$(dirname "$project")
+            [ "$dir" = lib/ParticleMeshReactant ] && continue
+            echo "::group::$dir"
+            julia --project="$dir" -e 'using Pkg; Pkg.test()'
+            echo "::endgroup::"
+          done
   reactant:
     # The Reactant CPU smoke test (architecture-draft.md §0.4 rule 7) lives in its own workspace member,
     # so the root julia-runtest job does not run it. Until the member exists this job passes trivially,
