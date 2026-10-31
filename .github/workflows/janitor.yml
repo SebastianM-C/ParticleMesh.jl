@@ -1,0 +1,103 @@
+name: Janitor
+
+# Runs the janitor role (brief: .claude/agents/janitor.md) every hour: the minor findings the review gate
+# files as `follow-up` issues become small pull requests, one per issue, closed by `Fixes #<n>`. A cheap
+# job first checks whether any open follow-up issue still has something for the janitor (unchecked
+# items, no open janitor PR for it, no "nothing mechanical left" marker as its last comment) and skips
+# the session when none does or when three janitor PRs are already open. It acts on GitHub as the factory app,
+# like the package manager, so its PRs trigger CI and the review gate. Sonnet at high effort: the work is
+# mechanical by design, and the brief sends everything else back to the issue.
+# Secrets: CLAUDE_CODE_OAUTH_TOKEN, FACTORY_APP_ID, FACTORY_APP_PRIVATE_KEY.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: janitor
+  cancel-in-progress: false
+
+jobs:
+  inbox:
+    name: Any follow-up item open, fewer than three janitor PRs open
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: read
+    outputs:
+      work: ${{ steps.check.outputs.work }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Issues that already have an open janitor PR (branch janitor/<issue>) are that run's until it merges.
+          owned=$(gh pr list --state open --limit 100 --json headRefName \
+            --jq '[.[] | .headRefName | select(startswith("janitor/")) | ltrimstr("janitor/") | tonumber?]')
+          pending=$(printf '%s' "$owned" | jq 'length')
+          # An unchecked item is work unless the janitor's last comment says nothing mechanical is left.
+          open=$(gh issue list --label follow-up --state open --limit 100 --json number,body,comments \
+            | jq --argjson owned "$owned" '[.[]
+              | select(.body | test("- \\[ \\]"))
+              | select(.number as $n | $owned | index($n) | not)
+              | select((.comments | last | .body // "") | test("<!-- janitor: nothing mechanical left -->") | not)
+            ] | length')
+          echo "follow-up issues with work for the janitor: $open; janitor PRs open: $pending"
+          # The cap keeps a failing gate or a waiting owner from turning the hourly schedule into a pile.
+          if [ "$open" = 0 ] || [ "$pending" -ge 3 ]; then
+            echo "work=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "work=true" >> "$GITHUB_OUTPUT"
+          fi
+  run:
+    name: Janitor
+    needs: inbox
+    if: ${{ needs.inbox.outputs.work == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+      - name: git identity of the app
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.13'
+      - uses: julia-actions/cache@v3
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.app.outputs.token }}
+          allowed_bots: "particlemesh-factory,particlemesh-factory[bot]"
+          settings: '{"modelSettings": {"claude-sonnet-5-5": {"effortLevel": "high"}}}'
+          prompt: |
+            REPO: ${{ github.repository }}
+            You are the janitor role of this repository. Your brief is .claude/agents/janitor.md in this
+            checkout of the default branch; the contract is CLAUDE.md. Work through the open `follow-up`
+            issues as the brief says: one `janitor/<issue>` branch and one pull request per issue, pushed
+            with `git push -u origin HEAD`, opened with `gh pr create --body-file`, auto-merge enabled with
+            `gh pr merge --auto --squash`, and a comment on the issue with what you took and what you left.
+            At most three issues per run.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 60
+            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin HEAD),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Read,Edit,Write,Grep,Glob"
