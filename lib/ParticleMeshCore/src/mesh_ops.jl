@@ -94,6 +94,8 @@ It runs as one work item on every backend for now (O(n), serial), which ignores
 backend's (WP-013).
 """
 function cumsum_periodic!(out::AbstractVector, a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = nothing)
+    ncells(grid) >= 1 || throw(ArgumentError("cumsum_periodic! needs at least 1 cell"))
+    guards(grid) >= 1 || throw(ArgumentError("cumsum_periodic! needs at least 1 guard cell, the grid has $(guards(grid))"))
     backend = get_backend(out)
     cumsum_periodic_kernel!(backend)(out, a, cellsize(grid), Int32(ncells(grid)), Int32(guards(grid)), Int32(SCAN_TILE);
                                      ndrange = 1)

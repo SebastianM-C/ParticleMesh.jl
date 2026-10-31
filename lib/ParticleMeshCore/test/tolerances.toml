@@ -88,7 +88,7 @@ status = "proposed"
 quantity = "ForwardDiff dW/dα against a central finite-difference scan (fd_scan), Float64, Reference mode: rel[istar] / floor_rel"
 case = "32 cells, 64 particles per cell, quadratic, 25/ω_p (about 2 box lengths of thermal travel), h = 10^(-1:-0.5:-9)"
 C = 1
-measured = { relative_difference = 1.94e-9, scan_floor = 2.78e-9, best_h = 1e-7, ratio = 0.70 }
+measured = { relative_difference = 1.94e-9, scan_floor = 2.78e-9, best_h = 1e-7, ratio = 0.70, ratio_1_thread = 0.696, ratio_4_threads = 0.696 }
 status = "proposed: the AD derivative within C times the scan floor (A7)"
 
 # WP-011

@@ -1,5 +1,6 @@
-# Shared plumbing of the 1D electrostatic runs (WP-010; the reference moved to test support in WP-011): run directories, manifests (F3),
-# PNG + JSON sidecar output. Used by landau.jl, two_stream.jl, gradient.jl, timing.jl.
+# Shared plumbing of the 1D electrostatic runs (WP-010; the reference moved to test support in
+# WP-011): run directories, manifests (F3), PNG + JSON sidecar output. Used by landau.jl,
+# two_stream.jl, gradient.jl, timing.jl.
 
 using ParticleMesh
 using KernelAbstractions

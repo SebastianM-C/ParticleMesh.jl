@@ -55,6 +55,13 @@ end
         @test same_bits(oi, serial_tiled_cumsum(ai, dx, tile))             # the documented order
         @test same_bits(out, scan_output(T, n)[1])                         # rerun
     end
+    # Shapes are checked on the host before any launch.
+    let T = Float64, bad = (PeriodicGrid(0, 1.0, 2), PeriodicGrid(4, 1.0, 0))
+        for grid in bad
+            v = field(backend, T, PeriodicGrid(4, 1.0, 2))
+            @test_throws ArgumentError cumsum_periodic!(similar(v), v, grid)
+        end
+    end
     # Thread counts: the subprocess digests at 1 and 4 threads equal the in-process ones.
     for nt in (1, 4)
         @test of_kind(worker_digests(nt), "scan") == of_kind(INPROCESS_DIGESTS, "scan")
@@ -245,6 +252,8 @@ end
         end
         @test cumsum_periodic!(field(backend, T, grid), a, grid; workgroupsize = wg) isa typeof(a)
     end
+    # The scan is one serial work item (it ignores `workgroupsize`), so only the guard fill's bits
+    # depend on the launch shape; the digests below cover both together.
     # Reference mode: the same bits for the default and two explicit sizes, per element type...
     for (case, digests) in by_case(filter(l -> !startswith(l, "sortmatch"), INPROCESS_DIGESTS))
         @test length(digests) == length(WG_SIZES)
