@@ -28,6 +28,12 @@ worker_flux(nt) = [chopprefix(l, "FLUX ") for l in worker_lines(nt) if startswit
     bare = test_species(Float64, grid, 50)
     @test_throws ArgumentError deposit_flux!(Fast(), J, copy(J), copy(J), bare, Quadratic, Center(), grid, Workspace(bare, grid);
                                              dt = 0.25, quantity_y = ChargeUy(), quantity_z = ChargeUz())
+    # A grid of two cells is too small for the stencils, whatever the guards.
+    tiny = PeriodicGrid(2, 0.5, flux_guard_width(Quadratic, Node()))
+    s = moved_species(Float64, tiny, 20; seed = 1)
+    J = field(backend, Float64, tiny)
+    @test_throws ArgumentError deposit_flux!(Fast(), J, copy(J), copy(J), s, Quadratic, Node(), tiny, Workspace(s, tiny);
+                                             dt = 0.25, quantity_y = ChargeUy(), quantity_z = ChargeUz())
 end
 
 @testset "T-111 the continuity residual does not grow over a drift [A7, WP-009]" begin
