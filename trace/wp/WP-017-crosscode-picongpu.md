@@ -8,7 +8,7 @@ adds_dependencies = []
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
-A6 = "344832ac0e32f874b8cbaa674a2282ee40a05d9c"
+A6 = "ea80cb6a8044e825be16a39e91d6c45b6dfdb6f9"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 +++
 # WP-017: cross-code stage 2a: PIConGPU on the GPU runner, a 2D case schema, the 1D set as quasi-1D runs, and an oblique 2D Landau case in both codes
