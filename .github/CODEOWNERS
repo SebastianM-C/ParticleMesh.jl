@@ -22,5 +22,8 @@
 /*/Project.toml             @SebastianM-C
 /lib/*/Project.toml         @SebastianM-C
 
+# Work-package records: budgets and acceptance criteria that claims depend on
+/trace/wp/                  @SebastianM-C
+
 # Trace records of requirements, decisions and interfaces: the trace MVP work package adds their
 # patterns here once the record layout exists.
