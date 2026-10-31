@@ -1,0 +1,19 @@
+# Tolerances of WP-014 (A7: measure, then propose). Every entry is a proposal: `C` is the
+# constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
+# backend (Julia 1.13), with `scale` as stated. The owner accepts a value by editing A7; until
+# then the tests hold these proposals. The suite prints the measured ratios after every run.
+
+["T-210"]
+quantity = "Yee in vacuum: field error against the exact discrete mode (C), relative staggered-energy change (C_energy)"
+scale = "steps (field amplitude 1); steps·W₀ for the energy"
+C = 8
+C_energy = 8
+status = "proposed"
+
+["T-211"]
+quantity = "Boris in uniform Bz: | |u| − |u₀| | (C) and the gyrophase error (C_phase); E×B drift relative error (drift_rel)"
+scale = "steps·|u₀|; steps (radians)"
+C = 8
+C_phase = 8
+drift_rel = 1e-2
+status = "proposed"

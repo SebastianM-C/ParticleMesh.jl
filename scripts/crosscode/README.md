@@ -35,8 +35,9 @@ A proposal; the spike's (WP-010) write-up may change it, and then the schema cha
 | `[grid]` `length`, `cells`, `boundaries` | Box length, number of cells, `"periodic"` |
 | `[time]` `dt`, `t_end` | Time step and end time; the run takes `round(t_end/dt)` steps |
 | `[numerics]` `shape_order`, `current_deposition`, `filter_passes`, `precision`, `random_seed` | Shape order (2, quadratic, A2), deposition scheme, binomial filter passes, element type, seed of the velocity sampling |
-| `[[species]]` `name`, `charge`, `mass`, `density`, `particles_per_cell`, `position`, `velocity`, `thermal_velocity`, `drift`, `mobile` | Charge in e, mass in m_e, density in n_c; `position` `"regular"`; `velocity` `"maxwellian"` (with `thermal_velocity` v_th = √(T/m)) or `"cold"`; drift velocity; `mobile = false` for immobile ions |
-| `perturbation = { amplitude, mode }` | n(x) = density (1 + amplitude cos(2π mode x / length)) |
+| `[[species]]` `name`, `charge`, `mass`, `density`, `particles_per_cell`, `position`, `velocity`, `thermal_velocity`, `drift`, `mobile` | Charge in e, mass in m_e, density in n_c; `position` `"regular"`; `velocity` `"maxwellian"` (with `thermal_velocity` v_th = √(T/m)) or `"cold"`; drift velocity along x; `mobile = false` for immobile ions |
+| `transverse_drift = [v_y, v_z]` | Optional (WP-014, for the Weibel case): the drift velocity across the resolved axis, in c; `[0, 0]` when absent. Not yet passed to Smilei |
+| `perturbation = { amplitude, mode }` | n(x) = density (1 + amplitude cos(2π mode x / length)); a negative amplitude is the opposite phase |
 | `[diagnostics]` `scalars_every`, `fields_every`, `fields` | Output cadence in steps and the fields dumped |
 | `[observables.<name>]` | `signal`, `method` and its parameters (fixed before the run), `theory` (the value, in ω_p units), `formula` (where it comes from) |
 
