@@ -1,8 +1,7 @@
-# Shared plumbing of the 1D electrostatic runs (WP-010): run directories, manifests (F3),
+# Shared plumbing of the 1D electrostatic runs (WP-010; the reference moved to test support in WP-011): run directories, manifests (F3),
 # PNG + JSON sidecar output. Used by landau.jl, two_stream.jl, gradient.jl, timing.jl.
 
 using ParticleMesh
-using ParticleMesh.ParticleMeshCore.Electrostatic
 using KernelAbstractions
 using CairoMakie
 using JSON
@@ -11,17 +10,20 @@ using Dates
 
 const REPO = normpath(joinpath(@__DIR__, "..", ".."))
 const CORE_TEST = joinpath(REPO, "lib", "ParticleMeshCore", "test")
+include(joinpath(CORE_TEST, "es_reference.jl"))     # the electrostatic reference (WP-011: test support)
+using .ESReference
 include(joinpath(CORE_TEST, "cases.jl"))
 include(joinpath(CORE_TEST, "theory.jl"))
 
-"Files whose content defines a run: the core sources, the case definitions, the theory, the script."
+"Files whose content defines a run: the core sources, the electrostatic reference, the case definitions, the theory, the script."
 function input_files(script)
     src = joinpath(REPO, "lib", "ParticleMeshCore", "src")
     files = String[]
     for (root, _, fs) in walkdir(src), f in fs
         endswith(f, ".jl") && push!(files, joinpath(root, f))
     end
-    append!(files, [joinpath(CORE_TEST, "cases.jl"), joinpath(CORE_TEST, "theory.jl"), joinpath(@__DIR__, "common.jl"),
+    append!(files, [joinpath(CORE_TEST, "es_reference.jl"), joinpath(CORE_TEST, "cases.jl"), joinpath(CORE_TEST, "theory.jl"),
+                    joinpath(@__DIR__, "common.jl"),
                     script, joinpath(REPO, "Manifest.toml"), joinpath(REPO, "scripts", "Manifest.toml")])
     return sort(files)
 end
@@ -44,7 +46,7 @@ function run_dir(name, script; params = Dict())
     mkpath(dir)
     manifest = Dict(
         "run_id" => "$name-$stamp",
-        "work_package" => "WP-010",
+        "work_package" => "WP-011",
         "commit" => git("rev-parse", "HEAD"),
         "dirty" => !isempty(git("status", "--porcelain", "--", "lib", "src", "scripts/es1d", "Manifest.toml", "scripts/Manifest.toml")),
         "inputs" => Dict(relpath(f, REPO) => bytes2hex(open(sha256, f)) for f in input_files(script)),

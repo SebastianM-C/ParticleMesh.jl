@@ -1,5 +1,6 @@
 # CPU time per particle-step and scratch per particle for both deposition modes (WP-010
-# deliverable 6). Recorded without thresholds (A7's throughput budget is on the GPU).
+# deliverable 6; WP-011 adds the scratch with a two-array extras tuple). Recorded without
+# thresholds (A7's throughput budget is on the GPU).
 #   julia +1.13 --project=scripts -t 1 scripts/es1d/timing.jl
 #   julia +1.13 --project=scripts -t 16 scripts/es1d/timing.jl
 include(joinpath(@__DIR__, "common.jl"))
@@ -18,9 +19,13 @@ function timing(; ppcs = (64, 256, 1024, 4096), n = 64, steps = 50)
         t = @elapsed run!(st, p, steps; first = 6)
         np = n * ppc
         s = st.species[1]
+        # WP-011: the scratch with a two-array extras tuple (old cell and offset, as a
+        # charge-conserving deposition would declare them), from a species of the same capacity.
+        sx = Species(KernelAbstractions.get_backend(s), T, capacity(s); q = -1, m = 1, extras = (old_cell = Int32, old_offset = T))
         push!(rows, Dict("T" => string(T), "mode" => string(typeof(mode)), "ppc" => ppc, "particles" => np,
                          "ns_per_particle_step" => 1e9 * t / (np * steps),
                          "scratch_bytes_per_particle" => scratch_bytes(st.ws[1]) / capacity(s),
+                         "scratch_bytes_per_particle_extras2" => scratch_bytes(Workspace(sx, st.grid)) / capacity(s),
                          "particle_bytes_per_particle" => species_bytes(s)))
         println(rows[end])
     end

@@ -1,5 +1,5 @@
-# Tolerances of the WP-010 spike (A7: measure, then propose). Every entry is a proposal: `C` is
-# the constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
+# Tolerances of the WP-010 spike and of WP-011 (A7: measure, then propose). Every entry is a
+# proposal: `C` is the constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
 # backend (Julia 1.13, 1 and 8 threads), with `scale` as stated. The owner accepts a value by
 # editing A7; until then the tests hold these proposals. The test suite prints the measured
 # ratios at the end of every run, so they can be refreshed.
@@ -85,7 +85,39 @@ relative_error = { gamma = 0.0033 }
 status = "proposed"
 
 ["T-143"]
-quantity = "ForwardDiff dW/dα against a central finite-difference scan, Float64, Reference mode"
-case = "32 cells, 64 particles per cell, quadratic, 25/ω_p (about 2 box lengths of thermal travel)"
-measured = { relative_difference = 1.94e-9, scan_floor = 2.78e-9, best_h = 1e-7 }
-status = "asserted: agreement within the scan floor (spread of three consecutive difference quotients)"
+quantity = "ForwardDiff dW/dα against a central finite-difference scan (fd_scan), Float64, Reference mode: rel[istar] / floor_rel"
+case = "32 cells, 64 particles per cell, quadratic, 25/ω_p (about 2 box lengths of thermal travel), h = 10^(-1:-0.5:-9)"
+C = 1
+measured = { relative_difference = 1.94e-9, scan_floor = 2.78e-9, best_h = 1e-7, ratio = 0.70 }
+status = "proposed: the AD derivative within C times the scan floor (A7)"
+
+# WP-011
+
+["T-172"]
+quantity = "cumsum_periodic!: |mean(out)| and the periodic backward difference of out against a - mean(a)"
+scale = "n·max|a|·dx for the mean, n·max|a| for the difference (grids of 64 and 2085 cells)"
+C = 8
+measured = { Float32 = 0.262, Float64 = 0.838, "Dual{Float32,3}" = 0.583 }
+status = "proposed"
+
+["T-174"]
+quantity = "deposited total of q·w·u_y minus Σ q·w·u_y"
+scale = "count·max|q·w·u_y| (counts 100 and 2000); per node against Reference, T-135's C with Σ|contributions| as the scale"
+C = 16
+measured = { Float32 = 0.0281, Float64 = 0.0632, "Dual{Float32,3}" = 1.54, nodes_Float32 = 0.362, nodes_Float64 = 0.292 }
+status = "proposed"
+
+["T-175"]
+quantity = "adjointness of deposit and gather with the quantity q·w·u_y, Σ quantity·gather(f) - ⟨fold(deposit), f⟩; and the partials from Dual weights against the exact derivative"
+scale = "Σ|quantity|·max|f|; max|∂ρ| for the partials"
+C = 8
+C_partials = 16
+measured = { Float32 = 0.0755, Float64 = 0.0839, "Dual{Float32,3}" = 0.861, partials = 2.81 }
+status = "proposed"
+
+["T-176"]
+quantity = "fd_scan on analytic functions: |fd[istar] - f'| / |f'| over the floor_rel it reports"
+case = "sin at 1, exp/3 at 0.7, sin + a deterministic ±1e-10 perturbation at 1; h = 10^(-1:-0.5:-9)"
+C = 2
+measured = { sin = 1.02, "exp/3" = 0.436, "sin + noise" = 1.0 }
+status = "proposed: for a smooth function the floor at its minimum is about the error itself, so the ratio sits near 1"

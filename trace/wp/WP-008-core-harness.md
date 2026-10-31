@@ -12,9 +12,11 @@ A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
 +++
 # WP-008: engine core, harness: step! as a SciML DiscreteProblem
 
+Kept parked by WP-011: the engine owns no `step!` (`docs/plan/architecture-draft.md` §0.7), so this package is re-derived after the electromagnetic module's `step!` exists (WP-014).
+
 Parked (A0: contracts are written from working code). The spike WP-010 (done, `reports/spike-electrostatic-1d.md`) tested the contracts below as proposals, and its write-up (section 4, item 6) keeps the harness as a package, an adapter around `run!`, to cut once the engine/module split has replaced WP-007; this package wraps `step!`, its scope, and the write-up's `run!` is the test loop over it. The harness wraps the engine's `step!` with a physics-free module, so it does not depend on which physics module exists: under A9 the electromagnetic module is the only one planned, and the spike's electrostatic code is the reference for the electrostatic edge cases until that module reproduces them. This package is re-derived from the write-up, kept or withdrawn, before it is dispatched.
 
-The SciML entry point (A9: SciML is the main integration goal). Contracts: `docs/plan/architecture-draft.md` §0.6, §0.7 item 11; `docs/plan/sciml-reuse.md` §1.
+The SciML entry point (A9: SciML is the main integration goal). Contracts: `docs/plan/architecture-draft.md` §0.6, §0.7; `docs/plan/sciml-reuse.md` §1.
 
 ## Scope
 
@@ -29,7 +31,7 @@ A package extension of `lib/ParticleMeshCore`, triggered by SciMLBase and Recurs
 
 ## Non-goals
 
-No ODE integrator inside the step (§0.7 item 11). No callbacks that branch on device data. No Reactant path (A9 parks it; OrdinaryDiffEq PR #4436 stays a note in `sciml-reuse.md`). No tangent-bundle layout.
+No ODE integrator inside the step (§2, time loop). No callbacks that branch on device data. No Reactant path (A9 parks it; OrdinaryDiffEq PR #4436 stays a note in `sciml-reuse.md`). No tangent-bundle layout.
 
 ## Acceptance
 

@@ -1,4 +1,4 @@
-# The electrostatic module: T-137 and T-144.
+# The electrostatic reference: T-137 and T-144.
 
 function gauss_residual(st)
     grid = st.grid
@@ -33,15 +33,16 @@ end
     # After warm-up, bytes allocated by one step at two particle counts and two grid sizes.
     # The CPU backend allocates a constant amount per kernel launch (task bookkeeping); what
     # must not happen is growth with the problem size.
-    for mode in (Reference(), Fast()), T in (Float32, Float64)
+    # WP-011: also with a non-empty tuple of module extras, which the sort permutes.
+    for mode in (Reference(), Fast()), T in (Float32, Float64), extras in (NamedTuple(), (old_cell = Int32, old_offset = T))
         bytes = Dict{Tuple{Int,Int},Int}()
         for (n, ppc) in ((32, 16), (32, 256), (128, 16))
-            st, p, _ = landau_case(T; n, ppc, mode, tmax_ωp = 1)
+            st, p, _ = landau_case(T; n, ppc, mode, tmax_ωp = 1, extras)
             initialize!(st, p)
             step!(st, p, 1); step!(st, p, 2)
             bytes[(n, ppc)] = @allocated step!(st, p, 3)
         end
-        @info "T-144 bytes per step" mode T bytes
+        @info "T-144 bytes per step" mode T extras = keys(extras) bytes
         # Julia 1.14 allocates per particle in some of these cases, and which ones differs between
         # machines (#58), so the check is skipped there (recorded as broken); the @info above
         # still logs the bytes. Remove the skip when #58 is closed.

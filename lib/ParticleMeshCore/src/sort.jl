@@ -2,17 +2,24 @@
     Workspace(species, grid)
 
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
-AcceleratedKernels sort workspace, one permutation buffer per element type of the SoA arrays,
-and the per-cell segment bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the
-`Reference` deposition reads (an empty cell has `seg_start = 1`, `seg_stop = 0`).
+AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
+arrays (`Int32`, `T`, `UInt8`), the buffers of the species' extras, and the per-cell segment
+bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the `Reference` deposition reads
+(an empty cell has `seg_start = 1`, `seg_stop = 0`).
+
+`tmp_extras` holds one permutation buffer per extra, in the extras' order: the core buffer of
+the same element type where there is one (so `Int32`- and `T`-valued extras cost no scratch),
+otherwise one new buffer per further element type, shared by the extras of that type. An empty
+extras tuple costs nothing.
 """
-struct Workspace{VK,VP,AW,VI,VT,VS}
+struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple}
     key::VK
     perm::VP
     ak::AW
     tmp_i32::VI
     tmp_T::VT
     tmp_u8::VS
+    tmp_extras::XT
     seg_start::VI
     seg_stop::VI
 end
@@ -26,16 +33,30 @@ function Workspace(s::Species{1,T}, grid::PeriodicGrid{1}) where {T}
     tmp_i32 = KernelAbstractions.zeros(backend, Int32, cap)
     tmp_T = KernelAbstractions.zeros(backend, T, cap)
     tmp_u8 = KernelAbstractions.zeros(backend, UInt8, cap)
+    tmp_extras = extras_buffers(backend, cap, Tuple(values(s.extras)), (tmp_i32, tmp_T, tmp_u8))
     n = ncells(grid)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
-    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, seg_start, seg_stop)
+    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop)
+end
+
+# One buffer per extra: the first of `pool` with the extra's element type, else a new one,
+# which joins the pool for the extras after it.
+extras_buffers(backend, cap, ::Tuple{}, pool) = ()
+function extras_buffers(backend, cap, extras::Tuple, pool)
+    E = eltype(first(extras))
+    i = findfirst(b -> eltype(b) === E, pool)
+    buf = i === nothing ? KernelAbstractions.zeros(backend, E, cap) : pool[i]
+    return (buf, extras_buffers(backend, cap, Base.tail(extras), i === nothing ? (pool..., buf) : pool)...)
 end
 
 "Bytes of scratch held by a workspace (for the write-up's scratch-per-particle figure)."
-scratch_bytes(ws::Workspace) =
-    sizeof(ws.key) + sizeof(ws.perm) + sizeof(ws.tmp_i32) + sizeof(ws.tmp_T) + sizeof(ws.tmp_u8) +
-    sizeof(ws.seg_start) + sizeof(ws.seg_stop) + AK.nbytes(ws.ak.plan)
+function scratch_bytes(ws::Workspace)
+    core = (ws.tmp_i32, ws.tmp_T, ws.tmp_u8)
+    own = unique(objectid, Iterators.filter(b -> !any(c -> c === b, core), ws.tmp_extras))
+    return sizeof(ws.key) + sizeof(ws.perm) + sizeof(ws.tmp_i32) + sizeof(ws.tmp_T) + sizeof(ws.tmp_u8) +
+           sum(sizeof, own; init = 0) + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + AK.nbytes(ws.ak.plan)
+end
 
 # Total order: alive particles by (cell, slot), free slots after all of them by slot. Keys are
 # unique, so every correct sort gives the same permutation on every backend and thread count.
@@ -76,36 +97,45 @@ end
     end
 end
 
-function permute!(a::AbstractVector, tmp::AbstractVector, perm)
-    backend = get_backend(a)
-    gather_perm_kernel!(backend)(tmp, a, perm; ndrange = length(a))
+function permute!(a::AbstractVector, tmp::AbstractVector, perm, workgroupsize)
+    launcher(gather_perm_kernel!, get_backend(a), workgroupsize)(tmp, a, perm; ndrange = length(a))
     copyto!(a, tmp)
     return a
 end
 
+permute_all!(::Tuple{}, ::Tuple{}, perm, workgroupsize) = nothing
+function permute_all!(as::Tuple, tmps::Tuple, perm, workgroupsize)
+    permute!(first(as), first(tmps), perm, workgroupsize)
+    return permute_all!(Base.tail(as), Base.tail(tmps), perm, workgroupsize)
+end
+
 """
-    sort_by_cell!(species, grid, ws)
+    sort_by_cell!(species, grid, ws; workgroupsize = nothing)
 
 Sort the particles in place by (cell, slot), with free slots last; apply the one permutation to
-every SoA array; write the per-cell segment bounds into `ws` and the alive count into
-`species.count`. Deterministic: the keys are unique, so the result does not depend on the sort
-algorithm, the backend or the thread count (A4).
+every SoA array, the module's extras included (`ws.perm[i]` is the slot that slot `i` held
+before); write the per-cell segment bounds into `ws` and the alive count into `species.count`.
+Deterministic: the keys are unique, so the result does not depend on the sort algorithm, the
+backend, the thread count or `workgroupsize` (A4; T-136, T-173, T-177). `workgroupsize`
+applies to the engine's own kernels; AcceleratedKernels' sort launches as its workspace plan
+says.
 """
-function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace)
+function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; workgroupsize = nothing)
     backend = get_backend(s)
     cap = capacity(s)
     n = ncells(grid)
-    sort_key_kernel!(backend)(ws.key, s.cell[1], s.status, Int64(n), Int64(cap); ndrange = cap)
+    launcher(sort_key_kernel!, backend, workgroupsize)(ws.key, s.cell[1], s.status, Int64(n), Int64(cap); ndrange = cap)
     AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
-    permute!(s.cell[1], ws.tmp_i32, ws.perm)
-    permute!(s.offset[1], ws.tmp_T, ws.perm)
+    permute!(s.cell[1], ws.tmp_i32, ws.perm, workgroupsize)
+    permute!(s.offset[1], ws.tmp_T, ws.perm, workgroupsize)
     for d in 1:3
-        permute!(s.u[d], ws.tmp_T, ws.perm)
+        permute!(s.u[d], ws.tmp_T, ws.perm, workgroupsize)
     end
-    permute!(s.w, ws.tmp_T, ws.perm)
-    permute!(s.status, ws.tmp_u8, ws.perm)
-    reset_segments_kernel!(backend)(ws.seg_start, ws.seg_stop, s.count; ndrange = n)
-    segments_kernel!(backend)(ws.seg_start, ws.seg_stop, s.count, s.cell[1], s.status, Int32(cap);
-                              ndrange = cap)
+    permute!(s.w, ws.tmp_T, ws.perm, workgroupsize)
+    permute!(s.status, ws.tmp_u8, ws.perm, workgroupsize)
+    permute_all!(Tuple(values(s.extras)), ws.tmp_extras, ws.perm, workgroupsize)
+    launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = n)
+    launcher(segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell[1], s.status,
+                                                       Int32(cap); ndrange = cap)
     return s
 end

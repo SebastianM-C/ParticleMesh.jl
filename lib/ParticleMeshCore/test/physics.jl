@@ -1,10 +1,6 @@
 # Physics against linear theory: T-141 and T-142. Measured, not thresholded (A7: measure, then
 # propose); the relative errors go to tolerances.toml as proposals.
 
-include("cases.jl")
-
-include("digest.jl")
-
 const PHYSICS = Dict{String,Any}()
 
 @testset "T-141 Landau damping rate against linear theory [A5, A7, WP-010]" begin
@@ -12,6 +8,7 @@ const PHYSICS = Dict{String,Any}()
     initialize!(st, p)
     t = @elapsed run!(st, p, info.nsteps)
     PHYSICS["landau_digest"] = state_digest(st)
+    PHYSICS["landau_fnv"] = fnv_state_digest(st)
     A = mode_amplitude_history(st)
     ts = (0:(info.nsteps - 1)) .* info.dt
     ωth = landau_root(Float64(info.kλD))
@@ -28,6 +25,7 @@ end
     st, p, info = two_stream_case(Float64; TWO_STREAM_KW...)
     initialize!(st, p)
     t = @elapsed run!(st, p, info.nsteps)
+    PHYSICS["two_stream_fnv"] = fnv_state_digest(st)
     A = mode_amplitude_history(st)
     ts = (0:(info.nsteps - 1)) .* info.dt
     γth = two_stream_growth(Float64(info.kv0_ωp))
