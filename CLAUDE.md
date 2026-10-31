@@ -56,7 +56,7 @@ A Pkg workspace: the umbrella package at the root, with `test/`, `docs/`, `bench
 
 ## Background jobs and waiting
 
-- Never wait for another process with a loop over `pgrep -f "<pattern>"`: the waiting shell's own command line contains the pattern, so the loop waits on itself (this has stalled a queued benchmark for twenty minutes before). Chain dependent work in one command (`cmd1; cmd2`, or `&` and `wait`), or wait on the exact PID (`while kill -0 <pid> 2>/dev/null; do sleep 10; done`). If a pattern is unavoidable, write it so it cannot match itself: `pgrep -f '[b]ench.jl'`.
+- Never wait for another process with a loop over `pgrep -f "<pattern>"`: the waiting shell's own command line contains the pattern, so the loop waits on itself (this has stalled a queued benchmark for twenty minutes before). In an interactive session, chain dependent work in one command (`cmd1; cmd2`, or `&` and `wait`), or wait on the exact PID (`while kill -0 <pid> 2>/dev/null; do sleep 10; done`). An unattended session cannot run chains or loops (see "Working here"): it runs the steps as separate calls and waits with the Monitor tool. If a pattern is unavoidable, write it so it cannot match itself: `pgrep -f '[b]ench.jl'`.
 - A GPU job requested from the runner is finished when its log file ends with a line starting `# gpu-run finished:`; wait for that line, not for a process.
 
 ## Julia notes
