@@ -2,15 +2,16 @@
 # host writes are direct; no kernel code is involved in setting up a test).
 
 """
-    test_species(T, grid, np; seed, q = -1)
+    test_species(T, grid, np; seed, q = -1, extras = NamedTuple())
 
 `np` alive particles spread over every cell (including the first and last, so the stencils
 cross the periodic seam), with offsets from a fixed LCG sequence that includes 0 and values
 just below 1, positive weights, and velocities in `[-1, 1)`.
 """
-function test_species(::Type{T}, grid::PeriodicGrid{1}, np::Integer; seed::Integer = 1, q = -1) where {T}
+function test_species(::Type{T}, grid::PeriodicGrid{1}, np::Integer; seed::Integer = 1, q = -1,
+                      extras = NamedTuple()) where {T}
     n = ncells(grid)
-    s = Species(backend, T, np + 3; q, m = 1)          # three free slots at the end
+    s = Species(backend, T, np + 3; q, m = 1, extras)  # three free slots at the end
     state = UInt64(seed)
     nextu() = (state = state * 0x5851f42d4c957f2d + 0x14057b7ef767814f; Float64(state >> 11) / 2.0^53)
     for i in 1:np
@@ -47,3 +48,54 @@ end
 
 const SHAPES = (Linear, Quadratic)
 const STAGGERS = (Node(), Center())
+
+"""
+    fd_scan(f, x0, hs; seed, ad) -> (; fd, spread, istar, floor_rel, rel)
+
+The finite-difference floor of A7 (`docs/goals/A7-acceptance.md`), as every gradient check of
+the package measures it. A7's operational definition: scan the step over at least five points;
+the floor is the spread (maximum minus minimum) of three neighbouring difference quotients,
+minimised over the scan, relative to the AD value; the AD derivative must agree within a stated
+multiple of it (the multiple measured and proposed in `tolerances.toml`). No formula in `eps`
+and the step stands in for it: the particle dynamics amplify rounding, so the floor is measured.
+
+A7's three conditions, which this function enforces where it can:
+
+1. Float64, even where production is Float32: it throws an `ArgumentError` unless `x0`, every
+   step and every value `f` returns are `Float64`.
+2. The deterministic Reference mode on both sides: every evaluation is `f(x, Reference(), seed)`.
+3. Common random numbers: every evaluation gets the same `seed`.
+
+`f(x, mode, seed)` must build its whole state from `x` (so that a `Dual` `x` gives the AD
+value). The caller's obligation, which `fd_scan` cannot check: `ad` is computed with the same
+`f`, `Reference()` and `seed`, for example `ForwardDiff.derivative(x -> f(x, Reference(), seed), x0)`.
+
+Returns the central difference quotients `fd[k] = (f(x0 + h) - f(x0 - h)) / 2h` for
+`h = hs[k]`; `spread[k - 1]` for the three quotients `fd[k-1:k+1]`, `k = 2:length(hs)-1`; `istar`,
+the `k` of the smallest spread; `floor_rel = spread[istar - 1] / |ad|`; and the relative
+differences `rel[k] = |fd[k] - ad| / |ad|`. A check asserts `rel[istar] <= C·floor_rel`.
+"""
+function fd_scan(f, x0, hs; seed, ad)
+    x0 isa Float64 || throw(ArgumentError("fd_scan runs in Float64 (A7); x0 is a $(typeof(x0))"))
+    eltype(hs) === Float64 || throw(ArgumentError("fd_scan runs in Float64 (A7); the steps are $(eltype(hs))"))
+    length(hs) >= 5 || throw(ArgumentError("A7 asks for at least five steps; got $(length(hs))"))
+    function evaluate(x)
+        y = f(x, Reference(), seed)
+        y isa Float64 || throw(ArgumentError("fd_scan runs in Float64 (A7); f returned a $(typeof(y))"))
+        return y
+    end
+    fd = [(evaluate(x0 + h) - evaluate(x0 - h)) / 2h for h in hs]
+    spread = [maximum(fd[(k - 1):(k + 1)]) - minimum(fd[(k - 1):(k + 1)]) for k in 2:(length(hs) - 1)]
+    istar = argmin(spread) + 1
+    floor_rel = spread[istar - 1] / abs(ad)
+    rel = abs.(fd .- ad) ./ abs(ad)
+    return (; fd, spread, istar, floor_rel, rel)
+end
+
+"Deposit `quantity` of `s` into a fresh field in `mode` (sorting first when the mode needs it); guards not folded."
+function deposited_with(mode, s, shape, stagger, grid, quantity)
+    T = eltype(s)
+    ws = Workspace(s, grid)
+    effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
+    return deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity)
+end

@@ -23,7 +23,7 @@
 end
 
 """
-    load_quiet!(species, grid, density, p, ppc; vdrift, vth, seed, stream, first = 1)
+    load_quiet!(species, grid, density, p, ppc; vdrift, vth, seed, stream, first = 1, workgroupsize = nothing)
 
 Quiet-start loading: `ppc` particles per cell on the lattice `δₖ = (k - 1/2)/ppc`, written into
 slots `first:first-1+n·ppc`. The weight of a particle at `x` is `density(x, p)/ppc` (A3: the
@@ -34,14 +34,14 @@ the same thing on every backend and thread count. Sets the alive count to the la
 """
 function load_quiet!(s::Species{1,T}, grid::PeriodicGrid{1}, density, p, ppc::Integer;
                      vdrift = (zero(T), zero(T), zero(T)), vth = (zero(T), zero(T), zero(T)),
-                     seed::Integer, stream::Integer, first::Integer = 1) where {T}
+                     seed::Integer, stream::Integer, first::Integer = 1, workgroupsize = nothing) where {T}
     n = ncells(grid)
     0 < ppc < 2^16 || throw(ArgumentError("ppc must be in 1:65535 for the counter layout"))
     last = first - 1 + n * ppc
     last <= capacity(s) || throw(ArgumentError("capacity $(capacity(s)) < $last particles"))
     key = (UInt32(seed), UInt32(stream))
-    load_quiet_kernel!(get_backend(s))(s, density, p, cellsize(grid), Int32(ppc), Int32(first),
-                                       T.(vdrift), T.(vth), key; ndrange = n * ppc)
+    launcher(load_quiet_kernel!, get_backend(s), workgroupsize)(s, density, p, cellsize(grid), Int32(ppc), Int32(first),
+                                                                T.(vdrift), T.(vth), key; ndrange = n * ppc)
     fill!(s.count, Int32(last))
     return s
 end

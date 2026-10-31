@@ -45,20 +45,32 @@ end
 end
 
 """
-    gather!(out, a, species, shape, stagger, grid)
+    gather!(out, a, species, shape, stagger, grid; workgroupsize = nothing)
 
 `out[i]` = the field `a` (guards filled) at particle `i`, for every alive particle.
 """
 function gather!(out::AbstractVector, a::AbstractVector, s::Species{1}, shape::Shape, stagger::Stagger,
-                 grid::PeriodicGrid{1})
-    gather_kernel!(get_backend(s))(out, a, s, shape, stagger, Int32(guards(grid)); ndrange = capacity(s))
+                 grid::PeriodicGrid{1}; workgroupsize = nothing)
+    launcher(gather_kernel!, get_backend(s), workgroupsize)(out, a, s, shape, stagger, Int32(guards(grid));
+                                                           ndrange = capacity(s))
     return out
 end
 
-@kernel function deposit_atomic_kernel!(ρ, s, shape::Shape{P}, stagger, g::Int32) where {P}
+"""
+    ChargeWeight()
+
+The default deposited quantity, `q·w` of particle `i`: `ChargeWeight()(s, i) = s.q * s.w[i]`.
+A module supplies its own as any isbits callable `(species, i) -> value of T`, evaluated inside
+the deposition kernels for alive particles only (for example the electromagnetic module's
+`q·w·v_y` for a current component).
+"""
+struct ChargeWeight end
+@inline (::ChargeWeight)(s, i) = s.q * s.w[i]
+
+@kernel function deposit_atomic_kernel!(ρ, s, quantity, shape::Shape{P}, stagger, g::Int32) where {P}
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
-        qw = s.q * s.w[i]
+        qw = quantity(s, i)
         f, w = shape_weights(shape, stagger, s.offset[1][i])
         base = s.cell[1][i] + f + g
         for k in 1:(P + 1)
@@ -74,7 +86,7 @@ end
 
 # One work item per node (guards included): the cells whose stencil reaches the node, in
 # increasing order, and within a cell its particles in sorted (slot) order. No scratch.
-@kernel function deposit_sorted_kernel!(ρ, s, @Const(seg_start), @Const(seg_stop), shape, stagger,
+@kernel function deposit_sorted_kernel!(ρ, s, quantity, @Const(seg_start), @Const(seg_stop), shape, stagger,
                                         n::Int32, g::Int32, lo::Int32, hi::Int32)
     a = Int32(@index(Global, Linear))
     T = eltype(ρ)
@@ -83,35 +95,40 @@ end
     @inbounds for c in max(Int32(1), j - hi):min(n, j - lo)
         for i in seg_start[c]:seg_stop[c]
             f, w = shape_weights(shape, stagger, s.offset[1][i])
-            acc += s.q * s.w[i] * pick(w, j - c - f)
+            acc += quantity(s, i) * pick(w, j - c - f)
         end
     end
     @inbounds ρ[a] += acc
 end
 
 """
-    deposit!(mode, ρ, species, shape, stagger, grid, ws)
+    deposit!(mode, ρ, species, shape, stagger, grid, ws; quantity = ChargeWeight(), workgroupsize = nothing)
 
-Add `q·w` of every alive particle into the field `ρ` (with guards) with the given shape and
-stagger. Guards receive the contributions that cross the periodic seam; `fold_guards!` moves
-them into the interior. `Reference()` needs `sort_by_cell!(species, grid, ws)` since the last
-particle move and is bitwise deterministic; `Fast()` uses atomics where `accumulation` allows
-them and falls back to `Reference()` otherwise (`effective_mode`).
+Add `quantity(species, i)` (by default `q·w`) of every alive particle into the field `ρ` (with
+guards) with the given shape and stagger. Guards receive the contributions that cross the
+periodic seam; `fold_guards!` moves them into the interior ("deposit into guards, then fold").
+`Reference()` needs `sort_by_cell!(species, grid, ws)` since the last particle move and is
+bitwise deterministic: one work item per node adds, in increasing cell order and within a cell
+in slot order, the contributions of the cells in its stencil. `Fast()` uses atomics where
+`accumulation` allows them and falls back to `Reference()` otherwise (`effective_mode`). In
+both modes `deposit!` is the adjoint of `gather!` with the same weighting, including fill and
+fold (T-132, T-175).
 """
 function deposit!(mode, ρ::AbstractVector{T}, s::Species{1}, shape::Shape, stagger::Stagger,
-                  grid::PeriodicGrid{1}, ws::Workspace) where {T}
-    _deposit!(effective_mode(mode, T), ρ, s, shape, stagger, grid, ws)
+                  grid::PeriodicGrid{1}, ws::Workspace; quantity = ChargeWeight(), workgroupsize = nothing) where {T}
+    _deposit!(effective_mode(mode, T), ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
 end
 
-function _deposit!(::Fast, ρ, s, shape, stagger, grid, ws)
-    deposit_atomic_kernel!(get_backend(s))(ρ, s, shape, stagger, Int32(guards(grid)); ndrange = capacity(s))
+function _deposit!(::Fast, ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
+    launcher(deposit_atomic_kernel!, get_backend(s), workgroupsize)(ρ, s, quantity, shape, stagger, Int32(guards(grid));
+                                                                   ndrange = capacity(s))
     return ρ
 end
 
-function _deposit!(::Reference, ρ, s, shape, stagger, grid, ws)
+function _deposit!(::Reference, ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
     lo, hi = stencil_reach(shape, stagger)
-    deposit_sorted_kernel!(get_backend(s))(ρ, s, ws.seg_start, ws.seg_stop, shape, stagger,
-                                           Int32(ncells(grid)), Int32(guards(grid)), Int32(lo), Int32(hi);
-                                           ndrange = length(ρ))
+    launcher(deposit_sorted_kernel!, get_backend(s), workgroupsize)(ρ, s, quantity, ws.seg_start, ws.seg_stop, shape,
+                                                                   stagger, Int32(ncells(grid)), Int32(guards(grid)),
+                                                                   Int32(lo), Int32(hi); ndrange = length(ρ))
     return ρ
 end

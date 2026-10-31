@@ -1,0 +1,150 @@
+{
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "rows": [
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 40.83611328125,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 33.125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.711181640625,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 33.03125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.708751220703125,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 33.0078125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.604962005615235,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 33.001953125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 56.633720703125,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 33.125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 27.041954345703125,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 33.03125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 28.290173950195314,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 33.0078125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 27.375961837768553,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 33.001953125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 43.3406494140625,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 37.125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 19.356727294921875,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 37.03125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.349332580566408,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 37.0078125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.915901336669922,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 37.001953125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 56.8328759765625,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 37.125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 30.19923583984375,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 37.03125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 27.007713928222657,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 37.0078125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 29.376363983154295,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 37.001953125
+    }
+  ],
+  "threads": 1
+}

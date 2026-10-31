@@ -1,11 +1,19 @@
 """
-    ParticleMeshCore.Electrostatic
+    ESReference
 
-The electrostatic 1D periodic PIC module of the spike (WP-010). It uses the engine pieces
-(species, shapes, sort, deposition, gather, guards, loading) and owns the physics: what is
-deposited (charge `q·w`), the field solve (a discrete Gauss law by a prefix sum), the force
-(`qE`), the pusher (leapfrog, nonrelativistic, velocities in units of c) and the order of
-the step.
+The electrostatic 1D periodic PIC of the spike WP-010, kept as test-support code: the reference
+for the Landau and two-stream edge cases until the electromagnetic module (WP-014) reproduces
+them with no transverse fields, and deleted after that. It is not an engine module and not a
+physics module (A9: there is no electrostatic module); `lib/ParticleMeshCore/src` neither
+defines nor includes it. The tests, the subprocess workers and `scripts/es1d/` include this
+file, after binding `ParticleMeshCore` in the including module (`using ParticleMeshCore`, or
+`using ParticleMesh`, which exports it).
+
+It composes its step from engine pieces (species, shapes, sort, deposition, gather, guards,
+loading, `cumsum_periodic!`) and owns the physics: what is deposited (charge `q·w`, the default
+quantity), the field solve (a discrete Gauss law through the engine's periodic prefix sum), the
+force (`qE`), the pusher (leapfrog, nonrelativistic, velocities in units of c in `u`) and the
+order of the step.
 
 Normalized units (A1): time in 1/ω₀, length in c/ω₀, density in n_c, field in mₑcω₀/e. Then
 Gauss's law reads ∂E/∂x = ρ and the equation of motion dv/dt = (q/m)E; for electrons of density
@@ -13,13 +21,13 @@ n₀ the plasma frequency is ω_p = √n₀ (in units of ω₀).
 
 Layout: charge density `ρ` and the gathered field `Enode` on the nodes of the shape's natural
 stagger (`Node()` for order 1, `Center()` for order 2), both with guards; `Ehalf[j]` is the field
-half a cell to the right of node `j`. The solve makes
-`(Ehalf[j] - Ehalf[j-1])/dx = ρ[j] - mean(ρ)` exactly up to roundoff (the mean is the immobile,
-uniform neutralizing background) and `mean(Ehalf) = 0`; `Enode[j]` is the average of the two
-neighbouring half-node values, which with the same shape for gather and deposit gives the
-momentum-conserving scheme (no self-force).
+half a cell to the right of node `j` (the interior of a guarded field `Eh`). The solve,
+`cumsum_periodic!(Eh, ρ, grid)`, makes `(Ehalf[j] - Ehalf[j-1])/dx = ρ[j] - mean(ρ)` exactly up
+to roundoff (the mean is the immobile, uniform neutralizing background) and `mean(Ehalf) = 0`;
+`Enode[j]` is the average of the two neighbouring half-node values, which with the same shape
+for gather and deposit gives the momentum-conserving scheme (no self-force).
 """
-module Electrostatic
+module ESReference
 
 using KernelAbstractions
 using KernelAbstractions: @kernel, @index, get_backend
@@ -51,17 +59,18 @@ end
     ESState
 
 Everything a step reads and writes: the species and their workspaces (tuples), the grid, the
-fields (`ρ`, `Enode` with guards; `Ehalf` interior only) and the diagnostic histories (field
-energy and the real and imaginary parts of the Fourier amplitude of `Ehalf` at `kmode`), one
-entry per step.
+fields (`ρ`, `Eh`, `Enode` with guards; `Ehalf` the interior view of `Eh`) and the diagnostic
+histories (field energy and the real and imaginary parts of the Fourier amplitude of `Ehalf` at
+`kmode`), one entry per step.
 """
-struct ESState{C<:ESConfig,G,SP<:Tuple,WS<:Tuple,F,H}
+struct ESState{C<:ESConfig,G,SP<:Tuple,WS<:Tuple,F,V,H}
     config::C
     grid::G
     species::SP
     ws::WS
     ρ::F
-    Ehalf::F
+    Eh::F
+    Ehalf::V
     Enode::F
     W::H
     Ere::H
@@ -74,37 +83,31 @@ function ESState(config::ESConfig, grid::PeriodicGrid{1}, species::Tuple, nsteps
     ws = map(s -> Workspace(s, grid), species)
     ρ = field(backend, T, grid)
     Enode = field(backend, T, grid)
-    Ehalf = KernelAbstractions.zeros(backend, T, ncells(grid))
+    Eh = field(backend, T, grid)
     hist() = KernelAbstractions.zeros(backend, T, nsteps)
-    return ESState(config, grid, species, ws, ρ, Ehalf, Enode, hist(), hist(), hist())
+    return ESState(config, grid, species, ws, ρ, Eh, interior_view(Eh, grid), Enode, hist(), hist(), hist())
 end
 
-# Prefix-sum Gauss solve in one work item: deterministic, exact Gauss law up to roundoff, no
-# FFT (which would not take `Dual`). O(n) and serial; a GPU version would use a scan.
-@kernel function gauss_kernel!(Ehalf, Enode, @Const(ρ), dx, n::Int32, g::Int32)
-    T = eltype(Ehalf)
-    @inbounds begin
-        ρsum = zero(T)
-        for j in Int32(1):n
-            ρsum += ρ[g + j]
-        end
-        ρ̄ = ρsum / T(n)
-        acc = zero(T)
-        Esum = zero(T)
-        for j in Int32(1):n
-            acc += (ρ[g + j] - ρ̄) * dx
-            Ehalf[j] = acc
-            Esum += acc
-        end
-        Ē = Esum / T(n)
-        for j in Int32(1):n
-            Ehalf[j] -= Ē
-        end
-        for j in Int32(1):n
-            jm = ifelse(j == Int32(1), n, j - Int32(1))
-            Enode[g + j] = (Ehalf[jm] + Ehalf[j]) / 2
-        end
-    end
+# The field at the nodes: the average of the two neighbouring half-node values (guards of `Eh`
+# filled by `cumsum_periodic!`, so `Eh[g]` is the periodic image of the last half node).
+@kernel function node_field_kernel!(Enode, @Const(Eh), g::Int32)
+    j = Int32(@index(Global, Linear))
+    @inbounds Enode[g + j] = (Eh[g + j - Int32(1)] + Eh[g + j]) / 2
+end
+
+"""
+    gauss!(state)
+
+The discrete Gauss law `(Ehalf[j] - Ehalf[j-1])/dx = ρ[j] - mean(ρ)`, `mean(Ehalf) = 0`, by
+the engine's zero-mean periodic prefix sum (deterministic, no FFT, which FFTW would not take
+for `Dual`), then the node field with filled guards.
+"""
+function gauss!(st)
+    (; grid) = st
+    cumsum_periodic!(st.Eh, st.ρ, grid)
+    node_field_kernel!(get_backend(st.Eh))(st.Enode, st.Eh, Int32(guards(grid)); ndrange = ncells(grid))
+    fill_guards!(st.Enode, grid)
+    return st
 end
 
 @kernel function diagnostics_kernel!(W, Ere, Eim, @Const(Ehalf), dx, kmode, x0, n::Int32, step::Int32)
@@ -158,10 +161,7 @@ function fields!(st::ESState)
         deposit!(mode, st.ρ, s, config.shape, config.stagger, grid, ws)
     end
     fold_guards!(st.ρ, grid)
-    backend = get_backend(st.ρ)
-    gauss_kernel!(backend)(st.Ehalf, st.Enode, st.ρ, cellsize(grid), Int32(ncells(grid)),
-                           Int32(guards(grid)); ndrange = 1)
-    fill_guards!(st.Enode, grid)
+    gauss!(st)
     return st
 end
 
@@ -294,7 +294,8 @@ struct CosineDensity end
 
 """
     landau_case(T; backend, n = 64, ppc = 1024, n0 = 1, vth = 1/20, kλD = 1/2, α = 1/20,
-                dt_ωp = 1/20, tmax_ωp = 40, shape = Quadratic, mode = Reference(), seed = 1)
+                dt_ωp = 1/20, tmax_ωp = 40, shape = Quadratic, mode = Reference(), seed = 1,
+                extras = NamedTuple())
 
 Landau damping of the fundamental mode of a box of one wavelength, `k λ_D = kλD`, with electrons
 of density `n0·(1 + α cos kx)` (perturbation through the weights, A3), Maxwellian velocities of
@@ -303,7 +304,7 @@ thermal speed `vth` (in c) from Philox draws, and an immobile neutralizing backg
 """
 function landau_case(::Type{T}; backend = CPU(), n = 64, ppc = 1024, n0 = 1, vth = 1 // 20,
                      kλD = 1 // 2, α = 1 // 20, dt_ωp = 1 // 20, tmax_ωp = 40, shape = Quadratic,
-                     mode = Reference(), seed = 1) where {T}
+                     mode = Reference(), seed = 1, extras = NamedTuple()) where {T}
     ωp = sqrt(T(n0))
     λD = T(vth) / ωp
     k = T(kλD) / λD
@@ -311,7 +312,7 @@ function landau_case(::Type{T}; backend = CPU(), n = 64, ppc = 1024, n0 = 1, vth
     grid = PeriodicGrid(n, L / n, guard_width(shape))
     dt = T(dt_ωp) / ωp
     nsteps = round(Int, tmax_ωp / dt_ωp)
-    e = Species(backend, T, n * ppc; q = -1, m = 1)
+    e = Species(backend, T, n * ppc; q = -1, m = 1, extras)
     vth3 = (T(vth), T(vth), T(vth))
     load_quiet!(e, grid, CosineDensity(), (T(n0), T(α), k), ppc; vth = vth3, seed, stream = 1)
     st = ESState(ESConfig(shape, mode), grid, (e,), nsteps)
@@ -321,14 +322,15 @@ end
 
 """
     two_stream_case(T; backend, n = 64, ppc = 512, n0 = 1, v0 = 1/10, kv0_ωp = 3/5, α = 1/1000,
-                    vth = 0, dt_ωp = 1/20, tmax_ωp = 40, shape = Quadratic, mode = Reference(), seed = 1)
+                    vth = 0, dt_ωp = 1/20, tmax_ωp = 40, shape = Quadratic, mode = Reference(), seed = 1,
+                    extras = NamedTuple())
 
 Two counter-streaming electron beams at `±v0`, each of density `n0/2·(1 + α cos kx)`, in a box
 of one wavelength with `k v0 / ω_p = kv0_ωp`, cold by default, immobile neutralizing background.
 """
 function two_stream_case(::Type{T}; backend = CPU(), n = 64, ppc = 512, n0 = 1, v0 = 1 // 10,
                          kv0_ωp = 3 // 5, α = 1 // 1000, vth = 0, dt_ωp = 1 // 20, tmax_ωp = 40,
-                         shape = Quadratic, mode = Reference(), seed = 1) where {T}
+                         shape = Quadratic, mode = Reference(), seed = 1, extras = NamedTuple()) where {T}
     ωp = sqrt(T(n0))
     k = T(kv0_ωp) * ωp / T(v0)
     L = 2 * T(π) / k
@@ -337,8 +339,8 @@ function two_stream_case(::Type{T}; backend = CPU(), n = 64, ppc = 512, n0 = 1, 
     nsteps = round(Int, tmax_ωp / dt_ωp)
     vth3 = (T(vth), T(vth), T(vth))
     p = (T(n0) / 2, T(α), k)
-    b1 = Species(backend, T, n * ppc; q = -1, m = 1)
-    b2 = Species(backend, T, n * ppc; q = -1, m = 1)
+    b1 = Species(backend, T, n * ppc; q = -1, m = 1, extras)
+    b2 = Species(backend, T, n * ppc; q = -1, m = 1, extras)
     load_quiet!(b1, grid, CosineDensity(), p, ppc; vdrift = (T(v0), zero(T), zero(T)), vth = vth3, seed, stream = 1)
     load_quiet!(b2, grid, CosineDensity(), p, ppc; vdrift = (-T(v0), zero(T), zero(T)), vth = vth3, seed, stream = 2)
     st = ESState(ESConfig(shape, mode), grid, (b1, b2), nsteps)

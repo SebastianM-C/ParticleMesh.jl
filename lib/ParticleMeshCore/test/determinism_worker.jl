@@ -1,6 +1,8 @@
 # Run by T-136 in a subprocess with a given thread count: prints the digests of one step and of
 # the whole Landau run (the configuration of T-141) in Reference mode.
-using ParticleMeshCore, ParticleMeshCore.Electrostatic, KernelAbstractions
+using ParticleMeshCore, KernelAbstractions
+include(joinpath(@__DIR__, "es_reference.jl"))
+using .ESReference
 include(joinpath(@__DIR__, "cases.jl"))
 include(joinpath(@__DIR__, "digest.jl"))
 

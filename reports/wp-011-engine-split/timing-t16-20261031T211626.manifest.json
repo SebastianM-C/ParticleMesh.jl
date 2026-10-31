@@ -1,0 +1,41 @@
+{
+  "backend": "KernelAbstractions CPU",
+  "commit": "d3782d7aafa22f2bcdc0e2f25e4f2972b6151711",
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "created_utc": "2026-10-31T21:16:26.968",
+  "dirty": false,
+  "inputs": {
+    "Manifest.toml": "0f6c05238b5982fca57743beac781e2658bd354762436d5d762eddaf882c4d84",
+    "lib/ParticleMeshCore/src/ParticleMeshCore.jl": "6c5aa2c80f1ae11b29f8f3448db166a4d4cb0ec5a87492eecfe1b657f860f32f",
+    "lib/ParticleMeshCore/src/grid.jl": "03c5824b7d2210082af59e94da40a0f70f463b49d69c981af51fb203d5df87b8",
+    "lib/ParticleMeshCore/src/guards.jl": "47c3499cff743a271a161ce492e8b0002213eca2792757934b45bc87e03801e9",
+    "lib/ParticleMeshCore/src/launch.jl": "de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359",
+    "lib/ParticleMeshCore/src/loading.jl": "62082be77b3c4c029801e3e293ccb7c386bcdd3f6e9c89e8d28504da5d1bca1c",
+    "lib/ParticleMeshCore/src/mesh_ops.jl": "802909aedd9455e9fbebd6b2b847f412db599584397500c81dea024de32c9710",
+    "lib/ParticleMeshCore/src/philox.jl": "6f04e72280f937439c111463cae4a09165851169c030a37026bcf992895a2c62",
+    "lib/ParticleMeshCore/src/shapes.jl": "949fe334d4e20f2bc6b6d6f0717d64a1c3fe89d5e026fa702bd7556afdf2bb43",
+    "lib/ParticleMeshCore/src/sort.jl": "2258c46bb94bd2f9cc945aac7d67d6ca01c80a655653bf6f93793462c3376f60",
+    "lib/ParticleMeshCore/src/species.jl": "46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5",
+    "lib/ParticleMeshCore/src/transfers.jl": "e0d6e191163839ca9acca35fb6ecb98f4b3ff0653614efb844f2a4a00840f56e",
+    "lib/ParticleMeshCore/test/cases.jl": "79f597a906d3e34aa8bb9adee8daf4ccef37f4cdca635d86086d6cae67196b94",
+    "lib/ParticleMeshCore/test/es_reference.jl": "a9adc1ae63f1f1f15d9a179dd00dd48e94c778b7903493d73e286ce94b3d6ac9",
+    "lib/ParticleMeshCore/test/theory.jl": "305836a5f51aae771e0c1b92fbf7548db25f985f244226ff557bc04ccb049c2b",
+    "scripts/Manifest.toml": "1d1112ae1b670f0f489aefbb07856542ff19173806a818843d1ac1f673975a80",
+    "scripts/es1d/common.jl": "86ad19221bb0edb722397077d6893885ab8ae1e27bdc6e2b10fe98ef5cf7392d",
+    "scripts/es1d/timing.jl": "afce6491da2032ce02359746d073071faaeb1139936d6531fa203b7ed8496bc3"
+  },
+  "julia": "1.13.3",
+  "parameters": {
+    "n": 64,
+    "ppcs": [
+      64,
+      256,
+      1024,
+      4096
+    ],
+    "steps": 50
+  },
+  "run_id": "timing-t16-20261031T211626",
+  "threads": 16,
+  "work_package": "WP-011"
+}

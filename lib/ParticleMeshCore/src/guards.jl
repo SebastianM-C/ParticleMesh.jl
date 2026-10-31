@@ -25,23 +25,23 @@ end
 end
 
 """
-    fill_guards!(a, grid)
+    fill_guards!(a, grid; workgroupsize = nothing)
 
 Copy the periodic images of the interior into the guard cells of `a`.
 """
-function fill_guards!(a::AbstractVector, grid::PeriodicGrid{1})
+function fill_guards!(a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = nothing)
     n, g = ncells(grid), guards(grid)
-    fill_guards_kernel!(get_backend(a))(a, n, g; ndrange = 2g)
+    launcher(fill_guards_kernel!, get_backend(a), workgroupsize)(a, n, g; ndrange = 2g)
     return a
 end
 
 """
-    fold_guards!(a, grid)
+    fold_guards!(a, grid; workgroupsize = nothing)
 
 Add the guard cells of `a` into the interior cells they alias periodically, then zero them.
 """
-function fold_guards!(a::AbstractVector, grid::PeriodicGrid{1})
+function fold_guards!(a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = nothing)
     n, g = ncells(grid), guards(grid)
-    fold_guards_kernel!(get_backend(a))(a, n, g; ndrange = 2g)
+    launcher(fold_guards_kernel!, get_backend(a), workgroupsize)(a, n, g; ndrange = 2g)
     return a
 end
