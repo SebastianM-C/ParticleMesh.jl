@@ -9,7 +9,7 @@ run = "smilei-two-stream-736a428f"
 updated = "2026-10-31T17:59:36.025Z"
 
 [image]
-id = "# image: localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+id = "localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
 recipe = "scripts/crosscode/containers/smilei.Containerfile"
 recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
 
