@@ -87,7 +87,11 @@ const verified = await pipeline(
     `${JSON.stringify(titles)}. Try to refute it through this lens only: ${l.prompt}. ` +
     `Default to refuted=true if uncertain; list concrete fixes when a small change would save it.`,
     { label: `verify:${l.key}:${pkg.slug}`, phase: 'Verify', schema: VERDICT })))
-    .then(votes => ({ ...pkg, votes: votes.filter(Boolean), survives: votes.filter(Boolean).every(v => !v.refuted) })),
+    .then(votes => {
+      const v = votes.filter(Boolean)
+      // Fail closed: a package survives only when both refuters answered and neither refuted it.
+      return { ...pkg, votes: v, survives: v.length === LENSES.length && v.every(x => !x.refuted) }
+    }),
 )
 
 const survivors = verified.filter(Boolean).filter(p => p.survives)
@@ -97,11 +101,12 @@ log(`${survivors.length} packages survived, ${dropped.length} dropped`)
 
 phase('Write')
 const written = survivors.length ? await agent(
-  `Write these work packages as Markdown records in ${EXISTING}, one file each, named WP-<nnn>-<slug>.md with ` +
-  `<nnn> zero-padded to three digits and numbered from ${NEXT} in this order: ` +
+  `Write these work packages as records in ${EXISTING}, one file each, in the format and naming the existing ` +
+  `records there use (Markdown WP-<nnn>-<slug>.md until WP-001 lands, then the TOML record format it defines), ` +
+  `numbered from ${NEXT} in this order: ` +
   `${JSON.stringify(survivors.map(p => ({ ...p, votes: undefined, survives: undefined })))}. ` +
   `Apply the fixes the verifiers suggested: ${JSON.stringify(survivors.map(p => ({ slug: p.slug, fixes: p.votes.flatMap(v => v.fixes) })))}. ` +
-  `Follow the structure of ${EXISTING}/WP-001-trace-mvp.md exactly (Status, Scope, Deliverables, Non-goals, ` +
+  `Follow the structure of the existing WP-001 record exactly (Status, Scope, Deliverables, Non-goals, ` +
   `Acceptance, Depends on, Budgets), status proposed, and use the ids you assign in the depends-on lists. ` +
   `Write nothing else and do not commit.`,
   { label: 'write', phase: 'Write', schema: WRITTEN, effort: 'high' }) : { files: [] }
