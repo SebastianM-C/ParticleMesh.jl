@@ -22,3 +22,10 @@ end
         end
     end
 end
+
+@testset "T-221 step! refuses a step outside the histories it was allocated for [A7, WP-014]" begin
+    st, p, prob, _ = case_state("weibel", Float64; ppc = 4, t_end = 1)
+    @test_throws ArgumentError step!(st, p, prob.nsteps + 1)
+    @test_throws ArgumentError step!(st, p, 0)
+    step!(st, p, prob.nsteps)
+end

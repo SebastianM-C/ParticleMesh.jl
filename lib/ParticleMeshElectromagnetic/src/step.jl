@@ -188,12 +188,17 @@ Step `k` (from t = (k−1)Δt to kΔt), the module's step order:
 5. deposit the kinetic energy density at n + 1/2 (for the next step's diagnostics);
 6. the mesh solve of the numerics (Yee: B half step, E full step with J, B half step).
 
-Gauss's law then holds to roundoff after every step, from continuity (T-212). A function of the
+`k` must lie within the `nsteps` the state was allocated for (an `ArgumentError` otherwise: the
+diagnostics write entry `k`). Gauss's law then holds to roundoff after every step, from
+continuity (T-212). A function of the
 state and the parameters only, every buffer in the state, no host-side branch on device data
 (§0.4).
 """
 function step!(st::EMState, p::EMParams, k::Integer)
     (; numerics, grid, fields) = st
+    # k is a host integer (not device data): the diagnostics kernel writes entry k of the
+    # histories under @inbounds, so a k past their length must not reach it.
+    1 <= k <= length(st.hist.K) || throw(ArgumentError("step $k outside the $(length(st.hist.K)) steps the state was allocated for"))
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
     n = Int32(ncells(grid))

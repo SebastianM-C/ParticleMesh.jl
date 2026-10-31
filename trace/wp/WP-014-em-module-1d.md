@@ -1,6 +1,6 @@
 +++
 id = "WP-014"
-status = "proposed"
+status = "done"
 goals = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10"]
 depends_on = ["WP-011", "WP-009"]
 adds_dependencies = ["ParticleMeshElectromagnetic"]

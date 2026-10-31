@@ -10,7 +10,7 @@ const TIMING_STEPS = 50
 
 function time_case(name, ppc, mode)
     case = load_case(name)
-    prob = problem_from_case(case, Float64; ppc, t_end = 1)
+    prob = problem_from_case(case, Float64; ppc, t_end = (TIMING_STEPS + 10) * case["time"]["dt"])
     st = EMState(prob, numerics_from_case(case; mode))
     initialize!(st, prob)
     p = ParticleMeshElectromagnetic.params(prob)
