@@ -1,11 +1,13 @@
 name: Review
 
-# Automated review of every pull request by two reviewer lenses (briefs in .claude/agents/*-reviewer.md,
+# Automated review of every pull request: the code lens always, the numerics lens when the diff touches
+# src/, lib/, test/, benchmark/ or scripts/ (briefs in .claude/agents/*-reviewer.md,
 # read from the base branch so a PR cannot edit an existing reviewer; a brief new in the PR is taken from
 # the PR, and .claude/ is a code-owner path). The lens runs the PR's tests in the job that holds the
 # review token, so a same-repository PR could read it from test code; fork PRs are excluded, which
 # limits that to collaborators and the factory app. The gate job is a required check:
-# it approves the PR as github-actions[bot] when both lenses pass, or requests changes and fails.
+# it approves the PR as github-actions[bot] when every lens passes, or requests changes and fails. On an
+# approval, minor findings go into one open `follow-up` issue per PR instead of a follow-up PR.
 # Merging itself is GitHub's auto-merge, enabled by the PR author (see CLAUDE.md, "Pull requests").
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, a Max subscription token). If the action
 # ever rejects the plain GITHUB_TOKEN, install the Claude GitHub App on the repository, drop the
@@ -22,11 +24,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lens:
-    name: Review (${{ matrix.lens }})
+  lenses:
+    name: Choose the review lenses
     # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
     # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
     if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      lenses: ${{ steps.pick.outputs.lenses }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Numerics lens only when code changes
+        id: pick
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --no-tags origin "$BASE"
+          if git diff --name-only "origin/$BASE...HEAD" | grep -qE '^(src|lib|test|benchmark|scripts)/'; then
+            echo 'lenses=["code","numerics"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'lenses=["code"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  lens:
+    name: Review (${{ matrix.lens }})
+    needs: lenses
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -36,7 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lens: [numerics, code]
+        lens: ${{ fromJSON(needs.lenses.outputs.lenses) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -107,12 +134,13 @@ jobs:
 
   gate:
     name: Review gate
-    needs: lens
+    needs: [lenses, lens]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
+      issues: write
     steps:
       - name: Skipped review passes the gate without an approval
         if: ${{ needs.lens.result == 'skipped' }}
@@ -135,27 +163,64 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+          LENSES: ${{ needs.lenses.outputs.lenses }}
         run: |
           set -euo pipefail
+          expected=$(printf '%s' "$LENSES" | jq 'length')
           body=$(jq -rs '
             def line: "- **\(.severity)** `\(.file)`\(if .line > 0 then ":\(.line)" else "" end): \(.note)";
-            "Automated review of \(env.HEAD[0:7]) by two reviewer lenses, written by Claude Code (claude-opus-5-5) in `.github/workflows/review.yml`.\n\n"
+            "Automated review of \(env.HEAD[0:7]) by the \(map(.lens) | join(" and ")) lens(es), written by Claude Code (claude-opus-5-5) in `.github/workflows/review.yml`.\n\n"
             + (map("### \(.lens): \(.verdict)\n\n\(.summary)\n"
                    + (if (.findings | length) > 0 then "\n" + (.findings | map(line) | join("\n")) + "\n" else "" end))
                | join("\n"))
           ' verdicts/*.json)
           count=$(jq -rs 'length' verdicts/*.json)
           passes=$(jq -rs 'map(select(.verdict == "pass")) | length' verdicts/*.json)
-          if [ "$count" != 2 ]; then
-            echo "expected two verdicts, found $count" >&2
+          if [ "$count" != "$expected" ]; then
+            echo "expected $expected verdict(s), found $count" >&2
             exit 1
           fi
           # If the repository setting "Allow GitHub Actions to create and approve pull requests" is off,
           # the approve call errors and this job turns red rather than stalling silently.
-          if [ "$passes" = 2 ]; then
+          if [ "$passes" = "$expected" ]; then
             gh pr review "$PR" --approve --body "$body"
           else
             gh pr review "$PR" --request-changes --body "$body"
             echo "$((count - passes)) lens(es) requested changes" >&2
             exit 1
+          fi
+      - name: File minor findings as a follow-up issue
+        # Only after an approval; a failure here (a missing label, say) never blocks the merge.
+        if: ${{ needs.lens.result == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$(jq -rs 'all(.verdict == "pass")' verdicts/*.json)" != true ]; then
+            echo "not approved; nothing to file"
+            exit 0
+          fi
+          minors=$(jq -rs '[.[] | .findings[] | select(.severity == "minor")] | length' verdicts/*.json)
+          if [ "$minors" = 0 ]; then
+            echo "no minor findings"
+            exit 0
+          fi
+          body=$(jq -rs '
+            def line: "- [ ] `\(.file)`\(if .line > 0 then ":\(.line)" else "" end) (\(.lens)): \(.note)";
+            "Minor findings from the automated review of #\(env.PR) at \(env.HEAD[0:7]). They did not block the merge; "
+            + "the planner or the next pull request in this area picks them up and closes this issue with `Fixes #<n>`.\n\n"
+            + ([.[] | .lens as $l | .findings[] | select(.severity == "minor") | . + {lens: $l}] | map(line) | join("\n"))
+            + "\n\n---\n_Generated by [Claude Code](https://claude.ai/code) in `.github/workflows/review.yml`_"
+          ' verdicts/*.json)
+          title="Review follow-ups for #$PR"
+          existing=$(gh issue list --label follow-up --state open --search "in:title $title" --json number,title \
+            --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --label follow-up --body "$body"
           fi
