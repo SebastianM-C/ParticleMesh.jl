@@ -90,7 +90,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
-          allowed_bots: "particlemesh-factory[bot]"
+          allowed_bots: "particlemesh-factory,particlemesh-factory[bot]"
           prompt: |
             REPO: ${{ github.repository }}
             You are the package-manager role of this repository. Your brief is .claude/agents/package-manager.md
