@@ -7,7 +7,7 @@ adds_dependencies = ["KernelAbstractions", "Atomix", "Adapt", "AcceleratedKernel
 
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
-A6 = "e74c3f1888230689a004f506408f7c75e73076c7"
+A6 = "344832ac0e32f874b8cbaa674a2282ee40a05d9c"
 A7 = "b4cade448159d5276774626df7f94299f8621395"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 A9 = "c4a9112c185bc4f4af5c969b185524cc74321372"
