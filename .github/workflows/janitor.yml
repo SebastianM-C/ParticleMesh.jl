@@ -3,7 +3,7 @@ name: Janitor
 # Runs the janitor role (brief: .claude/agents/janitor.md) every hour: the minor findings the review gate
 # files as `follow-up` issues become small pull requests, one per issue, closed by `Fixes #<n>`. A cheap
 # job first checks whether any open follow-up issue still has something for the janitor (unchecked
-# items, no open janitor PR for it, no "nothing mechanical left" marker as its last comment) and skips
+# items, no open janitor PR for it, and a last comment that is not the janitor's own) and skips
 # the session when none does or when three janitor PRs are already open. It acts on GitHub as the factory app,
 # like the package manager, so its PRs trigger CI and the review gate. Sonnet at high effort: the work is
 # mechanical by design, and the brief sends everything else back to the issue.
@@ -39,12 +39,13 @@ jobs:
           owned=$(gh pr list --state open --limit 100 --json headRefName \
             --jq '[.[] | .headRefName | select(startswith("janitor/")) | ltrimstr("janitor/") | tonumber?]')
           pending=$(printf '%s' "$owned" | jq 'length')
-          # An unchecked item is work unless the janitor's last comment says nothing mechanical is left.
+          # An unchecked item is work unless the last comment is the janitor's own: it took what it could and
+          # left the rest with reasons, and only a newer comment (the gate adding items) brings the issue back.
           open=$(gh issue list --label follow-up --state open --limit 100 --json number,body,comments \
             | jq --argjson owned "$owned" '[.[]
               | select(.body | test("- \\[ \\]"))
               | select(.number as $n | $owned | index($n) | not)
-              | select((.comments | last | .body // "") | test("<!-- janitor: nothing mechanical left -->") | not)
+              | select((.comments | last | .body // "") | test("^Janitor:|<!-- janitor: nothing mechanical left -->") | not)
             ] | length')
           echo "follow-up issues with work for the janitor: $open; janitor PRs open: $pending"
           # The cap keeps a failing gate or a waiting owner from turning the hourly schedule into a pile.
