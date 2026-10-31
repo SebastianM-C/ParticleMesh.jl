@@ -57,4 +57,4 @@ WP-004 (grid, `GridState`, test scaffolding).
 
 ## Budgets
 
-CPU timings per particle for sort and exchange recorded without a threshold (A7's throughput budget is on the GPU); proposed `C` values for T-044 recorded in `tolerances.toml` marked "proposed". No new dependencies, so not tier 2 unless the sort needs one.
+CPU timings per particle for sort and exchange recorded without a threshold (A7's throughput budget is on the GPU); proposed `C` values for T-042 and T-044 recorded in `tolerances.toml` marked "proposed". No new dependencies, so not tier 2 unless the sort needs one.
