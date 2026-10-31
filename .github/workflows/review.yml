@@ -38,7 +38,7 @@ jobs:
       matrix:
         lens: [numerics, code]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
@@ -55,10 +55,10 @@ jobs:
             echo "::warning::no $LENS-reviewer brief on $BASE yet; using this PR's copy"
             cp ".claude/agents/$LENS-reviewer.md" "$RUNNER_TEMP/brief.md"
           fi
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.13'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Review
         id: review
         uses: anthropics/claude-code-action@v1
@@ -98,7 +98,7 @@ jobs:
           fi
           printf '%s\n' "$VERDICT" | jq --arg lens "$LENS" '. + {lens: $lens}' > "$RUNNER_TEMP/verdict/$LENS.json"
           jq -r '"\(.lens): \(.verdict), \(.findings | length) finding(s)"' "$RUNNER_TEMP/verdict/$LENS.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: verdict-${{ matrix.lens }}
           path: ${{ runner.temp }}/verdict/${{ matrix.lens }}.json
@@ -120,7 +120,7 @@ jobs:
         run: |
           echo "a review job did not complete; see the Review (...) jobs" >&2
           exit 1
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: ${{ needs.lens.result == 'success' }}
         with:
           pattern: verdict-*
