@@ -80,7 +80,7 @@ status = "proposed, noise-limited: at 4096 particles per cell the fitted γ move
 quantity = "cold two-stream growth rate, k v₀/ω_p = 3/5: (measured - theory)/theory"
 case = "64 cells, 256 particles per cell per beam, v₀ = c/10, α = 1/1000, dt = 0.05/ω_p, quadratic, Reference, fit over the linear phase"
 theory = { gamma = 0.3533918224571849 }
-measured = { gamma = 0.3545690079405174 }
+measured = { gamma = 0.35456900794051743 }
 relative_error = { gamma = 0.0033 }
 status = "proposed"
 
