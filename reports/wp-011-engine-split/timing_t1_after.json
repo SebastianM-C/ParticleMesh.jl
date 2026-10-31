@@ -1,0 +1,166 @@
+{
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "rows": [
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 54.405498046875,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 33.125,
+      "scratch_bytes_per_particle_extras2": 33.125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 22.4700146484375,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 33.03125,
+      "scratch_bytes_per_particle_extras2": 33.03125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.801800842285157,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 33.0078125,
+      "scratch_bytes_per_particle_extras2": 33.0078125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.879216232299804,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 33.001953125,
+      "scratch_bytes_per_particle_extras2": 33.001953125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 60.6501708984375,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 33.125,
+      "scratch_bytes_per_particle_extras2": 33.125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 28.25900146484375,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 33.03125,
+      "scratch_bytes_per_particle_extras2": 33.03125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 25.73770050048828,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 33.0078125,
+      "scratch_bytes_per_particle_extras2": 33.0078125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 26.993952407836915,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 33.001953125,
+      "scratch_bytes_per_particle_extras2": 33.001953125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 45.003759765625,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 37.125,
+      "scratch_bytes_per_particle_extras2": 37.125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 23.462017822265626,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 37.03125,
+      "scratch_bytes_per_particle_extras2": 37.03125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.137919921875,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 37.0078125,
+      "scratch_bytes_per_particle_extras2": 37.0078125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.518152770996092,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 37.001953125,
+      "scratch_bytes_per_particle_extras2": 37.001953125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 57.5133154296875,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 37.125,
+      "scratch_bytes_per_particle_extras2": 37.125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 28.932052001953124,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 37.03125,
+      "scratch_bytes_per_particle_extras2": 37.03125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 27.556614990234376,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 37.0078125,
+      "scratch_bytes_per_particle_extras2": 37.0078125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 32.222699279785154,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 37.001953125,
+      "scratch_bytes_per_particle_extras2": 37.001953125
+    }
+  ],
+  "threads": 1
+}

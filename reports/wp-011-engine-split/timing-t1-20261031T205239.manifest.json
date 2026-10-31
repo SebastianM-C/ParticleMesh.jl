@@ -1,0 +1,39 @@
+{
+  "backend": "KernelAbstractions CPU",
+  "commit": "4ed3667e61ffd4a2843254e6e4b3dea43728054b",
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "created_utc": "2026-10-31T20:52:40.039",
+  "dirty": false,
+  "inputs": {
+    "Manifest.toml": "0f6c05238b5982fca57743beac781e2658bd354762436d5d762eddaf882c4d84",
+    "lib/ParticleMeshCore/src/Electrostatic/Electrostatic.jl": "bc8346bb9c1c7ffee17a48d82bd38ed441bd3fc5f6af83188681f6fb186ac52a",
+    "lib/ParticleMeshCore/src/ParticleMeshCore.jl": "bf1d7b716607f5d09ee9eff135d420a0d727c6510403bdf5534e84b3a462e1f1",
+    "lib/ParticleMeshCore/src/grid.jl": "03c5824b7d2210082af59e94da40a0f70f463b49d69c981af51fb203d5df87b8",
+    "lib/ParticleMeshCore/src/guards.jl": "566e933f2981b2ede12273aea444ff5f57b19f2675fc3efa8d154ea4751aba2b",
+    "lib/ParticleMeshCore/src/loading.jl": "500d9aaf816c0f0fc773908d37438d352b5a8e25cfd8f701f411ea0b99e5e760",
+    "lib/ParticleMeshCore/src/philox.jl": "6f04e72280f937439c111463cae4a09165851169c030a37026bcf992895a2c62",
+    "lib/ParticleMeshCore/src/shapes.jl": "949fe334d4e20f2bc6b6d6f0717d64a1c3fe89d5e026fa702bd7556afdf2bb43",
+    "lib/ParticleMeshCore/src/sort.jl": "1abcf5ba3b55f064a946ed70b6e81c989d0045c3616cdde1fb4f69a26910b75c",
+    "lib/ParticleMeshCore/src/species.jl": "c7f6fb91e9b607ad888373d4574bf223e0c35c0d1fecf98aeea2528612f5b9c4",
+    "lib/ParticleMeshCore/src/transfers.jl": "a55c048df0e5ef279321e09f9e149c126feb83e32603a41d796f55653411bcbe",
+    "lib/ParticleMeshCore/test/cases.jl": "79f597a906d3e34aa8bb9adee8daf4ccef37f4cdca635d86086d6cae67196b94",
+    "lib/ParticleMeshCore/test/theory.jl": "305836a5f51aae771e0c1b92fbf7548db25f985f244226ff557bc04ccb049c2b",
+    "scripts/Manifest.toml": "1d1112ae1b670f0f489aefbb07856542ff19173806a818843d1ac1f673975a80",
+    "scripts/es1d/common.jl": "80b926995df77daecdb87f4f51564eab6ef0cc1f6f0d60768c2d1eac8f765907",
+    "scripts/es1d/timing.jl": "53d78f798352e68aca028dff0d939c6988daa3b5df1c255c2fb10e5356266ba7"
+  },
+  "julia": "1.13.3",
+  "parameters": {
+    "n": 64,
+    "ppcs": [
+      64,
+      256,
+      1024,
+      4096
+    ],
+    "steps": 50
+  },
+  "run_id": "timing-t1-20261031T205239",
+  "threads": 1,
+  "work_package": "WP-010"
+}
