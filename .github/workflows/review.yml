@@ -88,6 +88,11 @@ jobs:
           LENS: ${{ matrix.lens }}
         run: |
           mkdir -p "$RUNNER_TEMP/verdict"
+          # Fail closed: no output, or no verdict, is not a pass.
+          if ! printf '%s\n' "$VERDICT" | jq -e '.verdict == "pass" or .verdict == "fail"' >/dev/null 2>&1; then
+            echo "the $LENS lens returned no verdict" >&2
+            exit 1
+          fi
           printf '%s\n' "$VERDICT" | jq --arg lens "$LENS" '. + {lens: $lens}' > "$RUNNER_TEMP/verdict/$LENS.json"
           jq -r '"\(.lens): \(.verdict), \(.findings | length) finding(s)"' "$RUNNER_TEMP/verdict/$LENS.json"
       - uses: actions/upload-artifact@v4
@@ -134,11 +139,18 @@ jobs:
                    + (if (.findings | length) > 0 then "\n" + (.findings | map(line) | join("\n")) + "\n" else "" end))
                | join("\n"))
           ' verdicts/*.json)
-          fails=$(jq -rs 'map(select(.verdict == "fail")) | length' verdicts/*.json)
-          if [ "$fails" = 0 ]; then
+          count=$(jq -rs 'length' verdicts/*.json)
+          passes=$(jq -rs 'map(select(.verdict == "pass")) | length' verdicts/*.json)
+          if [ "$count" != 2 ]; then
+            echo "expected two verdicts, found $count" >&2
+            exit 1
+          fi
+          # If the repository setting "Allow GitHub Actions to create and approve pull requests" is off,
+          # the approve call errors and this job turns red rather than stalling silently.
+          if [ "$passes" = 2 ]; then
             gh pr review "$PR" --approve --body "$body"
           else
             gh pr review "$PR" --request-changes --body "$body"
-            echo "$fails lens(es) requested changes" >&2
+            echo "$((count - passes)) lens(es) requested changes" >&2
             exit 1
           fi
