@@ -3,24 +3,29 @@ export const meta = {
   description: 'Cut the next work packages from the ParticleMesh goals and plan, or re-derive the packages a goal edit made stale',
   whenToUse: 'mode "cut" when no dispatchable package is left; mode "rederive" after a goal in docs/goals/ changed (scripts/trace/build.jl lists the stale packages). Its PR merges on the automated review; the digest lists the packages for the owner to veto',
   phases: [
-    { title: 'Propose', detail: 'cut: three planners, each from a different angle' },
+    { title: 'Readiness', detail: 'cut: one agent checks the plan settles what the slice needs; stops with the gaps if not' },
+    { title: 'Propose', detail: 'cut: two planners, interface-first and validation-first' },
     { title: 'Merge', detail: 'cut: one judge merges the proposals into an ordered list' },
-    { title: 'Verify', detail: 'cut: two refuters per package, distinct lenses' },
-    { title: 'Write', detail: 'cut: surviving packages as files under trace/wp/' },
+    { title: 'Verify', detail: 'cut: two verifiers over the whole set, ownership and compliance, findings graded blocking or fixable' },
+    { title: 'Write', detail: 'cut: one agent applies the fixable findings, drops only blocked packages, writes trace/wp/' },
     { title: 'Rederive', detail: 'rederive: one agent per stale package, then one refuter' },
   ],
 }
 
 // Inputs come from args; Date.now() and the filesystem are unavailable in a workflow script.
+// Pass args as a JSON object, not a string.
 //   mode      "cut" (default) or "rederive"
 //   date      stamped by the caller
 // cut:
 //   scope     one sentence naming the slice to cut, e.g. "the engine core on the CPU backend"
 //   next_id   the first free package number; one past the highest in trace/wp
 //   max       upper bound on packages per run (default 6)
+//   skip_readiness  true to skip the readiness check, after the caller fixed the gaps it reported
 // rederive:
 //   stale     [{id, file, goals: ["A2", ...]}], from the stale list scripts/trace/build.jl prints
 // The caller then runs `scripts/trace/build.jl --refresh <ids> --check`, commits and opens the PR.
+// A cut that returns ready=false wrote nothing: fix the reported gaps in docs/plan/ (or write
+// questions/ for the ones that need the owner) and run it again.
 const MODE = args.mode || 'cut'
 const DATE = args.date
 const MAX = args.max || 6
@@ -51,12 +56,39 @@ const PACKAGE = {
   required: ['title', 'slug', 'scope', 'goals', 'deliverables', 'non_goals', 'acceptance', 'depends_on', 'adds_dependencies', 'budgets', 'rationale'],
 }
 const PROPOSAL = { type: 'object', properties: { packages: { type: 'array', items: PACKAGE } }, required: ['packages'] }
+const READINESS = {
+  type: 'object',
+  properties: {
+    ready: { type: 'boolean' },
+    gaps: { type: 'array', items: { type: 'object', properties: {
+      topic: { type: 'string' }, where: { type: 'string' }, resolution: { type: 'string' }, blocking: { type: 'boolean' },
+    }, required: ['topic', 'where', 'resolution', 'blocking'] } },
+  },
+  required: ['ready', 'gaps'],
+}
+const FINDINGS = {
+  type: 'object',
+  properties: { findings: { type: 'array', items: { type: 'object', properties: {
+    slug: { type: 'string' }, issue: { type: 'string' }, fix: { type: 'string' },
+    severity: { type: 'string', enum: ['fixable', 'blocking'] },
+  }, required: ['slug', 'issue', 'fix', 'severity'] } } },
+  required: ['findings'],
+}
 const VERDICT = {
   type: 'object',
   properties: { refuted: { type: 'boolean' }, reason: { type: 'string' }, fixes: { type: 'array', items: { type: 'string' } } },
   required: ['refuted', 'reason', 'fixes'],
 }
-const WRITTEN = { type: 'object', properties: { files: { type: 'array', items: { type: 'string' } } }, required: ['files'] }
+const WRITTEN = {
+  type: 'object',
+  properties: {
+    files: { type: 'array', items: { type: 'string' } },
+    applied: { type: 'array', items: { type: 'object', properties: {
+      slug: { type: 'string' }, fixes: { type: 'array', items: { type: 'string' } },
+    }, required: ['slug', 'fixes'] } },
+  },
+  required: ['files', 'applied'],
+}
 const REDERIVED = {
   type: 'object',
   properties: {
@@ -71,68 +103,90 @@ const REDERIVED = {
 async function cut() {
   const SCOPE = args.scope
   const NEXT = args.next_id
-  if (!SCOPE || !NEXT) throw new Error('plan-packages cut needs args.scope and args.next_id')
+  if (!SCOPE || !NEXT) throw new Error('plan-packages cut needs args.scope and args.next_id (args is a JSON object)')
   const ctx = `${CONTEXT} Slice to cut: ${SCOPE}. Do not edit anything.`
+  const empty = extra => ({ mode: 'cut', date: DATE, scope: SCOPE, files: [], applied: [], findings: [], dropped: [], ...extra })
+
+  // Readiness: where the plan leaves an interface, a layout or an owner of the slice open, planners
+  // invent incompatible answers and every package fails on the same seams. One agent finds that first.
+  phase('Readiness')
+  const ready = args.skip_readiness ? { ready: true, gaps: [] } : await agent(
+    `${ctx} Before anyone cuts packages: list what the slice needs the plan to settle (the owner of each ` +
+    `interface, data layout, configuration, boundary and communication point it touches, and the open ` +
+    `items B it depends on), and check whether docs/plan/ settles each one without contradicting itself or ` +
+    `a goal. Report each gap: the topic, where the plan is silent or inconsistent, and a proposed ` +
+    `resolution. A gap is blocking when two reasonable planners would cut incompatible packages because of ` +
+    `it. Set ready=false if any gap is blocking.`,
+    { label: 'readiness', phase: 'Readiness', schema: READINESS, effort: 'high' })
+  if (!ready) throw new Error('the readiness check returned nothing')
+  if (!ready.ready) {
+    log(`plan not ready for this slice: ${ready.gaps.filter(g => g.blocking).length} blocking gaps`)
+    return empty({ ready: false, gaps: ready.gaps })
+  }
+  const gapNote = ready.gaps.length
+    ? ` Non-blocking plan gaps; resolve them as proposed: ${JSON.stringify(ready.gaps)}.` : ''
+
   const ANGLES = [
     { key: 'interface',  prompt: 'interface-first: each package implements one interface contract of architecture-draft.md section 0 and nothing else' },
-    { key: 'validation', prompt: 'validation-first: each package is defined by the test or benchmark that proves it, from the goals and the budgets of A7' },
-    { key: 'risk',       prompt: 'risk-first: the packages that retire the thin spots B and the spikes (Reactant, symbolic, FP32) earliest, smallest first' },
+    { key: 'validation', prompt: 'validation-first: each package is defined by the test that proves it, preferring analytic solutions and conservation laws held close to roundoff (A7)' },
   ]
-
-  // Propose: a barrier is right here, the merge needs all three proposals at once.
+  // Propose: a barrier is right here, the merge needs both proposals at once.
   const proposals = (await parallel(ANGLES.map(a => () => agent(
-    `${ctx} Propose at most ${MAX} packages from this angle: ${a.prompt}. ` +
-    `Skip anything an existing package already covers. Keep each package small enough for one session.`,
+    `${ctx}${gapNote} Propose at most ${MAX} packages from this angle: ${a.prompt}. Order by risk: packages ` +
+    `that retire thin spots and spikes come early. Skip anything an existing package already covers. Keep ` +
+    `each package small enough for one session, and give every interface it touches exactly one owning package.`,
     { label: `propose:${a.key}`, phase: 'Propose', schema: PROPOSAL })))).filter(Boolean)
   log(`${proposals.length} proposals, ${proposals.reduce((n, p) => n + p.packages.length, 0)} candidate packages`)
 
   const merged = await agent(
-    `${ctx} Three planners proposed packages from different angles: ${JSON.stringify(proposals)}. ` +
+    `${ctx}${gapNote} Two planners proposed packages from different angles: ${JSON.stringify(proposals)}. ` +
     `Merge them into one list of at most ${MAX} packages, ordered so that every dependency comes before its ` +
     `dependents and packages that add Julia dependencies do not run at the same time as each other; merge ` +
-    `duplicates, drop anything outside the slice, keep every package's structure complete.`,
+    `duplicates, drop anything outside the slice, give each shared interface one owner, and keep every ` +
+    `package's structure complete.`,
     { label: 'merge', phase: 'Merge', schema: PROPOSAL, effort: 'high' })
   const candidates = merged ? merged.packages : []
-  const titles = candidates.map(p => p.title)
+  if (!candidates.length) return empty({ ready: true, gaps: ready.gaps })
 
-  // Verify: each package through two lenses, as a pipeline so early packages are judged while later ones wait.
+  // Verify: two lenses over the whole set, because the defects that matter sit between packages.
+  // Findings are graded; only a blocking one drops a package, fixable ones are applied when writing.
   const LENSES = [
-    { key: 'fit',  prompt: 'scope: it overlaps an existing package or another proposed package, exceeds one session, or has no clear interface' },
-    { key: 'plan', prompt: 'goal compliance: it contradicts a goal in docs/goals/ or a rule of CLAUDE.md, names no goal it serves, its acceptance is not testable, a dependency is missing or circular, or budgets are absent where A7 applies' },
+    { key: 'ownership',  prompt: 'scope and ownership: two packages own the same interface or none does, a package exceeds one session or has no clear interface, a dependency is missing, circular or out of order' },
+    { key: 'compliance', prompt: 'goal compliance: a package contradicts a goal in docs/goals/ or a rule of CLAUDE.md, names no goal it serves or misses one it relies on, its acceptance is not testable, or A7 budgets are absent where they apply' },
   ]
-  const verified = await pipeline(
-    candidates,
-    pkg => parallel(LENSES.map(l => () => agent(
-      `${ctx} A planner proposes this package: ${JSON.stringify(pkg)}. The other proposed packages are: ` +
-      `${JSON.stringify(titles)}. Try to refute it through this lens only: ${l.prompt}. ` +
-      `Default to refuted=true if uncertain; list concrete fixes when a small change would save it.`,
-      { label: `verify:${l.key}:${pkg.slug}`, phase: 'Verify', schema: VERDICT })))
-      .then(votes => {
-        const v = votes.filter(Boolean)
-        // Fail closed: a package survives only when both refuters answered and neither refuted it.
-        return { ...pkg, votes: v, survives: v.length === LENSES.length && v.every(x => !x.refuted) }
-      }),
-  )
-
-  const survivors = verified.filter(Boolean).filter(p => p.survives)
-  const dropped = verified.filter(Boolean).filter(p => !p.survives)
-    .map(p => ({ title: p.title, reasons: p.votes.length < LENSES.length
-      ? ['a verifier returned no verdict'].concat(p.votes.filter(v => v.refuted).map(v => v.reason))
-      : p.votes.filter(v => v.refuted).map(v => v.reason) }))
-  log(`${survivors.length} packages survived, ${dropped.length} dropped`)
+  const verdicts = (await parallel(LENSES.map(l => () => agent(
+    `${ctx} The proposed packages, in order: ${JSON.stringify(candidates)}. Check the whole set through ` +
+    `this lens only: ${l.prompt}. For each defect give the package slug, the issue, a concrete fix and a ` +
+    `severity: "fixable" when a change within this package set resolves it, "blocking" only when it cannot ` +
+    `be resolved without an owner decision or a plan change outside the set. Leave out anything you are not ` +
+    `sure is a defect.`,
+    { label: `verify:${l.key}`, phase: 'Verify', schema: FINDINGS })))).filter(Boolean)
+  if (verdicts.length < LENSES.length) throw new Error('a verifier returned no verdict')
+  const findings = verdicts.flatMap(v => v.findings)
+  const blocked = new Set(findings.filter(f => f.severity === 'blocking').map(f => f.slug))
+  const keep = candidates.filter(p => !blocked.has(p.slug))
+  const dropped = candidates.filter(p => blocked.has(p.slug)).map(p => ({
+    title: p.title,
+    reasons: findings.filter(f => f.slug === p.slug && f.severity === 'blocking').map(f => f.issue),
+  }))
+  log(`${findings.length} findings, ${dropped.length} packages blocked, ${keep.length} to write`)
 
   phase('Write')
-  const written = survivors.length ? await agent(
+  const written = keep.length ? await agent(
     `Write these work packages as files in trace/wp/, one file each, named WP-<nnn>-<slug>.md and numbered ` +
-    `from ${NEXT} in this order: ${JSON.stringify(survivors.map(p => ({ ...p, votes: undefined, survives: undefined })))}. ` +
-    `Apply the fixes the verifiers suggested: ${JSON.stringify(survivors.map(p => ({ slug: p.slug, fixes: p.votes.flatMap(v => v.fixes) })))}. ` +
+    `from ${NEXT} in this order: ${JSON.stringify(keep)}. Apply every fixable finding of the verifiers: ` +
+    `${JSON.stringify(findings.filter(f => f.severity === 'fixable' && !blocked.has(f.slug)))}. These packages ` +
+    `were dropped as blocked, and no written package may depend on them: ${JSON.stringify(dropped.map(d => d.title))}. ` +
     `Each file starts with the TOML front matter of trace/README.md (id, status "proposed", goals, depends_on ` +
     `with the ids you assign, adds_dependencies; leave out [checked], the caller fills it), then the sections ` +
     `the existing packages use (Scope, Deliverables, Non-goals, Acceptance, Depends on, Budgets). ` +
-    `Write nothing else and do not commit.`,
-    { label: 'write', phase: 'Write', schema: WRITTEN, effort: 'high' }) : { files: [] }
+    `Write nothing else and do not commit. Report each file and, per package, the fixes you applied.`,
+    { label: 'write', phase: 'Write', schema: WRITTEN, effort: 'high' }) : { files: [], applied: [] }
 
-  return { mode: 'cut', date: DATE, scope: SCOPE, files: written ? written.files : [], dropped }
+  return {
+    mode: 'cut', date: DATE, scope: SCOPE, ready: true, gaps: ready.gaps,
+    files: written ? written.files : [], applied: written ? written.applied : [], findings, dropped,
+  }
 }
 
 async function rederive() {
