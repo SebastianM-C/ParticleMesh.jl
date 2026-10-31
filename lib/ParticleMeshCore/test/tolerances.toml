@@ -121,3 +121,48 @@ case = "sin at 1, exp/3 at 0.7, sin + a deterministic ±1e-10 perturbation at 1;
 C = 2
 measured = { sin = 1.02, "exp/3" = 0.436, "sin + noise" = 1.0 }
 status = "proposed: for a smooth function the floor at its minimum is about the error itself, so the ratio sits near 1"
+
+# WP-009
+
+["T-110"]
+quantity = "discrete continuity per node, |(ρ_new - ρ_old)/Δt + (Jx[j] - Jx[j-1])/Δx|"
+scale = "max|ρ|/Δt (10 cells, 400 particles, displacements up to 0.9 cells)"
+C = 8
+measured = { Float32 = 3.59, Float64 = 4.0, "Dual{Float32,3}" = 3.59 }
+status = "proposed"
+
+["T-111"]
+quantity = "T-110's per-step continuity residual over a drift at constant velocity, worst over 20 and over 200 steps"
+scale = "max|ρ|/Δt (12 cells, 300 particles, |v|·Δt up to 0.9 Δx); for Dual the partials of the positions grow with the steps"
+C = 32
+measured = { Float32 = 4.35, Float64 = 5.42, "Dual{Float32,3}" = 14.1 }
+status = "proposed: the worst step over 200 equals the worst over 20 for every type"
+
+["T-112"]
+quantity = "Σ Jy - Σ q·w·u_y, Σ Jz - Σ q·w·u_z, Σ Jx - Σ q·w·Δ·Δx/Δt"
+scale = "count·max|quantity|"
+C = 16
+measured = { Float32 = 0.0638, Float64 = 0.101, "Dual{Float32,3}" = 0.86 }
+status = "proposed"
+
+["T-113"]
+quantity = "per face and node difference of Reference and Fast Jx, Jy, Jz"
+scale = "Σ|contributions| per face (4000 particles on 10 cells)"
+C = 32
+measured = { Float32 = 1.88, Float64 = 2.04 }
+status = "proposed: measured with 4 threads; on one thread the atomics add in the sorted slot order and the difference is 0"
+
+["T-114"]
+quantity = "partials of Jx, Jy, Jz from Dual weights against the Float64 flux of the partials"
+scale = "max|∂J|"
+C = 16
+measured = { "Dual{Float32,3}" = 3.88 }
+status = "proposed"
+
+["T-116"]
+quantity = "ForwardDiff derivative of Σ φ·Jx in the displacement against fd_scan, end points within 1e-7 of a face: rel[istar] / floor_rel; and floor_rel itself"
+case = "order 2 asserted, order 1 recorded; h = 10^(-1:-0.5:-9)"
+C = 2
+floor_max = 1e-6
+measured = { ratio_order2_Center = 0.387, ratio_order2_Node = 0.262, floor_order2_Center = 7.71e-10, floor_order2_Node = 2.48e-14, ratio_order1_Node = 0.196, floor_order1_Node = 3.76e-9, rel_at_h_1e-1_order1_Node = 7.4e-3 }
+status = "proposed: order 2 asserted; order 1 at Node() is C⁰ at the face (relative error 7e-3 for every step that straddles the crossing), recorded"
