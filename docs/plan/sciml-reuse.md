@@ -45,7 +45,7 @@ Same ecosystem, outside SciML proper: Trixi.jl (DG for hyperbolic laws, `semidis
 
 | Piece | Reuse | Verdict |
 |---|---|---|
-| ForwardDiff `Dual` (JuliaDiff, used throughout SciML) | yes | the tangent layer of the architecture draft; `PreallocationTools.DiffCache` for Dual scratch on CPU paths |
+| ForwardDiff `Dual` (JuliaDiff, used throughout SciML) | yes | the tangent layer of the architecture draft; no `PreallocationTools.DiffCache`: state and workspaces are built in the execution element type (`architecture-draft.md` §0.7) |
 | `ADTypes` + `DifferentiationInterface` | yes | backend-agnostic gradient calls at the optimization layer (ForwardDiff, Enzyme, Mooncake, Reactant) |
 | SciMLSensitivity AD pass-through algorithms (`ForwardDiffSensitivity`, `ReverseDiffAdjoint`, `TrackerAdjoint`, Zygote/Mooncake/Enzyme pass-through) | partly | their `_concrete_solve_adjoint` methods accept `AbstractDiscreteProblem` (verified in `concrete_solve.jl`), so a PIC wrapped as `DiscreteProblem` gets `solve`-level forward sensitivities without extra code. Reverse through a GPU time loop is not what they are built for |
 | SciMLSensitivity continuous adjoints (`InterpolatingAdjoint`, `GaussAdjoint`, `QuadratureAdjoint`, checkpointing options) | reduced models only | ODE-only by construction; perfect for the wake ODE and the r-z fluid level |
