@@ -228,7 +228,9 @@ jobs:
             exit 1
           fi
       - name: File minor findings as a follow-up issue
-        # Only after an approval; a failure here (a missing label, say) never blocks the merge.
+        # Only after an approval; a failure here (a missing label, say) never blocks the merge. Never for a
+        # janitor PR (branch janitor/<issue>): the janitor works the follow-up issues, and filing new ones
+        # from its own PRs would feed it its own output; those findings stay in the review comment.
         if: ${{ needs.lens.result == 'success' }}
         continue-on-error: true
         env:
@@ -236,8 +238,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
+          case "$BRANCH" in
+            janitor/*) echo "janitor PR; minor findings stay in the review, no follow-up issue"; exit 0 ;;
+          esac
           if [ "$(jq -rs 'all(.verdict == "pass")' verdicts/*.json)" != true ]; then
             echo "not approved; nothing to file"
             exit 0

@@ -21,10 +21,11 @@ concurrency:
 
 jobs:
   inbox:
-    name: Any follow-up item open
+    name: Any follow-up item open, fewer than three janitor PRs open
     runs-on: ubuntu-latest
     permissions:
       issues: read
+      pull-requests: read
     outputs:
       work: ${{ steps.check.outputs.work }}
     steps:
@@ -35,8 +36,15 @@ jobs:
         run: |
           open=$(gh issue list --label follow-up --state open --limit 100 --json number,body \
             --jq '[.[] | select(.body | test("- \\[ \\]"))] | length')
-          echo "follow-up issues with unchecked items: $open"
-          if [ "$open" = 0 ]; then echo "work=false" >> "$GITHUB_OUTPUT"; else echo "work=true" >> "$GITHUB_OUTPUT"; fi
+          pending=$(gh pr list --state open --limit 100 --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("janitor/"))] | length')
+          echo "follow-up issues with unchecked items: $open; janitor PRs open: $pending"
+          # The cap keeps a failing gate or a waiting owner from turning the hourly schedule into a pile.
+          if [ "$open" = 0 ] || [ "$pending" -ge 3 ]; then
+            echo "work=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "work=true" >> "$GITHUB_OUTPUT"
+          fi
   run:
     name: Janitor
     needs: inbox
