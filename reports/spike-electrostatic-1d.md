@@ -4,7 +4,7 @@
 |---|---|
 | Work package | WP-010 (goals A0, A2, A3, A4, A5, A7, A8, A9) |
 | Commit of the runs | `c7889e44758b2731838957f6c78729ed169b16b2` (clean tree) |
-| Runs | `landau-20261031T165253`, `two_stream-20261031T165313`, `gradient-20261031T165325`, `timing-t1-20261031T165349`, `timing-t16-20261031T165406` |
+| Runs | `landau-20261031T165253`, `two_stream-20261031T165313`, `gradient-20261031T165325`, `timing-t1-20261031T165349`, `timing-t16-20261031T165406`; against Smilei: `pm-landau-20261031T181053`, `pm-two-stream-20261031T181031` (commit `6dec885`), `smilei-landau-9a47a107`, `smilei-two-stream-736a428f` |
 | Input hashes | SHA-256 of every input file (core sources, `test/cases.jl`, `test/theory.jl`, the script, both manifests) in each run's manifest: `spike-electrostatic-1d/<run>.manifest.json` |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10.4 CPU backend, AcceleratedKernels 0.5.11, Atomix 1.7.0, Adapt 4.7.4, ForwardDiff 1.4.6; Intel Core i9-14900K, 1 and 16 threads |
 | Figures | `spike-electrostatic-1d/*.png`, each with its JSON sidecar of the plotted scalars |
@@ -98,6 +98,37 @@ ns per particle-step of the whole electrostatic step (64 cells, 50 steps after w
 | 262 144 | 17.4 | 26.5 | 17.8 | 28.5 | 31.9 | 7.7 | 25.8 | 12.7 |
 
 On one thread `Reference` (sort plus node-wise reduction) costs about 1.5× `Fast`. With 16 threads `Fast` gets slower than on one thread: every thread's atomics contend on a 64-node array. `Reference` scales (3.4× for Float32 at 262 k particles). The sort is the bulk of `Reference`'s cost. Scratch per particle (the `Workspace`): 33 B for Float32 and 37 B for Float64 (keys 8, permutation 8, three permutation buffers 4 + 4 or 8 + 1, AK sample-sort temp 8); the particle arrays themselves are 25 B and 45 B. The workspace is allocated in both modes, although `Fast` with primitive floats does not use it. Allocation per step after warm-up does not grow with the particle count or the grid size (T-144): on one thread, 1856 bytes per step in `Reference` mode (the sort's per-task bookkeeping, which AK documents) and zero in `Fast` mode, at all three sizes.
+
+### Against Smilei, on WP-003's case files
+
+ParticleMesh ran WP-003's `scripts/crosscode/cases/landau.toml` and `two-stream.toml` unchanged (`scripts/es1d/crosscode.jl`: quadratic, `Reference`, Float64, electrostatic, nonrelativistic). Both codes were fitted with WP-003's own `damping_from_peaks` / `growth_from_window` on the field energy ∫E²/2 dx, sampled at the case's cadence. Smilei v5.1 ran in the image `7030c120c62c` through the machine's runner, on the CPU. Runs: `pm-two-stream-20261031T181031` and `pm-landau-20261031T181053` (commit `6dec885`, clean), `smilei-two-stream-736a428f` and `smilei-landau-9a47a107` (commit `1b01ce7`, clean). Manifests, observables and plots with sidecars are in `spike-electrostatic-1d/crosscode/`.
+
+The codes differ in the model, not just the implementation. Smilei solves Maxwell's equations (Yee, Esirkepov current) with a relativistic pusher, loads a Maxwell–Jüttner distribution, and samples the density profile at cell centres (piecewise constant per cell). ParticleMesh solves Gauss's law with a nonrelativistic pusher, loads a Maxwellian, and evaluates the density at each particle.
+
+**Two-stream** (128 cells, 2 × 1000 ppc, v₀ = c/10, kv₀ = √(3/8) ω_p, fit window U ∈ [1e-3, 3e-2]·max U):
+
+| | γ (ω_p) | vs relativistic theory 0.35088 | vs nonrelativistic theory 0.35355 |
+|---|---|---|---|
+| Smilei | 0.34561 ± 0.00090 | −1.50 % | −2.25 % |
+| ParticleMesh | 0.34816 ± 0.00091 | −0.77 % | −1.52 % |
+
+ParticleMesh is 0.74 % above Smilei. Each code sits 1.5 % below the theory of the equations it integrates, which suggests a bias common to the resolution and the fit window rather than a disagreement between the codes. The initial field energies agree to 1.7e-4 relative, and the two curves overlay through the linear phase and into saturation (`crosscode/two-stream-field-energy.png`).
+
+![Two-stream, ParticleMesh and Smilei](spike-electrostatic-1d/crosscode/two-stream-field-energy.png)
+
+**Landau** (64 cells, 50 000 ppc, α = 1/100, t_end = 25): neither code yields the case's pre-registered observable. The fit needs three maxima of U above 10× the noise floor after t = 3, and both runs reach their floor (Smilei 1.8e-9, ParticleMesh 1.0e-9) after two. The initial field energies agree to 6e-4. Relaxing the criteria identically for both codes (post hoc, not the case's observable) gives fits on three or four maxima:
+
+| fit_start, floor_factor | Smilei γ (maxima) | ParticleMesh γ (maxima) |
+|---|---|---|
+| 3, 3 | 0.1328 (3) | 0.1433 (3) |
+| 2, 5 | 0.1051 (3) | 0.1514 (4) |
+| 2, 3 | 0.1294 (4) | 0.1514 (4) |
+
+With the theory at 0.1534, these move by 20 % with the fit choices, so the case as written cannot compare the codes. The spike's own Landau case (α = 1/20, section 2) has the same physics with a measurable signal. Proposal for WP-003's next revision: α = 1/20, or fewer particles with a quiet velocity start.
+
+![Landau, ParticleMesh and Smilei](spike-electrostatic-1d/crosscode/landau-field-energy.png)
+
+Not compared: performance. The Smilei runs used the recipe's default CPU configuration, which nobody matched to ParticleMesh's 16 threads, so their wall times (51 s and 9 s, container included) are not a measurement. ParticleMesh took 11.0 ns per particle-step on Landau (3.2 M particles, 2681 steps) and 9.1 ns on two-stream at 16 threads. WP-003's `measured_from_mode` for Smilei two-stream (−0.25 ± 0.52) is not usable: the field dumps every 32 steps leave too few points in the fit window. WP-003's analysis also writes the runner's whole header line into the manifest's `image.id`.
 
 ## 3. The parked contracts against the spike
 

@@ -1,0 +1,87 @@
+{
+  "U0": {
+    "particlemesh": 1.5682748527684376e-7,
+    "smilei": 1.5673179178e-7
+  },
+  "case": "landau",
+  "particlemesh": {
+    "fit_points": 0,
+    "fit_range": null,
+    "measured": null,
+    "measured_stderr": null,
+    "relative_difference": null
+  },
+  "particlemesh_run": "pm-landau-20261031T181053",
+  "pm_minus_smilei_relative": null,
+  "sensitivity_post_hoc": [
+    {
+      "fit_start": 3.0,
+      "floor_factor": 10.0,
+      "particlemesh": null,
+      "particlemesh_frequency": null,
+      "particlemesh_peaks": 0,
+      "smilei": null,
+      "smilei_frequency": null,
+      "smilei_peaks": 0
+    },
+    {
+      "fit_start": 3.0,
+      "floor_factor": 5.0,
+      "particlemesh": 0.1432857490269374,
+      "particlemesh_frequency": 1.3799952550920516,
+      "particlemesh_peaks": 3,
+      "smilei": null,
+      "smilei_frequency": null,
+      "smilei_peaks": 0
+    },
+    {
+      "fit_start": 3.0,
+      "floor_factor": 3.0,
+      "particlemesh": 0.1432857490269374,
+      "particlemesh_frequency": 1.3799952550920516,
+      "particlemesh_peaks": 3,
+      "smilei": 0.13280879541219356,
+      "smilei_frequency": 1.388511882845443,
+      "smilei_peaks": 3
+    },
+    {
+      "fit_start": 2.0,
+      "floor_factor": 10.0,
+      "particlemesh": null,
+      "particlemesh_frequency": null,
+      "particlemesh_peaks": 0,
+      "smilei": null,
+      "smilei_frequency": null,
+      "smilei_peaks": 0
+    },
+    {
+      "fit_start": 2.0,
+      "floor_factor": 5.0,
+      "particlemesh": 0.15135059996264014,
+      "particlemesh_frequency": 1.3802670737343237,
+      "particlemesh_peaks": 4,
+      "smilei": 0.10514623345721183,
+      "smilei_frequency": 1.4175795153945494,
+      "smilei_peaks": 3
+    },
+    {
+      "fit_start": 2.0,
+      "floor_factor": 3.0,
+      "particlemesh": 0.15135059996264014,
+      "particlemesh_frequency": 1.3802670737343237,
+      "particlemesh_peaks": 4,
+      "smilei": 0.12940301854468825,
+      "smilei_frequency": 1.405248274554475,
+      "smilei_peaks": 4
+    }
+  ],
+  "smilei": {
+    "fit_points": 0,
+    "fit_range": null,
+    "measured": null,
+    "measured_stderr": null,
+    "relative_difference": null
+  },
+  "smilei_run": "smilei-landau-9a47a107",
+  "theory": 0.1533594669096052
+}
