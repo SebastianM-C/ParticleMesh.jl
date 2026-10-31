@@ -21,6 +21,8 @@ export const meta = {
 //   next_id   the first free package number; one past the highest in trace/wp
 //   max       upper bound on packages per run (default 6)
 //   skip_readiness  true to skip the readiness check, after the caller fixed the gaps it reported
+//   gaps      with skip_readiness: the non-blocking gaps of an earlier readiness check, passed on
+//             to the planners as resolutions to follow (same shape as the check returns)
 // rederive:
 //   stale     [{id, file, goals: ["A2", ...]}], from the stale list scripts/trace/build.jl prints.
 //             Pass only the packages worth a re-derive: leave out parked ones that the next cut
@@ -116,7 +118,7 @@ async function cut() {
   // Readiness: where the plan leaves an interface, a layout or an owner of the slice open, planners
   // invent incompatible answers and every package fails on the same seams. One agent finds that first.
   phase('Readiness')
-  const ready = args.skip_readiness ? { ready: true, gaps: [] } : await agent(
+  const ready = args.skip_readiness ? { ready: true, gaps: args.gaps || [] } : await agent(
     `${ctx} Before anyone cuts packages: list what the slice needs the plan to settle (the owner of each ` +
     `interface, data layout, configuration, boundary and communication point it touches, and the open ` +
     `items B it depends on), and check whether docs/plan/ settles each one without contradicting itself or ` +
