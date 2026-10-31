@@ -1,6 +1,6 @@
 +++
 id = "WP-003"
-status = "parked"
+status = "proposed"
 goals = ["A1", "A5", "A7"]
 depends_on = []
 adds_dependencies = ["HDF5"]
@@ -10,47 +10,43 @@ A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
 A7 = "b4cade448159d5276774626df7f94299f8621395"
 +++
-# WP-003: cross-code reference runs with Smilei and PIConGPU
+# WP-003: cross-code reference runs, stage 1: Smilei on the 1D electrostatic cases
 
-Parked until the factory side below exists and the engine core has landed. Both codes run in containers built from recipes in this repository; building the images and passing the GPU into them is the factory's side. The runner protocol is documented in the machine instructions and in `scripts/crosscode/README.md`, not in `CLAUDE.md`, so the package touches no code-owner path.
+The first external reference numbers for decision A5, from Smilei on the two 1D cases that the spike WP-010 also runs (Landau damping, two-stream instability). Everything lives in `scripts/`, touches no engine code and needs no engine, so it runs in parallel with the spike. Stage 2 (PIConGPU, the 2D LWFA case, the GPU throughput reference and the comparison harness with a ParticleMesh column) is cut as its own package after the spike's write-up, when the shape of ParticleMesh's output is known; the notes on the PIConGPU container (a build environment with a per-case compile, openPMD output through HDF5) are in this file's history before this revision.
 
 ## Scope
 
-The harness that produces the reference numbers decision A5 needs, from two external codes, through the GPU runner, as run manifests with the standard plot set. The package produces numbers and manifests; it does not set tolerances. The A7 agreement thresholds rest on the spread between Smilei and PIConGPU that it measures for equivalent inputs (both decks come from one case file): thresholds and A5 numbers are proposed from its output, and the owner accepts them by editing the goals.
+A Smilei CPU container built from a recipe in this repository, one TOML case file per 1D case in normalized units (A1), a namelist generator with the unit conversion in one tested function, a reader for Smilei's HDF5 diagnostics, the two runs with the standard plot set and sidecars (F3), and a report that puts the measured damping and growth rates next to linear theory. The package produces numbers; it sets no tolerances (A7: thresholds are proposed from measured spread, and the owner accepts them by editing the goals).
 
 ## Deliverables
 
-0. **Container recipes.** `scripts/crosscode/containers/`: one Containerfile per code, with every base image pinned by digest and every upstream source pinned to a release tag or commit, plus a `README.md` with the build command. Before writing one, check upstream for a maintained image or a documented container or Spack route, and build on it if it can be pinned. Smilei has one recipe with two targets: a CPU build with MPI, HDF5 and its Python interface, and a GPU build only for the throughput reference (see Non-goals). PIConGPU's container is a build environment rather than a binary, because its `.param` files are compiled per case: the CUDA toolkit for the RTX 4080 SUPER (compute capability 8.9), its C++ dependencies and its `pic-create` and `pic-build` tooling. The implementer cannot build images from the sandbox; the owner builds them from these recipes (Factory side), and the package's pull request says which recipe changes need a rebuild.
-1. **Cases.** `scripts/crosscode/cases/`: one TOML file per benchmark case in normalized units (A1): the 1D3V set (Landau damping, two-stream instability, Weibel instability) and the matched 2D LWFA case of the validation plan, each with grid, time step, particles per cell, shape order, boundary conditions, laser or beam parameters, diagnostics and their cadence, and the scalar observables that the comparison uses. The case file is the single source; every deck is generated from it.
-2. **Deck generators.** `scripts/crosscode/smilei.jl` and `scripts/crosscode/picongpu.jl` turn a case into a complete Smilei input (a Python namelist) and a complete PIConGPU input set (`.param` and `.cfg` files, the simulation directory layout its tooling expects, with the openPMD output plugin selected with its HDF5 backend so that the readers below apply), with the unit conversion from A1 done in exactly one function per code and tested against hand-computed values.
-3. **Runner protocol.** A request to the `gpu-runner` session may name `smilei` or `picongpu` as the command family, with the generated input directory under `scripts/runs/` of the worktree, a tag and a timeout; documented in the "GPU" bullet of the machine instructions and in `scripts/crosscode/README.md`. The runner validates the command family and the directory the same way it validates `julia` commands. The wrapper runs each code in its image with podman, outside bubblewrap: the run directory mounted read-write, the rest of the worktree read-only, no network, and the GPU passed in only for GPU runs. For PIConGPU the compile step runs in the same container invocation, just before the run. Raw output stays in `scripts/runs/<tag>/`, which git ignores; only the reduced outputs of deliverable 5 are committed. The wrapper itself is the factory's side, listed below.
-4. **Readers.** `scripts/crosscode/read.jl`: reads Smilei's HDF5 diagnostics and PIConGPU's openPMD output into the same in-memory tables, using `HDF5.jl` from the `scripts/` environment (added in this package's pull request, F2; openPMD through its HDF5 backend, no further dependency).
-5. **Comparison and manifests.** `scripts/crosscode/compare.jl`: for each case and code, the standard plot set with JSON sidecars (F3), the scalar observables (growth rates, damping rates, field energies, maximum electron energy, dephasing length as the case defines), a run manifest per run with its inputs hashed and the digest of the image it ran in (F3), and an overlay plot per case across codes. A Markdown report in `reports/` per case, with the header `reports/README.md` prescribes, that states the numbers side by side and the observed spread, without judging them.
-6. **ParticleMesh column.** The same comparison accepts ParticleMesh output once the engine exists; until then the column is marked absent, so the harness is ready for the core packages.
+0. **Container recipe.** `scripts/crosscode/containers/smilei/Containerfile` with the base image pinned by digest and Smilei fetched at a release tag, a CPU build with MPI, HDF5 and the Python interface (happi), plus a `README.md` with the build command and the image's tag convention (the hash of the recipe). Check upstream for a maintained image first and build on it if it can be pinned. The implementer cannot build images from the sandbox; the owner builds it from the recipe (Factory side).
+1. **Cases.** `scripts/crosscode/cases/landau.toml` and `two-stream.toml` in normalized units (A1): grid, time step, particles per cell, shape order, periodic boundaries, the initial perturbation or the beam parameters, the diagnostics and their cadence, and the scalar observables the comparison uses (the damping rate from the field-energy envelope, the growth rate from the linear phase), each with the linear-theory value and the formula it comes from referenced. The case file is a proposal for the schema the spike's `scripts/` runs read later; if the spike's write-up says the schema does not fit, the schema changes, not the spike.
+2. **Namelist generator.** `scripts/crosscode/smilei.jl` turns a case into a complete Smilei namelist; the unit conversion from A1 is one function, tested against hand-computed values.
+3. **Run script.** `scripts/crosscode/run-smilei.sh`: a plain `podman run` on the CPU with the generated input directory under `scripts/runs/<tag>/` mounted read-write, the rest read-only, no network and no GPU. The 1D cases run in minutes on the CPU, so the GPU runner and its command families are not involved at this stage. Raw output stays in `scripts/runs/`, which git ignores.
+4. **Reader.** `scripts/crosscode/read.jl` reads Smilei's HDF5 diagnostics (field energies, the field on the grid at the saved times) into tables, using `HDF5.jl` from the `scripts/` environment (added in this PR, F2).
+5. **Results.** For each case: the standard plot set with JSON sidecars (CairoMakie from `scripts/`), the scalar observables, and a run manifest with the inputs hashed, the commit and the image digest (F3). A Markdown report in `reports/crosscode-smilei-1d/` with its figures next to it and the header `reports/README.md` prescribes, stating the measured rates next to linear theory and the resolution and particle count used, without judging them.
 
 ## Factory side (owner, outside the repository)
 
-1. GPU access for containers: the NVIDIA container toolkit and a CDI specification, so that `podman run --device nvidia.com/gpu=all <image> nvidia-smi` lists the card.
-2. The images, built from the recipes of deliverable 0 with network access, outside the sandbox, and tagged with the hash of their recipe.
-3. The `gpu-run` wrapper gains the command families `smilei` and `picongpu`. It launches the image for the requested family with the mounts and network setting of deliverable 3, and writes the image digest into the log next to the finish line. The runner prompt names the families.
-
-Until this exists, the package can finish everything except the runs themselves; the implementer writes `questions/<id>.md` when it reaches that point.
+Build the image from deliverable 0 with network access, outside the sandbox, and tag it with the hash of its recipe. Nothing else: no GPU passthrough and no runner change at this stage. Until the image exists the package can finish everything except the runs; the implementer writes `questions/<id>.md` when it reaches that point and opens the PR with the runs marked absent.
 
 ## Non-goals
 
-Setting A5 numbers or A7 tolerances; multi-GPU; the ParticleMesh engine itself. A GPU build of Smilei is in scope only for the throughput reference of A7 (nanoseconds per particle-step on the same card); the correctness numbers come from CPU runs, and if the GPU build does not come together the report says so and the throughput column stays empty.
+PIConGPU; the 2D LWFA case; a GPU build of Smilei and the throughput reference; the `smilei` command family in the GPU runner; the comparison harness, the overlay plots and the ParticleMesh column; setting A5 numbers or A7 tolerances; multi-GPU; any engine code.
 
 ## Acceptance
 
-- `T-010 unit conversion to Smilei [A1, WP-003]` and `T-011 unit conversion to PIConGPU [A1, WP-003]`: the generated decks for a case reproduce hand-computed values for density, laser amplitude, cell size and time step.
-- `T-012 readers agree on synthetic files [WP-003]`: two small HDF5 files written by the test, one in Smilei's diagnostic layout and one in the openPMD layout, are read by their readers into tables with the same schema and the same values.
-- `T-013 container recipes are pinned [WP-003]`: every `FROM` line in `scripts/crosscode/containers/` names a digest, and every upstream source is fetched at a tag or commit, never a branch.
-- One 1D3V case run through the runner with each code (once the factory side exists), its run manifests and overlay plot in the PR, and the per-case report in `reports/`.
+- `T-010 unit conversion to Smilei [A1, WP-003]`: the generated namelist for a case reproduces hand-computed values for density, cell size, time step and the perturbation or beam parameters.
+- `T-012 Smilei reader on a synthetic file [WP-003]`: a small HDF5 file written by the test in Smilei's diagnostic layout is read into a table with the documented schema and values.
+- `T-013 container recipe is pinned [WP-003]`: the `FROM` line names a digest and Smilei is fetched at a tag or commit, never a branch.
+- Both cases run through the container, their run manifests, plots and sidecars in the PR, and the report in `reports/`; or, if the image does not exist yet, the question file and the report with the runs marked absent.
+- `julia +1.13 --project=scripts scripts/trace/build.jl --check` passes.
 
 ## Depends on
 
-Goals A1, A5 (as the consumer of this package's output) and A7; factory setting F3; `docs/plan/landscape-and-requirements.md` section 6 and the validation plan in `overview.md` section 2.
+Nothing in the repository. Goals A1, A5 (as the consumer of its numbers) and A7; factory setting F3.
 
 ## Budgets
 
-The 1D3V cases run in minutes on the CPU or the local GPU; the 2D LWFA case is sized to the 16 GB card and may need a rented GPU for the full-resolution point, which the report says explicitly if so. One `HDF5.jl` dependency in `scripts/` only. The images are several GB each (a CUDA development image for PIConGPU), kept in podman's storage, never in the repository.
+Minutes of CPU per case. One `HDF5.jl` dependency in `scripts/` only. The image is a few GB in podman's storage, never in the repository.
