@@ -22,12 +22,9 @@
 /*/Project.toml             @SebastianM-C
 /lib/*/Project.toml         @SebastianM-C
 
-# Work-package records: budgets and acceptance criteria that claims depend on
-/trace/wp/                  @SebastianM-C
-/trace/records/WP-*.toml    @SebastianM-C
-
-# Trace records of requirements, decisions and interfaces (trace/README.md). Test, run and
-# session records are not listed, so agents add them without the owner.
+# Trace records of requirements, decisions and interfaces (trace/README.md). Work-package, test,
+# run and session records are not listed: packages merge on the automated review and the digest
+# reports them, and an implementation that touches an interface or a decision waits here anyway.
 /trace/records/R-*.toml     @SebastianM-C
 /trace/records/D-*.toml     @SebastianM-C
 /trace/records/I-*.toml     @SebastianM-C
