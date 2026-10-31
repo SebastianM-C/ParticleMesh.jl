@@ -12,7 +12,7 @@ A7 = "b4cade448159d5276774626df7f94299f8621395"
 +++
 # WP-003: cross-code reference runs, stage 1: Smilei on the 1D electrostatic cases
 
-The first external reference numbers for decision A5, from Smilei on the two 1D cases that the spike WP-010 also runs (Landau damping, two-stream instability). Everything lives in `scripts/`, touches no engine code and needs no engine, so it runs in parallel with the spike. Stage 2 (PIConGPU, the 2D LWFA case, the GPU throughput reference and the comparison harness with a ParticleMesh column) is cut as its own package after the spike's write-up, when the shape of ParticleMesh's output is known; the notes on the PIConGPU container (a build environment with a per-case compile, openPMD output through HDF5) are in this file's history before this revision.
+The first external reference numbers for decision A5, from Smilei on the two 1D cases that the spike WP-010 also runs (Landau damping, two-stream instability). Everything lives in `scripts/`, touches no engine code and needs no engine, so it runs in parallel with the spike; this does not conflict with A0's rule of small sequential spikes, which is about packages written against an engine specification, and this one is a scripts-only reference run. Stage 2 (PIConGPU, the 2D LWFA case, the GPU throughput reference and the comparison harness with a ParticleMesh column) is cut as its own package after the spike's write-up, when the shape of ParticleMesh's output is known; the notes on the PIConGPU container (a build environment with a per-case compile, openPMD output through HDF5) are in this file's history before this revision.
 
 ## Scope
 
@@ -33,7 +33,7 @@ Build the image from deliverable 0 with network access, outside the sandbox, and
 
 ## Non-goals
 
-PIConGPU; the 2D LWFA case; a GPU build of Smilei and the throughput reference; changes to the machine's runner; the comparison harness, the overlay plots and the ParticleMesh column; setting A5 numbers or A7 tolerances; multi-GPU; any engine code.
+PIConGPU; the Weibel case, which A5 counts in the 1D set and which waits for stage 2; the 2D LWFA case; a GPU build of Smilei and the throughput reference; changes to the machine's runner; the comparison harness, the overlay plots and the ParticleMesh column; setting A5 numbers or A7 tolerances; multi-GPU; any engine code.
 
 ## Acceptance
 
@@ -45,7 +45,7 @@ PIConGPU; the 2D LWFA case; a GPU build of Smilei and the throughput reference; 
 
 ## Depends on
 
-Nothing in the repository. Goals A1, A5 (as the consumer of its numbers) and A7; factory setting F3.
+Nothing in the repository. Goals A1, A5 (as the consumer of its numbers) and A7; factory setting F3. The case files stay consistent with the validation plan in `docs/plan/overview.md` section 2 and the requirements in `docs/plan/landscape-and-requirements.md` section 6.
 
 ## Budgets
 
