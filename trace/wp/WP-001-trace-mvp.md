@@ -1,6 +1,6 @@
 # WP-001: trace layer MVP
 
-Status: proposed. Tier: the records are tier 0, the CI job makes the PR tier 2 (owner approval).
+Status: proposed. Tier 2: work-package records and the CI job are code-owner paths (owner approval).
 
 ## Scope
 
