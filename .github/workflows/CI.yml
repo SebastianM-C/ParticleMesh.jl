@@ -4,8 +4,47 @@ on:
     branches: [main]
   pull_request:
 jobs:
+  # Which parts of the repository a pull request touches. The Julia jobs below skip their steps when a
+  # pull request touches no code, instead of skipping the job: a skipped matrix job reports under its
+  # unexpanded name ("Julia ${{ matrix.version }}"), which would leave a required "Julia 1.13" check
+  # waiting forever. Pushes to main always run everything.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      manifests: ${{ steps.diff.outputs.manifests }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: diff
+        name: Compare the pull request with its base
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "manifests=true" >> "$GITHUB_OUTPUT"
+            echo "not a pull request: run everything"
+            exit 0
+          fi
+          # The pull_request checkout is the merge commit; its first parent is the base branch.
+          files=$(git diff --name-only HEAD^1 HEAD)
+          echo "$files"
+          code=false; manifests=false
+          if grep -qE '^(src|lib|test|benchmark)/|^(Project|Manifest(-v[0-9.]+)?)\.toml$|^\.github/workflows/CI\.yml$' <<< "$files"; then
+            code=true
+          fi
+          if grep -qE '(^|/)(Project|Manifest(-v[0-9.]+)?)\.toml$|^\.github/workflows/CI\.yml$' <<< "$files"; then
+            manifests=true
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "manifests=$manifests" >> "$GITHUB_OUTPUT"
+          echo "code: $code, manifests: $manifests"
   test:
     name: Julia ${{ matrix.version }}
+    needs: changes
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.version == 'pre' }}
     strategy:
@@ -13,17 +52,25 @@ jobs:
       matrix:
         version: ['1.13', 'pre']
     steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
+      - if: needs.changes.outputs.code != 'true'
+        run: echo "No code paths changed in this pull request; the Julia tests are skipped."
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@v7
+      - if: needs.changes.outputs.code == 'true'
+        uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v3
+      - if: needs.changes.outputs.code == 'true'
+        uses: julia-actions/cache@v3
       - name: Update the manifest on the pre-release (it is resolved for 1.13)
-        if: matrix.version == 'pre'
+        if: needs.changes.outputs.code == 'true' && matrix.version == 'pre'
         run: julia --project -e 'using Pkg; Pkg.update()'
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - if: needs.changes.outputs.code == 'true'
+        uses: julia-actions/julia-buildpkg@v1
+      - if: needs.changes.outputs.code == 'true'
+        uses: julia-actions/julia-runtest@v1
       - name: Test every lib/ subpackage in its own process (ParticleMeshReactant has its own job)
+        if: needs.changes.outputs.code == 'true'
         run: |
           for project in lib/*/Project.toml; do
             [ -f "$project" ] || continue
@@ -38,14 +85,20 @@ jobs:
     # so the root julia-runtest job does not run it. Until the member exists this job passes trivially,
     # which lets it be a required check from the start.
     name: Reactant CPU smoke test
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - id: member
-        name: Does lib/ParticleMeshReactant exist yet
+        name: Does lib/ParticleMeshReactant exist yet, and does this change touch code
+        env:
+          CODE: ${{ needs.changes.outputs.code }}
         run: |
-          if [ -f lib/ParticleMeshReactant/Project.toml ]; then
+          if [ "$CODE" != true ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No code paths changed in this pull request; the smoke test is skipped."
+          elif [ -f lib/ParticleMeshReactant/Project.toml ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -64,14 +117,21 @@ jobs:
           julia --project=lib/ParticleMeshReactant -e 'using Pkg; Pkg.test()'
   manifests:
     name: Committed manifests are in sync
+    needs: changes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
+      - if: needs.changes.outputs.manifests != 'true'
+        run: echo "No Project.toml or manifest changed in this pull request; the check is skipped."
+      - if: needs.changes.outputs.manifests == 'true'
+        uses: actions/checkout@v7
+      - if: needs.changes.outputs.manifests == 'true'
+        uses: julia-actions/setup-julia@v3
         with:
           version: '1.13'
-      - uses: julia-actions/cache@v3
+      - if: needs.changes.outputs.manifests == 'true'
+        uses: julia-actions/cache@v3
       - name: Instantiate the workspace and scripts/ without changing the manifests
+        if: needs.changes.outputs.manifests == 'true'
         env:
           JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: |
