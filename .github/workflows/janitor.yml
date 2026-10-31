@@ -2,8 +2,9 @@ name: Janitor
 
 # Runs the janitor role (brief: .claude/agents/janitor.md) every hour: the minor findings the review gate
 # files as `follow-up` issues become small pull requests, one per issue, closed by `Fixes #<n>`. A cheap
-# step first checks whether any open follow-up issue has an unchecked item and skips the session when
-# none does, so the hourly schedule costs nothing on a quiet day. It acts on GitHub as the factory app,
+# job first checks whether any open follow-up issue still has something for the janitor (unchecked
+# items, no open janitor PR for it, no "nothing mechanical left" marker as its last comment) and skips
+# the session when none does or when three janitor PRs are already open. It acts on GitHub as the factory app,
 # like the package manager, so its PRs trigger CI and the review gate. Sonnet at high effort: the work is
 # mechanical by design, and the brief sends everything else back to the issue.
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, FACTORY_APP_ID, FACTORY_APP_PRIVATE_KEY.
@@ -34,11 +35,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          open=$(gh issue list --label follow-up --state open --limit 100 --json number,body \
-            --jq '[.[] | select(.body | test("- \\[ \\]"))] | length')
-          pending=$(gh pr list --state open --limit 100 --json headRefName \
-            --jq '[.[] | select(.headRefName | startswith("janitor/"))] | length')
-          echo "follow-up issues with unchecked items: $open; janitor PRs open: $pending"
+          # Issues that already have an open janitor PR (branch janitor/<issue>) are that run's until it merges.
+          owned=$(gh pr list --state open --limit 100 --json headRefName \
+            --jq '[.[] | .headRefName | select(startswith("janitor/")) | ltrimstr("janitor/") | tonumber?]')
+          pending=$(printf '%s' "$owned" | jq 'length')
+          # An unchecked item is work unless the janitor's last comment says nothing mechanical is left.
+          open=$(gh issue list --label follow-up --state open --limit 100 --json number,body,comments \
+            | jq --argjson owned "$owned" '[.[]
+              | select(.body | test("- \\[ \\]"))
+              | select(.number as $n | $owned | index($n) | not)
+              | select((.comments | last | .body // "") | test("<!-- janitor: nothing mechanical left -->") | not)
+            ] | length')
+          echo "follow-up issues with work for the janitor: $open; janitor PRs open: $pending"
           # The cap keeps a failing gate or a waiting owner from turning the hourly schedule into a pile.
           if [ "$open" = 0 ] || [ "$pending" -ge 3 ]; then
             echo "work=false" >> "$GITHUB_OUTPUT"
