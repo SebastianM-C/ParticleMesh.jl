@@ -209,6 +209,14 @@ end
     r3 = growth_from_window(t, U3; window = (1e-3, 3e-2))
     @test r3.t_max ≈ sat atol = 0.5
     @test r3.gamma ≈ g rtol = 1e-2
+    # a first local maximum below 10 % of the global maximum (a noise wiggle) is skipped: the anchor
+    # falls through to the next maximum
+    U4 = @. 0.05 * exp(-((t - 5) / 0.5)^2) + exp(-((t - 20) / 3)^2) + 1e-6
+    @test any(i -> isapprox(t[i], 5; atol = 0.02), local_maxima(U4))    # the early wiggle is a local maximum ...
+    @test U4[findfirst(>=(4.9), t)] < 0.1 * maximum(U4)                  # ... below the threshold
+    r4 = growth_from_window(t, U4; window = (1e-3, 3e-2))
+    @test r4.t_max ≈ 20 atol = 0.05
+    @test r4.U_max ≈ maximum(U4)
 
     f = [3cos(2π * 2 * j / 16 + 0.3) + 0.5 for j in 0:16]   # 16 points plus the periodic duplicate
     @test mode_amplitude(reshape(f, :, 1), 2)[1] ≈ 3 rtol = 1e-12
