@@ -230,10 +230,18 @@ function kinetic_energy(st::ESState)
     end
 end
 
-"Least-squares slope and intercept of `y` against `x` (host analysis, Float64)."
+"""
+    linear_fit(x, y) -> (slope, intercept)
+
+Least-squares slope and intercept of `y` against `x` (host analysis, Float64). The sums run
+left to right (`foldl`), so the result is the same bits on every CPU: `sum` reassociates under
+`@simd` with the target's vector width, which moved the two-stream γ by one ulp between CI
+runners (T-170).
+"""
 function linear_fit(x, y)
-    x̄, ȳ = sum(x) / length(x), sum(y) / length(y)
-    slope = sum((x .- x̄) .* (y .- ȳ)) / sum((x .- x̄) .^ 2)
+    s(v) = foldl(+, v)
+    x̄, ȳ = s(x) / length(x), s(y) / length(y)
+    slope = s((x .- x̄) .* (y .- ȳ)) / s((x .- x̄) .^ 2)
     return slope, ȳ - slope * x̄
 end
 
