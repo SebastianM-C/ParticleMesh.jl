@@ -1,6 +1,6 @@
 +++
 id = "WP-007"
-status = "parked"
+status = "withdrawn"
 goals = ["A3", "A4", "A7", "A8", "A9", "A10"]
 depends_on = ["WP-004", "WP-005", "WP-006"]
 adds_dependencies = []
@@ -15,7 +15,7 @@ A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
 +++
 # WP-007: engine core, step: System, State, the module interface and step!
 
-Parked (A0: contracts are written from working code). The spike WP-010 built a 1D electrostatic PIC first and tested the contracts below as proposals (`reports/spike-electrostatic-1d.md`, sections 3 and 4); this package is re-derived from that write-up, kept or withdrawn, before it is dispatched.
+Withdrawn: replaced by WP-011, the engine/module split written from the spike's code (`reports/spike-electrostatic-1d.md`), which owns every contract this package proposed. The text below is kept as the record of the proposal.
 
 Where the engine and the physics modules meet. Contracts: `docs/plan/architecture-draft.md` §0.1 (interface sketch), §0.4 rules 2 and 6, §0.7 items 2, 4, 7, 11, 13, 14 and 17; open item B10.
 

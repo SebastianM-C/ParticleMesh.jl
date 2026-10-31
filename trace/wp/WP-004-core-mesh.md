@@ -1,6 +1,6 @@
 +++
 id = "WP-004"
-status = "parked"
+status = "withdrawn"
 goals = ["A1", "A6", "A7", "A8", "A9"]
 depends_on = []
 adds_dependencies = ["KernelAbstractions", "Atomix", "Adapt", "AcceleratedKernels", "PreallocationTools", "ForwardDiff", "DoubleFloats"]
@@ -14,7 +14,7 @@ A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
 +++
 # WP-004: engine core, mesh: bootstrap, grid, field sets, guard fill
 
-Parked (A0: contracts are written from working code). The spike WP-010 (done) built a 1D electrostatic PIC first and tested the contracts below as proposals; its write-up, `reports/spike-electrostatic-1d.md` sections 3 and 4, is the input from which this package is kept, replaced or withdrawn before it is dispatched. Electrostatic is the spike's test case, not a module: the electromagnetic module is the only physics module (A9).
+Withdrawn: replaced by WP-011, the engine/module split written from the spike's code (`reports/spike-electrostatic-1d.md`), which owns every contract this package proposed. The text below is kept as the record of the proposal.
 
 The first engine package. It creates `lib/ParticleMeshCore` with its whole dependency set and the test scaffolding every later core package uses, and implements the mesh side of the engine. The contracts are `docs/plan/architecture-draft.md` §0.7 items 1 to 4, 9, 10, 13, 16 to 19; read §0.4 and §0.7 in full before starting.
 
