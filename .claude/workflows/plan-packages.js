@@ -22,7 +22,13 @@ export const meta = {
 //   max       upper bound on packages per run (default 6)
 //   skip_readiness  true to skip the readiness check, after the caller fixed the gaps it reported
 // rederive:
-//   stale     [{id, file, goals: ["A2", ...]}], from the stale list scripts/trace/build.jl prints
+//   stale     [{id, file, goals: ["A2", ...]}], from the stale list scripts/trace/build.jl prints.
+//             Pass only the packages worth a re-derive: leave out parked ones that the next cut
+//             replaces anyway (refresh their [checked] entries by hand after reading the goal diff),
+//             and done ones unless their text now contradicts a goal. Each entry costs two agents.
+// Models: planners, the judge and the writer run on Opus; readiness, verifiers, re-derives and
+// refuters on Sonnet, all at high effort. Without these the agents inherit the caller's model, which
+// made one re-derive of eight packages cost sixteen agents on the most expensive tier.
 // The caller then runs `scripts/trace/build.jl --refresh <ids> --check`, commits and opens the PR.
 // A cut that returns ready=false wrote nothing: fix the reported gaps in docs/plan/ (or write
 // questions/ for the ones that need the owner) and run it again.
@@ -117,7 +123,7 @@ async function cut() {
     `a goal. Report each gap: the topic, where the plan is silent or inconsistent, and a proposed ` +
     `resolution. A gap is blocking when two reasonable planners would cut incompatible packages because of ` +
     `it. Set ready=false if any gap is blocking.`,
-    { label: 'readiness', phase: 'Readiness', schema: READINESS, effort: 'high' })
+    { label: 'readiness', phase: 'Readiness', schema: READINESS, model: 'sonnet', effort: 'high' })
   if (!ready) throw new Error('the readiness check returned nothing')
   if (!ready.ready) {
     log(`plan not ready for this slice: ${ready.gaps.filter(g => g.blocking).length} blocking gaps`)
@@ -135,7 +141,7 @@ async function cut() {
     `${ctx}${gapNote} Propose at most ${MAX} packages from this angle: ${a.prompt}. Order by risk: packages ` +
     `that retire thin spots and spikes come early. Skip anything an existing package already covers. Keep ` +
     `each package small enough for one session, and give every interface it touches exactly one owning package.`,
-    { label: `propose:${a.key}`, phase: 'Propose', schema: PROPOSAL })))).filter(Boolean)
+    { label: `propose:${a.key}`, phase: 'Propose', schema: PROPOSAL, model: 'opus', effort: 'high' })))).filter(Boolean)
   log(`${proposals.length} proposals, ${proposals.reduce((n, p) => n + p.packages.length, 0)} candidate packages`)
 
   const merged = await agent(
@@ -144,7 +150,7 @@ async function cut() {
     `dependents and packages that add Julia dependencies do not run at the same time as each other; merge ` +
     `duplicates, drop anything outside the slice, give each shared interface one owner, and keep every ` +
     `package's structure complete.`,
-    { label: 'merge', phase: 'Merge', schema: PROPOSAL, effort: 'high' })
+    { label: 'merge', phase: 'Merge', schema: PROPOSAL, model: 'opus', effort: 'high' })
   const candidates = merged ? merged.packages : []
   if (!candidates.length) return empty({ ready: true, gaps: ready.gaps })
 
@@ -160,7 +166,7 @@ async function cut() {
     `severity: "fixable" when a change within this package set resolves it, "blocking" only when it cannot ` +
     `be resolved without an owner decision or a plan change outside the set. Leave out anything you are not ` +
     `sure is a defect.`,
-    { label: `verify:${l.key}`, phase: 'Verify', schema: FINDINGS })))).filter(Boolean)
+    { label: `verify:${l.key}`, phase: 'Verify', schema: FINDINGS, model: 'sonnet', effort: 'high' })))).filter(Boolean)
   if (verdicts.length < LENSES.length) throw new Error('a verifier returned no verdict')
   const findings = verdicts.flatMap(v => v.findings)
   const blocked = new Set(findings.filter(f => f.severity === 'blocking').map(f => f.slug))
@@ -181,7 +187,7 @@ async function cut() {
     `with the ids you assign, adds_dependencies; leave out [checked], the caller fills it), then the sections ` +
     `the existing packages use (Scope, Deliverables, Non-goals, Acceptance, Depends on, Budgets). ` +
     `Write nothing else and do not commit. Report each file and, per package, the fixes you applied.`,
-    { label: 'write', phase: 'Write', schema: WRITTEN, effort: 'high' }) : { files: [], applied: [] }
+    { label: 'write', phase: 'Write', schema: WRITTEN, model: 'opus', effort: 'high' }) : { files: [], applied: [] }
 
   return {
     mode: 'cut', date: DATE, scope: SCOPE, ready: true, gaps: ready.gaps,
@@ -204,13 +210,13 @@ async function rederive() {
       `(status "withdrawn", one line saying why). Make the edits in trace/wp/, and update any text in ` +
       `docs/plan/ that cites the changed goals and no longer matches them. Never edit docs/goals/. ` +
       `Do not touch [checked] and do not commit. Report the files you changed.`,
-      { label: `rederive:${s.id}`, phase: 'Rederive', schema: REDERIVED, effort: 'high' }),
+      { label: `rederive:${s.id}`, phase: 'Rederive', schema: REDERIVED, model: 'sonnet', effort: 'high' }),
     (r, s) => r ? agent(
       `${CONTEXT} After the goals ${s.goals.join(', ')} changed, a planner re-derived work package ${s.id}: ` +
       `${JSON.stringify(r)}. Read the changed goals (git diff in the working tree) and the files it changed, ` +
       `and try to refute the result: the package or the edited plan text still contradicts a changed goal, or ` +
       `the change goes beyond what the goal edit requires. Default to refuted=true if uncertain.`,
-      { label: `refute:${s.id}`, phase: 'Rederive', schema: VERDICT })
+      { label: `refute:${s.id}`, phase: 'Rederive', schema: VERDICT, model: 'sonnet', effort: 'high' })
       .then(v => ({ ...r, verdict: v, holds: !!v && !v.refuted })) : null,
   )
   const done = results.filter(Boolean)
