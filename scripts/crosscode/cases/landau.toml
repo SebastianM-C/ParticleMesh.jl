@@ -28,7 +28,7 @@ name = "electron"
 charge = -1.0                     # e
 mass = 1.0                        # m_e
 density = 1.0                     # n_c
-particles_per_cell = 400000       # 5e4 left 2 e-foldings of energy above Smilei's noise floor (run smilei-landau-9a47a107); noise energy goes as 1/N
+particles_per_cell = 400000       # 5e4 left 2 e-foldings of energy above Smilei's noise floor (run smilei-landau-9a47a107); noise energy is expected to scale as 1/N; the report measures a drop of 15 for 8 times the particles
 position = "regular"
 velocity = "maxwellian"
 thermal_velocity = 0.05           # v_th = √(T/m) in c, so λ_D = v_th/ω_p = 0.05 c/ω₀

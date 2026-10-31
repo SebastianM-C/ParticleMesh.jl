@@ -11,7 +11,8 @@ updated = "2026-10-31T17:43:50.812Z"
 [hardware]
 cpu = "Intel(R) Core(TM) i9-14900K"
 cpu_source = "analysis host (the run did not record it; same machine for runner runs)"
-threads = "16, cpus: 16"
+threads = 16
+cpus = 16
 
 [image]
 id = "localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
