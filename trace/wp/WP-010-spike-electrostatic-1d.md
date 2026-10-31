@@ -1,6 +1,6 @@
 +++
 id = "WP-010"
-status = "proposed"
+status = "done"
 goals = ["A0", "A2", "A3", "A4", "A5", "A7", "A8", "A9"]
 depends_on = []
 adds_dependencies = ["KernelAbstractions", "Atomix", "Adapt", "ForwardDiff"]
