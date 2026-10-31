@@ -1,6 +1,6 @@
 name: Janitor
 
-# Runs the janitor role (brief: .claude/agents/janitor.md) every hour: the minor findings the review gate
+# Runs the janitor role (brief: .claude/agents/janitor.md) after every review run and every hour: the minor findings the review gate
 # files as `follow-up` issues become small pull requests, one per issue, closed by `Fixes #<n>`. A cheap
 # job first checks whether any open follow-up issue still has something for the janitor (unchecked
 # items, no open janitor PR for it, and a last comment that is not the janitor's own) and skips
@@ -8,8 +8,15 @@ name: Janitor
 # like the package manager, so its PRs trigger CI and the review gate. Sonnet at high effort: the work is
 # mechanical by design, and the brief sends everything else back to the issue.
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, FACTORY_APP_ID, FACTORY_APP_PRIVATE_KEY.
+# Triggers: the review gate is what files follow-up issues, so a finished Review run starts the janitor
+# (`workflow_run` fires even though the review runs on GITHUB_TOKEN; an `issues` trigger would not). The
+# hourly cron is the backstop, since GitHub delivers scheduled events on a best-effort basis. The
+# concurrency group below keeps at most one run going and one waiting.
 
 on:
+  workflow_run:
+    workflows: [Review]
+    types: [completed]
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch:
