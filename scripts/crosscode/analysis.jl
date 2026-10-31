@@ -79,10 +79,14 @@ end
     growth_from_window(t, U; window) -> NamedTuple
 
 Growth rate γ of the field amplitude from a least-squares fit of log U over the contiguous
-stretch before the maximum of U where window[1] ≤ U / max U ≤ window[2]; γ = slope/2.
+stretch before saturation where window[1] ≤ U / U_sat ≤ window[2]; γ = slope/2. Saturation is
+the first local maximum of U that reaches `saturation_fraction` of the global maximum, so that
+a later, higher nonlinear bounce does not move the window past the linear phase.
 """
-function growth_from_window(t, U; window)
-    imax = argmax(U)
+function growth_from_window(t, U; window, saturation_fraction = 0.1)
+    Uglobal = maximum(U)
+    peaks = [i for i in local_maxima(U) if U[i] >= saturation_fraction * Uglobal]
+    imax = isempty(peaks) ? argmax(U) : first(peaks)
     Umax = U[imax]
     lo, hi = window
     inwin = [lo <= U[i] / Umax <= hi for i in 1:imax]

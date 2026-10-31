@@ -201,6 +201,14 @@ end
     r2 = growth_from_window(t, U2; window = (1e-3, 3e-2))
     @test r2.gamma ≈ g rtol = 1e-2
     @test all(u -> 1e-3 * r2.U_max <= u <= 3e-2 * r2.U_max, r2.U_fit)
+    # a later nonlinear bounce higher than the first saturation does not move the window
+    sat = 10.0
+    U3 = @. ifelse(t < sat, 1e-8 * exp(2g * t),
+        1e-8 * exp(2g * sat) * (0.6 + 0.4 * cos(1.5 * (t - sat))) * (1 + 0.08 * (t - sat)))
+    @test argmax(U3) > findfirst(>(sat + 4), t)          # the global maximum is a later bounce
+    r3 = growth_from_window(t, U3; window = (1e-3, 3e-2))
+    @test r3.t_max ≈ sat atol = 0.5
+    @test r3.gamma ≈ g rtol = 1e-2
 
     f = [3cos(2π * 2 * j / 16 + 0.3) + 0.5 for j in 0:16]   # 16 points plus the periodic duplicate
     @test mode_amplitude(reshape(f, :, 1), 2)[1] ≈ 3 rtol = 1e-12
