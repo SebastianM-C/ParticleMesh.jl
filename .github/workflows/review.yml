@@ -1,7 +1,8 @@
 name: Review
 
 # Automated review of every pull request by two reviewer lenses (briefs in .claude/agents/*-reviewer.md,
-# read from the base branch so a PR cannot edit its own reviewer). The gate job is a required check:
+# read from the base branch so a PR cannot edit an existing reviewer; a brief new in the PR is taken from
+# the PR, and .claude/ is a code-owner path). The gate job is a required check:
 # it approves the PR as github-actions[bot] when both lenses pass, or requests changes and fails.
 # Merging itself is GitHub's auto-merge, enabled by the PR author (see CLAUDE.md, "Pull requests").
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, a Max subscription token). If the action
@@ -21,9 +22,9 @@ concurrency:
 jobs:
   lens:
     name: Review (${{ matrix.lens }})
-    # Drafts are not reviewed. Dependabot PRs see no repository secrets, so they skip too; the
-    # package-manager role approves them instead.
-    if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' }}
+    # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
+    # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -105,7 +106,7 @@ jobs:
     steps:
       - name: Skipped review passes the gate without an approval
         if: ${{ needs.lens.result == 'skipped' }}
-        run: echo "draft or Dependabot pull request; no automated approval"
+        run: echo "draft, Dependabot or fork pull request; no automated approval"
       - name: An incomplete review blocks
         if: ${{ needs.lens.result == 'failure' || needs.lens.result == 'cancelled' }}
         run: |
