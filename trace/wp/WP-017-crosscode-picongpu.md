@@ -36,6 +36,7 @@ Like WP-003 and WP-012, the package touches only `scripts/`, `reports/` and `que
 - no current filter on the 1D set;
 - the Boris pusher;
 - immobile ions;
+- particles per cell (for a schema-1 case, the per-column count of the quasi-1D bullet above);
 - the output cadence;
 - precision. PIConGPU defaults to FP32 and Smilei to FP64. The 1D set runs in FP64 in both codes, and in FP32 in PIConGPU as a second column, so the precision effect is measured, not mixed into the code difference.
 
