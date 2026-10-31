@@ -2,7 +2,9 @@ name: Review
 
 # Automated review of every pull request by two reviewer lenses (briefs in .claude/agents/*-reviewer.md,
 # read from the base branch so a PR cannot edit an existing reviewer; a brief new in the PR is taken from
-# the PR, and .claude/ is a code-owner path). The gate job is a required check:
+# the PR, and .claude/ is a code-owner path). The lens runs the PR's tests in the job that holds the
+# review token, so a same-repository PR could read it from test code; fork PRs are excluded, which
+# limits that to collaborators and the factory app. The gate job is a required check:
 # it approves the PR as github-actions[bot] when both lenses pass, or requests changes and fails.
 # Merging itself is GitHub's auto-merge, enabled by the PR author (see CLAUDE.md, "Pull requests").
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, a Max subscription token). If the action
@@ -68,7 +70,8 @@ jobs:
             PR NUMBER: ${{ github.event.pull_request.number }}
             You are the ${{ matrix.lens }} reviewer of this repository. Your brief is the file
             ${{ runner.temp }}/brief.md and the contract every change must respect is
-            ${{ runner.temp }}/contract.md; both are the base branch's copies. The PR head is checked
+            ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
+            this PR comes from the PR itself). The PR head is checked
             out in the working directory. Read the brief and the contract, then `gh pr view` and
             `gh pr diff` for the change and its description, read the files it touches, and run what the
             brief asks for (Julia 1.13 is installed; the CPU tests are
