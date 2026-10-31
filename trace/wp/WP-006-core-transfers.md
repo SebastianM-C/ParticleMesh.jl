@@ -30,7 +30,7 @@ Shape functions as type-level configuration, `guard_width(shape)`, staggered wei
 
 ## Non-goals
 
-No Esirkepov or any current deposition: that is the LWFA module's (`lib/Wakefields`), built on these weights (§0.7 item 14). No pusher, no field solve. No tangent-bundle layout (§0.7 item 9). No Reactant (A9).
+No charge-conserving flux deposition: that is WP-009 (`deposit_flux!`, Esirkepov), built on these weights (§0.7 item 14). No pusher, no field solve. No tangent-bundle layout (§0.7 item 9). No Reactant (A9).
 
 ## Acceptance
 
