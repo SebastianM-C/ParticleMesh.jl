@@ -22,10 +22,10 @@ Software: a plain-numeric core (SoA fields and particles, KernelAbstractions ker
 
 Validation: classic 1D benchmarks with expected numbers, one matched 2D LWFA case run in ParticleMesh, Smilei and PIConGPU for correctness and throughput, conservation residuals, FP32-versus-FP64 drift, gradient checks against finite differences with deterministic deposition.
 
-Factory: requirements, decisions, interfaces, work packages, tests, runs and agent sessions as content-addressed records with staleness propagation; implementation by saved Claude Code workflows with pinned roles, on cloud sessions for CPU-only packages and on the local 4080 for GPU packages; a cron-driven Agent SDK loop on the 4080 under an API key for nightly validation; an overseer (a scheduled task now, a Managed Agents deployment later) that reads artifacts and writes a daily digest; a human interface built on risk tiers, lazy consensus, no blocking questions, one daily batch and one weekly hour; plots with scalar sidecars as the inspection channel for humans and agents alike; telemetry and hooks feeding the same trace graph.
+Factory: requirements, decisions, interfaces, work packages, tests, runs and agent sessions as content-addressed records with staleness propagation; implementation by saved Claude Code workflows with pinned roles, on cloud sessions for CPU-only packages and on the local 4080 for GPU packages; a cron-driven Agent SDK loop on the 4080 under an API key for nightly validation; an overseer (a scheduled task now, a Managed Agents deployment later) that reads artifacts and writes a daily digest; a human interface built on risk tiers enforced by GitHub (A14), no blocking questions, one daily batch and one weekly hour; plots with scalar sidecars as the inspection channel for humans and agents alike; telemetry and hooks feeding the same trace graph.
 
 ```
- you ──edit R-/D- records, answer questions, approve tier-2 PRs──┐
+ you ──edit R-/D- records, answer questions, approve tier-2 PRs───────────┐
    ▲                                                                      ▼
  daily digest ◄── overseer (reads artifacts, no GPU) ◄── trace graph ◄── repository
  dashboard                                                 ▲   ▲   ▲        ▲

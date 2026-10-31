@@ -23,7 +23,7 @@ jobs:
     name: Review (${{ matrix.lens }})
     # Drafts are not reviewed. Dependabot PRs see no repository secrets, so they skip too; the
     # package-manager role approves them instead.
-    if: ${{ !github.event.pull_request.draft && github.actor != 'dependabot[bot]' }}
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -121,6 +121,7 @@ jobs:
         if: ${{ needs.lens.result == 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |

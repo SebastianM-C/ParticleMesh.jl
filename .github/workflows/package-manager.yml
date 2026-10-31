@@ -28,11 +28,14 @@ concurrency:
 jobs:
   run:
     name: Package manager
+    # Comments start a run only from the owner, collaborators or the factory app: the issue is public.
     if: >-
       github.event_name != 'issue_comment' ||
       (github.event.issue.pull_request == null &&
        contains(github.event.issue.labels.*.name, 'pkg-request') &&
-       !startsWith(github.event.comment.body, '<!-- package-manager-reply -->'))
+       !startsWith(github.event.comment.body, '<!-- package-manager-reply -->') &&
+       (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+        github.event.comment.user.login == 'particlemesh-factory[bot]'))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
