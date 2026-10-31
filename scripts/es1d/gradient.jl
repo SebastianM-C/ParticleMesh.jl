@@ -1,30 +1,31 @@
 # The gradient check of WP-010 (T-143) as a plot: ForwardDiff against a central
-# finite-difference scan, Float64, Reference mode, common random numbers.
+# finite-difference scan (`fd_scan` of the core test helpers: Float64, Reference mode, common
+# random numbers).
 #   julia +1.13 --project=scripts scripts/es1d/gradient.jl
 include(joinpath(@__DIR__, "common.jl"))
 using ForwardDiff
 using ForwardDiff: Dual, value
+const backend = CPU()                                  # helpers.jl builds its species on it
+include(joinpath(CORE_TEST, "helpers.jl"))             # fd_scan, the one definition of A7's floor
 
-const GRAD_KW = (; n = 32, ppc = 64, tmax_ωp = 25, shape = Quadratic, mode = Reference(), seed = 2)
+const GRAD_KW = (; n = 32, ppc = 64, tmax_ωp = 25, shape = Quadratic)
+const GRAD_SEED = 2
 
-function energy_at_end(α)
-    st, p, info = landau_case(typeof(α); α, GRAD_KW...)
+function energy_at_end(α, mode = Reference(), seed = GRAD_SEED)
+    st, p, info = landau_case(typeof(α); α, mode, seed, GRAD_KW...)
     initialize!(st, p)
     run!(st, p, info.nsteps)
     return st.W[end]
 end
 
 function gradient_scan(; α0 = 0.05)
-    dir = run_dir("gradient", @__FILE__; params = Dict(string(k) => string(v) for (k, v) in pairs(merge(GRAD_KW, (; α0)))))
+    dir = run_dir("gradient", @__FILE__; params = Dict(string(k) => string(v) for (k, v) in pairs(merge(GRAD_KW, (; mode = Reference(), seed = GRAD_SEED, α0)))))
     ad = ForwardDiff.derivative(energy_at_end, α0)
     f0 = energy_at_end(α0)
     f0dual = value(energy_at_end(Dual{Nothing}(α0, 0.0)))
     hs = 10.0 .^ (-1:-0.25:-9)
-    fd = [(energy_at_end(α0 + h) - energy_at_end(α0 - h)) / 2h for h in hs]
-    rel = abs.(fd .- ad) ./ abs(ad)
-    spread = [maximum(fd[(i - 1):(i + 1)]) - minimum(fd[(i - 1):(i + 1)]) for i in 2:(length(hs) - 1)]
-    istar = argmin(spread) + 1
-    floor_rel = spread[istar - 1] / abs(ad)
+    r = fd_scan(energy_at_end, α0, hs; seed = GRAD_SEED, ad)
+    (; rel, istar, floor_rel) = r
 
     fig = Figure(size = (800, 450))
     ax = Axis(fig[1, 1]; xscale = log10, yscale = log10, xlabel = "finite-difference step h",
