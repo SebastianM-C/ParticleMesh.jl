@@ -66,7 +66,8 @@ jobs:
               anchored = p.startswith("/") or "/" in p.rstrip("/")
               body, rx, i = p.strip("/"), "", 0
               while i < len(body):
-                  if body.startswith("**", i): rx, i = rx + ".*", i + 2
+                  if body.startswith("**/", i): rx, i = rx + "(.*/)?", i + 3
+                  elif body.startswith("**", i): rx, i = rx + ".*", i + 2
                   elif body[i] == "*": rx, i = rx + "[^/]*", i + 1
                   elif body[i] == "?": rx, i = rx + "[^/]", i + 1
                   else: rx, i = rx + re.escape(body[i]), i + 1
@@ -262,8 +263,9 @@ jobs:
             gh issue create --title "$title" --label follow-up --body "$body"
           fi
       - name: Label tier-2 pull requests
-        # Never blocks the merge; the label is how the digest finds tier-2 changes.
-        if: ${{ needs.lenses.result == 'success' }}
+        # Never blocks the merge; the label is how the digest finds tier-2 changes. It runs after a
+        # "request changes" verdict too, which fails the step before it.
+        if: ${{ !cancelled() && needs.lenses.result == 'success' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
