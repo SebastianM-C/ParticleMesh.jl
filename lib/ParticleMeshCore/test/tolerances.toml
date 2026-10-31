@@ -1,0 +1,91 @@
+# Tolerances of the WP-010 spike (A7: measure, then propose). Every entry is a proposal: `C` is
+# the constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
+# backend (Julia 1.13, 1 and 8 threads), with `scale` as stated. The owner accepts a value by
+# editing A7; until then the tests hold these proposals. The test suite prints the measured
+# ratios at the end of every run, so they can be refreshed.
+
+["T-130"]
+quantity = "partition of unity |Σw - 1|, orders 1 and 2, both staggers"
+scale = "1"
+C = 2
+measured = { Float32 = 1.0, Float64 = 1.0, "Dual{Float32,3}" = 1.0 }
+status = "proposed"
+
+["T-131"]
+quantity = "gather of a + b·x against the exact value"
+scale = "|a| + |b|·L"
+C = 2
+measured = { Float32 = 0.667, Float64 = 0.667, "Dual{Float32,3}" = 0.667 }
+status = "proposed"
+
+["T-132"]
+quantity = "adjointness of deposit and gather, Σ qw·gather(f) - ⟨fold(deposit), f⟩"
+scale = "Σ|w|·max|f|"
+C = 8
+measured = { Float32 = 1.36, Float64 = 2.04, "Dual{Float32,3}" = 1.36 }
+status = "proposed"
+
+["T-133"]
+quantity = "adjointness of fill and fold, ⟨fill x, y⟩ - ⟨x, fold y⟩"
+scale = "Σ|x|·max|y|"
+C = 1
+measured = { Float32 = 0.316, Float64 = 0.262, "Dual{Float32,3}" = 0.288 }
+status = "proposed"
+
+["T-134"]
+quantity = "deposited total minus Σ qw"
+scale = "count·max|w| (counts 100 and 2000)"
+C = 16
+measured = { Float32 = 5.46, Float64 = 2.14, "Dual{Float32,3}" = 5.46 }
+status = "proposed"
+
+["T-135"]
+quantity = "per-node difference of Reference and Fast deposition"
+scale = "|ρ_node| (400 particles per cell; expected to grow with the contributions per node)"
+C = 32
+measured = { Float32 = 11.2, Float64 = 11.5 }
+status = "proposed"
+
+["T-137"]
+quantity = "discrete Gauss law residual after every step, and mean(Ehalf)"
+scale = "n·max|ρ| (and n·max|ρ|·dx for the mean)"
+C = 8
+measured = { Float32 = 1.84, Float64 = 1.53, "Dual{Float32,3}" = 1.48 }
+status = "proposed"
+
+["T-138"]
+quantity = "free streaming position error for a non-dyadic displacement"
+scale = "steps (in cell units)"
+C = 1
+measured = { Float32 = 0.1, Float64 = 0.1, "Dual{Float32,3}" = 0.1 }
+status = "proposed"
+
+["T-140"]
+quantity = "partials of the deposited density from Dual weights against the exact derivative"
+scale = "max|∂ρ|"
+C = 16
+measured = { "Dual{Float32,3}" = 3.42 }
+status = "proposed"
+
+# Physics against linear theory (A5): relative errors recorded, no threshold asserted.
+["T-141"]
+quantity = "Landau damping, kλ_D = 1/2: (measured - theory)/theory"
+case = "64 cells, 16384 particles per cell, α = 1/20, v_th = c/20, dt = 0.05/ω_p, quadratic, Reference, fit over t ≤ 20/ω_p"
+theory = { omega = 1.4156618886045367, gamma = -0.15335946690960467 }
+measured = { omega = 1.4051852124682782, gamma = -0.1492419736219506 }
+relative_error = { omega = -0.0074, gamma = -0.0268 }
+status = "proposed, noise-limited: at 4096 particles per cell the fitted γ moves by ±10 % with the fit window"
+
+["T-142"]
+quantity = "cold two-stream growth rate, k v₀/ω_p = 3/5: (measured - theory)/theory"
+case = "64 cells, 256 particles per cell per beam, v₀ = c/10, α = 1/1000, dt = 0.05/ω_p, quadratic, Reference, fit over the linear phase"
+theory = { gamma = 0.3533918224571849 }
+measured = { gamma = 0.3545690079405174 }
+relative_error = { gamma = 0.0033 }
+status = "proposed"
+
+["T-143"]
+quantity = "ForwardDiff dW/dα against a central finite-difference scan, Float64, Reference mode"
+case = "32 cells, 64 particles per cell, quadratic, 25/ω_p (about 2 box lengths of thermal travel)"
+measured = { relative_difference = 1.94e-9, scan_floor = 2.78e-9, best_h = 1e-7 }
+status = "asserted: agreement within the scan floor (spread of three consecutive difference quotients)"

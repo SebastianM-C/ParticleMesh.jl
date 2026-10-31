@@ -1,0 +1,150 @@
+{
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "rows": [
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 43.2951513671875,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 33.125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.742564697265625,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 33.03125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.58576477050781,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 33.0078125
+    },
+    {
+      "T": "Float32",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.415598373413086,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 33.001953125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 53.8873779296875,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 33.125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 26.446068115234375,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 33.03125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 33.82430541992188,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 33.0078125
+    },
+    {
+      "T": "Float32",
+      "mode": "Reference",
+      "ns_per_particle_step": 26.45999771118164,
+      "particle_bytes_per_particle": 25.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 33.001953125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 44.085283203125,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 37.125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.96436279296875,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 37.03125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 18.180603637695313,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 37.0078125
+    },
+    {
+      "T": "Float64",
+      "mode": "Fast",
+      "ns_per_particle_step": 17.844403915405273,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 37.001953125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 57.41859375,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 4096,
+      "ppc": 64,
+      "scratch_bytes_per_particle": 37.125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 28.557269287109374,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 16384,
+      "ppc": 256,
+      "scratch_bytes_per_particle": 37.03125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 31.820904235839844,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 65536,
+      "ppc": 1024,
+      "scratch_bytes_per_particle": 37.0078125
+    },
+    {
+      "T": "Float64",
+      "mode": "Reference",
+      "ns_per_particle_step": 28.475231018066406,
+      "particle_bytes_per_particle": 45.0,
+      "particles": 262144,
+      "ppc": 4096,
+      "scratch_bytes_per_particle": 37.001953125
+    }
+  ],
+  "threads": 1
+}

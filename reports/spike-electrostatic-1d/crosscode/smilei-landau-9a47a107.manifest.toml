@@ -1,0 +1,33 @@
+case = "landau"
+case_source = "scripts/crosscode/cases/landau.toml"
+code = "smilei"
+commit = "1b01ce7367f5203585a3c6bf29d56effcc95a8ce"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:e8bc34fa6893490f2d6b338ed8be6fde98341e0ba1a86ff9294176e747751058"
+run = "smilei-landau-9a47a107"
+updated = "2026-10-31T17:59:11.486Z"
+
+[image]
+id = "# image: localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:9a47a107b38cf142ae7f7a57c1c1d8440bc08a64987a56f7294ded5363e1eeaf"
+"run.sh" = "sha256:4eeda89f58b210351505848768db2c6415aea8b0a1c0990f2cf7abe1ed38234c"
+"smilei.py" = "sha256:9a7df22bcf207980bb7f0366a0a2764a9c9ad38ced985be28c98d715c255fd22"
+
+[observables]
+case = "landau"
+fit_points = 0
+noise_floor = 1.8048471862e-9
+observable = "damping_rate"
+theory = 0.1533594669096052
+theory_frequency = 1.4156618886045358
+
+[outputs]
+"Fields0.h5" = "sha256:ecb69565a9aaa5f856f472b9578e42f2d3d09dac5e14b6a9d1466275fd822059"
+"container.txt" = "sha256:353341040ee6b813b58c0a270be942035532f0873a125c9dae895f0a2bea94c9"
+"scalars.txt" = "sha256:3c6d14a57bf3cc96d8e87b1d6451aa3abf5bff820f81546a80d87b7cfd730543"
+"smilei.log" = "sha256:dc23d24e5dde048d9056090dfad1a60a438f79ea604fddf135fafd4625c3cca4"
