@@ -1,0 +1,12 @@
+{
+  "A_final": 2.681478231236725e-5,
+  "A_initial": 0.004995985337696231,
+  "fit_tmax": 20,
+  "gamma_measured": -0.1492419736219506,
+  "gamma_theory": -0.15335946690960467,
+  "omega_measured": 1.4051852124682782,
+  "omega_theory": 1.4156618886045367,
+  "peaks": 8,
+  "relative_error_gamma": -0.02684864110854701,
+  "relative_error_omega": -0.007400549679687756
+}

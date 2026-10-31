@@ -13,7 +13,9 @@ end
     root = dirname(@__DIR__)
     for lib in ("ParticleMeshCore",)
         project = joinpath(root, "lib", lib)
-        cmd = `$(Base.julia_cmd()) --startup-file=no --project=$project -e "using Pkg; Pkg.test()"`
+        # Pkg.test restricts JULIA_LOAD_PATH to the test environment; the child needs Pkg.
+        cmd = addenv(`$(Base.julia_cmd()) --startup-file=no --project=$project -e "using Pkg; Pkg.test()"`,
+                     "JULIA_LOAD_PATH" => "@:@stdlib")
         @test success(pipeline(cmd; stdout, stderr))
     end
 end

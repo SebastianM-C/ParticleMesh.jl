@@ -1,0 +1,7 @@
+{
+  "energy_drift_final": -4.03738262801991e-5,
+  "energy_drift_max": 5.530922142666075e-5,
+  "field_initial": 3.0820623923849583e-6,
+  "gauss_residual_max_over_eps_scale": 2.085052879028862,
+  "kinetic_initial": 0.002358873861395942
+}

@@ -1,0 +1,12 @@
+{
+  "A_initial": 0.00016653284458986392,
+  "fit_window": [
+    11.65,
+    19.0
+  ],
+  "gamma_measured": 0.3545690079405174,
+  "gamma_theory": 0.3533918224571849,
+  "relative_error": 0.003331105612878397,
+  "saturation_amplitude": 0.0555813485803954,
+  "saturation_time": 23.85
+}
