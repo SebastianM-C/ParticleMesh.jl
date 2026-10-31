@@ -9,7 +9,7 @@ Index of the design record and the zoom-out over the planning documents; the det
 | `landscape-and-requirements.md` | what exists (Julia, JAX, production PIC, BO practice, reduced models), the MethodOfLines v1 measurements, requirements R1 to R10, risks, sources |
 | `architecture-draft.md` | layers L0 to L4, core numerics, parallel layout, differentiation, symbolic front-end, hardware mapping, order of work |
 | `sciml-reuse.md` | what to reuse from SciML per layer, with what was verified in the package sources |
-| `open-items.md` | decisions taken (A1 to A13), thin spots (B1 to B11), deferred items, risks, the first cloud-session batch (G), what the implementation team receives (E) |
+| `open-items.md` | decisions taken (A1 to A14), thin spots (B1 to B11), deferred items, risks, the first cloud-session batch (G), what the implementation team receives (E) |
 | `factory-and-observability.md` | traceability layer, compute topology, platform facts, visualization, budget pools, overseer, human interface, factory shape |
 | `workflows-primer.md` | how saved Claude Code workflows work, the `plan-review` script, the factory's workflow list |
 | `overview.md` | this file |
@@ -25,7 +25,7 @@ Validation: classic 1D benchmarks with expected numbers, one matched 2D LWFA cas
 Factory: requirements, decisions, interfaces, work packages, tests, runs and agent sessions as content-addressed records with staleness propagation; implementation by saved Claude Code workflows with pinned roles, on cloud sessions for CPU-only packages and on the local 4080 for GPU packages; a cron-driven Agent SDK loop on the 4080 under an API key for nightly validation; an overseer (a scheduled task now, a Managed Agents deployment later) that reads artifacts and writes a daily digest; a human interface built on risk tiers, lazy consensus, no blocking questions, one daily batch and one weekly hour; plots with scalar sidecars as the inspection channel for humans and agents alike; telemetry and hooks feeding the same trace graph.
 
 ```
- you ──edit R-/D- records, answer questions, veto tier-1, approve tier-2──┐
+ you ──edit R-/D- records, answer questions, approve tier-2 PRs──┐
    ▲                                                                      ▼
  daily digest ◄── overseer (reads artifacts, no GPU) ◄── trace graph ◄── repository
  dashboard                                                 ▲   ▲   ▲        ▲
@@ -65,7 +65,7 @@ A1 normalized units, ω₀ reference, SI in the user layer · A2 baseline scheme
 ### Process
 17. **Governance of the plan.** Decision record format, who may change a requirement, how often the planning documents are reviewed (the `plan-review` workflow on a schedule), how the plan is versioned alongside the code.
 18. **Cost model.** Per-package and monthly ceilings, alerts, and what happens when a pool runs out mid-package.
-19. **The lazy-consensus window and the tier thresholds**, to be set once there is a track record.
+19. **The tier thresholds**: which paths are tier 2 (`.github/CODEOWNERS`) and when a package type moves between tiers, adjusted on evidence (A14).
 
 ## 5. Suggested order for closing them
 

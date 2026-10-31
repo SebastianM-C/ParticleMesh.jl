@@ -1,6 +1,6 @@
 # ParticleMesh: landscape and requirements
 
-Status: landscape survey; the requirements of §6 are settled by decisions A1 to A13 in `open-items.md`.
+Status: landscape survey; the requirements of §6 are settled by decisions A1 to A14 in `open-items.md`.
 
 Goal as stated: differentiable LWFA simulations in Julia, used to optimize laser and plasma parameters for maximum electron energy. Question: build on MethodOfLines.jl v1, reuse something existing, or write a PIC core from scratch?
 

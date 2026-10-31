@@ -22,7 +22,7 @@ NVIDIA and AMD GPUs and, through Reactant, as a traced, raised and sharded progr
 ## Status
 
 Nothing runs yet. The design record in `docs/plan/` (start with `overview.md`) is the current
-state of the project; decisions A1 to A13 in `docs/plan/open-items.md` are binding for anyone,
+state of the project; decisions A1 to A14 in `docs/plan/open-items.md` are binding for anyone,
 human or agent, who works here.
 
 ## Layout
