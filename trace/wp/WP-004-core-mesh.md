@@ -9,8 +9,8 @@ adds_dependencies = ["KernelAbstractions", "Atomix", "Adapt", "AcceleratedKernel
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A6 = "e74c3f1888230689a004f506408f7c75e73076c7"
 A7 = "b4cade448159d5276774626df7f94299f8621395"
-A8 = "c60f1646a0139b96db9e52e98cbd6408a1a9272a"
-A9 = "89bb5c44cea879c80e8ec750e17539f6de4ee053"
+A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
+A9 = "c4a9112c185bc4f4af5c969b185524cc74321372"
 +++
 # WP-004: engine core, mesh: bootstrap, grid, field sets, guard fill
 

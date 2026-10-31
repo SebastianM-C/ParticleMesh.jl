@@ -10,7 +10,7 @@ A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
 A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
 A4 = "c85034796ed0c2c17c6629196b93ee07c4d8b2f2"
 A7 = "b4cade448159d5276774626df7f94299f8621395"
-A8 = "c60f1646a0139b96db9e52e98cbd6408a1a9272a"
+A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 +++
 # WP-006: engine core, transfers: shapes, gather, deposition in both modes
 
