@@ -164,7 +164,7 @@ Software
 - R9 AD: ForwardDiff Duals end-to-end in phase 1–3; Enzyme/Reactant reverse mode in phase 4 with per-step checkpointing.
 - R10 Optimization layer: Optimization.jl with gradients; BO baseline (optimas or Julia BO) on the same objective for a fair comparison, since BO is what the field uses.
 - R11 Modular physics (A9, architecture §0): an engine (particles, grids, transfers, loop, AD, backends) separate from physics modules (interactions, solvers, pushers, sources); the LWFA module first, an electrostatic module as the proof of the split; EDM as an external-field and force module later; interfaces that do not preclude pairwise, Molly-style interactions.
-- R12 Reactant-compilable core (A9, architecture §0.4): static shapes, masks instead of resizing, both deposition variants, no scalar indexing outside kernels, a Reactant CPU smoke test in CI from the first package; a particle-workload stress-test suite across KA-CUDA, Reactant-CUDA and Reactant-CPU as a deliverable in its own right.
+- R12 Reactant-compilable core (A9, architecture §0.4): static shapes, masks instead of resizing, both deposition variants, no scalar indexing outside kernels, a Reactant CPU smoke test in CI once Reactant is unparked (A9); a particle-workload stress-test suite across KA-CUDA, Reactant-CUDA and Reactant-CPU as a deliverable in its own right.
 - R13 Problem description separated from numerical implementation (principle, A10): physics modules expressible as descriptions (MTK systems, `PDESystem`, equation types, source and boundary data) with the numerical choices (shape functions, Yee/FEM/DG, pusher, deposition variant, backend) made separately; hand-written kernels are the production path and generated code replaces them one slot at a time.
 
 ## 7. Risks
