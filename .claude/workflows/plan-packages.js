@@ -1,7 +1,7 @@
 export const meta = {
   name: 'plan-packages',
   description: 'Cut the next work packages from the ParticleMesh plan, verify each against the plan, and write them as records under trace/wp/',
-  whenToUse: 'When no dispatchable package is left, or after the plan or a decision changed; the records it writes go into one PR that the owner approves',
+  whenToUse: 'When no dispatchable package is left, or after the plan or a decision changed; the records it writes go into one PR that merges on the automated review, and the digest lists them',
   phases: [
     { title: 'Propose', detail: 'three planners, each from a different angle' },
     { title: 'Merge', detail: 'one judge merges the proposals into an ordered list' },

@@ -1,6 +1,6 @@
 # WP-001: trace layer MVP
 
-Status: proposed. Tier 2: work-package records and the CI job are code-owner paths (owner approval).
+Status: proposed. Tier 2: the CI job, the plan edits and the first requirement, decision and interface records are code-owner paths (owner approval).
 
 ## Scope
 
@@ -13,7 +13,7 @@ The traceability layer of `docs/plan/factory-and-observability.md` section 1, en
 3. **First records.** `R-` records for the requirements of `docs/plan/landscape-and-requirements.md` section 6, plus one new requirement for traceability itself, transcribed from section 1 of the factory document, since section 6 has none; `D-001` to `D-014` for decisions A1 to A14 of `docs/plan/open-items.md`, each `derived_from` the requirements it serves, with the alternatives the plan text rejects; `I-` records, status proposed, for the interfaces named in `docs/plan/architecture-draft.md` section 0; `T-000` for the existing test; `WP-001` for this package. Transcribe, do not invent: when the plan gives no rationale, say so in the record.
 4. **Test tags.** The convention `@testset "T-031 name [R-012, R-013]"` documented in `trace/README.md`; the existing test already follows it.
 5. **CI gate.** A job `trace` in `.github/workflows/CI.yml` that runs the builder with `--check`. It fails on a hash mismatch or an untraced test, and only warns on stale accepted nodes for now.
-6. **Code owners.** `.github/CODEOWNERS` gains patterns for `trace/records/R-*.toml`, `D-*.toml` and `I-*.toml`, as its comment announces, so requirement, decision and interface records need the owner's approval, as work-package records under `trace/wp/` already do, while test, run and session records do not.
+6. **Code owners.** `.github/CODEOWNERS` gains patterns for `trace/records/R-*.toml`, `D-*.toml` and `I-*.toml`, as its comment announces, so requirement, decision and interface records need the owner's approval while work-package, test, run and session records do not.
 7. **Session records.** The `S-` schema and `scripts/trace/session.jl`, which writes one `S-` record from arguments (agent, platform, work packages touched, start and end commit or PR, outcome). Wiring it into the harness (hooks, cost fields) is a later package.
 
 ## Non-goals

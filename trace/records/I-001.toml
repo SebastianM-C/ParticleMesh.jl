@@ -1,0 +1,12 @@
+id = "I-001"
+title = "Particle set"
+status = "proposed"
+source = "docs/plan/architecture-draft.md sections 0.1 and 0.4 (rule 1)"
+contract = """Particle sets are structure-of-arrays buffers of fixed capacity with an alive mask and a count; the engine owns cell sorting and compaction. Injection and the moving window write into free slots; compaction is a stable partition within the same buffer. No data-dependent allocation inside `step!`. The element type `T` is a parameter (A8)."""
+derived_from = ["D-008", "D-009"]
+open = """The plan names the layout and the static-shape rules, not the field names or the function signatures."""
+hash = "sha256:c3c0e91142dea1db4f303fc0b62ae2fc79bf84d014a8ebd4d2a8381937fedda1"
+
+[upstream]
+D-008 = "sha256:e76a0d61c6c55a5fb8a9c6a1c62c347f4177fd34843832772a23705603b2a4a2"
+D-009 = "sha256:a6a148d894142d8158319c4c312e1abc26e9518cbd3b3606b1dc317847cbf20a"

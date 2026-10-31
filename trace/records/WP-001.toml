@@ -1,0 +1,18 @@
+id = "WP-001"
+title = "Trace layer MVP"
+status = "proposed"
+source = "trace/wp/WP-001-trace-mvp.md"
+scope = """The traceability layer of factory-and-observability.md section 1, enough for every later work package, test and run to be recorded: the record format, the builder, the first records transcribed from the plan, the test-tag convention, one CI gate, code-owner patterns for requirement, decision and interface records, and the session-record writer."""
+non_goals = ["The viewer and the static state page (A13, later package)", "Cost attribution per package", "Managed Agents events", "Any change to the engine code"]
+acceptance = ["scripts/trace/build.jl --check passes on the first records and on the test suite", "T-001 trace staleness propagates", "T-002 trace hashes are canonical", "The trace CI job is green on the PR", "trace/README.md describes the format, the commands and the tag convention in under two screens"]
+budgets = """CPU only, seconds per build. No GPU, no network beyond the Julia package servers."""
+implements = []
+satisfies = ["R-014"]
+depends_on = ["D-006", "D-011", "D-013"]
+hash = "sha256:939b201df06a8c2ab1beab5fbf754bfbdb61c57092eea0b8f08079f9fa5f10ca"
+
+[upstream]
+D-006 = "sha256:0a02531b4b48c12bfea6276ea953730982a5d4de952488f758847e9cf895495e"
+D-011 = "sha256:23fe2ae1be991fb18a89d84051d5808df47cad08766f15f3386159a5b1553cea"
+D-013 = "sha256:6fc92f506a3516570b877f93ce532d5fe79846c332af09f11346a3529d616bcc"
+R-014 = "sha256:3763c6fa321dde766d7e8a49937545e3706181b8b04c940d9c7c1a0383b0ab7f"

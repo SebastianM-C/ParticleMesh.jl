@@ -39,6 +39,23 @@ jobs:
           julia --project -e 'using Pkg; Pkg.instantiate()'
           julia --project=scripts -e 'using Pkg; Pkg.instantiate()'
           git diff --exit-code -- Manifest.toml scripts/Manifest.toml
+  trace:
+    name: Trace records and test tags
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.13'
+      - uses: julia-actions/cache@v3
+      - name: Instantiate scripts/ without precompiling the plotting stack
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
+        run: julia --project=scripts -e 'using Pkg; Pkg.instantiate()'
+      - name: Tests of the trace tooling
+        run: julia --project=scripts scripts/trace/test/runtests.jl
+      - name: Hashes, links and untraced tests (stale accepted records only warn)
+        run: julia --project=scripts scripts/trace/build.jl --check
   dependency-guard:
     name: Dependency files change only on pkg/ branches
     if: github.event_name == 'pull_request'

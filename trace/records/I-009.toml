@@ -1,0 +1,11 @@
+id = "I-009"
+title = "Loggers and diagnostics"
+status = "proposed"
+source = "docs/plan/architecture-draft.md sections 0.1 and 0.6"
+contract = """Diagnostics are loggers: callbacks or saved states. On the Reactant path they live outside the traced solve, as saved states or as reductions inside the step; loggers are outside the differentiated path."""
+derived_from = ["D-009"]
+open = """The plan names the role, not the interface."""
+hash = "sha256:d92d3d952770f56845a4bfec7583d428a9325decaefa481a9ca2bb4538ce4c4d"
+
+[upstream]
+D-009 = "sha256:a6a148d894142d8158319c4c312e1abc26e9518cbd3b3606b1dc317847cbf20a"

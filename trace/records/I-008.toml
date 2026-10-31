@@ -1,0 +1,12 @@
+id = "I-008"
+title = "Differentiation interface"
+status = "proposed"
+source = "docs/plan/architecture-draft.md section 0.4 (rule 8)"
+contract = """The AD strategy sits behind an interface, `jvp(step!, state, params, seeds)` and later `vjp`. The native path implements it with the tangent-bundle layout (architecture section 4), the Reactant path with Enzyme-MLIR forward mode on the raised program. User code does not see the difference."""
+derived_from = ["D-008", "D-009"]
+open = """The plan gives the name and the argument list of `jvp`, not the return value or the tangent layout."""
+hash = "sha256:b19f768dfcaa0b8608edffbb500ffbf37015c899d3e69bd346ed434f84afe863"
+
+[upstream]
+D-008 = "sha256:e76a0d61c6c55a5fb8a9c6a1c62c347f4177fd34843832772a23705603b2a4a2"
+D-009 = "sha256:a6a148d894142d8158319c4c312e1abc26e9518cbd3b3606b1dc317847cbf20a"
