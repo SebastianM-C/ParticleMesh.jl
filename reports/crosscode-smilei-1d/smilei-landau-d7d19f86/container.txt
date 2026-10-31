@@ -1,0 +1,5 @@
+# smilei binary: /usr/local/bin/smilei
+# smilei version: v5.1 438d43d8ab727d02dd8f4402c50393343e871b99
+# threads: 8, cpus: 8
+# start: 2026-10-31T17:43:09.449449004Z
+# end: 2026-10-31T17:49:28.704997488Z

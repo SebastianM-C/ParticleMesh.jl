@@ -29,11 +29,30 @@ function image_id(dir, log)
     for f in (log, joinpath(dir, "image.txt"))
         (f === nothing || !isfile(f)) && continue
         for line in eachline(f)
-            m = match(r"image\S*[:=]?\s*(.*)$"i, line)
-            m === nothing || return strip(line)
+            m = match(r"^#\s*image:\s*(.*)$"i, line)
+            m === nothing || return strip(m.captures[1])
         end
     end
     return "unknown"
+end
+
+"CPU model and thread count: from the run's container.txt, else from the analysis host."
+function hardware(dir)
+    f = joinpath(dir, "container.txt")
+    lines = isfile(f) ? readlines(f) : String[]
+    cpu = something(findfirst(l -> startswith(l, "# cpu model:"), lines), 0)
+    thr = something(findfirst(l -> startswith(l, "# threads:"), lines), 0)
+    h = Dict{String,Any}()
+    thr > 0 && (h["threads"] = strip(split(lines[thr], ":"; limit = 2)[2]))
+    if cpu > 0
+        h["cpu"] = strip(split(lines[cpu], ":"; limit = 2)[2])
+        h["cpu_source"] = "run"
+    else
+        m = isfile("/proc/cpuinfo") ? findfirst(l -> startswith(l, "model name"), readlines("/proc/cpuinfo")) : nothing
+        h["cpu"] = m === nothing ? "unknown" : strip(split(readlines("/proc/cpuinfo")[m], ":"; limit = 2)[2])
+        h["cpu_source"] = "analysis host (the run did not record it; same machine for runner runs)"
+    end
+    return h
 end
 
 function analyze(dir; log = nothing)
@@ -138,6 +157,7 @@ function analyze(dir; log = nothing)
     outhash = Dict(relpath(f, dir) => "sha256:" * file_hash(f) for f in outputs)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => image_id(dir, log)))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
+        "hardware" => hardware(dir),
         "observables" => Dict(k => v for (k, v) in result if v !== nothing)))
     return result
 end

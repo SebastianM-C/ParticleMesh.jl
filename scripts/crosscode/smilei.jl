@@ -189,6 +189,7 @@ function run_script(p)
       echo "# smilei binary: \$(command -v smilei)"
       echo "# smilei version: \$(cat /opt/smilei/VERSION 2>/dev/null || echo unknown)"
       echo "# threads: \$OMP_NUM_THREADS, cpus: \$(nproc)"
+      echo "# cpu model: \$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
     } > container.txt
     echo "# start: \$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" >> container.txt
     smilei smilei.py > smilei.log 2>&1
