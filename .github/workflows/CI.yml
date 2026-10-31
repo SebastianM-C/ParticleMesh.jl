@@ -48,9 +48,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Compare against the base branch
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '(^|/)(Project|Manifest[^/]*)\.toml$' || true)
-          if [ -n "$changed" ] && [[ "${{ github.head_ref }}" != pkg/* ]]; then
+          changed=$(git diff --name-only "origin/$BASE...HEAD" | grep -E '(^|/)(Project|Manifest[^/]*)\.toml$' || true)
+          if [ -n "$changed" ] && [[ "$HEAD_REF" != pkg/* ]]; then
             echo "Only the package-manager role changes these files, on a pkg/ branch:" >&2
             echo "$changed" >&2
             exit 1

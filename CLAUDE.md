@@ -5,7 +5,7 @@ ParticleMesh.jl is a differentiable particle–mesh simulation engine in Julia w
 ## Orientation (read in this order)
 
 1. `docs/plan/overview.md`: the picture, what is decided, what is open.
-2. `docs/plan/open-items.md`: decisions A1 to A13 (binding), thin spots B, deferred items C.
+2. `docs/plan/open-items.md`: decisions A1 to A14 (binding), thin spots B, deferred items C.
 3. `docs/plan/architecture-draft.md`: layers; section 0 for the engine/module split and the Reactant rules.
 4. `docs/plan/factory-and-observability.md`: traceability records, risk tiers, how sessions are recorded.
 5. The work package you were given, in `trace/`.
@@ -37,8 +37,10 @@ A Pkg workspace: the umbrella package at the root, with `test/`, `docs/`, `bench
 - Tests: `julia +1.13 --project -e 'using Pkg; Pkg.test()'`; for a subpackage, `--project=lib/<Name>`. One `Pkg.instantiate()` at the root covers the whole workspace; `scripts/` instantiates separately. GPU tests run only with `PM_TEST_GPU=1` and through `scripts/gpu-lock.sh`, which serializes GPU use between agents. Never run GPU work from two worktrees at once. A sandboxed session has no GPU; where the machine provides a `gpu-runner` session (see that machine's own CLAUDE.md), request the run from it instead of trying CUDA locally.
 - Test names carry trace tags, `@testset "T-031 Esirkepov charge conservation [R-012]"`, so the trace builder can link tests to requirements.
 - Do not ask blocking questions. Write the assumption to `questions/<id>.md`, proceed, and mark the affected records.
-- Decisions: A1 to A13 in `docs/plan/open-items.md` are the current decisions, stated as they stand; git is their history. To change one, edit its text in the PR that needs the change and say why in the PR description (tier 2). Never write "decided on <date>" in the plan and never keep superseded text next to the new one.
-- Pull requests: tier 0 (tests, docs, mechanical changes) may auto-merge on green CI; tier 1 merges after the lazy-consensus window; tier 2 waits for explicit approval. Tiers are defined in `docs/plan/factory-and-observability.md`.
+- Decisions: A1 to A14 in `docs/plan/open-items.md` are the current decisions, stated as they stand; git is their history. To change one, edit its text in the PR that needs the change and say why in the PR description (tier 2). Never write "decided on <date>" in the plan and never keep superseded text next to the new one.
+- Pull requests (A14): merging is GitHub's job, not yours. `main` takes squash merges only, through pull requests with green required checks and one approving review. The approval for tier 0 and tier 1 comes from the automated review (`.github/workflows/review.yml`: two reviewer lenses, briefs in `.claude/agents/numerics-reviewer.md` and `code-reviewer.md`, read from the base branch); tier 2 is every path listed in `.github/CODEOWNERS` and needs the owner's approval as well. After opening a PR, enable auto-merge once, `gh pr merge --auto --squash`, and move on: GitHub merges when the requirements are met and deletes the branch. Answer a "changes requested" review by pushing; approvals are dismissed on push and re-earned by the next review run. The PR description becomes the squash commit message, so it carries the attribution and the record ids. Keep a PR in draft while it should not be reviewed. Tiers are defined in `docs/plan/factory-and-observability.md`.
+- Identities on GitHub: local factory sessions act as the app `particlemesh-factory[bot]`; cloud sessions act as the owner's account and mark their posts with the Claude Code attribution line. A comment from the owner's account without that line is the owner speaking; everything else is another agent.
+- Cloud sessions reach GitHub through a proxy that rejects GraphQL, so `gh pr ...` and `gh issue ...` fail there with a 403: open the PR with the built-in GitHub tools, leave auto-merge to the owner, and put inbox comments in `questions/` (next section).
 - Anything you post on GitHub (PR descriptions, issues, comments) states that it was written by Claude Code and names the model id. Commits carry the attribution trailer the harness provides. Replace your home directory by `~` in any path you post.
 - Before benchmark numbers or scientific claims leave the repository (a README table, a paper, a talk), they get an independent review by a fresh reviewer session.
 - Runs produce the standard plot set with scalar sidecars; record every run in `trace/` with its inputs hashed. Reports are Markdown in `reports/`, with the header `reports/README.md` describes and the figures committed next to them.
@@ -49,6 +51,7 @@ A Pkg workspace: the umbrella package at the root, with `test/`, `docs/`, `bench
 - Problems with the setup or the process rather than the code (sandbox denials, depots, the GPU runner, tooling, a rule in this file that cannot be followed, decisions that contradict each other) go as one comment per problem on the pinned issue "Factory issues" (`gh issue list --label factory --state open`): what you tried, the exact error, the workaround, the time lost. Then continue. Never retry outside the sandbox or look for another way in.
 - A package you need goes as one comment on the pinned issue "Package requests" (`gh issue list --label pkg-request --state open`): package, version constraint if any, what for, which work package. The `package-manager` role answers with a PR.
 - All three issues are inboxes. Never create, edit, close or pin issues; only comment.
+- A cloud session cannot comment on issues (`gh issue` is rejected by its proxy and `gh api` is denied here). Write the would-be comment to `questions/<id>.md` with a first line `inbox: upstream-triage`, `inbox: factory` or `inbox: pkg-request`; the overseer lists it and a local session posts it.
 
 ## Background jobs and waiting
 

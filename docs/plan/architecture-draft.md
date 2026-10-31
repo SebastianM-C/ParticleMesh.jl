@@ -1,6 +1,6 @@
 # ParticleMesh: architecture draft
 
-Companion to `landscape-and-requirements.md`. Status: design record; §0 and the decisions A1 to A13 in `open-items.md` are binding.
+Companion to `landscape-and-requirements.md`. Status: design record; §0 and the decisions A1 to A14 in `open-items.md` are binding.
 
 Constraints:
 - keep a symbolic-numeric angle possible without blocking on it;

@@ -1,0 +1,159 @@
+name: Review
+
+# Automated review of every pull request by two reviewer lenses (briefs in .claude/agents/*-reviewer.md,
+# read from the base branch so a PR cannot edit an existing reviewer; a brief new in the PR is taken from
+# the PR, and .claude/ is a code-owner path). The lens runs the PR's tests in the job that holds the
+# review token, so a same-repository PR could read it from test code; fork PRs are excluded, which
+# limits that to collaborators and the factory app. The gate job is a required check:
+# it approves the PR as github-actions[bot] when both lenses pass, or requests changes and fails.
+# Merging itself is GitHub's auto-merge, enabled by the PR author (see CLAUDE.md, "Pull requests").
+# Secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, a Max subscription token). If the action
+# ever rejects the plain GITHUB_TOKEN, install the Claude GitHub App on the repository, drop the
+# github_token input and grant `id-token: write` to the lens job instead.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lens:
+    name: Review (${{ matrix.lens }})
+    # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
+    # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    strategy:
+      fail-fast: false
+      matrix:
+        lens: [numerics, code]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Reviewer brief and contract from the base branch
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          LENS: ${{ matrix.lens }}
+        run: |
+          git fetch --no-tags origin "$BASE"
+          git show "origin/$BASE:CLAUDE.md" > "$RUNNER_TEMP/contract.md"
+          if ! git show "origin/$BASE:.claude/agents/$LENS-reviewer.md" > "$RUNNER_TEMP/brief.md" 2>/dev/null; then
+            # A brief that does not exist on the base branch yet is being introduced by this PR; it needs
+            # the owner's approval anyway (.claude/ is a CODEOWNERS path), so use the PR's copy.
+            echo "::warning::no $LENS-reviewer brief on $BASE yet; using this PR's copy"
+            cp ".claude/agents/$LENS-reviewer.md" "$RUNNER_TEMP/brief.md"
+          fi
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.13'
+      - uses: julia-actions/cache@v2
+      - name: Review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            You are the ${{ matrix.lens }} reviewer of this repository. Your brief is the file
+            ${{ runner.temp }}/brief.md and the contract every change must respect is
+            ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
+            this PR comes from the PR itself). The PR head is checked
+            out in the working directory. Read the brief and the contract, then `gh pr view` and
+            `gh pr diff` for the change and its description, read the files it touches, and run what the
+            brief asks for (Julia 1.13 is installed; the CPU tests are
+            `julia --project -e 'using Pkg; Pkg.test()'`, or `--project=lib/<Name>` for a subpackage).
+            Do not post comments, do not edit files, do not push. Return only the structured verdict:
+            "pass" when nothing blocks the merge, "fail" when at least one finding is blocking. Each
+            finding has a severity ("blocking" or "minor"), a file, a line (0 when none applies) and one
+            sentence saying what is wrong and how to verify it. The summary is two sentences.
+          claude_args: |
+            --model claude-opus-5-5
+            --max-turns 60
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(julia:*),Read,Grep,Glob"
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["pass","fail"]},"summary":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"severity":{"type":"string","enum":["blocking","minor"]},"file":{"type":"string"},"line":{"type":"integer"},"note":{"type":"string"}},"required":["severity","file","line","note"]}}},"required":["verdict","summary","findings"]}'
+      - name: Save the verdict
+        env:
+          VERDICT: ${{ steps.review.outputs.structured_output }}
+          LENS: ${{ matrix.lens }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/verdict"
+          # Fail closed: no output, or no verdict, is not a pass.
+          if ! printf '%s\n' "$VERDICT" | jq -e '.verdict == "pass" or .verdict == "fail"' >/dev/null 2>&1; then
+            echo "the $LENS lens returned no verdict" >&2
+            exit 1
+          fi
+          printf '%s\n' "$VERDICT" | jq --arg lens "$LENS" '. + {lens: $lens}' > "$RUNNER_TEMP/verdict/$LENS.json"
+          jq -r '"\(.lens): \(.verdict), \(.findings | length) finding(s)"' "$RUNNER_TEMP/verdict/$LENS.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verdict-${{ matrix.lens }}
+          path: ${{ runner.temp }}/verdict/${{ matrix.lens }}.json
+
+  gate:
+    name: Review gate
+    needs: lens
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Skipped review passes the gate without an approval
+        if: ${{ needs.lens.result == 'skipped' }}
+        run: echo "draft, Dependabot or fork pull request; no automated approval"
+      - name: An incomplete review blocks
+        if: ${{ needs.lens.result == 'failure' || needs.lens.result == 'cancelled' }}
+        run: |
+          echo "a review job did not complete; see the Review (...) jobs" >&2
+          exit 1
+      - uses: actions/download-artifact@v4
+        if: ${{ needs.lens.result == 'success' }}
+        with:
+          pattern: verdict-*
+          merge-multiple: true
+          path: verdicts
+      - name: Approve or request changes
+        if: ${{ needs.lens.result == 'success' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          body=$(jq -rs '
+            def line: "- **\(.severity)** `\(.file)`\(if .line > 0 then ":\(.line)" else "" end): \(.note)";
+            "Automated review of \(env.HEAD[0:7]) by two reviewer lenses, written by Claude Code (claude-opus-5-5) in `.github/workflows/review.yml`.\n\n"
+            + (map("### \(.lens): \(.verdict)\n\n\(.summary)\n"
+                   + (if (.findings | length) > 0 then "\n" + (.findings | map(line) | join("\n")) + "\n" else "" end))
+               | join("\n"))
+          ' verdicts/*.json)
+          count=$(jq -rs 'length' verdicts/*.json)
+          passes=$(jq -rs 'map(select(.verdict == "pass")) | length' verdicts/*.json)
+          if [ "$count" != 2 ]; then
+            echo "expected two verdicts, found $count" >&2
+            exit 1
+          fi
+          # If the repository setting "Allow GitHub Actions to create and approve pull requests" is off,
+          # the approve call errors and this job turns red rather than stalling silently.
+          if [ "$passes" = 2 ]; then
+            gh pr review "$PR" --approve --body "$body"
+          else
+            gh pr review "$PR" --request-changes --body "$body"
+            echo "$((count - passes)) lens(es) requested changes" >&2
+            exit 1
+          fi

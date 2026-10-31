@@ -1,0 +1,26 @@
+# Tier-2 paths. A change here needs the repository owner's approval in addition to the automated
+# review (ruleset "main" requires review from Code Owners). Paths not listed are tier 0 or 1 and
+# merge on green required checks plus the automated review. The last matching pattern wins.
+
+# The contract for agent sessions, the role briefs, the saved workflows, the permission settings
+/CLAUDE.md                  @SebastianM-C
+/.claude/                   @SebastianM-C
+
+# CI, the review and package-manager workflows, Dependabot, this file
+/.github/                   @SebastianM-C
+
+# The design record: requirements, decisions, interfaces
+/docs/plan/                 @SebastianM-C
+
+# What leaves the repository as a claim or a term
+/README.md                  @SebastianM-C
+/LICENSE                    @SebastianM-C
+
+# New dependencies and compat changes, proposed by the package-manager role on pkg/ branches.
+# Manifests are not listed, so the weekly manifest update merges without the owner.
+/Project.toml               @SebastianM-C
+/*/Project.toml             @SebastianM-C
+/lib/*/Project.toml         @SebastianM-C
+
+# Trace records of requirements, decisions and interfaces: the trace MVP work package adds their
+# patterns here once the record layout exists.
