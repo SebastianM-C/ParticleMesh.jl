@@ -80,7 +80,7 @@ The derivation, with these conventions, goes in the test header.
 
 ## Acceptance
 
-Test ids T-230 to T-239.
+Test ids T-230 to T-237.
 
 - **T-230 the pusher slot** [A2, A10, WP-015]: a short Landau run of WP-014's step completes with each of the four pushers, changing only the pusher type. With `Boris` it is bitwise identical to WP-014's run.
 - **T-231 uniform B** [A2, A7, A8, WP-015]: for all four pushers, |u| is conserved to C·eps(T)·steps. With u ⊥ B, the per-step gyrophase matches its closed form to roundoff:
