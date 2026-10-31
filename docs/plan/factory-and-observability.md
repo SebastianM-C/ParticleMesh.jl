@@ -75,7 +75,7 @@ Prerequisites: the public repository with the planning documents under `docs/pla
 
 Then run these as parallel cloud sessions, or as Project threads where available:
 1. Trace layer MVP (done, then reduced to the git-native links of section 1).
-2. Core package skeleton on the KA CPU backend: `Grid{N}`, SoA species, Yee, Boris, Esirkepov, gather, generic `T`, unit and conservation tests.
+2. Core package skeleton on the KA CPU backend: `Grid{N}`, SoA species, shape functions, gather, scalar deposition in both variants, sorting, generic `T`, exact-identity and conservation tests; Yee, Boris and Esirkepov belong to the LWFA module (`architecture-draft.md` §0.7 item 14).
 3. 1D3V benchmark suite with expected numbers (Landau damping, two-stream, Weibel) plus the standard plot set and sidecars with CairoMakie.
 4. Level-0 reduced model: 1D nonlinear wake plus test electron, SciMLSensitivity gradient, Optimization.jl, comparison against the Valenta analytic maximum-energy expressions. First answer to "is the gradient of electron energy informative".
 5. The `plan-review` workflow on the planning documents, and `/code-review ultra` on the first pull requests, both of which run in cloud sandboxes.
