@@ -6,9 +6,11 @@ One recipe per code family, `<family>.Containerfile`, with this directory as the
 |---|---|---|
 | `smilei` | `smilei.Containerfile` | Smilei v5.1 (commit `438d43d8`), CPU build with OpenMPI, OpenMP, parallel HDF5 and happi, on Ubuntu 24.04 pinned by digest |
 
-## Tag convention
+## Tags
 
-An image is tagged `particlemesh-<family>:<hash>`, where `<hash>` is the first 16 hex digits of the SHA-256 over the recipe and the files in `<family>/`, in sorted path order:
+Inside the factory the machine's image builder (`crosscode-image`, run by the owner) builds the image and tags it `localhost/particlemesh-<family>:<hash>` with a hash of the recipe files computed by its own rule; the runner refuses a run when the image for the worktree's recipe is not built and names the expected tag. The run manifest records the image id from the runner's log.
+
+Outside the factory `run-smilei.sh` takes the image as its second argument, or defaults to its own tag, `particlemesh-smilei:<first 16 hex of SHA-256 over the recipe and the files in smilei/ in sorted path order>`, which is not the factory runner's tag:
 
 ```
 cd scripts/crosscode/containers
@@ -16,7 +18,7 @@ hash=$( { echo smilei.Containerfile; find smilei -type f 2>/dev/null; } | LC_ALL
 podman build -f smilei.Containerfile -t particlemesh-smilei:$hash .
 ```
 
-The build needs the network (apt and GitHub). A changed recipe gives a new tag, so a run always names the recipe it came from; the run manifest records the image id the run used.
+The build needs the network (apt and GitHub). A changed recipe gives a new tag either way, so a run names the recipe it came from.
 
 ## Pinning
 

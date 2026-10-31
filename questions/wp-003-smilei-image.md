@@ -8,7 +8,7 @@ The sandbox cannot build images, and the runs need one. The recipe is `scripts/c
 
 Assumption I proceeded on: the PR carries the recipe, the case files, the generator, the reader and the analysis, with the runs marked absent in `reports/crosscode-smilei-1d/README.md` until the image exists. The runs are then requested from the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`) and committed in a follow-up commit or PR.
 
-To answer: build the image from the recipe, then say so here (or on the PR).
+To answer: build the image from the recipe (`crosscode-image` for `localhost/particlemesh-smilei:e4f0148b8952fc87`), then say so here or on the PR; the runs are then requested with the prepared directories `scripts/runs/smilei-landau-9a47a107` and `scripts/runs/smilei-two-stream-736a428f` (regenerate them with `smilei.jl prepare` in a fresh worktree; `scripts/runs/` is not committed).
 
 ## 2. Recipe path and run route differ from the work package's text
 
@@ -20,7 +20,7 @@ The PR edits WP-003's deliverables 0 and 3 (and the non-goal that excluded the r
 
 ## 3. Image tag convention
 
-`scripts/crosscode/containers/README.md` proposes `particlemesh-smilei:<first 16 hex of SHA-256 over the recipe and smilei/>`, which `run-smilei.sh` uses outside the factory. The runner computes its own tag from the same files; if its convention differs, the README should state the runner's and `run-smilei.sh` follow it. To answer: the runner's convention, or confirm this one.
+A run request for `scripts/runs/smilei-landau-9a47a107` (tag `wp-003-smilei-1d-smilei-landau-1`, 2026-10-31) was refused before it started, as expected: `image localhost/particlemesh-smilei:e4f0148b8952fc87 is not built for this worktree's smilei recipe; the owner builds it with crosscode-image`. The runner's hash is not the SHA-256 of the recipe alone nor the rule `run-smilei.sh` uses outside the factory (`6517bfe50b31069b` for this recipe), so `scripts/crosscode/containers/README.md` now says that the factory's builder sets the tag by its own rule and that `run-smilei.sh`'s default tag applies outside the factory only. To answer: the builder's rule, if `run-smilei.sh` should follow it.
 
 ## 4. No upstream image was checked
 
