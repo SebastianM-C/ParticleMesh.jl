@@ -45,8 +45,13 @@ jobs:
           LENS: ${{ matrix.lens }}
         run: |
           git fetch --no-tags origin "$BASE"
-          git show "origin/$BASE:.claude/agents/$LENS-reviewer.md" > "$RUNNER_TEMP/brief.md"
           git show "origin/$BASE:CLAUDE.md" > "$RUNNER_TEMP/contract.md"
+          if ! git show "origin/$BASE:.claude/agents/$LENS-reviewer.md" > "$RUNNER_TEMP/brief.md" 2>/dev/null; then
+            # A brief that does not exist on the base branch yet is being introduced by this PR; it needs
+            # the owner's approval anyway (.claude/ is a CODEOWNERS path), so use the PR's copy.
+            echo "::warning::no $LENS-reviewer brief on $BASE yet; using this PR's copy"
+            cp ".claude/agents/$LENS-reviewer.md" "$RUNNER_TEMP/brief.md"
+          fi
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.13'
