@@ -1,13 +1,15 @@
 name: Review
 
 # Automated review of every pull request: the code lens always, the numerics lens when the diff touches
-# src/, lib/, test/, benchmark/ or scripts/ (briefs in .claude/agents/*-reviewer.md,
+# src/, lib/, test/, benchmark/, scripts/, docs/goals/ or the architecture (briefs in .claude/agents/*-reviewer.md,
 # read from the base branch so a PR cannot edit an existing reviewer; a brief new in the PR is taken from
 # the PR, and .claude/ is a code-owner path). The lens runs the PR's tests in the job that holds the
 # review token, so a same-repository PR could read it from test code; fork PRs are excluded, which
 # limits that to collaborators and the factory app. The gate job is a required check:
 # it approves the PR as github-actions[bot] when every lens passes, or requests changes and fails. On an
-# approval, minor findings go into one open `follow-up` issue per PR instead of a follow-up PR.
+# approval, minor findings go into one open `follow-up` issue per PR instead of a follow-up PR. A PR whose
+# diff touches a path in the base branch's CODEOWNERS is labelled `tier-2` and says so in the review, so the
+# digest can list every tier-2 change; PRs authored by the owner's account merge on this gate alone.
 # Merging itself is GitHub's auto-merge, enabled by the PR author (see CLAUDE.md, "Pull requests").
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, a Max subscription token). If the action
 # ever rejects the plain GITHUB_TOKEN, install the Claude GitHub App on the repository, drop the
@@ -34,22 +36,53 @@ jobs:
       contents: read
     outputs:
       lenses: ${{ steps.pick.outputs.lenses }}
+      tier2: ${{ steps.tier.outputs.files }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      - name: Numerics lens only when code changes
+      - name: Numerics lens only when code, goals or the architecture change
         id: pick
         env:
           BASE: ${{ github.event.pull_request.base.ref }}
         run: |
           git fetch --no-tags origin "$BASE"
-          if git diff --name-only "origin/$BASE...HEAD" | grep -qE '^(src|lib|test|benchmark|scripts)/'; then
+          if git diff --name-only "origin/$BASE...HEAD" | grep -qE '^((src|lib|test|benchmark|scripts|docs/goals)/|docs/plan/architecture-draft\.md$)'; then
             echo 'lenses=["code","numerics"]' >> "$GITHUB_OUTPUT"
           else
             echo 'lenses=["code"]' >> "$GITHUB_OUTPUT"
           fi
+      - name: Paths owned in the base branch's CODEOWNERS (tier 2)
+        id: tier
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git show "origin/$BASE:.github/CODEOWNERS" > "$RUNNER_TEMP/CODEOWNERS"
+          git diff --name-only "origin/$BASE...HEAD" > "$RUNNER_TEMP/changed.txt"
+          python3 - "$RUNNER_TEMP/CODEOWNERS" "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT" <<'EOF'
+          import json, re, sys
+          def pattern(p):
+              anchored = p.startswith("/") or "/" in p.rstrip("/")
+              body, rx, i = p.strip("/"), "", 0
+              while i < len(body):
+                  if body.startswith("**", i): rx, i = rx + ".*", i + 2
+                  elif body[i] == "*": rx, i = rx + "[^/]*", i + 1
+                  elif body[i] == "?": rx, i = rx + "[^/]", i + 1
+                  else: rx, i = rx + re.escape(body[i]), i + 1
+              return re.compile(("^" if anchored else "(^|/)") + rx + ("/" if p.endswith("/") else "(/|$)"))
+          rules = []
+          for line in open(sys.argv[1]):
+              parts = line.split("#", 1)[0].split()
+              if parts:
+                  rules.append((pattern(parts[0]), len(parts) > 1))
+          owned = []
+          for f in (l.strip() for l in open(sys.argv[2])):
+              hits = [o for rx, o in rules if f and rx.search(f)]
+              if hits and hits[-1]:
+                  owned.append(f)
+          print("files=" + json.dumps(owned))
+          EOF
 
   lens:
     name: Review (${{ matrix.lens }})
@@ -143,10 +176,11 @@ jobs:
       issues: write
     steps:
       - name: Skipped review passes the gate without an approval
-        if: ${{ needs.lens.result == 'skipped' }}
+        if: ${{ needs.lenses.result == 'skipped' }}
         run: echo "draft, Dependabot or fork pull request; no automated approval"
       - name: An incomplete review blocks
-        if: ${{ needs.lens.result == 'failure' || needs.lens.result == 'cancelled' }}
+        # Covers a failed lens selection too: then the lens jobs are skipped, which must not pass the gate.
+        if: ${{ needs.lenses.result == 'failure' || needs.lenses.result == 'cancelled' || needs.lens.result == 'failure' || needs.lens.result == 'cancelled' || (needs.lenses.result == 'success' && needs.lens.result == 'skipped') }}
         run: |
           echo "a review job did not complete; see the Review (...) jobs" >&2
           exit 1
@@ -164,9 +198,11 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}
           LENSES: ${{ needs.lenses.outputs.lenses }}
+          TIER2: ${{ needs.lenses.outputs.tier2 }}
         run: |
           set -euo pipefail
           expected=$(printf '%s' "$LENSES" | jq 'length')
+          tier2=$(printf '%s' "${TIER2:-[]}" | jq -r 'if length > 0 then "**Tier 2:** this PR changes code-owner paths (" + (map("`" + . + "`") | join(", ")) + "). The digest lists it for the owner.\n\n" else "" end')
           body=$(jq -rs '
             def line: "- **\(.severity)** `\(.file)`\(if .line > 0 then ":\(.line)" else "" end): \(.note)";
             "Automated review of \(env.HEAD[0:7]) by the \(map(.lens) | join(" and ")) lens(es), written by Claude Code (claude-opus-5-5) in `.github/workflows/review.yml`.\n\n"
@@ -174,6 +210,7 @@ jobs:
                    + (if (.findings | length) > 0 then "\n" + (.findings | map(line) | join("\n")) + "\n" else "" end))
                | join("\n"))
           ' verdicts/*.json)
+          body="$tier2$body"
           count=$(jq -rs 'length' verdicts/*.json)
           passes=$(jq -rs 'map(select(.verdict == "pass")) | length' verdicts/*.json)
           if [ "$count" != "$expected" ]; then
@@ -223,4 +260,19 @@ jobs:
             gh issue comment "$existing" --body "$body"
           else
             gh issue create --title "$title" --label follow-up --body "$body"
+          fi
+      - name: Label tier-2 pull requests
+        # Never blocks the merge; the label is how the digest finds tier-2 changes.
+        if: ${{ needs.lenses.result == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          TIER2: ${{ needs.lenses.outputs.tier2 }}
+        run: |
+          if [ "$(printf '%s' "${TIER2:-[]}" | jq 'length')" != 0 ]; then
+            gh pr edit "$PR" --add-label tier-2
+          else
+            gh pr edit "$PR" --remove-label tier-2 || true
           fi
