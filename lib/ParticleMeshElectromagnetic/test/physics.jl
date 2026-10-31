@@ -10,8 +10,9 @@ const PHYSICS = Dict{String,Any}()
 
 # Test configurations: the case files with fewer particles. Landau also uses a larger
 # perturbation (5 %, as T-141 does): at the case's 1 % the damped signal falls under the noise
-# floor of 4096 particles per cell before the fit window opens.
-const LANDAU_OVERRIDES = (; ppc = 4096, amplitude = 1 // 20)
+# floor before the fit window opens. At 4096 particles per cell only two maxima after the
+# case's fit_start clear its floor_factor (the fit needs three, measured); 8192 gives three.
+const LANDAU_OVERRIDES = (; ppc = 8192, amplitude = 1 // 20)
 const TWO_STREAM_OVERRIDES = (; ppc = 256)
 const WEIBEL_OVERRIDES = (;)
 

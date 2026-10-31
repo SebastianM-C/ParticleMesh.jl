@@ -86,7 +86,7 @@ getnum(d, key, default) = haskey(d, key) ? d[key] : default
 
 """
     problem_from_case(case, T; ppc = nothing, cells = nothing, t_end = nothing, amplitude = nothing,
-                      transverse_thermal = false) -> EMProblem{T}
+                      seed = nothing, transverse_thermal = false) -> EMProblem{T}
 
 The problem description of a parsed case file (`scripts/crosscode/cases/<case>.toml`, schema 1
 with the per-species `transverse_drift = [v_y, v_z]` extension, in A1 units). Mobile species
@@ -99,10 +99,11 @@ diagnostic wavenumber is that of the first perturbed species' mode.
 The keywords override the case for tests and scans: `ppc` for every mobile species, `cells`,
 `t_end` (keeping `dt`; the run takes `round(t_end/dt)` steps), and `amplitude`, which replaces
 the magnitude of every nonzero perturbation amplitude and keeps its sign (the parameter of the
-A3 gradient check, so it may be a `Dual`).
+A3 gradient check, so it may be a `Dual`), and `seed`, the seed of the velocity draws (common
+random numbers on both sides of a gradient check, A7).
 """
 function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells = nothing, t_end = nothing,
-                           amplitude = nothing, transverse_thermal::Bool = false) where {T}
+                           amplitude = nothing, seed = nothing, transverse_thermal::Bool = false) where {T}
     grid = case["grid"]
     get(grid, "boundaries", "periodic") == "periodic" || throw(ArgumentError("only periodic boundaries are implemented"))
     L = T(grid["length"])
@@ -110,7 +111,7 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
     dt = T(case["time"]["dt"])
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
     nsteps = round(Int, tend / case["time"]["dt"])
-    seed = Int(getnum(case["numerics"], "random_seed", 1))
+    seed = seed === nothing ? Int(getnum(case["numerics"], "random_seed", 1)) : Int(seed)
     species = SpeciesDescription{T}[]
     for (k, s) in enumerate(case["species"])
         pert = getnum(s, "perturbation", Dict("amplitude" => 0.0, "mode" => 1))

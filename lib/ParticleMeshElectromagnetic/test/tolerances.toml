@@ -1,19 +1,75 @@
 # Tolerances of WP-014 (A7: measure, then propose). Every entry is a proposal: `C` is the
 # constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
-# backend (Julia 1.13), with `scale` as stated. The owner accepts a value by editing A7; until
-# then the tests hold these proposals. The suite prints the measured ratios after every run.
+# backend (Julia 1.13.3, one thread, the suite's configurations), with `scale` as stated. The
+# owner accepts a value by editing A7; until then the tests hold these proposals. The suite
+# prints the measured ratios after every run, so they can be refreshed.
 
 ["T-210"]
-quantity = "Yee in vacuum: field error against the exact discrete mode (C), relative staggered-energy change (C_energy)"
-scale = "steps (field amplitude 1); steps·W₀ for the energy"
-C = 8
-C_energy = 8
+quantity = "Yee in vacuum: field error against the exact discrete mode (C), relative change of the staggered energy (C_energy)"
+scale = "steps (field amplitude 1); steps·W₀ for the energy (64 cells, 400 steps, Δt/Δx = 1/2 and 9/10)"
+C = 1
+C_energy = 1
+measured = { Float32 = 0.14, Float64 = 0.165, "Dual{Float32,3}" = 0.14 }
+measured_energy = { Float32 = 0.00756, Float64 = 0.00918, "Dual{Float32,3}" = 0.00756 }
 status = "proposed"
 
 ["T-211"]
-quantity = "Boris in uniform Bz: | |u| − |u₀| | (C) and the gyrophase error (C_phase); E×B drift relative error (drift_rel)"
-scale = "steps·|u₀|; steps (radians)"
-C = 8
-C_phase = 8
-drift_rel = 1e-2
+quantity = "Boris in uniform Bz: | |u| − |u₀| | (C) and the gyrophase error against 2·atan(ΩΔt/2γ) per step (C_phase); E×B drift relative error (drift_rel)"
+scale = "steps·|u₀|; steps (radians); drift: 40000 steps of Δt = 1/20 in E = B/2, from rest"
+C = 1
+C_phase = 1
+drift_rel = 2e-3
+measured = { Float32 = 0.312, Float64 = 0.4, "Dual{Float32,3}" = 0.333 }
+measured_phase = { Float32 = 0.268, Float64 = 0.18, "Dual{Float32,3}" = 0.268 }
+measured_drift_rel = { Float32 = 5.51e-4, Float64 = 5.53e-4 }
+status = "proposed; the drift error is the unfinished gyration over the run, not roundoff"
+
+["T-212"]
+quantity = "discrete Gauss law residual after every step, |D⁻Ex − (ρ − mean ρ)|, from the cumsum_periodic! initial field, both modes"
+scale = "n·max|ρ|·√k after k steps (Landau 214 steps, two-stream 263 steps, 64 particles per cell)"
+C = 4
+measured = { Float32 = 1.31, Float64 = 1.14, "Dual{Float32,3}" = 1.31 }
+status = "proposed"
+
+# Physics against linear theory (A5): relative errors recorded, no threshold asserted.
+["T-214"]
+quantity = "Landau damping through the module, kλ_D = 1/2: (measured − theory)/theory, and the difference to the electrostatic reference"
+case = "landau.toml with 8192 particles per cell and amplitude 5 % (case: 400000 and 1 %), Δt = 0.0093266, 2681 steps, quadratic, Reference, Float64; the case's peak-envelope fit"
+theory = { omega = 1.4156618886045371, gamma = 0.15335946690960467 }
+measured = { omega = 1.4054923836479927, gamma = 0.1614265290944256 }
+relative_error = { omega = -0.0072, gamma = 0.0526 }
+es_reference = { gamma = 0.16282808731445753, relative_difference = -0.0086 }
+status = "proposed, noise-limited: three peaks enter the fit at 8192 particles per cell, two at 4096"
+
+["T-215"]
+quantity = "cold two-stream growth rate through the module, k v₀/ω_p = √(3/8), against the γ₀³ value: (measured − theory)/theory, and the difference to the electrostatic reference"
+case = "two-stream.toml with 256 particles per cell per beam (case: 1000), Δt = 0.0076151, 5253 steps, quadratic, Reference, Float64; the case's window fit"
+theory = { gamma = 0.35087576924479724 }
+measured = { gamma = 0.3458435133298388 }
+relative_error = { gamma = -0.0143 }
+es_reference = { gamma = 0.34815981965353454, relative_difference = -0.0067 }
+status = "proposed"
+
+["T-216"]
+quantity = "Weibel growth rate of the Bz energy against the cold-fluid relation of test/theory.jl: (measured − theory)/theory; A5's proposed expected value"
+case = "weibel.toml as is: 128 cells, 64 particles per cell per beam, Δt = 0.023317, 1716 steps, quadratic, Reference, Float64; the case's window fit [1e-4, 1e-2] of max U(Bz)"
+theory = { gamma = 0.2637254682112319 }
+measured = { gamma = 0.261130734463431 }
+relative_error = { gamma = -0.0098 }
+expected_value = { gamma = 0.2637254682112319, note = "the cold-fluid value is the proposed A5 expected value; the module measures it to 1 %" }
+status = "proposed"
+
+["T-217"]
+quantity = "largest relative change of the total energy (fields plus kinetic, at integer times) over the run, per case, in the configurations of T-214 to T-216"
+landau = 1e-5
+two-stream = 2e-3
+weibel = 1e-3
+measured = { landau = 2.11e-6, two-stream = 5.68e-4, weibel = 2.83e-4 }
+status = "proposed"
+
+["T-219"]
+quantity = "ForwardDiff derivative of the Ex energy after 322 steps with respect to the Landau amplitude, against fd_scan: rel at the minimising step ≤ C·floor"
+case = "landau.toml, 64 particles per cell, amplitude 0.01, seed 20261031, Float64 Reference"
+C = 1
+measured = { Float64 = 0.176 }
 status = "proposed"

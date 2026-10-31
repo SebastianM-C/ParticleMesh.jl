@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "f493840de0378a19a18876d777a9e2b2c71f58b6"
+project_hash = "15f127eace5a86825f80fcf5ae22f2c5fc127260"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1493,6 +1493,12 @@ version = "0.1.0-DEV"
 deps = ["AcceleratedKernels", "Adapt", "Atomix", "KernelAbstractions"]
 path = "../lib/ParticleMeshCore"
 uuid = "5afebaaa-41db-49a8-b96f-38d33e49b288"
+version = "0.1.0-DEV"
+
+[[deps.ParticleMeshElectromagnetic]]
+deps = ["Adapt", "KernelAbstractions", "ParticleMeshCore"]
+path = "../lib/ParticleMeshElectromagnetic"
+uuid = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
 version = "0.1.0-DEV"
 
 [[deps.Pixman_jll]]

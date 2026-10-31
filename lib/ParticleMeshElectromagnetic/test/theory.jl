@@ -32,7 +32,8 @@
 #
 #     X² − A·X − B = 0,   A = k² + ω_p²/γ₀³,   B = ω_p²v₀²k²/γ₀,
 #
-# whose root X₋ = (A − √(A² + 4B))/2 is negative for every k > 0: a purely growing mode with the
+# whose root X₋ = (A − √(A² + 4B))/2 = −2B/(A + √(A² + 4B)) (the second form is free of
+# cancellation at large k, and is the one evaluated) is negative for every k > 0: a purely growing mode with the
 # field-amplitude growth rate γ = √(−X₋) (the Bz energy grows as e^{2γt}). Checks of the
 # formula, asserted in T-216: the root solves the quartic; as k → ∞, γ → ω_p·v₀/√γ₀ (nonrelativistic:
 # ω_p·v₀/c); γ grows monotonically with k. No reference is cited for the relation: it is derived
@@ -52,7 +53,7 @@ function weibel_cold_growth(k, v0; ωp2 = 1)
     γ0 = 1 / sqrt(1 - v0^2)
     A = k^2 + ωp2 / γ0^3
     B = ωp2 * v0^2 * k^2 / γ0
-    X = (A - sqrt(A^2 + 4B)) / 2
+    X = -2B / (A + sqrt(A^2 + 4B))      # = (A − √(A² + 4B))/2 without the cancellation at large k
     return X < 0 ? sqrt(-X) : zero(X)
 end
 

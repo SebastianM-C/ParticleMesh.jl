@@ -6,10 +6,10 @@ The engine (particles, grids, particle↔mesh transfers, time loop, differentiat
 backends) lives in `lib/ParticleMeshCore`; physics modules plug in through the interaction
 interfaces described in `docs/plan/architecture-draft.md` §0.
 
-This umbrella package currently re-exports `ParticleMeshCore`. No physics module exists yet:
-the electromagnetic module is the first (A9), and the electrostatic reference of the WP-010
-spike is test-support code, `lib/ParticleMeshCore/test/es_reference.jl`. See
-`docs/plan/overview.md`.
+This umbrella package currently re-exports `ParticleMeshCore`. The only physics module (A9),
+`ParticleMeshElectromagnetic` in `lib/`, is a workspace member of its own and is loaded
+directly; the electrostatic reference of the WP-010 spike is test-support code,
+`lib/ParticleMeshCore/test/es_reference.jl`. See `docs/plan/overview.md`.
 """
 module ParticleMesh
 
