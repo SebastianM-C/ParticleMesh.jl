@@ -41,7 +41,7 @@ Test ids T-040 to T-059.
 
 - T-040: the Philox known-answer vectors match, taken from the Random123 distribution's `kat_vectors` file or Random123.jl's tests, with the source path and version cited in the test; never written from memory. If neither is reachable from the sandbox, write `questions/philox-kat-vectors.md` and keep the test as `@test_broken` naming the missing source.
 - T-041: the same seed gives bitwise identical loads on reruns and with `JULIA_NUM_THREADS` = 1 and many; a different stream id gives different draws.
-- T-042: free streaming with `drift!` is exact up to the cell and offset split over N steps (compare against the analytic position in Float64), for every `T` of the A8 matrix.
+- T-042: free streaming with `drift!` over N steps, for every `T` of the A8 matrix: with a dyadic displacement (for example 1/8 cell) the result is bitwise equal to the analytic position; with a general displacement it is within `C·eps(T)·N` of the Float64 analytic position, with the measured maximum and the proposed `C` recorded in `tolerances.toml`.
 - T-043: `exchange_particles!` on periodic axes conserves the count exactly; bounded faces set the documented status.
 - T-044: the loaded weights equal n(xₚ)/ppc at the lattice positions bitwise, and their sum equals the same quadrature of n computed independently in Float64 to a proposed `C·eps(T)·count` bound; parameter tangents of the weights match the exact derivative of n in p for `Dual` parameters (A3).
 - T-045: `sort_by_cell!` returns a bitwise permutation of the input, stable within cells, whose segment lengths sum to the alive count, with the last offset equal to it; `compact!` preserves order; both reset `count` to the alive count.
