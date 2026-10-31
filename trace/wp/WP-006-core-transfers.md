@@ -1,6 +1,6 @@
 +++
 id = "WP-006"
-status = "parked"
+status = "withdrawn"
 goals = ["A2", "A3", "A4", "A7", "A8"]
 depends_on = ["WP-004", "WP-005"]
 adds_dependencies = []
@@ -14,7 +14,7 @@ A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 +++
 # WP-006: engine core, transfers: shapes, gather, deposition in both modes
 
-Parked (A0: contracts are written from working code). The spike WP-010 builds a 1D electrostatic PIC first and tests the contracts below as proposals; this package is re-derived from the spike's write-up, kept or withdrawn, before it is dispatched.
+Withdrawn: replaced by WP-011, the engine/module split written from the spike's code (`reports/spike-electrostatic-1d.md`), which owns every contract this package proposed. The text below is kept as the record of the proposal.
 
 The particle↔mesh transfers of `lib/ParticleMeshCore`. Contracts: `docs/plan/architecture-draft.md` §0.7 items 3, 4 (`fold_guards!`), 7, 8, 14 to 18; §0.4 rule 3. It can start once WP-005 has fixed the species type and accessors, and runs in parallel with the rest of WP-005.
 
