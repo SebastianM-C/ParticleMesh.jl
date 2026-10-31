@@ -21,7 +21,8 @@
       "Bash(gh issue close:*)",
       "Bash(gh issue delete:*)",
       "Bash(gh issue transfer:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "mcp__github__merge_pull_request"
     ]
   }
 }
