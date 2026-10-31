@@ -25,9 +25,9 @@ Where the engine and the physics modules meet. Contracts: `docs/plan/architectur
 
 1. **B10 first.** Half a day reading Molly's `System`, interaction and simulator types and `src/interactions/ewald.jl` to settle the names and signatures of the container and interaction interfaces; record the outcome in the PR description. No code dependency on Molly.
 2. **`System`, `State`, workspaces** and their constructors from a module.
-3. **The module interface** as functions a module implements, documented: layout declaration, extras and constants, `push_particles!`, `boundary!`, the mesh-solve hook, the deposited quantity. No kernel is named `push!`.
-4. **`step!`**: zero the deposited fields, deposit every species (sorting first in `Reference()` mode or for a `Sorted()` type), `fold_guards!`, the module's mesh solve, `fill_guards!`, gather, the module's push, `exchange_particles!`, `boundary!`, advance the step counter in `GridState`. Static dispatch only; no host-side branching on device data, no globals.
-5. **Mock module** in the test suite: a 1D periodic "mesh solve" with an exact discrete answer (for example a linear map of the deposited density) and an analytic push, so the composition has a closed-form result. No physics names.
+3. **The module interface** as functions a module implements, documented: layout declaration, extras and constants, which fields are deposit targets, `push_particles!`, `boundary!`, the mesh-solve hook, and `deposit_sources!(module, targets, species, ...)`, whose default calls the engine's `deposit!` with the module's quantity and which a module overrides with its own deposition (the LWFA module's Esirkepov current, §0.7 item 14). No kernel is named `push!`.
+4. **`step!`**: zero the deposit targets the module declares (only those), `deposit_sources!` for every species (sorting first in `Reference()` mode or for a `Sorted()` type), `fold_guards!` on the deposit targets only (folding fields whose guards hold filled copies would double edge values), the module's mesh solve, `fill_guards!`, gather, the module's push, `exchange_particles!`, `boundary!`, advance the step counter in `GridState`. Static dispatch only; no host-side branching on device data, no globals.
+5. **Mock module** in the test suite, using the default `deposit_sources!`: a 1D periodic "mesh solve" with an exact discrete answer (for example a linear map of the deposited density) and an analytic push, so the composition has a closed-form result. No physics names.
 6. Tests in `lib/ParticleMeshCore/test/step.jl`.
 
 ## Non-goals
@@ -41,7 +41,7 @@ Test ids T-080 to T-099.
 - T-080: `step!` with the mock module matches the closed-form result over N steps to a proposed `C·eps(T)` bound, for every `T` of the A8 matrix.
 - T-081: `Reference()` mode is bitwise reproducible over N steps across reruns and across `JULIA_NUM_THREADS` = 1 and many (A4).
 - T-082: `Reference()` and `Fast()` agree over N steps to a proposed bound (Float32 and Float64).
-- T-083: a `ForwardDiff.gradient` of a scalar of the final state with respect to a density parameter matches a Float64 finite-difference scan (`fd_scan`), with the scan's error floor reported; the parameter enters through the weights only (A3, A7).
+- T-083: a `ForwardDiff.gradient` of a scalar of the final state with respect to a density parameter matches a Float64 finite-difference scan (`fd_scan`), with the scan's error floor reported; both sides run in `Reference()` mode with the same seed (common random numbers), and the parameter enters through the weights only (A3, A7).
 - T-084: allocation of `step!` after warm-up does not grow between two particle counts and two grid sizes (§0.7 item 13).
 - T-085: the engine source contains no physics names (a test over `lib/ParticleMeshCore/src`), and the mock module is defined only in the tests.
 - T-086: the step counter in `GridState` advances and t = n·dt; changing it changes no type.

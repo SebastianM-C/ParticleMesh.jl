@@ -29,6 +29,8 @@ Fixed-capacity SoA species with the core attribute set, module-declared extras a
 5. **Sort and compaction.** `sort_by_cell!` in place with key = cell · capacity + slot (`Int64`), cell the column-major `LinearIndices` over interior local cells, dead particles keyed at prod(n) + 1; one permutation applied to every SoA array; segment offsets into a caller-owned buffer; the key helper exported for WP-006. `compact!` as a stable partition. All scratch in a workspace allocated once (item 17). Check AcceleratedKernels' sort against the total order on the CPU; if it is not deterministic across thread counts, use a different sort and say why.
 6. Tests in `lib/ParticleMeshCore/test/particles.jl`, its table in `tolerances.toml`.
 
+The package is delivered in two pull requests, because it is large: first the species type, the position advance, `exchange_particles!`, sort and compaction (deliverables 1, 2, 3, 5); then loading (deliverable 4: Philox with its known-answer vectors, quiet start, Box–Muller, injection). The species type lands in the first one, which unblocks WP-006. Random123.jl comes into the depot as a dependency of KernelAbstractions 0.10, so its tests are a citable source for T-040's known-answer vectors (whether they contain them is unverified).
+
 ## Non-goals
 
 No shapes, gather or deposition (WP-006). No pusher: modules own pushers; only `advance` and `drift!` here. No moving-window refill, only the counter layout that makes it reproducible. No Reactant (A9). No SpecialFunctions. Parameters never enter through positions (A3).
@@ -42,7 +44,7 @@ Test ids T-040 to T-059.
 - T-042: free streaming with `drift!` is exact up to the cell and offset split over N steps (compare against the analytic position in Float64), for every `T` of the A8 matrix.
 - T-043: `exchange_particles!` on periodic axes conserves the count exactly; bounded faces set the documented status.
 - T-044: the loaded weights equal n(xₚ)/ppc at the lattice positions bitwise, and their sum equals the same quadrature of n computed independently in Float64 to a proposed `C·eps(T)·count` bound; parameter tangents of the weights match the exact derivative of n in p for `Dual` parameters (A3).
-- T-045: `sort_by_cell!` returns a bitwise permutation of the input, stable within cells, with offsets summing to the alive count; `compact!` preserves order; both reset `count` to the alive count.
+- T-045: `sort_by_cell!` returns a bitwise permutation of the input, stable within cells, whose segment lengths sum to the alive count, with the last offset equal to it; `compact!` preserves order; both reset `count` to the alive count.
 - T-046: bitwise identical sort results across `JULIA_NUM_THREADS` = 1 and many.
 - T-047: injection beyond capacity writes what fits and increments the overflow counter; no host-side read inside the call.
 - T-048: allocation does not grow with particle count for `drift!`, `exchange_particles!` and `sort_by_cell!` (§0.7 item 13).

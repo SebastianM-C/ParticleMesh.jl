@@ -34,10 +34,10 @@ No ODE integrator inside the step (§0.7 item 11). No callbacks that branch on d
 Test ids T-100 to T-109.
 
 - T-100: `solve` of the `DiscreteProblem` with the WP-007 mock module gives a final state bitwise equal to `run!` over the same steps in `Reference()` mode.
-- T-101: `remake` with new parameters gives the same result as a fresh `System` with those parameters.
+- T-101: `remake(prob; p = p′, u0 = load(p′))` gives the same result, bitwise in `Reference()` mode, as a problem built from scratch for p′. Density parameters enter through the weights at load time (A3), so a `remake` that changes only `p` does not reload them; the docstring says so.
 - T-102: saved states at `saveat` match `run!` snapshots bitwise.
 - T-103: harness overhead per step measured against `run!` and reported (no threshold).
-- T-104: the memory of the harness state is twice the `State`, as A7's memory budget assumes; measured and reported.
+- T-104: the memory the harness holds, measured with `save_everystep = false` as a multiple of the `State`, reported with the cache's fields (A7's memory budget assumes a factor of two; the `FunctionMap` cache may hold more copies, which is unverified).
 
 ## Depends on
 
@@ -45,4 +45,4 @@ WP-007.
 
 ## Budgets
 
-A7 memory budget: the measured doubling of T-104, stated in bytes for a reference size. Harness overhead per step recorded without a threshold. Tier 2: edits `lib/ParticleMeshCore/Project.toml`, so the owner approves it, and an unattended session opens it as a draft.
+A7 memory budget: the measured factor of T-104, stated in bytes for a reference size, proposed as the budget's multiplier. Harness overhead per step recorded without a threshold. Tier 2: edits `lib/ParticleMeshCore/Project.toml`, so the owner approves it, and an unattended session opens it as a draft.

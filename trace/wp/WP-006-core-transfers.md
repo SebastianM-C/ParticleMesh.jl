@@ -37,9 +37,9 @@ No Esirkepov or any current deposition: that is the LWFA module's (`lib/Wakefiel
 Test ids T-060 to T-079.
 
 - T-060: partition of unity of the weights at every stagger, all shapes, every `T`, to a proposed `C·eps(T)`.
-- T-061: gather reproduces constant and linear fields exactly (to roundoff) on every stagger. For a quadratic field and a degree-p shape with p ≥ 2, the gathered value is f + (p+1)h²f''/24; the test checks that known shift (B-splines reproduce degree 0 and 1 only).
+- T-061: gather reproduces constant and linear fields exactly (to roundoff) on every stagger. Linear and quadratic fields are not periodic, so the test places particles only where the shape's stencil stays clear of the periodic seam, or fills the guards by hand from the polynomial. For a quadratic field and a degree-p shape with p ≥ 2, the gathered value is f + (p+1)h²f''/24; the test checks that known shift (B-splines reproduce degree 0 and 1 only).
 - T-062: ⟨fill_guards! x, y⟩ = ⟨x, fold_guards! y⟩ to roundoff, on periodic axes, all N.
-- T-063: deposition is the adjoint of gather: ⟨deposit(q), f⟩ = Σᵢ qᵢ gather(f)ᵢ to roundoff.
+- T-063: deposition is the adjoint of gather, with the guard convention explicit: Σᵢ wᵢqᵢ gather(fill_guards!(f))ᵢ = ⟨fold_guards!(deposit(w q)), f⟩ over interior cells, to roundoff.
 - T-064: the total deposited quantity equals Σ wᵢqᵢ to a proposed `C·eps(T)·count`.
 - T-065: `Reference()` and `Fast()` agree per node to a proposed `C·eps(T)·contributions` bound, for Float32 and Float64.
 - T-066: `Reference()` is bitwise identical across reruns and across `JULIA_NUM_THREADS` = 1 and many (A4).
