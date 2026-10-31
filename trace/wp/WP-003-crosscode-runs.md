@@ -8,7 +8,7 @@ adds_dependencies = ["HDF5"]
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
-A7 = "b4cade448159d5276774626df7f94299f8621395"
+A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 +++
 # WP-003: cross-code reference runs, stage 1: Smilei on the 1D electrostatic cases
 

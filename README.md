@@ -14,8 +14,9 @@ Physics modules supply what is deposited, which mesh equations are solved, which
 particle and which pusher integrates it.
 
 The first module is an electromagnetic particle-in-cell model for laser-wakefield acceleration,
-built to optimize laser and plasma parameters by gradient. An electrostatic module serves as the
-proof that the engine/module split holds. Long term the project is a showcase and stress test for
+built to optimize laser and plasma parameters by gradient. It is the only physics module planned and the
+proof that the engine/module split holds; electrostatic cases such as Landau damping and two-stream
+run as its edge cases with no transverse fields. Long term the project is a showcase and stress test for
 Julia and Reactant compiler technology: the same KernelAbstractions kernels run natively on
 NVIDIA and AMD GPUs and, through Reactant, as a traced, raised and sharded program.
 
