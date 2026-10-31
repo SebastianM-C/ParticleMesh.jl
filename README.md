@@ -22,7 +22,7 @@ NVIDIA and AMD GPUs and, through Reactant, as a traced, raised and sharded progr
 ## Status
 
 Nothing runs yet. The design record in `docs/plan/` (start with `overview.md`) is the current
-state of the project; decisions A1 to A14 in `docs/plan/open-items.md` are binding for anyone,
+state of the project; the aims and decisions in `docs/goals/` are binding for anyone,
 human or agent, who works here.
 
 ## Layout
@@ -31,8 +31,9 @@ human or agent, who works here.
 |---|---|
 | `src/` | the umbrella package |
 | `lib/` | subpackages (engine core, extensions, physics modules), resolved through `[sources]` |
-| `docs/plan/` | the design record: landscape, requirements, architecture, decisions, process |
-| `trace/` | traceability records (requirements, decisions, work packages, tests, runs, sessions) |
+| `docs/goals/` | the owner's aims and binding decisions, the root of everything else |
+| `docs/plan/` | the design record derived from them: landscape, requirements, architecture, open items, process |
+| `trace/` | work packages (linked to the goals they serve), the trace checker's specification, digests |
 | `benchmark/` | regression microbenchmarks, a workspace member |
 | `scripts/` | user code that produces results (benchmark cases, validation and cross-code runs, campaigns, figures); its own environment with a committed manifest |
 | `reports/` | Markdown reports with their figures, one directory per report |

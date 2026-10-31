@@ -1,9 +1,0 @@
-id = "R-011"
-title = "Modular physics"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R11 (cites A9, architecture section 0)"
-statement = """An engine (particles, grids, transfers, loop, AD, backends) separate from physics modules (interactions, solvers, pushers, sources); the LWFA module first, an electrostatic module as the proof of the split; EDM as an external-field and force module later; interfaces that do not preclude pairwise, Molly-style interactions."""
-rationale = """The plan text gives no rationale in section 6; the scope decision it cites (A9) and architecture-draft.md section 0.1 give the reasons."""
-hash = "sha256:ddfa4065ade97ca2e5f83b7c097bce07a297835d5fd1471446b052ea7313ac17"
-
-[upstream]

@@ -1,9 +1,0 @@
-id = "R-006"
-title = "Precision"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R6"
-statement = """FP32 particles on the RTX 4080 SUPER, FP64 on rented datacenter GPUs; deposition must be reproducible across both. EDM's precision-floor work applies."""
-rationale = """FP64 runs at 1/64 of the FP32 rate on Ada consumer cards."""
-hash = "sha256:565dc39d36d5b0e68014e3db0ba7066a7231313f1b8421272ef0a87846ec7c3c"
-
-[upstream]

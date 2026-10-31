@@ -1,9 +1,0 @@
-id = "R-012"
-title = "Reactant-compilable core"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R12 (cites A9, architecture section 0.4)"
-statement = """Static shapes, masks instead of resizing, both deposition variants, no scalar indexing outside kernels, a Reactant CPU smoke test in CI from the first package; a particle-workload stress-test suite across KA-CUDA, Reactant-CUDA and Reactant-CPU as a deliverable in its own right."""
-rationale = """The plan text gives no rationale in section 6; architecture-draft.md sections 0.2 and 0.4 give the reasons (keep the Reactant path open at no cost)."""
-hash = "sha256:1716ce10a2f42eaf9d0fa68ee2572bc04f86e908003d4816506b8b72cb620726"
-
-[upstream]

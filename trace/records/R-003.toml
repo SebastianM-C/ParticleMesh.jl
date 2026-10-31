@@ -1,9 +1,0 @@
-id = "R-003"
-title = "Parameters"
-status = "accepted"
-source = "docs/plan/landscape-and-requirements.md section 6, R3"
-statement = """Parameters: a₀, w₀, τ, focus position, chirp; n₀, ramp lengths, channel depth. Count ≤ 20, so forward mode suffices."""
-rationale = """With at most 20 parameters, forward-mode differentiation suffices."""
-hash = "sha256:84573a904b49cdea317773fe3867a5156205b9c629a15c8174e085c742cc1a42"
-
-[upstream]

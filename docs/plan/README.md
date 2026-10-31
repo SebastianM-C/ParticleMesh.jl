@@ -1,3 +1,3 @@
 # Design record
 
-These documents were written during the planning phase (October 2026) by Claude for Sebastian and are the project's design record. Start with `overview.md`. Decisions A1 to A14 in `open-items.md` are the current decisions, stated as they stand; to change one, edit it in a pull request that says why, and use git for the history.
+These documents were written during the planning phase (October 2026) by Claude for Sebastian and are the project's design record. Start with `overview.md`. The owner's aims and decisions are in `../goals/` (A0 to A10); everything here is derived from them and changes through ordinary pull requests, except `factory-and-observability.md`, which holds the factory settings F1 to F4 and is the owner's. Background, read when a work package points there: `landscape-and-requirements.md`, `sciml-reuse.md`, `workflows-primer.md` and the platform facts in section 3 of the factory document.

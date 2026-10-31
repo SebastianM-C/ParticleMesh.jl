@@ -12,17 +12,15 @@
       "Bash(gh issue view:*)",
       "Bash(gh issue list:*)",
       "Bash(gh issue comment:*)",
+      "Bash(gh issue create:*)",
       "Bash(scripts/gpu-lock.sh:*)",
       "Workflow(plan-review)"
     ],
     "deny": [
-      "Bash(gh issue create:*)",
       "Bash(gh issue edit:*)",
       "Bash(gh issue close:*)",
       "Bash(gh issue delete:*)",
       "Bash(gh issue transfer:*)",
-      "Bash(gh issue pin:*)",
-      "Bash(gh issue unpin:*)",
       "Bash(gh api:*)"
     ]
   }

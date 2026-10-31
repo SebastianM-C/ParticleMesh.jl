@@ -1,53 +1,46 @@
-# Traceability records
+# Trace: links from the goals to the work
 
-Requirements, decisions, interfaces, work packages, tests, runs and sessions as content-addressed records that link upstream by hash, so that a change upstream marks everything downstream stale. This file is the specification; `docs/plan/factory-and-observability.md` section 1 is the background.
+Git holds the history, the diffs and the content addresses. This directory adds only the links between the owner's goals, the work packages and the tests, and one check over them. Background: `docs/plan/factory-and-observability.md` section 1.
 
-## Records
+## The three kinds of file
 
-One TOML file per record in `trace/records/`, named `<id>.toml`. An id is a prefix and a zero-padded number (`R-014`, `WP-001`), assigned in order with `next_id` (one past the highest in use). Records are never deleted (set `status = "superseded"`), so ids are never reused. Files hold top-level keys only, then `hash`, then `[upstream]` as the last table.
+- **Goals** are `docs/goals/A<n>-<slug>.md`, first line `# A<n>. <title>`. The owner's (`docs/goals/README.md`).
+- **Work packages** are `trace/wp/WP-<nnn>-<slug>.md`: TOML front matter, then the package in Markdown (scope, deliverables, non-goals, acceptance, budgets). Ids are assigned in order, one past the highest in this directory, and never reused.
 
-| Prefix | Required fields | Link fields |
-|---|---|---|
-| `R-` requirement | `title`, `status`, `source`, `statement`, `rationale` | `derived_from` (requirements) |
-| `D-` decision | `title`, `status`, `source`, `decision`, `alternatives_rejected`, `rationale`, `consequences` | `derived_from` (requirements) |
-| `I-` interface | `title`, `status`, `source`, `contract` | `derived_from` (decisions) |
-| `WP-` work package | `title`, `status`, `source`, `scope`, `non_goals`, `acceptance`, `budgets` | `implements`, `satisfies`, `depends_on` |
-| `T-` test | `title`, `status`, `checks`, `tolerance`, `testset` | `verifies` |
-| `RUN-` run | `title`, `status`, `inputs`, `commit` | `verifies` |
-| `S-` session | `agent`, `platform`, `start`, `end`, `outcome`; optional `pr`, `review_status`, `notes` | `work_packages` |
+  ```
+  +++
+  id = "WP-004"
+  status = "proposed"            # proposed, active, done, parked, withdrawn
+  goals = ["A2", "A8"]           # the goals it serves; at least one
+  depends_on = ["WP-003"]        # packages it builds on
+  adds_dependencies = ["HDF5"]   # optional: Julia packages its PR adds (F2)
 
-Status is `proposed`, `accepted` or `superseded` for R, D and I. Where the plan gives no rationale, the record says so. Transcribe, do not invent.
+  [checked]                      # per goal, the git blob id it was last checked against
+  A2 = "<40 hex digits>"
+  A8 = "<40 hex digits>"
+  +++
+  ```
+- **Tests** carry their id and what they verify in the testset name, goals or packages: `@testset "T-031 Esirkepov charge conservation [A2, WP-004]"`. Test ids are unique across `test/`, `lib/`, `scripts/` and `benchmark/`; nested testsets without an id are ignored.
 
-**Hash.** `hash = "sha256:<hex>"` is the SHA-256 of the canonical form of the parsed record with `hash` and `upstream` removed. The canonical form is JSON without whitespace: object keys sorted by code point, arrays in order, `\r\n` normalized to `\n` in strings, other control characters as `\u00XX`, integers in decimal, floats as Julia's shortest round-trip `repr`, dates as ISO 8601 strings. It is implemented once, in `canonical` and `record_hash` in `scripts/trace/Trace.jl`. Key order, quoting style and whitespace outside strings do not change the hash.
+Requirements, interfaces and plans are prose in `docs/plan/` that cites goal ids; they are not linked records.
 
-**Upstream.** `[upstream]` maps every id in the record's link fields to that record's hash when this record was written or last reviewed (`R-014 = "sha256:..."`).
+## Staleness and the cascade
 
-**Staleness.** A record is *directly stale* when an upstream hash it recorded differs from that upstream's current hash. It is *stale through upstream* when a record it links to is stale. Directly stale records are the *stale frontier*: re-review them first. Re-reviewing a record means checking it against its upstream, editing it if needed, and restamping it with `--review`. Records downstream of it stay stale only if its content changed.
+A package is stale when a goal it serves has changed since it was checked against it: the `[checked]` blob id differs from `git hash-object` of the goal file now. Blob ids depend only on content, so they survive squash merges and shallow checkouts. Withdrawn packages are never stale.
+
+When a goal changes, the planner (`plan-packages` in re-derive mode) reads `git diff` of the goal, and for each stale package confirms, edits, splits or withdraws it, then refreshes its `[checked]` entries; it also updates the prose in `docs/plan/` that cites the goal. That pull request merges on the automated review, and the digest lists the changes for the owner's veto.
 
 ## Commands
 
-All from the repository root, in the `scripts/` environment:
+From the repository root, in the `scripts/` environment:
 
 ```
-julia +1.13 --project=scripts scripts/trace/build.jl [--check]
-julia +1.13 --project=scripts scripts/trace/stamp.jl [--review] (ID... | --all)
-julia +1.13 --project=scripts scripts/trace/session.jl --agent A --platform P --wp WP-001,... \
-    --start <commit> --end <commit> --outcome O [--pr N] [--review S] [--notes TEXT]
+julia +1.13 --project=scripts scripts/trace/build.jl [--check] [--refresh WP-nnn ...]
 julia +1.13 --project=scripts scripts/trace/test/runtests.jl
 ```
 
-- `build.jl` writes `trace/build/graph.json` (nodes with `trace_status` `ok`, `stale` or `hash-mismatch`; edges from upstream to downstream with the recorded hash), `trace/build/coverage.json` (per requirement: decisions, work packages, tests, runs) and `trace/build/summary.txt` (stale frontier, untraced tests, errors), and prints the summary. `trace/build/` is ignored by git. With `--check` it exits 1 on a hash mismatch, a broken or unrecorded link, a cycle or an untraced test. A stale accepted record is only a warning. CI runs it in the `trace` job.
-- `stamp.jl` sets `hash` after an edit and adds `[upstream]` entries for new links at their current hashes. `--review` refreshes all entries.
-- `session.jl` writes the next `S-` record and stamps it.
+`build.jl` prints coverage (per goal: packages, tests), the stale packages and the errors. `--refresh` first records the current blob ids of the named packages' goals, after you have checked the packages against them. `--check` exits 1 on an error: a malformed file or front matter, an unknown goal, package or tag, a goal without a `[checked]` entry, a duplicate or untagged test id, or a forbidden engine dependency (ModelingToolkit, MethodOfLines, Molly or Checkpointing in the root or a `lib/` `Project.toml`). Stale packages are warnings. CI runs both commands.
 
-Workflow: edit or add records, run `stamp.jl` on them, run `build.jl --check`, and commit the records with the change that needs them. Requirement, decision and interface records are tier 2 (`.github/CODEOWNERS`). Work-package, test, run and session records are not.
+## Digests
 
-## Test tags
-
-A testset that verifies requirements starts its name with its `T-` id and ends with the requirement ids in brackets:
-
-```julia
-@testset "T-031 Esirkepov charge conservation [R-012, R-013]" begin
-```
-
-The builder scans the `.jl` files under `test/`, `lib/`, `scripts/` and `benchmark/`. The text between the id and the brackets must equal the record's `testset` field, and the bracketed ids must equal its `verifies` list. A testset with a `T-` id but no record, a `T-` record with no testset, a mismatch, or an id used twice is an untraced test. Testsets without a `T-` id (nested ones, for example) are ignored.
+The overseer writes `trace/digests/<date>.md`.
