@@ -1,6 +1,6 @@
 # Particle pushers: what the literature says, for WP-015
 
-Background for WP-015: the relativistic pushers worth comparing, the claims each paper makes, and the test problems worth reusing. Papers are cited by journal, volume and page. The DOIs were checked against the bibliographic records, not completed from memory. Page and section numbers are the journal's unless a note says the copy read was a preprint. "Here" means among the papers read for this note, not the whole literature.
+Background for WP-015, which implements and compares all five pushers in the table below: the relativistic pushers worth comparing, the claims each paper makes, and the test problems worth reusing. Papers are cited by journal, volume and page. The DOIs were checked against the bibliographic records, not completed from memory. Page and section numbers are the journal's unless a note says the copy read was a preprint. "Here" means among the papers read for this note, not the whole literature.
 
 ## The candidates for the in-loop push
 
@@ -36,7 +36,7 @@ The table entries come from these papers:
 
   Two caveats apply:
   - Their quadratic-unitary update equals the exact update for a locally uniform null field (E·B = 0, E² = B²). A real plane-wave orbit still has errors from the field varying across a step and from the position update.
-  - A constant proper-time step is a constant phase step. Their run therefore resolves one laser period with about 63 steps. A fixed lab Δt gives a phase step Δη = Δt/γ, so one figure-8 period takes 2π(1 + a₀²/4)/Δt steps: about 820 at a₀ = 10 and ω₀Δt = 0.2. At PIC resolution the orbit is resolved more than ten times more finely than in their comparison, so their verdict does not carry over unchecked.
+  - A constant proper-time step is a constant phase step, so their run resolves every part of the laser period with Δη = 0.1. A fixed lab Δt gives a phase step Δη = Δt/γ. One figure-8 period then takes 2π(1 + a₀²/4)/Δt steps, about 820 at a₀ = 10 and ω₀Δt = 0.2, so on average the orbit is resolved more finely than in their comparison. The steps are not spread evenly, though. γ ≈ 1 at the zeros of the vector potential, where the field is strongest, and there the phase step is the full Δt and the per-step momentum kick is about a₀·ω₀Δt, which is 2 at a₀ = 10 and ω₀Δt = 0.2. So their verdict is relevant at PIC resolution too, and a₀·ω₀Δt is the parameter to scan. A quick, unreviewed check during planning found the Boris error in γ − u_z growing with a₀·ω₀Δt and reaching tens of percent at a₀ = 10 and ω₀Δt = 0.2. WP-015 measures this properly.
 
   They also attribute the Boris-type error in strong fields to splitting the electric boost from the magnetic rotation. They state that the condition persists even when each factor is evaluated exactly, so an exact rotation (Boris-C) does not address it.
 - **Zhang et al. (Phys. Plasmas 22, 044501 (2015))** state that relativistic Boris is not volume-preserving. Higuera and Cary (Sec. V) answer that the scheme Zhang et al. construct is itself the Boris scheme, and that relativistic Boris preserves volume. Zenitani and Umeda (Sec. I) remark that Zhang's solver appears to be another expression of the Boris solver. Zhang's Eq. 3 is consistent with that: γ is taken after the first electric half-kick.
@@ -83,7 +83,7 @@ Boris-SDC is the one that handles time-dependent fields. It is the candidate if 
 - **Crossed E and B.**
   - A particle moving at E×B/B² stays there for Vay and Higuera–Cary (Higuera–Cary Eqs. 28–29). This includes Ripperda's force-free case E = −v×B with v ⊥ B.
   - A force-free particle with a component along B is a separate case.
-- **The plane-wave figure-8 orbit** (Sarachik and Schappert, Phys. Rev. D 1, 2738 (1970)).
+- **The plane-wave figure-8 orbit** (Sarachik and Schappert, Phys. Rev. D 1, 2738 (1970)), scanned over a₀·ω₀Δt, the per-step kick where the field peaks.
   - The closed form assumes the electron was at rest before an adiabatically switched-on wave.
   - In a constant-amplitude wave, a particle started at rest must start at a zero of the vector potential, or it picks up a transverse drift.
 - **Higuera and Cary's integrable system** (their Eq. 48, Δt = 1/10, H = 4, p_z = 0, p_y,0 ∈ {1.625, 1.775}). It shows Vay's energy errors near resonant orbits. The remaining initial conditions are not stated in the text.
