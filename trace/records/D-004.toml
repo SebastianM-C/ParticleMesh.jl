@@ -1,0 +1,19 @@
+id = "D-004"
+title = "Determinism policy"
+status = "accepted"
+source = "docs/plan/open-items.md A4"
+decision = """
+A sort-based deterministic deposition as the reference mode, atomics as the fast mode, bitwise reproducibility as a tested property of the reference mode, counter-based RNG (Philox-style) for particle loading so seeds mean the same thing on every backend."""
+alternatives_rejected = []
+rationale = """
+FP32 atomics make deposition order-dependent (relative run-to-run noise ~1e-7), which breaks finite-difference gradient checks at small steps."""
+consequences = """
+Bitwise reproducibility of the reference mode is a tested property; seeds mean the same thing on every backend."""
+derived_from = ["R-006", "R-007", "R-012"]
+links_note = """The derived_from links are the transcriber's reading of which requirements of landscape section 6 this decision serves; the plan text does not state them."""
+hash = "sha256:592555bf5176cc6c4298831f98b71d92fc9e99f11f8dd6a774293a78c3c64544"
+
+[upstream]
+R-006 = "sha256:565dc39d36d5b0e68014e3db0ba7066a7231313f1b8421272ef0a87846ec7c3c"
+R-007 = "sha256:a61103b18e3f71c5cab5e985ac22a0db737ccd0da91f3324afddb2194ccf8f48"
+R-012 = "sha256:1716ce10a2f42eaf9d0fa68ee2572bc04f86e908003d4816506b8b72cb620726"

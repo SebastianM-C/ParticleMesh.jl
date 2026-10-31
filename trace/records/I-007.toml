@@ -1,0 +1,12 @@
+id = "I-007"
+title = "Step"
+status = "proposed"
+source = "docs/plan/architecture-draft.md sections 0.1 and 0.4 (rules 2 and 6)"
+contract = """`step!` composes the interactions. It is a pure function of (state, parameters) with its buffers passed explicitly: no globals, no host-side branching on device data (branch on static configuration only). Parameters are arrays or scalars of `T`, never baked into closures."""
+derived_from = ["D-003", "D-009"]
+open = """The plan gives the rules, not the signature."""
+hash = "sha256:760a6bff22b9b94bfc450943e07f012f93756ff66ad6d01021e422a3c221718e"
+
+[upstream]
+D-003 = "sha256:c594b487fb2ed6213431d82631e7beca503b5b8129aaf7c92ce6cb391e20f2a3"
+D-009 = "sha256:a6a148d894142d8158319c4c312e1abc26e9518cbd3b3606b1dc317847cbf20a"

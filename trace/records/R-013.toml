@@ -1,0 +1,9 @@
+id = "R-013"
+title = "Problem description separated from numerical implementation"
+status = "accepted"
+source = "docs/plan/landscape-and-requirements.md section 6, R13 (cites A10)"
+statement = """Physics modules expressible as descriptions (MTK systems, `PDESystem`, equation types, source and boundary data), with the numerical choices (shape functions, Yee/FEM/DG, pusher, deposition variant, backend) made separately; hand-written kernels are the production path and generated code replaces them one slot at a time."""
+rationale = """The plan text gives no rationale in section 6; the principle it cites (A10) and architecture-draft.md section 0.5 give it."""
+hash = "sha256:98869fc08117f6649a286470c500283d41860f7112a333f2bd02b13cb348bf50"
+
+[upstream]

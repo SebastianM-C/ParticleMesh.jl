@@ -1,0 +1,9 @@
+id = "R-008"
+title = "Package layout"
+status = "accepted"
+source = "docs/plan/landscape-and-requirements.md section 6, R8"
+statement = """MTK-free GPU core; optional MTK/MOL front-end for the fluid models and for composing with EDM models; LaserTypes.jl for laser definitions; EDM-style run manifests."""
+rationale = """The plan text gives no rationale in section 6; the MethodOfLines measurements behind an MTK-free core are in landscape-and-requirements.md section 4."""
+hash = "sha256:26103d6e7979bfab0db31b9e463baebe51834aa18444c07d37cfe5043e708eb2"
+
+[upstream]

@@ -1,0 +1,17 @@
+id = "D-005"
+title = "Canonical benchmark cases with numbers"
+status = "accepted"
+source = "docs/plan/open-items.md A5"
+decision = """
+The 1D set (Landau damping, two-stream growth rate, Weibel) with expected values; one 2D LWFA case fully specified (a₀, w₀, τ, n₀, ramp, box, resolution, particles per cell, steps, diagnostics) that is also run in Smilei and PIConGPU (containerized), in a versioned config. Verification against both PIConGPU and Smilei covers correctness and performance. For a fair performance comparison the configs match shape-function order, current deposition scheme (Esirkepov in all three), filtering, precision (PIConGPU defaults to FP32, Smilei to FP64), particles per cell and output cadence, and run on the same card; report particle-steps per second and cell-steps per second with the GPU model named, never the hostname."""
+alternatives_rejected = []
+rationale = """
+Experience from earlier cross-code work: matched setups are the under-specified, labor-intensive part; do it once, in a versioned config."""
+consequences = """
+The performance comparison is fair only when the listed config properties match and the codes run on the same card."""
+derived_from = ["R-007"]
+links_note = """The derived_from links are the transcriber's reading of which requirements of landscape section 6 this decision serves; the plan text does not state them."""
+hash = "sha256:c392db1b46fff0d0e5b055a9d962c903115a1ff9fb846886520de0db1175bc72"
+
+[upstream]
+R-007 = "sha256:a61103b18e3f71c5cab5e985ac22a0db737ccd0da91f3324afddb2194ccf8f48"

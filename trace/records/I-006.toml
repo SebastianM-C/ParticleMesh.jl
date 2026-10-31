@@ -1,0 +1,11 @@
+id = "I-006"
+title = "Mesh-solve slot"
+status = "proposed"
+source = "docs/plan/architecture-draft.md section 0.5; open-items A10"
+contract = """The mesh solve is a slot whose numerical implementation is chosen separately from the problem description: it admits hand-written Yee kernels and MOL's staggered update now, and FEM (MOL Ferrite backend) and DG (Trixi) later. Generated code may replace a hand-written kernel one slot at a time."""
+derived_from = ["D-010"]
+open = """The plan names the slot and the backends it admits, not its interface."""
+hash = "sha256:d46edb04e9df2f4c6cb6b29475e4a67399731c5663a75c106b6c635f7e835101"
+
+[upstream]
+D-010 = "sha256:1b7b63ea73bf17d049982d409b5e339d631ffa5dfd5448acc7b03fbb57e8101d"

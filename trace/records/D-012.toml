@@ -1,0 +1,17 @@
+id = "D-012"
+title = "One role owns dependencies"
+status = "accepted"
+source = "docs/plan/open-items.md A12"
+decision = """
+Only the package-manager role edits a Project.toml or a manifest, on a pkg/ branch; a CI job rejects dependency-file changes on any other branch. Work-package records declare the dependencies a package needs, so they are added before the package is dispatched. For an unplanned need, a worker adds the package locally, leaves the dependency files out of its PR, and posts a request on the pinned issue "Package requests"; the role answers with a PR. The same role runs the weekly update (Pkg.update(), tests, benchmark suite, compat investigation, compat caps explained in the PR) and routes real upstream bugs through the upstream-reporter role."""
+alternatives_rejected = []
+rationale = """
+Dependency changes are serialized through one branch family and never conflict across worktrees."""
+consequences = """
+A CI job rejects dependency-file changes on any other branch; work-package records declare their dependencies ahead of dispatch."""
+derived_from = ["R-008"]
+links_note = """The derived_from links are the transcriber's reading of which requirements of landscape section 6 this decision serves; the plan text does not state them."""
+hash = "sha256:d0fa0c2a7309cdfafacb15de4e02152d846cb43cd00cb76ad82b17c1f50aefd6"
+
+[upstream]
+R-008 = "sha256:26103d6e7979bfab0db31b9e463baebe51834aa18444c07d37cfe5043e708eb2"

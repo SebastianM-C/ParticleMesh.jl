@@ -1,0 +1,9 @@
+id = "R-010"
+title = "Optimization layer"
+status = "accepted"
+source = "docs/plan/landscape-and-requirements.md section 6, R10"
+statement = """Optimization.jl with gradients; a BO baseline (optimas or Julia BO) on the same objective for a fair comparison."""
+rationale = """Bayesian optimization is what the field uses, so a gradient result needs it as the comparison."""
+hash = "sha256:aac4f33eb8cbc8f16d3404fa1737e5b2a7acb52378ca45d247f57ef0c08c94b3"
+
+[upstream]

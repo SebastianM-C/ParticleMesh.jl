@@ -1,0 +1,9 @@
+id = "R-002"
+title = "Objective"
+status = "accepted"
+source = "docs/plan/landscape-and-requirements.md section 6, R2"
+statement = """Externally injected bunch energy (smooth) first; self-injection cut-off energy only via smoothed surrogates later (the objective decision itself is deferred, open-items D)."""
+rationale = """The injected bunch energy is smooth in the parameters; the self-injection cut-off is not, hence the smoothed surrogates. The analysis is in landscape-and-requirements.md section 2."""
+hash = "sha256:1fcd2d4e07ccada1a3fa56f69c482d431bbc5dfdf17eb64f55ec607aff3ae768"
+
+[upstream]

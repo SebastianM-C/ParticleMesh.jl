@@ -1,0 +1,22 @@
+id = "D-006"
+title = "Repository and environment"
+status = "accepted"
+source = "docs/plan/open-items.md A6"
+decision = """
+A monorepo; Julia 1.13 as the target, CI on 1.13 with the next pre-release as allowed-fail; MIT; public from day one (no private packages, no hostnames anywhere in the repository, including its CLAUDE.md); CI on the KA CPU backend, GPU tests on the local GPU runner. Layout: a Pkg workspace with the umbrella package at the root and test/, docs/, benchmark/ and the lib/ subpackages as members (A11), scripts/ and reports/ for results (A13), docs/plan/ for the planning documents, .claude/agents and .claude/workflows, trace/, questions/.
+Relation to EDM: no dependency on ElectronDynamicsModels.jl initially; depend directly on LaserTypes.jl and GPUDiagnostics.jl, and lift RunManifests out of EDM's lib/ into its own package or into this monorepo's lib/; take the EDM dependency later if enough of it is needed or the symbolic layer earns its place.
+Name: ParticleMesh.jl for the repository and the engine, repository https://github.com/SebastianM-C/ParticleMesh.jl (public); agents work in worktrees inside it through EnterWorktree. Subpackage names follow the SciML lib/ pattern (ParticleMeshCore, ParticleMeshMTK, ParticleMeshReactant, Wakefields)."""
+alternatives_rejected = [
+    "Wakefields.jl as the name: too narrow for the umbrella after A9.",
+    "DiffPIC as the name: Diff-PIC is an ICLR 2025 paper (a diffusion-model surrogate for laser-plasma PIC), so the name would be confusable within the same community.",
+]
+rationale = """
+The name names the method family (PIC, PM, P³M, PME) in the SciML style of naming packages after the method, it is neutral to the physics so the modules carry the physics names, it is free in General and on GitHub (checked 2026-10-30), and the term already means differentiable particle–mesh simulation to the cosmology community through pmwd, a positive association rather than a collision. The nearest neighbours are ParticleMeshEwald.jl (unregistered) and, outside Julia, pmwd and the Python package pmesh."""
+consequences = """
+Mesh-free modules (pairwise interactions, FMM, analytic external fields) are hosted by the engine but not named by it; if those weigh more than expected, ParticlesAndFields.jl covers everything at the cost of being vaguer."""
+derived_from = ["R-008"]
+links_note = """The derived_from links are the transcriber's reading of which requirements of landscape section 6 this decision serves; the plan text does not state them."""
+hash = "sha256:0a02531b4b48c12bfea6276ea953730982a5d4de952488f758847e9cf895495e"
+
+[upstream]
+R-008 = "sha256:26103d6e7979bfab0db31b9e463baebe51834aa18444c07d37cfe5043e708eb2"

@@ -1,0 +1,9 @@
+id = "R-004"
+title = "Injection"
+status = "accepted"
+source = "docs/plan/landscape-and-requirements.md section 6, R4"
+statement = """External bunch and density downramp in scope; ionization injection and QED out of scope for v1."""
+rationale = """The plan text gives no rationale beyond the statement."""
+hash = "sha256:ea6d52bd85237d2e7a7eb359b3ba7a99221f8cd6d47cf2a9f40d146ddae18bc5"
+
+[upstream]

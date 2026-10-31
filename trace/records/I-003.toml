@@ -1,0 +1,11 @@
+id = "I-003"
+title = "Interactions"
+status = "proposed"
+source = "docs/plan/architecture-draft.md section 0.1 (module table and interface sketch)"
+contract = """Interactions are the pluggable unit through which physics modules enter the engine, in three kinds: mesh-mediated (deposit, solve, gather: the PIC kind), pairwise (short-range, needs a neighbour structure: the MD kind) and external (analytic fields and forces: the EDM kind). A physics module supplies which quantities are deposited, which mesh equations are solved, which force acts on a particle and which pusher integrates it, and which sources and boundaries exist. Engine code never references a specific physics."""
+derived_from = ["D-009"]
+open = """The plan names the three kinds and what a module supplies, not the abstract types or methods."""
+hash = "sha256:066f67f707f6e9602bed62357a1abbd7c4b82094f0985b008048543d6009d1fa"
+
+[upstream]
+D-009 = "sha256:a6a148d894142d8158319c4c312e1abc26e9518cbd3b3606b1dc317847cbf20a"
