@@ -8,13 +8,13 @@ adds_dependencies = ["KernelAbstractions", "Atomix", "Adapt", "AcceleratedKernel
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A6 = "344832ac0e32f874b8cbaa674a2282ee40a05d9c"
-A7 = "b4cade448159d5276774626df7f94299f8621395"
+A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "c4a9112c185bc4f4af5c969b185524cc74321372"
+A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
 +++
 # WP-004: engine core, mesh: bootstrap, grid, field sets, guard fill
 
-Parked (A0: contracts are written from working code). The spike WP-010 builds a 1D electrostatic PIC first and tests the contracts below as proposals; this package is re-derived from the spike's write-up, kept or withdrawn, before it is dispatched.
+Parked (A0: contracts are written from working code). The spike WP-010 (done) built a 1D electrostatic PIC first and tested the contracts below as proposals; its write-up, `reports/spike-electrostatic-1d.md` sections 3 and 4, is the input from which this package is kept, replaced or withdrawn before it is dispatched. Electrostatic is the spike's test case, not a module: the electromagnetic module is the only physics module (A9).
 
 The first engine package. It creates `lib/ParticleMeshCore` with its whole dependency set and the test scaffolding every later core package uses, and implements the mesh side of the engine. The contracts are `docs/plan/architecture-draft.md` §0.7 items 1 to 4, 9, 10, 13, 16 to 19; read §0.4 and §0.7 in full before starting.
 
@@ -28,7 +28,7 @@ The first engine package. It creates `lib/ParticleMeshCore` with its whole depen
 2. **Grid and `GridState`**, with the conventions of item 10 written into docstrings: 1-based local cells, 0-based global index, in-cell offset measured from the lower unstaggered node, face k = 2(axis − 1) + 1 (low) or + 2 (high). `Bounded()` exists as a type and is rejected with a clear error wherever this package does not handle it yet.
 3. **Field sets.** `StaggeredField`, allocation from a layout through `similar` or `KernelAbstractions.allocate`, and `idx` for every access. The guard width comes in as a parameter; the transfers package later supplies `guard_width(shape)`.
 4. **`fill_guards!`** for periodic axes, all N, all staggers, written as a KA kernel within the §0.4 rules (index arithmetic, loads and stores only).
-5. **Test scaffolding** for all core packages: `lib/ParticleMeshCore/test/runtests.jl` with an include list (one file per work package: `mesh.jl` here); a helper module with `roundoff_bound(T; n, steps, C)`, the A8 type-matrix loop (Float32, Float64, Double32, `Dual{Float32,3}`), `fd_scan(f, x; hs)`; `lib/ParticleMeshCore/test/tolerances.toml` with one table per package; `lib/ParticleMeshCore/test/Project.toml` as a workspace member, with ParticleMeshCore through `[sources]` plus ForwardDiff and DoubleFloats as test dependencies, so `julia +1.13 --project=lib/ParticleMeshCore -e 'using Pkg; Pkg.test()'` works as `CLAUDE.md` describes; and the root `test/runtests.jl` includes the core suite, with the root `test/Project.toml` listing the same dependencies, so the existing CI job runs it with no workflow change.
+5. **Test scaffolding** for all core packages: `lib/ParticleMeshCore/test/runtests.jl` with an include list (one file per work package: `mesh.jl` here); a helper module with `roundoff_bound(T; n, steps, C)` for the exact identities, the A8 type-matrix loop (Float32, Float64, Double32, `Dual{Float32,3}`), and `fd_scan(f, x; hs)` for the gradient checks, lifted from the spike's T-143 (`lib/ParticleMeshCore/test/gradient.jl`): it scans at least five step sizes in Float64, returns the difference quotients and the floor, which is the spread of the three neighbouring quotients around the minimum, and never a floor computed from `eps` and the step (A7); gradient tests then require the AD derivative to agree within a multiple of that floor, the multiple measured and proposed in `tolerances.toml`; `lib/ParticleMeshCore/test/tolerances.toml` with one table per package; `lib/ParticleMeshCore/test/Project.toml` as a workspace member, with ParticleMeshCore through `[sources]` plus ForwardDiff and DoubleFloats as test dependencies, so `julia +1.13 --project=lib/ParticleMeshCore -e 'using Pkg; Pkg.test()'` works as `CLAUDE.md` describes; and the root `test/runtests.jl` includes the core suite, with the root `test/Project.toml` listing the same dependencies, so the existing CI job runs it with no workflow change.
 
 ## Non-goals
 
@@ -52,4 +52,4 @@ Nothing. Later core packages depend on it.
 
 ## Budgets
 
-A7's throughput budget is defined on the GPU; this package records CPU timings of `fill_guards!` without a threshold and proposes a CI-time budget for the core suite, marked unverified. Tolerances: everything here is exact (bitwise), so `tolerances.toml` gets the table with no proposed constants yet. Tier 2: the PR edits `/Project.toml` and `/lib/*/Project.toml` (`.github/CODEOWNERS`), so it needs the owner's approval, and an unattended session opens it as a draft.
+A7's throughput budget is defined on the GPU; this package records CPU timings of `fill_guards!` without a threshold and proposes a CI-time budget for the core suite, marked unverified. Tolerances: everything here is exact (bitwise), so `tolerances.toml` gets the table with no proposed constants yet; the gradient multiple of `fd_scan` is proposed by the first package that adds a gradient test. Tier 2: the PR edits `/Project.toml` and `/lib/*/Project.toml` (`.github/CODEOWNERS`), so it needs the owner's approval, and an unattended session opens it as a draft.

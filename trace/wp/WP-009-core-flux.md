@@ -7,8 +7,8 @@ adds_dependencies = []
 
 [checked]
 A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
-A4 = "c85034796ed0c2c17c6629196b93ee07c4d8b2f2"
-A7 = "b4cade448159d5276774626df7f94299f8621395"
+A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
+A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 +++
 # WP-009: engine core, flux: charge-conserving deposition (Esirkepov)
@@ -39,8 +39,8 @@ Test ids T-110 to T-129.
 - T-110: discrete continuity, (ρ(xⁿ⁺¹) − ρ(xⁿ))/Δt + D·J = 0, with ρ from the scalar `deposit!` at both positions, to a proposed `C·eps(T)` bound per step, for N = 1, 2, 3, shapes of order 1 and 2 (cubic when available), displacements up to one cell including cell crossings, every `T` of the A8 matrix.
 - T-111: over N steps of `drift!` the continuity residual does not grow (no drift), checked at two N.
 - T-112: uniform drift of all particles in a periodic box: the total flux equals Σ wᵢqᵢvᵢ to roundoff, on every axis, including the collapsed axis in 2D3V.
-- T-113: `Reference()` and `Fast()` agree per face to a proposed bound (Float32 and Float64); `Reference()` is bitwise identical across reruns and across `JULIA_NUM_THREADS` = 1 and many (A4).
-- T-114: with `Dual{Float32,3}` weights, the partials equal the exact derivative, since the flux is linear in the weights (A3); the value part equals the primal flux bitwise in `Reference()` mode.
+- T-113: `Reference()` and `Fast()` agree per face to a proposed bound (Float32 and Float64); `Reference()` is bitwise identical across reruns and across `JULIA_NUM_THREADS` = 1 and many, for each `T` of the A8 matrix separately (A4: bitwise holds per element type and backend, not across them).
+- T-114: with `Dual{Float32,3}` weights, the partials equal the derivative of the flux with respect to the weights, known analytically because the flux is linear in them (A3; the flux of the same particles with unit weight), to a proposed `C·eps(Float32)` bound, the base type of the duals (A7). The value part agrees with the Float32 flux of the duals' value parts, in `Reference()` mode, within a proposed bound, with the measured difference recorded; A4 does not promise bit-for-bit agreement across element types (the spike saw it hold for deposition and fail by 1 ulp in the loader), so the test never requires it. No finite-difference scan here: the derivative is analytic, and A7's measured-floor rule applies to the gradient through particle motion, which is WP-007's and the electromagnetic module's test.
 - T-115: a particle at rest deposits zero flux exactly.
 - T-116: allocation does not grow with particle count or grid size (§0.7 item 13).
 
@@ -50,4 +50,4 @@ WP-005 (species, `drift!`, sort offsets) and WP-006 (shapes, weights, scalar `de
 
 ## Budgets
 
-CPU time per particle for both modes recorded without a threshold (A7's throughput budget is on the GPU). Proposed constants for T-110 and T-113 in `tolerances.toml`, marked "proposed", with the measured maxima at two or more sizes.
+CPU time per particle for both modes recorded without a threshold (A7's throughput budget is on the GPU). Proposed constants for T-110, T-113 and T-114 in `tolerances.toml`, marked "proposed", with the measured maxima at two or more sizes. No gradient-check floor to measure in this package: it has no finite-difference check (A7).

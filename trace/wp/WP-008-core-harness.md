@@ -6,13 +6,13 @@ depends_on = ["WP-007"]
 adds_dependencies = ["SciMLBase", "RecursiveArrayTools", "OrdinaryDiffEqFunctionMap"]
 
 [checked]
-A7 = "b4cade448159d5276774626df7f94299f8621395"
+A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "c4a9112c185bc4f4af5c969b185524cc74321372"
+A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
 +++
 # WP-008: engine core, harness: step! as a SciML DiscreteProblem
 
-Parked (A0: contracts are written from working code). The spike WP-010 builds a 1D electrostatic PIC first and tests the contracts below as proposals; this package is re-derived from the spike's write-up, kept or withdrawn, before it is dispatched.
+Parked (A0: contracts are written from working code). The spike WP-010 (done, `reports/spike-electrostatic-1d.md`) tested the contracts below as proposals, and its write-up (section 4, item 6) keeps the harness as a package, an adapter around `run!`, to cut once the engine/module split has replaced WP-007; this package wraps `step!`, its scope, and the write-up's `run!` is the test loop over it. The harness wraps the engine's `step!` with a physics-free module, so it does not depend on which physics module exists: under A9 the electromagnetic module is the only one planned, and the spike's electrostatic code is the reference for the electrostatic edge cases until that module reproduces them. This package is re-derived from the write-up, kept or withdrawn, before it is dispatched.
 
 The SciML entry point (A9: SciML is the main integration goal). Contracts: `docs/plan/architecture-draft.md` §0.6, §0.7 item 11; `docs/plan/sciml-reuse.md` §1.
 
@@ -40,6 +40,7 @@ Test ids T-100 to T-109.
 - T-102: saved states at `saveat` match `run!` snapshots bitwise.
 - T-103: harness overhead per step measured against `run!` and reported (no threshold).
 - T-104: the memory the harness holds, measured with `save_everystep = false` as a multiple of the `State`, reported with the cache's fields (A7's memory budget assumes a factor of two; the `FunctionMap` cache may hold more copies, which is unverified).
+- T-105: the spike's gradient check (WP-010 deliverable 5, T-143) repeated through `solve`: the ForwardDiff derivative of the same diagnostic with respect to the same weight parameter, the problem built with `remake`, against a Float64 finite-difference scan in `Reference()` mode with common random numbers, following A7's rule: a scan of at least five step sizes, the floor the spread of the three neighbouring difference quotients around the minimum, and the AD derivative asserted within a proposed multiple of that floor, the multiple recorded in `lib/ParticleMeshCore/test/tolerances.toml` marked "proposed" as WP-007's T-083 and the spike's T-143 do, and the floor, the multiple and the agreement reported. The case is the electromagnetic module's edge case with no transverse fields (A9), run through the WP-007 module interface.
 
 ## Depends on
 
@@ -47,4 +48,4 @@ WP-007.
 
 ## Budgets
 
-A7 memory budget: the measured factor of T-104, stated in bytes for a reference size, proposed as the budget's multiplier. Harness overhead per step recorded without a threshold. Tier 2: edits `lib/ParticleMeshCore/Project.toml`, so the owner approves it, and an unattended session opens it as a draft.
+A7 memory budget: the measured factor of T-104, stated in bytes for a reference size, proposed as the budget's multiplier. Harness overhead per step recorded without a threshold. The multiple of the measured floor for T-105 in `tolerances.toml`, marked "proposed". Tier 2: edits `lib/ParticleMeshCore/Project.toml`, so the owner approves it, and an unattended session opens it as a draft.

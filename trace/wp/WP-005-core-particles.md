@@ -8,8 +8,8 @@ adds_dependencies = []
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
 A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
-A4 = "c85034796ed0c2c17c6629196b93ee07c4d8b2f2"
-A7 = "b4cade448159d5276774626df7f94299f8621395"
+A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
+A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 +++
 # WP-005: engine core, particles: species, carry, loading, exchange, sort and compaction
@@ -42,10 +42,10 @@ No shapes, gather or deposition (WP-006). No pusher: modules own pushers; only `
 Test ids T-040 to T-059.
 
 - T-040: the Philox known-answer vectors match, taken from the Random123 distribution's `kat_vectors` file or Random123.jl's tests, with the source path and version cited in the test; never written from memory. If neither is reachable from the sandbox, write `questions/philox-kat-vectors.md` and keep the test as `@test_broken` naming the missing source.
-- T-041: the same seed gives bitwise identical loads on reruns and with `JULIA_NUM_THREADS` = 1 and many; a different stream id gives different draws.
+- T-041: for every `T` of the A8 matrix, the same seed gives bitwise identical loads on reruns and with `JULIA_NUM_THREADS` = 1 and many (A4: bitwise holds per element type and backend, not across element types); a different stream id gives different draws.
 - T-042: free streaming with `drift!` over N steps, for every `T` of the A8 matrix: with a dyadic displacement (for example 1/8 cell) the result is bitwise equal to the analytic position; with a general displacement it is within `C·eps(T)·N` of the Float64 analytic position, with the measured maximum and the proposed `C` recorded in `tolerances.toml`.
 - T-043: `exchange_particles!` on periodic axes conserves the count exactly; bounded faces set the documented status.
-- T-044: the loaded weights equal n(xₚ)/ppc at the lattice positions bitwise, and their sum equals the same quadrature of n computed independently in Float64 to a proposed `C·eps(T)·count` bound; parameter tangents of the weights match the exact derivative of n in p for `Dual` parameters (A3).
+- T-044: the loaded weights equal n(xₚ)/ppc at the lattice positions bitwise for Float32 and Float64, kernel against a host evaluation on the same backend (the CPU test matrix, A8); for `Dual` parameters the value part agrees with the Float32 evaluation within a proposed `C·eps(Float32)·|w|`, relative to the weight (A4: the compiler may fuse the kernel's operations differently on the `Dual` path, observed as 1 ulp in the spike's loader), with the measured maximum recorded. Their sum equals the same quadrature of n computed independently in Float64 to a proposed `C·eps(T)·count` bound; parameter tangents of the weights match the exact derivative of n in p for `Dual` parameters (A3).
 - T-045: `sort_by_cell!` returns a bitwise permutation of the input, stable within cells, whose segment lengths sum to the alive count, with the last offset equal to it; `compact!` preserves order; both reset `count` to the alive count.
 - T-046: bitwise identical sort results across `JULIA_NUM_THREADS` = 1 and many.
 - T-047: injection beyond capacity writes what fits and increments the overflow counter; no host-side read inside the call.

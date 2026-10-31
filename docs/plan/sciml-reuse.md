@@ -36,10 +36,10 @@ Reactant and the harness: SimpleDiffEq runs under Reactant (prior work by the au
 |---|---|---|
 | Yee update | hand-written, or MOL `staggered_groups` fused-broadcast backend (GPU-safe with `scalarize_single_element_regions = false`, measured 2026-10-30) | optional symbolic backend behind the same interface |
 | PSATD / spectral solver | AbstractFFTs + CUFFT/rocFFT (JuliaGPU, not SciML) | later, for numerical Cherenkov |
-| `LinearSolve.jl` with Krylov methods on GPU arrays, `SciMLOperators.FunctionOperator` for matrix-free stencils | yes | Poisson solves for electrostatic benchmarks, initial self-fields of an injected bunch, Lorenz-gauge and divergence checks (EDM's gauge and beam verification scripts already do this kind of thing), any implicit field step |
+| `LinearSolve.jl` with Krylov methods on GPU arrays, `SciMLOperators.FunctionOperator` for matrix-free stencils | yes | Poisson solves for the initial field of the electrostatic cases and for the initial self-fields of an injected bunch, Lorenz-gauge and divergence checks (EDM's gauge and beam verification scripts already do this kind of thing), any implicit field step |
 | `NonlinearSolve`, `SteadyStateDiffEq` | yes | matched spot size and density, quasi-static equilibria of the reduced models |
 
-Same ecosystem, outside SciML proper: Trixi.jl (DG for hyperbolic laws, `semidiscretize` → `ODEProblem`, a 1D Maxwell equation type in the inspected copy) is a possible DG Maxwell backend for the mesh-solve slot long term; the Ferrite backend MOL is expected to get would add unstructured FEM for the electrostatic module; TrixiParticles.jl with PointNeighbors.jl is the KA particle-framework precedent and a neighbour-search candidate for a pairwise/P³M slot. Assessment in architecture §0.5: none of them serves the LWFA module, all of them exercise the description/implementation split.
+Same ecosystem, outside SciML proper: Trixi.jl (DG for hyperbolic laws, `semidiscretize` → `ODEProblem`, a 1D Maxwell equation type in the inspected copy) is a possible DG Maxwell backend for the mesh-solve slot long term; the Ferrite backend MOL is expected to get would add unstructured FEM for geometry-heavy electrostatic problems, which no planned module covers (A9); TrixiParticles.jl with PointNeighbors.jl is the KA particle-framework precedent and a neighbour-search candidate for a pairwise/P³M slot. Assessment in architecture §0.5: none of them serves the LWFA module, all of them exercise the description/implementation split.
 
 ## 4. Gradients
 
