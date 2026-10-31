@@ -36,26 +36,21 @@ function image_id(dir, log)
     return "unknown"
 end
 
-"CPU model, thread count and CPU count from the run's container.txt; \"unknown\" where the run did not record them."
+"CPU model and thread count: from the run's container.txt, else from the analysis host."
 function hardware(dir)
     f = joinpath(dir, "container.txt")
     lines = isfile(f) ? readlines(f) : String[]
     cpu = something(findfirst(l -> startswith(l, "# cpu model:"), lines), 0)
     thr = something(findfirst(l -> startswith(l, "# threads:"), lines), 0)
     h = Dict{String,Any}()
-    if thr > 0
-        # "# threads: 8, cpus: 8"
-        mt = match(r"threads:\s*(\d+)", lines[thr])
-        mc = match(r"cpus:\s*(\d+)", lines[thr])
-        mt === nothing || (h["threads"] = parse(Int, mt.captures[1]))
-        mc === nothing || (h["cpus"] = parse(Int, mc.captures[1]))
-    end
+    thr > 0 && (h["threads"] = strip(split(lines[thr], ":"; limit = 2)[2]))
     if cpu > 0
         h["cpu"] = strip(split(lines[cpu], ":"; limit = 2)[2])
         h["cpu_source"] = "run"
     else
-        h["cpu"] = "unknown"
-        h["cpu_source"] = "not recorded by the run"
+        m = isfile("/proc/cpuinfo") ? findfirst(l -> startswith(l, "model name"), readlines("/proc/cpuinfo")) : nothing
+        h["cpu"] = m === nothing ? "unknown" : strip(split(readlines("/proc/cpuinfo")[m], ":"; limit = 2)[2])
+        h["cpu_source"] = "analysis host (the run did not record it; same machine for runner runs)"
     end
     return h
 end
@@ -128,7 +123,7 @@ function analyze(dir; log = nothing)
     p = Ek .> 0
     lines!(ax, fl.time[p], Ek[p]; color = :black)
     save_plot(dir, "mode-amplitude", fig, Dict("plot" => "amplitude of Fourier mode $mode of Ex versus time",
-        "mode" => mode, "initial" => Ek[1], "max" => maximum(Ek), "t_max" => hasproperty(rk, :t_max) ? rk.t_max : fl.time[argmax(Ek)],
+        "mode" => mode, "initial" => Ek[1], "max" => maximum(Ek), "t_max" => fl.time[argmax(Ek)],
         "final" => Ek[end],
         "gamma_from_mode" => result["measured_from_mode"], "gamma_from_mode_stderr" => result["measured_from_mode_stderr"]))
 
