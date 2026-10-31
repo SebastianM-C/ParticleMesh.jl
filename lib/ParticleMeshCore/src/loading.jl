@@ -6,7 +6,7 @@
     slot = first - Int32(1) + Int32(i)
     δ = (T(k) - one(T) / 2) / T(ppc)
     x = (T(c - Int32(1)) + δ) * dx
-    # counter: (global cell, 0, 0, slot in the high 16 bits | draw index in the low 16 bits)
+    # counter: (global cell, 0, 0, in-cell index k in the high 16 bits | draw index in the low 16 bits); `first` is not part of it
     ctr = (UInt32(c), UInt32(0), UInt32(0), UInt32(k) << 16)
     r = philox4x32(ctr, key)
     z1, z2 = box_muller(T, r[1], r[2])
