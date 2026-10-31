@@ -39,9 +39,18 @@
         one, full = parse(UInt64, one), parse(UInt64, full)
         (; threads = parse(Int, n), one, full)
     end
-    @info "T-136 digests" results inprocess = get(PHYSICS, "landau_digest", nothing) inprocess_threads = Threads.nthreads()
+    # T-141 stores its digest in PHYSICS; run alone, this file computes it here.
+    inprocess = if @isdefined(PHYSICS) && haskey(PHYSICS, "landau_digest")
+        PHYSICS["landau_digest"]
+    else
+        st, p, info = landau_case(Float64; LANDAU_KW...)
+        initialize!(st, p)
+        run!(st, p, info.nsteps)
+        state_digest(st)
+    end
+    @info "T-136 digests" results inprocess inprocess_threads = Threads.nthreads()
     @test results[1].threads == 1 && results[2].threads == 4
     @test results[1].one == results[2].one
     @test results[1].full == results[2].full
-    @test results[1].full == PHYSICS["landau_digest"]
+    @test results[1].full == inprocess
 end
