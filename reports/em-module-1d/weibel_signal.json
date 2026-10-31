@@ -1,0 +1,15 @@
+{
+  "fit_points": 381,
+  "fit_window_t": [
+    12.311116211255001,
+    21.171389242082466
+  ],
+  "gamma_es_reference": null,
+  "gamma_measured": 0.261130734463431,
+  "gamma_theory": 0.2637254682112319,
+  "omega_measured": null,
+  "omega_theory": 0.0,
+  "relative_difference_to_es_reference": null,
+  "relative_error": -0.009838768191028979,
+  "signal": "WBz"
+}

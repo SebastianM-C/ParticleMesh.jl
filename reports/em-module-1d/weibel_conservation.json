@@ -1,0 +1,7 @@
+{
+  "energy_drift_final": 1.6559375719770276e-5,
+  "energy_drift_max": 0.0002828821305583785,
+  "gauss_checks": 36,
+  "gauss_residual_max_over_eps_n_maxrho": 0.38636330241764943,
+  "total_energy_initial": 0.15169128832536094
+}

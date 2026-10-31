@@ -50,8 +50,10 @@ function run_dir(name, script, case_name; params = Dict{String,Any}())
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = joinpath(REPO, "scripts", "runs", "em1d-$name-$stamp")
     mkpath(dir)
-    write_manifest(dir; root = REPO, inputs = input_files(script, case_name),
-                   extra = Dict{String,Any}("run_id" => basename(dir), "work_package" => "WP-014", "parameters" => params,
+    # input paths relative to the repository root: absolute paths would carry the machine's home directory
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(script, case_name))
+    write_manifest(dir; root = REPO,
+                   extra = Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => "WP-014", "parameters" => params,
                                             "julia" => string(VERSION), "threads" => Threads.nthreads(),
                                             "cpu" => Sys.cpu_info()[1].model, "backend" => "KernelAbstractions CPU"))
     return dir

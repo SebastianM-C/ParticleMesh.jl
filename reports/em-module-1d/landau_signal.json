@@ -1,0 +1,15 @@
+{
+  "fit_points": 3,
+  "fit_window_t": [
+    4.7623448085238005,
+    9.210644540387136
+  ],
+  "gamma_es_reference": 0.16374826071665768,
+  "gamma_measured": 0.16258808799505262,
+  "gamma_theory": 0.15335946690960467,
+  "omega_measured": 1.4124914430052673,
+  "omega_theory": 1.4156618886045371,
+  "relative_difference_to_es_reference": -0.007085099509011438,
+  "relative_error": 0.060176403005414804,
+  "signal": "WEx"
+}

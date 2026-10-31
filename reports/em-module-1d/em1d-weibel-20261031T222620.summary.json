@@ -1,0 +1,16 @@
+{
+  "case": "weibel",
+  "energy_drift_max": 0.0002828821305583785,
+  "es_reference_seconds": null,
+  "gamma": 0.261130734463431,
+  "gamma_es_reference": null,
+  "gamma_theory": 0.2637254682112319,
+  "gauss_max": 0.38636330241764943,
+  "mode": "Reference()",
+  "ns_per_particle_step": 116.51939338737431,
+  "particles": 16384,
+  "relative_error": -0.009838768191028979,
+  "steps": 1716,
+  "threads": 16,
+  "wall_seconds": 3.2759362199999993
+}
