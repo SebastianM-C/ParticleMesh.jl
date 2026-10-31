@@ -6,7 +6,7 @@ export const meta = {
     { title: 'Propose', detail: 'three planners, each from a different angle' },
     { title: 'Merge', detail: 'one judge merges the proposals into an ordered list' },
     { title: 'Verify', detail: 'two refuters per package, distinct lenses' },
-    { title: 'Write', detail: 'surviving packages as Markdown records' },
+    { title: 'Write', detail: 'surviving packages as records in the existing format' },
   ],
 }
 
@@ -96,7 +96,9 @@ const verified = await pipeline(
 
 const survivors = verified.filter(Boolean).filter(p => p.survives)
 const dropped = verified.filter(Boolean).filter(p => !p.survives)
-  .map(p => ({ title: p.title, reasons: p.votes.filter(v => v.refuted).map(v => v.reason) }))
+  .map(p => ({ title: p.title, reasons: p.votes.length < LENSES.length
+    ? ['a verifier returned no verdict'].concat(p.votes.filter(v => v.refuted).map(v => v.reason))
+    : p.votes.filter(v => v.refuted).map(v => v.reason) }))
 log(`${survivors.length} packages survived, ${dropped.length} dropped`)
 
 phase('Write')
