@@ -78,7 +78,7 @@ Premise: the project is also an experiment in software-factory approaches, with 
 
 ## G. First batch: CPU-only packages as cloud sessions
 
-Plan in `factory-and-observability.md` section 3c: local prerequisites (public repo, `CLAUDE.md`, role definitions, cloud environment with the Julia allowlist and a cached setup script), then four or five parallel cloud sessions or Project threads on the CPU-only packages (trace MVP, core skeleton, 1D3V benchmarks with plots, level-0 reduced model, plan review). Decisions A1 to A13 and the benchmark numbers of A5 must be in the repository before the sessions start, or they will guess.
+Plan in `factory-and-observability.md` section 3c: local prerequisites (public repo, `CLAUDE.md`, role definitions, cloud environment with the Julia allowlist and a cached setup script), then four or five parallel cloud sessions or Project threads on the CPU-only packages (trace MVP, core skeleton, 1D3V benchmarks with plots, level-0 reduced model, plan review). Decisions A1 to A14 and the benchmark numbers of A5 must be in the repository before the sessions start, or they will guess.
 
 ## E. What the implementation team should receive
 
