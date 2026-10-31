@@ -3,7 +3,7 @@ id = "WP-003"
 status = "done"
 goals = ["A1", "A5", "A7"]
 depends_on = []
-adds_dependencies = ["HDF5", "SpecialFunctions"]
+adds_dependencies = ["HDF5"]
 
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
@@ -49,4 +49,4 @@ Nothing in the repository. Goals A1, A5 (as the consumer of its numbers) and A7;
 
 ## Budgets
 
-Minutes of CPU per case. Two dependencies in `scripts/` only: `HDF5.jl` and `SpecialFunctions.jl` (`erfcx`, for the Faddeeva function of the Landau theory). The image is a few GB in podman's storage, never in the repository.
+Minutes of CPU per case. One `HDF5.jl` dependency in `scripts/` only. The image is a few GB in podman's storage, never in the repository.

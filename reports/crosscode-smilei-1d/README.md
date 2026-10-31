@@ -4,7 +4,7 @@
 |---|---|
 | Work package | WP-003 (goals A1, A5, A7) |
 | Runs | `smilei-landau-d7d19f86` (reference Landau run), `smilei-two-stream-736a428f`, and `smilei-landau-9a47a107` (Landau at 1/8 of the particles, noise-limited, kept as a record) |
-| Commits of the inputs | `4da64a34a0efeca0bd4ca7f77b3bc749e24e16a1` (two-stream, first Landau run); `ae2eb5a` on the results branch (reference Landau run); full ids in each run's `manifest.toml` |
+| Commits of the inputs | `4da64a34a0efeca0bd4ca7f77b3bc749e24e16a1` (two-stream, first Landau run); `ae2eb5a` on the results branch of PR #57, squashed on merge (reference Landau run); full ids in each run's `manifest.toml` |
 | Case hashes (SHA-256) | `landau.toml` `d7d19f863edd3f1003b69e90000f1c8683075451eab0a730ba64d720d2803a0e` (reference run), `9a47a107b38cf142ae7f7a57c1c1d8440bc08a64987a56f7294ded5363e1eeaf` (first run); `two-stream.toml` `736a428fe67b795543c2c1380a73c94a115d4ec803fb81d59b0089293814a817` |
 | Code | Smilei v5.1, commit `438d43d8ab727d02dd8f4402c50393343e871b99`, CPU build; image `localhost/particlemesh-smilei:e4f0148b8952fc87`, id `7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c`, from `scripts/crosscode/containers/smilei.Containerfile` |
 | Hardware | Intel Core i9-14900K; OpenMP with one thread per patch (8 for Landau, 16 for two-stream), one MPI rank |
@@ -25,7 +25,7 @@ Both cases are periodic, one-dimensional, with immobile ions (frozen in Smilei),
 | Wall time | 379 s (first run 51 s) on 8 threads | 10 s on 16 threads |
 | Observable | damping rate γ of the field amplitude from the maxima of the Ex field energy, t ≥ 3, maxima above 10 × the noise floor (median of the last 20 % of the run) | growth rate γ from a fit of log of the Ex field energy where it lies between 10⁻³ and 3 × 10⁻² of its value at saturation |
 
-The fit rules were fixed in the case files before any run and were not changed afterwards. Two things changed after the first runs, both recorded in the commit history: the Landau particle count (below), and the anchor of the growth window, which used the global maximum and now uses the first local maximum reaching 10 % of it. The second change does not alter the primary two-stream estimate (its global maximum is the first saturation); it repairs the second estimate from the mode amplitude, whose global maximum is a later nonlinear bounce.
+The fit rules were fixed in the case files before any run. Two things were changed after the first runs, both recorded in the commit history: the Landau particle count (below), and the anchor of the growth window, which used the global maximum and now uses the first local maximum reaching 10 % of it. This is a post-hoc change to a fit rule, prompted by a run: the mode-amplitude fit of the two-stream run gave a negative rate with the old anchor. The second change does not alter the primary two-stream estimate (its global maximum is the first saturation); it repairs the second estimate from the mode amplitude, whose global maximum is a later nonlinear bounce.
 
 ## Linear theory
 
