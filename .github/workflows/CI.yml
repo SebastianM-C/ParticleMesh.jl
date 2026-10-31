@@ -30,7 +30,7 @@ jobs:
             dir=$(dirname "$project")
             [ "$dir" = lib/ParticleMeshReactant ] && continue
             echo "::group::$dir"
-            julia --project="$dir" -e 'using Pkg; Pkg.test()'
+            julia --color=yes --project="$dir" -e 'using Pkg; Pkg.test()'
             echo "::endgroup::"
           done
   reactant:
