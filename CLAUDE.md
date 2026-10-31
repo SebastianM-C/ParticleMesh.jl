@@ -6,9 +6,13 @@ ParticleMesh.jl is a differentiable particle–mesh simulation engine in Julia w
 
 1. `docs/goals/`: the owner's aims (A0) and binding decisions (A1 to A10). Short; read all of it.
 2. The work package you were given, in `trace/wp/`, and the documents it points to.
-3. `docs/plan/architecture-draft.md` section 0 when you touch the engine: the engine/module split, the interfaces, the Reactant rules.
+3. `docs/plan/architecture-draft.md` section 0 when you touch the engine: the engine/module split, the Reactant rules, and in §0.7 the decisions that bind and the proposals that do not.
 
 Everything else in `docs/plan/` is background (`docs/plan/README.md` says which is which); read it when the package or a question needs it.
+
+## Stage: experimental, bootstrapping
+
+The project is at the very beginning of the experiment (A0): the first implementation of an area is a spike with a runnable result, contracts are written from working code, and anything written before that is a proposal. Until the first spike (WP-010) has landed and the engine/module split has been extracted from it, a spike may hold engine and physics code in one package, names and signatures are the spike's own, and a reviewer treats the interfaces of `architecture-draft.md` §0.7 and the parked work packages as proposals, not as rules. Rewriting is expected; the spike's write-up, not the plan, decides what is kept. The rules below hold from the first line of code.
 
 ## Rules that are never relaxed
 
@@ -18,7 +22,7 @@ Everything else in `docs/plan/` is background (`docs/plan/README.md` says which 
 - The element type `T` is generic. No float literals in kernels (`zero(T)`, `T(π)`, `eps(T)`). Float32, Float64 and ForwardDiff duals must pass the CPU test matrix.
 - Kernels are KernelAbstractions kernels. No scalar indexing outside kernels. Allocate with `similar` or `KernelAbstractions.allocate`. Static shapes: fixed-capacity particle buffers with an alive mask and a count; no `push!` or `resize!` inside a step; no host-side branching on device data.
 - Deposition exists in two variants, atomics and sort plus segmented reduction, and the tests check that they agree.
-- Engine code never references a specific physics; physics modules plug in through the interaction interfaces. The engine must not depend on ModelingToolkit, MethodOfLines, Molly or Checkpointing.jl.
+- Once the engine/module split exists (see Stage), engine code never references a specific physics; physics modules plug in through the interaction interfaces. The engine must not depend on ModelingToolkit, MethodOfLines, Molly or Checkpointing.jl.
 - Parameters enter through particle weights and sources, never through particle positions.
 - Reference mode is deterministic: counter-based random numbers, sort-based deposition, bitwise reproducibility tested.
 - Reactant is parked until it supports GPUCompiler 2 and KernelAbstractions 0.10 (A9): add no Reactant dependency, but keep every kernel within the Reactant rules of `docs/plan/architecture-draft.md` §0.4. Once unparked, the Reactant CPU smoke test is part of CI. If it fails, fix the kernel; do not remove the test. If the failure is in Reactant itself (the native CPU test of the same kernel passes), open an `upstream` issue with a minimal reproducer, mark the test `@test_broken` with the issue number, and park that Reactant feature until upstream is fixed (A9).
