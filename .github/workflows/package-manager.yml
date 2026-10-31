@@ -96,7 +96,7 @@ jobs:
             You are the package-manager role of this repository. Your brief is .claude/agents/package-manager.md
             in this checkout of the default branch; the task is in ${{ runner.temp }}/task.md. The contract
             is CLAUDE.md. Work on a pkg/ branch (`git switch -c pkg/<name>`), push it with
-            `git push -u origin pkg/<name>`, open the pull request with `gh pr create`, and enable auto-merge
+            `git push -u origin HEAD`, open the pull request with `gh pr create`, and enable auto-merge
             with `gh pr merge --auto --squash`. Do not comment on issues yourself: when the task came from an
             issue comment, write your reply to ${{ runner.temp }}/reply.md (a later step posts it; it must
             state that it was written by Claude Code and name the model id). If a comment is not a package
@@ -104,7 +104,7 @@ jobs:
           claude_args: |
             --model claude-opus-5-5
             --max-turns 80
-            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin pkg/:*),Bash(git push origin pkg/:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh pr review:*),Bash(gh issue view:*),Bash(gh issue list:*),Read,Edit,Write,Grep,Glob"
+            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin HEAD),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh pr review:*),Bash(gh issue view:*),Bash(gh issue list:*),Read,Edit,Write,Grep,Glob"
       - name: Post the reply with the Actions token (its events do not trigger workflows)
         if: ${{ github.event_name == 'issue_comment' }}
         env:
