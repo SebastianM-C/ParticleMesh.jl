@@ -3,10 +3,10 @@
 
 The engine core of ParticleMesh.jl: a periodic grid with guard cells, fixed-capacity
 structure-of-arrays species with module-declared extras, B-spline shapes of order 1 and 2,
-gather and the deposition of a module-supplied quantity in a deterministic `Reference` mode and
-an atomic `Fast` mode, the periodic fill/fold pair, a sort by cell, counter-based
-Philox4x32-10 draws, quiet-start loading and the zero-mean periodic prefix sum
-`cumsum_periodic!`.
+gather, the deposition of a module-supplied quantity and the charge-conserving flux
+deposition (Esirkepov), each in a deterministic `Reference` mode and an atomic `Fast` mode,
+the periodic fill/fold pair, a sort by cell, counter-based Philox4x32-10 draws, quiet-start
+loading and the zero-mean periodic prefix sum `cumsum_periodic!`.
 
 The engine holds no physics (A9): a physics module composes its own step from these pieces.
 All kernels are KernelAbstractions kernels, generic in the element type `T`, with static
@@ -30,6 +30,7 @@ export fill_guards!, fold_guards!
 export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
 export Workspace, sort_by_cell!, deposit!, gather!, ChargeWeight
 export cumsum_periodic!
+export deposit_flux!, flux_guard_width
 export philox4x32, uniform_open, box_muller
 export load_quiet!
 
@@ -43,5 +44,6 @@ include("loading.jl")
 include("sort.jl")
 include("transfers.jl")
 include("mesh_ops.jl")
+include("flux.jl")
 
 end

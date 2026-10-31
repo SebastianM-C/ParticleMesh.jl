@@ -99,3 +99,16 @@ function deposited_with(mode, s, shape, stagger, grid, quantity)
     effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
     return deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity)
 end
+
+"""
+    staggered_divergence(Jx, grid) -> Vector
+
+`(Jx[j] - Jx[j-1]) / dx` for every interior node `j`, periodically (`Jx[0] ≡ Jx[n]`), on a
+folded flux whose entry `j` is the face half a cell to the right of ρ's node `j`: the discrete
+divergence that matches `deposit_flux!`'s staggering. Test support only; the engine has no
+divergence operator.
+"""
+function staggered_divergence(Jx, grid::PeriodicGrid{1})
+    n, g, dx = ncells(grid), guards(grid), cellsize(grid)
+    return [(Jx[g + j] - Jx[g + mod1(j - 1, n)]) / dx for j in 1:n]
+end
