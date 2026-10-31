@@ -18,9 +18,11 @@ const SPLIT_TWO_STREAM_FULL = 0x8bfb13fd25fab0d8   # TWO_STREAM_KW, the whole ru
 const SPLIT_T136 = 0xf07021cf9f95d7c0              # T-136's `state_digest` of the T-141 run (Base.hash)
 
 @testset "T-170 the split preserves the bits [A0, A4, WP-011]" begin
-    # The spike's recorded rates (reports/spike-electrostatic-1d.md, scripts/es1d/ at 16 threads).
+    # The spike's rates (reports/spike-electrostatic-1d.md, scripts/es1d/ at 16 threads). The
+    # report's two-stream γ, 0.3545690079405174, came from a `sum` whose rounding depends on the
+    # CPU's vector width; `linear_fit` now sums in a fixed order, which gives one ulp more.
     @test PHYSICS["landau"].γ === -0.1492419736219506
-    @test PHYSICS["two_stream"].γ === 0.3545690079405174
+    @test PHYSICS["two_stream"].γ === 0.35456900794051743
     @test PHYSICS["landau_fnv"] == SPLIT_LANDAU_FULL
     @test PHYSICS["two_stream_fnv"] == SPLIT_TWO_STREAM_FULL
     # `hash` is not fixed across Julia versions; the FNV digest above carries the claim there.
