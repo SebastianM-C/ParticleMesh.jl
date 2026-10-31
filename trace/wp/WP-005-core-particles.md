@@ -1,6 +1,6 @@
 +++
 id = "WP-005"
-status = "proposed"
+status = "parked"
 goals = ["A1", "A3", "A4", "A7", "A8"]
 depends_on = ["WP-004"]
 adds_dependencies = []
@@ -13,6 +13,8 @@ A7 = "b4cade448159d5276774626df7f94299f8621395"
 A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
 +++
 # WP-005: engine core, particles: species, carry, loading, exchange, sort and compaction
+
+Parked (A0: contracts are written from working code). The spike WP-010 builds a 1D electrostatic PIC first and tests the contracts below as proposals; this package is re-derived from the spike's write-up, kept or withdrawn, before it is dispatched.
 
 The particle side of the engine in `lib/ParticleMeshCore`. Contracts: `docs/plan/architecture-draft.md` §0.7 items 4 (exchange and status), 5 (buffers, attributes, count, position advance, momentum, weights, loading), 6 (sorting), 13 and 17; §0.4 rules 1 and 2.
 
