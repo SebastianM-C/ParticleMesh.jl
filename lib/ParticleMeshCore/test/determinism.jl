@@ -48,6 +48,7 @@
         run!(st, p, info.nsteps)
         state_digest(st)
     end
+    @isdefined(T136_RESULTS) && (T136_RESULTS[] = results)     # read by T-260 (WP-018)
     @info "T-136 digests" results inprocess inprocess_threads = Threads.nthreads()
     @test results[1].threads == 1 && results[2].threads == 4
     @test results[1].one == results[2].one
