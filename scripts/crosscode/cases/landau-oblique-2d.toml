@@ -1,0 +1,107 @@
+# Linear Landau damping of an oblique Langmuir wave, 2D periodic, |k|λ_D = 0.5, immobile ions.
+# Units (A1): time 1/ω₀, length c/ω₀, velocity c, density n_c, temperature m_e c². Density 1 n_c, so ω_p = ω₀.
+# The temperature, density and |k| = 10 ω₀/c of landau.toml, with k along the mode [2, 1] of a square box
+# (26.57° to x, not 45°, so that a swap of the axes shows). For an isotropic Maxwellian the rate equals the 1D one.
+# Sizes: 128 × 128 cells (Δx = Δy = 0.2195 λ_D), 32 × 32 electrons per cell (1.68e7 electrons), 1 ion per
+# cell, 3391 steps: 5.69e10 particle-steps, within the 6.86e10 of the 1D Landau reference run of WP-003.
+# Noise: the thermal noise energy of a single Fourier mode falls as 1/(total electrons), so the projected
+# mode (k) sees about the noise of the 1D run, while the field-energy scalars sum the noise of all 128²
+# modes and are expected to reach their floor early; both are pre-registered.
+# Schema: scripts/crosscode/README.md, version 2. A proposal.
+
+schema = 2
+name = "landau-oblique-2d"
+description = "Linear Landau damping, |k| λ_D = 0.5 along mode [2, 1], density perturbation 1 %, immobile ions"
+
+[grid]
+length = [1.4049629462081454, 1.4049629462081454]   # 2π√5/|k| per axis, so that mode [2, 1] has |k| = 10 ω₀/c
+cells = [128, 128]                                  # Δx = Δy = 0.010976 c/ω₀ = 0.2195 λ_D
+boundaries = ["periodic", "periodic"]
+
+[time]
+dt = 0.007373327228520544         # 0.95 / √(1/Δx² + 1/Δy²), 0.95 of the 2D Courant limit
+t_end = 25.0                      # round(t_end / dt) = 3391 steps
+
+[wavevector]                      # the perturbed mode; load_case checks that it is periodic in the box
+mode = [2, 1]
+magnitude = 10.0                  # |k| in ω₀/c, k λ_D = 0.5
+angle = 0.4636476090008061        # atan(k_y, k_x) = atan(1/2) in rad (26.57°)
+
+[numerics]
+shape_order = 2
+current_deposition = "esirkepov"
+filter_passes = 0
+precision = "Float64"
+random_seed = 20261031
+
+[[species]]
+name = "electron"
+charge = -1.0
+mass = 1.0
+density = 1.0
+particles_per_cell = [32, 32]     # per axis (regular lattice); 1024 per cell
+position = "regular"
+velocity = "maxwellian"
+thermal_velocity = 0.05           # v_th = √(T/m) in c, λ_D = 0.05 c/ω₀
+drift = [0.0, 0.0, 0.0]           # [v_x, v_y, v_z] in c
+mobile = true
+perturbation = { amplitude = 0.01, mode = [2, 1] }   # n(x, y) = density (1 + amplitude cos(2π (m_x x/L_x + m_y y/L_y)))
+
+[[species]]
+name = "ion"
+charge = 1.0
+mass = 1836.0
+density = 1.0
+particles_per_cell = [1, 1]
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = [0.0, 0.0, 0.0]
+mobile = false
+
+[diagnostics]
+scalars_every = 4                 # steps
+fields_every = 16                 # steps (0.118 ω₀⁻¹; the field energy peaks every π/ω_r = 2.22)
+fields = ["Ex", "Ey", "Rho"]
+
+# Pre-registered before any run. Rates are those of the field amplitude, γ/ω_p; the energies go as e^{-2γt}.
+
+[observables.damping_rate_mode]   # the primary observable
+signal = "mode_projection"        # E·k̂ of the mode [2, 1] from the field dumps: k̂_x Ê_x + k̂_y Ê_y, each component's coefficient at its own Yee points
+fields = ["Ex", "Ey"]
+component = "parallel"
+method = "peak_envelope"          # fit log of the local maxima of |E·k̂|²; slope = -2γ
+fit_start = 3.0                   # after the ballistic transient of the initial density kick
+floor_factor = 10.0               # maxima above floor_factor × the noise floor (median of the last 20 % of the run)
+theory = 0.15335946690960509      # γ / ω_p at |k|λ_D = 0.5, equal to landau.toml's
+theory_frequency = 1.4156618886045358
+formula = "least-damped root of 1 + (|k|λ_D)⁻² [1 + ζ Z(ζ)] = 0, ζ = ω/(√2 |k| v_th), the 1D relation at |k| for an isotropic Maxwellian; landau_root in scripts/crosscode/theory.jl (T-160, T-273)"
+caveat = "Smilei loads a Maxwell–Jüttner distribution at T = 2.5e-3 m_e c²; the relativistic correction to the root is not computed here"
+
+[observables.damping_rate_energy]
+signal = "scalar_sum"             # the electrostatic energy Uelm_Ex + Uelm_Ey from scalars.txt
+columns = ["Uelm_Ex", "Uelm_Ey"]
+method = "peak_envelope"
+fit_start = 3.0
+floor_factor = 10.0
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+formula = "as damping_rate_mode"
+expectation = "noise-limited: the sum over all modes reaches the noise floor within a few maxima, so the fit may have fewer than three points and report none"
+
+[observables.energy_ratio]
+signal = "scalar_ratio"           # Uelm_Ex / Uelm_Ey from scalars.txt
+columns = ["Uelm_Ex", "Uelm_Ey"]
+method = "first_output"           # the value at t = 0, after Smilei's initial Poisson solve and before the particle noise grows
+theory = 3.9975909124103444       # (sin(k_xΔx/2)/Δx)² / (sin(k_yΔy/2)/Δy)² at this resolution (Yee grid)
+theory_continuum = 4.0            # (k_x/k_y)², the limit Δ → 0
+formula = "E = −∇φ by the Yee differences gives E_x ∝ (2/Δx) sin(k_xΔx/2), E_y ∝ (2/Δy) sin(k_yΔy/2); yee_energy_ratio in scripts/crosscode/theory.jl (T-273, T-274)"
+
+[observables.energy_ratio_mode]
+signal = "mode_ratio"             # |Ê_x|² / |Ê_y|² of the mode [2, 1] from the field dumps
+fields = ["Ex", "Ey"]
+method = "median_over_fit"        # median over the field outputs nearest to the maxima used by the fit of `fit_of`
+fit_of = "damping_rate_mode"
+theory = 3.9975909124103444
+theory_continuum = 4.0
+formula = "as energy_ratio, for the mode coefficients"
