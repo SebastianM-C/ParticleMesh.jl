@@ -15,7 +15,7 @@ PIConGPU 0.8.0 against Smilei v5.1, FP64 in both, on the matched cases (A5's mat
 | oblique 2D `damping_rate_mode_ensemble` (4 seeds) | 0.1570 ± 0.0060 | 0.1405 ± 0.0096 | −0.0165: 1.46 combined jackknife errors | seed spread 0.013 (Smilei), 0.007 (PIConGPU) |
 | oblique 2D `damping_rate_mode`, mean over 4 seeds | 0.1465 ± 0.0267 (std) | 0.1522 ± 0.0208 | +0.0057: 0.33 combined errors of the means | — |
 
-PIConGPU FP32 against FP64 (the precision effect, A5): two-stream 1 × 10⁻⁶ to 3 × 10⁻⁶ relative in γ; Landau FP32_LANDAU_LINE.
+PIConGPU FP32 against FP64 (the precision effect, A5): two-stream 1 × 10⁻⁶ to 3 × 10⁻⁶ relative in γ; Landau ensemble γ 0.1323 ± 0.0142 (FP32) against 0.1360 ± 0.0131 (FP64), −0.0036, 0.19 combined jackknife errors.
 
 Two kinds of observable, two kinds of spread:
 
@@ -33,7 +33,7 @@ The value is about 5 times the larger measured difference, rounded up to a power
 
 **P2, noise-limited observables (Landau 1D and 2D).** ParticleMesh's ensemble γ agrees with each reference code's within **2 combined jackknife standard errors**, √(σ²_PM + σ²_ref), on the same case and seed count. The measured Smilei–PIConGPU differences are 0.29 and 1.46 such errors, both inside it. This is option (b) of `questions/wp-012-a5-a7-proposals.md`. The measurement shows the code-to-code spread is not resolved by these ensembles, so a threshold in units of the measured difference would be a threshold in units of noise. With the cases as registered, 2 errors are 0.039 in 1D (8 seeds each) and 0.023 in 2D (4 seeds each); a tighter threshold needs more seeds.
 
-**P3, precision.** No threshold is proposed: the FP32–FP64 difference is a property of the code under test, not of the reference. FP32_LANDAU_P3
+**P3, precision.** No threshold is proposed: the FP32–FP64 difference is a property of the code under test, not of the reference. On the noise-limited Landau case the FP32 ensemble is an independent draw (−0.0036, 0.19 combined errors), so FP32 enters P2 like a code; on the deterministic two-stream case FP32 stays within P1 (3 × 10⁻⁶ < 10⁻⁵).
 
 ## Not proposed
 
