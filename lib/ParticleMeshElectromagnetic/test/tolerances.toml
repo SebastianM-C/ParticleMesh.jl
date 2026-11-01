@@ -264,3 +264,22 @@ scale = "eps(Float32)·steps·max|reference|"
 C = 0.5
 measured = { primal = 0.0, partials = 0.0 }
 status = "proposed; both bitwise at N = 1 and N = 2 on the CPU backend, recorded, not asserted (A4)"
+["T-214".wp017]
+quantity = "Landau damping rate γ/ω_p of the field amplitude, ensemble observables damping_rate_ensemble (landau.toml) and damping_rate_mode_ensemble (landau-oblique-2d.toml)"
+measured = { smilei_1d = 0.1303, picongpu_1d = 0.1360, picongpu_1d_fp32 = 0.1323, smilei_2d = 0.1570, picongpu_2d = 0.1405 }
+jackknife_stderr = { smilei_1d = 0.0144, picongpu_1d = 0.0131, picongpu_1d_fp32 = 0.0142, smilei_2d = 0.0060, picongpu_2d = 0.0096 }
+smilei_picongpu_difference = { d1 = 0.0057, d1_in_combined_stderr = 0.29, d2 = -0.0165, d2_in_combined_stderr = 1.46 }
+proposed_threshold = "|γ_PM − γ_ref| ≤ 2 √(σ_PM² + σ_ref²), σ the jackknife standard error over the case's seeds, against each of Smilei and PIConGPU"
+proposed_threshold_values = { d1 = 0.039, d2 = 0.023 }
+source = "reports/crosscode-picongpu/README.md; questions/wp-017-a7-thresholds.md (P2)"
+status = "proposed: the Smilei–PIConGPU difference is not resolved by these ensembles, so the threshold is a multiple of the combined statistical error; for the owner to accept by editing A7"
+
+["T-215".wp017]
+quantity = "cold two-stream growth rate γ/ω_p of the field amplitude, observable growth_rate of two-stream.toml and two-stream-256.toml"
+measured = { smilei_128 = 0.3456117, picongpu_128 = 0.3456123, smilei_256 = 0.3459258, picongpu_256 = 0.3459259 }
+smilei_picongpu_relative_difference = { c128 = 1.7e-6, c256 = 2.2e-7 }
+picongpu_fp32_minus_fp64_relative = { c128 = -8.5e-7, c256 = 3.0e-6 }
+proposed_threshold = "|γ_PM/γ_ref − 1| ≤ 1e-5, fitted over the reference run's output samples, with ParticleMesh using the reference codes' initial-momentum convention (#226)"
+particlemesh_now = "−1.0e-4 relative over a common window with A2's start-up half-step kick; 0 to six digits without it"
+source = "reports/crosscode-picongpu/README.md; questions/wp-017-a7-thresholds.md (P1)"
+status = "proposed: about five times the measured Smilei–PIConGPU spread; conditional on #226; for the owner to accept by editing A7"

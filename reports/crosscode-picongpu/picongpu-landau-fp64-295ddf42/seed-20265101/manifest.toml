@@ -1,0 +1,69 @@
+updated = "2026-11-01T20:01:05.443Z"
+
+[analysis]
+commit = "2bd8c73e1e7b4e23acccf8059624f1f3b6b029f7"
+dirty = true
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:023bc2de02b96d8d31f43d504198656ad5a22babf4c284442b27b18d3901c3a1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpus = "32"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
+picongpu = "0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89"
+source = "run"
+
+[image]
+id = "1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b"
+name = "localhost/particlemesh-picongpu:a743cbb40f17cdae"
+
+[inputs]
+
+[observables]
+case = "landau"
+code = "picongpu"
+fit_points = 0
+measured_from_mode = 0.12155054374519658
+measured_from_mode_points = 5
+measured_from_mode_stderr = 0.01754934768732946
+noise_floor = 3.6695831065942295e-9
+observable = "damping_rate"
+theory = 0.1533594669096052
+theory_frequency = 1.4156618886045358
+
+    [observables.checks]
+    dumps = 671
+    flagged_dumps = 30
+    gauss_residual_max = 0.021841555369930283
+    gauss_residual_max_flagged = 0.021841555369930283
+    gauss_residual_max_iteration = 1204
+    gauss_residual_max_unflagged = 1.6683703030206942e-14
+    gauss_residual_t0 = 9.219187913078741e-15
+    gauss_residual_t0_relative = 9.234011578537495e-13
+    note = "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)"
+    rho_perturbation_t0 = 0.009983946667888951
+
+        [observables.checks.charge_per_species.electron]
+        flagged_dumps = 30
+        flagged_iterations = [40, 140, 176, 252, 268, 360, 396, 940, 976, 984, 1080, 1160, 1204, 1248, 1296, 1400, 1440, 1460, 1528, 1532, 1544, 1572, 1740, 1932, 1936, 2016, 2196, 2208, 2360, 2600]
+        max_abs_relative_change = 0.0006611403862603057
+        max_abs_relative_change_unflagged = 2.1094237467877966e-15
+
+        [observables.checks.charge_per_species.ion]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 0.0
+        max_abs_relative_change_unflagged = 0.0
+
+[outputs]
+"chargeConservation.dat" = "sha256:f8e2aba30e7d5a598bb224b0f44e5e1547ae3654b115bea7c0190962b9d621f2"
+"electron_energy_all.dat" = "sha256:12802ddebc3823a39fac016fa5c4320f50cc8f189fbf821337fafefe0c7a6b4b"
+"fields_energy.dat" = "sha256:4d800b52e6e29ab17493d7e2f04b8be5ad946f95604f972cb1fa431d7bd79e78"
+"openPMD/simData.h5" = "sha256:548bf8a02920ecce3607a4d8ced1566da48d473dd1ed406134dfea77d2f43cef"
+"picongpu.log" = "sha256:a58b4700755db717f3a81cfc4a47bba61f5bd1eb2766e9833b465dabdbd887c5"

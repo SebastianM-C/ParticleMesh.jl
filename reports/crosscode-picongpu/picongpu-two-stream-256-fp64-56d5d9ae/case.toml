@@ -1,0 +1,79 @@
+# The two-stream case of two-stream.toml at twice the resolution (WP-012): half the cell and half the
+# time step, the same output cadence in time; every other entry is the same (T-185 checks it).
+# Cold symmetric two-stream instability at the fastest-growing wavenumber, 1D periodic, immobile ions.
+# Units (A1): time 1/ω₀, length c/ω₀, velocity c, density n_c. Total electron density 1 n_c, so ω_p = ω₀.
+# The setup follows Smilei's own benchmark tst1d_02_two_str_instability.py (beams at ±0.1 c, each 0.5 n_c,
+# 0.1 % cosine perturbation, regular cold loading, frozen ions) with the box set to the fastest-growing
+# mode, k v₀ = √(3/8) ω_p, and a finer grid.
+# Schema: scripts/crosscode/README.md. A proposal; the spike's write-up may change it.
+
+schema = 1
+name = "two-stream-256"
+description = "Cold symmetric two-stream instability, beams at ±0.1 c, k v₀ = √(3/8) ω_p, immobile ions, 256 cells"
+
+[grid]
+length = 1.0260398641294912       # 2π/k, k = √(3/8)/v₀ = 6.1237 ω₀/c
+cells = 256                       # Δx = 0.0401 v₀/ω_p
+boundaries = "periodic"
+
+[time]
+dt = 0.00380755                   # 0.95 Δx, half of two-stream.toml
+t_end = 40.0
+
+[numerics]
+shape_order = 2
+current_deposition = "esirkepov"
+filter_passes = 0
+precision = "Float64"
+random_seed = 20261031
+
+[[species]]
+name = "beam_minus"
+charge = -1.0
+mass = 1.0
+density = 0.5
+particles_per_cell = 1000
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = -0.1                      # velocity in c
+mobile = true
+perturbation = { amplitude = 0.001, mode = 1 }
+
+[[species]]
+name = "beam_plus"
+charge = -1.0
+mass = 1.0
+density = 0.5
+particles_per_cell = 1000
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = 0.1
+mobile = true
+perturbation = { amplitude = 0.001, mode = 1 }
+
+[[species]]
+name = "ion"
+charge = 1.0
+mass = 1836.0
+density = 1.0
+particles_per_cell = 1
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = 0.0
+mobile = false
+
+[diagnostics]
+scalars_every = 8
+fields_every = 64
+fields = ["Ex", "Rho"]
+
+[observables.growth_rate]
+signal = "Uelm_Ex"
+method = "exponential_window"     # least-squares fit of log U over the window; slope = 2γ
+window = [1.0e-3, 3.0e-2]         # U between these fractions of max U (before saturation), chosen before the run
+theory = 0.35087576924479724      # γ / ω_p with the longitudinal mass γ₀³ m, γ₀ = 1/√(1 - v₀²)
+theory_nonrelativistic = 0.3535533905932736   # γ / ω_p = 1/(2√2), the cold nonrelativistic maximum
+formula = "1 = (ω_p²/2γ₀³)[(ω - kv₀)⁻² + (ω + kv₀)⁻²], a biquadratic in ω; γ = √(-(a + p/2 - √(p² + 8ap)/2)) with a = (kv₀)², p = γ₀⁻³; computed by scripts/crosscode/theory.jl (T-160)"

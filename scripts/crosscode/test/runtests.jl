@@ -2,6 +2,7 @@
 using Test
 using HDF5
 using TOML
+using SHA: sha256
 
 const CC = dirname(@__DIR__)
 include(joinpath(CC, "smilei.jl"))
@@ -949,3 +950,4 @@ end
     sub = read_fields(dir; names = ["Ey"])
     @test collect(keys(sub.fields)) == ["Ey"]
 end
+include(joinpath(@__DIR__, "picongpu.jl"))

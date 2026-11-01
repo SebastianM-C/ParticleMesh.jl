@@ -1,0 +1,113 @@
+arguments = "-d 1 1 -g 64 8 -s 2681 --periodic 1 1 --currentInterpolation none --fieldBackground.duplicateFields --openPMD.period 4 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source fields_all --fields_energy.period 4 --chargeConservation.period 4 --electron_energy.period 4 --electron_energy.filter all"
+case = "landau"
+case_source = "scripts/crosscode/cases/landau.toml"
+cells = [64, 8]
+code = "picongpu"
+commit = "917f460f2050ec1a8efa5c59a2d71c2ae7cd9d1b"
+dirty = false
+generator = "scripts/crosscode/picongpu.jl"
+generator_hash = "sha256:01315b1d7f4c356fd1505fe6e848be95bbe784bd4baa0ac13446cea1c3b9c738"
+precision = "Float64"
+quasi1d = true
+reference_wavelength_m = 8.0e-7
+run = "picongpu-landau-fp64-295ddf42"
+seeds = [20261101, 20262101, 20263101, 20264101, 20265101, 20266101, 20267101, 20268101]
+updated = "2026-11-01T20:01:13.235Z"
+
+[analysis]
+commit = "2bd8c73e1e7b4e23acccf8059624f1f3b6b029f7"
+dirty = true
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:023bc2de02b96d8d31f43d504198656ad5a22babf4c284442b27b18d3901c3a1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpus = "32"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
+picongpu = "0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89"
+source = "run"
+
+[image]
+id = "1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b"
+name = "localhost/particlemesh-picongpu:a743cbb40f17cdae"
+recipe = "scripts/crosscode/containers/picongpu.Containerfile"
+recipe_hash = "sha256:972f6c3760a33328b67d7d1cbff5e36fdab856d9a493c4a62eb83ffb937f8c99"
+
+[inputs]
+"case.toml" = "sha256:295ddf422cb94ae059573be5cb4f1f5971f2b46bbf3502f62ec6e41ec8879de2"
+"params/density.param" = "sha256:3455dd1bc5e2ddbbf46a5b96eb66b1fe0e1b2bfb29f7d1097340f5459309ddf8"
+"params/dimension.param" = "sha256:feaa54d466164339c53f86e6be65b71033b86250c29113785659b3768e3d0b3d"
+"params/fieldBackground.param" = "sha256:f4e55a23bd5cc22f85942aa193035565c057d7755de3b0ce33429b432cf5d601"
+"params/fieldSolver.param" = "sha256:d96d64abd92519594ffdcf24154c703f3c8784c59859bd33b39e85661faf32d5"
+"params/fileOutput.param" = "sha256:456e22acb5a2872e32f5169037f38fad520f20bfce63b7a7120d4c37cd2ab942"
+"params/memory.param" = "sha256:0dfc12e276d971eae16a11ec73e8367606fdf3d33ed332617b8422e9dcc7e06f"
+"params/particle.param" = "sha256:3a3fe681de676fe3ba51de4f26c5ed120c4602ac2a4eb1714ce9f91f7ee07cc9"
+"params/precision.param" = "sha256:f9d83785801074ae3acb9d6b8dea03659e67ceb29444bb6c27a1f7e4e3fc9d55"
+"params/random.param" = "sha256:d857f1176eb3c36ec85f78c91ac74452d0de76e892dd20314928aa1b77afb990"
+"params/simulation.param" = "sha256:d2f4d658707ddff794da120326933ec4bac81200bf905214b2471f336192634d"
+"params/species.param" = "sha256:57779e625d11587ebdaeb6bf6f209a836bf974cce8cf59582e626d5aaafabde5"
+"params/speciesDefinition.param" = "sha256:ce973d47d33c54ff210aad0e6c8fb1019122b191ea40949b98b92d5862250799"
+"params/speciesInitialization.param" = "sha256:c1b06044af6848b292db80124895bdb1613bed42f87074cfcd4393c3cfe48977"
+"run.sh" = "sha256:869ae49b9dfc3d97184286adc64b5ad9b3a6407bcc4c3b540f6dd3f62cd80406"
+"units.toml" = "sha256:2a4dadaab0bdd1455f8350779c1e29391b2215456e0c3d5ebd52667895cdff89"
+
+[observables]
+M = 8
+ensemble_floor = 3.538136137093648e-10
+maxima_used = 6
+measured = 0.13598243640709218
+measured_stderr = 0.013125425917960334
+observable = "damping_rate_ensemble"
+observable_exists = true
+
+[outputs]
+"seed-20261101/chargeConservation.dat" = "sha256:c7d352f6bbca3a134112a52d92daa3a9d4f40c734d40fa6b93792fe0c297f7d2"
+"seed-20261101/electron_energy_all.dat" = "sha256:2f003b1f52aaf9586dcf9cc5e6629865a1da33cc01fb5bd27719de2b471b42be"
+"seed-20261101/fields_energy.dat" = "sha256:ff18df57eaa70915503b506555f1207e3f5cc1cae9e29f6945b759cb0e390b3c"
+"seed-20261101/openPMD/simData.h5" = "sha256:31aa752212bb21e2bd2aaa8efcbe857527af9c9566311439c5d0231c6af0c199"
+"seed-20261101/picongpu.log" = "sha256:7b4098032a071a91d903285e4a7e68941fc01f69d713555c87c9c5a4c3e0320c"
+"seed-20262101/chargeConservation.dat" = "sha256:7cc0b89896820ca5e73a93f4478bf3aed537c5733058d18ac4727124c226f246"
+"seed-20262101/electron_energy_all.dat" = "sha256:f9f22df2c59bc61779a22697104da494f60600e47901f74e5e700948480be356"
+"seed-20262101/fields_energy.dat" = "sha256:a513d28cc86c7ba53122f22eca098a36fe289171f8b535698614d8932fb41100"
+"seed-20262101/openPMD/simData.h5" = "sha256:c12874cad04e952a3034341fdf9922d747b2e6ed7eac454b56083acdae50cbac"
+"seed-20262101/picongpu.log" = "sha256:59a230b4b591a871679de673bbab727f5fb10fe333a19247ab4db8c554aea2c2"
+"seed-20263101/chargeConservation.dat" = "sha256:748fa8fe7dc9138b7c86c735d87bd3def60906102b10e136af1dc05f76447a96"
+"seed-20263101/electron_energy_all.dat" = "sha256:c012b1cad379467f69e951da80bb969beda3225fb9fcf1373ac51dcdad98c7e0"
+"seed-20263101/fields_energy.dat" = "sha256:4aa2b23f15738d9eec4ce3c86c1e562f6fcbacec44a023282c6b3d1118513c5c"
+"seed-20263101/openPMD/simData.h5" = "sha256:bf2fbc7af7df4b0a57c80856653d4f11b06e648634e9599804b04857706f3136"
+"seed-20263101/picongpu.log" = "sha256:924b3ddd65f6669650d00ee40a7bda469222f4a78a9590b3ffce6af2605c5864"
+"seed-20264101/chargeConservation.dat" = "sha256:85317b34c4870336628cc43899746734ef220daf0b29003a20957df584d9a043"
+"seed-20264101/electron_energy_all.dat" = "sha256:2bdfa7aeebe2b81ec66fea3384d12a94d2645002d44170763514792ffc829a6f"
+"seed-20264101/fields_energy.dat" = "sha256:c1a0f7a1b872dad61be30aee3fd81903248da816ccdc7eec5ec3caa582f61543"
+"seed-20264101/openPMD/simData.h5" = "sha256:741f022385f936281b806b2c945d581df859b033525f7b91c7268388d196cdd8"
+"seed-20264101/picongpu.log" = "sha256:1aa685baf8f9038f62bef115d84d979a496b881528c783e75b3f35e06ddeafca"
+"seed-20265101/chargeConservation.dat" = "sha256:f8e2aba30e7d5a598bb224b0f44e5e1547ae3654b115bea7c0190962b9d621f2"
+"seed-20265101/electron_energy_all.dat" = "sha256:12802ddebc3823a39fac016fa5c4320f50cc8f189fbf821337fafefe0c7a6b4b"
+"seed-20265101/fields_energy.dat" = "sha256:4d800b52e6e29ab17493d7e2f04b8be5ad946f95604f972cb1fa431d7bd79e78"
+"seed-20265101/openPMD/simData.h5" = "sha256:548bf8a02920ecce3607a4d8ced1566da48d473dd1ed406134dfea77d2f43cef"
+"seed-20265101/picongpu.log" = "sha256:a58b4700755db717f3a81cfc4a47bba61f5bd1eb2766e9833b465dabdbd887c5"
+"seed-20266101/chargeConservation.dat" = "sha256:83ac6d7eb96c6a8dff232b5e155f58439e2bfe34746227c0ca1f2f8619394052"
+"seed-20266101/electron_energy_all.dat" = "sha256:4a34b65f4c257b629ddd0559bd0a1a81f2690d44ea00d8428efd14f7c44598ba"
+"seed-20266101/fields_energy.dat" = "sha256:040d0d8c61c0e66accada5389154f9b4bf5b689a77f12756be18a462373bb3b3"
+"seed-20266101/openPMD/simData.h5" = "sha256:15c09470256f736235062a5266577eb97255ddacdbb4b9a2998194e799f4d832"
+"seed-20266101/picongpu.log" = "sha256:e32118f1a9086ece1db5b3c8c450d3aa8f6c8c6295d1329d578664c5dfb6328a"
+"seed-20267101/chargeConservation.dat" = "sha256:f815ce6af2b0ec63bfd9a4f5c10fa9310db93e47ab657fd4ccf0f15f0bec6a92"
+"seed-20267101/electron_energy_all.dat" = "sha256:e0d3ad42ac70e269c49275409575680fd9598c509aabb91c9a40b03067e779b0"
+"seed-20267101/fields_energy.dat" = "sha256:f52161cdba9164fc3afc5515cb93a4d1beeb3b9185f86a32bc212f0f5aab8893"
+"seed-20267101/openPMD/simData.h5" = "sha256:9bd3a993d6df9fb742e0a706a2597f9061fcac065b43e278a72044173b6af42d"
+"seed-20267101/picongpu.log" = "sha256:1ebdeb2033ad74b4b80d2d61a767a32adcaeb321ea7891529c177c92cf66cfe0"
+"seed-20268101/chargeConservation.dat" = "sha256:aaa61dfdbbba9dafd322d385f6f660e00bfe08bf5497a1c2d203d9f6849e31bc"
+"seed-20268101/electron_energy_all.dat" = "sha256:013cab5d16553c6bfba21807fdf2dd76af73c3810a738196124735c116edb1eb"
+"seed-20268101/fields_energy.dat" = "sha256:4d1f3d20cf53e0cc9effc0741f04228844373ea795cbef6a96276ff8b4b11680"
+"seed-20268101/openPMD/simData.h5" = "sha256:107461d40673723a48de2de0702d993e520563b5f2dae61daf5b142909cac4fa"
+"seed-20268101/picongpu.log" = "sha256:250bea8bbd401d880c084aa93c5d0748dd1e4a4e6cd8a813da5100d6f5b41e3c"
+
+[transverse]
+cells = 8
+ratio = 8

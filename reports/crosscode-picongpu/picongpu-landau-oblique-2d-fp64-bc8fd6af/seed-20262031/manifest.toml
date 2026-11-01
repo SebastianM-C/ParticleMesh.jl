@@ -1,0 +1,115 @@
+updated = "2026-11-01T20:00:14.810Z"
+
+[analysis]
+commit = "2bd8c73e1e7b4e23acccf8059624f1f3b6b029f7"
+dirty = true
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:023bc2de02b96d8d31f43d504198656ad5a22babf4c284442b27b18d3901c3a1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[checks]
+gauss_residual_t0_relative = 1.0892492052401431e-12
+rho_max_deviation_t0 = 0.00997994270724496
+rho_mean_t0 = -6.710533821327469e-17
+rho_mode_amplitude_t0 = 0.009979942707242753
+sensitivity_energy_ratio_t0_without_box_mean = 3.997590912410344
+
+    [checks.dumps]
+    dumps = 212
+    flagged_dumps = 0
+    gauss_residual_max = 1.6165888072627865e-14
+    gauss_residual_max_flagged = "none flagged"
+    gauss_residual_max_iteration = 2944
+    gauss_residual_max_unflagged = 1.6165888072627865e-14
+    gauss_residual_t0 = 1.0870644662208662e-14
+    gauss_residual_t0_relative = 1.0892492052401356e-12
+    note = "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)"
+    rho_perturbation_t0 = 0.00997994270724496
+
+        [checks.dumps.charge_per_species.electron]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 8.881784197001252e-15
+        max_abs_relative_change_unflagged = 8.881784197001252e-15
+
+        [checks.dumps.charge_per_species.ion]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 0.0
+        max_abs_relative_change_unflagged = 0.0
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpus = "32"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
+picongpu = "0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89"
+source = "run"
+
+[image]
+id = "1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b"
+name = "localhost/particlemesh-picongpu:a743cbb40f17cdae"
+
+[inputs]
+
+[observables.damping_rate_energy]
+fit_points = 0
+method = "peak_envelope"
+noise_floor = 3.9174974286496675e-8
+signal = "scalar_sum"
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+
+[observables.damping_rate_mode]
+fit_points = 5
+fit_range = [4.800965716630812, 13.875199331246357]
+measured = 0.1257478751860923
+measured_frequency = 1.3848409847107053
+measured_stderr = 0.0027645940194037668
+method = "peak_envelope"
+noise_floor = 9.992430862707938e-10
+relative_difference = -0.180044911996127
+signal = "mode_projection"
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+
+[observables.energy_ratio]
+measured = 3.99759768767612
+method = "first_output"
+relative_difference = 1.6948371966960412e-6
+signal = "scalar_ratio"
+t = 0.0
+theory = 3.9975909124103444
+theory_continuum = 4.0
+
+[observables.energy_ratio_mode]
+measured = 4.140890165180915
+method = "median_over_fit"
+points = 5
+relative_difference = 0.0358464024734758
+signal = "mode_ratio"
+theory = 3.9975909124103444
+theory_continuum = 4.0
+
+[outputs]
+"chargeConservation.dat" = "sha256:28e502d3ba1af9d08e9a16290b0bc6f6933ad30bfd9c3eb1c470997873e2a5ee"
+"electron_energy_all.dat" = "sha256:bf7aadcecbfb262ea203329340a1b61a6344373ba5b80afa3ebb0e44684cf4a3"
+"fields_energy.dat" = "sha256:2d4ac9c3f7a3f3cd822d9258e19d42c70acab36cd6ab36dff4dd8ccc3d07576b"
+"openPMD/simData.h5" = "sha256:908a821f0a0265255807731b3cf06f68fac04ed7594ba3f1a48527fa2a470179"
+"picongpu.log" = "sha256:7c33c45d85189e4c6aeacf7a9120a2e2ae6df7c42b139af5bd348ad0cf8dd7bb"
+
+[performance]
+cells = 16384
+compile_seconds = 68.179
+mobile_particle_steps = 56891539456
+mobile_particles = 16777216
+ns_per_mobile_particle_step = 5.809950005934324
+particle_steps = 56947097600
+particles = 16793600
+steps = 3391
+steps_source = "case (round(t_end/dt)); PIConGPU runs -s exactly that"
+wall_seconds = 330.537

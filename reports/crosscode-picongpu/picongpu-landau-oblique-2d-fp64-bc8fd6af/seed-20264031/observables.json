@@ -1,0 +1,98 @@
+{
+  "case": "landau-oblique-2d",
+  "checks": {
+    "dumps": {
+      "charge_per_species": {
+        "electron": {
+          "flagged_dumps": 0,
+          "flagged_iterations": [],
+          "max_abs_relative_change": 1.0658141036401503e-14,
+          "max_abs_relative_change_unflagged": 1.0658141036401503e-14
+        },
+        "ion": {
+          "flagged_dumps": 0,
+          "flagged_iterations": [],
+          "max_abs_relative_change": 0.0,
+          "max_abs_relative_change_unflagged": 0.0
+        }
+      },
+      "dumps": 212,
+      "flagged_dumps": 0,
+      "gauss_residual_max": 1.6122519985728445e-14,
+      "gauss_residual_max_flagged": "none flagged",
+      "gauss_residual_max_iteration": 3072,
+      "gauss_residual_max_unflagged": 1.6122519985728445e-14,
+      "gauss_residual_t0": 1.0870644662208662e-14,
+      "gauss_residual_t0_relative": 1.0892492052401356e-12,
+      "note": "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)",
+      "rho_perturbation_t0": 0.00997994270724496
+    },
+    "gauss_residual_t0_relative": 1.0892492052401431e-12,
+    "rho_max_deviation_t0": 0.00997994270724496,
+    "rho_mean_t0": -6.703079931391631e-17,
+    "rho_mode_amplitude_t0": 0.009979942707242753,
+    "sensitivity_energy_ratio_t0_without_box_mean": 3.997590912410344
+  },
+  "code": "picongpu",
+  "observables": {
+    "damping_rate_energy": {
+      "fit_points": 0,
+      "fit_range": null,
+      "measured": null,
+      "measured_frequency": null,
+      "measured_stderr": null,
+      "method": "peak_envelope",
+      "noise_floor": 3.874304883054011e-8,
+      "relative_difference": null,
+      "signal": "scalar_sum",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "damping_rate_mode": {
+      "fit_points": 5,
+      "fit_range": [
+        4.80663484360848,
+        13.650975834784749
+      ],
+      "measured": 0.14629209633213583,
+      "measured_frequency": 1.4208374176093232,
+      "measured_stderr": 0.005741584824716661,
+      "method": "peak_envelope",
+      "noise_floor": 9.616960508626047e-10,
+      "relative_difference": -0.04608369290716815,
+      "signal": "mode_projection",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "energy_ratio": {
+      "measured": 3.99759768767612,
+      "method": "first_output",
+      "relative_difference": 1.6948371966960412e-6,
+      "signal": "scalar_ratio",
+      "t": 0.0,
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    },
+    "energy_ratio_mode": {
+      "measured": 3.935821834219008,
+      "method": "median_over_fit",
+      "points": 5,
+      "relative_difference": -0.015451575597587313,
+      "signal": "mode_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    }
+  },
+  "performance": {
+    "cells": 16384,
+    "compile_seconds": 68.179,
+    "mobile_particle_steps": 56891539456,
+    "mobile_particles": 16777216,
+    "ns_per_mobile_particle_step": 5.740537224389641,
+    "particle_steps": 56947097600,
+    "particles": 16793600,
+    "steps": 3391,
+    "steps_source": "case (round(t_end/dt)); PIConGPU runs -s exactly that",
+    "wall_seconds": 326.588
+  }
+}

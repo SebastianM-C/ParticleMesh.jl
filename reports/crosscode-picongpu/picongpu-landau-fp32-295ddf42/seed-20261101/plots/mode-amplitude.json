@@ -1,0 +1,10 @@
+{
+  "final": 4.586397982665777e-5,
+  "gamma_from_mode": 0.14250044104421633,
+  "gamma_from_mode_stderr": 0.015025098056778891,
+  "initial": 0.0009987957308325328,
+  "max": 0.0009987957308325328,
+  "mode": 1,
+  "plot": "amplitude of Fourier mode 1 of Ex versus time",
+  "t_max": 0.0
+}
