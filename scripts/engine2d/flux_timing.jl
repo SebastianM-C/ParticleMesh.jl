@@ -316,10 +316,10 @@ same(a, b) = all(bitsof(x) == bitsof(y) for (x, y) in zip(a, b))
 maxrel(a, b) = maximum(maximum(abs.(x .- y)) / maximum(abs, y) for (x, y) in zip(a, b))
 zero3!(J) = foreach(x -> fill!(x, zero(eltype(x))), J)
 
-function row(T, n, np, P, label, method, r; extra...)
-    return Dict{String,Any}("T" => string(T), "cells" => collect(n), "particles" => np, "order" => P, "stagger" => label,
-                            "method" => method, "ns_per_particle" => 1e9 * r.median / np, "ns_per_particle_min" => 1e9 * r.min / np,
-                            "ns_per_particle_max" => 1e9 * r.max / np, "calls_per_sample" => r.inner, extra...)
+function row(T, n, np, P, label, method, r, extra = Dict{String,Any}())
+    return merge(Dict{String,Any}("T" => string(T), "cells" => collect(n), "particles" => np, "order" => P, "stagger" => label,
+                                  "method" => method, "ns_per_particle" => 1e9 * r.median / np, "ns_per_particle_min" => 1e9 * r.min / np,
+                                  "ns_per_particle_max" => 1e9 * r.max / np, "calls_per_sample" => r.inner), extra)
 end
 
 function prototype_rows()
@@ -398,7 +398,7 @@ function prototype_rows()
         haskey(outs, "recompute_nn") && (checks["nn_maxrel_recompute"] = maxrel(outs["recompute_nn"], ref);
                                          checks["patch_nn_maxrel_recompute"] = maxrel(outs["patch_tuple_nn"], ref))
         for (k, v) in results
-            push!(rows, row(T, n, np, P, label, k, v; checks...))
+            push!(rows, row(T, n, np, P, label, k, v, checks))
         end
         println(T, " ", n, " P=", P, " ", label, ": ",
                 join(("$k=$(round(1e9 * results[k].median / np, sigdigits = 3))" for k in sort(collect(keys(results)))), " "), " ", checks)
