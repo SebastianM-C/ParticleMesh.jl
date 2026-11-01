@@ -120,8 +120,25 @@ end
                                         sp, shape, Node(), grid, ws; dt = 0.25f0, quantity_y = ChargeUy(), quantity_z = ChargeUz())
         @test all(same_bits.(J(Fast(), s, Workspace(s, grid)), J(Reference(), c, wc)))
     end
+    # The fallback sort moves the species' extras with the particles; an array the caller keeps
+    # outside the species follows by indexing it with ws.perm (slot i now holds the particle of slot ws.perm[i])
+    grid = PeriodicGrid(n, 0.5f0, 2)
+    s = test_species(D3, grid, np; seed = 10, extras = (old_slot = Int32,))
+    for i in 1:capacity(s)
+        s.extras.old_slot[i] = Int32(i)
+    end
+    held = collect(1:capacity(s))
+    ws = Workspace(s, grid)
+    deposit!(Fast(), field(backend, D3, grid), s, Quadratic, Center(), grid, ws)
+    alive(i) = s.status[i] == ParticleMeshCore.ALIVE
+    @test ws.perm != 1:capacity(s)
+    @test all(i -> s.extras.old_slot[i] == ws.perm[i], 1:capacity(s))
+    @test all(i -> s.extras.old_slot[i] > np || Int(value_of(s.u[2][i])) == s.extras.old_slot[i], 1:capacity(s))
+    @test all(i -> !alive(i) || Int(value_of(s.u[2][i])) == held[ws.perm[i]], 1:capacity(s))
+    @test any(i -> alive(i) && Int(value_of(s.u[2][i])) != held[i], 1:capacity(s))
     # A caller that has sorted passes the effective mode, which does not sort again; Fast() sorts,
     # and on a sorted species that is the identity permutation
+    grid = PeriodicGrid(n, 0.5f0, 2)
     s = test_species(D3, grid, np; seed = 9)
     ws = Workspace(s, grid)
     sort_by_cell!(s, grid, ws)
