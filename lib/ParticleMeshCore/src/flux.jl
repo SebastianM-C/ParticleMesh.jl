@@ -149,8 +149,9 @@ three fields moves them into the interior.
 current cell; the extras follow the sort) and is bitwise deterministic: one work item per node
 adds the contributions of the cells whose stencil reaches it, in increasing cell order and
 within a cell in slot order, across reruns, thread counts and `workgroupsize` (T-113). `Fast()`
-adds with atomics, and falls back to `Reference()` for element types without them
-(`effective_mode`).
+needs no sort: it adds with atomics, and for element types without them sorts the species by
+cell itself and runs `Reference()` (`effective_mode`, #196); a caller that sorts anyway passes
+`effective_mode(mode, T)`.
 """
 function deposit_flux!(mode, Jx::AbstractVector{T}, Jy::AbstractVector{T}, Jz::AbstractVector{T}, s::Species{1},
                        shape::Shape, stagger::Stagger, grid::PeriodicGrid{1}, ws::Workspace;
@@ -161,6 +162,7 @@ function deposit_flux!(mode, Jx::AbstractVector{T}, Jy::AbstractVector{T}, Jz::A
         throw(ArgumentError("deposit_flux! needs $(flux_guard_width(shape, stagger)) guard cells for this shape and stagger, the grid has $(guards(grid))"))
     ncells(grid) >= 3 || throw(ArgumentError("deposit_flux! needs at least 3 cells"))
     sx = cellsize(grid) / dt
+    fallback_sort!(mode, T, s, grid, ws, workgroupsize)
     _deposit_flux!(effective_mode(mode, T), Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, quantity_y, quantity_z, workgroupsize)
 end
 

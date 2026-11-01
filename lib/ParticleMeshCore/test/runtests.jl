@@ -19,7 +19,7 @@ include("spectral_cases.jl")
         include("flux.jl")
         include("engine2d.jl")
         include("spectral.jl")      # WP-021: T-310 to T-316, the periodic solve
-        include("input_checks.jl")  # T-340 to T-342, T-344: input checks and the Float32 draw (#194, #195, #201)
+        include("input_checks.jl")  # T-340 to T-342, T-344, T-345: input checks, the Float32 draw, the Fast() fallback sort (#194, #195, #196, #201)
         include("switch.jl")        # WP-013: T-199, the GPU switch
         include("gpu.jl")           # WP-013: the GPU testsets, or one line saying why they do not run
     finally
