@@ -1,0 +1,68 @@
+{
+  "case": "landau-oblique-2d",
+  "checks": {
+    "rho_max_deviation_t0": 0.00998017283915162,
+    "rho_mean_t0": -2.9638077224144034e-16,
+    "rho_mode_amplitude_t0": 0.00998018974812877,
+    "sensitivity_energy_ratio_t0_without_box_mean": 3.9975909124103444
+  },
+  "observables": {
+    "damping_rate_energy": {
+      "fit_points": 0,
+      "fit_range": null,
+      "measured": null,
+      "measured_frequency": null,
+      "measured_stderr": null,
+      "method": "peak_envelope",
+      "noise_floor": 3.97421633845e-8,
+      "relative_difference": null,
+      "signal": "scalar_sum",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "damping_rate_mode": {
+      "fit_points": 5,
+      "fit_range": [
+        4.747706104432604,
+        13.60705058038013
+      ],
+      "measured": 0.16093507801533882,
+      "measured_frequency": 1.418431199788647,
+      "measured_stderr": 0.007833844268724022,
+      "method": "peak_envelope",
+      "noise_floor": 6.349028157372099e-10,
+      "relative_difference": 0.049397740213840476,
+      "signal": "mode_projection",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "energy_ratio": {
+      "measured": 3.986286510278891,
+      "method": "first_output",
+      "relative_difference": -0.0028278036395268545,
+      "signal": "scalar_ratio",
+      "t": 0.0,
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    },
+    "energy_ratio_mode": {
+      "measured": 3.9450036770411256,
+      "method": "median_over_fit",
+      "points": 5,
+      "relative_difference": -0.013154731567445777,
+      "signal": "mode_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    }
+  },
+  "performance": {
+    "cells": 16384,
+    "mobile_particle_steps": 56891539456,
+    "mobile_particles": 16777216,
+    "ns_per_mobile_particle_step": 12.592399623041763,
+    "particle_steps": 56947097600,
+    "particles": 16793600,
+    "steps": 3391,
+    "wall_seconds": 716.401
+  }
+}
