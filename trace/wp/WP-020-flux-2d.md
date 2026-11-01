@@ -33,7 +33,7 @@ This is a spike in the A0 sense: the choices below are starting points, and the 
 
 ## Deliverables
 
-1. The N = 2 method and its tests, T-300 to T-306.
+1. The N = 2 method and its tests, T-300 to T-307.
 2. `scripts/engine2d/` measurement: ns per particle of Reference and Fast at N = 2 (order 1 and 2, Float32 and Float64, two grid sizes, 1 thread and the machine's thread count), against `deposit!` at N = 2 on the same particles, and the N = 1 Reference flux before and after if N = 1 changed. PNG plus JSON sidecar plus manifest (F3).
 3. Report with the measurement, the mechanism choice and why, and the scheme sources read.
 4. `tolerances.toml` entries for the new `C` multiples, `status = "proposed"`.
@@ -47,7 +47,7 @@ No electromagnetic code (WP-022 and WP-023), no mesh solve (WP-021), no GPU run 
 
 - T-300 discrete continuity at N = 2 [A2, A7, WP-020]: for particles moving less than one cell per axis, crossing both seams and the corner, (ρⁿ⁺¹ − ρⁿ)/Δt + ∇·J = 0 at every node to C·eps(T) scaled by count and max|q|, with ρ from `deposit!` at the matching stagger, orders 1 and 2, Float32, Float64, `Dual{Float32,3}`.
 - T-301 the Jz weight [A2, WP-020]: a particle moving only in z deposits Jz equal to the charge-weighted shape at its position; a particle moving in x, y and z deposits Σ Jz = q·vz·w to roundoff, and the per-node Jz equals a hand-evaluated Esirkepov out-of-plane weight in one test case.
-- T-307 Jz and the in-plane components against hand-evaluated Esirkepov weights for a particle that moves in all three directions across a cell boundary, at N = 1 (Jy, Jz as the old/new average) and N = 2 [A2, WP-020]: a review of `b714331` replaced the 1D Jy, Jz average by the new-position weights and only digest tests flagged it, so this test must fail on that mutation.
+- T-307 Jz and the in-plane components against hand-evaluated Esirkepov weights for a particle that moves in all three directions across a cell boundary, at N = 1 (Jy, Jz as the old/new average) and N = 2 [A2, WP-020]. Beyond T-301 (Jz at N = 2 in one hand-evaluated case), it covers N = 1 and the in-plane components across a cell boundary, and it must fail on a mutation that replaces the 1D Jy, Jz old/new average by the new-position weights.
 - T-302 Reference and Fast agree per node within C·eps(T)·Σ|contributions| [A4, WP-020].
 - T-303 Reference is bitwise across reruns, 1 and 4 threads, and two explicit `workgroupsize` values, per element type [A4, WP-020].
 - T-304 reduction to 1D [A7, WP-020]: motion along x only with a y-constant load gives y-summed Jx equal to the 1D `deposit_flux!` to C·eps(T).
