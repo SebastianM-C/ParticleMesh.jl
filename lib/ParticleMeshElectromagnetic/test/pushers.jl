@@ -116,6 +116,26 @@ end
         @test worstu <= pC("T-231", P)
         @test worstφ <= pC("T-231", P, "C_phase")
     end
+
+    @testset "Eq. 20 γ against BigFloat, |τ| up to 10³ γ" begin
+        # Vay and Higuera–Cary share eq20_gamma; for |τ| > γ the direct form of Eq. 20 cancels
+        # (σ < 0), so the code switches to the rationalised form there
+        eq20 = ParticleMeshElectromagnetic.eq20_gamma
+        @testset "$(type_label(T))" for T in TYPES
+            V = basetype(T)
+            worst = 0.0
+            for τm in (1 // 2, 3, 10, 100, 1000), along in (0, 1 // 2)
+                u = (seeded(T, V(3) / 10), zero(T), T(V(along)))
+                τ = (zero(T), T(V(τm) / 7), T(V(τm)))
+                ex = eq20(big.(Float64.(value_of.(u))), big.(Float64.(value_of.(τ))))
+                g = eq20(u, τ)
+                @test all(isfinite, components(g))
+                worst = max(worst, Float64(abs(value_of(g) - ex) / ex) / base_eps(T))
+            end
+            record!("T-231 Eq. 20 γ", T, worst)
+            @test worst <= EMTOL["T-231"]["C_eq20"]
+        end
+    end
 end
 
 @testset "T-232 uniform E, B = 0: exact u, recorded position error [A1, A2, A7, WP-015]" begin

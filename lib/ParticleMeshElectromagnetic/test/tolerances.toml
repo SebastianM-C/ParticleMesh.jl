@@ -85,12 +85,14 @@ status = "proposed"
 # Tolerances of WP-015 (the pushers), proposals like those above, one constant per pusher. The
 # measured values are the largest over Float32, Float64 and Dual{Float32,3}.
 ["T-231"]
-quantity = "uniform Bz, E = 0: | |u| − |u₀| | (C) and the gyrophase error against the pusher's closed-form angle per step (C_phase)"
+quantity = "uniform Bz, E = 0: | |u| − |u₀| | (C) and the gyrophase error against the pusher's closed-form angle per step (C_phase); the relative error of the Eq. 20 γ (Vay, Higuera–Cary) against BigFloat for |τ| from 1/2 to 10³ (C_eq20, scale eps(T))"
 scale = "steps·|u₀|; steps (radians); 2000 steps of Δt = 1/10 in B = 2, |u₀| ∈ {0.1, 1, 10}, u ⊥ B and (|u| only) u with a component along B"
 C = { Boris = 2, Vay = 3, HigueraCary = 2, BorisExactRotation = 2 }
 C_phase = { Boris = 1, Vay = 20, HigueraCary = 1, BorisExactRotation = 3 }
+C_eq20 = 2
 measured = { Boris = 0.716, Vay = 1.33, HigueraCary = 0.667, BorisExactRotation = 0.559 }
 measured_phase = { Boris = 0.268, Vay = 9.42, HigueraCary = 0.434, BorisExactRotation = 1.32 }
+measured_eq20 = 0.599
 status = "proposed; Vay's phase constant is the rounding of its γ⁺ (Eq. 20 applied to u′) accumulating with |u|"
 
 ["T-232"]
