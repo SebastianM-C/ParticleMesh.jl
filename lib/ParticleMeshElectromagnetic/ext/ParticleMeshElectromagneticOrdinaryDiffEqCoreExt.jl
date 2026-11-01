@@ -74,8 +74,7 @@ function perform_step!(integrator, cache::PusherCache, repeat_step = false)
     v = (uprev[4], uprev[5], uprev[6])
     x′, v′ = push_particle(integrator.alg.pusher, x, v, convert(T, t), convert(T, dt), p.qm, p.E, p.B)
     u[1], u[2], u[3] = x′
-    u[4], u[5], u[6] = v′
-    OrdinaryDiffEqCore.increment_nf!(integrator.stats, 1)
+    u[4], u[5], u[6] = v′                    # the step never calls the problem's f: stats.nf stays 0
     return nothing
 end
 

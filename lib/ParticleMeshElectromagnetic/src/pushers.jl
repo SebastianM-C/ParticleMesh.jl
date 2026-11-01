@@ -110,7 +110,7 @@ is not.
 
 The rotation needs cos θ, sin θ/θ and (1 − cos θ)/θ², written as functions of θ² = |w|², with
 w = 2τ/γ: no |B| = √(B·B), whose derivative is infinite at B = 0, and no branch on |B|. Below
-θ² = √eps(T) the three come from their Taylor series (truncation below eps(T)²); above, from
+θ² = √eps(T) the three come from their Taylor series (truncation below eps(T)^(3/2)/720); above, from
 sin and cos of θ = √θ². The two are chosen with `ifelse`, a select of two computed values,
 not a branch, and the square root sees max(θ², √eps(T)), so duals stay finite through B = 0.
 """
@@ -179,7 +179,8 @@ Smooth in θ² ≥ 0 including 0, branch-free (see [`BorisExactRotation`](@ref))
 """
 @inline function rotation_coefficients(x::T) where {T}
     xc = sqrt(eps(T))
-    # Taylor series in x = θ², truncated after x² (the next terms are below x³/720 < eps(T)²)
+    # Taylor series in x = θ², truncated after x²: the largest omitted term, x³/720 in cos θ, is
+    # below eps(T)·√eps(T)/720 for x < √eps(T), well under eps(T)
     cs = one(T) - x / 2 + x * x / 24
     ss = one(T) - x / 6 + x * x / 120
     ks = one(T) / 2 - x / 24 + x * x / 720

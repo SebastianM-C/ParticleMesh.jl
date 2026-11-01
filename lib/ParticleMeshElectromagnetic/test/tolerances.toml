@@ -122,6 +122,16 @@ order_tol_closure = 0.35
 measured = { invariants = 0.069, closure = 0.177 }
 status = "proposed; error constants in reports/pushers.md"
 
+["T-236"]
+quantity = "long-run energy in static fields: max |ΔH/H| and |least-squares drift rate of ΔH/H| per unit time, Float64; recorded, not asserted (WP-015 asserts only finiteness until the owner accepts a bound)"
+case = "Higuera and Cary's system (E = −x x̂, B = 2y x̂, H = 4, p_z = 0, Δt = 1/10, p_y,0 ∈ {1.625, 1.775}, 6.3·10⁵ steps); B = r ẑ, φ = 10⁻²/r (Δt = π/10, 2·10⁵ steps, two starts); setups in the header of test/pushers.jl"
+measured_hc = { Boris = 5.38e-4, Vay = 3.1e-2, HigueraCary = 5.38e-4, BorisExactRotation = 5.38e-4 }
+measured_hc_Iy = { Boris = 1.4e-13, Vay = 0.66, HigueraCary = 4.7e-13, BorisExactRotation = 2.7e-13 }
+measured_qin = { Boris = 5.88e-5, Vay = 8.81e-5, HigueraCary = 5.89e-5, BorisExactRotation = 5.9e-5 }
+proposed_hc = { Boris = 1e-3, Vay = 5e-2, HigueraCary = 1e-3, BorisExactRotation = 1e-3 }
+proposed_qin = 2e-4
+status = "proposed bounds for A7 (reports/pushers.md), not asserted; Vay's I_y loss is a property of the scheme, recorded"
+
 ["T-237"]
 quantity = "figure-8 at a₀ = 2 with Vern9 through particle_problem: closure error and invariant error along the dense output, in units of the solver tolerance (abstol = reltol = 1e-12)"
 vern9 = 10

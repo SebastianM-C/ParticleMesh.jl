@@ -62,7 +62,7 @@ function record_named!(id, key, v)
     return v
 end
 
-@testset "T-230 the pusher slot: a Landau run with each pusher [A2, A10, WP-015]" begin
+@testset "T-230 the pusher slot: a Landau run with each pusher, bitwise reproducible [A2, A4, A10, WP-015]" begin
     case = load_case("landau")
     prob = problem_from_case(case, Float64; ppc = 64, t_end = 1)
     digest(num) = (st = EMState(prob, num; backend); initialize!(st, prob); run!(st, params(prob), prob.nsteps); st)
@@ -71,6 +71,7 @@ end
         st = digest(numerics_from_case(case; pusher = P))
         @test st.numerics.pusher === P
         @test all(isfinite, st.hist.K) && all(isfinite, st.fields.Ex)
+        @test state_digest(st) == state_digest(digest(numerics_from_case(case; pusher = P)))   # Reference mode, rerun
         P isa Boris && @test state_digest(st) == state_digest(ref)
     end
 end

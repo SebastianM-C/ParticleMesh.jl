@@ -24,6 +24,7 @@ figure8_fields(a0) = ((x, t) -> (-a0 * cos(t - x[3]), zero(a0), zero(a0)),
         sol = solve(prob, pusher_algorithm(P); dt)
         @test SciMLBase.successful_retcode(sol)
         @test length(sol.t) == nsteps + 1
+        @test sol.stats.nf == 0                         # the pusher never evaluates lorentz_rhs!
         x = (zero(T), zero(T), zero(T))
         u = x
         t = zero(V)
