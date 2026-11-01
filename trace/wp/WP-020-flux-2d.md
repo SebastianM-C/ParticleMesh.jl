@@ -47,6 +47,7 @@ No electromagnetic code (WP-022 and WP-023), no mesh solve (WP-021), no GPU run 
 
 - T-300 discrete continuity at N = 2 [A2, A7, WP-020]: for particles moving less than one cell per axis, crossing both seams and the corner, (ρⁿ⁺¹ − ρⁿ)/Δt + ∇·J = 0 at every node to C·eps(T) scaled by count and max|q|, with ρ from `deposit!` at the matching stagger, orders 1 and 2, Float32, Float64, `Dual{Float32,3}`.
 - T-301 the Jz weight [A2, WP-020]: a particle moving only in z deposits Jz equal to the charge-weighted shape at its position; a particle moving in x, y and z deposits Σ Jz = q·vz·w to roundoff, and the per-node Jz equals a hand-evaluated Esirkepov out-of-plane weight in one test case.
+- T-307 Jz and the in-plane components against hand-evaluated Esirkepov weights for a particle that moves in all three directions across a cell boundary, at N = 1 (Jy, Jz as the old/new average) and N = 2 [A2, WP-020]: a review of `b714331` replaced the 1D Jy, Jz average by the new-position weights and only digest tests flagged it, so this test must fail on that mutation.
 - T-302 Reference and Fast agree per node within C·eps(T)·Σ|contributions| [A4, WP-020].
 - T-303 Reference is bitwise across reruns, 1 and 4 threads, and two explicit `workgroupsize` values, per element type [A4, WP-020].
 - T-304 reduction to 1D [A7, WP-020]: motion along x only with a y-constant load gives y-summed Jx equal to the 1D `deposit_flux!` to C·eps(T).

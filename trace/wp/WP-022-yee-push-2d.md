@@ -39,6 +39,7 @@ Tests T-320 to T-326, Float32, Float64 and `Dual{Float32,3}` where they apply:
 - T-324 single particle in prescribed fields [A2, WP-022]: gyration in uniform Bz and E×B drift with uniform Ex, Bz match the closed forms of the pusher used (as T-230 to T-237 do in 1D), and an oblique uniform E accelerates along E in both axes, so a transposed stagger fails.
 - T-325 the gather picks each component at its own stagger: a field linear in x and y per component is reproduced at every particle to C·eps(T) [A7, WP-022].
 - T-327 the 2D diagnostics and the kinetic-energy reduction are bitwise across reruns, thread counts and two `workgroupsize` values, and equal a serial sum to C·eps(T)·count [A4, A7, WP-022].
+- T-328 `initialize!` and `step!` put the momenta at half steps (A2's half-step centring) [A2, WP-022]: a test particle started through `initialize!` and advanced by `step!` in prescribed uniform fields follows the closed-form orbit (E×B drift, gyration phase) with second-order phase convergence over a Δt pair, at N = 1 and N = 2. A review of `b714331` emptied the initial half-step kick and every module test still passed, so this test must fail on that mutation (state the check in the PR).
 - T-326 `Dual` through one vacuum step and one push, primal bitwise equal to the Float32 run [A8, WP-022].
 - T-210 to T-221, T-230 to T-237 and the harness tests pass unchanged. `build.jl --check` passes; CPU CI green.
 
