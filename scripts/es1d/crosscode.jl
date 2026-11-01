@@ -2,6 +2,7 @@
 # cross-code analysis (scripts/crosscode/analysis.jl, and ensemble.jl for a seeded case) so that
 # the numbers compare with Smilei's, and an overlay with a finished Smilei run.
 #   julia +1.13 --project=scripts -t 16 scripts/es1d/crosscode.jl run landau|two-stream|two-stream-256
+#   julia +1.13 --project=scripts scripts/es1d/crosscode.jl analyze <pm run dir>     # recompute the ensemble
 #   julia +1.13 --project=scripts scripts/es1d/crosscode.jl compare <pm run dir> <smilei run dir>
 # A case with a `seeds` list (WP-012) runs once per seed, each seed the Philox key of the
 # velocity draws, into seed-<seed>/ subdirectories; the ensemble observable goes into the top one.
@@ -171,6 +172,7 @@ function run_case(name)
     dir = run_dir("pm-$name", @__FILE__; work_package = "WP-012", extra_inputs = inputs,
         params = Dict("case" => name, "case_sha256" => bytes2hex(open(sha256, case["_path"])), "seeds" => seeds,
                       "element_type" => "Float64", "mode" => "Reference"))
+    cp(case["_path"], joinpath(dir, "case.toml"))
     if !seeded
         sim, r, result = run_one(dir, case; seed = only(seeds))
         println("pm-$name: γ = $(r.gamma) ± $(r.gamma_stderr) (theory $(result["theory"])); $(round(sim.wall, digits = 1)) s; outputs in $dir")
@@ -195,6 +197,33 @@ function run_case(name)
             "threads" => Threads.nthreads(), "cpu" => Sys.cpu_info()[1].model))
     println("pm-$name ensemble: γ = $(res["measured"]) ± $(res["measured_stderr"]) ($(res["maxima_used"]) maxima); outputs in $dir")
     return dir
+end
+
+"""
+    reanalyze(dir)
+
+Recompute the ensemble observable of a finished seeded ParticleMesh run from the series of its
+seeds (`seed-<seed>/series.json`) with the current analysis code, keeping the run's recorded
+timings; the per-seed fits are rerun on the same series.
+"""
+function reanalyze(dir)
+    old = JSON.parsefile(joinpath(dir, "observables.json"))
+    case = load_case(old["case"])
+    seeds = Int.(old["seeds"])
+    _, obs = run_observable(case)
+    coeffs, per_run, tC = Vector{ComplexF64}[], [], nothing
+    for s in seeds
+        sr = JSON.parsefile(joinpath(dir, "seed-$s", "series.json"))
+        t = Float64.(sr["tC"])
+        tC === nothing ? (tC = t) : @assert(t == tC)
+        push!(coeffs, complex.(Float64.(sr["E1_re"]), Float64.(sr["E1_im"])))
+        push!(per_run, damping_from_peaks(Float64.(sr["t"]), Float64.(sr["U"]); fit_start = obs["fit_start"], floor_factor = obs["floor_factor"]))
+    end
+    keep = ("wall_seconds_per_seed", "particles_per_seed", "steps", "particle_steps_per_seed", "ns_per_particle_step", "threads", "cpu")
+    res = write_ensemble(dir, case, tC, coeffs, seeds; code = "particlemesh", per_run,
+        extra = Dict{String,Any}(k => old[k] for k in keep if haskey(old, k)))
+    println("$(basename(dir)) ensemble: γ = $(res["measured"]) ± $(res["measured_stderr"]) ($(res["maxima_used"]) maxima)")
+    return res
 end
 
 fmt(x) = x === nothing ? "none" : string(round(x; sigdigits = 4))
@@ -270,5 +299,6 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__()
     cmd = ARGS[1]
-    cmd == "run" ? run_case(ARGS[2]) : cmd == "compare" ? compare(ARGS[2], ARGS[3]) : error("usage: run <case> | compare <pm dir> <smilei dir>")
+    cmd == "run" ? run_case(ARGS[2]) : cmd == "compare" ? compare(ARGS[2], ARGS[3]) :
+        cmd == "analyze" ? reanalyze(ARGS[2]) : error("usage: run <case> | analyze <pm dir> | compare <pm dir> <smilei dir>")
 end

@@ -36,7 +36,7 @@ standing Langmuir wave (two maxima per wave period). The noise floor is the medi
 the last 20 % of the series; the fit uses the maxima at t ≥ fit_start that lie above
 floor_factor × floor, up to the first one that is larger than its predecessor. γ = -slope/2
 of log U at the maxima; the frequency is π over the mean spacing of the maxima used. `used`
-holds the sample indices of the maxima the fit took (all candidates when it failed).
+holds the sample indices of the maxima the rule accepted, also when they were too few to fit.
 """
 function damping_from_peaks(t, U; fit_start, floor_factor)
     n = length(U)

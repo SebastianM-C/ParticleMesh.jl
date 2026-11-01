@@ -9,7 +9,7 @@ using Statistics: mean, median, std
 using ..Observables: damping_from_peaks, linear_fit, refine_peak
 
 export mode_coefficient, ensemble_energy, ensemble_damping, fit_at_peaks, aggregate_seeds,
-       SeedRefused, cross_seed_correlation, seed_scatter
+       SeedRefused, seed_scatter
 
 """
     mode_coefficient(f, m; periodic_duplicate = true) -> Vector{ComplexF64}
@@ -104,7 +104,7 @@ function aggregate_seeds(seeds, fits)
     length(seeds) == length(fits) || error("aggregate_seeds: one fit per seed")
     isok(f) = hasproperty(f, :ok) ? f.ok : isfinite(f.gamma)
     why(f) = hasproperty(f, :reason) ? f.reason :
-        "fewer than three maxima above the floor after fit_start ($(length(f.t_fit)) used)"
+        "fewer than three maxima above the floor after fit_start ($(hasproperty(f, :used) ? length(f.used) : length(f.t_fit)) accepted)"
     bad = findall(!isok, fits)
     isempty(bad) || throw(SeedRefused(collect(Int, seeds[bad]), [why(fits[i]) for i in bad]))
     g = [f.gamma for f in fits]
@@ -114,45 +114,19 @@ function aggregate_seeds(seeds, fits)
 end
 
 """
-    cross_seed_correlation(coeffs, window) -> NamedTuple
-
-Normalized complex correlation |⟨a_s, a_r⟩| / (‖a_s‖ ‖a_r‖) of the mode coefficients of every
-pair of seeds over the sample indices `window` (late times, where the noise dominates), as the
-check that the seeds' noise is independent: its maximum and mean over the pairs.
-"""
-function cross_seed_correlation(coeffs, window)
-    M = length(coeffs)
-    c = Float64[]
-    for s in 1:M, r in s+1:M
-        a, b = coeffs[s][window], coeffs[r][window]
-        push!(c, abs(sum(conj.(a) .* b)) / sqrt(sum(abs2, a) * sum(abs2, b)))
-    end
-    return (; max = isempty(c) ? NaN : maximum(c), mean = isempty(c) ? NaN : mean(c), pairs = length(c))
-end
-
-"""
     seed_scatter(coeffs, window) -> NamedTuple
 
 The noise measured from the seeds' scatter about their mean, which the coherent signal does not
 enter: `noise_of_mean`, the mean over the sample indices `window` of Σₛ |Ê_s - ⟨Ê⟩|² / (M(M-1))
-(the variance of the seed mean), and `noise_per_seed` = M × that. As an independence check
-that the signal does not enter either, `difference_correlation`: the normalized correlations
-|⟨d_a, d_b⟩| / (‖d_a‖ ‖d_b‖) of the differences d = Ê_s - Ê_r of disjoint seed pairs (1, 2),
-(3, 4), ..., over `window`; near 0 for independent noise, 1 for a shared one.
+(the variance of the seed mean for independent seeds), and `noise_per_seed` = M × that. It
+does not test independence: noise shared by all seeds cancels in the scatter as the signal does.
 """
 function seed_scatter(coeffs, window)
     M = length(coeffs)
     M >= 2 || error("seed_scatter: need two seeds")
     m = reduce(+, coeffs) ./ M
     v = [sum(abs2(c[i] - m[i]) for c in coeffs) / (M * (M - 1)) for i in window]
-    d = [coeffs[2k-1][window] .- coeffs[2k][window] for k in 1:M÷2]
-    corr = Float64[]
-    for a in 1:length(d), b in a+1:length(d)
-        push!(corr, abs(sum(conj.(d[a]) .* d[b])) / sqrt(sum(abs2, d[a]) * sum(abs2, d[b])))
-    end
-    return (; noise_of_mean = mean(v), noise_per_seed = M * mean(v),
-              difference_correlation = (; max = isempty(corr) ? NaN : maximum(corr),
-                                          mean = isempty(corr) ? NaN : mean(corr), pairs = length(corr)))
+    return (; noise_of_mean = mean(v), noise_per_seed = M * mean(v))
 end
 
 end

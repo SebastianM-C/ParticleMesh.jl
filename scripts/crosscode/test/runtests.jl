@@ -417,20 +417,13 @@ end
         cs = [signal .+ narrowband_noise(rng, t, σ) for _ in 1:M]
         sc = seed_scatter(cs, eachindex(t))
         push!(est, sc.noise_of_mean)
-        @test sc.difference_correlation.pairs == 6
+        @test sc.noise_per_seed ≈ M * sc.noise_of_mean
     end
     # the noise of each seed has mean energy σ² (over amplitudes and phases), so that of the mean is σ²/M
     @test abs(mean(est) / (σ^2 / M) - 1) <= 3 * std(est) / sqrt(R) / (σ^2 / M) + 0.05
-    # independent noise: small difference correlations; a noise shared by all seeds: correlation 1
-    rng = Xoshiro(5)
-    cs = [signal .+ narrowband_noise(rng, t, σ) for _ in 1:M]
-    # (the synthetic noise is 24 sinusoids per seed, so a correlation of independent seeds is of order 1/√24)
-    @test seed_scatter(cs, eachindex(t)).difference_correlation.mean < 0.4
-    shared = narrowband_noise(rng, t, σ)
-    cs2 = [signal .+ shared .+ (isodd(s) ? 1 : -1) .* narrowband_noise(Xoshiro(s), t, σ) for s in 1:M]
-    @test seed_scatter(cs2, eachindex(t)).noise_of_mean < 0.6 * σ^2   # the shared part cancels in the scatter ...
-    cs3 = [signal .+ (isodd(s) ? shared : -shared) for s in 1:M]
-    @test seed_scatter(cs3, eachindex(t)).difference_correlation.max ≈ 1 rtol = 1e-12   # ... and shows in the differences
+    # noise shared by all seeds cancels in the scatter like the signal: the scatter is no independence test
+    shared = narrowband_noise(Xoshiro(5), t, σ)
+    @test seed_scatter([signal .+ shared for _ in 1:M], eachindex(t)).noise_of_mean ≈ 0 atol = 1e-30
 end
 
 # The ParticleMesh column (scripts/es1d/crosscode.jl), in a module of its own so that its
