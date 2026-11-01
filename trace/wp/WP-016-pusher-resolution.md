@@ -51,10 +51,12 @@ Their exact-unitary and SO(3,1) pushers are not built; they report the quadratic
 
 The scan also runs once at Gordon and Hafizi's own resolution, a constant phase step Δη = 0.1 at a₀ = 10. This is a diagnostic outside any PIC CFL limit, so the comparison with their verdict is direct.
 
+**Float32 rounding at weak rotation (#203).** Vay and the exact-rotation Boris drift systematically in |u| in Float32 when the rotation per step is small, t² = (qBΔt/2mγ)² ≲ eps(Float32), the weak-field, high-γ regime of LWFA. #203 gives the reproducer (|u| = 10⁴, B = 50, qm_h = −0.05, 10⁴ steps: Vay 3900 eps, exact rotation 1300, Boris and Higuera–Cary 18) and, for Vay, a rewrite of the last line as `u′ + s·((u′·t)t + u′×t − t²u′)` that cuts it to 51 eps; the exact-rotation cause is open. The package fixes both, or states why one cannot be fixed without changing the algorithm, and checks `QuadraticUnitary` in the same regime.
+
 ## Deliverables
 
 1. **Source**: `QuadraticUnitary` in `pushers.jl` and in the extension, generic in `T` and within the §0.4 rules. Its docstring cites the paper and states the properties above.
-2. **Tests**: T-240 to T-244.
+2. **Tests**: T-240 to T-245.
 3. **Scan**: `scripts/pushers/resolution/`.
    - Plots of four errors per pusher against a₀·ω₀Δt, and the same against lab Δt:
      - γ − u_z;
@@ -91,7 +93,10 @@ Test ids T-240 to T-249.
   - every error decreases with an observed order of 2 within a measured tolerance where a₀·ω₀Δt ≤ 0.5;
   - every error is recorded against a₀·ω₀Δt, including the cases outside the asymptotic range.
 - **T-244 element types** [A8, WP-016]: T-241 passes for Float32, Float64 and `Dual{Float32,3}`.
+- **T-245 Float32 at weak rotation** [A2, A7, A8, WP-016]: for all five pushers in Float32, in uniform B with t² below eps(Float32) (#203's reproducer and |u| = 10 with B = 0.05), the drift of |u| over 10⁴ steps stays within C·eps(T)·√steps, the scale of unbiased rounding, with C measured and proposed; a linear drift fails it. T-230 to T-237 pass unchanged, and any change of their recorded values is stated in the PR.
 - `build.jl --check` passes and CPU CI is green.
+
+The implementing PR closes #203.
 
 ## Depends on
 
