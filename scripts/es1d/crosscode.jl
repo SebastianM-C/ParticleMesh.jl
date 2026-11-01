@@ -84,17 +84,23 @@ end
 "The per-run observable of a case (a seeded case also has the ensemble one)."
 run_observable(case) = only((k, o) for (k, o) in case["observables"] if o["method"] != "ensemble_peak_envelope")
 
-"Fit as the cross-code analyze.jl does, on the field energy U and on the mode amplitude squared."
-function observe(case, t, U, Ek2)
+"""
+    observe(case, tU, U, tC, Ek2) -> (r, result)
+
+Fit as the cross-code analyze.jl does, on the field energy U (at the scalar cadence, times tU)
+and on the mode amplitude squared Ek2 (at the field cadence, times tC).
+"""
+function observe(case, tU, U, tC, Ek2)
+    length(tU) == length(U) && length(tC) == length(Ek2) || error("observe: a series and its times differ in length")
     obs_key, obs = run_observable(case)
     if obs["method"] == "peak_envelope"
-        r = damping_from_peaks(t, U; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
-        rk = damping_from_peaks(t, Ek2; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
+        r = damping_from_peaks(tU, U; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
+        rk = damping_from_peaks(tC, Ek2; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
         ck = checked_fit(rk; min_points = 3)
         extra = Dict("measured_frequency" => r.omega, "theory_frequency" => obs["theory_frequency"], "noise_floor" => r.floor)
     else
-        r = growth_from_window(t, U; window = obs["window"])
-        rk = growth_from_window(t, Ek2; window = obs["window"])
+        r = growth_from_window(tU, U; window = obs["window"])
+        rk = growth_from_window(tC, Ek2; window = obs["window"])
         ck = checked_fit(rk; min_points = 5)
         extra = Dict("theory_nonrelativistic" => obs["theory_nonrelativistic"], "saturation_t" => r.t_max)
     end
@@ -151,7 +157,7 @@ end
 function run_one(dir, case; seed)
     mkpath(dir)
     sim = simulate(case; seed, diagnostics_every = 40)
-    r, result = observe(case, sim.tU, sim.U, abs2.(sim.C))
+    r, result = observe(case, sim.tU, sim.U, sim.tC, abs2.(sim.C))
     result["seed"] = seed
     result["particles"] = sim.particles
     result["steps"] = sim.info.nsteps

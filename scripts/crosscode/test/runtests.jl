@@ -462,10 +462,26 @@ bits(x) = reinterpret(UInt64, Array(x))
     r3 = PMCross.simulate(small; seed = s2)
     @test bits(r1.U) == bits(r2.U)
     @test reinterpret(UInt64, r1.C) == reinterpret(UInt64, r2.C)
-    @test isequal(PMCross.observe(small, r1.tU, r1.U, abs2.(r1.C))[2], PMCross.observe(small, r2.tU, r2.U, abs2.(r2.C))[2])
+    @test isequal(PMCross.observe(small, r1.tU, r1.U, r1.tC, abs2.(r1.C))[2], PMCross.observe(small, r2.tU, r2.U, r2.tC, abs2.(r2.C))[2])
     # chunked (with diagnostics) and unchunked runs give the same bits
     @test bits(r3.U) != bits(r1.U)
     r1b = PMCross.simulate(small; seed = s1)
     @test bits(r1b.U) == bits(r1.U)
     @test length(r1.tC) == length(1:small["diagnostics"]["fields_every"]:r1.info.nsteps)
+end
+
+@testset "T-188 the ParticleMesh mode fit runs on the field cadence [A5, WP-012]" begin
+    # two-stream dumps fields every 32 steps and scalars every 4: each fit must use its own times
+    ts = PMCross.load_case("two-stream")
+    small = deepcopy(ts)
+    for s in small["species"]
+        s["mobile"] && (s["particles_per_cell"] = 100)
+    end
+    sim = PMCross.simulate(small)
+    @test length(sim.tC) == length(sim.C) && length(sim.tU) == length(sim.U)
+    @test sim.tC[2] - sim.tC[1] ≈ 32 * small["time"]["dt"] rtol = 1e-12
+    @test_throws ErrorException PMCross.observe(small, sim.tU, sim.U, sim.tU, abs2.(sim.C))
+    r, res = PMCross.observe(small, sim.tU, sim.U, sim.tC, abs2.(sim.C))
+    @test res["measured_from_mode_points"] >= 5
+    @test res["measured_from_mode"] ≈ res["measured"] rtol = 0.05     # two estimates of one growth rate
 end
