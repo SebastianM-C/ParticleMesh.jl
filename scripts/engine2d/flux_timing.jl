@@ -182,6 +182,9 @@ end
     end
 end
 
+"Elementwise sum of two tuples of one length (a top-level function, so no loop variable is captured)."
+@inline tadd(a::NTuple{K,Any}, b::NTuple{K,Any}) where {K} = ntuple(k -> a[k] + b[k], Val(K))
+
 @kernel function proto_patch_tuple!(patch, s, @Const(seg_start), @Const(seg_stop), stencil, ::Val{K}, cm) where {K}
     L = Int32(@index(Global, Linear))
     T = eltype(patch)
@@ -189,9 +192,9 @@ end
     ay, az = ax, ax
     @inbounds for i in seg_start[L]:seg_stop[L]
         _, _, (jx, jy, jz) = stencil(s, i)
-        ax = ntuple(k -> ax[k] + jx[k], Val(K))
-        ay = ntuple(k -> ay[k] + jy[k], Val(K))
-        az = ntuple(k -> az[k] + jz[k], Val(K))
+        ax = tadd(ax, jx)
+        ay = tadd(ay, jy)
+        az = tadd(az, jz)
     end
     @inbounds for k in 1:K
         patch[pidx(cm, k, L)...] = ax[k]
