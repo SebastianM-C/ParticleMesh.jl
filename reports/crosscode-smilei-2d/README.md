@@ -111,7 +111,7 @@ Per run directory, each with a JSON sidecar of the numbers it shows:
 
 - T-270 to T-275 (schema 2 and schema 1 kept, the 2D unit conversion and namelist, the oblique profile, the 2D theory, the 2D mode fit on synthetic fields, the 2D reader), with T-010, T-012, T-013, T-160 and T-161, pass on the CPU: `julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl`.
 - The reader and the analysis ran on both runs' output; the figures were inspected before the numbers were recorded.
-- Not verified: the 2D Weibel relation against the literature; the relativistic correction to the Landau root at T = 2.5 × 10⁻³ m_e c²; why Smilei's corner correction does not vanish here (reported upstream, see below).
+- Not verified: the 2D Weibel relation against the literature; the relativistic correction to the Landau root at T = 2.5 × 10⁻³ m_e c²; why Smilei's corner correction does not vanish here: a minimal run reproduces it and attributes the Ey offset to one of the two corner values alone (issue #157, inferred from the numbers, not traced in the source).
 
 ## Known limitations
 
