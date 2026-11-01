@@ -138,7 +138,7 @@ function kinetic!(st::EMState)
 end
 
 """
-    initialize!(state, problem) -> state
+    initialize!(state, problem; momenta_at = :t0) -> state
 
 The state at t = 0 from the problem description: each species loaded by the engine's quiet
 start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
@@ -146,10 +146,22 @@ through the weights, A3; velocities `drift + thermal·z` from Philox draws keyed
 seed and the species' stream), the velocities converted to momenta `u = γv`; the transverse
 fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
 ρ, so that (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ) to roundoff, the mean being the immobile
-neutralizing background; then the momenta half a step back, `uⁿ⁻¹ᐟ²` from `u⁰` by the pusher
-with −Δt/2 in E⁰, B⁰ (half-step centring, A2), and the kinetic energy density at t = −Δt/2.
+neutralizing background; then the momenta at t = −Δt/2 (half-step centring, A2), and the
+kinetic energy density there.
+
+`momenta_at` says at which time the loaded momenta are taken:
+
+- `:t0` (the default): the loaded momenta are `u⁰`, and `initialize!` moves them half a step
+  back, `uⁿ⁻¹ᐟ²` from `u⁰` by the pusher with −Δt/2 in E⁰, B⁰;
+- `:t_minus_half`: the loaded momenta are already `u⁻¹ᐟ²` and are kept as loaded, with no kick.
+  This is the convention of Smilei and PIConGPU, which the cross-code runs use; the two
+  starts differ by O(Δt·E⁰) in the momenta.
+
+Positions, weights and fields are the same bits in both; anything else is an `ArgumentError`.
 """
-function initialize!(st::EMState, problem::EMProblem)
+function initialize!(st::EMState, problem::EMProblem; momenta_at::Symbol = :t0)
+    momenta_at in (:t0, :t_minus_half) ||
+        throw(ArgumentError("momenta_at must be :t0 or :t_minus_half, got :$momenta_at"))
     (; numerics, grid) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
@@ -170,10 +182,12 @@ function initialize!(st::EMState, problem::EMProblem)
     end
     fold_guards!(st.ρ, grid; workgroupsize = wgs)
     cumsum_periodic!(st.fields.Ex, st.ρ, grid; workgroupsize = wgs)
-    g = Int32(guards(grid))
-    for s in st.species
-        launcher(kick_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
-                                                    -s.q / s.m * problem.dt / 4; ndrange = capacity(s))
+    if momenta_at === :t0     # a host keyword, not device data (§0.4)
+        g = Int32(guards(grid))
+        for s in st.species
+            launcher(kick_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
+                                                        -s.q / s.m * problem.dt / 4; ndrange = capacity(s))
+        end
     end
     kinetic!(st)
     return st

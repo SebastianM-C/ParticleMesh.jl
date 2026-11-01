@@ -17,6 +17,7 @@ include("yee_nd_cases.jl")     # WP-022: grids, random fields and digests of yee
         include("pushers_sciml.jl")
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
+        include("initialize.jl")    # T-360, the time of the loaded momenta
         include("physics.jl")
         include("determinism.jl")
         include("gradient.jl")

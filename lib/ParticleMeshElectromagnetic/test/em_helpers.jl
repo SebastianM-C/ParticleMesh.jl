@@ -3,16 +3,18 @@
 # analysis reads copies (`Array`, `collect`), which on the CPU are plain copies of the same values.
 
 """
-    case_state(name, T; mode = Reference(), workgroupsize = nothing, be = CPU(), kw...) -> (state, params, problem, case)
+    case_state(name, T; mode = Reference(), workgroupsize = nothing, be = CPU(), momenta_at = :t0, kw...)
+        -> (state, params, problem, case)
 
-The state of a case file on the backend `be`, initialized: `problem_from_case(case, T; kw...)`
-with the case's numerics in `mode`.
+The state of a case file on the backend `be`, initialized with `momenta_at`:
+`problem_from_case(case, T; kw...)` with the case's numerics in `mode`.
 """
-function case_state(name, ::Type{T}; mode = Reference(), workgroupsize = nothing, be = CPU(), kw...) where {T}
+function case_state(name, ::Type{T}; mode = Reference(), workgroupsize = nothing, be = CPU(), momenta_at = :t0,
+                    kw...) where {T}
     case = load_case(name)
     prob = problem_from_case(case, T; kw...)
     st = EMState(prob, numerics_from_case(case; mode, workgroupsize); backend = be)
-    initialize!(st, prob)
+    initialize!(st, prob; momenta_at)
     return st, params(prob), prob, case
 end
 
