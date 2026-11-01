@@ -33,10 +33,9 @@
 # With t = τ/γ and ∂(u×τ/γ)/∂u = −[t]ₓ − (u×t)uᵀ/γ², the matrix determinant lemma and
 # (I ∓ [t]ₓ)⁻¹ = (I ± [t]ₓ + ttᵀ)/(1 + t²) give, for either sign,
 #     J(u) = 1 + t² − (u²t² − (u·t)²)/γ² = 1 + (τ² + (u·τ)²)/γ⁴,
-# so det = J(u⁻)/J(u⁺), the ratio Higuera and Cary write in their Eqs. 40–42 (that the two
-# forms are the same was not checked against the paper: it was not available to this session;
-# the form above is derived here). Over N steps in constant fields the product telescopes to
-# J(u⁰)/J(uᴺ).
+# so det = J(u⁻)/J(u⁺): Higuera and Cary's Eqs. 40–41, with their β = qBΔt/(2m) (Eq. 16) our τ
+# (checked against arXiv:1701.05605v1). Over N steps in constant fields the product telescopes to
+# J(u⁰)/J(uᴺ) (their Eq. 42).
 #
 # T-235, the figure-8 orbit (Sarachik and Schappert, Phys. Rev. D 1, 2738 (1970)): an electron
 # (q/m = −1) in the plane wave A_x = a₀ sin η, η = t − z, so E_x = −∂ₜA_x = −a₀ cos η and
@@ -334,42 +333,82 @@ end
     end
 end
 
-# T-236, energy over long runs in a static non-uniform B with a static non-quadratic potential:
-# B = r ẑ, φ = 10⁻²/r (r = √(x² + y²)), the nonrelativistic case of Qin et al., Phys. Plasmas 20,
-# 084503 (2013), run here with the relativistic pushers. A charge q/m = 1 has the exact invariant
-# H = γ + (q/m)φ. The initial conditions are chosen here, not taken from the paper: x₀ = (0, −1, 0)
+# T-236, energy over long runs in static fields, two systems; Δt and the step counts give at
+# least 10⁴ periods of the slowest oscillation. Only finiteness is asserted (A7: a bound is
+# proposed after measurement); the largest deviations and the least-squares drift rate of ΔH/H
+# per unit time are recorded.
+#
+# Higuera and Cary's integrable system (Phys. Plasmas 24, 052104 (2017), Sec. VI, Eqs. 43–51; read
+# in arXiv:1701.05605v1, whose equation numbers are used here): q = m = c = 1, E = −a x x̂,
+# B = b y x̂, a = 1, b = 2, so A = (b y²/2) ẑ and φ = a x²/2. With u = p − A the invariants are
+#     H = γ + a x²/2,   p_z = u_z + b y²/2,   I_y = u_y² + u_z²   (their Eqs. 46–47).
+# H = 4, p_z = 0, Δt = 1/10 (about 20π steps per period of the x oscillation, 2π) are theirs; the
+# paper names no other initial condition (its Fig. 2 marks Vay's resonance at p_y ≈ 1.7). Assumed
+# here: start on their section plane x = 0 at y = 0 with p_y,0 ∈ {1.625, 1.775}
+# (docs/plan/pushers-literature.md), so u_z = 0 and p_x = u_x = √(H² − 1 − p_y,0²) > 0;
+# 6.3·10⁵ steps (10⁴ periods of x).
+#
+# A static non-uniform B with a static non-quadratic potential: B = r ẑ, φ = 10⁻²/r
+# (r = √(x² + y²)), the field of Qin et al., Phys. Plasmas 20, 084503 (2013), with q/m = 1 and
+# H = γ + φ. The initial conditions are chosen here, not taken from that paper: x₀ = (0, −1, 0)
 # and u₀ = (0.1, 0.01, 0) (nonrelativistic) or u₀ = (1, 0.1, 0) (γ₀ ≈ 1.42), Δt = π/10, 2·10⁵ steps
-# (10⁴ gyroperiods 2π/Ω at r = 1). The relative energy error and its least-squares drift rate per
-# unit time are recorded; only finiteness is asserted (A7: a bound is proposed after measurement).
-# Higuera and Cary's integrable system (their Eq. 48) is not run: its definition was not available
-# to this session (questions/wp-015-hc-integrable-system.md).
+# (10⁴ gyroperiods 2π/Ω at r = 1).
 const QIN_E = (x, t) -> (r = sqrt(x[1]^2 + x[2]^2); c = (one(r) / 100) / r^3; (c * x[1], c * x[2], zero(r)))
 const QIN_B = (x, t) -> (zero(x[1]), zero(x[1]), sqrt(x[1]^2 + x[2]^2))
 qin_H(x, u) = lorentz_factor(u) + (one(x[1]) / 100) / sqrt(x[1]^2 + x[2]^2)
 
-function qin_energy(P, ::Type{T}, u0, nsteps; every = 100) where {T}
-    dt = T(π) / 10
-    x = (zero(T), -one(T), zero(T))
-    u = T.(u0)
-    H0 = Float64(qin_H(x, u))
+const HC_E = (x, t) -> (-x[1], zero(x[1]), zero(x[1]))                  # a = 1
+const HC_B = (x, t) -> (2 * x[2], zero(x[1]), zero(x[1]))               # b = 2
+hc_H(x, u) = lorentz_factor(u) + x[1]^2 / 2
+hc_pz(x, u) = u[3] + x[2]^2
+hc_Iy(x, u) = u[2]^2 + u[3]^2
+hc_start(py) = (zero(py), zero(py), zero(py)), (sqrt(15 - py^2), py, zero(py))   # H = 4: γ = 4 at x = 0
+
+"""
+    long_run(P, x, u, dt, nsteps, E, B, H, others; every = 100)
+
+Step `push_particle` with q/m = 1 and return the largest |ΔH/H|, the least-squares slope of ΔH/H
+against t over samples every `every` steps, and the largest |Δf| of each function in `others`
+(all evaluated in Float64 from the state of type T).
+"""
+function long_run(P, x::NTuple{3,T}, u::NTuple{3,T}, dt::T, nsteps, E, B, H, others = (); every = 100) where {T}
+    H0 = Float64(H(x, u))
+    o0 = map(f -> Float64(f(x, u)), others)
+    omax = map(_ -> 0.0, others)
+    maxrel = 0.0
     ts = Float64[]
     dH = Float64[]
     for n in 1:nsteps
-        x, u = push_particle(P, x, u, (n - 1) * dt, dt, one(T), QIN_E, QIN_B)
+        x, u = push_particle(P, x, u, (n - 1) * dt, dt, one(T), E, B)
+        r = (Float64(H(x, u)) - H0) / H0
+        maxrel = max(maxrel, abs(r))
+        omax = map((m, f, v0) -> max(m, abs(Float64(f(x, u)) - v0)), omax, others, o0)
         if n % every == 0
             push!(ts, n * Float64(dt))
-            push!(dH, (Float64(qin_H(x, u)) - H0) / H0)
+            push!(dH, r)
         end
     end
     tm = sum(ts) / length(ts)
     slope = sum((ts .- tm) .* dH) / sum((ts .- tm) .^ 2)
-    return (; maxrel = maximum(abs, dH), slope, ts, dH)
+    return (; maxrel, slope, others = omax)
 end
 
 @testset "T-236 long-run energy in static non-uniform fields [A2, A7, WP-015]" begin
-    @testset "$(pname(P)), $(type_label(T))" for P in PUSHERS, T in (Float32, Float64)
+    @testset "Higuera–Cary's integrable system, $(pname(P)), $(type_label(T))" for P in PUSHERS, T in (Float32, Float64)
+        for py0 in (1.625, 1.775)
+            x, u = hc_start(T(py0))
+            r = long_run(P, x, u, T(1) / 10, 630_000, HC_E, HC_B, hc_H, (hc_pz, hc_Iy))
+            key = "$(pname(P)) $(type_label(T))"
+            record_named!("T-236 HC system p_y0=$py0: max |ΔH/H|", key, r.maxrel)
+            record_named!("T-236 HC system p_y0=$py0: drift rate |d(ΔH/H)/dt|", key, abs(r.slope))
+            record_named!("T-236 HC system p_y0=$py0: max |Δp_z|", key, r.others[1])
+            record_named!("T-236 HC system p_y0=$py0: max |ΔI_y|", key, r.others[2])
+            @test isfinite(r.maxrel) && isfinite(r.slope) && all(isfinite, r.others)
+        end
+    end
+    @testset "B = r ẑ, φ = 10⁻²/r, $(pname(P)), $(type_label(T))" for P in PUSHERS, T in (Float32, Float64)
         for (label, u0) in (("nonrelativistic", (0.1, 0.01, 0.0)), ("γ₀ ≈ 1.42", (1.0, 0.1, 0.0)))
-            r = qin_energy(P, T, u0, 200_000)
+            r = long_run(P, (zero(T), -one(T), zero(T)), T.(u0), T(π) / 10, 200_000, QIN_E, QIN_B, qin_H)
             record_named!("T-236 max |ΔH/H| $label", "$(pname(P)) $(type_label(T))", r.maxrel)
             record_named!("T-236 drift rate |d(ΔH/H)/dt| $label", "$(pname(P)) $(type_label(T))", abs(r.slope))
             @test isfinite(r.maxrel) && isfinite(r.slope)

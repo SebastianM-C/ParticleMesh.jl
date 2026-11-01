@@ -65,7 +65,7 @@ solved in closed form for `uⁿ⁺¹ᐟ²`.
 
 - Phase-space volume: not preserved; the one-step Jacobian determinant is J(uⁿ⁻¹ᐟ²)/J(uⁿ⁺¹ᐟ²)
   with J(u) = 1 + (τ² + (u·τ)²)/γ(u)⁴ (Higuera and Cary, Phys. Plasmas 24, 052104 (2017),
-  Sec. V; the closed form is derived in the header of T-234).
+  Eqs. 40–41; T-234).
 - E×B velocity: a particle moving at E×B/B² (E < B) stays there exactly, relativistic or not.
 - Energy for E = 0: |u| exact.
 - Gyrophase in uniform B: 2·atan(ΩΔt/(2γ)) per step, the same as Boris (Vay, App. B).
