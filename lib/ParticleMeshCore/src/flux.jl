@@ -126,8 +126,11 @@ after the step, discrete continuity holds to roundoff on every node `j` (T-110):
 
     (ρ_new[j] - ρ_old[j]) / dt + (Jx[j] - Jx[j-1]) / Δx = 0.
 
-Layout: `Jx[j]` is the face half a cell to the right of ρ's node `j` (the stagger dual to
-`stagger`); `Jy[j]` and `Jz[j]` sit on ρ's nodes and are `quantity_y(species, i)` and
+Layout: `Jx[j]` is the face half a cell to the right of ρ's node `j`, stored at ρ's index `j`:
+for ρ at `Node()` (x = jΔx) it sits at (j + 1/2)Δx, which is `Center()` index `j`; for ρ at
+`Center()` (x = (j + 1/2)Δx) it sits at (j + 1)Δx, which is `Node()` index `j + 1`. The
+continuity equation above, which T-110 checks for every shape and stagger, pins this offset.
+`Jy[j]` and `Jz[j]` sit on ρ's nodes and are `quantity_y(species, i)` and
 `quantity_z(species, i)` (isbits device callables, as `deposit!`'s quantity; q·w·u_y/γ for a
 current) times the shape weights averaged over the old and the new position. Per particle, Jx
 is `-(q·w·Δx/dt)` times the prefix sum of the change of its shape weights over the nodes in
