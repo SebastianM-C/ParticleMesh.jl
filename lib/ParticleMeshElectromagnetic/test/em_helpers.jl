@@ -1,16 +1,17 @@
-# Test support of the module's step: case runs, the Gauss residual and bitwise digests. Host-side
-# analysis on CPU arrays (plain `Array`s, so host reads are direct).
+# Test support of the module's step: case runs, the Gauss residual and bitwise digests. The state
+# lives on the backend it was built for (`be`, CPU by default; CUDA in gpu.jl, WP-013); the host-side
+# analysis reads copies (`Array`, `collect`), which on the CPU are plain copies of the same values.
 
 """
-    case_state(name, T; mode = Reference(), workgroupsize = nothing, kw...) -> (state, params, problem, case)
+    case_state(name, T; mode = Reference(), workgroupsize = nothing, be = CPU(), kw...) -> (state, params, problem, case)
 
-The state of a case file, initialized: `problem_from_case(case, T; kw...)` with the case's
-numerics in `mode`.
+The state of a case file on the backend `be`, initialized: `problem_from_case(case, T; kw...)`
+with the case's numerics in `mode`.
 """
-function case_state(name, ::Type{T}; mode = Reference(), workgroupsize = nothing, kw...) where {T}
+function case_state(name, ::Type{T}; mode = Reference(), workgroupsize = nothing, be = CPU(), kw...) where {T}
     case = load_case(name)
     prob = problem_from_case(case, T; kw...)
-    st = EMState(prob, numerics_from_case(case; mode, workgroupsize); backend)
+    st = EMState(prob, numerics_from_case(case; mode, workgroupsize); backend = be)
     initialize!(st, prob)
     return st, params(prob), prob, case
 end
@@ -25,14 +26,14 @@ a step, as `deposit!`'s Reference mode needs), and `scale = max|ρ|`.
 function gauss_residual(st::EMState)
     (; grid, numerics) = st
     T = eltype(st.ρ)
-    ρ = field(backend, T, grid)
+    ρd = field(get_backend(st.ρ), T, grid)
     for (s, ws) in zip(st.species, st.ws)
-        deposit!(numerics.mode, ρ, s, numerics.shape, RHO_STAGGER, grid, ws)
+        deposit!(numerics.mode, ρd, s, numerics.shape, RHO_STAGGER, grid, ws)
     end
-    fold_guards!(ρ, grid)
+    fold_guards!(ρd, grid)
+    ρ, Ex = Array(ρd), Array(st.fields.Ex)
     g, n, dx = guards(grid), ncells(grid), cellsize(grid)
     ρ̄ = sum(interior_view(ρ, grid)) / n
-    Ex = st.fields.Ex
     res = maximum(j -> absmax((Ex[g + j] - Ex[g + j - 1]) / dx - (ρ[g + j] - ρ̄)), 1:n)
     return (; res, scale = maximum(absmax, interior_view(ρ, grid)))
 end
@@ -65,4 +66,4 @@ end
 history_times(prob) = (0:(prob.nsteps - 1)) .* Float64(value_of(prob.dt))
 
 "True when every entry of `a` is `+0.0` (of its element type) bit for bit."
-all_plus_zero(a) = all(x -> bits([x]) == bits([zero(x)]), a)
+all_plus_zero(a) = all(x -> bits([x]) == bits([zero(x)]), Array(a))

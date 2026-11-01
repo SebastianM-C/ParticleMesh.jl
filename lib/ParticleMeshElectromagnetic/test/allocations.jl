@@ -10,6 +10,17 @@ function step_bytes(name, mode; ppc, cells)
     return @allocated step!(st, p, 3)
 end
 
+"Host and device bytes of one synchronized step on the device backend `be`, after warm-up (T-198)."
+function device_step_bytes(be, name, mode; ppc, cells)
+    st, p, prob, _ = case_state(name, Float64; mode, ppc, cells, t_end = 1, be)
+    sync_step!(k) = (step!(st, p, k); KernelAbstractions.synchronize(be))
+    sync_step!(1)
+    sync_step!(2)
+    host = @allocated sync_step!(3)
+    dev = CUDACore.@allocated sync_step!(4)
+    return (; host, dev, sorted = count(s -> ParticleMeshElectromagnetic.sorts(st, s), st.species))
+end
+
 @testset "T-220 allocation per step does not grow with particle count or grid size [A7, WP-014]" begin
     for name in ("landau", "weibel"), mode in (Reference(), Fast())
         small = step_bytes(name, mode; ppc = 16, cells = 64)

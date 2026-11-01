@@ -17,6 +17,8 @@ include("engine2d_cases.jl")
         include("engine.jl")
         include("flux.jl")
         include("engine2d.jl")
+        include("switch.jl")        # WP-013: T-199, the GPU switch
+        include("gpu.jl")           # WP-013: the GPU testsets, or one line saying why they do not run
     finally
         println("\nMeasured err/(eps(T)·scale) per test (compare with tolerances.toml):")
         for id in sort(collect(keys(MEASURED)))

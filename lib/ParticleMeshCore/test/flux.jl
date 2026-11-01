@@ -4,15 +4,19 @@ const MODES = (Reference(), Fast())
 const INPROCESS_FLUX = flux_digests()
 worker_flux(nt) = [chopprefix(l, "FLUX ") for l in worker_lines(nt) if startswith(l, "FLUX ")]
 
-@testset "T-110 discrete continuity of deposit_flux! [A2, A7, A8, WP-009]" begin
+function body_T110(be)
     C = tolC("T-110")
     for T in TYPES, shape in SHAPES, stagger in STAGGERS, mode in MODES, sort_between in (true, false)
         # Without a sort between the move and the deposit only Fast with atomics is possible.
         !sort_between && effective_mode(mode, T) isa Reference && continue
-        c = folded(continuity_case(T, mode, shape, stagger; sort_between))
-        r = record!("T-110", T, continuity_residual(c))
+        c = folded(continuity_case(T, mode, shape, stagger; sort_between, be); be)
+        r = record!("T-110", T, continuity_residual(c), be)
         @test r <= C
     end
+end
+
+@testset "T-110 discrete continuity of deposit_flux! [A2, A7, A8, WP-009]" begin
+    body_T110(CPU())
     # The displacements do cross cell faces and the periodic seam.
     s = moved_species(Float64, PeriodicGrid(10, 0.5, 3), 400; seed = 3)
     crossed = count(i -> s.cell[1][i] != s.extras.old_cell[i], 1:400)
@@ -77,21 +81,21 @@ end
     end
 end
 
-@testset "T-112 transverse currents [A7, WP-009]" begin
+function body_T112(be)
     # Σ_j Jy_j = Σ q·w·u_y (densities per node, the convention of deposit!'s total, T-134), the
     # same for Jz, and Σ_j Jx_j = Σ q·w·Δ·Δx/Δt (the first moment of the shape). At zero
     # displacement Jy is deposit! of q·w·u_y.
     C = tolC("T-112")
     for T in TYPES, shape in SHAPES, stagger in STAGGERS, mode in MODES
         ε = base_eps(T)
-        c = folded(continuity_case(T, mode, shape, stagger))
+        c = folded(continuity_case(T, mode, shape, stagger; be); be)
         (; s, grid, dt) = c
         alive = [i for i in 1:capacity(s) if s.status[i] == ParticleMeshCore.ALIVE]
         np = length(alive)
         for (J, q) in ((c.Jy, ChargeUy()), (c.Jz, ChargeUz()))
             expect = sum(q(s, i) for i in alive)
             scale = np * maximum(i -> absmax(q(s, i)), alive)
-            @test record!("T-112", T, absdiff(sum(J), expect) / (ε * scale)) <= C
+            @test record!("T-112", T, absdiff(sum(J), expect) / (ε * scale), be) <= C
         end
         n = ncells(grid)
         disp(i) = begin
@@ -101,36 +105,46 @@ end
         sx = cellsize(grid) / dt
         expect = sum(s.q * s.w[i] * disp(i) * sx for i in alive)
         scale = np * maximum(i -> absmax(s.q * s.w[i] * sx), alive)
-        @test record!("T-112", T, absdiff(sum(c.Jx), expect) / (ε * scale)) <= C
+        @test record!("T-112", T, absdiff(sum(c.Jx), expect) / (ε * scale), be) <= C
     end
     # Zero displacement: Jy is the deposition of q·w·u_y, to roundoff.
     for T in TYPES, shape in SHAPES, stagger in STAGGERS
         grid = PeriodicGrid(10, basetype(T)(1 // 2), flux_guard_width(shape, stagger))
         s = moved_species(T, grid, 400; seed = 9, maxstep = 0)
         ws = Workspace(s, grid)
-        sort_by_cell!(s, grid, ws)
+        on(be, sort_by_cell!, s, grid, ws)
         Jx, Jy, Jz = field(backend, T, grid), field(backend, T, grid), field(backend, T, grid)
-        deposit_flux!(Reference(), Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(1 // 4), quantity_y = ChargeUy(),
-                      quantity_z = ChargeUz())
-        ρy = deposit!(Reference(), field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy())
-        @test maximum(absdiff.(Jy, ρy)) <= 2base_eps(T) * maximum(absmax, ρy)
+        on(be, deposit_flux!, Reference(), Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(1 // 4), quantity_y = ChargeUy(),
+           quantity_z = ChargeUz())
+        ρy = on(be, deposit!, Reference(), field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy())
+        ratio = record!("T-112 zero displacement", T, maximum(absdiff.(Jy, ρy)) / (base_eps(T) * maximum(absmax, ρy)), be)
+        @test ratio <= (be isa CPU ? 2 : tolC("T-190 T-112 zero displacement"))
     end
 end
 
-@testset "T-113 Reference and Fast agree per face; Reference is bitwise [A4, A7, WP-009]" begin
+@testset "T-112 transverse currents [A7, WP-009]" begin
+    body_T112(CPU())
+end
+
+"The per-face Reference–Fast agreement of T-113 on `be` (T-194 on CUDA)."
+function body_T113_faces(be)
     C = tolC("T-113")
     for T in (Float32, Float64), shape in SHAPES, stagger in STAGGERS
-        cR = continuity_case(T, Reference(), shape, stagger; np = 4000)
-        cF = continuity_case(T, Fast(), shape, stagger; np = 4000)
+        cR = continuity_case(T, Reference(), shape, stagger; np = 4000, be)
+        cF = continuity_case(T, Fast(), shape, stagger; np = 4000, be)
         A = flux_abs(cR, shape, stagger)
         worst = 0.0
         for (d, (JR, JF)) in enumerate(((cR.Jx, cF.Jx), (cR.Jy, cF.Jy), (cR.Jz, cF.Jz))), a in eachindex(JR)
             A[d][a] == 0 && (@test JR[a] == 0 && JF[a] == 0; continue)
             worst = max(worst, abs(JR[a] - JF[a]) / (eps(T) * A[d][a]))
         end
-        record!("T-113", T, worst)
+        record!("T-113", T, worst, be)
         @test worst <= C
     end
+end
+
+@testset "T-113 Reference and Fast agree per face; Reference is bitwise [A4, A7, WP-009]" begin
+    body_T113_faces(CPU())
     # Bitwise: reruns, the default and two explicit launch shapes, and 1 and 4 threads.
     for (case, digests) in by_case(INPROCESS_FLUX)
         @test length(digests) == length(WG_SIZES)
@@ -142,7 +156,7 @@ end
     end
 end
 
-@testset "T-114 Dual weights give the exact partials of the flux [A3, A8, WP-009]" begin
+function body_T114(be)
     # The flux is linear in the weights: the partials of Jx, Jy, Jz from Dual weights are the
     # fluxes of the weights' partials, computed independently in Float64 at the same positions.
     C = tolC("T-114")
@@ -160,9 +174,9 @@ end
         fill!(sD.count, alive_count(s32))
         flux(s, g, dt) = begin
             ws = Workspace(s, g)
-            sort_by_cell!(s, g, ws)
+            on(be, sort_by_cell!, s, g, ws)
             J = ntuple(_ -> field(backend, eltype(s), g), 3)
-            deposit_flux!(Reference(), J..., s, shape, stagger, g, ws; dt, quantity_y = ChargeUy(), quantity_z = ChargeUz())
+            on(be, deposit_flux!, Reference(), J..., s, shape, stagger, g, ws; dt, quantity_y = ChargeUy(), quantity_z = ChargeUz())
             J
         end
         JD = flux(sD, grid, D3(1 // 4))
@@ -183,7 +197,7 @@ end
                 if dir == 3
                     @test all(iszero, ∂)
                 else
-                    r = record!("T-114", D3, maximum(abs.(∂ .- J64d)) / (eps(Float32) * maximum(abs, J64d)))
+                    r = record!("T-114", D3, maximum(abs.(∂ .- J64d)) / (eps(Float32) * maximum(abs, J64d)), be)
                     @test r <= C
                 end
             end
@@ -191,17 +205,26 @@ end
     end
 end
 
-@testset "T-115 a particle at rest deposits exactly zero Jx [A7, WP-009]" begin
+@testset "T-114 Dual weights give the exact partials of the flux [A3, A8, WP-009]" begin
+    body_T114(CPU())
+end
+
+function body_T115(be)
     for T in TYPES, shape in SHAPES, stagger in STAGGERS, mode in MODES
         grid = PeriodicGrid(10, basetype(T)(1 // 2), flux_guard_width(shape, stagger))
         s = moved_species(T, grid, 400; seed = 2, maxstep = 0)
         ws = Workspace(s, grid)
-        effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
+        effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
         Jx, Jy, Jz = field(backend, T, grid), field(backend, T, grid), field(backend, T, grid)
-        deposit_flux!(mode, Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(1 // 4), quantity_y = ChargeUy(), quantity_z = ChargeUz())
+        on(be, deposit_flux!, mode, Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(1 // 4), quantity_y = ChargeUy(),
+           quantity_z = ChargeUz())
         @test all(iszero, Jx)
         @test any(!iszero, Jy)
     end
+end
+
+@testset "T-115 a particle at rest deposits exactly zero Jx [A7, WP-009]" begin
+    body_T115(CPU())
 end
 
 @testset "T-116 the flux is smooth through a cell crossing [A2, A7, WP-009]" begin

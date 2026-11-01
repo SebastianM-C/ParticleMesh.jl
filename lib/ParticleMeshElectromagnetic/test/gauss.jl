@@ -9,11 +9,11 @@
 
 const GAUSS_STEPS = 2   # t_end in 1/ω₀: 214 Landau steps, 263 two-stream steps
 
-@testset "T-212 discrete Gauss law after every step [A2, A7, A8, WP-014]" begin
+function body_T212(be)
     C = emC("T-212")
     for name in ("landau", "two-stream"), mode in (Reference(), Fast()), T in TYPES
         amplitude = T === D3 ? seeded(T, name == "landau" ? 0.01 : 0.001) : nothing
-        st, p, prob, _ = case_state(name, T; mode, ppc = 64, t_end = GAUSS_STEPS, amplitude)
+        st, p, prob, _ = case_state(name, T; mode, ppc = 64, t_end = GAUSS_STEPS, amplitude, be)
         r0 = gauss_residual(st)
         n = ncells(st.grid)
         worst = r0.res / (base_eps(T) * n * r0.scale)
@@ -22,7 +22,11 @@ const GAUSS_STEPS = 2   # t_end in 1/ω₀: 214 Landau steps, 263 two-stream ste
             r = gauss_residual(st)
             worst = max(worst, r.res / (base_eps(T) * n * r.scale * sqrt(k)))
         end
-        record!("T-212 $name", T, worst)
+        record!("T-212 $name", T, worst, be)
         @test worst <= C
     end
+end
+
+@testset "T-212 discrete Gauss law after every step [A2, A7, A8, WP-014]" begin
+    body_T212(CPU())
 end

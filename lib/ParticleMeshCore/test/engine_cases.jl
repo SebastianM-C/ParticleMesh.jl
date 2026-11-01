@@ -20,11 +20,11 @@ function scan_input(::Type{T}, n) where {T}
     return grid, a
 end
 
-"`cumsum_periodic!` of the T-172 input on `n` cells: `(out, a, grid)`."
-function scan_output(::Type{T}, n; workgroupsize = nothing) where {T}
+"`cumsum_periodic!` of the T-172 input on `n` cells, on the backend `be`: `(out, a, grid)` as host arrays."
+function scan_output(::Type{T}, n; workgroupsize = nothing, be = CPU()) where {T}
     grid, a = scan_input(T, n)
     out = field(backend, T, grid)
-    cumsum_periodic!(out, a, grid; workgroupsize)
+    on(be, cumsum_periodic!, out, a, grid; workgroupsize)
     return out, a, grid
 end
 
@@ -78,6 +78,64 @@ function serial_tiled_cumsum(a::Vector{T}, dx, tile) where {T}
     return out
 end
 
+# The documented order as a one-work-item kernel, for the comparison on a device: the device's
+# arithmetic (it fuses multiply-adds) differs from the host's, so the device scan is compared
+# with the documented order run on the same device (WP-013, T-190).
+@kernel function serial_tiled_kernel!(out, @Const(a), dx, tile::Int32)
+    T = eltype(out)
+    n = Int32(length(a))
+    nt = cld(n, tile)
+    r(k) = ((k - Int32(1)) * tile + Int32(1)):min(k * tile, n)
+    function tsum(v, k)
+        s = zero(T)
+        for j in r(k)
+            s += v[j]
+        end
+        return s
+    end
+    @inbounds begin
+        t = tsum(a, Int32(1))
+        for k in Int32(2):nt
+            t += tsum(a, k)
+        end
+        ā = t / T(n)
+        for k in Int32(1):nt
+            acc = zero(T)
+            for j in r(k)
+                acc += (a[j] - ā) * dx
+                out[j] = acc
+            end
+        end
+        if nt > Int32(1)
+            off = out[last(r(Int32(1)))]
+            for k in Int32(2):nt
+                total = out[last(r(k))]
+                for j in r(k)
+                    out[j] += off
+                end
+                off += total
+            end
+        end
+        t = tsum(out, Int32(1))
+        for k in Int32(2):nt
+            t += tsum(out, k)
+        end
+        Ē = t / T(n)
+        for j in Int32(1):n
+            out[j] -= Ē
+        end
+    end
+end
+
+"`serial_tiled_cumsum` on `be`: the host function on the CPU, `serial_tiled_kernel!` on a device."
+serial_tiled_cumsum_on(::CPU, a, dx, tile) = serial_tiled_cumsum(a, dx, tile)
+function serial_tiled_cumsum_on(be, a, dx, tile)
+    out = KernelAbstractions.allocate(be, eltype(a), length(a))
+    serial_tiled_kernel!(be)(out, todev(be, a), dx, Int32(tile); ndrange = 1)
+    KernelAbstractions.synchronize(be)
+    return Array(out)
+end
+
 # The spike's q·w deposition kernels (WP-010, `src/transfers.jl` at the commit before WP-011),
 # copied verbatim as the oracle of T-174's bitwise check of the default quantity.
 @kernel function spike_deposit_atomic_kernel!(ρ, s, shape::Shape{P}, stagger, g::Int32) where {P}
@@ -109,10 +167,10 @@ end
 
 function spike_deposit!(mode, ρ, s, shape, stagger, grid, ws)
     if effective_mode(mode, eltype(ρ)) isa Fast
-        spike_deposit_atomic_kernel!(backend)(ρ, s, shape, stagger, Int32(guards(grid)); ndrange = capacity(s))
+        spike_deposit_atomic_kernel!(get_backend(ρ))(ρ, s, shape, stagger, Int32(guards(grid)); ndrange = capacity(s))
     else
         lo, hi = ParticleMeshCore.stencil_reach(shape, stagger)
-        spike_deposit_sorted_kernel!(backend)(ρ, s, ws.seg_start, ws.seg_stop, shape, stagger, Int32(ncells(grid)),
+        spike_deposit_sorted_kernel!(get_backend(ρ))(ρ, s, ws.seg_start, ws.seg_stop, shape, stagger, Int32(ncells(grid)),
                                               Int32(guards(grid)), Int32(lo), Int32(hi); ndrange = length(ρ))
     end
     return ρ
@@ -134,18 +192,18 @@ function quantity_species(::Type{T}, grid, np; seed) where {T}
     return s
 end
 
-"Deposit into a fresh field (guards not folded), sorting first when the mode needs it; `spike = true` runs the oracle."
+"Deposit into a fresh field (guards not folded) on `be`, sorting first when the mode needs it; `spike = true` runs the oracle."
 function deposit_case(::Type{T}, mode, shape, stagger; np = 300, seed = 5, quantity = ChargeWeight(),
-                      workgroupsize = nothing, spike = false, uy = false) where {T}
+                      workgroupsize = nothing, spike = false, uy = false, be = CPU()) where {T}
     grid = PeriodicGrid(12, basetype(T)(1 // 2), guard_width(shape))
     s = uy ? quantity_species(T, grid, np; seed) : test_species(T, grid, np; seed)
     ws = Workspace(s, grid)
-    effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws; workgroupsize)
+    effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     ρ = field(backend, T, grid)
     if spike
-        spike_deposit!(mode, ρ, s, shape, stagger, grid, ws)
+        on(be, spike_deposit!, mode, ρ, s, shape, stagger, grid, ws)
     else
-        deposit!(mode, ρ, s, shape, stagger, grid, ws; quantity, workgroupsize)
+        on(be, deposit!, mode, ρ, s, shape, stagger, grid, ws; quantity, workgroupsize)
     end
     return ρ
 end
@@ -159,7 +217,7 @@ T-173's species: 500 alive particles from `test_species` with three of them free
 middle and three free slots at the end, carrying the extras `old_slot::Int32` (the slot before
 the sort) and `old_offset::T` (a copy of the offset), sorted once.
 """
-function sorted_extras(::Type{T}; workgroupsize = nothing) where {T}
+function sorted_extras(::Type{T}; workgroupsize = nothing, be = CPU()) where {T}
     grid = PeriodicGrid(9, one(basetype(T)), 2)
     s = test_species(T, grid, 500; seed = 13, extras = (old_slot = Int32, old_offset = T))
     for i in DEAD_SLOTS
@@ -170,7 +228,7 @@ function sorted_extras(::Type{T}; workgroupsize = nothing) where {T}
         s.extras.old_offset[i] = s.offset[1][i]
     end
     ws = Workspace(s, grid)
-    sort_by_cell!(s, grid, ws; workgroupsize)
+    on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     return s, ws, grid
 end
 
@@ -186,25 +244,25 @@ end
 species_arrays(s) = (s.cell..., s.offset..., s.u..., s.w, s.status, s.count, values(s.extras)...)
 
 """
-    thread_digests() -> Vector{String}
+    thread_digests(be = CPU(); wgs = WG_SIZES) -> Vector{String}
 
 `"kind|type|case|workgroupsize|digest"` for every Reference-mode result whose bits must not
 depend on the launch shape or the thread count: `cumsum_periodic!` (T-172, T-177),
 `sort_by_cell!` with extras (T-173, T-177), `deposit!` with the default and a supplied quantity
-(T-177), and T-173's match flag.
+(T-177), and T-173's match flag; on the backend `be`, for the launch shapes `wgs`.
 """
-function thread_digests()
+function thread_digests(be = CPU(); wgs = WG_SIZES)
     lines = String[]
-    for T in TYPES, wg in WG_SIZES
+    for T in TYPES, wg in wgs
         for n in SCAN_GRIDS
-            out, _, _ = scan_output(T, n; workgroupsize = wg)
+            out, _, _ = scan_output(T, n; workgroupsize = wg, be)
             push!(lines, "scan|$(type_label(T))|n=$n|$wg|$(fnv_digest(out))")
         end
-        s, ws, _ = sorted_extras(T; workgroupsize = wg)
+        s, ws, _ = sorted_extras(T; workgroupsize = wg, be)
         push!(lines, "sort|$(type_label(T))|extras|$wg|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
         push!(lines, "sortmatch|$(type_label(T))|extras|$wg|$(extras_match(s, ws))")
         for shape in SHAPES, stagger in STAGGERS, (qlabel, quantity, uy) in (("qw", ChargeWeight(), false), ("qwuy", ChargeUy(), true))
-            ρ = deposit_case(T, Reference(), shape, stagger; quantity, uy, workgroupsize = wg)
+            ρ = deposit_case(T, Reference(), shape, stagger; quantity, uy, workgroupsize = wg, be)
             push!(lines, "deposit|$(type_label(T))|$(order(shape)),$(nameof(typeof(stagger))),$qlabel|$wg|$(fnv_digest(ρ))")
         end
     end

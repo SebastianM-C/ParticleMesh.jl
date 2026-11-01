@@ -61,38 +61,38 @@ function at_old_positions(s)
     return o
 end
 
-"ρ of `s` in `mode` on `grid`, sorting a private copy's workspace first when the mode needs it; guards not folded."
-function charge(mode, s, shape, stagger, grid)
+"ρ of `s` in `mode` on `grid` and the backend `be`, sorting a private copy's workspace first when the mode needs it; guards not folded."
+function charge(mode, s, shape, stagger, grid; be = CPU())
     T = eltype(s)
     ws = Workspace(s, grid)
-    effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
-    return deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws)
+    effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
+    return on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws)
 end
 
 """
-    continuity_case(T, mode, shape, stagger; n, np, seed, dt, sort_between, workgroupsize)
+    continuity_case(T, mode, shape, stagger; n, np, seed, dt, sort_between, workgroupsize, be)
 
 One step of `moved_species` on `n` cells: ρ at the old positions, then, after a sort when the
 mode needs it or `sort_between` asks for it, ρ at the new positions and the flux. Returns the
-unfolded fields and the grid.
+unfolded fields and the grid, as host arrays; the engine calls run on `be`.
 """
 function continuity_case(::Type{T}, mode, shape, stagger; n = 10, np = 400, seed = 3, dt = basetype(T)(1 // 4),
-                         sort_between = true, workgroupsize = nothing, dead = (40, 41, 300)) where {T}
+                         sort_between = true, workgroupsize = nothing, dead = (40, 41, 300), be = CPU()) where {T}
     grid = PeriodicGrid(n, basetype(T)(1 // 2), flux_guard_width(shape, stagger))
     s = moved_species(T, grid, np; seed, dead)
-    ρold = charge(Reference(), at_old_positions(s), shape, stagger, grid)
+    ρold = charge(Reference(), at_old_positions(s), shape, stagger, grid; be)
     ws = Workspace(s, grid)
-    (sort_between || effective_mode(mode, T) isa Reference) && sort_by_cell!(s, grid, ws; workgroupsize)
-    ρnew = deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws)
+    (sort_between || effective_mode(mode, T) isa Reference) && on(be, sort_by_cell!, s, grid, ws; workgroupsize)
+    ρnew = on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws)
     Jx, Jy, Jz = field(backend, T, grid), field(backend, T, grid), field(backend, T, grid)
-    deposit_flux!(mode, Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(dt), quantity_y = ChargeUy(), quantity_z = ChargeUz(),
-                  workgroupsize)
+    on(be, deposit_flux!, mode, Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(dt), quantity_y = ChargeUy(), quantity_z = ChargeUz(),
+       workgroupsize)
     return (; ρold, ρnew, Jx, Jy, Jz, grid, s, ws, dt = T(dt))
 end
 
-"Fold the guards of every field of a continuity case (in place) and return it."
-function folded(c)
-    foreach(a -> fold_guards!(a, c.grid), (c.ρold, c.ρnew, c.Jx, c.Jy, c.Jz))
+"Fold the guards of every field of a continuity case (in place, on `be`) and return it."
+function folded(c; be = CPU())
+    foreach(a -> on(be, fold_guards!, a, c.grid), (c.ρold, c.ρnew, c.Jx, c.Jy, c.Jz))
     return c
 end
 
@@ -133,15 +133,15 @@ function flux_abs(c, shape, stagger)
 end
 
 """
-    flux_digests() -> Vector{String}
+    flux_digests(be = CPU(); wgs = WG_SIZES) -> Vector{String}
 
 `"flux|type|order,stagger|workgroupsize|digest"` of Jx, Jy and Jz of the Reference continuity
-case, for every element type, shape, stagger and launch shape of T-113.
+case, for every element type, shape, stagger and launch shape `wgs`, on the backend `be`.
 """
-function flux_digests()
+function flux_digests(be = CPU(); wgs = WG_SIZES)
     lines = String[]
-    for T in TYPES, wg in WG_SIZES, shape in SHAPES, stagger in STAGGERS
-        c = continuity_case(T, Reference(), shape, stagger; workgroupsize = wg)
+    for T in TYPES, wg in wgs, shape in SHAPES, stagger in STAGGERS
+        c = continuity_case(T, Reference(), shape, stagger; workgroupsize = wg, be)
         push!(lines, "flux|$(type_label(T))|$(order(shape)),$(nameof(typeof(stagger)))|$wg|$(fnv_digest(c.Jx, c.Jy, c.Jz))")
     end
     return lines
