@@ -1,0 +1,1447 @@
+{
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "ppc": 64,
+  "rows": [
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 16.734375,
+      "ns_per_particle_max": 28.44970703125,
+      "ns_per_particle_min": 15.511393229166666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 8.756673177083334,
+      "ns_per_particle_max": 9.69482421875,
+      "ns_per_particle_min": 8.600423177083334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 7.593994140625,
+      "ns_per_particle_max": 26.822509765625,
+      "ns_per_particle_min": 7.271240234375,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 47.398763020833336,
+      "ns_per_particle_max": 52.342692057291664,
+      "ns_per_particle_min": 38.996419270833336,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 1.9383951822916667,
+      "ns_per_particle_max": 3.1365559895833335,
+      "ns_per_particle_min": 1.858154296875,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 196.85782877604166,
+      "ns_per_particle_max": 207.165283203125,
+      "ns_per_particle_min": 190.47347005208334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 35.857584635416664,
+      "ns_per_particle_max": 50.608642578125,
+      "ns_per_particle_min": 19.328369140625,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 14.376871744791666,
+      "ns_per_particle_max": 15.679036458333334,
+      "ns_per_particle_min": 14.234944661458334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 12.761962890625,
+      "ns_per_particle_max": 13.19775390625,
+      "ns_per_particle_min": 12.404134114583334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 41.07177734375,
+      "ns_per_particle_max": 53.485595703125,
+      "ns_per_particle_min": 39.80436197916667,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 9.502115885416666,
+      "ns_per_particle_max": 11.592692057291666,
+      "ns_per_particle_min": 9.148681640625,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 295.8653157552083,
+      "ns_per_particle_max": 306.5699869791667,
+      "ns_per_particle_min": 288.712158203125,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 44.565592447916664,
+      "ns_per_particle_max": 47.934244791666664,
+      "ns_per_particle_min": 42.17708333333333,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 23.085611979166668,
+      "ns_per_particle_max": 28.917643229166668,
+      "ns_per_particle_min": 21.853841145833332,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 18.406005859375,
+      "ns_per_particle_max": 22.833821614583332,
+      "ns_per_particle_min": 17.636962890625,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 60.683512369791664,
+      "ns_per_particle_max": 72.02132161458333,
+      "ns_per_particle_min": 58.302978515625,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 18.708658854166668,
+      "ns_per_particle_max": 21.426188151041668,
+      "ns_per_particle_min": 13.754720052083334,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 416.7464192708333,
+      "ns_per_particle_max": 438.9220377604167,
+      "ns_per_particle_min": 409.6981608072917,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 46.383544921875,
+      "ns_per_particle_max": 64.24658203125,
+      "ns_per_particle_min": 40.412516276041664,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 17.849609375,
+      "ns_per_particle_max": 20.012776692708332,
+      "ns_per_particle_min": 14.2646484375,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 13.933186848958334,
+      "ns_per_particle_max": 29.168538411458332,
+      "ns_per_particle_min": 13.356689453125,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 48.000162760416664,
+      "ns_per_particle_max": 56.420572916666664,
+      "ns_per_particle_min": 47.061848958333336,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 3.9576009114583335,
+      "ns_per_particle_max": 5.240315755208334,
+      "ns_per_particle_min": 3.51025390625,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 311.933837890625,
+      "ns_per_particle_max": 323.690185546875,
+      "ns_per_particle_min": 292.0418294270833,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 2.5840555826822915,
+      "ns_per_particle_max": 3.0031509399414062,
+      "ns_per_particle_min": 2.2688700358072915,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 2.8519999186197915,
+      "ns_per_particle_max": 4.0901845296223955,
+      "ns_per_particle_min": 2.628468831380208,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 2.0825347900390625,
+      "ns_per_particle_max": 2.63531494140625,
+      "ns_per_particle_min": 1.5505879720052083,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 4.232320149739583,
+      "ns_per_particle_max": 4.740999857584636,
+      "ns_per_particle_min": 3.7232182820638022,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 0.6817372639973959,
+      "ns_per_particle_max": 0.7263895670572916,
+      "ns_per_particle_min": 0.6056671142578125,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 41.035054524739586,
+      "ns_per_particle_max": 51.76725769042969,
+      "ns_per_particle_min": 34.778096516927086,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 3.6856511433919272,
+      "ns_per_particle_max": 4.3122304280598955,
+      "ns_per_particle_min": 3.381413777669271,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 4.831522623697917,
+      "ns_per_particle_max": 6.302764892578125,
+      "ns_per_particle_min": 4.4407501220703125,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 3.4685872395833335,
+      "ns_per_particle_max": 4.6915283203125,
+      "ns_per_particle_min": 3.096277872721354,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 5.9271087646484375,
+      "ns_per_particle_max": 6.4839935302734375,
+      "ns_per_particle_min": 5.2877756754557295,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 4.228912353515625,
+      "ns_per_particle_max": 5.376688639322917,
+      "ns_per_particle_min": 3.7713826497395835,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 63.14425150553385,
+      "ns_per_particle_max": 71.66814676920573,
+      "ns_per_particle_min": 55.789388020833336,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 8.658404032389322,
+      "ns_per_particle_max": 9.71459706624349,
+      "ns_per_particle_min": 7.645510355631511,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 6.9976755777994795,
+      "ns_per_particle_max": 7.3813629150390625,
+      "ns_per_particle_min": 6.5270131429036455,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 5.492340087890625,
+      "ns_per_particle_max": 6.952962239583333,
+      "ns_per_particle_min": 5.0998179117838545,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 6.848714192708333,
+      "ns_per_particle_max": 8.309326171875,
+      "ns_per_particle_min": 6.4164988199869795,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 6.6141103108723955,
+      "ns_per_particle_max": 6.9910939534505205,
+      "ns_per_particle_min": 6.3680979410807295,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 93.50062561035156,
+      "ns_per_particle_max": 96.75935363769531,
+      "ns_per_particle_min": 87.08382670084636,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 7.312202453613281,
+      "ns_per_particle_max": 8.342928568522135,
+      "ns_per_particle_min": 6.757581075032552,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 4.8425140380859375,
+      "ns_per_particle_max": 5.5394287109375,
+      "ns_per_particle_min": 4.03466796875,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 3.7191365559895835,
+      "ns_per_particle_max": 4.275502522786458,
+      "ns_per_particle_min": 3.50225830078125,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 5.092572530110677,
+      "ns_per_particle_max": 6.615348815917969,
+      "ns_per_particle_min": 4.284365336100261,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 1.8003896077473958,
+      "ns_per_particle_max": 3.0221099853515625,
+      "ns_per_particle_min": 1.5210215250651042,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float32",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 61.713948567708336,
+      "ns_per_particle_max": 72.21714782714844,
+      "ns_per_particle_min": 56.680908203125,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 10.050455729166666,
+      "ns_per_particle_max": 12.510986328125,
+      "ns_per_particle_min": 9.032470703125,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 10.75634765625,
+      "ns_per_particle_max": 16.212565104166668,
+      "ns_per_particle_min": 7.131591796875,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 12.275716145833334,
+      "ns_per_particle_max": 14.026611328125,
+      "ns_per_particle_min": 12.087320963541666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 23.657307942708332,
+      "ns_per_particle_max": 28.775553385416668,
+      "ns_per_particle_min": 13.06103515625,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 2.0703938802083335,
+      "ns_per_particle_max": 3.32763671875,
+      "ns_per_particle_min": 1.7901204427083333,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 137.60579427083334,
+      "ns_per_particle_max": 145.341064453125,
+      "ns_per_particle_min": 129.41178385416666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 12.5107421875,
+      "ns_per_particle_max": 13.524332682291666,
+      "ns_per_particle_min": 11.047119140625,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 16.912434895833332,
+      "ns_per_particle_max": 18.921061197916668,
+      "ns_per_particle_min": 15.384033203125,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 27.856038411458332,
+      "ns_per_particle_max": 33.95556640625,
+      "ns_per_particle_min": 19.116129557291668,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 19.169108072916668,
+      "ns_per_particle_max": 29.333414713541668,
+      "ns_per_particle_min": 14.639485677083334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 9.590087890625,
+      "ns_per_particle_max": 11.428873697916666,
+      "ns_per_particle_min": 8.310221354166666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 239.84309895833334,
+      "ns_per_particle_max": 259.341552734375,
+      "ns_per_particle_min": 226.71110026041666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 29.40478515625,
+      "ns_per_particle_max": 36.730061848958336,
+      "ns_per_particle_min": 26.890462239583332,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 33.739339192708336,
+      "ns_per_particle_max": 46.0185546875,
+      "ns_per_particle_min": 22.599934895833332,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 29.140787760416668,
+      "ns_per_particle_max": 29.920084635416668,
+      "ns_per_particle_min": 28.591878255208332,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 34.186442057291664,
+      "ns_per_particle_max": 48.869140625,
+      "ns_per_particle_min": 30.844319661458332,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 13.907877604166666,
+      "ns_per_particle_max": 15.440348307291666,
+      "ns_per_particle_min": 13.061686197916666,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 334.5987955729167,
+      "ns_per_particle_max": 346.1338704427083,
+      "ns_per_particle_min": 312.36376953125,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 29.507080078125,
+      "ns_per_particle_max": 34.195393880208336,
+      "ns_per_particle_min": 24.576416015625,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 13.701416015625,
+      "ns_per_particle_max": 19.164632161458332,
+      "ns_per_particle_min": 13.368326822916666,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 34.925618489583336,
+      "ns_per_particle_max": 35.587646484375,
+      "ns_per_particle_min": 19.728841145833332,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 15.1796875,
+      "ns_per_particle_max": 17.27001953125,
+      "ns_per_particle_min": 14.981038411458334,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 3.7897135416666665,
+      "ns_per_particle_max": 6.500406901041667,
+      "ns_per_particle_min": 3.6058756510416665,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 235.33512369791666,
+      "ns_per_particle_max": 245.92195638020834,
+      "ns_per_particle_min": 224.97509765625,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 2.7039693196614585,
+      "ns_per_particle_max": 3.3534062703450522,
+      "ns_per_particle_min": 2.4373626708984375,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 2.5597381591796875,
+      "ns_per_particle_max": 3.0385030110677085,
+      "ns_per_particle_min": 2.493443806966146,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 3.263219197591146,
+      "ns_per_particle_max": 4.787465413411458,
+      "ns_per_particle_min": 2.798614501953125,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 4.524556477864583,
+      "ns_per_particle_max": 5.395210266113281,
+      "ns_per_particle_min": 3.9992777506510415,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 0.68646240234375,
+      "ns_per_particle_max": 0.7537892659505209,
+      "ns_per_particle_min": 0.5738321940104166,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 34.94581095377604,
+      "ns_per_particle_max": 39.244486490885414,
+      "ns_per_particle_min": 32.727325439453125,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 3.2725702921549478,
+      "ns_per_particle_max": 3.496668497721354,
+      "ns_per_particle_min": 2.862482706705729,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 5.2035471598307295,
+      "ns_per_particle_max": 6.097707112630208,
+      "ns_per_particle_min": 4.735188802083333,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 4.699289957682292,
+      "ns_per_particle_max": 5.9159800211588545,
+      "ns_per_particle_min": 4.612172444661458,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 5.0253957112630205,
+      "ns_per_particle_max": 5.602884928385417,
+      "ns_per_particle_min": 4.606699625651042,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 4.71270751953125,
+      "ns_per_particle_max": 5.47100830078125,
+      "ns_per_particle_min": 3.8145955403645835,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 53.37304178873698,
+      "ns_per_particle_max": 58.93525695800781,
+      "ns_per_particle_min": 51.775115966796875,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 7.971354166666667,
+      "ns_per_particle_max": 8.120709737141928,
+      "ns_per_particle_min": 7.018252054850261,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 8.1373291015625,
+      "ns_per_particle_max": 9.402654012044271,
+      "ns_per_particle_min": 7.4228871663411455,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 7.76513671875,
+      "ns_per_particle_max": 9.832438151041666,
+      "ns_per_particle_min": 6.968780517578125,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 8.143422444661459,
+      "ns_per_particle_max": 8.943883260091146,
+      "ns_per_particle_min": 7.2613779703776045,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 7.3985748291015625,
+      "ns_per_particle_max": 7.7110443115234375,
+      "ns_per_particle_min": 6.81964111328125,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 78.51922607421875,
+      "ns_per_particle_max": 85.10442606608073,
+      "ns_per_particle_min": 73.59591674804688,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Node,Node"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_fast",
+      "ns_per_particle": 7.424723307291667,
+      "ns_per_particle_max": 10.46673329671224,
+      "ns_per_particle_min": 6.765403747558594,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_ref",
+      "ns_per_particle": 4.436442057291667,
+      "ns_per_particle_max": 5.003402709960937,
+      "ns_per_particle_min": 4.2596486409505205,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_ref",
+      "ns_per_particle": 4.634328206380208,
+      "ns_per_particle_max": 5.5355072021484375,
+      "ns_per_particle_min": 4.466206868489583,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 2,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux1d_fast",
+      "ns_per_particle": 4.622693379720052,
+      "ns_per_particle_max": 5.1046498616536455,
+      "ns_per_particle_min": 4.247566223144531,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "deposit_ref",
+      "ns_per_particle": 1.9626515706380208,
+      "ns_per_particle_max": 2.4507649739583335,
+      "ns_per_particle_min": 1.6702321370442708,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    },
+    {
+      "T": "Float64",
+      "calls_per_sample": 1,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "flux_fast",
+      "ns_per_particle": 51.42725118001302,
+      "ns_per_particle_max": 55.034393310546875,
+      "ns_per_particle_min": 46.6251220703125,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "Center,Center"
+    }
+  ],
+  "threads": 32
+}

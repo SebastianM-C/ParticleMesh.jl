@@ -1,5 +1,5 @@
 """
-    Workspace(species, grid)
+    Workspace(species, grid; flux = nothing)
 
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
@@ -11,8 +11,14 @@ one entry per linear cell (`prod(n)` of them; an empty cell has `seg_start = 1`,
 the same element type where there is one (so `Int32`- and `T`-valued extras cost no scratch),
 otherwise one new buffer per further element type, shared by the extras of that type. An empty
 extras tuple costs nothing.
+
+`flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
+deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
+cell, `M_d` the flux stencil width of axis `d` (5 or 6 at order 2), in `flux_patch`, a
+`prod(n) × 3·M₁·M₂` array (cell-major). Without it
+`flux_patch` is empty and costs nothing. `N = 1` needs no flux scratch.
 """
-struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple}
+struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS}
     key::VK
     perm::VP
     ak::AW
@@ -22,9 +28,13 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple}
     tmp_extras::XT
     seg_start::VI
     seg_stop::VI
+    flux_patch::FP
+    flux::FS
 end
 
-function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}) where {N,T}
+function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing) where {N,T}
+    flux === nothing || N == 2 ||
+        throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
     backend = get_backend(s)
     cap = capacity(s)
     key = KernelAbstractions.zeros(backend, Int64, cap)
@@ -37,7 +47,8 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}) where {N,T}
     n = prod(grid.n)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
-    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop)
+    flux_patch = KernelAbstractions.zeros(backend, T, flux === nothing ? 0 : n, flux === nothing ? 0 : flux_patch_values(flux...))
+    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux)
 end
 
 # One buffer per extra: the first of `pool` with the extra's element type, else a new one,
@@ -70,7 +81,7 @@ function scratch_bytes(ws::Workspace)
     core = (ws.tmp_i32, ws.tmp_T, ws.tmp_u8)
     own = unique(objectid, Iterators.filter(b -> !any(c -> c === b, core), ws.tmp_extras))
     return sizeof(ws.key) + sizeof(ws.perm) + sizeof(ws.tmp_i32) + sizeof(ws.tmp_T) + sizeof(ws.tmp_u8) +
-           sum(sizeof, own; init = 0) + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + AK.nbytes(ws.ak.plan)
+           sum(sizeof, own; init = 0) + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + sizeof(ws.flux_patch) + AK.nbytes(ws.ak.plan)
 end
 
 # Total order: alive particles by (cell, slot), free slots after all of them by slot. Keys are

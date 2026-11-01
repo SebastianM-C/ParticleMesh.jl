@@ -121,14 +121,17 @@ function EMState(problem::EMProblem{T}, numerics::EMNumerics; backend = CPU()) w
                    field(backend, T, grid), hist)
 end
 
-sorts(st::EMState, s) = effective_mode(st.numerics.mode, eltype(s)) isa Reference
+# The mode the depositions of `s` run in: the step sorts when it is `Reference()` and passes it,
+# so `Fast()` on a type without atomics does not sort a second time inside the deposition.
+deposit_mode(st::EMState, s) = effective_mode(st.numerics.mode, eltype(s))
+sorts(st::EMState, s) = deposit_mode(st, s) isa Reference
 
 "Deposit the kinetic energy density at the current momenta into `st.K` (positions sorted if the mode needs it)."
 function kinetic!(st::EMState)
     (; numerics, grid) = st
     fill!(st.K, zero(eltype(st.K)))
     for (s, ws) in zip(st.species, st.ws)
-        deposit!(numerics.mode, st.K, s, numerics.shape, RHO_STAGGER, grid, ws; quantity = KineticEnergy(),
+        deposit!(deposit_mode(st, s), st.K, s, numerics.shape, RHO_STAGGER, grid, ws; quantity = KineticEnergy(),
                  workgroupsize = numerics.workgroupsize)
     end
     return st
@@ -163,7 +166,7 @@ function initialize!(st::EMState, problem::EMProblem)
     end
     fill!(st.ρ, zero(T))
     for (s, ws) in zip(st.species, st.ws)
-        deposit!(numerics.mode, st.ρ, s, numerics.shape, RHO_STAGGER, grid, ws; workgroupsize = wgs)
+        deposit!(deposit_mode(st, s), st.ρ, s, numerics.shape, RHO_STAGGER, grid, ws; workgroupsize = wgs)
     end
     fold_guards!(st.ρ, grid; workgroupsize = wgs)
     cumsum_periodic!(st.fields.Ex, st.ρ, grid; workgroupsize = wgs)
@@ -220,7 +223,7 @@ function step!(st::EMState, p::EMParams, k::Integer)
     fill!(fields.Jy, zero(T))
     fill!(fields.Jz, zero(T))
     for (s, ws) in zip(st.species, st.ws)
-        ParticleMeshCore.deposit_flux!(numerics.mode, fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER,
+        ParticleMeshCore.deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER,
                                        grid, ws; dt = p.dt, quantity_y = CurrentY(), quantity_z = CurrentZ(),
                                        workgroupsize = wgs)
     end

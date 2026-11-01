@@ -1,0 +1,11 @@
+# WP-020: interface choices of the 2D flux deposition
+
+Work package: WP-020 (consumer: WP-023). Files: `lib/ParticleMeshCore/src/flux2d.jl`, `lib/ParticleMeshCore/src/sort.jl`, `docs/plan/architecture-draft.md` §0.7 contract 13.
+
+The package fixes the signature `deposit_flux!(mode, Jx, Jy, Jz, species, shape, stagger::NTuple{2,Stagger}, grid, ws; dt, quantity_z)` and leaves three interface points open. The implementation chose:
+
+1. **The old position's extras at N = 2: one array per axis, `old_cell_1`, `old_cell_2`, `old_offset_1`, `old_offset_2`.** The species extras hold one array per name, of one element type each (contract 2), so a per-axis tuple under one name (`old_cell`) would need new code in the species constructor and the sort. `flux_extras(T, N)` (exported) returns the declaration for N = 1 (`old_cell`, `old_offset`, unchanged) and N = 2, so a module writes `extras = merge(flux_extras(T, 2), more)` and does not spell the names. The `Int32` and `T` extras reuse the sort's core permutation buffers.
+2. **Where the Reference scratch lives: `Workspace(species, grid; flux = (shape, stagger))`.** The per-cell patches depend on the shape and ρ's stagger (`3·M₁·M₂` values per cell), which `Workspace(species, grid)` does not know. A keyword allocates them once, sized exactly; without it the patch is empty, so a 2D workspace that is only sorted and deposited costs what it did. The Reference `deposit_flux!` at N = 2 throws an `ArgumentError` naming the keyword when the patch is missing or sized for another stencil. `Fast()` with an atomic element type needs no patch. N = 1 takes no `flux` keyword (its mechanism has no scratch), so every N = 1 call is unchanged.
+3. **The patch is stored cell-major (`patch[cell, k]`).** On the CPU the cell-major and stencil-major register-tuple variants tie within the spread (the report's prototype table); cell-major was taken because neighbouring work items (cells) then write and read neighbouring addresses, which should coalesce on a GPU. That expectation is not measured here (no GPU run in this package).
+
+Assumption: these are acceptable to WP-023; the WP-023 session builds the 2D species with `flux_extras(T, 2)` and the workspace with the `flux` keyword.

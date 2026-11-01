@@ -47,7 +47,7 @@ end
 
 todev(be, x) = Adapt.adapt(be, x)
 function todev(be, ws::Workspace, ds::Species, grid)
-    dws = Workspace(ds, grid)
+    dws = Workspace(ds, grid; flux = ws.flux)
     for f in (:key, :perm, :seg_start, :seg_stop)
         copyto!(getfield(dws, f), getfield(ws, f))
     end
