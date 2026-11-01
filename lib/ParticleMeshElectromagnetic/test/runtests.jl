@@ -19,6 +19,7 @@ include("determinism_cases.jl")
         include("gradient.jl")
         include("allocations.jl")
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
+        include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     finally
         println("\nMeasured err/(eps(T)·scale) per test (compare with tolerances.toml):")
         for id in sort(collect(keys(MEASURED)))

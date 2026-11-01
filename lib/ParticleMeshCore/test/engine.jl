@@ -33,52 +33,54 @@ const INPROCESS_DIGESTS = thread_digests()
     end
 end
 
-@testset "T-172 cumsum_periodic! identities [A7, A8, WP-011]" begin
+function body_T172(be)
     C = tolC("T-172")
     tile = ParticleMeshCore.SCAN_TILE
     @test SCAN_GRIDS[1] <= tile && SCAN_GRIDS[2] > 2tile          # one tile; three tiles
     for T in TYPES, n in SCAN_GRIDS
         ε = base_eps(T)
-        out, a, grid = scan_output(T, n)
+        out, a, grid = scan_output(T, n; be)
         g, dx = guards(grid), cellsize(grid)
         ai, oi = a[(g + 1):(g + n)], out[(g + 1):(g + n)]
         amax = maximum(absmax, ai)
         ā = sum(ai) / n
         mean_err = absmax(sum(oi) / n) / (ε * n * amax * dx)
         diff_err = maximum(absdiff((oi[j] - oi[mod1(j - 1, n)]) / dx, ai[j] - ā) for j in 1:n) / (ε * n * amax)
-        record!("T-172", T, max(mean_err, diff_err))
+        record!("T-172", T, max(mean_err, diff_err), be)
         @test mean_err <= C
         @test diff_err <= C
         T === D3 && @test any(x -> !iszero(partials(x)), oi)               # the partials are exercised
         @test same_bits(out[1:g], out[(n + 1):(n + g)])                    # guards filled
         @test same_bits(out[(n + g + 1):end], out[(g + 1):(2g)])
         @test same_bits(oi, serial_tiled_cumsum(ai, dx, tile))             # the documented order
-        @test same_bits(out, scan_output(T, n)[1])                         # rerun
+        @test same_bits(out, scan_output(T, n; be)[1])                     # rerun
     end
     # Shapes are checked on the host before any launch.
     let T = Float64, bad = (PeriodicGrid(0, 1.0, 2), PeriodicGrid(4, 1.0, 0))
         for grid in bad
             v = field(backend, T, PeriodicGrid(4, 1.0, 2))
-            @test_throws ArgumentError cumsum_periodic!(similar(v), v, grid)
+            @test_throws ArgumentError on(be, cumsum_periodic!, similar(v), v, grid)
         end
     end
+end
+
+@testset "T-172 cumsum_periodic! identities [A7, A8, WP-011]" begin
+    body_T172(CPU())
     # Thread counts: the subprocess digests at 1 and 4 threads equal the in-process ones.
     for nt in (1, 4)
         @test of_kind(worker_digests(nt), "scan") == of_kind(INPROCESS_DIGESTS, "scan")
     end
 end
 
-@testset "T-173 extras follow the sort [A4, WP-011]" begin
+"The extras-follow-the-sort part of T-173 on `be` (the scratch byte counts are the CPU testset's)."
+function body_T173(be)
     for T in TYPES
-        s, ws, grid = sorted_extras(T)
+        s, ws, grid = sorted_extras(T; be)
         @test keys(s.extras) == (:old_slot, :old_offset)
         @test eltype(s.extras.old_slot) === Int32 && eltype(s.extras.old_offset) === T
         @test length(s.extras.old_slot) == capacity(s) == length(s.extras.old_offset)
         @test alive_count(s) == 500 - length(DEAD_SLOTS)
         @test extras_match(s, ws)
-        # The two extras reuse the core permutation buffers: no extra scratch.
-        bare = test_species(T, grid, 500; seed = 13)
-        @test ParticleMeshCore.scratch_bytes(ws) == ParticleMeshCore.scratch_bytes(Workspace(bare, grid))
     end
     # An extra whose element type no core array has gets a buffer of its own, and follows too.
     grid = PeriodicGrid(5, 1.0f0, 2)
@@ -88,9 +90,20 @@ end
         s.extras.wide[i] = Float64(s.offset[1][i])
     end
     ws = Workspace(s, grid)
-    sort_by_cell!(s, grid, ws)
+    on(be, sort_by_cell!, s, grid, ws)
     @test all(i -> s.extras.tag[i] == ws.perm[i], 1:capacity(s))
     @test all(i -> s.extras.wide[i] === Float64(s.offset[1][i]), 1:capacity(s))
+    return s, ws, grid
+end
+
+@testset "T-173 extras follow the sort [A4, WP-011]" begin
+    for T in TYPES
+        # The two extras reuse the core permutation buffers: no extra scratch.
+        _, ws, grid = sorted_extras(T)
+        bare = test_species(T, grid, 500; seed = 13)
+        @test ParticleMeshCore.scratch_bytes(ws) == ParticleMeshCore.scratch_bytes(Workspace(bare, grid))
+    end
+    s, ws, grid = body_T173(CPU())
     @test ParticleMeshCore.scratch_bytes(ws) ==
           ParticleMeshCore.scratch_bytes(Workspace(test_species(Float32, grid, 40), grid)) + capacity(s) * (2 + 8)
     for nt in (1, 4)
@@ -100,29 +113,27 @@ end
     end
 end
 
-@testset "T-174 deposit! quantity [A4, A7, A8, WP-011]" begin
+function body_T174(be)
     C = tolC("T-174")
     Cnode = tolC("T-135")
     # The default quantity is the spike's q·w deposition, bitwise: Reference (and Fast for Dual,
-    # which falls back to it) in process; Fast with atomics on one thread, in the subprocess.
+    # which falls back to it) in process; on the CPU, Fast with atomics on one thread, in the
+    # subprocess (the CPU testset).
     for T in TYPES, shape in SHAPES, stagger in STAGGERS, mode in (Reference(), Fast())
         effective_mode(mode, T) isa Reference || continue
-        @test same_bits(deposit_case(T, mode, shape, stagger), deposit_case(T, mode, shape, stagger; spike = true))
+        @test same_bits(deposit_case(T, mode, shape, stagger; be), deposit_case(T, mode, shape, stagger; spike = true, be))
     end
-    fast = filter(startswith("FASTSPIKE|"), worker_lines(1))
-    @test length(fast) == 2 * length(SHAPES) * length(STAGGERS)
-    @test all(endswith("|true"), fast)
     # q·w·u_y: the deposited total is Σ q·w·u_y.
     for T in TYPES, shape in SHAPES, stagger in STAGGERS, mode in (Reference(), Fast()), np in (100, 2000)
         ε = base_eps(T)
         grid = PeriodicGrid(10, one(basetype(T)), guard_width(shape))
         s = quantity_species(T, grid, np; seed = 7)
         ws = Workspace(s, grid)
-        effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
-        ρ = fold_guards!(deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy()), grid)
+        effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
+        ρ = on(be, fold_guards!, on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy()), grid)
         expect = sum(ChargeUy()(s, i) for i in 1:np)
         scale = np * maximum(i -> absmax(ChargeUy()(s, i)), 1:np)
-        r = record!("T-174", T, absdiff(sum(ρ), expect) / (ε * scale))
+        r = record!("T-174", T, absdiff(sum(ρ), expect) / (ε * scale), be)
         @test r <= C
     end
     # Reference and Fast agree per node within T-135's bound, C·eps(T)·Σ|contributions|.
@@ -131,17 +142,24 @@ end
         dep(mode, quantity) = begin
             s = quantity_species(T, grid, 16 * 400; seed = 11)
             ws = Workspace(s, grid)
-            mode isa Reference && sort_by_cell!(s, grid, ws)
-            deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity)
+            mode isa Reference && on(be, sort_by_cell!, s, grid, ws)
+            on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity)
         end
         ρF, ρR, ρabs = dep(Fast(), ChargeUy()), dep(Reference(), ChargeUy()), dep(Reference(), AbsChargeUy())
         worst = maximum(abs(ρF[a] - ρR[a]) / (eps(T) * ρabs[a]) for a in eachindex(ρR) if ρabs[a] != 0)
-        record!("T-174 nodes", T, worst)
+        record!("T-174 nodes", T, worst, be)
         @test worst <= Cnode
     end
 end
 
-@testset "T-175 deposit! with a quantity is the adjoint of gather! [A3, A7, A8, WP-011]" begin
+@testset "T-174 deposit! quantity [A4, A7, A8, WP-011]" begin
+    body_T174(CPU())
+    fast = filter(startswith("FASTSPIKE|"), worker_lines(1))
+    @test length(fast) == 2 * length(SHAPES) * length(STAGGERS)
+    @test all(endswith("|true"), fast)
+end
+
+function body_T175(be)
     # Σᵢ quantity(s, i)·gather(fill f)ᵢ = ⟨fold(deposit(quantity)), f⟩ over the interior.
     C = tolC("T-175")
     for T in TYPES, shape in SHAPES, stagger in STAGGERS, mode in (Reference(), Fast())
@@ -150,14 +168,14 @@ end
         s = quantity_species(T, grid, 300; seed = 5)
         f = test_field(T, grid, j -> seeded(T, sin(0.7j) + 0.3))
         out = similar(s.w)
-        gather!(out, f, s, shape, stagger, grid)
+        on(be, gather!, out, f, s, shape, stagger, grid)
         lhs = sum(ChargeUy()(s, i) * out[i] for i in 1:300)
         ws = Workspace(s, grid)
-        effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
-        ρ = fold_guards!(deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy()), grid)
+        effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
+        ρ = on(be, fold_guards!, on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy()), grid)
         rhs = sum(ρ[guards(grid) + j] * f[guards(grid) + j] for j in 1:ncells(grid))
         scale = sum(absmax(ChargeUy()(s, i)) for i in 1:300) * maximum(absmax, f)
-        r = record!("T-175", T, absdiff(lhs, rhs) / (ε * scale))
+        r = record!("T-175", T, absdiff(lhs, rhs) / (ε * scale), be)
         @test r <= C
     end
     # Dual weights: the partials of the deposited q·w·u_y are the depositions of q·∂w·u_y,
@@ -172,7 +190,7 @@ end
             sD.offset[1][i] = mkdual(value(sD.offset[1][i]), 0, 0, 0)
             sD.u[2][i] = mkdual(value(sD.u[2][i]), 0, 0, 0)
         end
-        ρD = deposited_with(Reference(), sD, shape, stagger, grid, ChargeUy())
+        ρD = deposited_with(Reference(), sD, shape, stagger, grid, ChargeUy(); be)
         g64 = PeriodicGrid(12, 0.5, guard_width(shape))
         for dir in 1:3
             s64 = Species(backend, Float64, capacity(sD); q = -1, m = 1)
@@ -184,16 +202,20 @@ end
                 s64.status[i] = ParticleMeshCore.ALIVE
             end
             fill!(s64.count, Int32(300))
-            exact = deposited_with(Reference(), s64, shape, stagger, g64, ChargeUy())
+            exact = deposited_with(Reference(), s64, shape, stagger, g64, ChargeUy(); be)
             ∂ = [partials(x)[dir] for x in ρD]
             if dir == 3
                 @test all(iszero, ∂)
             else
-                r = record!("T-175 partials", D3, maximum(abs.(∂ .- exact)) / (eps(Float32) * maximum(abs, exact)))
+                r = record!("T-175 partials", D3, maximum(abs.(∂ .- exact)) / (eps(Float32) * maximum(abs, exact)), be)
                 @test r <= Cp
             end
         end
     end
+end
+
+@testset "T-175 deposit! with a quantity is the adjoint of gather! [A3, A7, A8, WP-011]" begin
+    body_T175(CPU())
 end
 
 @testset "T-176 fd_scan reports the A7 floor and runs in Float64 only [A7, WP-011]" begin

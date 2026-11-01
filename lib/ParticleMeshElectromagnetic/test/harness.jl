@@ -15,9 +15,9 @@ function case_problem(name, ::Type{T}; mode = Reference(), kw...) where {T}
     return problem_from_case(case, T; kw...), numerics_from_case(case; mode)
 end
 
-"The plain loop: a new state, `initialize!`, then `run!` over `n` steps."
-function loop_state(prob, num, n = prob.nsteps)
-    st = EMState(prob, num; backend)
+"The plain loop on `be`: a new state, `initialize!`, then `run!` over `n` steps."
+function loop_state(prob, num, n = prob.nsteps; be = CPU())
+    st = EMState(prob, num; backend = be)
     initialize!(st, prob)
     run!(st, params(prob), n)
     return st
@@ -30,14 +30,14 @@ history_bits(st::EMState, n = length(st.hist.K)) = map(h -> bits(view(h, 1:n)), 
 "Bytes of the arrays of a partition."
 partition_bytes(u::ArrayPartition) = sum(sizeof, u.x)
 
-"T-100 for one element type: a solve over `n` steps against the loop, bitwise."
-function harness_equals_loop(::Type{T}; n = nothing) where {T}
+"T-100 for one element type on `be`: a solve over `n` steps against the loop, bitwise."
+function harness_equals_loop(::Type{T}; n = nothing, be = CPU()) where {T}
     prob, num = case_problem("landau", T; HARNESS_KW...)
     n = n === nothing ? prob.nsteps : n
-    dprob = DiscreteProblem(prob, num; backend, nsteps = n)
+    dprob = DiscreteProblem(prob, num; backend = be, nsteps = n)
     u0 = partition_bits(dprob.u0)
     sol = solve(dprob, FunctionMap(); save_everystep = false)
-    ref = loop_state(prob, num, n)
+    ref = loop_state(prob, num, n; be)
     again = solve(dprob, FunctionMap(); save_everystep = false)
     return (; ok = sol.retcode == ReturnCode.Success, t = sol.t[end], n,
             state = partition_bits(sol.u[end]) == state_bits(ref),

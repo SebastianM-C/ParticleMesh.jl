@@ -36,13 +36,17 @@ function test_field(::Type{T}, grid::PeriodicGrid{1}, f) where {T}
     return fill_guards!(a, grid)
 end
 
-"Deposit `q·w` of `s` into a fresh field in `mode` (sorting first when the mode needs it); guards not folded."
-function deposited(mode, s, shape, stagger, grid)
+"""
+Deposit `q·w` of `s` into a fresh field in `mode` (sorting first when the mode needs it), on the
+backend `be` through `on` (gpu_support.jl); guards not folded. The species and the field stay host
+arrays.
+"""
+function deposited(mode, s, shape, stagger, grid; be = CPU())
     T = eltype(s)
     ws = Workspace(s, grid)
-    effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
+    effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
     ρ = field(backend, T, grid)
-    deposit!(mode, ρ, s, shape, stagger, grid, ws)
+    on(be, deposit!, mode, ρ, s, shape, stagger, grid, ws)
     return ρ
 end
 
@@ -92,12 +96,12 @@ function fd_scan(f, x0, hs; seed, ad)
     return (; fd, spread, istar, floor_rel, rel)
 end
 
-"Deposit `quantity` of `s` into a fresh field in `mode` (sorting first when the mode needs it); guards not folded."
-function deposited_with(mode, s, shape, stagger, grid, quantity)
+"Deposit `quantity` of `s` into a fresh field in `mode` (sorting first when the mode needs it), on `be`; guards not folded."
+function deposited_with(mode, s, shape, stagger, grid, quantity; be = CPU())
     T = eltype(s)
     ws = Workspace(s, grid)
-    effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws)
-    return deposit!(mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity)
+    effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
+    return on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws; quantity)
 end
 
 """

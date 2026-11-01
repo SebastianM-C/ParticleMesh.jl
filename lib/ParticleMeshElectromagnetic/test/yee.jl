@@ -25,7 +25,7 @@ function staggered_energy(f, grid, dt)
     return W * dx / 2
 end
 
-@testset "T-210 Yee in vacuum: exact discrete dispersion and staggered energy [A1, A2, A7, A8, WP-014]" begin
+function body_T210(be)
     C = emC("T-210")
     Cw = emC("T-210", "C_energy")
     n, m = 64, 3
@@ -50,14 +50,14 @@ end
             f.By[g + j] = A * T(Float64(c½ * cos(big(Float64(k)) * xd(j))))    # the left-moving mode, By = +Ez
             f.Ex[g + j] = A * T(Float64(cos(big(Float64(k)) * xd(j))) / 4)    # static: no current
         end
-        foreach(a -> fill_guards!(a, grid), f)
+        foreach(a -> on(be, fill_guards!, a, grid), f)
         Ex0 = copy(f.Ex)
         W0 = staggered_energy(f, grid, dt)
         nsteps = 400
         worst = 0.0
         worstW = 0.0
         for s in 1:nsteps
-            solve_fields!(Yee(), f, grid, dt)
+            on(be, solve_fields!, Yee(), f, grid, dt)
             if s % 50 == 0
                 t = s * big(Float64(dt))
                 err = 0.0
@@ -75,8 +75,8 @@ end
                 worstW = max(worstW, Wr)
             end
         end
-        record!("T-210", T, worst)
-        record!("T-210 energy", T, worstW)
+        record!("T-210", T, worst, be)
+        record!("T-210 energy", T, worstW, be)
         @test worst <= C
         @test worstW <= Cw
         @test same_bits(f.Ex, Ex0)                           # Ex has no curl term in 1D and no current here
@@ -86,4 +86,8 @@ end
         Δφ = mod(-φ - Float64(ω * nsteps * big(Float64(dt))) + π, 2π) - π
         @test abs(Δφ) <= C * base_eps(T) * nsteps * 4
     end
+end
+
+@testset "T-210 Yee in vacuum: exact discrete dispersion and staggered energy [A1, A2, A7, A8, WP-014]" begin
+    body_T210(CPU())
 end

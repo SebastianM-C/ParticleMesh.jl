@@ -39,9 +39,11 @@ type_label(T) = T === D3 ? "Dual{Float32,3}" : string(T)
 
 # Measured ratios err / (eps(T)·scale), per test id and type, printed at the end for tolerances.toml.
 const MEASURED = Dict{String,Dict{String,Float64}}()
-function record!(id, T, ratio)
+function record!(id, T, ratio, be = CPU())
     d = get!(MEASURED, id, Dict{String,Float64}())
-    key = type_label(T)
+    key = be isa CPU ? type_label(T) : "$(type_label(T)) on $(nameof(typeof(be)))"
     d[key] = max(get(d, key, 0.0), Float64(ratio))
     return ratio
 end
+
+include("gpu_support.jl")   # the GPU switch and the host/device round trip (WP-013)

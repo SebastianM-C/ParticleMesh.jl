@@ -4,10 +4,10 @@
 
 const DETERMINISM_T_END = 1
 
-function determinism_digests(; workgroupsize = nothing)
+function determinism_digests(; workgroupsize = nothing, be = CPU())
     out = Tuple{String,DataType,UInt64}[]
     for name in ("landau", "two-stream", "weibel"), T in TYPES
-        st, p, prob, _ = case_state(name, T; mode = Reference(), workgroupsize, ppc = 64, t_end = DETERMINISM_T_END)
+        st, p, prob, _ = case_state(name, T; mode = Reference(), workgroupsize, ppc = 64, t_end = DETERMINISM_T_END, be)
         run!(st, p, prob.nsteps)
         push!(out, (name, T, state_digest(st)))
     end

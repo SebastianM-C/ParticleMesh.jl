@@ -125,7 +125,7 @@ end
     end
 end
 
-@testset "T-263 2D fill and fold [A7, A8, WP-018]" begin
+function body_T263(be)
     C = tolC("T-263")
     for T in TYPES, g in (1, 2), n in ((4, 9), (9, 5))
         ε = base_eps(T)
@@ -135,12 +135,12 @@ end
             x[i] = seeded(T, cos(1.3i))
             y[i] = seeded(T, sin(2.1i) + 0.1)
         end
-        fx = fill_guards!(copy(x), grid)
+        fx = on(be, fill_guards!, copy(x), grid)
         # every entry, guards and corners included, is a bitwise copy of its periodic interior image
         image = [x[mod1(a1 - g, n[1]) + g, mod1(a2 - g, n[2]) + g] for a1 in axes(x, 1), a2 in axes(x, 2)]
         @test same_bits(fx, image)
-        fy = fold_guards!(copy(y), grid)
-        r = record!("T-263", T, absdiff(sum(fx .* y), sum(x .* fy)) / (ε * sum(absmax.(x)) * maximum(absmax, y)))
+        fy = on(be, fold_guards!, copy(y), grid)
+        r = record!("T-263", T, absdiff(sum(fx .* y), sum(x .* fy)) / (ε * sum(absmax.(x)) * maximum(absmax, y)), be)
         @test r <= C
         inner = falses(size(y))
         inner[(g + 1):(g + n[1]), (g + 1):(g + n[2])] .= true
@@ -148,7 +148,11 @@ end
     end
 end
 
-@testset "T-264 2D gather [A7, A8, WP-018]" begin
+@testset "T-263 2D fill and fold [A7, A8, WP-018]" begin
+    body_T263(CPU())
+end
+
+function body_T264(be)
     # The whole array, guards included, holds a + b·x + c·y + d·x·y at the node positions, so every
     # particle is away from the seam for the polynomial (as T-131 does in 1D).
     C = tolC("T-264")
@@ -170,7 +174,7 @@ end
                 f[i1, i2] = a + b * x + c * y + d * x * y
             end
             out = similar(s.w)
-            gather!(out, f, s, shape, st, grid)
+            on(be, gather!, out, f, s, shape, st, grid)
             scale = abs(a) + abs(b) * L[1] + abs(c) * L[2] + abs(d) * L[1] * L[2]
             for i in 1:300
                 x = (s.cell[1][i] - 1 + s.offset[1][i]) * h[1]
@@ -178,9 +182,13 @@ end
                 worst = max(worst, absdiff(out[i], a + b * x + c * y + d * x * y) / (ε * scale))
             end
         end
-        record!("T-264", T, worst)
+        record!("T-264", T, worst, be)
         @test worst <= C
     end
+end
+
+@testset "T-264 2D gather [A7, A8, WP-018]" begin
+    body_T264(CPU())
     for T in (Float32, D3), shape in SHAPES, st in STAGGER_PAIRS
         grid = grid2(T, guard_width(shape))
         f = test_field_2d(T, grid, (a, b) -> seeded(T, a + b / 3))
@@ -189,28 +197,29 @@ end
     end
 end
 
-@testset "T-265 2D deposition [A3, A7, A8, WP-018]" begin
+"T-265 on `be`; `nodes = false` leaves out the Fast–Reference agreement per node (T-194 runs it on CUDA)."
+function body_T265(be; nodes = true)
     C, Cadj, Cp, Cnode = tolC("T-265"), tolC("T-265", "C_adjoint"), tolC("T-265", "C_partials"), tolC("T-265", "C_nodes")
     for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, mode in (Reference(), Fast())
         ε = base_eps(T)
         grid = grid2(T, guard_width(shape))
         for (np, quantity) in ((200, ChargeWeight()), (2000, ChargeWeight()), (2000, ChargeUy2()))
             s = moved_species_2d(T, grid, np)
-            ρ = fold_guards!(deposited_2d(mode, s, shape, st, grid; quantity), grid)
+            ρ = on(be, fold_guards!, deposited_2d(mode, s, shape, st, grid; quantity, be), grid)
             q = [quantity(s, i) for i in 1:np]
-            r = record!("T-265", T, absdiff(sum(ρ), sum(q)) / (ε * np * maximum(absmax, q)))
+            r = record!("T-265", T, absdiff(sum(ρ), sum(q)) / (ε * np * maximum(absmax, q)), be)
             @test r <= C
         end
         # adjoint of gather with the same weighting, fill and fold included
         s = moved_species_2d(T, grid, 400)
         f = test_field_2d(T, grid, (a, b) -> seeded(T, sin(0.7a) + cos(0.4b) / 2 + 0.3))
         out = similar(s.w)
-        gather!(out, f, s, shape, st, grid)
+        on(be, gather!, out, f, s, shape, st, grid)
         lhs = sum(ChargeUy2()(s, i) * out[i] for i in 1:400)
-        ρ = interior_view(fold_guards!(deposited_2d(mode, s, shape, st, grid; quantity = ChargeUy2()), grid), grid)
+        ρ = interior_view(on(be, fold_guards!, deposited_2d(mode, s, shape, st, grid; quantity = ChargeUy2(), be), grid), grid)
         rhs = sum(ρ .* interior_view(f, grid))
         scale = sum(absmax(ChargeUy2()(s, i)) for i in 1:400) * maximum(absmax, f)
-        r = record!("T-265 adjoint", T, absdiff(lhs, rhs) / (ε * scale))
+        r = record!("T-265 adjoint", T, absdiff(lhs, rhs) / (ε * scale), be)
         @test r <= Cadj
     end
     # Dual weights: exact partials, the primal values bitwise equal to the Float32 run.
@@ -224,7 +233,7 @@ end
                 sD.offset[d][i] = mkdual(value(sD.offset[d][i]), 0, 0, 0)
             end
         end
-        ρD = deposited_2d(Reference(), sD, shape, st, grid)
+        ρD = deposited_2d(Reference(), sD, shape, st, grid; be)
         g32 = grid2(Float32, guard_width(shape))
         weighted(wf) = begin
             s32 = Species(backend, Float32, capacity(sD); q = -1, m = 1, N = 2)
@@ -237,7 +246,7 @@ end
                 s32.status[i] = ParticleMeshCore.ALIVE
             end
             fill!(s32.count, Int32(400))
-            deposited_2d(Reference(), s32, shape, st, g32)
+            deposited_2d(Reference(), s32, shape, st, g32; be)
         end
         @test same_bits(value.(ρD), weighted(value))
         for dir in 1:3
@@ -256,21 +265,30 @@ end
                     s64.status[i] = ParticleMeshCore.ALIVE
                 end
                 fill!(s64.count, Int32(400))
-                exact = deposited_2d(Reference(), s64, shape, st, g64)
-                r = record!("T-265 partials", D3, maximum(abs.(∂ .- exact)) / (eps(Float32) * maximum(abs, exact)))
+                exact = deposited_2d(Reference(), s64, shape, st, g64; be)
+                r = record!("T-265 partials", D3, maximum(abs.(∂ .- exact)) / (eps(Float32) * maximum(abs, exact)), be)
                 @test r <= Cp
             end
         end
     end
-    # Reference and Fast agree per node within C·eps(T)·Σ|contributions|.
+    nodes && body_T265_nodes(be)
+end
+
+"T-265's Reference–Fast agreement per node, within C·eps(T)·Σ|contributions|, on `be`."
+function body_T265_nodes(be)
+    Cnode = tolC("T-265", "C_nodes")
     for T in (Float32, Float64), shape in SHAPES, st in STAGGER_PAIRS
         grid = grid2(T, guard_width(shape))
-        dep(mode, quantity) = deposited_2d(mode, moved_species_2d(T, grid, 192 * 40; seed = 11), shape, st, grid; quantity)
+        dep(mode, quantity) = deposited_2d(mode, moved_species_2d(T, grid, 192 * 40; seed = 11), shape, st, grid; quantity, be)
         ρF, ρR, ρabs = dep(Fast(), ChargeUy2()), dep(Reference(), ChargeUy2()), dep(Reference(), AbsChargeUy2())
         worst = maximum(abs(ρF[a] - ρR[a]) / (eps(T) * ρabs[a]) for a in eachindex(ρR) if ρabs[a] != 0)
-        record!("T-265 nodes", T, worst)
+        record!("T-265 nodes", T, worst, be)
         @test worst <= Cnode
     end
+end
+
+@testset "T-265 2D deposition [A3, A7, A8, WP-018]" begin
+    body_T265(CPU())
 end
 
 @testset "T-266 2D sort and Reference determinism [A4, WP-018]" begin
@@ -312,14 +330,15 @@ end
     end
 end
 
-@testset "T-267 2D loading [A3, A4, A8, WP-018]" begin
+"T-267's load checks on `be` (the Dual-parameter and N = 1 counter checks are the CPU testset's)."
+function body_T267(be)
     C = tolC("T-267")
     for T in TYPES
         grid = grid2(T, 2)
         n, h = ncells(grid), cellsize(grid)
         K = prod(PPC2)
         p = oblique_params(T, grid)
-        s = load_2d(T, grid, PPC2; seed = 4, stream = 2)
+        s = load_2d(T, grid, PPC2; seed = 4, stream = 2, be)
         np = prod(n) * K
         @test alive_count(s) == np && count(==(ParticleMeshCore.ALIVE), s.status) == np
         key = (UInt32(4), UInt32(2))
@@ -349,13 +368,18 @@ end
         @test ctr_ok
         @test w_ok
         # Σw against the lattice sum: the oblique mode sums to zero over the product lattice, so Σw = n₀·cells.
-        r = record!("T-267", T, absdiff(sum(s.w[1:np]), p[1] * prod(n)) / (base_eps(T) * np * wmax))
+        r = record!("T-267", T, absdiff(sum(s.w[1:np]), p[1] * prod(n)) / (base_eps(T) * np * wmax), be)
         @test r <= C
         # same seed: the same bits; another stream or seed: other draws, the same positions and weights
-        a, b, c2, d = load_2d(T, grid, PPC2), load_2d(T, grid, PPC2), load_2d(T, grid, PPC2; stream = 3), load_2d(T, grid, PPC2; seed = 5)
+        a, b = load_2d(T, grid, PPC2; be), load_2d(T, grid, PPC2; be)
+        c2, d = load_2d(T, grid, PPC2; stream = 3, be), load_2d(T, grid, PPC2; seed = 5, be)
         @test all(same_bits.(species_arrays(a), species_arrays(b)))
         @test a.u[1] != c2.u[1] && a.u[1] != d.u[1] && same_bits(a.w, c2.w) && same_bits(a.offset[2], d.offset[2])
     end
+end
+
+@testset "T-267 2D loading [A3, A4, A8, WP-018]" begin
+    body_T267(CPU())
     # Positions are bitwise independent of p: Dual parameters appear in the weights only.
     grid = grid2(D3, 2)
     pD = (mkdual(1, 1, 0, 0), mkdual(1 / 10, 0, 1, 0), oblique_params(D3, grid)[3:4]...)
@@ -420,7 +444,7 @@ end
     end
 end
 
-@testset "T-269 2D reduces to 1D [A7, WP-018]" begin
+function body_T269(be)
     C, Cg = tolC("T-269"), tolC("T-269", "C_gather")
     for T in TYPES, shape in SHAPES, st1 in STAGGERS
         ε = base_eps(T)
@@ -428,7 +452,8 @@ end
         grid = grid2(T, guard_width(shape))
         n, g = ncells(grid), guards(grid)
         p = (seeded(T, 1), T(1 // 10), T(2π / (n[1] * cellsize(grid)[1])))
-        s2 = load_quiet!(Species(backend, T, prod(n) * prod(PPC2); q = -1, m = 1, N = 2), grid, XDensity(), p, PPC2; seed = 1, stream = 1)
+        s2 = on(be, load_quiet!, Species(backend, T, prod(n) * prod(PPC2); q = -1, m = 1, N = 2), grid, XDensity(), p, PPC2;
+                seed = 1, stream = 1)
         np = capacity(s2)
         g1 = PeriodicGrid(n[1], cellsize(grid)[1], g)
         s1 = Species(backend, T, np; q = -1, m = 1)
@@ -441,15 +466,19 @@ end
             f2[:, a2] .= f1
         end
         o1, o2 = similar(s1.w), similar(s2.w)
-        gather!(o1, f1, s1, shape, st1, g1)
-        gather!(o2, f2, s2, shape, st, grid)
-        rg = record!("T-269 gather", T, maximum(absdiff.(o1, o2)) / (ε * maximum(absmax, f1)))
+        on(be, gather!, o1, f1, s1, shape, st1, g1)
+        on(be, gather!, o2, f2, s2, shape, st, grid)
+        rg = record!("T-269 gather", T, maximum(absdiff.(o1, o2)) / (ε * maximum(absmax, f1)), be)
         @test rg <= Cg
-        ρ2 = interior_view(fold_guards!(deposited_2d(Reference(), s2, shape, st, grid), grid), grid)
-        ρ1 = interior_view(fold_guards!(deposited(Reference(), s1, shape, st1, g1), g1), g1)
+        ρ2 = interior_view(on(be, fold_guards!, deposited_2d(Reference(), s2, shape, st, grid; be), grid), grid)
+        ρ1 = interior_view(on(be, fold_guards!, deposited(Reference(), s1, shape, st1, g1; be), g1), g1)
         ysum = vec(sum(ρ2; dims = 2))
         scale = n[2] * maximum(absmax, ρ1)
-        r = record!("T-269", T, maximum(absdiff.(ysum, ρ1)) / (ε * scale))
+        r = record!("T-269", T, maximum(absdiff.(ysum, ρ1)) / (ε * scale), be)
         @test r <= C
     end
+end
+
+@testset "T-269 2D reduces to 1D [A7, WP-018]" begin
+    body_T269(CPU())
 end

@@ -83,12 +83,12 @@ function moved_species_2d(::Type{T}, grid, np; seed = 3, extras = NamedTuple(), 
     return s
 end
 
-"Deposit `quantity` of `s` into a fresh field in `mode`, sorting first when the mode needs it; guards not folded."
-function deposited_2d(mode, s, shape, st, grid; quantity = ChargeWeight(), workgroupsize = nothing)
+"Deposit `quantity` of `s` into a fresh field in `mode` on `be`, sorting first when the mode needs it; guards not folded."
+function deposited_2d(mode, s, shape, st, grid; quantity = ChargeWeight(), workgroupsize = nothing, be = CPU())
     T = eltype(s)
     ws = Workspace(s, grid)
-    effective_mode(mode, T) isa Reference && sort_by_cell!(s, grid, ws; workgroupsize)
-    return deposit!(mode, field(backend, T, grid), s, shape, st, grid, ws; quantity, workgroupsize)
+    effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws; workgroupsize)
+    return on(be, deposit!, mode, field(backend, T, grid), s, shape, st, grid, ws; quantity, workgroupsize)
 end
 
 "q·w·u_y, the module-supplied quantity of T-265 (2D species keep the id in u_z)."
@@ -109,8 +109,9 @@ struct XDensity end
 oblique_params(::Type{T}, grid) where {T} =
     (seeded(T, 1), T(1 // 10), T(2π / (ncells(grid)[1] * cellsize(grid)[1])), T(2 * 2π / (ncells(grid)[2] * cellsize(grid)[2])))
 
-load_2d(::Type{T}, grid, ppc; seed = 4, stream = 2, p = oblique_params(T, grid), workgroupsize = nothing, extras = NamedTuple()) where {T} =
-    load_quiet!(Species(backend, T, prod(ncells(grid)) * prod(ppc) + 3; q = -1, m = 1, N = 2, extras), grid, ObliqueDensity(), p, ppc;
+load_2d(::Type{T}, grid, ppc; seed = 4, stream = 2, p = oblique_params(T, grid), workgroupsize = nothing, extras = NamedTuple(),
+        be = CPU()) where {T} =
+    on(be, load_quiet!, Species(backend, T, prod(ncells(grid)) * prod(ppc) + 3; q = -1, m = 1, N = 2, extras), grid, ObliqueDensity(), p, ppc;
                 vdrift = (T(1 // 10), zero(T), T(-1 // 10)), vth = (T(1 // 20), T(1 // 30), T(1 // 40)), seed, stream, workgroupsize)
 
 const DEAD2 = (9, 40, 41, 150)
@@ -122,7 +123,7 @@ T-266's species: 300 particles of `moved_species_2d` with four slots freed, the 
 `old_slot::Int32` (the slot before the sort) and `old_offset::T` (a copy of the axis-1 offset),
 sorted once.
 """
-function sorted_2d(::Type{T}; workgroupsize = nothing) where {T}
+function sorted_2d(::Type{T}; workgroupsize = nothing, be = CPU()) where {T}
     grid = grid2(T, 2)
     s = moved_species_2d(T, grid, 300; extras = (old_slot = Int32, old_offset = T), dead = DEAD2)
     for i in 1:capacity(s)
@@ -130,12 +131,12 @@ function sorted_2d(::Type{T}; workgroupsize = nothing) where {T}
         s.extras.old_offset[i] = s.offset[1][i]
     end
     ws = Workspace(s, grid)
-    sort_by_cell!(s, grid, ws; workgroupsize)
+    on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     return s, ws, grid
 end
 
 """
-    engine2d_digests() -> Vector{String}
+    engine2d_digests(be = CPU(); wgs = WG_SIZES) -> Vector{String}
 
 `"kind|type|case|workgroupsize|digest"` of every 2D result whose bits must not depend on the
 launch shape or the thread count: the sort with extras, the Reference deposition of a moved
@@ -143,38 +144,38 @@ species (both seams and the corner crossed) for both orders, two stagger pairs p
 natural pair and the mixed pair (Center, Node), which takes the `floor` path on one axis) and
 two quantities, the gather at the natural pair, fill and fold, and the load. Every stagger pair
 is covered in process by T-262 to T-265; this set is kept small because each subprocess
-compiles it anew.
+compiles it anew. On the backend `be`, for the launch shapes `wgs`.
 """
 
 "The stagger pairs of the subprocess digests: the natural pair of the order and the mixed pair."
 digest_pairs(::Shape{1}) = ((Node(), Node()), (Center(), Node()))
 digest_pairs(::Shape{2}) = ((Center(), Center()), (Center(), Node()))
-function engine2d_digests()
+function engine2d_digests(be = CPU(); wgs = WG_SIZES)
     lines = String[]
-    for T in TYPES, wg in WG_SIZES
+    for T in TYPES, wg in wgs
         L = type_label(T)
-        s, ws, grid = sorted_2d(T; workgroupsize = wg)
+        s, ws, grid = sorted_2d(T; workgroupsize = wg, be)
         push!(lines, "sort2d|$L|extras|$wg|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
         for shape in SHAPES, st in digest_pairs(shape)
             grid = grid2(T, guard_width(shape))
             for (ql, quantity) in (("qw", ChargeWeight()), ("qwuy", ChargeUy2()))
                 m = moved_species_2d(T, grid, 300; dead = DEAD2)
-                ρ = deposited_2d(Reference(), m, shape, st, grid; quantity, workgroupsize = wg)
+                ρ = deposited_2d(Reference(), m, shape, st, grid; quantity, workgroupsize = wg, be)
                 push!(lines, "deposit2d|$L|$(order(shape)),$(stagger_label(st)),$ql|$wg|$(fnv_digest(ρ))")
             end
             st === first(digest_pairs(shape)) || continue
             m = moved_species_2d(T, grid, 300; dead = DEAD2)
             f = test_field_2d(T, grid, (a, b) -> seeded(T, sin(0.7a) + cos(0.3b) / 2))
             out = fill!(similar(m.w), zero(T))
-            gather!(out, f, m, shape, st, grid; workgroupsize = wg)
+            on(be, gather!, out, f, m, shape, st, grid; workgroupsize = wg)
             push!(lines, "gather2d|$L|$(order(shape)),$(stagger_label(st))|$wg|$(fnv_digest(out))")
         end
         grid = grid2(T, 2; n = (9, 4))
         x = field(backend, T, grid)
         foreach(i -> x[i] = seeded(T, cos(1.3i)), eachindex(x))
-        push!(lines, "fill2d|$L|9x4|$wg|$(fnv_digest(fill_guards!(copy(x), grid; workgroupsize = wg)))")
-        push!(lines, "fold2d|$L|9x4|$wg|$(fnv_digest(fold_guards!(copy(x), grid; workgroupsize = wg)))")
-        s = load_2d(T, grid2(T, 2), PPC2; workgroupsize = wg)
+        push!(lines, "fill2d|$L|9x4|$wg|$(fnv_digest(on(be, fill_guards!, copy(x), grid; workgroupsize = wg)))")
+        push!(lines, "fold2d|$L|9x4|$wg|$(fnv_digest(on(be, fold_guards!, copy(x), grid; workgroupsize = wg)))")
+        s = load_2d(T, grid2(T, 2), PPC2; workgroupsize = wg, be)
         push!(lines, "load2d|$L|ppc=2x3|$wg|$(fnv_digest(species_arrays(s)...))")
     end
     return lines

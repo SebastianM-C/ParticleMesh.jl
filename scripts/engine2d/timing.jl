@@ -21,6 +21,12 @@
 # extras tuple:
 #   julia +1.13 --project=scripts -t 1 scripts/engine2d/timing.jl ported
 #   julia +1.13 --project=scripts -t 4 scripts/engine2d/timing.jl ported
+#
+# Part 3, `cuda` (WP-013): the proxy step of part 2 on the RTX 4080 SUPER, built on the device,
+# on 128 × 128 cells at 2 × 2, 8 × 8 and 32 × 32 particles per cell (2^16, 2^20 and 2^24
+# particles), Float32 and Float64, Reference and Fast, the GPU synchronized around every timed
+# region, with the device bytes of the species, the `Workspace` and the field:
+#   julia +1.13 --project=scripts scripts/engine2d/timing.jl cuda
 include(joinpath(@__DIR__, "common.jl"))
 const PMC = ParticleMesh.ParticleMeshCore
 using .PMC: shape_weights, stencil_reach, pick, ALIVE, Stagger, Shape, Species, Workspace, sort_by_cell!, deposit!,
@@ -402,7 +408,77 @@ function ported()
     return dir
 end
 
+# Part 3: the proxy step on CUDA
+
+using CUDACore: CUDACore, CUDABackend
+
+const CUDA_CELLS = (128, 128)
+const CUDA_PPC = ((2, 2), (8, 8), (32, 32))
+
+"The proxy step of `proxy_rows` on `be`, at `ppc` per cell on `CUDA_CELLS`: ns per particle-step and device bytes."
+function proxy_row_device(be, ::Type{T}, mode, ppc; steps = 20) where {T}
+    n = CUDA_CELLS
+    grid = PeriodicGrid(n, (T(1 // 4), T(3 // 8)), 2)
+    local s, ws, ρ, out
+    bytes = CUDACore.@allocated begin
+        s = Species(be, T, prod(n) * prod(ppc); q = -1, m = 1, N = 2)
+        ws = Workspace(s, grid)
+        ρ = field(be, T, grid)
+        out = similar(s.w)
+    end
+    p = (one(T), T(1 // 10), T(2π / (n[1] / 4)), T(2π / (n[2] * 3 / 8)))
+    PMC.load_quiet!(s, grid, ProxyDensity(), p, ppc; vth = (T(1 // 5), T(1 // 5), T(1 // 5)), seed = 1, stream = 1)
+    st = (PMC.Center(), PMC.Center())
+    dt_dx = (T(1 // 2), T(1 // 3))
+    step!() = begin
+        proxy_advance!(be)(s, dt_dx, Int32.(n); ndrange = capacity(s))
+        mode isa Reference && sort_by_cell!(s, grid, ws)
+        fill!(ρ, zero(T))
+        deposit!(mode, ρ, s, PMC.Quadratic, st, grid, ws)
+        PMC.fold_guards!(ρ, grid)
+        PMC.fill_guards!(ρ, grid)
+        gather!(out, ρ, s, PMC.Quadratic, st, grid)
+    end
+    run() = (foreach(_ -> step!(), 1:steps); KernelAbstractions.synchronize(be))
+    run()
+    ts = sort([@elapsed(run()) for _ in 1:5])
+    np = capacity(s)
+    return Dict{String,Any}("T" => string(T), "mode" => string(nameof(typeof(mode))), "cells" => collect(n), "ppc" => collect(ppc),
+                            "particles" => np, "steps" => steps, "ns_per_particle_step" => 1e9 * ts[3] / (np * steps),
+                            "ns_per_particle_step_min" => 1e9 * ts[1] / (np * steps), "ns_per_particle_step_max" => 1e9 * ts[end] / (np * steps),
+                            "device_bytes" => bytes, "device_bytes_per_particle" => bytes / np)
+end
+
+function cuda()
+    CUDACore.functional() || error("timing.jl cuda: CUDA is not functional on this machine")
+    be = CUDABackend()
+    gpu = CUDACore.name(CUDACore.device())
+    dir = run_dir("cuda", @__FILE__; params = Dict{String,Any}("cells" => collect(CUDA_CELLS), "ppc" => [collect(p) for p in CUDA_PPC],
+                                                               "timer" => "median of 5 synchronized runs of 20 steps, after one warm-up run"),
+                  work_package = "WP-013", backend = "KernelAbstractions CUDA (CUDACore)",
+                  extra = Dict{String,Any}("gpu" => gpu, "cudacore" => string(pkgversion(CUDACore))))
+    rows = Dict{String,Any}[]
+    for T in (Float32, Float64), mode in (Reference(), Fast()), ppc in CUDA_PPC
+        push!(rows, proxy_row_device(be, T, mode, ppc))
+        r = rows[end]
+        println(r["T"], " ", r["mode"], " ", r["particles"], ": ", round(r["ns_per_particle_step"], sigdigits = 3), " ns/particle-step, ",
+                round(r["device_bytes_per_particle"], sigdigits = 3), " B/particle")
+        GC.gc(); CUDACore.reclaim()
+    end
+    fig = Figure(size = (800, 450))
+    ax = Axis(fig[1, 1]; xscale = log2, yscale = log10, xlabel = "particles", ylabel = "ns per particle-step",
+              title = "Engine-only 2D proxy step, 128 × 128 cells, $gpu")
+    for T in ("Float32", "Float64"), mode in ("Reference", "Fast")
+        rs = sort([r for r in rows if r["T"] == T && r["mode"] == mode]; by = r -> r["particles"])
+        scatterlines!(ax, [r["particles"] for r in rs], [r["ns_per_particle_step"] for r in rs]; label = "$T $mode")
+    end
+    axislegend(ax)
+    save_plot(dir, "proxy_cuda", fig, Dict("rows" => rows, "gpu" => gpu))
+    println("cuda: outputs in ", relpath(dir, REPO))
+    return dir
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__()
     part = isempty(ARGS) ? "prototypes" : ARGS[1]
-    part == "prototypes" ? prototypes() : part == "ported" ? ported() : error("unknown part $part")
+    part == "prototypes" ? prototypes() : part == "ported" ? ported() : part == "cuda" ? cuda() : error("unknown part $part")
 end

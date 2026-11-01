@@ -16,9 +16,12 @@ const LANDAU_OVERRIDES = (; ppc = 8192, amplitude = 1 // 20)
 const TWO_STREAM_OVERRIDES = (; ppc = 256)
 const WEIBEL_OVERRIDES = (;)
 
-"Run a case to its end; returns the histories, the times, the final state and the run time."
-function run_case(name; overrides...)
-    st, p, prob, case = case_state(name, Float64; overrides...)
+"The key of a case's results in `PHYSICS`: the name on the CPU, the name and the backend elsewhere."
+physics_key(name, be) = be isa CPU ? name : "$name on $(backend_label(be))"
+
+"Run a case to its end on `be`; returns the histories, the times, the final state and the run time."
+function run_case(name; be = CPU(), overrides...)
+    st, p, prob, case = case_state(name, Float64; be, overrides...)
     t = @elapsed run!(st, p, prob.nsteps)
     return (; st, prob, case, h = histories(st), ts = history_times(prob), seconds = t)
 end
@@ -60,24 +63,35 @@ function energy_drift(h)
     return maximum(abs, (tot .- tot[1]) ./ tot[1])
 end
 
-@testset "T-214 Landau damping through the module against linear theory [A5, A7, A9, WP-014]" begin
-    r = run_case("landau"; LANDAU_OVERRIDES...)
+"T-214 on `be`; the comparison with the electrostatic reference runs on the CPU only (it is CPU test support, #97)."
+function body_T214(be)
+    r = run_case("landau"; be, LANDAU_OVERRIDES...)
     o = r.case["observables"]["damping_rate"]
     e = r.case["species"][1]
     kλ = 2π / r.case["grid"]["length"] * e["thermal_velocity"] / sqrt(e["density"])
     ω = landau_root(kλ)
     f = damping_from_peaks(r.ts, r.h.WEx; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
-    W_es = es_reference_run("landau", r.prob, r.case)
-    fe = damping_from_peaks(r.ts, W_es; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
     rel = (f.gamma - (-imag(ω))) / (-imag(ω))
-    @info "T-214 Landau" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
-    PHYSICS["landau"] = (; r..., f, fe, ω)
+    if be isa CPU
+        W_es = es_reference_run("landau", r.prob, r.case)
+        fe = damping_from_peaks(r.ts, W_es; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
+        @info "T-214 Landau" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
+    else
+        fe = nothing
+        @info "T-214 Landau on $(backend_label(be))" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) seconds = r.seconds
+    end
+    PHYSICS[physics_key("landau", be)] = (; r..., f, fe, ω)
     @test isfinite(f.gamma) && isfinite(f.omega)
     @test f.gamma > 0                    # the field damps (γ is the damping rate of the amplitude)
 end
 
-@testset "T-215 two-stream through the module against linear theory [A5, A7, A9, WP-014]" begin
-    r = run_case("two-stream"; TWO_STREAM_OVERRIDES...)
+@testset "T-214 Landau damping through the module against linear theory [A5, A7, A9, WP-014]" begin
+    body_T214(CPU())
+end
+
+"T-215 on `be`; the electrostatic-reference comparison on the CPU only."
+function body_T215(be)
+    r = run_case("two-stream"; be, TWO_STREAM_OVERRIDES...)
     o = r.case["observables"]["growth_rate"]
     b = r.case["species"][2]
     v0 = abs(b["drift"])
@@ -85,23 +99,37 @@ end
     γth = two_stream_cold_growth(kv0; gamma0 = 1 / sqrt(1 - v0^2))
     @test γth ≈ o["theory"] rtol = 1e-12
     f = growth_from_window(r.ts, r.h.WEx; window = o["window"])
-    W_es = es_reference_run("two-stream", r.prob, r.case)
-    fe = growth_from_window(r.ts, W_es; window = o["window"])
     rel = (f.gamma - γth) / γth
-    @info "T-215 two-stream" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
-    PHYSICS["two-stream"] = (; r..., f, fe, γth)
+    if be isa CPU
+        W_es = es_reference_run("two-stream", r.prob, r.case)
+        fe = growth_from_window(r.ts, W_es; window = o["window"])
+        @info "T-215 two-stream" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
+    else
+        fe = nothing
+        @info "T-215 two-stream on $(backend_label(be))" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) seconds = r.seconds
+    end
+    PHYSICS[physics_key("two-stream", be)] = (; r..., f, fe, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
 end
 
-@testset "T-213 the edge cases stay electrostatic, bit for bit [A9, WP-014]" begin
+@testset "T-215 two-stream through the module against linear theory [A5, A7, A9, WP-014]" begin
+    body_T215(CPU())
+end
+
+function body_T213(be)
     for name in ("landau", "two-stream")
-        haskey(PHYSICS, name) && check_electrostatic(PHYSICS[name])
+        k = physics_key(name, be)
+        haskey(PHYSICS, k) && check_electrostatic(PHYSICS[k])
     end
 end
 
-@testset "T-216 Weibel growth rate against the cold-fluid relation [A1, A5, A7, WP-014]" begin
-    r = run_case("weibel"; WEIBEL_OVERRIDES...)
+@testset "T-213 the edge cases stay electrostatic, bit for bit [A9, WP-014]" begin
+    body_T213(CPU())
+end
+
+function body_T216(be)
+    r = run_case("weibel"; be, WEIBEL_OVERRIDES...)
     o = r.case["observables"]["growth_rate"]
     b = r.case["species"][1]
     v0 = abs(b["transverse_drift"][1])
@@ -120,19 +148,28 @@ end
     imax = findfirst(==(f.t_max), r.ts)
     ΔWB = r.h.WBz[imax] - r.h.WBz[1]
     ΔK = r.h.K[imax] - r.h.K[1]
-    @info "T-216 Weibel" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) t_saturation = f.t_max ΔWB ΔK seconds = r.seconds
-    PHYSICS["weibel"] = (; r..., f, γth)
+    @info "T-216 Weibel" backend = backend_label(be) γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) t_saturation = f.t_max ΔWB ΔK seconds = r.seconds
+    PHYSICS[physics_key("weibel", be)] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
     @test ΔWB > 0 && ΔK < 0
 end
 
-@testset "T-217 total energy drift per case [A7, WP-014]" begin
+@testset "T-216 Weibel growth rate against the cold-fluid relation [A1, A5, A7, WP-014]" begin
+    body_T216(CPU())
+end
+
+function body_T217(be)
     for name in ("landau", "two-stream", "weibel")
-        haskey(PHYSICS, name) || continue
-        d = energy_drift(PHYSICS[name].h)
-        get!(MEASURED, "T-217 relative energy drift", Dict{String,Float64}())[name] = d
-        @info "T-217 energy drift" name drift = d steps = PHYSICS[name].prob.nsteps
+        k = physics_key(name, be)
+        haskey(PHYSICS, k) || continue
+        d = energy_drift(PHYSICS[k].h)
+        get!(MEASURED, "T-217 relative energy drift", Dict{String,Float64}())[k] = d
+        @info "T-217 energy drift" name backend = backend_label(be) drift = d steps = PHYSICS[k].prob.nsteps
         @test d <= EMTOL["T-217"][name]
     end
+end
+
+@testset "T-217 total energy drift per case [A7, WP-014]" begin
+    body_T217(CPU())
 end

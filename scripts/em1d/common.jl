@@ -43,19 +43,20 @@ end
     run_dir(name, script, case_name; params) -> dir
 
 Create `scripts/runs/em1d-<name>-<timestamp>/` and write its `manifest.toml` (F3): the commit
-and dirty flag, the SHA-256 of every input, the parameters, Julia version, thread count and CPU
-model.
+and dirty flag, the SHA-256 of every input, the parameters, Julia version, thread count, CPU
+model and backend, plus `extra` (the GPU model of a CUDA run).
 """
-function run_dir(name, script, case_name; params = Dict{String,Any}())
+function run_dir(name, script, case_name; params = Dict{String,Any}(), work_package = "WP-014",
+                 backend = "KernelAbstractions CPU", extra = Dict{String,Any}())
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = joinpath(REPO, "scripts", "runs", "em1d-$name-$stamp")
     mkpath(dir)
     # input paths relative to the repository root: absolute paths would carry the machine's home directory
     inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(script, case_name))
     write_manifest(dir; root = REPO,
-                   extra = Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => "WP-014", "parameters" => params,
-                                            "julia" => string(VERSION), "threads" => Threads.nthreads(),
-                                            "cpu" => Sys.cpu_info()[1].model, "backend" => "KernelAbstractions CPU"))
+                   extra = merge(Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => work_package,
+                                                  "parameters" => params, "julia" => string(VERSION), "threads" => Threads.nthreads(),
+                                                  "cpu" => Sys.cpu_info()[1].model, "backend" => backend), extra))
     return dir
 end
 
