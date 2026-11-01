@@ -1,167 +1,198 @@
 # Independent review: cross-code stage 1b (WP-012)
 
-Reviewer: numerics-reviewer role, model claude-opus-5-5, 2026-11-01, fresh subagent. Paths are relative to the worktree root (`~/.julia/dev/ParticleMesh/.claude/worktrees/wp-012-seeds`, branch `worktree-wp-012-seeds`, compared against `origin/main`). Committed verbatim by the implementer; the answers are in `README.md`, "Review findings and answers".
+Reviewer: numerics-reviewer role (`.claude/agents/numerics-reviewer.md`), fresh subagent, model claude-opus-5-5, 2026-11-01. Paths are relative to the worktree root (`~/.julia/dev/ParticleMesh/.claude/worktrees/wp-012-seeds`, branch `worktree-wp-012-seeds`, compared with `origin/main`). This review replaces the earlier `review.md`. That review checked a ParticleMesh column, from the electrostatic reference, which no longer exists. Committed verbatim by the implementer; the answers are in `README.md`, "Review findings and answers".
 
-**Scope.** I checked the "Stage 1b" section of `reports/crosscode-smilei-1d/README.md` and its header rows, `questions/wp-012-a5-a7-proposals.md`, and the `["T-141".wp012]` and `["T-142".wp012]` entries of `lib/ParticleMeshCore/test/tolerances.toml`. I compared every number against the sidecars and manifests in `reports/crosscode-smilei-1d/stage-1b/`, and read the code that produced them (`scripts/crosscode/{ensemble,ensemble_report,ensemble_bias,analysis,analyze,manifest}.jl`, `scripts/es1d/crosscode.jl`, the three case files, and T-180 to T-188).
+**Scope.** I checked these against the sidecars and manifests in `reports/crosscode-smilei-1d/stage-1b/`:
+- the "Stage 1b" section of `reports/crosscode-smilei-1d/README.md` and its header rows;
+- `questions/wp-012-a5-a7-proposals.md`;
+- the `["T-214".wp012]` and `["T-215".wp012]` entries of `lib/ParticleMeshElectromagnetic/test/tolerances.toml`;
+- the pinned seed in `lib/ParticleMeshElectromagnetic/test/physics.jl`;
+- the Review row of `reports/spike-electrostatic-1d.md`.
 
-What I ran, all on the CPU:
-- `julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl`: all testsets pass, T-010 to T-188.
-- `scripts/trace/build.jl --check`: passes.
-- My own snippets, which wrote nothing into the repository:
-  - (a) recomputed both Landau ensembles from the raw data (Smilei `Fields0.h5` and ParticleMesh `series.json` in `scripts/runs/`);
-  - (b) the leave-one-out maxima counts, and why each fit stops;
-  - (c) the distribution of the jackknife standard error on the synthetic ensembles of `ensemble_bias.jl`, plus a replicate with independent random numbers;
-  - (d) the two-stream growth rate against the fit window, and the local rate over time;
-  - (e) a rerun of ParticleMesh seed 20263101 at 16 threads (full run) and of seed 20266101 at 1 thread (to t = 2), compared bit for bit with the committed series;
-  - (f) a hash check of every manifest input and of the committed sidecar copies against `scripts/runs/`.
+I read the code that produced the numbers: `scripts/crosscode/{ensemble,ensemble_report,ensemble_bias,analysis,analyze,manifest}.jl`, `scripts/em1d/{crosscode,common}.jl`, the three case files, T-180 to T-188, and the module's loader (`load_quiet!`, `initialize!`, `problem_from_case`).
 
-The pre-registration of the observable and its rules, the units, the Landau and two-stream numbers, and the determinism hold. I have no blocking finding. The major findings concern how uncertain the Landau numbers are stated to be, and one repository rule.
+What I ran, all on the CPU, writing nothing into the repository:
+- `julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl`: every testset passes, T-010 to T-275 including T-180 to T-188 (43 s).
+- `julia +1.13 --project=lib/ParticleMeshElectromagnetic -t 8 -e 'using Pkg; Pkg.test()'`: 18168 of 18168 pass. T-214 with the pinned seed gives γ = 0.1614265290944256, bit for bit the value recorded in `tolerances.toml`.
+- `julia +1.13 --project=scripts scripts/trace/build.jl --check`: passes.
+- My own snippets:
+  - (a) recomputed both Landau ensembles from the raw data in `scripts/runs/` (Smilei `Fields0.h5`, ParticleMesh `seed-*/series.json`) with the HEAD code, including the leave-one-out fits and why each fit stops;
+  - (b) checked every manifest input hash at HEAD and at the recorded commit;
+  - (c) the local growth rate and window sensitivity of all four two-stream runs;
+  - (d) an independent replicate of the synthetic calibration, keeping each realization's jackknife error;
+  - (e) the same calibration with the synthetic mode amplitude matched to the measured maxima;
+  - (f) a rerun of ParticleMesh seed 20263101 at the production particle count to t = 2 (214 steps) at 16 and at 3 threads, compared bit for bit with the committed series.
+
+**Engine checklist.** The diff changes no kernel and no engine or module source: under `lib/` it changes only `test/physics.jl` (the seed pin) and `test/tolerances.toml`. So charge conservation, the half-step centring, the shape order and staggering, element-type genericity and the two deposition variants are as on `main`. The module suite covers them and passes, including T-212 (Gauss law, both modes, all three element types) and the determinism cases. The stop rule's branches on data values live in post-processing, not on a gradient path.
+
+No finding is blocking: every run number I checked is right and reproducible. One major finding concerns the uncertainty that the report and the proposals attach to the Landau numbers.
 
 ## Findings
 
-### F1 (major): the ParticleMesh ensemble standard error 0.0068 is very likely understated, and the headline and derived ratios rest on it
+### F1 (major): the synthetic calibration overstates the signal by about 1.9 in energy, so its spread (0.012 to 0.013, "the better single number") and the significance of the pooled deficit are overstated
 
-- **Where:** `reports/crosscode-smilei-1d/README.md` l. 121 (bold "0.1407 ± 0.0068"), l. 144 ("0.66 combined standard errors"); `questions/wp-012-a5-a7-proposals.md` l. 14 ("1.9 of its jackknife standard error") and l. 28; `tolerances.toml` l. 95 (`ensemble_stderr.particlemesh = 0.0068`).
-- **Claim:** ParticleMesh γ = 0.1407 ± 0.0068, with one jackknife standard error over 8 seeds.
+- **Where:**
+  - `scripts/crosscode/ensemble_bias.jl` l. 36 (`A = sqrt(o["initial_energy"])`);
+  - `README.md` l. 122, l. 131, l. 148 to 159, l. 204;
+  - `questions/wp-012-a5-a7-proposals.md` l. 11 and l. 14;
+  - `tolerances.toml` `["T-214".wp012]`: `ensemble_stderr.synthetic_spread_*`, `rule_bias_synthetic`, `pooled_deficit`.
+- **Claim:** synthetic ensembles "with the theory's γ and ω_r, the measured |Ê₁(0)|" calibrate the rule. Their spread, 0.0128 (Smilei) and 0.0121 (ParticleMesh), is "the better single number", the rule's bias is "about −1 %", and the pooled ensembles lie "2.1 spreads below" the theory.
 - **Evidence:**
-  - I re-ran the synthetic calibration at the ParticleMesh noise (400 realizations) and kept each realization's jackknife standard error. Their quantiles are 10 % 0.0079, median 0.0125, 90 % 0.020. P(se ≤ 0.0068) = 0.04, and 0.03 in an independent replicate.
-  - Mechanism: in the ParticleMesh run every leave-one-out fit takes the same 5 maxima. In about 90 % of synthetic realizations the count changes between leave-one-out fits, and the same happens for Smilei, whose counts are 6, 6, 5, 5, 6, 6, 6, 5.
-  - So the jackknife leaves out the discrete stop-rule variation for the ParticleMesh run and includes it for Smilei. That accounts for the factor of two the report notes (0.0144 against 0.0068), with no difference in the noise. The noise levels after `fit_start` are nearly equal: 2.50 × 10⁻⁹ and 2.33 × 10⁻⁹ per seed.
-  - The report itself says the jackknife "is itself a noisy estimate" (l. 155), yet keeps 0.0068 in the bold headline, in the combined error and in the tolerances entry.
-- **Resolution:** quote the synthetic spread (0.0126 for ParticleMesh, 0.0130 for Smilei) next to each jackknife standard error in the headline table. State that the ParticleMesh run's leave-one-out fits never change the number of maxima. Recompute or add the derived ratios with the synthetic spread: ParticleMesh − Smilei is 0.58 combined spreads (not 0.66), and ParticleMesh − theory is 1.0 (already in the report). Mark `ensemble_stderr.particlemesh` in the tolerances file as a probable underestimate.
+  - The synthetic signal is |Ê₁(0)| e^{−γt} cos(ω_r t). It puts all of the initial perturbation into the damped mode.
+  - In the runs, part of the initial perturbation is the non-modal (ballistic) response, which has phase-mixed away by fit_start. Take the first maximum used (Smilei t = 4.746, |⟨Ê₁⟩|² = 1.251 × 10⁻⁷; ParticleMesh t = 4.766, 1.226 × 10⁻⁷) and extrapolate it back with the theory γ. The modal amplitude comes out as 7.32 × 10⁻⁴ and 7.27 × 10⁻⁴, or 0.73 of |Ê₁(0)|, so 0.53 to 0.54 of it in energy.
+  - At the measured noise, the synthetic ensembles therefore have about 1.9 times the signal-to-noise ratio of the runs at every maximum. The SNR at the anchoring maximum is 280 to 540, so the anchor's own noise is below 1 %.
+  - The report names "no early non-modal transient" as an omission, but not this consequence of it.
+  - My rerun of the calibration with the amplitude matched this way (400 realizations per code, independent draws, otherwise the script's model):
 
-### F2 (major): "which the measured spread covers" overstates agreement with theory, because both independent ensembles lie below it
+    | | Smilei noise | ParticleMesh noise |
+    |---|---|---|
+    | bias of the rule | −2.18 % ± 0.51 % | −2.44 % ± 0.50 % |
+    | spread of γ | 0.0158 | 0.0155 |
+    | mean jackknife error; coverage at one | 0.0194; 0.76 | 0.0183; 0.70 |
+    | measured from theory, in spreads | −1.47 | −0.89 |
 
-- **Where:** `questions/wp-012-a5-a7-proposals.md` l. 14; `README.md` l. 155 ("Neither code's distance from the theory exceeds two synthetic spreads").
-- **Claim:** the theory value γ = 0.15336 is covered by the measured spread.
+    That is 0.0158 and 0.0155 against the 0.0128 and 0.0121 recorded, and −2.2 % to −2.4 % against the −0.8 % and −1.25 % recorded.
+  - With these spreads:
+    - the pooled ensembles give 0.1350 ± 0.0111, which is 1.7 spreads below the theory; after removing a −2.3 % rule bias, 1.3;
+    - ParticleMesh − Smilei is 0.42 combined spreads, not 0.53;
+    - one combined standard error of the code difference is 0.022, or 16 % of γ.
+  - Even the unmatched spreads give 0.0176 (13 %), so "cannot resolve a code difference below about 10 %" (l. 204) understates it.
+- **Related inconsistencies:**
+  - l. 159 removes "about −1.5 % of rule bias", while l. 157 says "about −1 %".
+  - The replicate range "−0.7 % to −1.8 %" (l. 157, proposals l. 11, tolerances) mixes in two calibrations at the noise of the deleted electrostatic ParticleMesh run (the "first version" and the earlier review's).
+  - My replicate of the script as committed agrees with the committed numbers: −0.98 % ± 0.40 % (ParticleMesh) and −1.06 % ± 0.41 % (Smilei), spreads 0.0123 and 0.0126.
+- **Resolution:**
+  - Anchor the synthetic amplitude on the measured maxima (for example the first maximum used, extrapolated with the theory γ), or add that variant as a labelled sensitivity next to the current one.
+  - Quote the A5 spread as about 0.012 to 0.016 depending on the amplitude model, not as 0.012 to 0.013.
+  - Restate the pooled deficit as 1.7 to 2.1 spreads (1.3 to 1.8 after the rule bias), and the code-difference resolution as about 13 % to 16 % at one standard error.
+  - Make the bias statements consistent, and drop the calibrations of the deleted run from the replicate range.
+  - The same caveat applies to T-180's run-grid coverage case, which sets the noise relative to the initial energy (`runtests.jl` l. 288 to 299). It remains a valid coverage check of the jackknife, but at a higher SNR than the runs had.
+  - None of this changes a measured γ, and none of it is a threshold.
+
+### F2 (minor): the report and the proposals cite findings of the replaced review
+
+- **Where:**
+  - `README.md` l. 131 ("review F1"), l. 157 ("the review finds 93 % to 94 % at two"), l. 178 ("The review's post-hoc check (`review.md`)");
+  - `questions/wp-012-a5-a7-proposals.md` l. 12 ("`review.md`, F5").
+- **Evidence:** this file replaces that review, so the finding numbers and its numbers no longer exist. I redid the checks those sentences rest on, on the current runs (see "Verified as correct"):
+  - the ParticleMesh jackknife understatement: P(se ≤ 0.0069) = 0.058, and in 12 % of synthetic realizations the leave-one-out maxima count stays constant;
+  - coverage at two jackknife errors: 0.915 (ParticleMesh noise) and 0.928 (Smilei noise);
+  - the two-stream local-rate and window checks.
+- **Resolution:** point these sentences at this review's "Verified as correct" items and update the 93 % to 94 % figure to 92 % to 93 %.
+
+### F3 (minor): "a tenth of the fit's residual error" holds at 256 cells only
+
+- **Where:** `README.md` l. 178; `questions/wp-012-a5-a7-proposals.md` l. 28.
+- **Evidence:** ParticleMesh − Smilei is 0.00029 at 128 cells, a third of the residual slope error 0.0009. At 256 cells it is 0.00006, 0.07 of it.
+- **Resolution:** "a third (128 cells) and a fourteenth (256 cells) of the fit's residual error".
+
+### F4 (minor): the thermal loading differs between the codes, and the text reads as if it did not
+
+- **Where:** `README.md` l. 113 ("thermal spread along x only, the 1D edge case with no transverse fields, as Smilei runs it") and the candidate list at l. 159.
 - **Evidence:**
-  - The two ensembles are independent (different codes and random number generators), and both are low: −15.1 % and −8.2 %.
-  - Pooled with the synthetic spreads (0.0130, 0.0126), the mean is 0.1357 ± 0.0091, which is 1.95 spreads below theory. After removing the rule's synthetic bias (synthetic mean about 0.1507), it is 1.66 below.
-  - Pooled with the jackknife errors as reported, it is 0.1388 ± 0.0062, which is 2.4 below.
-  - The report's statement is true for each code taken alone. The pooled picture hints at a shared systematic that this stage does not quantify. Candidates, none computed:
-    - finite-grid and quadratic-shape effects at Δx = 0.196 λ_D;
-    - early trapping at ω_b/γ = 0.65 (see F7);
-    - the relativistic correction (Smilei only);
-    - the part of the rule's bias that the narrowband model does not capture (F4).
-- **Resolution:** keep theory as the proposed expected value, but state the pooled deficit with its significance in place of "covers", and list the candidates as open. Do not use it to adjust anything (A7).
+  - ParticleMesh draws v_x Gaussian at v_th and sets u = γv, with u_y = u_z = 0 (`load_quiet!`, `problem_from_case` with `transverse_thermal = false`; T-182 checks u_y = u_z = 0).
+  - Smilei's namelist sets `momentum_initialization = "maxwell-juettner"`, `temperature = [0.0025]` (`seed-*/smilei.py`). Per Smilei's documentation a single value is isotropic, so its electrons carry thermal p_y and p_z, and with them transverse currents and fields in 1D.
+  - The difference is O(T) = O(2.5 × 10⁻³) in the longitudinal response, far below the ensemble resolution, but it is a setup difference between the codes.
+- **Resolution:** state it in the setup paragraph, and list it with the relativistic candidates at l. 159.
 
-### F3 (major, repository rule, not numerics): a committed manifest contains absolute home paths with the machine user name
+### F5 (minor): with `random_seed` gone from `landau.toml`, every other consumer silently draws with seed 1
 
-- **Where:** `reports/crosscode-smilei-1d/stage-1b/ensemble-bias-20261101T100023/manifest.toml` l. 10–12 (the `[inputs]` keys).
-- **Evidence:** the keys are absolute paths under the home directory. `scripts/crosscode/ensemble_bias.jl` l. 208–209 passes `joinpath(@__DIR__, f)` to `write_manifest`, which stores them unchanged. The ParticleMesh manifests store repository-relative paths.
-- **Resolution:** store paths relative to the repository root in `ensemble_bias.jl`, and regenerate or edit the committed manifest (the hashes stay valid). This is CLAUDE.md "Rules that are never relaxed" (A6).
-
-### F4 (minor): the rule-bias calibration gives two non-independent numbers, and its model omits two features of the runs
-
-- **Where:** `README.md` l. 146–155; `ensemble_bias.jl` l. 172; `tolerances.toml` l. 98.
-- **Claim:** the rule's bias is −1.78 % ± 0.42 % (Smilei noise) and −1.64 % ± 0.41 % (ParticleMesh noise).
+- **Where:**
+  - `scripts/crosscode/cases/landau.toml` (the `random_seed` line replaced by `seeds`);
+  - `lib/ParticleMeshElectromagnetic/src/problem.jl` l. 114 (`getnum(case["numerics"], "random_seed", 1)`).
 - **Evidence:**
-  - Both calibrations draw realization r from `Xoshiro(20261101 + r)`, so they use the same random numbers at noise levels 7 % apart. They are one estimate, not two confirmations.
-  - My replicate at the ParticleMesh noise with independent draws gives −0.72 % ± 0.40 % and coverage 0.71. That is 1.6 combined errors from the stated value, so the bias lies roughly between −0.7 % and −1.8 %.
-  - The model also assumes stationary noise, while the measured per-seed noise changes between the after-`fit_start` average and the floor window: Smilei +36 % (2.50 → 3.39 × 10⁻⁹), ParticleMesh −19 % (2.33 → 1.88 × 10⁻⁹).
-  - And the synthetic signal has no early non-modal transient.
-  - The conclusion (the bias is small next to the spread) holds in every case.
-- **Resolution:** say that the two rows share their random numbers, quote the bias as about −1 % to −2 %, or pool independent draws, and name the stationary-noise and no-transient assumptions next to the narrowband one (l. 199).
+  - `problem_from_case` does not read `seeds`. Callers that pass no seed now use seed 1 instead of 20261031: T-212 (`gauss.jl`), `allocations.jl`, `determinism_cases.jl`, the harness tests, `scripts/em1d/case.jl landau` and `scripts/em1d/timing.jl`.
+  - `case.jl landau` without overrides also now runs 50 000 rather than 400 000 particles per cell, with field histories every 4 rather than 16 steps.
+  - No recorded number moved: in my module run T-212 gives 1.14 and 1.31 as recorded, T-217 gives 2.11 × 10⁻⁶, and T-214, T-219 and T-105 pin 20261031.
+- **Resolution:** WP-012 excludes module source changes, so open a `follow-up` issue: `problem_from_case` should take `first(seeds)` when the list is present, or refuse a case that has neither key. Optionally state the change in the PR description.
 
-### F5 (minor): the two-stream offset attribution can be backed with data; its "noise floor" is a fit residual
+### F6 (minor): the calibration manifest does not bind the run sidecars it reads
 
-- **Where:** `README.md` l. 170 ("the fit window ... is the remaining candidate, which this stage did not test"); `questions/wp-012-a5-a7-proposals.md` l. 12 ("it belongs to the case and its fit window ... not to a code", stated more firmly than the report); `tolerances.toml` l. 107 (`noise_floor_smilei.fit_stderr = 0.0009`).
-- **Evidence (my post-hoc check):**
-  - In all four runs the local growth rate (log U fitted over ±1/ω₀), relative to each code's own theory, is a decaying oscillation that is identical in both codes and at both resolutions. For the Smilei 128-cell run: t = 10: −52 %, 12: +22 %, 14: −5.4 %, 16: −0.5 %, 18: +0.4 %. It falls about 4× per 2/ω₀. ParticleMesh is the same to within 1 %.
-  - Over t = 16 to 18 every run is within 0.5 % of its own theory.
-  - Neighbouring windows of the same rule move γ: [10⁻³, 10⁻²] gives −5.0 %, [3·10⁻³, 3·10⁻²] gives +2.8 %, [10⁻², 3·10⁻²] gives +0.4 %.
-  - This supports the attribution: a transient of the other roots excited by the initial perturbation, sampled by the window. It is common to the case, not to a code.
-  - The 0.0009 slope error is therefore the residual of that systematic over 160 correlated points, not noise. The |Ê₁|² estimate, 3.8 % to 4.0 % below theory in both codes, is not discussed.
-- **Resolution:** add this evidence as a labelled post-hoc sensitivity, or keep the proposal's wording as tentative as the report's. Rename `noise_floor_smilei.fit_stderr` to a fit-residual key, or state that the window systematic (several %) dominates it. Note the 2.5 % gap between the U and |Ê₁|² estimates.
+- **Where:** `stage-1b/ensemble-bias-20261101T122122/manifest.toml`.
+- **Evidence:** it hashes the three scripts and names the two runs. It does not hash their `observables.json` and `ensemble-series.json`, which supply the amplitude, the noise and the time grid. Today those inputs are committed and unchanged, but a later reanalysis of either run would silently change what this record refers to.
+- **Resolution:** add the SHA-256 of the input sidecars to `[inputs]`.
 
-### F6 (minor): the two-stream "seed spread 0.0" is inferred, not measured
+### F7 (minor): per-seed spread and the seed-count arithmetic
 
-- **Where:** `tolerances.toml` l. 107; `questions/wp-012-a5-a7-proposals.md` l. 12; `README.md` l. 170.
-- **Evidence:** the rerun reproducing γ bit for bit shows that the run is deterministic, not that it is seed-independent. Seed independence follows from the namelist: `momentum_initialization = "cold"` and `position_initialization = "regular"` (I checked `smilei.py`). No second seed was run.
-- **Resolution:** write "none by construction (cold, regular loading); not measured" in place of a number 0.0.
-
-### F7 (minor): the bounce-frequency argument is right but stated more strongly than ω_b/γ = 0.65 allows
-
-- **Where:** `README.md` l. 159.
-- **Claim:** "The bounce frequency stays below γ, so the linear estimate holds over the fit."
+- **Where:** `README.md` l. 146; `questions/wp-012-a5-a7-proposals.md` l. 24 and l. 34.
 - **Evidence:**
-  - The arithmetic is correct: ω_b(0) = √(10 × 9.99 × 10⁻⁴) = 0.0999 = 0.65 γ; 0.059 = 0.39 γ at the first maximum used; 0.224 = 1.46 γ at α = 1/20.
-  - But 0.65 is not ≪ 1.
-  - Two stronger arguments are available. First, a standing wave is two travelling waves of amplitude E₁/2, so the trapping frequency is smaller by √2 and the check is conservative. Second, the accumulated bounce phase over the whole run is at most 2ω_b(0)/γ ≈ 1.3 rad, below one bounce (2π).
-- **Resolution:** add both arguments, and soften "holds" to "the run stays short of one bounce period".
+  - The per-seed γ are fitted at the ensemble's maxima, so they share the ensemble's stop.
+  - 0.027/√8 = 0.0095 is below both the Smilei jackknife (0.0144) and the synthetic spreads (0.013 to 0.016), so the 0.027 does not carry the ensemble error by 1/√M.
+  - "Halving the ensemble standard error takes about four times the seeds" assumes 1/√M. More seeds also lower the floor and admit more maxima, so that is an estimate, not a measured scaling.
+- **Resolution:** add one clause to each sentence saying so.
 
-### F8 (minor): cost notes, one wrong and one unverified
+### F8 (minor, wording): header Review row and placeholder
 
-- **Where:** `README.md` l. 183, l. 186.
-- **Evidence:**
-  - "(container start included)" is wrong. `run.sh` writes the start and end stamps inside the container around the `smilei` call (`smilei-two-stream-736a428f/run.sh`), so container start-up is excluded. The values (16.6 s and 47.7 s) are right.
-  - The explanation of 684 s against 379 s ("eight start-ups and field dumps every 4 steps") is not measured. The dumps hold 65 doubles each, and the per-particle-step cost rose from 5.5 ns to 9.2–11.2 ns.
-- **Resolution:** drop "container start included". Mark the explanation as unverified, or remove it.
-
-### F9 (minor): the Smilei ensemble records no provenance for its analysis code
-
-- **Where:** `stage-1b/smilei-landau-295ddf42/manifest.toml`; `scripts/es1d/common.jl` `run_dir` (the dirty scope).
-- **Evidence:**
-  - The Smilei manifest records the preparation commit `9d86048`. Its `observables.json`, however, carries fields added in `6d376ea` and `fc35be5` (`seed_scatter_post_hoc`, `maxima_accepted`), and no commit or hash of `analysis.jl`, `ensemble.jl` or `ensemble_report.jl` is recorded.
-  - I recomputed the Smilei ensemble from the raw HDF5 with the HEAD code and got γ, the jackknife standard error and the maxima bit for bit, so the values are right; only the record is incomplete.
-  - Separately, the ParticleMesh dirty flag does not cover `scripts/crosscode/`. This is mitigated by the input hashes, all 25 of which match HEAD in all three manifests.
-- **Resolution:** have `analyze.jl` record the analysis commit and the hashes of its inputs in the Smilei manifest, as the ParticleMesh manifest does.
-
-### F10 (minor, wording): broken header row and unfilled placeholders
-
-- **Where:** `README.md` l. 12, l. 14, l. 205.
-- **Evidence:** l. 12 has a doubled backtick, a parenthetical inside a code span, and "(clean)" right after "the Landau and 256-cell manifests say dirty". `{REVIEW}` and `{ANSWERS}` are still placeholders.
-- **Resolution:** fix the markdown, and fill both placeholders.
-
-### F11 (minor): T-180 tests the 1/M floor in a regime the runs are not in
-
-- **Where:** `scripts/crosscode/test/runtests.jl`, T-180.
-- **Evidence:**
-  - The synthetic grid runs to t = 50, so the floor window (t ≥ 40) holds only noise. In the runs (t_end = 25) the floor is 2.0 (Smilei) and 4.6 (ParticleMesh) times its noise-only value, and the seed-mean floor ratio is 4.4 and 3.1 where M = 8.
-  - The coverage check (≥ 0.5 within one standard error) is lenient.
-  - `ensemble_bias.jl` covers the real regime, but it is a script, not a test.
-- **Resolution:** add a T-180 case on the runs' time grid (t ≤ 25) that checks the coverage of the jackknife there, or state in the test that the 1/M check applies to a noise-only floor.
-
-### F12 (minor): unexplained difference in late-time noise between the codes
-
-- **Where:** `README.md` l. 157.
-- **Evidence:** the per-seed noise in the floor window is 3.39 × 10⁻⁹ for Smilei and 1.88 × 10⁻⁹ for ParticleMesh (1.8×), while the after-`fit_start` averages agree within 7 %. So Smilei's noise grows over the run and ParticleMesh's falls. The report gives the numbers without comment. The difference matters because the floor sets where the stop rule cuts.
-- **Resolution:** add a sentence. Optionally plot the seed-scatter noise against time for both codes as a labelled post-hoc diagnostic.
-
-### F13 (minor): the open question's options partly depart from A7's text
-
-- **Where:** `questions/wp-012-a5-a7-proposals.md` l. 32.
-- **Evidence:** A7 says ParticleMesh "must agree with each of them to within that spread". Options (b), a multiple such as two, and (c), the combined standard error, would therefore be edits to A7, not readings of it. The file correctly proposes no threshold.
-- **Resolution:** say that (a) is the current text of A7 and that (b) and (c) would be goal edits.
+- **Where:** `README.md` l. 14 ("no blocking finding", scope "stage 1b and the two-stream rerun") and l. 213 (`{ANSWERS}`).
+- **Resolution:** update the row to this review (no blocking finding; major F1), and fill the answers.
 
 ## Verified as correct
 
-- **The numbers.** Every number in the Stage 1b section, the proposals and the tolerances entries matches its sidecar:
-  - Landau: γ, jackknife and fit standard errors, maxima, fit ranges, relative differences, ω_r and its error, floors, |Ê₁(0)|².
-  - Per seed: the γ table and mean ± std (0.1296 ± 0.0268, 0.1382 ± 0.0217), and the failed seeds and accepted counts of both single-run rules.
-  - The difference between the codes: 0.0105, +8.0 %, 0.39, 0.73, 0.66.
-  - Seed scatter: 3.1/2.9 and 4.2/2.4 × 10⁻¹⁰, ratios 2.0 and 4.6, signal-to-noise 39 and 38.9.
-  - Bias table: −1.78 %/−1.64 %, ±0.42/0.41 %, sd 0.0130/0.0126, mean jackknife 0.0141/0.0135, coverage 0.64/0.635, −1.78 and −1.00.
-  - Two-stream: all four rows, the +0.09 %/+0.01 % resolution changes, +0.74 %/+0.66 % against the +0.76 % between the theories, and the offsets in the tolerances file.
-  - Cost: per-seed walls, sums 684 s and 785 s, ns per particle-step, particles, steps, particle-steps.
-- **The committed copies.** The stage-1b sidecars are byte-identical to `scripts/runs/`. The case hashes (`295ddf42…`, `56d5d9ae…`, `736a428f…`) match the files at HEAD and, for `landau.toml`, at `9d86048`. All ParticleMesh input hashes match HEAD. The last commit `d582e4d` changes no code.
-- **Reproducibility.** Recomputing both ensembles from the raw data with the HEAD code reproduces γ, the jackknife standard error and the maxima exactly.
-- **Pre-registration.**
-  - `9d86048` (09:00:42Z) fixed the seeds, the particle count, the cadence and every rule of `damping_rate_ensemble`, and added `two-stream-256.toml`. The first Smilei seed started at 09:01:06Z, and the Smilei two-stream runs at 09:12Z; their manifests record `9d86048`, clean.
-  - Between `9d86048` and HEAD the fit code changed only in docstrings and messages; the seed-correlation diagnostic was dropped and that is disclosed.
-  - The seed scatter, the bias calibration and the relaxed-fit table are labelled post hoc. The T-188 fix (field-cadence times) touches only the secondary |Ê₁|² estimate for two-stream and predates the ParticleMesh runs.
-  - The seed count came from the budget, not from a measured spread, and that is disclosed.
-- **The estimators.** The seed mean of the complex coefficient is coherent: the phases of ⟨Ê₁⟩ agree across seeds. The fit stops on the threshold, not on a rising maximum: the next maxima are 4.1 × 10⁻⁹ against 5.9 × 10⁻⁹ for Smilei, and 2.9 × 10⁻⁹ against 7.5 × 10⁻⁹ for ParticleMesh. The spacings of the maxima match the report, so no maximum is split. The jackknife is the standard leave-one-out formula. The jackknife's coverage at two standard errors is 0.93 to 0.94 in the synthetic. Reviewer's own sensitivity (post hoc, not for the record): `fit_start` 4 changes neither γ; `floor_factor` 5 moves Smilei to 0.1279; `fit_start` 2 moves Smilei to 0.1332 and ParticleMesh to 0.1491. These moves are within the spread, unlike stage 1's 20 %.
-- **Units and normalization (A1).** n = n_c gives ω_p = ω₀; k = 10; the expected E₁ = α/k = 10⁻³. The measured |Ê₁(0)| = 9.988 × 10⁻⁴ (Smilei) and 9.992 × 10⁻⁴ (ParticleMesh) agree to 0.04 %. The ParticleMesh value matches the quadratic-shape and finite-difference factor (0.9992). The two-stream U(0) agrees to 0.02 %.
-- **Smilei's Ex positions.** Smilei's Ex dump sits at (j + ½)Δx with a periodic duplicate, which `mode_coefficient` drops correctly. The phase of ⟨Ê₁⟩(0) is 0.048 rad, against kΔx/2 = 0.049. This also settles stage 1's open "dual-grid position" item: the offset is half a cell.
-- **Determinism (A4).** My 16-thread rerun of ParticleMesh seed 20263101 reproduces U and Ê₁ of the committed run bit for bit over all 671 samples. A 1-thread run of seed 20266101 to t = 2 matches the committed series bit for bit, so the result is independent of the thread count over that prefix. T-182 passes. The Smilei two-stream rerun gives the same γ to all digits; its output file hashes differ, so "bit for bit" refers to γ.
-- **A7.** No agreement threshold is proposed or derived from the ParticleMesh–Smilei difference, and the A5/A7 split is kept. The tolerance entries are valid TOML, are marked proposed, and are asserted by no test.
-- **Tests.** `runtests.jl` is green, including T-180 to T-188, and `build.jl --check` passes. Issue #145 exists and matches its description.
+**The numbers.** Every number in the Stage 1b section, the proposals and the two tolerance entries matches its sidecar:
+- **Landau ensemble:** γ 0.13026 and 0.13956; jackknife errors 0.0144 and 0.0069; fit residual errors 0.0049 and 0.0105; maxima 6 and 5 with their ranges; −15.1 % and −9.0 %; ω_r 1.4046 (−0.78 %) and 1.4096 (−0.43 %); floors 5.9 and 8.2 × 10⁻¹⁰; |Ê₁(0)|² 9.976 and 9.984 × 10⁻⁷.
+- **Per seed:** all 16 per-seed γ, 0.1296 ± 0.0268 and 0.1373 ± 0.0217, the single-run refusals (at most two maxima on U; mode failures 20265101 and 20267101 for Smilei, 20265101 and 20266101 for ParticleMesh).
+- **Code difference:** +0.0093, +7.1 %, 0.35, 0.65, 0.58, 0.53.
+- **Seed scatter:** 3.1/2.9 and 4.2/2.4 × 10⁻¹⁰, ratios 2.0 and 4.9, per-seed 2.5 → 3.4 and 2.3 → 1.9 × 10⁻⁹, SNR 39 and 40.
+- **Bias table:** as committed.
+- **Pooled values:** 0.1352 ± 0.0088, 2.1 and 2.5.
+- **Two-stream:** all four rows, +0.09 % and +0.02 % on refinement, +0.08 % and +0.02 % between the codes, the mode estimates 2.5 % to 2.6 % below.
+- **Cost:** per-seed walls, sums 684 s and 4138 s, ns per particle-step, 17 s and 48 s, 62 s and 186 s, 5.5 ns at stage 1.
+- **Tolerance entries:** offsets −0.0150, −0.0141, −0.0142, −0.0139.
+
+**Reproducibility from raw data.** Both ensembles recomputed with the HEAD code are bitwise equal to the committed `ensemble-series.json`, and give the same γ, jackknife error, residual error, ω_r and floor.
+- The leave-one-out maxima counts are 6, 6, 5, 5, 6, 6, 6, 5 for Smilei and 5 in all eight for ParticleMesh, as the report says.
+- Both fits stop on the threshold, not on a rising maximum: the next maxima are 4.13 × 10⁻⁹ against 5.89 × 10⁻⁹ (Smilei) and 3.02 × 10⁻⁹ against 8.17 × 10⁻⁹ (ParticleMesh).
+- The spacings of the maxima used are 2.22 to 2.25 and 2.19 to 2.31 (π/ω_r = 2.22), so no maximum is split.
+- The Smilei two-stream rerun's observables equal the stage 1 run's in every recorded digit, while its output hashes differ, as stated.
+
+**Pre-registration and provenance.**
+- `landau.toml` at `9d86048` (committed 09:00:42Z) hashes to `295ddf42…`, the same as at HEAD and in the runs. `two-stream-256.toml` at `9d86048` hashes to `56d5d9ae…`.
+- The first Smilei seed ended at 09:02:42Z after a run of about 95 s, and the two-stream runs started at 09:12:34Z and 09:12:53Z. The Smilei manifests record `9d86048`, clean, and their analyses `4d11c1d`, clean.
+- The ParticleMesh runs started 4 s (128 cells) to 4.5 minutes after `63795d2`.
+- All 32 input hashes of each of the three ParticleMesh manifests match both `63795d2` and HEAD. Between `63795d2` and `c67c156` only `trace/wp/WP-012-crosscode-stage1b-seeds.md` changed, which bears out the explanation of the dirty flag.
+- The fit rules in `landau.toml` are unchanged since `9d86048`. The seed scatter, the calibration and the two-stream window analysis are labelled post hoc. The seed count is disclosed as budget-set.
+
+**Estimators.**
+- The seed mean of the complex coefficient is coherent: every seed has the same Ê₁(0), because positions and weights do not depend on the seed. T-182 checks that too.
+- The jackknife is the standard leave-one-out formula.
+- Σ|Ê_s − ⟨Ê⟩|²/(M(M−1)) is the unbiased variance of the mean. The ln 2 factor is the median of an exponential, the noise-only distribution of |⟨Ê⟩|².
+- My replicate of the committed calibration model: coverage at one jackknife error 0.70 for both codes, and at two 0.915 and 0.928. P(jackknife ≤ 0.0069) at the ParticleMesh noise is 0.058, so "a few per cent" holds. The leave-one-out maxima count stays constant in 12 % to 14 % of realizations.
+- The jackknife of a discontinuous stop rule is unreliable for one run, as the report says. The ParticleMesh run is such a case.
+
+**Units and normalization (A1).**
+- n = n_c gives ω_p = ω₀, k = 10 and E₁ = α/k = 10⁻³.
+- |Ê₁(0)| is 9.988 × 10⁻⁴ (Smilei) and 9.992 × 10⁻⁴ (ParticleMesh).
+- The phase of ⟨Ê₁⟩(0) is π/2 exactly for ParticleMesh, the sign expected from Ex = −(α/k) sin kx for electrons of charge −1, taken at the field's own stagger. For Smilei it is 1.5229 = π/2 − kΔx/2, its dual-grid Ex taken at the point index.
+- The two-stream U(0) = (δn/k)² L/4 = 6.84 × 10⁻⁹ matches both codes (6.8375 and 6.8363 × 10⁻⁹).
+- The bounce check holds: ω_b = √(kE₁) with q/m = 1; 0.0999 = 0.65 γ; 0.059 = 0.39 γ at |⟨Ê₁⟩| = 3.5 × 10⁻⁴; 2ω_b(0)/γ = 1.30 rad; 0.224 = 1.46 γ at α = 1/20. The √2 argument for a standing wave is correct.
+- The two-stream γ₀³ root 0.3508758 recomputes by hand from the biquadratic.
+
+**Two-stream interpretation, on the current runs.** The local growth rate (log U fitted over ±1/ω₀), relative to theory at t = 8, 10, 12, 14, 16, 18, is a decaying oscillation that is the same in all four runs to within 1 % of the theory. Smilei at 128 cells: +138 %, −52 %, +22.5 %, −5.4 %, −0.5 %, +0.4 %. Over t = 16 to 18 every run is within 0.5 % of the theory. Other windows of the same rule move γ:
+
+| window | change of γ, all four runs |
+|---|---|
+| [10⁻³, 10⁻²] | −5.0 % |
+| [3·10⁻³, 3·10⁻²] | +2.8 % |
+| [10⁻², 3·10⁻²] | +0.3 % |
+| [3·10⁻⁴, 3·10⁻²] | −1.5 % |
+
+That supports reading the common −1.4 % to −1.5 % as the fit window sampling a transient of the other roots, common to the case. With both codes relativistic and compared with the γ₀³ value, the resolution pair shows that the offset is not a resolution effect: refinement moves γ by 0.02 % to 0.09 %.
+
+**Determinism (A4).**
+- T-182 passes.
+- ParticleMesh seed 20263101 at the production 50 000 particles per cell, rerun to t = 2 (214 steps, 54 samples), reproduces U and Ê₁ of the committed series bit for bit at 16 threads and at 3 threads.
+- The Philox keys (seed, stream) are distinct for the eight seeds. `load_quiet!` refuses ppc ≥ 2¹⁶, so the counter layout does not overflow at 50 000.
+
+**A7.**
+- No agreement threshold is proposed, and none is derived from the ParticleMesh–Smilei difference.
+- The open question names (a) as A7's text and (b) and (c) as goal edits.
+- The tolerance entries are marked proposed, and no test reads them.
+
+**Spike Review row.** It limits the review to Smilei's two-stream 0.34561 ± 0.00090. That value is covered here; I checked the −1.50 % and −2.25 % next to it.
 
 ## Not verified
 
-- That Smilei seeds patch p with `random_seed + p` (`src/Patch/Patch.cpp`): the Smilei source is not reachable from the sandbox. Indirect support: both codes show similar mode-1 noise, which identical per-patch streams would have suppressed.
-- That a first ParticleMesh Landau run at `6d376ea` gave the same series for all 8 seeds: that run directory is not present. I verified one seed fully and one seed's prefix against the committed run instead.
-- That the uncommitted edit behind the dirty flag was only `tolerances.toml`. It is consistent with the flag turning dirty between the 128-cell and 256-cell runs, and with all input hashes matching HEAD, but it is not recorded.
-- The machine-load note (load average about 10) and the cause of Smilei's slower ensemble.
-- The size of the relativistic correction to the Landau root, and any finite-grid correction to γ: neither was computed by the package or by me.
+- That Smilei seeds patch p with `random_seed + p` (`src/Patch/Patch.cpp`), and that a single `temperature` value is isotropic: the Smilei source is not reachable from the sandbox, and the second point rests on Smilei's documentation.
+- Bitwise thread-count independence of a full-length ParticleMesh run: I checked a 214-step prefix of one seed at two thread counts, and not a whole run.
+- The cause of the common Landau deficit. Neither the package nor I computed the relativistic correction to the root or the finite-grid and quadratic-shape corrections. My amplitude-matched calibration (F1) still uses the narrowband, stationary noise model, not the PIC noise.
+- The machine-load note (load average about 5) and the cause of the slower Smilei ensemble (9.2 to 11.2 ns per particle-step against 5.5 ns).

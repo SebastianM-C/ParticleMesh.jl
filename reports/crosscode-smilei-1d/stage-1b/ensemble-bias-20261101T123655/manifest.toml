@@ -1,0 +1,16 @@
+commit = "3aa92b84bdbd69829c288562ccd64450e85a4596"
+dirty = false
+julia = "1.13.3"
+kind = "post-hoc sensitivity"
+runs = ["smilei-landau-295ddf42", "em1d-pm-landau-20261101T111127"]
+updated = "2026-11-01T12:37:05.974Z"
+work_package = "WP-012"
+
+[inputs]
+"em1d-pm-landau-20261101T111127/ensemble-series.json" = "sha256:57151902ddd76f264f0aa53e44e42e7bc703bd95b3a84ebe5ec7819cf9558744"
+"em1d-pm-landau-20261101T111127/observables.json" = "sha256:efa87fcba0ec62871e3db29ef2c9e9e5f4f7658a4618620965107ff7aaa201d6"
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+"scripts/crosscode/ensemble_bias.jl" = "sha256:74061bdddf795d136f4949efe8afa355eae138dfa34dbd456fbee44778ba49fc"
+"smilei-landau-295ddf42/ensemble-series.json" = "sha256:37e0d690a70173b9b8579c65af4686e21db8b3715a26ea6a0f6157d98aa99b06"
+"smilei-landau-295ddf42/observables.json" = "sha256:8870763c9104e96fbb8ecfc94d2f1812c194e034fe0d178295069efed22ed6af"
