@@ -15,7 +15,7 @@ All kernels are KernelAbstractions kernels, generic in the element type `T`, wit
 shapes and no host-side branching on device data (`docs/plan/architecture-draft.md` §0.4);
 every launch takes `workgroupsize = nothing` (the backend default), which selects the launch
 shape only. `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
-the flux deposition and the prefix sum, which are `N = 1` only). The contracts are those of
+the prefix sum, which is `N = 1` only). The contracts are those of
 `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore

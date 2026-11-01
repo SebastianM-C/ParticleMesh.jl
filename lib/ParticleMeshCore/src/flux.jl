@@ -1,4 +1,4 @@
-# Charge-conserving flux deposition (Esirkepov's scheme) for N = 1.
+# Charge-conserving flux deposition (Esirkepov's scheme) for N = 1; N = 2 is in flux2d.jl.
 
 """
     flux_reach(shape, stagger) -> (lo, hi)

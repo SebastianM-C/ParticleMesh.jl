@@ -1,5 +1,5 @@
 # Charge-conserving flux deposition (Esirkepov's scheme) for N = 2: the per-particle stencil and
-# the atomic Fast() path. The Reference() path is in flux2d_reference.jl.
+# its two paths, atomic Fast() and per-cell-patch Reference().
 
 """
     flux_guard_width(shape, stagger::NTuple{N,Stagger}) -> NTuple{N,Int}
