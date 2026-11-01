@@ -1,0 +1,44 @@
+backend = "KernelAbstractions CPU"
+commit = "9e6d587523413cc1a46c30cd70f9f3838ab927ec"
+cpu = "Intel(R) Core(TM) i9-14900K"
+dirty = false
+julia = "1.13.3"
+run_id = "engine2d-flux-prototypes-t32-20261101T183848"
+threads = 32
+updated = "2026-11-01T18:38:48.506Z"
+work_package = "WP-020"
+
+[inputs]
+"Manifest.toml" = "sha256:61cc5b9e0d0d0f68b4e26697008438369899d1d11952454f5c377e410cd571f9"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:dce4248ecf9e4b68777ed754b9fd7f95f368b4ce5b98b89cb617d1376151575a"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:263cd679ccce16e8fb4671dc69e7e171fbac01904b83ee9f8f83332637fa9e0a"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:d7bf8cba58c2830b72d23cd84b4c93d5963220813b1ad831d6972384ca281c56"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:323e396d719349b2e559ecea157ccfc6a78f98786d9aa03522f3c56cbdc8343d"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:b4d128eb9f35809f9ed01d1810bc54020c3680ec2d46b13caf780c295d975a60"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:445a7e6099d93bbcbeae425b92f1f8942d7c1664b3431a56e02af083c92b0509"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:8882d7203bc6e0ffccb1948ec684b53d099b649c6b1818f740e30ac555f12ce8"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:f14ead5a5742a924efc0727845bb5f56c040ddd4aca7665a1dd12e702bb0b572"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:500e31fc28a2871899a854a1b5d147e45928e1fff9a16018699df92ba7e77ab7"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:ed8a5656ef169aef8c591c3ff890f8d308171b7986407eaefe1f4f8342b8ae5a"
+"scripts/Manifest.toml" = "sha256:dc9a0bad46f018173171d0445c350c1afa2bb3a60a7d3b1f9828596496e82a3b"
+"scripts/engine2d/common.jl" = "sha256:49b2f47cdb7ce7a6261db5e78efbb20efcc5a4f8557f4ef38964a5d024be471a"
+"scripts/engine2d/flux_timing.jl" = "sha256:bf3182a194a578b1ffe3ac4446bb121ea235a33203b963b197729d0575fbe536"
+
+[parameters]
+maxstep = 0.5
+ppc = 64
+sizes = [[16, 12], [64, 48]]
+timer = "median of 7 samples after one warm-up call, each sample the mean of enough calls for about 0.1 s (1 to 50)"

@@ -1,0 +1,232 @@
+{
+  "rows": [
+    {
+      "T": "Float32",
+      "bytes_per_value": 4,
+      "engine_flux_bytes_per_cell": 192.0,
+      "engine_workspace_bytes": 1646592,
+      "engine_workspace_with_flux_bytes": 2236416,
+      "order": 1,
+      "patch_bytes_per_cell": 192,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 192,
+      "stagger": "Node,Node",
+      "stencil": [
+        4,
+        4
+      ],
+      "values_per_particle_or_cell": 48,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float32",
+      "bytes_per_value": 4,
+      "engine_flux_bytes_per_cell": 300.0,
+      "engine_workspace_bytes": 1646592,
+      "engine_workspace_with_flux_bytes": 2568192,
+      "order": 1,
+      "patch_bytes_per_cell": 300,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 300,
+      "stagger": "Center,Center",
+      "stencil": [
+        5,
+        5
+      ],
+      "values_per_particle_or_cell": 75,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float32",
+      "bytes_per_value": 4,
+      "engine_flux_bytes_per_cell": 432.0,
+      "engine_workspace_bytes": 1646592,
+      "engine_workspace_with_flux_bytes": 2973696,
+      "order": 2,
+      "patch_bytes_per_cell": 432,
+      "patch_nn_bytes_per_cell": 300,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 432,
+      "stagger": "Node,Node",
+      "stencil": [
+        6,
+        6
+      ],
+      "values_per_particle_or_cell": 108,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float32",
+      "bytes_per_value": 4,
+      "engine_flux_bytes_per_cell": 300.0,
+      "engine_workspace_bytes": 1646592,
+      "engine_workspace_with_flux_bytes": 2568192,
+      "order": 2,
+      "patch_bytes_per_cell": 300,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 300,
+      "stagger": "Center,Center",
+      "stencil": [
+        5,
+        5
+      ],
+      "values_per_particle_or_cell": 75,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float64",
+      "bytes_per_value": 8,
+      "engine_flux_bytes_per_cell": 384.0,
+      "engine_workspace_bytes": 1843200,
+      "engine_workspace_with_flux_bytes": 3022848,
+      "order": 1,
+      "patch_bytes_per_cell": 384,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 384,
+      "stagger": "Node,Node",
+      "stencil": [
+        4,
+        4
+      ],
+      "values_per_particle_or_cell": 48,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float64",
+      "bytes_per_value": 8,
+      "engine_flux_bytes_per_cell": 600.0,
+      "engine_workspace_bytes": 1843200,
+      "engine_workspace_with_flux_bytes": 3686400,
+      "order": 1,
+      "patch_bytes_per_cell": 600,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 600,
+      "stagger": "Center,Center",
+      "stencil": [
+        5,
+        5
+      ],
+      "values_per_particle_or_cell": 75,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float64",
+      "bytes_per_value": 8,
+      "engine_flux_bytes_per_cell": 864.0,
+      "engine_workspace_bytes": 1843200,
+      "engine_workspace_with_flux_bytes": 4497408,
+      "order": 2,
+      "patch_bytes_per_cell": 864,
+      "patch_nn_bytes_per_cell": 600,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 864,
+      "stagger": "Node,Node",
+      "stencil": [
+        6,
+        6
+      ],
+      "values_per_particle_or_cell": 108,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Float64",
+      "bytes_per_value": 8,
+      "engine_flux_bytes_per_cell": 600.0,
+      "engine_workspace_bytes": 1843200,
+      "engine_workspace_with_flux_bytes": 3686400,
+      "order": 2,
+      "patch_bytes_per_cell": 600,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 600,
+      "stagger": "Center,Center",
+      "stencil": [
+        5,
+        5
+      ],
+      "values_per_particle_or_cell": 75,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Dual{Float32,3}",
+      "bytes_per_value": 16,
+      "engine_flux_bytes_per_cell": 768.0,
+      "engine_workspace_bytes": 2236416,
+      "engine_workspace_with_flux_bytes": 4595712,
+      "order": 1,
+      "patch_bytes_per_cell": 768,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 768,
+      "stagger": "Node,Node",
+      "stencil": [
+        4,
+        4
+      ],
+      "values_per_particle_or_cell": 48,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Dual{Float32,3}",
+      "bytes_per_value": 16,
+      "engine_flux_bytes_per_cell": 1200.0,
+      "engine_workspace_bytes": 2236416,
+      "engine_workspace_with_flux_bytes": 5922816,
+      "order": 1,
+      "patch_bytes_per_cell": 1200,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 1200,
+      "stagger": "Center,Center",
+      "stencil": [
+        5,
+        5
+      ],
+      "values_per_particle_or_cell": 75,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Dual{Float32,3}",
+      "bytes_per_value": 16,
+      "engine_flux_bytes_per_cell": 1728.0,
+      "engine_workspace_bytes": 2236416,
+      "engine_workspace_with_flux_bytes": 7544832,
+      "order": 2,
+      "patch_bytes_per_cell": 1728,
+      "patch_nn_bytes_per_cell": 1200,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 1728,
+      "stagger": "Node,Node",
+      "stencil": [
+        6,
+        6
+      ],
+      "values_per_particle_or_cell": 108,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    },
+    {
+      "T": "Dual{Float32,3}",
+      "bytes_per_value": 16,
+      "engine_flux_bytes_per_cell": 1200.0,
+      "engine_workspace_bytes": 2236416,
+      "engine_workspace_with_flux_bytes": 5922816,
+      "order": 2,
+      "patch_bytes_per_cell": 1200,
+      "patch_nn_bytes_per_cell": null,
+      "recompute_bytes_per_particle": 0,
+      "scratch_bytes_per_particle": 1200,
+      "stagger": "Center,Center",
+      "stencil": [
+        5,
+        5
+      ],
+      "values_per_particle_or_cell": 75,
+      "workspace_case": "64 × 48 cells, 16 per cell, extras of flux_extras(T, 2)"
+    }
+  ]
+}
