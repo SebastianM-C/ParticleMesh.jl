@@ -23,6 +23,7 @@ The second half of `docs/plan/architecture-draft.md` §0.8 item 5. It joins WP-0
 
 - `step!` at N = 2 with `deposit_flux!` (WP-020) and `initialize!` at N = 2 with WP-021's solve, in both deposition modes.
 - `problem_from_case` (or its 2D counterpart) reads schema-2 cases (`landau-oblique-2d`, `weibel-2d`); fix #183 (the seeds list ignored) on the way if it is in the path.
+- The problem or state constructor checks that the step keeps every particle within one cell per axis (Δt < min_d Δx_d, since |v| < c), which `deposit_flux!` needs for charge conservation; the 1D constructor gains the same check.
 - CI-sized versions of both cases in the tests (fewer cells and particles per cell, an amplitude override as T-214 does); the full-size runs in `scripts/`, reading the same case files Smilei ran.
 
 ## Acceptance
