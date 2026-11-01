@@ -139,7 +139,7 @@ function picongpu_dump_checks(dir)
         "gauss_residual_t0" => res[1], "gauss_residual_t0_relative" => res[1] / pert,
         "gauss_residual_max" => maximum(res), "gauss_residual_max_iteration" => all_.iterations[argmax(res)],
         "gauss_residual_max_unflagged" => maximum(res[good]; init = 0.0),
-        "gauss_residual_max_flagged" => any(flagged) ? maximum(res[flagged]) : nothing,
+        "gauss_residual_max_flagged" => any(flagged) ? maximum(res[flagged]) : "none flagged",
         "flagged_dumps" => count(flagged), "charge_per_species" => charge,
         "rho_perturbation_t0" => pert,
         "note" => "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)")
