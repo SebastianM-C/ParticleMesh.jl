@@ -32,7 +32,13 @@ shape_order = 2
 current_deposition = "esirkepov"
 filter_passes = 0
 precision = "Float64"
-random_seed = 20261031
+# One run per seed (WP-017), fixed before any run of WP-017. The first is WP-019's single-run seed.
+# Four seeds: one seed's projected mode already carries about the noise of the 1D reference run
+# (1.68e7 electrons against 2.56e7), so four put the ensemble at 6.7e7 electrons, above the 1D
+# Landau ensemble's 2.56e7; the count is set by the budget (Smilei about 12 min of CPU per seed,
+# WP-019's run), not by a measured per-seed spread. Smilei seeds patch p with random_seed + p and
+# runs 16 patches here, so the seeds are 1000 apart; PIConGPU takes each as PIC_SEED.
+seeds = [20261031, 20262031, 20263031, 20264031]
 
 [[species]]
 name = "electron"
@@ -105,3 +111,16 @@ fit_of = "damping_rate_mode"
 theory = 3.9975909124103444
 theory_continuum = 4.0
 formula = "as energy_ratio, for the mode coefficients"
+
+# Pre-registered by WP-017 before any of its runs; the four entries above are WP-019's and unchanged.
+[observables.damping_rate_mode_ensemble]
+signal = "mode_projection"        # E·k̂ of the mode [2, 1], as damping_rate_mode, per seed
+fields = ["Ex", "Ey"]
+component = "parallel"
+method = "ensemble_peak_envelope" # damping_from_peaks on |⟨E·k̂⟩_seeds|², the seed mean of the complex projected coefficient
+fit_start = 3.0                   # the rule of damping_rate_mode
+floor_factor = 10.0               # maxima above 10 × the median of the last 20 % of |⟨E·k̂⟩|²
+minimum_maxima = 3                # the observable exists when the fit takes at least this many maxima
+stderr = "jackknife"              # jackknife over seeds; the fit's residual error is recorded next to it
+per_seed = "at_ensemble_peaks"    # γ of each seed from its own |E·k̂_s|² at the maxima the ensemble fit used
+theory_from = "damping_rate_mode" # theory value and formula as in [observables.damping_rate_mode]
