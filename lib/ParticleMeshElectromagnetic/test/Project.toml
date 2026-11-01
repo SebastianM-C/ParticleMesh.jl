@@ -1,4 +1,5 @@
 [deps]
+CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 OrdinaryDiffEqFunctionMap = "d3585ca7-f5d3-4ba6-8057-292ed1abd90f"
@@ -16,6 +17,7 @@ ParticleMeshCore = {path = "../../ParticleMeshCore"}
 ParticleMeshElectromagnetic = {path = ".."}
 
 [compat]
+CUDACore = "6"
 ForwardDiff = "1"
 KernelAbstractions = "0.10"
 OrdinaryDiffEqFunctionMap = "2"
