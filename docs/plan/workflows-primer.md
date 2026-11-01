@@ -1,6 +1,6 @@
 # Saved Claude Code workflows: a primer for ParticleMesh
 
-Source: the Claude Code workflow docs (https://code.claude.com/docs/en/workflows.md) and the bundled authoring reference. Purpose: enough to read, write and run the workflows the factory will use.
+Source: the Claude Code workflow docs (https://code.claude.com/docs/en/workflows.md) and the bundled authoring reference. Purpose: enough to read, write and run the factory's workflows.
 
 ## What a workflow is
 
@@ -24,18 +24,23 @@ Contrast with the two other delegation mechanisms: a subagent spawned from a ses
 
 Adversarial verification (several independent skeptics per finding, keep what survives a majority), perspective-diverse verifiers (distinct lenses rather than identical refuters), judge panels over independent attempts, loop-until-dry for discovery of unknown size, a completeness critic at the end, and never a silent cap.
 
-## A first workflow for this project: review the plan
+## `plan-review`: review the plan
 
-Read-only, useful now, and it exercises every primitive. Five reviewers read the planning documents through different lenses, each finding is adversarially checked by two refuters, and the survivors come back as a structured list. Arguments: the document paths and a date stamp.
+Read-only, and it exercises every primitive. Five reviewers read the planning documents through different lenses, each finding is adversarially checked by two refuters, and the survivors come back as a structured list. Arguments: the document paths and a date stamp.
 
 The script is `.claude/workflows/plan-review.js`.
 
 How it is used: run `/plan-review` with the plan documents as `args` after each substantial edit. The same skeleton, with an implementer stage in a worktree and a test-runner stage instead of the reviewers, becomes the work-package workflow.
 
-## What the factory's workflows would look like
+## The factory's workflows
+
+Saved in `.claude/workflows/`:
 
 - `plan-review` (above): read-only review of the planning documents.
 - `plan-packages`, two modes: `cut` takes the next work packages from a named slice of the goals and the plan, `rederive` re-derives the packages a goal edit made stale. The stages, the models per agent and the caller's steps are in `.claude/workflows/plan-packages.js`. In `cut` the verifiers read the whole set rather than one package each, because the defects that matter sit between packages. Its PR merges on the automated review, and the digest lists the packages for the owner to veto.
+
+Planned (`factory-and-observability.md` §4):
+
 - `wp-implement`: for one work package, an implementer agent in a worktree (role from `.claude/agents/`), then a test-runner stage, then a plot-inspector stage reading the standard plots and their sidecars, then two reviewers with distinct lenses, then a report; the script writes nothing itself, the agents commit on a branch.
 - `cross-code-validate`: run the matched case in ParticleMesh, Smilei and PIConGPU on the local GPU, produce the overlay plots, judge agreement against the tolerances of A7.
 

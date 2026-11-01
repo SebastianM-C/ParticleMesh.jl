@@ -1,6 +1,6 @@
 # ParticleMesh: landscape and requirements
 
-Status: landscape survey, background. The requirements of §6 are derived from the goals and decisions in `docs/goals/`; work packages cite the goals, not these requirements.
+Landscape survey, background. The requirements of §6 are derived from the goals and decisions in `docs/goals/`; work packages cite the goals, not these requirements.
 
 Goal as stated: differentiable LWFA simulations in Julia, used to optimize laser and plasma parameters for maximum electron energy. Question: build on MethodOfLines.jl v1, reuse something existing, or write a PIC core from scratch?
 

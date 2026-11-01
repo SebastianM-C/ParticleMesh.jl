@@ -1,10 +1,6 @@
-# ParticleMesh: open items before handoff
+# ParticleMesh: open items
 
-Purpose: what is still open in the plan, and what can wait. The goals and decisions are in `docs/goals/`.
-
-## A. Goals and decisions
-
-The goals are in `docs/goals/` (rules: `docs/goals/README.md`), the factory settings F1 to F4 in `factory-and-observability.md` section 5. This document keeps what is still open: thin spots (B), deferred items (C), risks (D) and the process premise (F).
+What is still open in the plan: thin spots (B), what can wait (C), and the dependencies and risks to keep visible (D). The goals and decisions are in `docs/goals/`, the factory settings F1 to F4 in `factory-and-observability.md` section 5.
 
 ## B. Thin spots in the plan (fill in during planning or as the first spike of a phase)
 
@@ -43,11 +39,3 @@ Reactant as a production backend (2D on Reactant-CUDA, sharding, multi-host, TPU
 - OrdinaryDiffEq's Reactant path is a draft PR (#4436); the Reactant time loop uses SimpleDiffEq or a `@trace` loop until it lands. The MOL Ferrite backend has no public trace yet; do not plan around it.
 - The `FunctionMap` harness's double buffering and the tangent layout both multiply memory; a 2D case must be sized for the 4080 explicitly.
 - The objective and the gradient-versus-Bayesian decision must land before the tangent layer is frozen (end of phase 2), because they fix which parameters are active and which diagnostic is reduced.
-
-## F. Process: agent teams, loops and observability
-
-Premise: the project is also an experiment in software-factory approaches, with a significant part of the implementation done by autonomous agent teams and loops, and a required observability layer that shows how changes to the goals propagate. The aim is stated in `docs/goals/A0-aims.md`; design and platform facts in `factory-and-observability.md`, the links and the staleness check in `trace/README.md`.
-
-## E. What the implementation team should receive
-
-A work-package list with, per package: scope, the interface it implements, the acceptance tests and budgets from A7, what it must not do, and the goals it serves. The planning documents are the input; the work-package spec is the next planning deliverable.

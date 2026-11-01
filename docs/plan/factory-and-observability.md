@@ -1,6 +1,6 @@
 # ParticleMesh as a software-factory experiment: agents, loops, observability
 
-Companion to `open-items.md`. Status: draft; the agent-platform facts are from the Claude API reference bundled with Claude Code (2026-10) and the Claude Code docs as cited; verify prices and limits against the current platform documentation before relying on them.
+Companion to `open-items.md`. The agent-platform facts are from the Claude API reference bundled with Claude Code (2026-10) and the Claude Code docs as cited; verify prices and limits against the current platform documentation before relying on them.
 
 Premise (A0): a significant part of the implementation is done by autonomous agent teams and loops; the owner sets the goals and monitors; the process itself is an experiment. Two things are therefore first-class deliverables next to the code: links that show how the goals propagate into work, tests and runs, and an observability layer over the agents that do the work.
 
@@ -118,29 +118,31 @@ Premise: the human reviewer cannot read every line, and frequent approval reques
 
 **Brakes.** One switch pauses everything: scheduled tasks paused, workflows stopped, Managed Agents budgets set to the consumed amount. Budgets per session and per work package cap the damage of a runaway loop without anyone watching.
 
-## 4. Proposed factory shape (to discuss)
+## 4. Factory shape
 
-1. The owner's goals in `docs/goals/` are the root; requirements, interfaces and work packages are derived from them and link back by goal id.
-2. Each work package runs as one budgeted session: cloud environment for CPU-only packages, self-hosted sandbox on a GPU machine for the rest, started with the package's rubric as the outcome. Its cost comes from telemetry.
-3. A scheduled job runs the checker and the CPU test suite and starts a planner run for stale packages.
-4. Human gates: goal edits, the factory's configuration, and anything that makes a scientific claim. Merges of derived work are automatic; the owner vetoes from the digest.
-5. Cost and progress per work package come from telemetry, next to the coverage the checker prints.
+The owner's goals in `docs/goals/` are the root; requirements, interfaces and work packages are derived from them and link back by goal id (section 1). Human gates: goal edits, the factory's configuration, and anything that makes a scientific claim. Derived work merges on the automated review, and the owner vetoes from the digest (§3e, F4).
 
-### The split (`overview.md` §3)
+What runs:
 
-- **Bulk implementation: Claude Code saved workflows run on the GPU machine.** One workflow per work-package type (implement → test → plot-inspect → review → report), stored in `.claude/workflows/`, started either from an interactive lead session or unattended with `claude -p "/<workflow> WP-xx"` under explicit allow rules, on the local 4080 SUPER box with a warm Julia depot and the GPU (rented GPU VMs are the scale-up). A primer and a first read-only workflow are in `workflows-primer.md`. This spends subscription usage, keeps Julia compile times out of cloud sandboxes, and gives the trace layer `workflow.run_id` and `agent_id` for free through telemetry.
+- **One session per work package**, in its own worktree, started by a local factory launcher or as a cloud session (`CLAUDE.md`, "Working here"), with the implementer role. GPU runs are requested from the machine's `gpu-runner` session on the RTX 4080 SUPER and serialized by `scripts/gpu-lock.sh`.
 - **Roles as subagent definitions** in `.claude/agents/`, with model, effort and tool lists in their frontmatter and per-run overrides in the workflows that start them: implementer, numerics reviewer, code reviewer, plot inspector, overseer, and three service roles, `upstream-reporter` (minimal examples for `upstream` issues), `package-manager` (the weekly dependency update and Dependabot, F2) and `janitor` (the mechanical items of the `follow-up` issues the review gate files; anything needing a decision stays in the issue for the planner).
-- **Loops**: desktop scheduled tasks or the Agent SDK script on the 4080 for validation and benchmark campaigns; the overseer from a local launcher on a timer (§3d); Claude Code scheduled tasks in the cloud for CPU-light chores such as trace rebuilds and documentation checks.
-- **Managed Agents as a bounded second track**, not the backbone: rubric-graded outcomes and hard session budgets for a few well-specified work packages, and cron deployments with a self-hosted worker on a rented GPU VM for unattended GPU validation. It is the only surface with dollar caps and per-session cost records, so it is also the cheapest way to measure what a work package costs. Prerequisites: a worker container with Julia, the depot and GPU passthrough.
-- **Observability pipeline**: OpenTelemetry metrics, logs and beta traces from Claude Code and, if used, API tracing from Managed Agents, into one OTLP backend; hooks (`SubagentStop`, `TaskCompleted`, `SessionEnd`) can add the work-package id to the telemetry so cost is attributed per package; the dashboard reads the checker's coverage output plus the standard plots.
-- **Human gates** unchanged: goal edits, the factory's configuration, scientific claims.
+- **Saved workflows** in `.claude/workflows/`: `plan-review` and `plan-packages` (`workflows-primer.md`).
+- **GitHub Actions**: CI with the tests, the trace check and the leak scan, and the review gate (`review.yml`) on every pull request; the janitor hourly and after each review (`janitor.yml`); the package manager weekly (`package-manager.yml`).
+- **The overseer** from a local launcher on a timer, writing the digest to `trace/digests/` (§3d).
+
+Planned, not built yet:
+
+- **Bulk implementation through saved workflows on the GPU machine.** One workflow per work-package type (implement → test → plot-inspect → review → report; `wp-implement` and `cross-code-validate` in `workflows-primer.md`), started either from an interactive lead session or unattended with `claude -p "/<workflow> WP-xx"` under explicit allow rules, on the local 4080 SUPER box with a warm Julia depot and the GPU (rented GPU VMs are the scale-up). This spends subscription usage, keeps Julia compile times out of cloud sandboxes, and gives the trace layer `workflow.run_id` and `agent_id` for free through telemetry.
+- **Loops**: desktop scheduled tasks or the Agent SDK script on the 4080 for validation and benchmark campaigns; Claude Code scheduled tasks in the cloud for CPU-light chores such as trace rebuilds and documentation checks; a scheduled planner run for stale packages.
+- **Managed Agents as a bounded second track**, not the backbone: rubric-graded outcomes (the package's acceptance criteria as the rubric) and hard session budgets for a few well-specified work packages, and cron deployments with a self-hosted worker on a rented GPU VM for unattended GPU validation. It is the only surface with dollar caps and per-session cost records, so it is also the cheapest way to measure what a work package costs. Prerequisites: a worker container with Julia, the depot and GPU passthrough.
+- **Observability pipeline**: OpenTelemetry metrics, logs and beta traces from Claude Code and, if used, API tracing from Managed Agents, into one OTLP backend; hooks (`SubagentStop`, `TaskCompleted`, `SessionEnd`) can add the work-package id to the telemetry so cost and progress are attributed per package; the dashboard reads the checker's coverage output plus the standard plots.
 
 Open questions: whether to keep the Managed Agents track at all for a single-maintainer project (cost and plumbing versus the budget and outcome features), the OTLP backend (a self-hosted Grafana stack versus a hosted one).
 
 
 ## 5. Factory settings (F1 to F4)
 
-How the factory runs, as it stands; owned by the owner like the goals (tier 2), but outside the goal links. They were decisions A11 to A14 before the goals moved to `docs/goals/`.
+How the factory runs, as it stands; owned by the owner like the goals (tier 2), but outside the goal links.
 
 F1. **Package environments.** The root `Project.toml` declares a Pkg workspace with `test/`, `docs/`, `benchmark/` and the `lib/` subpackages as members; they resolve together into one root `Manifest.toml`, which is committed, so every worktree and every agent runs the same versions and the depot precompiles them once. `scripts/` is a separate environment outside the workspace, with the root package as a path source and its own committed manifest, so a result is reproducible from the commit alone. Changing a dependency means re-resolving both manifests; CI instantiates both and fails if either changes. The pre-release CI job updates the manifest before testing, since the committed one is resolved for Julia 1.13.
 

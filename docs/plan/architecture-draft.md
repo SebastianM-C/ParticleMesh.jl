@@ -1,6 +1,6 @@
 # ParticleMesh: architecture draft
 
-Companion to `landscape-and-requirements.md`. Status: design record; §0.1 to §0.6 and the goals and decisions in `docs/goals/` are binding, §0.7 holds the engine contracts written from the spike's code (A0) and the proposals still open; §0 is derived work and changes through pull requests like any other plan text, while `docs/goals/` changes only with the owner.
+Companion to `landscape-and-requirements.md`. §0.1 to §0.6 and the goals and decisions in `docs/goals/` are binding, §0.7 holds the engine contracts written from the spike's code (A0) and the proposals still open; §0 is derived work and changes through pull requests like any other plan text, while `docs/goals/` changes only with the owner.
 
 Constraints:
 - keep a symbolic-numeric angle possible without blocking on it;
@@ -14,7 +14,7 @@ Prior work this builds on (ElectronDynamicsModels.jl): MTK component models comp
 
 ## 0. Scope: a generic particle–mesh framework
 
-Scope (A9): long term the package is a showcase and stress test for Julia and Reactant compiler technology, the physics is modular so it can be extended and perhaps integrate with EDM, and connections to packages such as Molly.jl are worth exploring. All of it is long term. The near-term plan (2D LWFA, ForwardDiff with about three parameters, KernelAbstractions on the 4080) stands. What changes now is only what would be expensive to retrofit: the split between engine and physics modules, the rules that keep the Reactant path open, and the name.
+Scope (A9): long term the package is a showcase and stress test for Julia and Reactant compiler technology, the physics is modular so it can be extended and perhaps integrate with EDM, and connections to packages such as Molly.jl are worth exploring. All of it is long term. The near-term plan (2D LWFA, ForwardDiff with about three parameters, KernelAbstractions on the 4080) stands. What §0 fixes now is only what would be expensive to retrofit: the split between engine and physics modules, the rules that keep the Reactant path open, and the name.
 
 ### 0.1 Engine and physics modules
 
@@ -89,9 +89,9 @@ Numerical backends this admits for the mesh-solve slot, with an assessment:
 
 ### 0.7 Engine core: contracts
 
-Status: contracts, written by WP-011 from the code of the spike WP-010 (`reports/spike-electrostatic-1d.md`) as A0 asks; each states what it guarantees and the test that proves it, and changes only together with its code and test. Everything else about the engine is still open and listed as a proposal at the end of this section. Code: `lib/ParticleMeshCore/src`; tests and tolerances: `lib/ParticleMeshCore/test`. Only `N = 1` is implemented.
+The contracts are written from the code of the spike WP-010 (`reports/spike-electrostatic-1d.md`) as A0 asks; each states what it guarantees and the test that proves it, and changes only together with its code and test. Everything else about the engine is still open and listed as a proposal at the end of this section. Code: `lib/ParticleMeshCore/src`; tests and tolerances: `lib/ParticleMeshCore/test`. Only `N = 1` is implemented.
 
-What the engine is. The engine holds the physics-free pieces: species, the grid and its guards, the transfers between particles and mesh, the sort, loading and mesh operators. It names no physics: no exported name contains Gauss, Poisson or Electrostatic and the engine defines no physics submodule (T-171). The engine owns no `System`, `State` or `step!`: a physics module composes its own step from engine pieces, in its own order (an electromagnetic step with charge-conserving deposition needs the old positions and the Yee half-steps, which the engine must not fix), and that composition, with the separation of problem description and numerics of A10 (§0.5), is owned by the electromagnetic module (WP-014). §1 and §2 list kernels of the whole stack, not of the engine: Yee, Boris, the filter, absorbing layers, the antenna and the moving window belong to the electromagnetic and LWFA modules. The electrostatic step of the spike is test-support code, `lib/ParticleMeshCore/test/es_reference.jl`: the reference for the Landau and two-stream edge cases until the electromagnetic module reproduces them with no transverse fields, deleted after that (A9: there is no electrostatic module); moving it out of the engine changed no bit (T-170).
+What the engine is. The engine holds the physics-free pieces: species, the grid and its guards, the transfers between particles and mesh, the sort, loading and mesh operators. It names no physics: no exported name contains Gauss, Poisson or Electrostatic and the engine defines no physics submodule (T-171). The engine owns no `System`, `State` or `step!`: a physics module composes its own step from engine pieces, in its own order (an electromagnetic step with charge-conserving deposition needs the old positions and the Yee half-steps, which the engine must not fix), and that composition, with the separation of problem description and numerics of A10 (§0.5), is owned by the electromagnetic module (WP-014). §1 and §2 list kernels of the whole stack, not of the engine: Yee, Boris, the filter, absorbing layers, the antenna and the moving window belong to the electromagnetic and LWFA modules. The electrostatic step of the spike is test-support code, `lib/ParticleMeshCore/test/es_reference.jl`: the reference for the Landau and two-stream edge cases until the electromagnetic module reproduces them with no transverse fields, deleted after that (A9: there is no electrostatic module); its results equal the spike's bit for bit (T-170).
 
 The contracts:
 

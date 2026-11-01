@@ -14,7 +14,7 @@ A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
 +++
 # WP-009: engine core, flux: charge-conserving deposition in 1D (Esirkepov)
 
-Re-derived from the spike's write-up for N = 1, keeping this package's id and its reserved test range T-110 to T-129: it is the same interface, not a new one, written from the engine WP-011 leaves behind. Esirkepov's scheme is the source of A7's strongest conservation claim, Gauss's law to roundoff, and the piece most likely to break AD smoothness at cell crossings. A small engine-only package with an exact continuity identity and a crossing-smoothness check settles that risk before any Maxwell code exists, so a failure in WP-014's Gauss test can only come from the module. The extras must survive a sort between the push and the deposit, and the tests check that they do.
+Esirkepov's scheme is the source of A7's strongest conservation claim, Gauss's law to roundoff, and the piece most likely to break AD smoothness at cell crossings. A small engine-only package with an exact continuity identity and a crossing-smoothness check settles that risk before any Maxwell code exists, so a failure in WP-014's Gauss test can only come from the module. The extras must survive a sort between the push and the deposit, and the tests check that they do.
 
 ## Scope
 
@@ -53,7 +53,7 @@ Test ids T-110 to T-129.
 
 ## Depends on
 
-WP-011 (Species extras, the deposited quantity, the launch keyword, `fd_scan`, and the guard convention as contracts). The earlier dependencies on WP-005 and WP-006 are gone: those packages are withdrawn and their pieces exist in the engine. WP-014 builds on this package.
+WP-011 (Species extras, the deposited quantity, the launch keyword, `fd_scan`, and the guard convention as contracts). WP-014 builds on this package.
 
 ## Budgets
 
