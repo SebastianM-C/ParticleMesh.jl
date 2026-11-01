@@ -7,6 +7,7 @@ module Observables
 using Statistics: mean, median
 
 export linear_fit, local_maxima, damping_from_peaks, growth_from_window, mode_amplitude
+export mode_coefficient, project_mode
 
 """
     linear_fit(x, y) -> (; slope, intercept, slope_stderr, n)
@@ -118,6 +119,44 @@ function mode_amplitude(f::AbstractMatrix, m::Integer; periodic_duplicate = true
     j = 0:N-1
     phase = cis.(-2π * m .* j ./ N)
     return [2 * abs(sum(view(f, 1:N, c) .* phase)) / N for c in axes(f, 2)]
+end
+
+
+"""
+    mode_coefficient(f, mode, positions, lengths; periodic_duplicate = true) -> Vector{ComplexF64}
+
+Complex amplitude of the oblique Fourier mode (m_x, m_y) of each output of a 2D field
+`f` (points_x × points_y × outputs, the layout of `read_fields`), with the phase taken at the
+field's own points: c = (2/(N_x N_y)) Σ f(x_i, y_j) exp(−i k·r_ij), k = 2π (m_x/L_x, m_y/L_y),
+`positions = (x, y)` the per-axis point positions. A field A cos(k·r + φ) gives |c| = A, on any
+staggered position set, so components on different Yee points can be combined. When the last
+point of each axis repeats the first (Smilei's periodic dumps), it is dropped.
+"""
+function mode_coefficient(f::AbstractArray{<:Real,3}, mode, positions, lengths; periodic_duplicate = true)
+    d = periodic_duplicate ? 1 : 0
+    Nx, Ny = size(f, 1) - d, size(f, 2) - d
+    kx, ky = 2π * mode[1] / lengths[1], 2π * mode[2] / lengths[2]
+    ex = cis.(-kx .* positions[1][1:Nx])
+    ey = cis.(-ky .* positions[2][1:Ny])
+    phase = ex .* transpose(ey)
+    return [2 * sum(view(f, 1:Nx, 1:Ny, n) .* phase) / (Nx * Ny) for n in axes(f, 3)]
+end
+
+"""
+    project_mode(fx, fy, px, py, mode, lengths; component = :parallel) -> Vector{ComplexF64}
+
+The mode coefficient of the in-plane vector (fx, fy) along k̂ (`:parallel`, E·k̂ for a
+longitudinal wave) or along ê = ẑ × k̂ = (−k̂_y, k̂_x) (`:perpendicular`, the in-plane B of the 2D
+Weibel mode), each component taken at its own points `px`, `py` by `mode_coefficient`.
+"""
+function project_mode(fx, fy, px, py, mode, lengths; component = :parallel, periodic_duplicate = true)
+    k = (mode[1] / lengths[1], mode[2] / lengths[2])
+    k̂ = k ./ sqrt(sum(abs2, k))
+    cx = mode_coefficient(fx, mode, px, lengths; periodic_duplicate)
+    cy = mode_coefficient(fy, mode, py, lengths; periodic_duplicate)
+    component === :parallel && return k̂[1] .* cx .+ k̂[2] .* cy
+    component === :perpendicular && return -k̂[2] .* cx .+ k̂[1] .* cy
+    error("component must be :parallel or :perpendicular")
 end
 
 end
