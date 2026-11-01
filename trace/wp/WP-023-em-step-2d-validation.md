@@ -2,7 +2,7 @@
 id = "WP-023"
 status = "proposed"
 goals = ["A1", "A2", "A4", "A5", "A7", "A8"]
-depends_on = ["WP-019", "WP-020", "WP-021", "WP-022"]
+depends_on = ["WP-019", "WP-020", "WP-022", "WP-024"]
 adds_dependencies = []
 
 [checked]
@@ -15,15 +15,14 @@ A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
 +++
 # WP-023: the 2D electromagnetic step, Gauss's law with particles, and the 2D cases against theory and Smilei
 
-The second half of `docs/plan/architecture-draft.md` §0.8 item 5. It joins WP-020's current, WP-021's initial solve and WP-022's field solver and push into a periodic 2D3V electromagnetic PIC step, and validates it on the two 2D cases of WP-019, whose Smilei runs are committed in `reports/crosscode-smilei-2d/`. A spike in the A0 sense.
+The second half of `docs/plan/architecture-draft.md` §0.8 item 5. It joins WP-020's current with WP-022's field solver and WP-024's 2D state, initialization and push into a periodic 2D3V electromagnetic PIC step, and validates it on the two 2D cases of WP-019, whose Smilei runs are committed in `reports/crosscode-smilei-2d/`. A spike in the A0 sense.
 
 ## Scope
 
 `lib/ParticleMeshElectromagnetic` (src and test), `scripts/` for the long runs and the comparison, `reports/em-module-2d.md` with figures, §0.8 item 5 and the module's part of §0.7, `questions/`.
 
-- `step!` at N = 2 with `deposit_flux!` (WP-020) and `initialize!` at N = 2 with WP-021's solve, in both deposition modes.
+- `step!` at N = 2 with `deposit_flux!` (WP-020), in both deposition modes: the Esirkepov current choice of `EMNumerics` next to WP-024's `NoCurrent()`.
 - `problem_from_case` (or its 2D counterpart) reads schema-2 cases (`landau-oblique-2d`, `weibel-2d`); fix #183 (the seeds list ignored) on the way if it is in the path.
-- The problem or state constructor checks that the step keeps every particle within one cell per axis (Δt < min_d Δx_d, since |v| < c), which `deposit_flux!` needs for charge conservation; the 1D constructor gains the same check.
 - CI-sized versions of both cases in the tests (fewer cells and particles per cell, an amplitude override as T-214 does); the full-size runs in `scripts/`, reading the same case files Smilei ran.
 
 ## Acceptance
@@ -46,4 +45,4 @@ No open boundaries, laser, moving window or current filter (the LWFA packages af
 
 ## Depends on
 
-WP-020, WP-021, WP-022, WP-019 (the schema-2 cases and the Smilei runs). Test ids T-330 to T-339.
+WP-020, WP-022, WP-024, WP-019 (the schema-2 cases and the Smilei runs). Test ids T-330 to T-339.
