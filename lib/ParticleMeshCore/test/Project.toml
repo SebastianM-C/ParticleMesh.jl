@@ -12,4 +12,5 @@ ParticleMeshCore = {path = ".."}
 [compat]
 ForwardDiff = "1"
 KernelAbstractions = "0.10"
+ParticleMeshCore = "0.1"
 SpecialFunctions = "2"

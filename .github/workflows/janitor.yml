@@ -1,12 +1,12 @@
 name: Janitor
 
-# Runs the janitor role (brief: .claude/agents/janitor.md) after every review run and every hour: the minor findings the review gate
-# files as `follow-up` issues become small pull requests, one per issue, closed by `Fixes #<n>`. A cheap
-# job first checks whether any open follow-up issue still has something for the janitor (unchecked
-# items, no open janitor PR for it, and a last comment that is not the janitor's own) and skips
-# the session when none does or when three janitor PRs are already open. It acts on GitHub as the factory app,
-# like the package manager, so its PRs trigger CI and the review gate. Sonnet at high effort: the work is
-# mechanical by design, and the brief sends everything else back to the issue.
+# Runs the janitor role (brief: .claude/agents/janitor.md) after every review run and every hour: the
+# minor findings the review gate files as `follow-up` issues become small pull requests, one per issue,
+# closed by `Fixes #<n>`. A cheap job first checks whether any open follow-up issue still has something
+# for the janitor (unchecked items, no open janitor PR for it, and not parked by the janitor's own last
+# comment) and skips the session when none does or when three janitor PRs are already open. It acts on
+# GitHub as the factory app, like the package manager, so its PRs trigger CI and the review gate. Sonnet
+# at high effort: the work is mechanical by design, and the brief sends everything else back to the issue.
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, FACTORY_APP_ID, FACTORY_APP_PRIVATE_KEY.
 # Triggers: the review gate is what files follow-up issues, so a finished Review run starts the janitor
 # (`workflow_run` fires even though the review runs on GITHUB_TOKEN; an `issues` trigger would not). The
@@ -48,13 +48,24 @@ jobs:
           owned=$(gh pr list --state open --limit 100 --json headRefName \
             --jq '[.[] | .headRefName | select(startswith("janitor/")) | ltrimstr("janitor/") | tonumber?]')
           pending=$(printf '%s' "$owned" | jq 'length')
-          # An unchecked item is work unless the last comment is the janitor's own: it took what it could and
-          # left the rest with reasons, and only a newer comment (the gate adding items) brings the issue back.
+          # An unchecked item is work unless the janitor's own comment (the factory app, starting `Janitor:`)
+          # parked the issue. A parked issue comes back when someone else comments (the gate adding items,
+          # the owner asking for a re-triage) or when a PR named in its `<!-- janitor: blocked-by=... -->`
+          # marker is no longer open. A PR closes once, and the next comment can name only PRs open then,
+          # so each blocker releases an issue at most once and nothing the janitor does re-wakes it in a loop.
+          open_prs=$(gh pr list --state open --limit 200 --json number --jq '[.[].number]')
           open=$(gh issue list --label follow-up --state open --limit 100 --json number,body,comments \
-            | jq --argjson owned "$owned" '[.[]
+            | jq --argjson owned "$owned" --argjson prs "$open_prs" '
+              def blockers: [capture("<!-- janitor: blocked-by=(?<l>[0-9, ]+) -->") | .l
+                | split(",")[] | gsub(" "; "") | select(length > 0) | tonumber];
+              def parked: (.comments | last) as $c | $c != null
+                and ($c.author.login | test("^particlemesh-factory(\\[bot\\])?$"))
+                and ($c.body | test("^Janitor:"))
+                and ($c.body | blockers | all(. as $b | $prs | any(.[]; . == $b)));
+              [.[]
               | select(.body | test("- \\[ \\]"))
               | select(.number as $n | $owned | index($n) | not)
-              | select((.comments | last | .body // "") | test("^Janitor:|<!-- janitor: nothing mechanical left -->") | not)
+              | select(parked | not)
             ] | length')
           echo "follow-up issues with work for the janitor: $open; janitor PRs open: $pending"
           # The cap keeps a failing gate or a waiting owner from turning the hourly schedule into a pile.

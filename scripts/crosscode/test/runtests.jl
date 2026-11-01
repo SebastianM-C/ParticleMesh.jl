@@ -155,6 +155,30 @@ end
     @test !occursin(r"\b(master|main|develop)\b", recipe)
 end
 
+@testset "T-253 the PIConGPU recipe is pinned [A6, WP-017]" begin
+    recipe = read(joinpath(CC, "containers", "picongpu.Containerfile"), String)
+    froms = [l for l in split(recipe, '\n') if startswith(strip(l), "FROM")]
+    @test !isempty(froms)
+    @test all(l -> occursin(r"@sha256:[0-9a-f]{64}\b", l), froms)
+    # every source fetched by git is cloned at a tag and checked against a full commit id
+    for name in ("PICONGPU", "OPENPMD")
+        tag = match(Regex("ARG $(name)_TAG=(\\S+)"), recipe)
+        commit = match(Regex("ARG $(name)_COMMIT=(\\S+)"), recipe)
+        @test tag !== nothing && occursin(r"^v?\d+(\.\d+)+$", tag.captures[1])
+        @test commit !== nothing && occursin(r"^[0-9a-f]{40}$", commit.captures[1])
+        @test occursin("--branch \"\${$(name)_TAG}\"", recipe)
+        @test occursin("rev-parse HEAD)\" = \"\${$(name)_COMMIT}\"", recipe)
+    end
+    @test count("git clone", recipe) == 2
+    @test !occursin(r"\b(master|main|develop)\b", recipe)
+    # the CUDA series is fixed and checked against the installed nvcc
+    series = match(r"ARG CUDA_SERIES=(\d+)-(\d+)\n", recipe)
+    release = match(r"ARG CUDA_RELEASE=(\d+)\.(\d+)\n", recipe)
+    @test series !== nothing && release !== nothing && series.captures == release.captures
+    @test occursin("grep -q \"release \${CUDA_RELEASE}\"", recipe)
+    @test isfile(joinpath(CC, "containers", "picongpu", "pm-versions.sh"))
+end
+
 @testset "T-160 linear-theory values of the 1D cases [A5, WP-003]" begin
     landau = load_case("landau")
     obs = landau["observables"]["damping_rate"]

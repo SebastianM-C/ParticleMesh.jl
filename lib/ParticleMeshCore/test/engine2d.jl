@@ -381,12 +381,25 @@ end
     # the 1- and 4-thread loads are T-266's digests (`load2d`)
 end
 
+# Unsorted cells for every particle, from a fixed multiplicative hash of the slot (no RNG, so the
+# keys are the same on every run): what a push leaves for the next sort.
+function move_cells!(s, n)
+    slot = UInt64.(1:length(s.w))
+    for d in eachindex(n)
+        s.cell[d] .= Int32.(1 .+ ((slot .* 0x9e3779b97f4a7c15) .>> (31 + d)) .% UInt64(n[d]))
+    end
+    return s
+end
+
 @testset "T-268 allocation does not grow in 2D [A7, A9, WP-018]" begin
     # Bytes per call after warm-up at two particle counts and two grid sizes, with and without
     # extras, measured as T-144 does: the CPU backend allocates a constant amount per launch;
-    # what must not happen is growth with the problem size. T-144 marks the sort broken with more
-    # than one thread (#82, AcceleratedKernels' threaded sample sort); at these sizes (at most 4608
-    # particles) no growth was measured at 1 or 4 threads, so the sort is asserted here too.
+    # what must not happen is growth with the problem size. The sort is measured on moved particles,
+    # as in a step: re-sorting sorted keys takes Base.sort!'s presorted shortcut and allocates a
+    # constant amount even where the step does not. With more than one thread AcceleratedKernels'
+    # threaded sample sort then allocates about 8 bytes per particle (#82), in 2D as in 1D, so the
+    # sort checks are broken there, as in T-144 (questions/wp-011-t144-threads.md); an unexpected
+    # pass after an upstream fix fails the test, which is the signal to drop this.
     for T in (Float32, Float64), extras in (NamedTuple(), (old_cell = Int32, old_offset = T))
         bytes = Dict{Tuple{String,Tuple{Int,Int},Tuple{Int,Int}},Int}()
         for (n, ppc) in (((16, 12), (2, 3)), ((16, 12), (4, 6)), ((32, 24), (2, 3)))
@@ -404,18 +417,22 @@ end
                    load = () -> load_quiet!(s, grid, ObliqueDensity(), p, ppc; seed = 1, stream = 1))
             for (name, op) in pairs(ops)
                 op(); op()
+                if name === :sort  # warm up the unsorted path too, then measure on moved cells
+                    move_cells!(s, n); op(); move_cells!(s, n)
+                end
                 bytes[(string(name), n, ppc)] = @allocated op()
             end
         end
         @info "T-268 bytes per call" T extras = keys(extras) bytes nthreads = Threads.nthreads()
         for name in ("sort", "reference", "fast", "gather", "fill", "fold", "load")
             small = bytes[(name, (16, 12), (2, 3))]
+            sort_allocates = name == "sort" && Threads.nthreads() > 1
             if VERSION >= v"1.14-"
                 @test_skip bytes[(name, (16, 12), (4, 6))] <= small
             else
-                @test bytes[(name, (16, 12), (4, 6))] <= small
+                @test bytes[(name, (16, 12), (4, 6))] <= small broken = sort_allocates
             end
-            @test bytes[(name, (32, 24), (2, 3))] <= small
+            @test bytes[(name, (32, 24), (2, 3))] <= small broken = sort_allocates
         end
     end
 end

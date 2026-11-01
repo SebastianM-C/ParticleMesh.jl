@@ -269,8 +269,8 @@ jobs:
             gh issue create --title "$title" --label follow-up --body "$body"
           fi
       - name: Label tier-2 pull requests
-        # Never blocks the merge; the label is how the digest finds tier-2 changes. It runs after a
-        # "request changes" verdict too, which fails the step before it.
+        # Never blocks the merge; the label is how the digest finds tier-2 changes. It also runs after an
+        # incomplete review or a "request changes" verdict, each of which fails an earlier step.
         if: ${{ !cancelled() && needs.lenses.result == 'success' }}
         continue-on-error: true
         env:
