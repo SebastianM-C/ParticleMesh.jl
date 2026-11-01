@@ -38,6 +38,27 @@ figure8_fields(a0) = ((x, t) -> (-a0 * cos(t - x[3]), zero(a0), zero(a0)),
         @test ok
     end
 
+    @testset "between steps: OrdinaryDiffEq's Hermite interpolation; out-of-place problems are refused" begin
+        E(x, t) = (1.0, 0.0, 0.0)
+        B(x, t) = (0.0, 0.0, 0.0)
+        prob = particle_problem((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 1.0); qm = 1.0, E, B)
+        sol = solve(prob, pusher_algorithm(Boris()); dt = 0.25)
+        f(y, t) = (d = similar(y); lorentz_rhs!(d, y, prob.p, t); d)
+        # the cubic Hermite interpolant of the states at t₀ and t₀ + h with slopes lorentz_rhs!
+        function hermite(y0, y1, t0, h, t)
+            θ = (t - t0) / h
+            return (1 - θ) .* y0 .+ θ .* y1 .+
+                   θ * (θ - 1) .* ((1 - 2θ) .* (y1 .- y0) .+ (θ - 1) * h .* f(y0, t0) .+ θ * h .* f(y1, t0 + h))
+        end
+        @test sol(0.375) ≈ hermite(sol.u[2], sol.u[3], 0.25, 0.25, 0.375)
+        s2 = solve(prob, pusher_algorithm(Boris()); dt = 0.25, saveat = [0.3, 0.5])
+        @test s2.t == [0.3, 0.5]
+        @test s2.u[1] ≈ hermite(sol.u[2], sol.u[3], 0.25, 0.25, 0.3)
+        @test s2.u[2] == sol.u[3]                               # on the grid: the pusher's own state
+        oop = SciMLBase.ODEProblem((s, p, t) -> zero(s), zeros(6), (0.0, 1.0), prob.p)
+        @test_throws ArgumentError solve(oop, pusher_algorithm(Boris()); dt = 0.25)
+    end
+
     @testset "Vern9 through the same problem matches the closed form" begin
         a0 = 2.0
         E, B = figure8_fields(a0)

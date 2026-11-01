@@ -42,7 +42,10 @@ The pusher as a fixed-step OrdinaryDiffEq algorithm for a [`particle_problem`](@
 is [`push_particle`](@ref) with the problem's `p.qm`, `p.E`, `p.B`, so a solve gives the same
 bits as stepping `push_particle` by hand from `t₀` with the same `dt` (T-237). The saved states
 are synchronized, x and u at the same time, so no half-step start is needed; `dt` is required,
-and `saveat` must name step times (the algorithm has no interpolant: between steps the
-solution is the left-endpoint value). Needs SciMLBase and OrdinaryDiffEqCore loaded.
+and the algorithm has no interpolant of its own: between steps, `sol(t)` and a `saveat` off
+the step grid give OrdinaryDiffEq's default cubic Hermite interpolation, built from the two
+neighbouring states and `lorentz_rhs!` evaluated there, not the pusher's orbit. `saveat`
+should name step times to get the pusher's own states (T-237). Needs SciMLBase and
+OrdinaryDiffEqCore loaded.
 """
 function pusher_algorithm end
