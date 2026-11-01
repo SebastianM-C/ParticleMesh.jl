@@ -286,7 +286,9 @@ end
     @test mean(abs.(pulls) .<= 1) >= 0.5
     @test maximum(abs, pulls) <= 4
     # on the runs' own time grid (t ≤ 25, fields every 4 steps) and noise (per seed 2.5e-3 of the
-    # initial energy), where the floor window still holds signal: the jackknife still covers
+    # initial energy), where the floor window still holds signal: the jackknife still covers. The
+    # whole initial amplitude is modal here, so the signal-to-noise ratio is about twice the runs'
+    # (their non-modal part has phase-mixed away by fit_start); a coverage check, not a calibration.
     tr = collect(0:4*0.0093266:25)
     sr = exp.(-γ .* tr) .* cos.(ω .* tr)
     pr = Float64[]
