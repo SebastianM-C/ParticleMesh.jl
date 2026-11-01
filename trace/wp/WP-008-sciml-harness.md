@@ -1,6 +1,6 @@
 +++
 id = "WP-008"
-status = "proposed"
+status = "done"
 goals = ["A3", "A7", "A8", "A9"]
 depends_on = ["WP-014"]
 adds_dependencies = ["SciMLBase", "RecursiveArrayTools", "OrdinaryDiffEqFunctionMap"]
