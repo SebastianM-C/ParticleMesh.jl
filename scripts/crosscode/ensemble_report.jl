@@ -77,6 +77,7 @@ function ensemble_result(case, t, coeffs, seeds; per_run = nothing)
         "per_seed_single_run_rule_on_mode" => merge(aggregated(seeds, e.single_seed),
             Dict("maxima_used" => [length(s.t_fit) for s in e.single_seed])),
         "cross_seed_correlation_late" => Dict(pairs(cross_seed_correlation(coeffs, late))),
+        "seed_scatter_post_hoc" => scatter_record(coeffs, t, late, e, obs),
         "fit_rules" => Dict("fit_start" => obs["fit_start"], "floor_factor" => obs["floor_factor"],
                             "minimum_maxima" => nmin, "per_seed" => obs["per_seed"], "stderr" => obs["stderr"]))
     if per_run !== nothing
@@ -84,6 +85,28 @@ function ensemble_result(case, t, coeffs, seeds; per_run = nothing)
             Dict("maxima_used" => [length(s.t_fit) for s in per_run]))
     end
     return r, e
+end
+
+"""
+The post-hoc noise diagnostics (not part of the pre-registered observable): the noise of the seed
+mean from the seeds' scatter, over the floor window and after `fit_start`; the pre-registered
+floor over its noise-only expectation ln 2 × noise_of_mean (≈ 1 when the window holds noise
+only, larger when residual signal sits in it); the signal-to-noise ratio |⟨Ê⟩|² over the noise
+of the mean at each maximum used; the correlation of disjoint seed differences.
+"""
+function scatter_record(coeffs, t, late, e, obs)
+    M = length(coeffs)
+    M >= 2 || return nothing
+    after = findfirst(>=(obs["fit_start"]), t):length(t)
+    sl, sa = seed_scatter(coeffs, late), seed_scatter(coeffs, after)
+    m = reduce(+, coeffs) ./ M
+    snr = [abs2(m[i]) / (sum(abs2(c[i] - m[i]) for c in coeffs) / (M * (M - 1))) for i in e.used]
+    return Dict{String,Any}("noise_of_mean_floor_window" => sl.noise_of_mean, "noise_per_seed_floor_window" => sl.noise_per_seed,
+        "noise_of_mean_after_fit_start" => sa.noise_of_mean,
+        "floor_over_ln2_noise_of_mean" => e.floor / (log(2) * sl.noise_of_mean),
+        "snr_at_maxima_used" => snr,
+        "difference_correlation_floor_window" => Dict(pairs(sl.difference_correlation)),
+        "difference_correlation_after_fit_start" => Dict(pairs(sa.difference_correlation)))
 end
 
 function save_plot(dir, name, fig, sidecar)
