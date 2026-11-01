@@ -167,8 +167,8 @@ status = "proposed"
 
 ["T-214".wp017]
 quantity = "Landau damping rate γ/ω_p of the field amplitude, ensemble observables damping_rate_ensemble (landau.toml) and damping_rate_mode_ensemble (landau-oblique-2d.toml)"
-measured = { smilei_1d = 0.1303, picongpu_1d = 0.1360, smilei_2d = 0.1570, picongpu_2d = 0.1405 }
-jackknife_stderr = { smilei_1d = 0.0144, picongpu_1d = 0.0131, smilei_2d = 0.0060, picongpu_2d = 0.0096 }
+measured = { smilei_1d = 0.1303, picongpu_1d = 0.1360, picongpu_1d_fp32 = 0.1323, smilei_2d = 0.1570, picongpu_2d = 0.1405 }
+jackknife_stderr = { smilei_1d = 0.0144, picongpu_1d = 0.0131, picongpu_1d_fp32 = 0.0142, smilei_2d = 0.0060, picongpu_2d = 0.0096 }
 smilei_picongpu_difference = { d1 = 0.0057, d1_in_combined_stderr = 0.29, d2 = -0.0165, d2_in_combined_stderr = 1.46 }
 proposed_threshold = "|γ_PM − γ_ref| ≤ 2 √(σ_PM² + σ_ref²), σ the jackknife standard error over the case's seeds, against each of Smilei and PIConGPU"
 proposed_threshold_values = { d1 = 0.039, d2 = 0.023 }

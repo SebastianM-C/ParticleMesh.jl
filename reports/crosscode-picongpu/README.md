@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Work package | WP-017 (goals A1, A5, A6, A7) |
-| Runs | PIConGPU: `picongpu-landau-fp64-295ddf42`, `picongpu-landau-fp32-295ddf42` (8 seeds each), `picongpu-two-stream-fp64-736a428f`, `picongpu-two-stream-fp32-736a428f`, `picongpu-two-stream-256-fp64-56d5d9ae`, `picongpu-two-stream-256-fp32-56d5d9ae`, `picongpu-landau-oblique-2d-fp64-bc8fd6af` (4 seeds); Smilei: `smilei-landau-oblique-2d-bc8fd6af` (4 seeds). The Smilei 1D runs compared against are WP-012's (`reports/crosscode-smilei-1d/stage-1b/`) on the same case files |
+| Runs | PIConGPU: `picongpu-landau-fp64-295ddf42`, `picongpu-landau-fp32-295ddf42` (8 seeds each; FP32 analyzed after the review), `picongpu-two-stream-fp64-736a428f`, `picongpu-two-stream-fp32-736a428f`, `picongpu-two-stream-256-fp64-56d5d9ae`, `picongpu-two-stream-256-fp32-56d5d9ae`, `picongpu-landau-oblique-2d-fp64-bc8fd6af` (4 seeds); Smilei: `smilei-landau-oblique-2d-bc8fd6af` (4 seeds). The Smilei 1D runs compared against are WP-012's (`reports/crosscode-smilei-1d/stage-1b/`) on the same case files |
 | Commits of the inputs | Every run prepared at `917f460f2050ec1a8efa5c59a2d71c2ae7cd9d1b` (clean tree, in each `manifest.toml`). The oblique ensemble observable and its seeds were registered in `d61a812`, before it and before any run of the case in this package |
 | Case hashes (SHA-256, first 8 hex) | `landau.toml` `295ddf42`, `two-stream.toml` `736a428f`, `two-stream-256.toml` `56d5d9ae` (the files WP-012's Smilei runs used), `landau-oblique-2d.toml` `bc8fd6af` (WP-019's file with the seeds and the ensemble entry added); full hashes in each manifest under `inputs` |
 | PIConGPU | 0.8.0, commit `6bb3470ee16dd5a3a93f24c85b111be3b8440d22`, CUDA backend for `sm_89`; image `localhost/particlemesh-picongpu:a743cbb40f17cdae`, id `1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b` (toolchain in each run's `versions.toml`: nvcc 12.5.82, gcc 13.3.0, openPMD-api 0.15.2, HDF5 1.10.10) |
@@ -83,6 +83,8 @@ The kinetic energy is the exact Σ(γ − 1)mc², formed by the reader from PICo
 
 **Smilei's 2D field energy.** Smilei's t = 0 field energy exceeds PIConGPU's by 2.4 %: Smilei's `Uelm` scalars count extra columns (131/128) and include the constant field Smilei adds after its Poisson solve (`reports/crosscode-smilei-2d/`). PIConGPU's are ½ ΣE²ΔV over the cells.
 
+**FP32 Landau.** The FP32 Landau seeds keep Gauss's law to 4.7 × 10⁻⁴ of the perturbation at t = 0 and to 9 × 10⁻⁶ absolute at unflagged dumps. They show the charge-density glitch at 26 to 41 of 671 dumps per seed. Their total energy changes by at most 2.7 × 10⁻⁵ to 4.6 × 10⁻⁵, which includes the float rounding of the exact kinetic energy formed by subtraction (not separated; FP64: 2.4 × 10⁻⁷ to 4.3 × 10⁻⁷).
+
 **FP32 Gauss.** The FP32 runs keep Gauss's law to the precision of the format: 7 × 10⁻⁴ of the perturbation at t = 0 (the background and the density rounded to float), growing to 5.8 × 10⁻⁵ (128 cells) and 1.4 × 10⁻⁴ (256 cells) absolute over 5253 and 10 506 steps. The review estimates about 4 × 10⁻⁵ for a random walk of FP32 roundoff in E over 5253 steps.
 
 **A glitch in PIConGPU's derived charge density, in the thermal quasi-1D runs only.** In 18 to 32 of the 671 dumps of each Landau seed, the dumped electron charge density summed over the box is short by 1 × 10⁻⁴ to 8 × 10⁻⁴ of the electron charge. At every other dump it is exact to 10⁻¹⁵, and Gauss's law on the dumped fields holds to 10⁻¹⁴. Three observations, from the review (M1), show that the derived density is wrong and not the state:
@@ -121,14 +123,14 @@ Pre-registered `damping_rate_ensemble` of `landau.toml` (WP-012), PIConGPU's eig
 
 | | Smilei (WP-012) | PIConGPU FP64 | PIConGPU FP32 |
 |---|---|---|---|
-| ensemble γ ± jackknife | **0.1303 ± 0.0144** | **0.1360 ± 0.0131** | FP32LANDAU_G |
-| maxima used, fit range | 6, t = 4.75 to 15.93 | 6, t = 4.77 to 16.02 | FP32LANDAU_M |
-| relative to theory 0.15336 | −15.1 % | −11.3 % | FP32LANDAU_R |
-| ω_r from the maxima (theory 1.41566) | 1.4046 | 1.3963 | FP32LANDAU_W |
-| ensemble floor of \|⟨Ê₁⟩\|² | 5.9 × 10⁻¹⁰ | 3.5 × 10⁻¹⁰ | FP32LANDAU_F |
-| per-seed γ at the ensemble's maxima, mean ± std | 0.1296 ± 0.0268 | 0.1343 ± 0.0413 | FP32LANDAU_S |
+| ensemble γ ± jackknife | **0.1303 ± 0.0144** | **0.1360 ± 0.0131** | **0.1323 ± 0.0142** |
+| maxima used, fit range | 6, t = 4.75 to 15.93 | 6, t = 4.77 to 16.02 | 5, t = 4.75 to 13.64 |
+| relative to theory 0.15336 | −15.1 % | −11.3 % | −13.7 % |
+| ω_r from the maxima (theory 1.41566) | 1.4046 | 1.3963 | 1.4144 |
+| ensemble floor of \|⟨Ê₁⟩\|² | 5.9 × 10⁻¹⁰ | 3.5 × 10⁻¹⁰ | 6.5 × 10⁻¹⁰ |
+| per-seed γ at the ensemble's maxima, mean ± std | 0.1296 ± 0.0268 | 0.1343 ± 0.0413 | 0.1302 ± 0.0356 |
 
-PIConGPU − Smilei (FP64): **+0.0057** (+4.4 %), 0.29 combined jackknife errors, 0.21 Smilei seed spreads, 0.14 PIConGPU seed spreads. FP32LANDAU_DIFF
+PIConGPU − Smilei (FP64): **+0.0057** (+4.4 %), 0.29 combined jackknife errors, 0.21 Smilei seed spreads, 0.14 PIConGPU seed spreads. PIConGPU FP32 − FP64: **−0.0036** (−2.7 %), 0.19 combined jackknife errors; FP32 − Smilei: +0.0021, 0.10 combined errors. The FP32 ensemble is an independent draw of the same seeds (the float load and push give different trajectories), so the difference is noise-dominated like the code difference.
 
 Per seed (γ at the ensemble's maxima):
 
@@ -136,6 +138,7 @@ Per seed (γ at the ensemble's maxima):
 |---|---|---|---|---|---|---|---|---|
 | Smilei | 0.1035 | 0.1651 | 0.1221 | 0.1235 | 0.1472 | 0.1664 | 0.1004 | 0.1081 |
 | PIConGPU FP64 | 0.1273 | 0.0799 | 0.1049 | 0.2118 | 0.1071 | 0.1690 | 0.1306 | 0.1437 |
+| PIConGPU FP32 | 0.1493 | 0.1850 | 0.1080 | 0.1562 | 0.1469 | 0.1216 | 0.0749 | 0.0997 |
 
 The PIConGPU per-seed spread (0.041) is 1.5 times Smilei's (0.027). With eight seeds each this is not significant (an F ratio of 2.4 on 7 and 7 degrees of freedom), and the PIConGPU ensemble floor is lower, not higher. The single-run rule refuses every seed in both codes, as in WP-012.
 
@@ -177,7 +180,7 @@ Wall time inside the container (`container.txt`). This is not a throughput compa
 | two-stream, 128 cells, FP64 / FP32 | 71 s / 71 s | 103 s / 96 s | 77 / 71 | 17 s (16 threads, WP-012) | 12 |
 | two-stream, 256 cells, FP64 / FP32 | 71 s / 71 s | 147 s / 126 s | 27 / 23 | 48 s | 9 |
 | Landau, FP64 | 71 s | 1110 s to 1203 s | 129 to 140 | 79 s to 96 s (8 threads, WP-012) | 9 to 11 |
-| Landau, FP32 | FP32LANDAU_C | FP32LANDAU_T | FP32LANDAU_N | | |
+| Landau, FP32 | 70 s | 803 s to 853 s | 94 to 99 | | |
 | oblique 2D, FP64 | 68 s | 327 s to 333 s | 5.7 to 5.9 | 559 s to 569 s (16 threads) | 9.8 to 10.0 |
 
 In quasi-1D the GPU has little work to spread: 512 or 1024 cells, so 512 or 1024 threads per kernel. In addition, each openPMD dump costs about 0.6 s whatever its size (README, "PIConGPU specifics"), and the Landau case dumps 671 times. In 2D (16 384 cells) PIConGPU on the RTX 4080 SUPER in FP64 is 5.9 ns per particle-step with output, the compile once per setup.
