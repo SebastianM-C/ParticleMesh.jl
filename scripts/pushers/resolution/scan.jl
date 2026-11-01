@@ -7,7 +7,9 @@
 # writes scripts/runs/pushers-resolution-<stamp>/ with manifest.toml (F3), one PNG and JSON
 # sidecar per error (`resolution_<error>.png`), the diagnostic (`gordon_hafizi_a0_10.png`), and
 # summary.json with every error, the thresholds and their application to representative LWFA
-# time steps.
+# time steps. In the diagnostic the lab-time pushers take lab steps from the inverse of Eq. 22, as
+# Gordon and Hafizi's do, and `QuadraticUnitary` runs both that way and, as theirs does, in
+# proper time (`gordon_hafizi_proper`).
 #
 # The orbit and the errors are those of T-243 (lib/ParticleMeshElectromagnetic/test/
 # pushers_resolution.jl, whose header states them): an electron (q/m = −1) at rest at η = 0 in
@@ -118,6 +120,43 @@ function gordon_hafizi(P, a0, Δs, nsteps)
             end_distance = norm3(xs[end] .- ref[end]) / scale, t_end = t)
 end
 
+"""
+    gordon_hafizi_proper(a0, Δs, nsteps)
+
+`QuadraticUnitary` as Gordon and Hafizi run it: in proper time, with no lab step. The world
+line is leapfrogged as in their Eq. 20, x̄ = x + (Δs/2)u and t̄ = t + (Δs/2)γ; then (γ, u) is
+advanced by `quadratic_unitary_step` with κ = (q/m)Δs/2 and the fields at (x̄, t̄); then
+x′ = x̄ + (Δs/2)u′, t′ = t̄ + (Δs/2)γ′. γ is carried, not recomputed.
+"""
+function gordon_hafizi_proper(a0, Δs, nsteps)
+    E, B = planewave(a0)
+    x = (0.0, 0.0, 0.0)
+    u = x
+    γ = 1.0
+    t = 0.0
+    xs, ts, ref = [x], [t], [x]
+    eh = 0.0
+    ep = 0.0
+    dist = 0.0
+    h = Δs / 2
+    κ = -h                                                           # (q/m)Δs/2 with q/m = −1
+    for _ in 1:nsteps
+        x̄ = x .+ h .* u
+        t̄ = t + h * γ
+        γ, u = ParticleMeshElectromagnetic.quadratic_unitary_step(γ, u, κ .* E(x̄, t̄), κ .* B(x̄, t̄))
+        x = x̄ .+ h .* u
+        t = t̄ + h * γ
+        xe, _ = exact_state(a0, t)
+        push!(xs, x); push!(ts, t); push!(ref, xe)
+        eh = max(eh, abs(γ - u[3] - 1))
+        ep = max(ep, abs(u[1] - a0 * sin(t - x[3])) / a0)
+        dist = max(dist, norm3(x .- xe))
+    end
+    scale = π * a0^2 / 2
+    return (; xs, ts, ref, gamma = eh, canonical = ep, max_distance = dist / scale,
+            end_distance = norm3(xs[end] .- ref[end]) / scale, t_end = t)
+end
+
 "Largest scanned a₀·ω₀Δt with every point at or below it (all a₀) under `tol`; 0 if none."
 function threshold_product(errs, tol)
     pts = sort([(a0 * dt, e) for ((a0, dt), e) in errs])
@@ -199,6 +238,7 @@ function main()
 
     # Gordon and Hafizi's diagnostic
     gh = Dict(pname(P) => gordon_hafizi(P, 10.0, 0.1, 63) for P in PUSHERS)
+    gh["QuadraticUnitary in proper time"] = gordon_hafizi_proper(10.0, 0.1, 63)
     fig = Figure(size = (900, 600))
     ax = Axis(fig[1, 1]; xlabel = "z − v_d t (c/ω₀)", ylabel = "x (c/ω₀)",
               title = "a₀ = 10, 63 steps of ω₀Δs = 0.1, lab steps from the inverse of Eq. 22")
@@ -208,11 +248,11 @@ function main()
     ex = [exact_state(10.0, t)[1] for t in tt]
     lines!(ax, [p[3] - vd * t for (p, t) in zip(ex, tt)], [p[1] for p in ex]; color = :black, label = "exact")
     side = Dict{String,Any}()
-    for (i, P) in enumerate(PUSHERS)
-        g = gh[pname(P)]
+    for (i, name) in enumerate((map(pname, PUSHERS)..., "QuadraticUnitary in proper time"))
+        g = gh[name]
         scatterlines!(ax, [p[3] - vd * t for (p, t) in zip(g.xs, g.ts)], [p[1] for p in g.xs]; color = colors[i],
-                      markersize = 5, label = pname(P))
-        side[pname(P)] = Dict("t" => g.ts, "x" => [p[1] for p in g.xs], "z" => [p[3] for p in g.xs],
+                      markersize = 5, label = name)
+        side[name] = Dict("t" => g.ts, "x" => [p[1] for p in g.xs], "z" => [p[3] for p in g.xs],
                               "x_exact" => [p[1] for p in g.ref], "z_exact" => [p[3] for p in g.ref],
                               "gamma" => g.gamma, "canonical" => g.canonical, "max_distance" => g.max_distance,
                               "end_distance" => g.end_distance, "t_end" => g.t_end)
@@ -239,9 +279,8 @@ function main()
                 " 1e-2: ", rpad(round(t2["a0_dt"]; sigdigits = 3), 8),
                 " ω₀Δt per a₀ (1e-3): ", join((round(t3["dt_per_a0"]["a0=$a0"]; sigdigits = 3) for a0 in A0), ", "))
     end
-    for P in PUSHERS
-        g = gh[pname(P)]
-        println(rpad("GH a₀ = 10 $(pname(P))", 32), " γ − u_z: ", round(g.gamma; sigdigits = 3), "  canonical: ",
+    for (name, g) in sort(collect(gh); by = first)
+        println(rpad("GH a₀ = 10 $name", 44), " γ − u_z: ", round(g.gamma; sigdigits = 3), "  canonical: ",
                 round(g.canonical; sigdigits = 3), "  max distance: ", round(g.max_distance; sigdigits = 3),
                 "  end distance: ", round(g.end_distance; sigdigits = 3))
     end
