@@ -1,10 +1,10 @@
 {
   "energy_ratio": {
-    "first": 3.9975974162790773,
-    "measured": 3.9975974162790773,
-    "median": 1.0710783972639852,
+    "first": 3.99759768767612,
+    "measured": 3.99759768767612,
+    "median": 1.0710790829813517,
     "method": "first_output",
-    "relative_difference": 1.6269470477129126e-6,
+    "relative_difference": 1.6948371966960412e-6,
     "signal": "scalar_ratio",
     "t": 0.0,
     "theory": 3.9975909124103444,

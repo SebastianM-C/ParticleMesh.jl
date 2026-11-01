@@ -12,19 +12,19 @@ quasi1d = true
 reference_wavelength_m = 8.0e-7
 run = "picongpu-two-stream-256-fp64-56d5d9ae"
 seeds = [20261031]
-updated = "2026-11-01T15:50:42.516Z"
+updated = "2026-11-01T19:59:42.584Z"
 
 [analysis]
-commit = "2d945903c053dbd443cd0146c470a5ec70e965bc"
-dirty = false
+commit = "2bd8c73e1e7b4e23acccf8059624f1f3b6b029f7"
+dirty = true
 
     [analysis.inputs]
     "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
-    "scripts/crosscode/analyze.jl" = "sha256:82cc95d55f47cbfc9788b53e27092453eb64d50228e4c027d6d159a8223c03b1"
+    "scripts/crosscode/analyze.jl" = "sha256:023bc2de02b96d8d31f43d504198656ad5a22babf4c284442b27b18d3901c3a1"
     "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
     "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
     "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
-    "scripts/crosscode/read.jl" = "sha256:120c3cbfbad1ee8aae00b8ccdc9f9a4a19f40b5ac89af3110b9fba5a967694d0"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
 
 [hardware]
 cpu = "Intel(R) Core(TM) i9-14900K"
@@ -62,18 +62,48 @@ case = "two-stream-256"
 code = "picongpu"
 fit_points = 163
 fit_range = [13.829021599999999, 18.7636064]
-measured = 0.3459258352327099
+measured = 0.3459258668256072
 measured_from_mode = 0.3370342531587535
 measured_from_mode_points = 20
 measured_from_mode_stderr = 0.0025265870455943498
-measured_stderr = 0.0009032588451018357
+measured_stderr = 0.0009032624531803605
 observable = "growth_rate"
-relative_difference = -0.014107369177248245
+relative_difference = -0.014107279137125594
 theory = 0.35087576924479724
 theory_nonrelativistic = 0.3535533905932736
 
+    [observables.checks]
+    dumps = 165
+    flagged_dumps = 0
+    gauss_residual_max = 3.020916850005051e-13
+    gauss_residual_max_flagged = "none flagged"
+    gauss_residual_max_iteration = 9728
+    gauss_residual_max_unflagged = 3.020916850005051e-13
+    gauss_residual_t0 = 2.0426368929626904e-15
+    gauss_residual_t0_relative = 2.042841980215556e-12
+    note = "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)"
+    rho_perturbation_t0 = 0.0009998996068933124
+
+        [observables.checks.charge_per_species.beam_minus]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 4.440892098500625e-15
+        max_abs_relative_change_unflagged = 4.440892098500625e-15
+
+        [observables.checks.charge_per_species.beam_plus]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 5.3290705182007506e-15
+        max_abs_relative_change_unflagged = 5.3290705182007506e-15
+
+        [observables.checks.charge_per_species.ion]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 0.0
+        max_abs_relative_change_unflagged = 0.0
+
     [observables.saturation]
-    U = 0.0019146233137589926
+    U = 0.0019146219777717815
     t = 24.9470676
 
 [outputs]
@@ -86,7 +116,3 @@ theory_nonrelativistic = 0.3535533905932736
 "openPMD/simData.h5" = "sha256:7d2806e55fc5bfabfa7168e1fb15458e4d234a003108c73b838e2cbfd6cbead7"
 "picongpu.log" = "sha256:d811d3f8baa2315a1104dca1199746240b8974e7477d94deb0791d4515b36e85"
 "versions.toml" = "sha256:0813fca98c7e45f80c744e498c2daf79c2f31322f27062bb28c767819e7f7a32"
-
-[transverse]
-cells = 8
-ratio = 8

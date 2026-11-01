@@ -153,7 +153,7 @@
   },
   "reference": "smilei-fp64",
   "runs": {
-    "picongpu-fp64": "scripts/runs/picongpu-landau-fp64-295ddf42",
+    "picongpu-fp64": "reports/crosscode-picongpu/picongpu-landau-fp64-295ddf42",
     "smilei-fp64": "reports/crosscode-smilei-1d/stage-1b/smilei-landau-295ddf42"
   }
 }

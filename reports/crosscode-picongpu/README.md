@@ -10,7 +10,7 @@
 | Smilei | v5.1, commit `438d43d8ab727d02dd8f4402c50393343e871b99`, CPU build; image `localhost/particlemesh-smilei:e4f0148b8952fc87`, id `7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c` |
 | Hardware | PIConGPU: NVIDIA GeForce RTX 4080 SUPER (driver 595.104.02), one device, one MPI rank. Smilei: Intel Core i9-14900K, 16 OpenMP threads (one per patch), one MPI rank |
 | Generator, reader, analysis | `scripts/crosscode/picongpu.jl`, `read.jl` (`PIConGPURead`), `analyze.jl`, `compare.jl` at the commits above; the analysis commit of each run is in its manifest's `[analysis]` table |
-| Review | see "Review" below |
+| Review | numerics-reviewer (`.claude/agents/numerics-reviewer.md`), fresh subagent, claude-opus-5-5, 2026-11-01; findings `review.md` (one blocking, three major, eight minor), answered in "Review" |
 
 This report records measurements and sets no tolerance (A7: thresholds rest on the measured Smilei–PIConGPU spread, are proposed in `questions/wp-017-a7-thresholds.md`, and the owner accepts them by editing A7). Each run directory holds its manifest (inputs, outputs and their hashes, image, hardware, observables), the generated `params/`, `run.sh`, `units.toml`, `versions.toml`, the timing record `container.txt`, `observables.json` and the standard plots with JSON sidecars; seeded runs have the same per seed under `seed-<seed>/`. The dumps themselves are not committed. Comparisons are in `compare/`, each a `comparison.json` with the numbers below.
 
@@ -42,7 +42,7 @@ PIConGPU has no 1D geometry. A schema-1 case runs in a 2D box periodic in y, 8 c
 
 - **Width.** PIConGPU needs at least 2·guard + 1 supercells per axis and a guard of 3 cells for TSC's Esirkepov stencil. With supercells of 16 × 1 cells and a guard of 3 supercells along y, the floor is 7 transverse cells. The per-cell counts (50 000 electrons in Landau, 1000 per beam in two-stream) are not divisible by 7, so the generator takes 8.
 - **Transverse cell.** With Δy = Δx, the 1D time step 0.95Δx would exceed the 2D Courant limit Δx/√2, which PIConGPU refuses at compile time. With Δy = 8Δx the limit is 0.992Δx. The ky = 0 component of the Yee update is the 1D update with the same Δx and Δt, so the y-averaged fields evolve as in 1D, up to the coupling through the particles.
-- **Particles.** Each cell holds the 1D count divided by 8, all on the x lattice (6250 × 1 in Landau, 125 × 1 per beam in two-stream), so an x-column holds the 1D cell's count: 3.2 × 10⁶ electrons per Landau seed, 2.56 × 10⁵ in two-stream at 128 cells, as in Smilei. The immobile ions keep one per cell (8 per column).
+- **Particles.** Each cell holds the 1D count divided by 8, all on the x lattice (6250 × 1 in Landau, 125 × 1 per beam in two-stream), so an x-column holds the 1D cell's count: 3.2 × 10⁶ electrons per Landau seed, 2.56 × 10⁵ in two-stream at 128 cells, as in Smilei. A column has only 6250 (125) distinct x positions, each repeated in the 8 rows; the velocities are independent, so the noise is that of the 1D count, while the quiet-lattice form factor is that of 6250 (125) per cell (T-255 uses it). The immobile ions keep one per cell (8 per column).
 - **Observables** come from the y-averaged Ex and from the energies per unit transverse area, the 1D quantities of Smilei.
 
 T-254 reads these back from the generated files: grid, lattice per column, density, perturbation, time step and step count.
@@ -67,17 +67,33 @@ Rates are of the field amplitude in units of ω_p. "±" is one jackknife standar
 
 ### Checks of the PIConGPU setup
 
-| Check | Landau (quasi-1D) | Two-stream (quasi-1D) | Oblique 2D |
-|---|---|---|---|
-| Gauss's law on the dumps, max \|∇·E − ρ\| (normalized units) at t = 0, and over the run | 9 × 10⁻¹⁵ at t = 0; 1 × 10⁻¹⁴ in 650 of 671 dumps of seed 20261101, up to 0.022 in the other 21 (below) | 9 × 10⁻¹⁴ at most over all 165 dumps | 1.6 × 10⁻¹⁴ at most over all 212 dumps of seed 20262031; relative to max \|ρ\| at t = 0, 1.1 × 10⁻¹² (Smilei 6.5 × 10⁻¹⁰) |
-| PIConGPU `chargeConservation` (max \|∇·E − ρ\| per cell as a charge), relative to the loaded charge perturbation of a cell | 0.9 × 10⁻¹² at t = 0; about 20 of 671 outputs per seed jump to about 2 (below) | 1.2 × 10⁻¹² at t = 0, 8.7 × 10⁻¹¹ at most | 1.1 × 10⁻¹² at t = 0, 1.8 × 10⁻¹² at most |
-| \|Ê(0)\| of the perturbed mode, PIConGPU / Smilei | 9.98796 × 10⁻⁴ / 9.98816 × 10⁻⁴ (seed 20261101) | 1.632501 × 10⁻⁴ / 1.632509 × 10⁻⁴ | ensemble \|⟨E·k̂⟩(0)\|² 9.9667 × 10⁻⁷ / 9.9672 × 10⁻⁷ |
-| Initial kinetic energy against (3/2) n T L (Landau) or (3/2) n T L² (2D) | −0.30 % (Smilei +0.002 %) | equal to Smilei's to 10⁻⁸ | −0.25 % (Smilei +0.016 %) |
-| Largest relative change of the total energy | 3.0 × 10⁻⁷ to 3.8 × 10⁻⁷ per seed (Smilei 3.5 × 10⁻⁷) | 1.22 × 10⁻³ (Smilei 1.02 × 10⁻³); 256 cells 1.09 × 10⁻³ (Smilei 0.55 × 10⁻³) | 2.2 × 10⁻⁷ to 3.4 × 10⁻⁷ (Smilei 1.3 × 10⁻⁶) |
+From each run's `observables.json` (`checks`, written by `picongpu_dump_checks` on the 2D dumps before any y-average) and `plots/energy-conservation.json`. Gauss residuals are max |∇·E − ρ| in the units of A1. The relative value is relative to the loaded charge perturbation, max |ρ − ⟨ρ⟩| at t = 0.
 
-**A glitch in PIConGPU's derived charge density, in the thermal quasi-1D runs only.** In 21 of the 671 dumps of a Landau seed, the dumped electron charge density summed over the box is short by 1 × 10⁻⁴ to 8 × 10⁻⁴ of the electron charge; at every other dump it is exact (−9 × 10⁻¹⁶), and Gauss's law on the dumped E holds to 10⁻¹⁴. The `chargeConservation` plugin shows the same kind of spike at other steps, and both return to roundoff at the next output. Esirkepov deposition keeps any Gauss defect for the rest of a run, so a missed current or a lost particle would persist; neither does. The fields and the particles are therefore consistent, and the derived density (`FieldTmp`) occasionally leaves particles out. The cold two-stream runs (same layout, no motion in y) and the 2D runs (8 × 8 supercells) show none. The observables use E only, and the analysis uses the density at t = 0 only, so no number in this report is affected; whether the same frame handling could skip particles in the push was not tested (open items). The suspect is particles crossing the one-cell-high supercells of the quasi-1D layout; it is being reduced to a minimal setup for an `upstream` issue.
+| Check | Landau, FP64 (8 seeds) | Two-stream, FP64 (128 / 256 cells) | Two-stream, FP32 (128 / 256 cells) | Oblique 2D, FP64 (4 seeds) |
+|---|---|---|---|---|
+| Gauss at t = 0, relative | 9.2 × 10⁻¹³ | 1.1 × 10⁻¹² / 2.0 × 10⁻¹² | 7.1 × 10⁻⁴ / 6.7 × 10⁻⁴ | 1.1 × 10⁻¹² (Smilei 6.5 × 10⁻¹⁰) |
+| Gauss over the run, absolute | ≤ 1.7 × 10⁻¹⁴ at the unflagged dumps; up to 0.022 at the 18 to 32 flagged dumps per seed (below) | ≤ 8.8 × 10⁻¹⁴ / 3.0 × 10⁻¹³, no dump flagged | ≤ 5.8 × 10⁻⁵ / 1.4 × 10⁻⁴, no dump flagged | ≤ 1.8 × 10⁻¹⁴, no dump flagged |
+| \|Ê(0)\| of the perturbed mode, PIConGPU / Smilei | 9.98796 × 10⁻⁴ / 9.98816 × 10⁻⁴ (seed 20261101) | 1.632501 × 10⁻⁴ / 1.632509 × 10⁻⁴ (128 cells) | as FP64 to 7 digits | ensemble \|⟨E·k̂⟩(0)\|² 9.9667 × 10⁻⁷ / 9.9672 × 10⁻⁷ |
+| Initial kinetic energy against (3/2) n T L (1D) or (3/2) n T L² (2D), seed mean | −0.32 % (Smilei +0.001 %) | equal to Smilei's to 10⁻⁸ | 10⁻⁵ to 10⁻⁶ below FP64 | −0.34 % (Smilei +0.018 %) |
+| Largest relative change of the total energy | 2.4 × 10⁻⁷ to 4.3 × 10⁻⁷ per seed (Smilei 2.7 × 10⁻⁷ to 3.6 × 10⁻⁷) | 1.016 × 10⁻³ / 0.545 × 10⁻³ (Smilei 1.015 × 10⁻³ / 0.545 × 10⁻³) | 1.004 × 10⁻³ / 0.544 × 10⁻³ | 2.5 × 10⁻⁷ to 2.7 × 10⁻⁷ (Smilei 1.3 × 10⁻⁶) |
 
-The initial kinetic energies differ as the loads do. PIConGPU's thermal momenta are the non-relativistic Maxwellian in momentum, and their energy is computed as (γ − 1)mc². Smilei draws the classical energy and sets |p| relativistically. That is an O(T) = 2.5 × 10⁻³ difference in the load (Setup). The two-stream energy drift at 256 cells does not halve in PIConGPU as it does in Smilei; that was not investigated (open items). In 2D, Smilei's t = 0 field energy exceeds PIConGPU's by 2.4 %: Smilei's `Uelm` scalars count extra columns (131/128) and include the constant field Smilei adds after its Poisson solve (`reports/crosscode-smilei-2d/`). PIConGPU's are ½ ΣE²ΔV over the cells.
+The kinetic energy is the exact Σ(γ − 1)mc², formed by the reader from PIConGPU's total-energy column minus the rest energy. PIConGPU's own kinetic-energy column switches to p²/2m below γ = 1.005 (`algorithms/KinEnergy.hpp`). The review (B1) found this, and with that column the two-stream energy drift looked twice Smilei's at 256 cells; with the exact energy the two codes agree to three digits.
+
+**Thermal loads.** The initial kinetic energies differ as the loads do. PIConGPU's thermal momenta are the non-relativistic Maxwellian in momentum; Smilei draws the classical energy and sets |p| relativistically (Setup). The review computed by quadrature that PIConGPU's load is 0.31 % below (3/2)nT in exact kinetic energy. The measured seed means are −0.32 % in 1D (eight seeds of 3.2 × 10⁶ electrons) and −0.34 % in 2D (four of 1.68 × 10⁷). The 2D mean is about 2.5 standard errors of the mean from the prediction, which was not followed up.
+
+**Smilei's 2D field energy.** Smilei's t = 0 field energy exceeds PIConGPU's by 2.4 %: Smilei's `Uelm` scalars count extra columns (131/128) and include the constant field Smilei adds after its Poisson solve (`reports/crosscode-smilei-2d/`). PIConGPU's are ½ ΣE²ΔV over the cells.
+
+**FP32 Gauss.** The FP32 runs keep Gauss's law to the precision of the format: 7 × 10⁻⁴ of the perturbation at t = 0 (the background and the density rounded to float), growing to 5.8 × 10⁻⁵ (128 cells) and 1.4 × 10⁻⁴ (256 cells) absolute over 5253 and 10 506 steps. The review estimates about 4 × 10⁻⁵ for a random walk of FP32 roundoff in E over 5253 steps.
+
+**A glitch in PIConGPU's derived charge density, in the thermal quasi-1D runs only.** In 18 to 32 of the 671 dumps of each Landau seed, the dumped electron charge density summed over the box is short by 1 × 10⁻⁴ to 8 × 10⁻⁴ of the electron charge. At every other dump it is exact to 10⁻¹⁵, and Gauss's law on the dumped fields holds to 10⁻¹⁴. Three observations, from the review (M1), show that the derived density is wrong and not the state:
+
+1. The openPMD dump and the `chargeConservation` plugin derive the density separately from the same particle state at the same iterations. Their spikes fall on different steps (in seed 20261101, 21 against 20, sharing one step). One state gives two densities, so the derivation is not deterministic.
+2. The particle-energy plugin runs at the same steps over the same particles and is smooth to 10⁻⁸. A loss of 10⁻⁴ of the electrons would show at 10⁻⁴.
+3. At the glitched steps examined, the missing charge sits in one 16 × 1 supercell plus the TSC footprint, away from the periodic seam. About 0.35 % of that supercell's electrons are missing, some 22 frames of 16 particles. That points at the frame traversal of the deposit to the grid.
+
+None of the cold two-stream runs (same layout, no motion in y) and none of the 2D runs (8 × 8 supercells) shows it. The observables use E only, and the analysis uses the density at t = 0 only, so no number in this report is affected.
+
+A particle skipped in the push, if the same frame traversal could skip one there, would leave no trace in Gauss's law: it would neither move nor deposit. That is not tested here (open items). The glitch is being reduced to a minimal setup for an `upstream` issue.
 
 ### Two-stream: the codes agree to about 10⁻⁶
 
@@ -85,16 +101,16 @@ Pre-registered `growth_rate` (field energy, the 10⁻³ to 3 × 10⁻² window),
 
 | | Smilei | PIConGPU FP64 | PIConGPU FP32 | PIConGPU − Smilei | FP32 − FP64 |
 |---|---|---|---|---|---|
-| 128 cells, γ | 0.3456117 ± 0.0009 | 0.3456123 ± 0.0009 | 0.3456120 | +5.9 × 10⁻⁷ (+1.7 × 10⁻⁶ relative, 5 × 10⁻⁴ fit errors) | −3.2 × 10⁻⁷ |
+| 128 cells, γ | 0.3456117 ± 0.0009 | 0.3456123 ± 0.0009 | 0.3456120 | +5.8 × 10⁻⁷ (+1.7 × 10⁻⁶ relative, 6 × 10⁻⁴ fit errors) | −2.9 × 10⁻⁷ |
 | 128 cells, γ from \|Ê₁\|² | 0.3369876 | 0.3369876 | 0.3369885 | +6.9 × 10⁻⁸ | +8.6 × 10⁻⁷ |
-| 256 cells, γ | 0.3459258 ± 0.0009 | 0.3459258 ± 0.0009 | 0.3459269 | +4.4 × 10⁻⁸ | +1.1 × 10⁻⁶ |
+| 256 cells, γ | 0.3459258 ± 0.0009 | 0.3459259 ± 0.0009 | 0.3459269 | +7.5 × 10⁻⁸ (+2.2 × 10⁻⁷ relative) | +1.05 × 10⁻⁶ |
 | 256 cells, γ from \|Ê₁\|² | 0.3370343 | 0.3370343 | 0.3370342 | −2.8 × 10⁻⁹ | −9.2 × 10⁻⁸ |
 
-Both codes fit the same 164 (163) samples over t = 13.80 to 18.76 (13.83 to 18.76), and their saturation energies agree to 10⁻⁶. Every run is relative to the theory 0.3508758 by the common −1.5 % (−1.4 % at 256 cells) of WP-012, the fit window sampling a transient (#168).
+PIConGPU's `Uelm_Ex` is the 16-digit total field energy minus the other components (it prints the components with 6 digits, review m2). Both codes fit the same 164 (163) samples over t = 13.80 to 18.76 (13.83 to 18.76), and their saturation energies agree to 3 × 10⁻⁶. Every run is relative to the theory 0.3508758 by the common −1.5 % (−1.4 % at 256 cells) of WP-012, the fit window sampling a transient (#168).
 
-**ParticleMesh against both.** ParticleMesh's WP-012 run gives 0.345904 at 128 cells, +8.4 × 10⁻⁴ from both codes. A post-hoc investigation of this package traced it to two things:
+**ParticleMesh against both.** ParticleMesh's WP-012 run gives 0.345904 at 128 cells, +2.9 × 10⁻⁴ from both codes (+8.4 × 10⁻⁴ relative). A post-hoc investigation of this package traced it to two things:
 
-- **The window.** Fitted over the reference codes' window, ParticleMesh gives 0.345578, −1.0 × 10⁻⁴ from them. Its own window starts one output later, because its saturation peak falls one output later, and because log U bends over the window, a one-sample shift moves γ by 1 × 10⁻³ in any of the codes.
+- **The window.** Fitted over the reference codes' window, ParticleMesh gives 0.345577, −3.5 × 10⁻⁵ from them (−1.0 × 10⁻⁴ relative). Its own window starts one output later, because its saturation peak falls one output later, and because log U bends over the window, a one-sample shift moves γ by 1 × 10⁻³ in any of the codes.
 - **The initial condition.** ParticleMesh's U(t) differs from PIConGPU's by +1.3 % at t = 1 and −1.0 % from t = 10 on. The cause is ParticleMesh's half-step momentum kick at start-up (A2's centring: the loaded momenta are those at t = 0 and are pushed back to −Δt/2 in E⁰), while Smilei and PIConGPU take the loaded momenta as those at −Δt/2. With the kick removed, ParticleMesh's U(t) is a constant 1.0002 × PIConGPU's, and its γ equals both codes' to six digits. The deviation is linear in the kick (doubling and reversing it were checked), and a linear cold-fluid model predicts the late-time energy ratio 0.9893 against the measured 0.9896.
 
 This is a choice of initial condition, not a defect, and the agreement between Smilei and PIConGPU holds because they share theirs. #226 proposes an option for ParticleMesh's convention; the threshold proposal depends on it.
@@ -168,7 +184,24 @@ In quasi-1D the GPU has little work to spread: 512 or 1024 cells, so 512 or 1024
 
 ## Review
 
-REVIEW
+A fresh numerics-reviewer subagent (claude-opus-5-5, 2026-11-01) reviewed the code, the tests, the runs and this report before the FP32 Landau run finished. Its findings are in `review.md`, and the answers below have been applied.
+
+| Finding | Answer |
+|---|---|
+| **B1** (blocking): PIConGPU's kinetic-energy column is p²/2m below γ = 1.005 | Fixed. `read_picongpu_scalars` forms Σ(γ − 1)mc² from the exact total-energy column minus the rest energy of the load, and keeps PIConGPU's column as `Ukin_threshold`. All runs were re-analyzed. The energy rows above are the exact ones: the two-stream drift agrees with Smilei's to three digits, and the open item about it is withdrawn. The threshold is listed in `scripts/crosscode/README.md` and in `questions/wp-017-lwfa-case.md` |
+| **M1**: the Esirkepov argument does not rule out a skipped push | Fixed. The paragraph now rests on the review's three observations (two derivations of one state disagree, the energy plugin sees every particle, the deficit is confined to one supercell), and a skipped push is stated as untested. The localization went to the upstream reduction |
+| **M2**: quasi-1D Gauss and charge numbers had no committed source | Fixed. `picongpu_dump_checks` (`analyze.jl`) writes the per-dump Gauss residual and each species' total charge into every PIConGPU run's `observables.json`, and the checks table cites them |
+| **M3**: the #226 numbers are relative | Fixed: both are labelled, with the absolute values next to them, and the as-is value is 0.345577 |
+| m1: per-seed energy ranges | Regenerated from the re-analysis |
+| m2: 6-digit `Uelm_Ex` | Fixed. `Uelm_Ex` is the 16-digit total minus the other components. The 256-cell difference is now +7.5 × 10⁻⁸ (2.2 × 10⁻⁷ relative), and `T-215.wp017` was updated |
+| m3: cold two-stream says nothing about thermal momenta | Reworded (open items) |
+| m4: a constant factor in U does not change γ | The relaxation argument is removed from the proposal |
+| m5: FP32 Gauss not reported | Added: an FP32 column in the checks table, and a paragraph |
+| m6: stale Gauss-check comment | Fixed in `analyze.jl` |
+| m7: provenance | All runs re-analyzed from a clean tree (each manifest's `[analysis]`). `compare.jl` records the committed report directories |
+| m8: repeated x positions in quasi-1D | One clause added under "Quasi-1D runs" |
+
+Not verified by the review, and still open: Smilei's side of the initial-momentum convention and the 131/128 explanation of Smilei's 2D `Uelm` (Smilei's source not checked); whether the push can skip particles; the cell-centred-weight explanation of ParticleMesh's remaining 2 × 10⁻⁴; the 0.6 s per dump; the FP32 Landau run, analyzed after the review.
 
 ## Verification status
 
@@ -177,14 +210,14 @@ REVIEW
 - The generated setups compiled and ran first time in the runner's image; PIConGPU's own `chargeConservation` and the analysis's Gauss check confirm the initial field.
 - The oblique ensemble entry was committed (`d61a812`) before any run of the case in this package, and T-256 checks that WP-019's four entries are unchanged.
 - The ParticleMesh two-stream investigation is post hoc: it reran WP-012's ParticleMesh case with the start-up kick scaled (0, 1, 2, −1), from scripts outside the repository, with no repository file changed; its baseline reproduced WP-012's stored series exactly. The proposal of an option is #226.
-- Not verified: whether the charge-density glitch of the thermal quasi-1D runs reaches the push (only the derived density is shown to be affected); the cause of the larger two-stream energy drift at 256 cells in PIConGPU; the cell-centred-weight explanation of ParticleMesh's remaining 2 × 10⁻⁴ in U.
+- Not verified: whether the frame traversal behind the charge-density glitch can also skip particles in the push (a skipped push leaves no Gauss trace); the 2D seed-mean kinetic energy sits about 2.5 standard errors from the quadrature prediction; the cell-centred-weight explanation of ParticleMesh's remaining 2 × 10⁻⁴ in U.
 
 ## Known limitations and open items
 
 - **Seeds.** Four seeds per code in 2D and eight in 1D leave the Landau differences unresolved (0.3 and 1.5 combined errors). The jackknife over four seeds samples the variation of the fit's stop poorly (WP-012 review, F1).
-- **Initial conditions are not identical across the codes**, by design of each code: the in-cell lattice (whole cell against 97.5 %), the thermal momenta (non-relativistic Maxwellian in momentum against Smilei's classical energy with relativistic |p|, O(T) = 2.5 × 10⁻³), Smilei's constant post-Poisson field, and ParticleMesh's half-step kick (#226). The deterministic two-stream case shows that the first two do not matter at 10⁻⁶ between Smilei and PIConGPU.
-- **The charge-density glitch** of PIConGPU in the thermal quasi-1D layout (Results, checks): reduced to an `upstream` issue separately; not shown to touch the push.
-- **Two-stream energy drift at 256 cells**: PIConGPU 1.09 × 10⁻³ against Smilei 0.55 × 10⁻³ (128 cells: 1.22 against 1.02 × 10⁻³). Not investigated; the growth rates agree to 10⁻⁷.
+- **Initial conditions are not identical across the codes**, by design of each code: the in-cell lattice (whole cell against 97.5 %), the thermal momenta (non-relativistic Maxwellian in momentum against Smilei's classical energy with relativistic |p|, O(T) = 2.5 × 10⁻³), Smilei's constant post-Poisson field, and ParticleMesh's half-step kick (#226). The cold two-stream case shows that the in-cell lattice does not matter at 10⁻⁶ between Smilei and PIConGPU; being cold, it says nothing about the thermal momenta.
+- **The charge-density glitch** of PIConGPU in the thermal quasi-1D layout (Results, checks): reduced to an `upstream` issue separately; whether the push can skip particles the same way is untested.
+- **PIConGPU's kinetic-energy column** is p²/2m below γ = 1.005; the reader forms the exact kinetic energy from the total-energy column (README, "PIConGPU specifics").
 - **Throughput** is not compared (non-goal); the quasi-1D runs are I/O- and occupancy-bound in PIConGPU.
 - **Precision of PIConGPU's scalars**: the per-component field energies are printed with 6 significant digits, which sets the 1.6 × 10⁻⁶ offset of the oblique `energy_ratio` from the Yee value; the totals have 16.
 - **Weibel** is not run in PIConGPU (non-goal), and the 2D LWFA case is not written; its prerequisites are in `questions/wp-017-lwfa-case.md`.
