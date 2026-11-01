@@ -371,7 +371,9 @@ end
 end
 
 # Unsorted cells for every particle, from a fixed multiplicative hash of the slot (no RNG, so the
-# keys are the same on every run): what a push leaves for the next sort.
+# keys are the same on every run): what a push leaves for the next sort. It writes every slot up
+# to the capacity, dead ones included, so the cells no longer match the positions for the deposit
+# and gather measurements that follow; that is harmless here, where only allocation counts are read.
 function move_cells!(s, n)
     slot = UInt64.(1:length(s.w))
     for d in eachindex(n)
