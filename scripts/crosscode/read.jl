@@ -137,3 +137,177 @@ function read_fields(path::AbstractString; file = "Fields0.h5", names = nothing,
 end
 
 end
+
+# Readers for PIConGPU's output (PIConGPU 0.8.0, the openPMD plugin with the HDF5 backend and
+# group-based iteration encoding, `--openPMD.infix NULL`), into the schemas above.
+#
+#   openPMD/simData.h5   written by plugins/openPMD/openPMDWriter.x.cpp: group "/data", one
+#                        subgroup per iteration (attributes `time`, `dt`, `timeUnitSI`, from
+#                        plugins/common/openPMDWriteMeta.hpp), with "fields/E/{x,y,z}",
+#                        "fields/B/{x,y,z}" and "fields/<species>_all_chargeDensity" (the
+#                        file's `meshesPath` is "fields/"). A 2D
+#                        dataset is C-order F[y][x] (axisLabels ["y", "x"]), which HDF5.jl shows
+#                        as an Nx × Ny array, x first; it holds the cells only (no repeated
+#                        periodic point). `gridSpacing` and `gridGlobalOffset` follow axisLabels
+#                        (y first), while `position` is written x first (the writer loops over
+#                        the dimensions d = 0, 1 = x, y without reversing; E_x at (0.5, 0), E_y at
+#                        (0, 0.5), B_x at (0, 0.5), B_y at (0.5, 0), the charge density at (0, 0),
+#                        fields/YeeCell.hpp). Values times `unitSI` are SI.
+#   fields_energy.dat    plugins/EnergyFields.x.cpp: "#step total Bx By Bz Ex Ey Ez" in J.
+#   <species>_energy_all.dat  plugins/EnergyParticles.x.cpp: "#step Ekin_Joule E_Joule" in J.
+#   units.toml           written by scripts/crosscode/picongpu.jl: the SI value of each unit of
+#                        A1 for the run, and the J per unit of the energy scalars.
+#
+# Schemas: `read_picongpu_scalars(dir)` returns (; time, columns) with the column names of
+# Smilei's scalars.txt (`Uelm`, `Uelm_Ex`, …, `Uelm_Bx_m`, … for B, `Ukin`, `Utot`), in the
+# units of A1 (energies per unit depth in 2D, per unit transverse area in quasi-1D, as Smilei
+# 2D and 1D); `read_picongpu_fields(dir; names, yaverage)` returns (; iterations, time, x,
+# fields) as `read_fields` does, with names "Ex", "Ey", "Ez", "Bx", "By", "Bz", "Rho" (the sum
+# of the species' charge densities) and "Rho_<species>". The reader appends the periodic copy
+# of the first point on each axis, so that a field has cells + 1 points per axis as Smilei's do
+# and the analysis drops it the same way. With `yaverage = true` (the quasi-1D runs) each field
+# is averaged over y and returned in the 1D schema: points × outputs, x[name] a vector.
+
+module PIConGPURead
+
+using HDF5
+using TOML
+using Statistics: mean
+
+export read_picongpu_scalars, read_picongpu_fields, picongpu_output, yaverage
+
+"The run directory's units.toml, looked up in `dir` and its parent (a seed directory's run)."
+function picongpu_units(dir)
+    for d in (dir, dirname(abspath(dir)))
+        f = joinpath(d, "units.toml")
+        isfile(f) && return TOML.parsefile(f)
+    end
+    error("no units.toml in $dir or its parent")
+end
+
+"Whether `dir` holds PIConGPU output (openPMD/simData.h5 or fields_energy.dat)."
+picongpu_output(dir) = isfile(joinpath(dir, "openPMD", "simData.h5")) || isfile(joinpath(dir, "fields_energy.dat"))
+
+function read_dat(file)
+    rows = Vector{Vector{Float64}}()
+    for line in eachline(file)
+        s = strip(line)
+        (isempty(s) || startswith(s, "#")) && continue
+        push!(rows, parse.(Float64, split(s)))
+    end
+    isempty(rows) && error("$file: no data rows")
+    return rows
+end
+
+function read_picongpu_scalars(dir)
+    u = picongpu_units(dir)
+    J = u["energy"]
+    rows = read_dat(joinpath(dir, "fields_energy.dat"))
+    steps = [Int(r[1]) for r in rows]
+    cols = Dict{String,Vector{Float64}}()
+    for (k, n) in enumerate(("Uelm", "Uelm_Bx_m", "Uelm_By_m", "Uelm_Bz_m", "Uelm_Ex", "Uelm_Ey", "Uelm_Ez"))
+        cols[n] = [r[k+1] / J for r in rows]
+    end
+    ukin = zeros(length(steps))
+    for f in readdir(dir)
+        m = match(r"^(.+)_energy_all\.dat$", f)
+        m === nothing && continue
+        r = read_dat(joinpath(dir, f))
+        Int.(first.(r)) == steps || error("$f: steps differ from fields_energy.dat")
+        e = [x[2] / J for x in r]
+        cols["Ukin_" * m.captures[1]] = e
+        ukin .+= e
+    end
+    cols["Ukin"] = ukin
+    cols["Utot"] = ukin .+ cols["Uelm"]
+    cols["time"] = steps .* u["dt"]
+    return (; time = cols["time"], columns = cols)
+end
+
+# Append the periodic copy of the first point along each axis.
+periodic_extend(a::AbstractMatrix) = (b = vcat(a, a[1:1, :]); hcat(b, b[:, 1:1]))
+
+"""
+Positions of the N + 1 points of each axis of a PIConGPU mesh record component: offset + (i +
+position) spacing in c/ω₀, with spacing and offset read in axisLabels order (y first) and
+position x first (see the header).
+"""
+function positions(mesh, comp, n, u)
+    a = attrs(mesh)
+    labels = collect(String, a["axisLabels"])
+    spacing = Float64.(a["gridSpacing"])
+    offset = Float64.(a["gridGlobalOffset"])
+    unit = Float64(a["gridUnitSI"]) / u["length"]
+    pos = Float64.(attrs(comp)["position"])
+    ax(lbl) = findfirst(==(lbl), labels)
+    return ntuple(d -> collect((offset[ax(("x", "y")[d])] .+ ((0:n[d]) .+ pos[d]) .* spacing[ax(("x", "y")[d])]) .* unit), 2)
+end
+
+const COMPONENTS = Dict("Ex" => ("E", "x"), "Ey" => ("E", "y"), "Ez" => ("E", "z"),
+                        "Bx" => ("B", "x"), "By" => ("B", "y"), "Bz" => ("B", "z"))
+
+function read_picongpu_fields(dir; names = nothing, yaverage = false, file = joinpath("openPMD", "simData.h5"))
+    u = picongpu_units(dir)
+    h5open(joinpath(dir, file), "r") do f
+        data = f["data"]
+        keys_ = sort(collect(keys(data)); by = k -> parse(Int, k))
+        iterations = parse.(Int, keys_)
+        mp = rstrip(haskey(attrs(f), "meshesPath") ? attrs(f)["meshesPath"] : "meshes/", '/')
+        g0 = data[keys_[1]][mp]
+        species = sort([m.captures[1] for m in (match(r"^(.+)_all_chargeDensity$", k) for k in keys(g0)) if m !== nothing])
+        available = vcat(sort(collect(keys(COMPONENTS))), "Rho", "Rho_" .* species)
+        wanted = names === nothing ? available : collect(String, names)
+        for n in wanted
+            n in available || error("$n is not in $(joinpath(dir, file)) (available: $available)")
+        end
+        record(g, n) = n in keys(COMPONENTS) ? (g[COMPONENTS[n][1]], g[COMPONENTS[n][1]][COMPONENTS[n][2]]) :
+            (g[replace(n, "Rho_" => "") * "_all_chargeDensity"], g[replace(n, "Rho_" => "") * "_all_chargeDensity"])
+        scale(n) = startswith(n, "E") ? 1 / u["efield"] : startswith(n, "B") ? 1 / u["bfield"] : 1 / u["charge_density"]
+        function value(g, n)
+            if n == "Rho"
+                return sum(value(g, "Rho_" * s) for s in species)
+            end
+            mesh, comp = record(g, n)
+            return Float64.(read(comp)) .* (Float64(attrs(comp)["unitSI"]) * scale(n))
+        end
+        first_ = Dict(n => value(g0, n) for n in wanted)
+        N = size(first_[first(wanted)])
+        x = Dict{String,Any}()
+        for n in wanted
+            src = n == "Rho" ? "Rho_" * first(species) : n
+            mesh, comp = record(g0, src)
+            x[n] = positions(mesh, comp, N, u)
+        end
+        nt = length(keys_)
+        fields = Dict(n => Array{Float64,3}(undef, N[1] + 1, N[2] + 1, nt) for n in wanted)
+        time = Vector{Float64}(undef, nt)
+        for (j, k) in enumerate(keys_)
+            g = data[k]
+            a = attrs(g)
+            t_attr = Float64(a["time"]) * Float64(a["timeUnitSI"]) / u["time"]
+            time[j] = iterations[j] * u["dt"]
+            isapprox(t_attr, time[j]; rtol = 1e-5, atol = 1e-6 * u["dt"]) ||
+                error("iteration $k: time attribute $t_attr is not $(iterations[j]) × dt")
+            m = g[mp]
+            for n in wanted
+                fields[n][:, :, j] .= periodic_extend(j == 1 ? first_[n] : value(m, n))
+            end
+        end
+        if yaverage
+            return (; iterations, time, x = Dict(n => x[n][1] for n in wanted),
+                      fields = Dict(n => PIConGPURead.yaverage(fields[n]) for n in wanted))
+        end
+        return (; iterations, time, x, fields)
+    end
+end
+
+"""
+    yaverage(f) -> Matrix
+
+The y-average of a 2D field in the reader's layout (points_x × points_y × outputs, the last
+y point the periodic copy of the first, which is left out), as points_x × outputs: the 1D
+field of a quasi-1D run.
+"""
+yaverage(f::AbstractArray{<:Real,3}) = dropdims(mean(view(f, :, 1:size(f, 2)-1, :); dims = 2); dims = 2)
+
+end
