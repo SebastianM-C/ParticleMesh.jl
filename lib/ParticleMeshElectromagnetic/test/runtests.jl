@@ -13,6 +13,7 @@ include("determinism_cases.jl")
         include("boris.jl")
         include("pushers.jl")
         include("pushers_sciml.jl")
+        include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
         include("input_checks.jl")  # T-343: the time-step check (#202)
         include("physics.jl")

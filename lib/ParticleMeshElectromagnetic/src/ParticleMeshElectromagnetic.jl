@@ -35,7 +35,7 @@ using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger
 
 export FIELD_LAYOUT, RHO_STAGGER, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!
-export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, push_momentum, push_particle, lorentz_factor
+export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
 export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, problem_from_case, numerics_from_case
 export EMState, initialize!, step!, run!, params

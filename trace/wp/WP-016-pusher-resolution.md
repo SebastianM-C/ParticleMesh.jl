@@ -1,6 +1,6 @@
 +++
 id = "WP-016"
-status = "proposed"
+status = "done"
 goals = ["A1", "A2", "A7", "A8"]
 depends_on = ["WP-015"]
 adds_dependencies = []
@@ -90,7 +90,9 @@ Test ids T-240 to T-249.
   Its uniform-B gyrophase is checked to roundoff against the closed form the test header derives from Eq. 18 and Eq. 22 at E = 0.
 - **T-242 crossed fields and uniform E** [A2, A7, WP-016]: in T-232's and T-233's setups, the u error and the drift error of `QuadraticUnitary` are recorded.
 - **T-243 the scan** [A1, A2, A7, WP-016]: for all five pushers, a₀ ∈ {1, 2, 5, 10} and ω₀Δt ∈ {0.2, 0.1, 0.05, 0.025}:
-  - every error decreases with an observed order of 2 within a measured tolerance where a₀·ω₀Δt ≤ 0.5;
+  - every error decreases with Δt;
+  - γ − u_z and u_x + qA_x have an observed order of 2 within a measured tolerance where a₀·ω₀Δt ≤ 0.5, except `QuadraticUnitary`'s γ − u_z, which is exact in the plane wave and is held to T-241's roundoff bound;
+  - the drift and the position error reach order 2 only below a₀·ω₀Δt ≈ 1/16, so their order is checked on ω₀Δt extended to 0.2/2⁷ where a₀·ω₀Δt ≤ 1/16 (`questions/wp-016-resolution-choices.md` §5);
   - every error is recorded against a₀·ω₀Δt, including the cases outside the asymptotic range.
 - **T-244 element types** [A8, WP-016]: T-241 passes for Float32, Float64 and `Dual{Float32,3}`.
 - **T-245 Float32 at weak rotation** [A2, A7, A8, WP-016]: for all five pushers in Float32, in uniform B with t² below eps(Float32) (#203's reproducer and |u| = 10 with B = 0.05, both at qm_h = −0.05, so t² = (qm_h·B/γ)² ≈ 6e-8), the drift of |u| over 10⁴ steps stays within C·eps(T)·√steps, the scale of unbiased rounding, with C measured and proposed; a linear drift fails it. T-230 to T-237 pass unchanged, and any change of their recorded values is stated in the PR.
