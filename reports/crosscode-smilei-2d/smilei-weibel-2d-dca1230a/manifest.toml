@@ -1,0 +1,74 @@
+case = "weibel-2d"
+case_source = "scripts/crosscode/cases/weibel-2d.toml"
+code = "smilei"
+commit = "310c2ee63b0c56d0c661091d878878e7767fa8b2"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:1283ef8570499aeadbba75268394705e4036c190325e46c54d563117d8bfb177"
+run = "smilei-weibel-2d-dca1230a"
+updated = "2026-11-01T09:39:51.345Z"
+
+[checks]
+rho_max_deviation_t0 = 5.135400368173594e-14
+rho_mean_t0 = 2.573059399560062e-17
+rho_mode_amplitude_t0 = 1.3563159828776908e-16
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 16
+threads = 16
+
+[image]
+id = "localhost/particlemesh-smilei:e4f0148b8952fc87 id 7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:dca1230abbd9f8f61b1e550e0d799b3024c1e4a37abb2df7b8126c6b72bd7a76"
+"run.sh" = "sha256:2d26c00b98a73042a6d6e6752bc8b383890caf8b3c4631bf4fcc007b8f999843"
+"smilei.py" = "sha256:af0236b7f24c108235260d81f8264e16c70dbb52dd244b0f788dd51c3fdfa7a6"
+
+[observables.growth_rate_energy]
+fit_points = 121
+fit_range = [12.313456472, 21.161449146]
+measured = 0.2610729389046595
+measured_stderr = 0.0009126520702121924
+method = "exponential_window"
+relative_difference = -0.010057918655197097
+signal = "scalar_sum"
+theory = 0.26372546821123183
+
+    [observables.growth_rate_energy.saturation]
+    t = 32.000240172
+    value = 0.320264051853
+
+[observables.growth_rate_mode]
+fit_points = 30
+fit_range = [12.387189743914515, 20.940249328998345]
+measured = 0.26086610595018367
+measured_stderr = 0.0019100193461593085
+method = "exponential_window"
+relative_difference = -0.010842192376952928
+signal = "mode_projection"
+theory = 0.26372546821123183
+
+    [observables.growth_rate_mode.saturation]
+    t = 32.147706716349575
+    value = 0.02505404670065843
+
+[outputs]
+"Fields0.h5" = "sha256:b4839319ba27def6ea2767b6410d733194be43c3d5e526ad11401e55e154edb9"
+"container.txt" = "sha256:8a2182d34e981f187d1bd1e0f16a4b34202812ec45877e910fa5fd91928c5b27"
+"scalars.txt" = "sha256:adacb28c41843ae958e3a8347dee5816ecb6a265ea9e78a6c92eeb14df9b1118"
+"smilei.log" = "sha256:3f0727d58401acc0fdef8e0923a6624ecdea8cda6b08a635873cd4ddf9d9a30d"
+
+[performance]
+cells = 65536
+mobile_particle_steps = 18203279360
+mobile_particles = 8388608
+ns_per_mobile_particle_step = 12.506427852788828
+particle_steps = 18345492480
+particles = 8454144
+steps = 2170
+wall_seconds = 227.658

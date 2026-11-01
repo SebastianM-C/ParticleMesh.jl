@@ -230,6 +230,7 @@ function analyze_2d(dir, case; log = nothing)
     observables = case["observables"]
     sc = read_scalars(dir)
     fieldnames = unique(vcat(String[], (get(o, "fields", String[]) for o in values(observables))...))
+    "Rho" in case["diagnostics"]["fields"] && push!(fieldnames, "Rho")   # for the loading checks below
     fl = read_fields(dir; names = fieldnames, timestep = case["time"]["dt"])
     lengths = Tuple(Float64.(case["grid"]["length"]))
     mode = Tuple(Int.(case["wavevector"]["mode"]))
@@ -340,6 +341,24 @@ function analyze_2d(dir, case; log = nothing)
     end
     save_plot(dir, "field-snapshots", fig, side)
 
+    # Loading checks at t = 0 (not observables): the box mean of the charge density, its largest
+    # deviation from the mean, and the amplitude of its mode (the loaded perturbation of the net
+    # charge; zero for opposite-phase beams).
+    checks = Dict{String,Any}()
+    if haskey(fl.fields, "Rho")
+        ρ = fl.fields["Rho"][1:end-1, 1:end-1, 1]
+        checks["rho_mean_t0"] = mean(ρ)
+        checks["rho_max_deviation_t0"] = maximum(abs.(ρ .- mean(ρ)))
+        checks["rho_mode_amplitude_t0"] = abs(only(mode_coefficient(fl.fields["Rho"][:, :, 1:1], mode, fl.x["Rho"], lengths)))
+    end
+    # Post-hoc sensitivity, labelled as such (not a pre-registered observable): the Ex/Ey energy
+    # ratio at the first output with the box mean (k = 0 part) of each field removed. Smilei adds
+    # a uniform field after its initial Poisson solve (scripts/crosscode/README.md).
+    if all(haskey(fl.fields, n) for n in ("Ex", "Ey"))
+        e(n) = (f = fl.fields[n][1:end-1, 1:end-1, 1]; sum(abs2, f .- mean(f)))
+        checks["sensitivity_energy_ratio_t0_without_box_mean"] = e("Ex") / e("Ey")
+    end
+
     # Energy conservation.
     Utot = sc.columns["Utot"]
     drift = (Utot .- Utot[1]) ./ Utot[1]
@@ -354,7 +373,7 @@ function analyze_2d(dir, case; log = nothing)
     wall = wall_seconds(dir)
     performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
     wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
-    result = Dict{String,Any}("case" => name, "observables" => results, "performance" => performance)
+    result = Dict{String,Any}("case" => name, "observables" => results, "performance" => performance, "checks" => checks)
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
     outputs = filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
     m = read_manifest(dir)
@@ -362,7 +381,7 @@ function analyze_2d(dir, case; log = nothing)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => image_id(dir, log)))
     flat = Dict(k => Dict(kk => vv for (kk, vv) in v if vv !== nothing) for (k, v) in results)
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
-        "hardware" => hardware(dir), "performance" => performance, "observables" => flat))
+        "hardware" => hardware(dir), "performance" => performance, "checks" => checks, "observables" => flat))
     return result
 end
 
