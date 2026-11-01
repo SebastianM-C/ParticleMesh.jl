@@ -101,27 +101,33 @@ end
 The in-place map of the harness, `m(u, uprev, p, t)`: copy `uprev` into `u`, then the module's
 `step!` on `u` with the cache of `state`, as step `k = t` (`FunctionMap` passes the time at the
 end of the step). `p` is the `EMProblem`, read for the time step and the diagnostic wavenumber.
-`done` counts the steps of the current solve: a solve must start at step 1 and take every
-step in order (`t0 = 0`, `dt = 1`), so that the histories and the state are those of `run!`.
+`done` counts the steps of the current solve and `owner` holds the first array of the state
+it stepped (a reference, so `===` cannot match a later array at a reused address): a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and
+only the same integrator's state may continue, so that the histories and the state are those
+of `run!`.
 """
 struct EMMap{S<:EMState,B}
     state::S
     backend::B
     done::Base.RefValue{Int}
+    owner::Base.RefValue{Any}
 end
 
-EMMap(state::EMState, backend) = EMMap(state, backend, Ref(0))
+EMMap(state::EMState, backend) = EMMap(state, backend, Ref(0), Ref{Any}(nothing))
 
 function (m::EMMap)(u, uprev, p, t)
     # The module's step sorts the particle buffers in place, so the next state starts as a
     # copy of the previous one (sciml-reuse.md §1).
     copy_arrays!(u.x, uprev.x)
     k = round(Int, t)
-    # a host-side check of the host time: step 1 starts a solve, every later step follows the last
-    (k == t && (k == 1 || k == m.done[] + 1)) ||
-        throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1); got t = $t after step $(m.done[])"))
+    # host-side checks of the host time and of which arrays are stepped: step 1 starts a solve,
+    # every later step follows the last one on the same integrator's state
+    a = first(u.x)
+    (k == t && (k == 1 || (k == m.done[] + 1 && a === m.owner[]))) ||
+        throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1) on one integrator; got t = $t after step $(m.done[])"))
     step!(state_on(m.state, u), params(p), k)
     m.done[] = k
+    m.owner[] = a
     return nothing
 end
 
@@ -152,7 +158,9 @@ The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
 - `u0 = state_partition(state)` of a new `EMState`, loaded by `initialize!(state, problem)`;
 - the map runs the module's `step!` (see `EMMap`), with that state as its cache;
 - `p = problem`; `tspan = (0, nsteps)` in steps, `dt = 1`. A solve takes every step from
-  step 1, so a `tspan` that starts elsewhere or a `dt ≠ 1` is refused (`ArgumentError`).
+  step 1, so a `tspan` that starts elsewhere or a `dt ≠ 1` is refused with an `ArgumentError`:
+  here, or at the first step when it comes from `remake` or a `solve` keyword. A run is
+  continued with the integrator interface (`init`, `step!`), not by a second solve.
 
 `kwargs` are stored as problem keywords and passed to `solve`, for example
 `saveat = [0, 10, 20]` (whole steps; the saved states are copies of the particle and field

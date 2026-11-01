@@ -79,6 +79,14 @@ end
     dprob = DiscreteProblem(prob, num; backend)
     @test_throws ArgumentError remake_reload(dprob; p = prob, tspan = (5.0, 10.0))
     @test_throws ArgumentError solve(remake(dprob; tspan = (5.0, 10.0)), FunctionMap())
+    # nor after a solve that ended at that step: a new solve does not continue the last one
+    solve(remake(dprob; tspan = (0.0, 5.0)), FunctionMap())
+    @test_throws ArgumentError solve(remake(dprob; tspan = (5.0, 10.0)), FunctionMap())
+    # a run continues on its own integrator: init, then single steps, equal the loop
+    integ = init(dprob, FunctionMap(); save_everystep = false)
+    foreach(_ -> SciMLBase.step!(integ), 1:3)
+    @test integ.t == 3
+    @test partition_bits(integ.u) == state_bits(loop_state(prob, num, 3))
 end
 
 @testset "T-101 remake_reload equals a problem built from scratch for p′, bitwise [A3, A9, WP-008]" begin
