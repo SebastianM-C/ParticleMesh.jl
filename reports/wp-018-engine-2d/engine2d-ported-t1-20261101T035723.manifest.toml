@@ -1,0 +1,40 @@
+backend = "KernelAbstractions CPU"
+commit = "8893c31e339135f011450b2f4282cad0b370a39d"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = true
+julia = "1.13.3"
+run_id = "engine2d-ported-t1-20261101T035723"
+threads = 1
+updated = "2026-11-01T03:57:23.273Z"
+work_package = "WP-018"
+
+[inputs]
+"Manifest.toml" = "sha256:05223a1c79b3bebd6458545f0a5e270143bc001ad102a2250ed0b57109194ebe"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:4cd1c7650d55e73c6b16993ad47b00afba520e82080177397feb925f00f8d935"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:d259209f945706ddd31e1f74000346d174f7c2b8e90d804557e317fa9d978f49"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:23e2b0cf00db92744ab09c8599e40f7d4792de5d7b743b97b96b4b4d9145e2db"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:aed3575cb49d7a834c81ecf1eb22647b79b5e76c92ee9e9c20a0bb0822fcf455"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:6f04e72280f937439c111463cae4a09165851169c030a37026bcf992895a2c62"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:b7fa142c341abead484b5310a5f50b8d55c66c71cec138026224ad02f168ef20"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:9ab0566b59a967a9d744dc57d15f86f2c6a5056010f59f7c319356826215bb34"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:a4db4392c0d5c9457090103a46d84aaa385c09cfe96f0dc7cc305acd310400de"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:445a7e6099d93bbcbeae425b92f1f8942d7c1664b3431a56e02af083c92b0509"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:8882d7203bc6e0ffccb1948ec684b53d099b649c6b1818f740e30ac555f12ce8"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:5e334d6c6882139105fce6c079f371dd2e892a691be44719512abc7493081008"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:5eff3299fc0e599ebee7a1488d55894aa12221a8baff71892ed0fe4070f5bff6"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:09d226aef23986eeaaab2be9a61ef6baee5f91581d6981f36b5862a6dbb73065"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:ed8a5656ef169aef8c591c3ff890f8d308171b7986407eaefe1f4f8342b8ae5a"
+"scripts/Manifest.toml" = "sha256:5f1e391f9c3ce6579f395b47af78a869a1b3b165dfbfadaedad8e33c620d6d84"
+"scripts/engine2d/common.jl" = "sha256:fdcf9f2d28f50cb3e80e174b2d2ec3669dd0b2f36fee19447725fd2fe773afa2"
+"scripts/engine2d/timing.jl" = "sha256:949af45118066ab35f5c30c7b060b4cdb85888090f23c9038a68c31f42bfd62d"
+
+[parameters]
+ppc = 64
+proxy = "16x12 cells, 2x3 and 8x8 per cell, 50 steps, 7 runs"
+sizes = [[16, 12], [64, 48]]
+timer = "median of 7 samples, each the mean of 5 calls, after one warm-up call"

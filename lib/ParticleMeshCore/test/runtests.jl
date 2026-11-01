@@ -9,6 +9,8 @@ include("helpers.jl")
 include("digest.jl")
 include("engine_cases.jl")
 include("flux_cases.jl")
+include("n1_digests.jl")
+include("engine2d_cases.jl")
 
 @testset "ParticleMeshCore" begin
     try
@@ -21,6 +23,7 @@ include("flux_cases.jl")
         include("engine.jl")
         include("split.jl")
         include("flux.jl")
+        include("engine2d.jl")
     finally
         println("\nMeasured err/(eps(T)·scale) per test (compare with tolerances.toml):")
         for id in sort(collect(keys(MEASURED)))

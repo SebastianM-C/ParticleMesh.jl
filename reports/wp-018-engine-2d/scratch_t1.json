@@ -1,0 +1,100 @@
+{
+  "rows": [
+    {
+      "T": "Float32",
+      "bytes": 39552,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 33.0,
+      "capacity": 1152,
+      "cells": [
+        16,
+        12
+      ],
+      "extras": "()"
+    },
+    {
+      "T": "Float32",
+      "bytes": 6512640,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 33.0,
+      "capacity": 196608,
+      "cells": [
+        64,
+        48
+      ],
+      "extras": "()"
+    },
+    {
+      "T": "Float32",
+      "bytes": 39552,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 33.0,
+      "capacity": 1152,
+      "cells": [
+        16,
+        12
+      ],
+      "extras": "(:old_cell, :old_offset)"
+    },
+    {
+      "T": "Float32",
+      "bytes": 6512640,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 33.0,
+      "capacity": 196608,
+      "cells": [
+        64,
+        48
+      ],
+      "extras": "(:old_cell, :old_offset)"
+    },
+    {
+      "T": "Float64",
+      "bytes": 44160,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 37.0,
+      "capacity": 1152,
+      "cells": [
+        16,
+        12
+      ],
+      "extras": "()"
+    },
+    {
+      "T": "Float64",
+      "bytes": 7299072,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 37.0,
+      "capacity": 196608,
+      "cells": [
+        64,
+        48
+      ],
+      "extras": "()"
+    },
+    {
+      "T": "Float64",
+      "bytes": 44160,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 37.0,
+      "capacity": 1152,
+      "cells": [
+        16,
+        12
+      ],
+      "extras": "(:old_cell, :old_offset)"
+    },
+    {
+      "T": "Float64",
+      "bytes": 7299072,
+      "bytes_per_cell": 8.0,
+      "bytes_per_particle": 37.0,
+      "capacity": 196608,
+      "cells": [
+        64,
+        48
+      ],
+      "extras": "(:old_cell, :old_offset)"
+    }
+  ]
+}
