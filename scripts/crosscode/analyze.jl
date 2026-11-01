@@ -185,16 +185,26 @@ function wall_seconds(dir)
     return (t1 - t0) / Millisecond(1000)
 end
 
+"The step count Smilei ran (`n_time` in smilei.log), or nothing."
+function smilei_steps(dir)
+    f = joinpath(dir, "smilei.log")
+    isfile(f) || return nothing
+    for l in eachline(f)
+        m = match(r"n_time = (\d+)", l)
+        m === nothing || return parse(Int, m[1])
+    end
+    return nothing
+end
+
 """
-    run_size(case) -> Dict
+    run_size(case; steps) -> Dict
 
 Particles and particle-steps of a schema-2 case: the particles of every species
 (cells × particles per cell), those of the mobile species, and the products with the step
-count.
+count (`steps`, by default the case's round(t_end/dt)).
 """
-function run_size(case)
+function run_size(case; steps = round(Int, case["time"]["t_end"] / case["time"]["dt"]))
     cells = prod(case["grid"]["cells"])
-    steps = round(Int, case["time"]["t_end"] / case["time"]["dt"])
     n(s) = cells * prod(s["particles_per_cell"])
     total = sum(n, case["species"])
     mobile = sum(n(s) for s in case["species"] if s["mobile"])
@@ -336,7 +346,8 @@ function analyze_2d(dir, case; log = nothing)
     for (p, j) in enumerate(picks)
         ax = Axis(fig[(p - 1) ÷ 2 + 1, (p - 1) % 2 + 1]; xlabel = "x [c/ω₀]", ylabel = "y [c/ω₀]",
             title = "$fname, t = $(round(fl.time[j]; digits = 2))", aspect = DataAspect())
-        heatmap!(ax, fl.x[fname][1], fl.x[fname][2], F[:, :, j]; colormap = :RdBu)
+        lim = max(maximum(abs, F[:, :, j]), floatmin())
+        heatmap!(ax, fl.x[fname][1], fl.x[fname][2], F[:, :, j]; colormap = :RdBu, colorrange = (-lim, lim))
         side["max_abs_at_t"][string(round(fl.time[j]; digits = 4))] = maximum(abs, F[:, :, j])
     end
     save_plot(dir, "field-snapshots", fig, side)
@@ -350,6 +361,22 @@ function analyze_2d(dir, case; log = nothing)
         checks["rho_mean_t0"] = mean(ρ)
         checks["rho_max_deviation_t0"] = maximum(abs.(ρ .- mean(ρ)))
         checks["rho_mode_amplitude_t0"] = abs(only(mode_coefficient(fl.fields["Rho"][:, :, 1:1], mode, fl.x["Rho"], lengths)))
+    end
+    # Staggering checks on the dumps, which also check the reader's dual-axis positions (a dual
+    # point i at (i − ½)Δ, so Ex[i+1] − Ex[i] is centred on node i): Gauss's law at t = 0,
+    # max |∇·E − ρ| / max |ρ|, and the largest |∇·B| over all outputs relative to max |B|.
+    hx, hy = lengths ./ Tuple(case["grid"]["cells"])
+    Nx, Ny = Tuple(case["grid"]["cells"])
+    if all(haskey(fl.fields, n) for n in ("Ex", "Ey", "Rho"))
+        Ex, Ey, ρ = (fl.fields[n][:, :, 1] for n in ("Ex", "Ey", "Rho"))
+        checks["gauss_residual_t0_relative"] = maximum(abs((Ex[i+1, j] - Ex[i, j]) / hx +
+            (Ey[i, j+1] - Ey[i, j]) / hy - ρ[i, j]) for i in 1:Nx, j in 1:Ny) / maximum(abs, ρ)
+    end
+    if all(haskey(fl.fields, n) for n in ("Bx", "By"))
+        Bx, By = fl.fields["Bx"], fl.fields["By"]     # Bx: (primal x, dual y), By: (dual x, primal y)
+        divB = maximum(abs((Bx[i+1, j+1, n] - Bx[i, j+1, n]) / hx + (By[i+1, j+1, n] - By[i+1, j, n]) / hy)
+                       for i in 1:Nx, j in 1:Ny, n in axes(Bx, 3))
+        checks["divB_max_relative"] = divB / max(maximum(abs, Bx), maximum(abs, By))
     end
     # Post-hoc sensitivity, labelled as such (not a pre-registered observable): the Ex/Ey energy
     # ratio at the first output with the box mean (k = 0 part) of each field removed. Smilei adds
@@ -369,7 +396,9 @@ function analyze_2d(dir, case; log = nothing)
         "max_abs_relative_change" => maximum(abs, drift), "final_relative_change" => drift[end],
         "Utot0" => Utot[1], "Ukin0" => sc.columns["Ukin"][1], "Uelm0" => sc.columns["Uelm"][1]))
 
-    size_ = run_size(case)
+    ran = smilei_steps(dir)
+    size_ = run_size(case; steps = something(ran, round(Int, case["time"]["t_end"] / case["time"]["dt"])))
+    size_["steps_source"] = ran === nothing ? "case (round(t_end/dt))" : "smilei.log (n_time)"
     wall = wall_seconds(dir)
     performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
     wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
@@ -381,7 +410,10 @@ function analyze_2d(dir, case; log = nothing)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => image_id(dir, log)))
     flat = Dict(k => Dict(kk => vv for (kk, vv) in v if vv !== nothing) for (k, v) in results)
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
-        "hardware" => hardware(dir), "performance" => performance, "checks" => checks, "observables" => flat))
+        "hardware" => hardware(dir), "performance" => performance, "checks" => checks, "observables" => flat,
+        "analysis" => (a = git_commit(dirname(dirname(@__DIR__)));
+            Dict{String,Any}("script" => "scripts/crosscode/analyze.jl", "commit" => a.commit,
+                "dirty" => coalesce(a.dirty, "unknown")))))
     return result
 end
 

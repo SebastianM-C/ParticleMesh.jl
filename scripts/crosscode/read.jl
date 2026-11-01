@@ -12,6 +12,13 @@
 #                 dataset has the C-order dimensions [Nx + 1, Ny + 1] (x slowest, openPMD
 #                 `dataOrder = "C"`, `axisLabels = ["x", "y"]`), and `gridSpacing`,
 #                 `gridGlobalOffset` and `position` hold one entry per axis, in x, y order.
+#                 Smilei writes `position = 0.5` on dual axes (DiagnosticFields.cpp,
+#                 stagger = 0.5·isDual) but starts the data at local index `oversize`
+#                 (DiagnosticFields2D.cpp), which on a dual axis is x = −Δ/2: point i of a dual
+#                 axis sits at (i − ½)Δ, not at (i + ½)Δ as the openPMD reading of the attribute
+#                 gives. The 2D reader places it at gridGlobalOffset + (i − position)·gridSpacing;
+#                 Gauss's law on the dumps closes to roundoff only with that convention
+#                 (reports/crosscode-smilei-2d/review.md, B1).
 #
 # Schemas (also in scripts/crosscode/README.md):
 #   read_scalars(dir) -> (; time::Vector{Float64}, columns::Dict{String,Vector{Float64}})
@@ -21,7 +28,7 @@
 #           fields[name] is npoints × noutputs and x[name] the positions of its points.
 #       2D: x::Dict{String,NTuple{2,Vector{Float64}}}, fields::Dict{String,Array{Float64,3}};
 #           fields[name] is npoints_x × npoints_y × noutputs (x first) and x[name] the
-#           positions (x, y) of its points along each axis.
+#           positions (x, y) of its points along each axis, a dual axis starting at −Δ/2.
 
 module SmileiRead
 
@@ -82,12 +89,16 @@ function _positions(ds, n)
     return collect(x0 .+ ((0:n-1) .+ s) .* dx)
 end
 
-"Per-axis positions of a 2D dataset with `n = (nx, ny)` points, from its per-axis openPMD attributes."
+"""
+Per-axis positions of a 2D dataset with `n = (nx, ny)` points, in Smilei's layout:
+x = gridGlobalOffset + (i − position) gridSpacing for i = 0, 1, …, so the first point of a
+dual axis (`position = 0.5`) is at −Δ/2 (see the file header).
+"""
 function _positions2(ds, n)
     a = attrs(ds)
     axis(key, d, default) = haskey(a, key) ? Float64(a[key][d]) : default
     return ntuple(d -> collect(axis("gridGlobalOffset", d, 0.0) .+
-        ((0:n[d]-1) .+ axis("position", d, 0.0)) .* axis("gridSpacing", d, NaN)), 2)
+        ((0:n[d]-1) .- axis("position", d, 0.0)) .* axis("gridSpacing", d, NaN)), 2)
 end
 
 # A dataset in x-first order: HDF5.jl shows the C-order dimensions [Nx + 1, Ny + 1] reversed.
