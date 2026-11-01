@@ -226,3 +226,39 @@ C_w = 2
 C_u = 4
 measured = { "w Float32 on CUDABackend" = 0.973, "w Float64 on CUDABackend" = 0.978, "w Dual{Float32,3} on CUDABackend" = 0.973, "u Float32 on CUDABackend" = 3.0, "u Float64 on CUDABackend" = 3.0, "u Dual{Float32,3} on CUDABackend" = 2.0 }
 status = "proposed"
+
+# WP-021: the periodic spectral inverse of the discrete Laplacian and its forward-difference
+# gradient (N = 2 on cells of 1/4 × 3/8, N = 1 on cells of 3/8). The solve is bitwise across
+# thread counts (T-312), so one measurement holds for every thread count. Growth: measured on
+# 16 × 12 to 256 × 192 and 64 to 4096 cells (reports/wp-021-periodic-solve-2d.md), the residual
+# grows like the square root of Σ_d n_d, so the ratio to the linear scale below falls with the
+# grid size and the smallest grid sets the measured value.
+
+["T-310"]
+quantity = "backward-difference divergence of the gradient of the solve minus (s - mean s), per interior node; |mean φ|"
+scale = "(Σ_d n_d)·(max|s| + ‖L‖·max|φ|), ‖L‖ = Σ_d 4/Δ_d² the largest magnitude of the discrete Laplacian's symbol; (Σ_d n_d)·max|φ| for the mean (16 × 12, 64 × 48, 128 × 96; 64 and 2085 cells)"
+C = 0.25
+C_mean = 0.02
+measured = { Float32 = 0.0406, Float64 = 0.0402, "Dual{Float32,3}" = 0.0389, mean_Float32 = 0.00267, mean_Float64 = 0.00169, "mean_Dual{Float32,3}" = 0.00213 }
+status = "proposed"
+
+["T-311"]
+quantity = "the oblique modes (1, 2) and (3, -5) on 16 × 12: φ, G₁ and G₂ against the closed form with the Yee-consistent symbol, per value and partial"
+scale = "(n₁ + n₂)·max|reference| per output"
+C = 0.5
+measured = { Float32 = 0.109, Float64 = 0.109, "Dual{Float32,3}" = 0.109 }
+status = "proposed"
+
+["T-313"]
+quantity = "N = 1: the gradient of the solve against cumsum_periodic!, guards included"
+scale = "n·(max|a|·Δ + ‖L‖·Δ·max|φ|), ‖L‖ = 4/Δ² (64 and 2085 cells)"
+C = 0.1
+measured = { Float32 = 0.0108, Float64 = 0.0104, "Dual{Float32,3}" = 0.0156 }
+status = "proposed"
+
+["T-314"]
+quantity = "Dual{Float32,3}: the primal against the Float32 solve of the primal; each partial against the Float32 solve of that partial of s; φ and G (16 × 12, 64 × 48, 64 cells)"
+scale = "(Σ_d n_d)·max|reference| per output and component"
+C = 4
+measured = { primal = 0.0, partials = 0.604 }
+status = "proposed: the primal measured bitwise equal to the Float32 run, which is recorded and not asserted (A4); the largest partial ratio is that of G₂ along p₁ on 16 × 12; the constant parameter p₃, whose reference is the roundoff of a zero solve, stays below 0.18"
