@@ -26,7 +26,9 @@ host original, any other array as a host copy.
 """
 on(::CPU, f, args...; kw...) = f(args...; kw...)
 function on(be, f, args...; kw...)
-    grid = args[findfirst(a -> a isa PeriodicGrid, args)]
+    gi = findfirst(a -> a isa PeriodicGrid, args)
+    gi === nothing && throw(ArgumentError("on: needs a PeriodicGrid argument"))
+    grid = args[gi]
     dargs = Any[a isa Workspace ? a : todev(be, a) for a in args]
     for i in eachindex(dargs)
         if args[i] isa Workspace

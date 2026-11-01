@@ -12,9 +12,9 @@
 
 ## 1. Setup
 
-The engine (`ParticleMeshCore`, N = 1 and N = 2, the flux deposition included) and the electromagnetic module (`ParticleMeshElectromagnetic`, the 1D step and the SciML harness) ran on `CUDABackend` with no change to `lib/*/src` beyond one docstring: every kernel is a KernelAbstractions kernel selected by the array type. CUDACore (CUDA.jl 6's array and kernel package, without the vendor libraries) is a test and scripts dependency only.
+The engine (`ParticleMeshCore`, N = 1 and N = 2, the flux deposition included) and the electromagnetic module (`ParticleMeshElectromagnetic`, the 1D step and the SciML harness) ran on `CUDABackend` with no change to `lib/*/src`: every kernel is a KernelAbstractions kernel selected by the array type. CUDACore (CUDA.jl 6's array and kernel package, without the vendor libraries) is a test and scripts dependency only.
 
-The GPU tests live in each package's `test/` and run whenever CUDA is functional (`test/gpu_switch.jl`; `PM_TEST_GPU=1` requires them, `0` turns them off, T-199). A CPU test body is a function of the backend: it builds its inputs on the host, runs each engine call through `on(be, f, args...)` (`test/gpu_support.jl`), which on the CPU is the plain call and on CUDA moves the arguments to the device, runs the call and copies the results back, and checks on the host. So the CPU tests keep their bits by construction, and the CUDA testsets rerun the same bodies with the CPU's tolerances. The module's tests build their state on the device (`EMState(...; backend)`). All GPU testsets run under `CUDA.allowscalar(false)`.
+The GPU tests live in each package's `test/` and run whenever CUDA is functional (`test/gpu_switch.jl`; `PM_TEST_GPU=1` requires them, `0` turns them off, T-199). A CPU test body is a function of the backend: it builds its inputs on the host, runs each engine call through `on(be, f, args...)` (`test/gpu_support.jl`), which on the CPU is the plain call and on CUDA moves the arguments to the device, runs the call and copies the results back, and checks on the host. So the CPU tests keep their bits by construction, and the CUDA testsets rerun the same bodies with the CPU's tolerances. The module's tests build their state on the device (`EMState(...; backend)`). All GPU testsets run under `CUDACore.allowscalar(false)`.
 
 ## 2. Test results
 
