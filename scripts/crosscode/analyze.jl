@@ -1,8 +1,10 @@
-# Observables, the standard plot set and the sidecars of a finished Smilei run.
+# Observables, the standard plot set and the sidecars of a finished Smilei or PIConGPU run.
 #
 #   julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/<tag> [runner-log]
 #
-# Reads case.toml, scalars.txt and Fields0.h5 from the run directory; writes plots/<name>.png
+# Reads case.toml and the code's output from the run directory (Smilei: scalars.txt and
+# Fields0.h5; PIConGPU: openPMD/simData.h5 and the energy files, through units.toml, with the
+# quasi-1D runs of schema-1 cases averaged over y, read.jl); writes plots/<name>.png
 # with plots/<name>.json next to each, observables.json, and adds the results, the output hashes
 # and the image id (from the runner's log header or image.txt) to manifest.toml. A seeded run
 # (a case with a `seeds` list, WP-012) is analyzed per seed-<seed>/ subdirectory as above, and
@@ -16,7 +18,7 @@ include(joinpath(@__DIR__, "manifest.jl"))
 include(joinpath(@__DIR__, "theory.jl"))
 include(joinpath(@__DIR__, "ensemble.jl"))
 include(joinpath(@__DIR__, "ensemble_report.jl"))
-using .SmileiRead, .Observables, .RunManifest, .Theory, .Ensemble, .EnsembleReport
+using .SmileiRead, .PIConGPURead, .Observables, .RunManifest, .Theory, .Ensemble, .EnsembleReport
 using Statistics: median, mean
 using Dates: DateTime, Millisecond
 using CairoMakie
@@ -32,6 +34,32 @@ function save_plot(dir, name, fig, sidecar)
 end
 
 finite_or_nothing(x) = isfinite(x) ? x : nothing
+
+"The code whose output `dir` holds: \"picongpu\" or \"smilei\"."
+code_of(dir) = picongpu_output(dir) ? "picongpu" : "smilei"
+code_label(dir) = code_of(dir) == "picongpu" ? "PIConGPU" : "Smilei"
+
+"The scalars of a run in the schema of `read_scalars`, from either code."
+run_scalars(dir) = code_of(dir) == "picongpu" ? read_picongpu_scalars(dir) : read_scalars(dir)
+
+"""
+The field dumps of a run in the schema of `read_fields`, from either code; a PIConGPU run of a
+schema-1 case is quasi-1D and comes back averaged over y, in the 1D schema.
+"""
+function run_fields(dir; names, timestep)
+    code_of(dir) == "smilei" && return read_fields(dir; names, timestep)
+    q = PIConGPURead.picongpu_units(dir)["quasi1d"]
+    return read_picongpu_fields(dir; names, yaverage = q)
+end
+
+"The output files of a run whose hashes go into the manifest."
+function output_files(dir)
+    code_of(dir) == "smilei" &&
+        return filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
+    own = filter(f -> endswith(f, ".dat") || f == "picongpu.log", readdir(dir))
+    return filter(isfile, vcat(joinpath.(dir, own), joinpath(dir, "openPMD", "simData.h5"),
+        joinpath.(dir, ["container.txt", "versions.toml", "build.log"])))
+end
 
 """
 The provenance of the analysis (F3): the commit of the checkout and the hashes of the analysis
@@ -50,6 +78,7 @@ run_observable(case) = only((k, o) for (k, o) in case["observables"] if o["metho
 
 "CPU model, thread count and CPU count from the run's container.txt; \"unknown\" where the run did not record them."
 function hardware(dir)
+    code_of(dir) == "picongpu" && return picongpu_hardware(dir)
     f = joinpath(dir, "container.txt")
     lines = isfile(f) ? readlines(f) : String[]
     cpu = something(findfirst(l -> startswith(l, "# cpu model:"), lines), 0)
@@ -74,10 +103,11 @@ end
 
 function analyze(dir; log = nothing, image = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
-    get(case, "schema", 1) == 2 && return analyze_2d(dir, case; log)
+    get(case, "schema", 1) == 2 && return analyze_2d(dir, case; log, image)
     name = case["name"]
-    sc = read_scalars(dir)
-    fl = read_fields(dir; names = ["Ex"], timestep = case["time"]["dt"])
+    code = code_label(dir)
+    sc = run_scalars(dir)
+    fl = run_fields(dir; names = ["Ex"], timestep = case["time"]["dt"])
     t, U = sc.time, sc.columns["Uelm_Ex"]
     obs_key, obs = run_observable(case)
     mode = only(unique(s["perturbation"]["mode"] for s in case["species"] if haskey(s, "perturbation")))
@@ -88,7 +118,7 @@ function analyze(dir; log = nothing, image = nothing)
     ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "field energy Uelm_Ex",
         title = "$name: field energy")
     pos = U .> 0
-    lines!(ax, t[pos], U[pos]; color = :black, label = "Smilei")
+    lines!(ax, t[pos], U[pos]; color = :black, label = code)
     if obs["method"] == "peak_envelope"
         r = damping_from_peaks(t, U; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
         rk = damping_from_peaks(fl.time, Ek .^ 2; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
@@ -167,8 +197,9 @@ function analyze(dir; log = nothing, image = nothing)
         "max_abs_relative_change" => maximum(abs, drift), "final_relative_change" => drift[end],
         "Utot0" => Utot[1], "Ukin0" => sc.columns["Ukin"][1], "Uelm0" => sc.columns["Uelm"][1]))
 
+    result["code"] = code_of(dir)
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
-    outputs = filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
+    outputs = output_files(dir)
     m = isfile(joinpath(dir, "manifest.toml")) ? read_manifest(dir) : Dict{String,Any}()
     outhash = Dict(relpath(f, dir) => "sha256:" * file_hash(f) for f in outputs)
     img = something(image, image_from_header(log, joinpath(dir, "image.txt")))
@@ -196,16 +227,19 @@ end
 """
     analyze_seeded(dir; log) -> result
 
-A seeded run: `analyze` of every seed-<seed>/ subdirectory (its own plots, observables and
-manifest), then the ensemble observable of the complex mode coefficients of Ex over the seeds,
-written to the top directory with its plots, and the manifest of the run updated.
+A seeded run of either code: `analyze` of every seed-<seed>/ subdirectory (its own plots,
+observables and manifest), then the ensemble observable of the complex mode coefficients over
+the seeds, written to the top directory with its plots, and the manifest of the run updated.
+Schema 1: the coefficient of Ex at the perturbation's mode, the per-run fits on Uelm_Ex.
+Schema 2: the coefficient the ensemble observable's `signal` names (`mode_projection` of its
+`fields`), the per-run fits on the scalar sum of the case's `damping_rate_energy` columns.
 """
 function analyze_seeded(dir; log = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
+    two = get(case, "schema", 1) == 2
     seeds = collect(Int, case["numerics"]["seeds"])
     img = image_from_header(log, joinpath(dir, "image.txt"))
-    _, obs = run_observable(case)
-    mode = only(unique(s["perturbation"]["mode"] for s in case["species"] if haskey(s, "perturbation")))
+    ekey, eobs = ensemble_observable(case)
     coeffs = Vector{ComplexF64}[]
     per_run = []
     t = nothing
@@ -213,23 +247,42 @@ function analyze_seeded(dir; log = nothing)
     for s in seeds
         sd = joinpath(dir, "seed-$s")
         analyze(sd; image = img)
-        fl = read_fields(sd; names = ["Ex"], timestep = case["time"]["dt"])
+        if two
+            a, b = eobs["fields"]
+            fl = run_fields(sd; names = [a, b], timestep = case["time"]["dt"])
+            mode = Tuple(Int.(case["wavevector"]["mode"]))
+            lengths = Tuple(Float64.(case["grid"]["length"]))
+            c = project_mode(fl.fields[a], fl.fields[b], fl.x[a], fl.x[b], mode, lengths; component = Symbol(eobs["component"]))
+        else
+            mode = only(unique(x["perturbation"]["mode"] for x in case["species"] if haskey(x, "perturbation")))
+            fl = run_fields(sd; names = ["Ex"], timestep = case["time"]["dt"])
+            c = mode_coefficient(fl.fields["Ex"], mode)
+        end
         t === nothing ? (t = fl.time) : (fl.time == t || error("seed $s: field dump times differ"))
-        push!(coeffs, mode_coefficient(fl.fields["Ex"], mode))
-        sc = read_scalars(sd)
-        push!(per_run, damping_from_peaks(sc.time, sc.columns["Uelm_Ex"]; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"]))
-        for f in filter(isfile, joinpath.(sd, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
+        push!(coeffs, c)
+        sc = run_scalars(sd)
+        if two
+            ro = case["observables"]["damping_rate_energy"]
+            U = sum(sc.columns[k] for k in ro["columns"])
+        else
+            _, ro = run_observable(case)
+            U = sc.columns["Uelm_Ex"]
+        end
+        push!(per_run, damping_from_peaks(sc.time, U; fit_start = ro["fit_start"], floor_factor = ro["floor_factor"]))
+        for f in output_files(sd)
             outputs[relpath(f, dir)] = "sha256:" * file_hash(f)
         end
     end
     hw = [hardware(joinpath(dir, "seed-$s")) for s in seeds]
     walls = [wall_seconds(joinpath(dir, "seed-$s")) for s in seeds]
     nsteps = round(Int, case["time"]["t_end"] / case["time"]["dt"])
-    particles = case["grid"]["cells"] * sum(s["particles_per_cell"] for s in case["species"] if s["mobile"])
-    r = write_ensemble(dir, case, t, coeffs, seeds; code = "smilei", per_run,
-        extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
-            "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps,
-            "hardware" => first(hw)))
+    cells = prod(case["grid"]["cells"])
+    particles = cells * sum(prod(s["particles_per_cell"]) for s in case["species"] if s["mobile"])
+    code = code_of(joinpath(dir, "seed-$(first(seeds))"))
+    extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
+        "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps, "hardware" => first(hw))
+    code == "picongpu" && (extra["compile_seconds"] = compile_seconds(dir))
+    r = write_ensemble(dir, case, t, coeffs, seeds; code, per_run, extra)
     m = read_manifest(dir)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outputs, "image" => image, "hardware" => first(hw),
@@ -239,16 +292,56 @@ function analyze_seeded(dir; log = nothing)
     return r
 end
 
-"Wall time in seconds between the `# start:` and `# end:` lines of the run's container.txt, or nothing."
-function wall_seconds(dir)
-    f = joinpath(dir, "container.txt")
+"""
+The hardware of a PIConGPU run from the top run directory's container.txt (the GPU name and
+driver as nvidia-smi reports them inside the container, the CPU model and count).
+"""
+function picongpu_hardware(dir)
+    f = joinpath(picongpu_top(dir), "container.txt")
+    lines = isfile(f) ? readlines(f) : String[]
+    h = Dict{String,Any}()
+    for (key, prefix) in (("gpu", "# gpu:"), ("cpu", "# cpu model:"), ("cpus", "# cpus:"), ("picongpu", "# picongpu:"))
+        k = findfirst(l -> startswith(l, prefix), lines)
+        h[key] = k === nothing ? "unknown" : strip(lines[k][length(prefix)+1:end])
+    end
+    h["source"] = isempty(lines) ? "not recorded by the run" : "run"
+    return h
+end
+
+"The top run directory of a PIConGPU run (the one holding run.sh), from it or a seed directory."
+picongpu_top(dir) = isfile(joinpath(dir, "run.sh")) ? dir : dirname(abspath(dir))
+
+"Seconds between two `# <what> start:`/`end:` lines of a container.txt, or nothing."
+function stamp_interval(f, start_prefix, end_prefix)
     isfile(f) || return nothing
     stamp(prefix) = for l in eachline(f)
         startswith(l, prefix) && return DateTime(strip(l[length(prefix)+1:end])[1:23])
     end
-    t0, t1 = stamp("# start:"), stamp("# end:")
+    t0, t1 = stamp(start_prefix), stamp(end_prefix)
     (t0 === nothing || t1 === nothing) && return nothing
     return (t1 - t0) / Millisecond(1000)
+end
+
+"The compile time of a PIConGPU run's setup in seconds, from container.txt."
+compile_seconds(dir) = stamp_interval(joinpath(picongpu_top(dir), "container.txt"), "# compile start:", "# compile end:")
+
+"""
+Wall time in seconds of a run: Smilei's between the `# start:` and `# end:` lines of the run's
+container.txt; PIConGPU's between the `# run <dir> seed <seed> start:`/`end:` lines of the top
+directory's container.txt (the compile is timed separately). Nothing when not recorded.
+"""
+function wall_seconds(dir)
+    if code_of(dir) == "picongpu"
+        top = picongpu_top(dir)
+        d = abspath(dir) == abspath(top) ? "." : basename(abspath(dir))
+        f = joinpath(top, "container.txt")
+        isfile(f) || return nothing
+        k = findfirst(l -> startswith(l, "# run $d seed "), readlines(f))
+        k === nothing && return nothing
+        pre = match(r"^(# run \S+ seed \d+) start:", readlines(f)[k]).captures[1]
+        return stamp_interval(f, pre * " start:", pre * " end:")
+    end
+    return stamp_interval(joinpath(dir, "container.txt"), "# start:", "# end:")
 end
 
 "The step count Smilei ran (`n_time` in smilei.log), or nothing."
@@ -301,13 +394,15 @@ function observable_series(obs, sc, fl, mode, lengths)
     error("unknown signal $sig")
 end
 
-function analyze_2d(dir, case; log = nothing)
+function analyze_2d(dir, case; log = nothing, image = nothing)
     name = case["name"]
-    observables = case["observables"]
-    sc = read_scalars(dir)
+    code = code_label(dir)
+    # the per-run observables; a seeded case's ensemble observable is evaluated by analyze_seeded
+    observables = filter(p -> p.second["method"] != "ensemble_peak_envelope", case["observables"])
+    sc = run_scalars(dir)
     fieldnames = unique(vcat(String[], (get(o, "fields", String[]) for o in values(observables))...))
     "Rho" in case["diagnostics"]["fields"] && push!(fieldnames, "Rho")   # for the loading checks below
-    fl = read_fields(dir; names = fieldnames, timestep = case["time"]["dt"])
+    fl = run_fields(dir; names = fieldnames, timestep = case["time"]["dt"])
     lengths = Tuple(Float64.(case["grid"]["length"]))
     mode = Tuple(Int.(case["wavevector"]["mode"]))
     series = Dict(k => observable_series(o, sc, fl, mode, lengths) for (k, o) in observables)
@@ -366,7 +461,7 @@ function analyze_2d(dir, case; log = nothing)
             t, U = series[key]
             obs, f, r = observables[key], fits[key], results[key]
             pos = U .> 0
-            lines!(ax, t[pos], U[pos]; color = :black, label = "Smilei ($key)")
+            lines!(ax, t[pos], U[pos]; color = :black, label = "$code ($key)")
             if f.fit !== nothing
                 lines!(ax, f.t_fit, exp.(f.fit.intercept .+ f.fit.slope .* f.t_fit); color = :red,
                     linewidth = 2, label = "fit γ = $(round(f.gamma; sigdigits = 4))")
@@ -435,8 +530,14 @@ function analyze_2d(dir, case; log = nothing)
     Nx, Ny = Tuple(case["grid"]["cells"])
     if all(haskey(fl.fields, n) for n in ("Ex", "Ey", "Rho"))
         Ex, Ey, ρ = (fl.fields[n][:, :, 1] for n in ("Ex", "Ey", "Rho"))
-        checks["gauss_residual_t0_relative"] = maximum(abs((Ex[i+1, j] - Ex[i, j]) / hx +
-            (Ey[i, j+1] - Ey[i, j]) / hy - ρ[i, j]) for i in 1:Nx, j in 1:Ny) / maximum(abs, ρ)
+        # The divergence at node i from the two E points around it: Smilei's dual point i sits
+        # at (i − ½)Δ (points i, i + 1 around node i), PIConGPU's at (i + ½)Δ (points i − 1, i);
+        # read from the positions, the periodic copy closing the seam.
+        sx = round(Int, (fl.x["Ex"][1][1] - fl.x["Rho"][1][1]) / hx + 0.5)   # 0 Smilei, 1 PIConGPU
+        sy = round(Int, (fl.x["Ey"][2][1] - fl.x["Rho"][2][1]) / hy + 0.5)
+        P(a, i, j) = a[mod1(i, Nx), mod1(j, Ny)]
+        checks["gauss_residual_t0_relative"] = maximum(abs((P(Ex, i + 1 - sx, j) - P(Ex, i - sx, j)) / hx +
+            (P(Ey, i, j + 1 - sy) - P(Ey, i, j - sy)) / hy - ρ[i, j]) for i in 1:Nx, j in 1:Ny) / maximum(abs, ρ)
     end
     if all(haskey(fl.fields, n) for n in ("Bx", "By"))
         Bx, By = fl.fields["Bx"], fl.fields["By"]     # Bx: (primal x, dual y), By: (dual x, primal y)
@@ -462,18 +563,20 @@ function analyze_2d(dir, case; log = nothing)
         "max_abs_relative_change" => maximum(abs, drift), "final_relative_change" => drift[end],
         "Utot0" => Utot[1], "Ukin0" => sc.columns["Ukin"][1], "Uelm0" => sc.columns["Uelm"][1]))
 
-    ran = smilei_steps(dir)
+    ran = code_of(dir) == "smilei" ? smilei_steps(dir) : nothing
     size_ = run_size(case; steps = something(ran, round(Int, case["time"]["t_end"] / case["time"]["dt"])))
-    size_["steps_source"] = ran === nothing ? "case (round(t_end/dt))" : "smilei.log (n_time)"
+    size_["steps_source"] = ran === nothing ? "case (round(t_end/dt)); PIConGPU runs -s exactly that" : "smilei.log (n_time)"
     wall = wall_seconds(dir)
     performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
     wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
-    result = Dict{String,Any}("case" => name, "observables" => results, "performance" => performance, "checks" => checks)
+    code_of(dir) == "picongpu" && (performance["compile_seconds"] = something(compile_seconds(dir), "not recorded"))
+    result = Dict{String,Any}("case" => name, "code" => code_of(dir), "observables" => results,
+        "performance" => performance, "checks" => checks)
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
-    outputs = filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
-    m = read_manifest(dir)
+    outputs = output_files(dir)
+    m = isfile(joinpath(dir, "manifest.toml")) ? read_manifest(dir) : Dict{String,Any}()
     outhash = Dict(relpath(f, dir) => "sha256:" * file_hash(f) for f in outputs)
-    img = image_from_header(log, joinpath(dir, "image.txt"))
+    img = something(image, image_from_header(log, joinpath(dir, "image.txt")))
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     flat = Dict(k => Dict(kk => vv for (kk, vv) in v if vv !== nothing) for (k, v) in results)
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
