@@ -1,6 +1,7 @@
 {
   "case": "weibel-2d",
   "checks": {
+    "divB_max_relative": 2.1526231280064464e-13,
     "rho_max_deviation_t0": 5.135400368173594e-14,
     "rho_mean_t0": 2.573059399560062e-17,
     "rho_mode_amplitude_t0": 1.3563159828776908e-16
@@ -29,13 +30,13 @@
         12.387189743914515,
         20.940249328998345
       ],
-      "measured": 0.26086610595018367,
-      "measured_stderr": 0.0019100193461593085,
+      "measured": 0.2608661059501836,
+      "measured_stderr": 0.0019100193461593033,
       "method": "exponential_window",
-      "relative_difference": -0.010842192376952928,
+      "relative_difference": -0.01084219237695314,
       "saturation": {
         "t": 32.147706716349575,
-        "value": 0.02505404670065843
+        "value": 0.02505646170186221
       },
       "signal": "mode_projection",
       "theory": 0.26372546821123183
@@ -49,6 +50,7 @@
     "particle_steps": 18345492480,
     "particles": 8454144,
     "steps": 2170,
+    "steps_source": "smilei.log (n_time)",
     "wall_seconds": 227.658
   }
 }
