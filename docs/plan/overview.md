@@ -34,7 +34,7 @@ Derived design choices without a goal id (2D Cartesian first with the envelope m
 
 ### Factory setup
 1. **Budget per role.** The roles are defined in `.claude/agents/` (model, effort and tools in their frontmatter, per-run overrides in the workflows that start them); what each role may spend is open.
-2. **Cloud environment.** Setup script within the five-minute cache window, the Julia allowlist, the depot strategy for the SciML stack (SessionStart hook versus a prebuilt Docker depot image), environment variables, what secrets if any.
+2. **Cloud environment.** An environment exists and has been through a few test rounds. Open: the network access list (the Julia allowlist), which still needs refining; the setup script within the five-minute cache window; the depot strategy for the SciML stack (SessionStart hook versus a prebuilt Docker depot image), environment variables, what secrets if any.
 3. **The A5 expected values**, committed, so sessions do not guess: WP-012, WP-014 (Weibel) and WP-017 propose them, and the owner accepts them in A5.
 4. **Safety of unattended runs.** Unattended sessions run under a separate configuration directory with the Bash sandbox on and the deny rules of `.claude/settings.json`; CI's leak scan rejects IP addresses, ssh URLs and private keys. Open: a separate user account or container with no access to the owner's credentials, and a check that also rejects hostnames and private package names.
 
