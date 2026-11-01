@@ -11,6 +11,8 @@ include("determinism_cases.jl")
     try
         include("yee.jl")
         include("boris.jl")
+        include("pushers.jl")
+        include("pushers_sciml.jl")
         include("gauss.jl")
         include("physics.jl")
         include("determinism.jl")
