@@ -18,7 +18,7 @@ function device_step_bytes(be, name, mode; ppc, cells)
     sync_step!(2)
     host = @allocated sync_step!(3)
     dev = CUDACore.@allocated sync_step!(4)
-    return (; host, dev)
+    return (; host, dev, sorted = count(s -> ParticleMeshElectromagnetic.sorts(st, s), st.species))
 end
 
 @testset "T-220 allocation per step does not grow with particle count or grid size [A7, WP-014]" begin

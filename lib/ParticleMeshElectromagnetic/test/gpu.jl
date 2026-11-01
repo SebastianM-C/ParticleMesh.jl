@@ -76,7 +76,12 @@ else
             larger_grid = device_step_bytes(GPU, name, mode; ppc = 16, cells = 512)
             @info "T-198 bytes per step on CUDA" name mode small more_particles larger_grid
             @test more_particles.dev <= small.dev && larger_grid.dev <= small.dev
-            @test more_particles.host <= small.host + 1024 && larger_grid.host <= small.host + 1024
+            # Host bytes: constant up to 1 KiB, plus, per sorted species, AcceleratedKernels' GPU
+            # merge sort's bookkeeping, one merge-pass launch per doubling of the capacity (the
+            # engine's T-198 measures it on its own): at most 1 KiB per doubling.
+            sortslack(b, factor) = b.sorted * 1024 * (log2(factor) + 1)
+            @test more_particles.host <= small.host + 1024 + sortslack(more_particles, 16)
+            @test larger_grid.host <= small.host + 1024 + sortslack(larger_grid, 8)
         end
     end
 end

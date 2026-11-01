@@ -226,19 +226,34 @@ status = "proposed"
 quantity = "Jy of deposit_flux! against deposit! of q·w·u_y at zero displacement, on CUDA (the CPU bound is 2)"
 scale = "max|ρy|"
 C = 4
-measured = { "Float32 on CUDABackend" = 2.76 }
+measured = { "Float32 on CUDABackend" = 2.76, "Float64 on CUDABackend" = 1.84, "Dual{Float32,3} on CUDABackend" = 0.991 }
 status = "proposed"
 
 ["T-191 tensor weights"]
-quantity = "2D tensor-product weights on CUDA against the host's, per weight (T-262's weights)"
+quantity = "2D tensor-product weights on CUDA against the host's, per weight (T-262's weights; Float32 and Float64 bitwise)"
 scale = "max|W|"
 C = 4
-measured = {}
+measured = { "Float32 on CUDABackend" = 0.0, "Float64 on CUDABackend" = 0.0, "Dual{Float32,3} on CUDABackend" = 0.963 }
 status = "proposed"
 
 ["T-191 T-267 weights"]
 quantity = "2D load weights on CUDA against the host's density(x)/ppc (the CPU bound is 2)"
 scale = "|w|"
 C = 4
-measured = {}
+measured = { "Float32 on CUDABackend" = 2.21, "Float64 on CUDABackend" = 2.2, "Dual{Float32,3} on CUDABackend" = 2.21 }
+status = "proposed"
+
+["T-193 box_muller"]
+quantity = "Box–Muller normals on CUDA against the CPU's, from the same Philox draws"
+scale = "ulp of the CPU value"
+C = 4
+measured = { "Float32 on CUDABackend" = 3.0, "Float64 on CUDABackend" = 2.0 }
+status = "proposed"
+
+["T-193 load"]
+quantity = "quiet-start load on CUDA against the CPU's: weights (scale eps·|w|) and velocities (ulp of the CPU value); cells and offsets bitwise"
+scale = "eps(T)·|w| for w, ulp for u"
+C_w = 2
+C_u = 4
+measured = { "w Float32 on CUDABackend" = 0.973, "w Float64 on CUDABackend" = 0.978, "w Dual{Float32,3} on CUDABackend" = 0.973, "u Float32 on CUDABackend" = 3.0, "u Float64 on CUDABackend" = 3.0, "u Dual{Float32,3} on CUDABackend" = 2.0 }
 status = "proposed"
