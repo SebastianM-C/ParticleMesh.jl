@@ -359,6 +359,17 @@ end
 
 pyvec(v) = "[" * join(pyfloat.(v), ", ") * "]"
 
+"""
+    smilei_simulation_time(p) -> Float64
+
+The `simulation_time` passed to Smilei for `p.number_of_timesteps` steps: (n + ½) Δt. Smilei
+reads only `simulation_time` (`number_of_timesteps` sets it to n·Δt when it is absent,
+pyinit.py) and takes n_time = (int)(simulation_time/timestep) (Params.cpp), which truncates
+n·Δt/Δt to n − 1 when the quotient rounds below n (3391 steps of landau-oblique-2d ran as 3390).
+The half step makes the truncation give n; Smilei then resets simulation_time to n·Δt.
+"""
+smilei_simulation_time(p) = (p.number_of_timesteps + 0.5) * p.timestep
+
 # The Python name of a species' density profile.
 profile_name(s) = "density_" * replace(s.name, r"[^A-Za-z0-9_]" => "_")
 
@@ -390,6 +401,7 @@ function namelist_2d(case)
         cell_length = $(pyvec(p.cell_length)),
         number_of_cells = $(pyvec(p.number_of_cells)),
         timestep = $(pyfloat(p.timestep)),
+        simulation_time = $(pyfloat(smilei_simulation_time(p))),
         number_of_timesteps = $(p.number_of_timesteps),
         number_of_patches = $(pyvec(p.number_of_patches)),
         EM_boundary_conditions = [["periodic"], ["periodic"]],

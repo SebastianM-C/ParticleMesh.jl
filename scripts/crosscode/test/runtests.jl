@@ -394,6 +394,13 @@ end
         @test occursin("number_of_cells = [$(pp.number_of_cells[1]), $(pp.number_of_cells[2])]", text)
         @test nl_number(text, "timestep") == pp.timestep
         @test nl_number(text, "number_of_timesteps") == pp.number_of_timesteps
+        # Smilei's step count, n_time = (int)(simulation_time/timestep), is the case's
+        @test trunc(Int, nl_number(text, "simulation_time") / nl_number(text, "timestep")) == pp.number_of_timesteps
+    end
+    # the reason: n·Δt/Δt truncates below n for the Landau step (Smilei ran 3390 of 3391 steps)
+    @test trunc(Int, 3391 * p.timestep / p.timestep) == 3390
+    for (case, pp) in ((c, p), (w, q))
+        text = namelist(case)
         m = match(r"number_of_patches = \[(\d+), (\d+)\]", text)
         @test m !== nothing
         for d in 1:2
@@ -519,15 +526,16 @@ end
 
 @testset "T-274 the 2D mode fit [A7, WP-019]" begin
     # A non-square periodic box with Smilei's 2D layout: (Nx + 1) × (Ny + 1) points per field,
-    # the last row and column repeating the first, Yee positions (Ex at (i + ½, j), Ey at
-    # (i, j + ½), Bx at (i, j + ½), By at (i + ½, j), in cells).
+    # the last row and column repeating the first, Yee positions as `read_fields` gives them
+    # (a dual axis starts at −½ cell: Ex at (i − ½, j), Ey at (i, j − ½), Bx at (i, j − ½),
+    # By at (i − ½, j), in cells).
     Nx, Ny, Lx, Ly = 32, 24, 1.3, 0.7          # k_xΔx ≠ k_yΔy, so the Yee and continuum forms differ
     Δx, Δy = Lx / Nx, Ly / Ny
     mode = (2, 1)
     wv = mode_wavevector(mode, (Lx, Ly))
     kx, ky = wv.kvec
     k̂ = wv.kvec ./ wv.k
-    pos(sx, sy) = (((0:Nx) .+ sx) .* Δx, ((0:Ny) .+ sy) .* Δy)
+    pos(sx, sy) = (((0:Nx) .- sx) .* Δx, ((0:Ny) .- sy) .* Δy)
     pEx, pEy = pos(0.5, 0.0), pos(0.0, 0.5)
     pBx, pBy = pos(0.0, 0.5), pos(0.5, 0.0)
     sample(f, p, nt) = [f(x, y, n) for x in p[1], y in p[2], n in 1:nt]
@@ -601,7 +609,8 @@ end
 @testset "T-275 the 2D Smilei reader [WP-019]" begin
     # Fields0.h5 as DiagnosticFields2D writes it: per iteration one dataset per field of C-order
     # dimensions [Nx + 1, Ny + 1] (x slowest), with per-axis gridSpacing, gridGlobalOffset and
-    # position. HDF5.jl shows C-order dimensions reversed, so the test writes the transpose.
+    # position (0.5 on a dual axis, whose first point Smilei puts at −Δ/2). HDF5.jl shows C-order
+    # dimensions reversed, so the test writes the transpose.
     dir = mktempdir()
     Nx, Ny, Δx, Δy, dt = 4, 3, 0.25, 0.5, 0.2
     val(name, it) = [(name == "Ex" ? 1.0 : 2.0) * (i + 10j) + 1000it for i in 0:Nx, j in 0:Ny]
@@ -633,8 +642,8 @@ end
     @test fl.fields["Ex"][:, :, 2] == val("Ex", 8)
     @test fl.fields["Ey"][:, :, 1] == val("Ey", 0)
     @test fl.fields["Ex"][3, 2, 1] == 2 + 10 * 1                     # (i, j) = (2, 1): x first
-    @test fl.x["Ex"] == ([0.125, 0.375, 0.625, 0.875, 1.125], [0.0, 0.5, 1.0, 1.5])
-    @test fl.x["Ey"] == ([0.0, 0.25, 0.5, 0.75, 1.0], [0.25, 0.75, 1.25, 1.75])
+    @test fl.x["Ex"] == ([-0.125, 0.125, 0.375, 0.625, 0.875], [0.0, 0.5, 1.0, 1.5])
+    @test fl.x["Ey"] == ([0.0, 0.25, 0.5, 0.75, 1.0], [-0.25, 0.25, 0.75, 1.25])
     @test fl.x["Rho"] == ([0.0, 0.25, 0.5, 0.75, 1.0], [0.0, 0.5, 1.0, 1.5])
     sub = read_fields(dir; names = ["Ey"])
     @test collect(keys(sub.fields)) == ["Ey"]
