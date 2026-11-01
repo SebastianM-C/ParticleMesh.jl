@@ -1,0 +1,233 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+  "rows": [
+    {
+      "T": "Float32",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 5836868,
+      "device_bytes_per_particle": 89.06353759765625,
+      "mode": "Reference",
+      "ns_per_particle_step": 2.2369178771972655,
+      "ns_per_particle_step_max": 3.4012596130371096,
+      "ns_per_particle_step_min": 2.2063087463378905,
+      "particles": 65536,
+      "ppc": [
+        2,
+        2
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 90378308,
+      "device_bytes_per_particle": 86.19147109985352,
+      "mode": "Reference",
+      "ns_per_particle_step": 1.1999265670776367,
+      "ns_per_particle_step_max": 1.2097588062286377,
+      "ns_per_particle_step_min": 1.1820151329040527,
+      "particles": 1048576,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 1443041348,
+      "device_bytes_per_particle": 86.01196694374084,
+      "mode": "Reference",
+      "ns_per_particle_step": 2.2414296120405197,
+      "ns_per_particle_step_max": 2.3170328974723815,
+      "ns_per_particle_step_min": 2.2345780581235886,
+      "particles": 16777216,
+      "ppc": [
+        32,
+        32
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 5836868,
+      "device_bytes_per_particle": 89.06353759765625,
+      "mode": "Fast",
+      "ns_per_particle_step": 0.5420310974121094,
+      "ns_per_particle_step_max": 0.5476104736328125,
+      "ns_per_particle_step_min": 0.463824462890625,
+      "particles": 65536,
+      "ppc": [
+        2,
+        2
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 90378308,
+      "device_bytes_per_particle": 86.19147109985352,
+      "mode": "Fast",
+      "ns_per_particle_step": 0.5103586673736572,
+      "ns_per_particle_step_max": 0.5395082950592041,
+      "ns_per_particle_step_min": 0.4692684173583984,
+      "particles": 1048576,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 1443041348,
+      "device_bytes_per_particle": 86.01196694374084,
+      "mode": "Fast",
+      "ns_per_particle_step": 0.7085709065198899,
+      "ns_per_particle_step_max": 0.7730739921331407,
+      "ns_per_particle_step_min": 0.6071177423000336,
+      "particles": 16777216,
+      "ppc": [
+        32,
+        32
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 8003716,
+      "device_bytes_per_particle": 122.12701416015625,
+      "mode": "Reference",
+      "ns_per_particle_step": 6.008149719238282,
+      "ns_per_particle_step_max": 6.165133666992189,
+      "ns_per_particle_step_min": 5.962097167968749,
+      "particles": 65536,
+      "ppc": [
+        2,
+        2
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 124002436,
+      "device_bytes_per_particle": 118.25793838500977,
+      "mode": "Reference",
+      "ns_per_particle_step": 2.916924238204956,
+      "ns_per_particle_step_max": 2.949777603149414,
+      "ns_per_particle_step_min": 2.837736988067627,
+      "particles": 1048576,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 1979981956,
+      "device_bytes_per_particle": 118.01612114906311,
+      "mode": "Reference",
+      "ns_per_particle_step": 3.5712679862976073,
+      "ns_per_particle_step_max": 3.574134722352028,
+      "ns_per_particle_step_min": 3.5687071472406386,
+      "particles": 16777216,
+      "ppc": [
+        32,
+        32
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 8003716,
+      "device_bytes_per_particle": 122.12701416015625,
+      "mode": "Fast",
+      "ns_per_particle_step": 0.7775642395019532,
+      "ns_per_particle_step_max": 0.8995407104492188,
+      "ns_per_particle_step_min": 0.7579330444335937,
+      "particles": 65536,
+      "ppc": [
+        2,
+        2
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 124002436,
+      "device_bytes_per_particle": 118.25793838500977,
+      "mode": "Fast",
+      "ns_per_particle_step": 0.514521598815918,
+      "ns_per_particle_step_max": 0.543728256225586,
+      "ns_per_particle_step_min": 0.45903711318969725,
+      "particles": 1048576,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 20
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        128,
+        128
+      ],
+      "device_bytes": 1979981956,
+      "device_bytes_per_particle": 118.01612114906311,
+      "mode": "Fast",
+      "ns_per_particle_step": 0.6186652034521103,
+      "ns_per_particle_step_max": 0.7170392900705338,
+      "ns_per_particle_step_min": 0.5256738752126694,
+      "particles": 16777216,
+      "ppc": [
+        32,
+        32
+      ],
+      "steps": 20
+    }
+  ]
+}
