@@ -86,3 +86,43 @@ to one; the cell wraps periodically. Exact when `Δ` is a dyadic fraction repres
     k += Int32(up)
     return (mod1(cell + k, n), δ′)
 end
+
+# N axes: one shape for every axis, one stagger per axis.
+
+"""
+    shape_weights(shape, stagger::NTuple{N,Stagger}, δ::NTuple{N,T}) -> NTuple{N,(f, w)}
+
+The 1D weights of each axis: `(f_d, w_d) = shape_weights(shape, stagger[d], δ[d])`. The weight of
+node `c + f + k - 1` (per axis) is the tensor product `w_1[k_1] · w_2[k_2]`, multiplied in that
+order; [`tensor_weights`](@ref) lists them.
+"""
+@inline shape_weights(shape::Shape, st::NTuple{N,Stagger}, δ::NTuple{N,T}) where {N,T} =
+    map((s, x) -> shape_weights(shape, s, x), st, δ)      # `map`: a mixed stagger tuple is heterogeneous
+
+"""
+    tensor_weights(shape, stagger::NTuple{2,Stagger}, δ::NTuple{2,T}) -> ((f1, f2), W)
+
+The first node per axis and the `(P+1)²` tensor-product weights, column-major
+(`W[k1 + (P+1)(k2-1)] = w1[k1] · w2[k2]`), bitwise the products the 2D kernels form. They sum to
+one (T-262).
+"""
+@inline function tensor_weights(shape::Shape{P}, st::NTuple{2,Stagger}, δ::NTuple{2,T}) where {P,T}
+    (f1, w1), (f2, w2) = shape_weights(shape, st, δ)
+    W = ntuple(k -> w1[(k - 1) % (P + 1) + 1] * w2[(k - 1) ÷ (P + 1) + 1], Val((P + 1) * (P + 1)))
+    return ((f1, f2), W)
+end
+
+"Per axis, the `(lo, hi)` of [`stencil_reach`](@ref) for that axis' stagger."
+stencil_reach(shape::Shape, st::NTuple{N,Stagger}) where {N} = map(s -> stencil_reach(shape, s), st)
+
+"""
+    advance(cell::NTuple{N,Int32}, δ::NTuple{N,T}, Δ::NTuple{N,T}, n::NTuple{N,Int32}) -> (cell′, δ′)
+
+[`advance`](@ref) applied per axis: each offset stays in `[0, 1)` and each cell wraps on its own
+periodic axis, so a diagonal move through a corner wraps both. On periodic axes this wrap is the
+single-device particle exchange.
+"""
+@inline function advance(cell::NTuple{N,Int32}, δ::NTuple{N,T}, Δ::NTuple{N,T}, n::NTuple{N,Int32}) where {N,T}
+    r = ntuple(d -> advance(cell[d], δ[d], Δ[d], n[d]), Val(N))
+    return (ntuple(d -> r[d][1], Val(N)), ntuple(d -> r[d][2], Val(N)))
+end

@@ -10,6 +10,7 @@ include("digest.jl")
 include("engine_cases.jl")
 include("flux_cases.jl")
 include("n1_digests.jl")
+include("engine2d_cases.jl")
 
 @testset "ParticleMeshCore" begin
     try
