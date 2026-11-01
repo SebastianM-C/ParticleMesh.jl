@@ -70,7 +70,15 @@ end
     @test state_bits(st) == partition_bits(saved)
     @test_throws ArgumentError copyto!(st, ArrayPartition(u.x[1:(end - 1)]...))
     @test_throws ArgumentError DiscreteProblem(prob, num; backend, nsteps = prob.nsteps + 1)
-    @test_throws ArgumentError solve(DiscreteProblem(prob, num; backend, dt = 1 // 2), FunctionMap())
+    # every step from step 1: dt ≠ 1 (integer or not) and a tspan not starting at 0 are refused,
+    # at construction and, when a solve keyword overrides them, at the map's first call
+    for dt in (1 // 2, 2)
+        @test_throws ArgumentError DiscreteProblem(prob, num; backend, dt)
+        @test_throws ArgumentError solve(DiscreteProblem(prob, num; backend), FunctionMap(); dt)
+    end
+    dprob = DiscreteProblem(prob, num; backend)
+    @test_throws ArgumentError remake_reload(dprob; p = prob, tspan = (5.0, 10.0))
+    @test_throws ArgumentError solve(remake(dprob; tspan = (5.0, 10.0)), FunctionMap())
 end
 
 @testset "T-101 remake_reload equals a problem built from scratch for p′, bitwise [A3, A9, WP-008]" begin

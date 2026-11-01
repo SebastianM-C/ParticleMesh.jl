@@ -101,19 +101,27 @@ end
 The in-place map of the harness, `m(u, uprev, p, t)`: copy `uprev` into `u`, then the module's
 `step!` on `u` with the cache of `state`, as step `k = t` (`FunctionMap` passes the time at the
 end of the step). `p` is the `EMProblem`, read for the time step and the diagnostic wavenumber.
+`done` counts the steps of the current solve: a solve must start at step 1 and take every
+step in order (`t0 = 0`, `dt = 1`), so that the histories and the state are those of `run!`.
 """
 struct EMMap{S<:EMState,B}
     state::S
     backend::B
+    done::Base.RefValue{Int}
 end
+
+EMMap(state::EMState, backend) = EMMap(state, backend, Ref(0))
 
 function (m::EMMap)(u, uprev, p, t)
     # The module's step sorts the particle buffers in place, so the next state starts as a
     # copy of the previous one (sciml-reuse.md §1).
     copy_arrays!(u.x, uprev.x)
     k = round(Int, t)
-    k == t || throw(ArgumentError("the harness takes whole steps (dt = 1); got t = $t"))
+    # a host-side check of the host time: step 1 starts a solve, every later step follows the last
+    (k == t && (k == 1 || k == m.done[] + 1)) ||
+        throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1); got t = $t after step $(m.done[])"))
     step!(state_on(m.state, u), params(p), k)
+    m.done[] = k
     return nothing
 end
 
@@ -127,8 +135,10 @@ harness_state(x::Union{AbstractSciMLProblem,AbstractTimeseriesSolution}) = harne
 # --- the problem --------------------------------------------------------------------------
 
 function harness_problem(problem::EMProblem, numerics::EMNumerics, backend, tspan; kwargs...)
+    iszero(first(tspan)) || throw(ArgumentError("tspan must start at step 0, got $(first(tspan))"))
     last(tspan) <= problem.nsteps ||
         throw(ArgumentError("tspan ends at step $(last(tspan)), past the $(problem.nsteps) steps of the problem"))
+    get(kwargs, :dt, 1) == 1 || throw(ArgumentError("the harness steps with dt = 1, got dt = $(kwargs[:dt])"))
     st = EMState(problem, numerics; backend)
     initialize!(st, problem)
     return DiscreteProblem(DiscreteFunction{true}(EMMap(st, backend)), state_partition(st), tspan, problem; merge((; dt = 1), kwargs)...)
@@ -141,7 +151,8 @@ The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
 
 - `u0 = state_partition(state)` of a new `EMState`, loaded by `initialize!(state, problem)`;
 - the map runs the module's `step!` (see `EMMap`), with that state as its cache;
-- `p = problem`; `tspan = (0, nsteps)` in steps, `dt = 1`.
+- `p = problem`; `tspan = (0, nsteps)` in steps, `dt = 1`. A solve takes every step from
+  step 1, so a `tspan` that starts elsewhere or a `dt ≠ 1` is refused (`ArgumentError`).
 
 `kwargs` are stored as problem keywords and passed to `solve`, for example
 `saveat = [0, 10, 20]` (whole steps; the saved states are copies of the particle and field
