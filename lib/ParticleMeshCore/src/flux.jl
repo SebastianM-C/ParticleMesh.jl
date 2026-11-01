@@ -29,6 +29,24 @@ function flux_guard_width(shape::Shape, stagger::Stagger)
     return Int(max(-lo, hi))
 end
 
+"""
+    flux_axis_weights(shape, stagger, c, δ, c0, δ0, n) -> (lo, Wo, Wn)
+
+One axis of a particle's flux stencil: the old and new shape weights on the `M` nodes
+`c + lo + m - 1`, `m = 1:M`, of `flux_reach` (zero where a stencil does not reach), with the
+current cell `c` as the frame; the old cell `c0` is at most one cell away, periodically on `n`.
+"""
+@inline function flux_axis_weights(shape::Shape, stagger::Stagger, c::Int32, δ, c0::Int32, δ0, n::Int32)
+    f1, w1 = shape_weights(shape, stagger, δ)
+    f0, w0 = shape_weights(shape, stagger, δ0)
+    e = mod(c0 - c + Int32(1), n) - Int32(1)           # the old cell relative to the new one: -1, 0 or 1
+    lo, _ = flux_reach(shape, stagger)
+    M = flux_width(shape, stagger)
+    Wn = ntuple(m -> pick(w1, lo + Int32(m - 1) - f1), M)
+    Wo = ntuple(m -> pick(w0, lo + Int32(m - 1) - e - f0), M)
+    return (lo, Wo, Wn)
+end
+
 # Running sums of a tuple, each one the serial left-to-right sum of its prefix (so every entry
 # is the same bits as a sequential prefix sum), with the length static.
 @inline function prefix_sums(t::NTuple{M,T}) where {M,T}
@@ -57,17 +75,8 @@ The prefix sum runs in increasing `k`, so the contributions of a particle are th
 both modes.
 """
 @inline function flux_stencil(s, i, shape::Shape, stagger::Stagger, n::Int32, sx, quantity_y, quantity_z)
-    @inbounds begin
-        c1 = s.cell[1][i]
-        c0 = s.extras.old_cell[i]
-        f1, w1 = shape_weights(shape, stagger, s.offset[1][i])
-        f0, w0 = shape_weights(shape, stagger, s.extras.old_offset[i])
-    end
-    e = mod(c0 - c1 + Int32(1), n) - Int32(1)          # the old cell relative to the new one: -1, 0 or 1
-    lo, _ = flux_reach(shape, stagger)
-    M = flux_width(shape, stagger)
-    Wn = ntuple(m -> pick(w1, lo + Int32(m - 1) - f1), M)
-    Wo = ntuple(m -> pick(w0, lo + Int32(m - 1) - e - f0), M)
+    @inbounds lo, Wo, Wn = flux_axis_weights(shape, stagger, s.cell[1][i], s.offset[1][i], s.extras.old_cell[i],
+                                             s.extras.old_offset[i], n)
     S = prefix_sums(map(-, Wn, Wo))
     qws = s.q * s.w[i] * sx
     jx = map(x -> -qws * x, S)

@@ -34,7 +34,7 @@ export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
 export Workspace, sort_by_cell!, deposit!, gather!, ChargeWeight
 export cumsum_periodic!
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
-export deposit_flux!, flux_guard_width
+export deposit_flux!, flux_guard_width, flux_extras
 export philox4x32, uniform_open, box_muller
 export load_quiet!
 
@@ -50,5 +50,6 @@ include("transfers.jl")
 include("mesh_ops.jl")
 include("spectral.jl")
 include("flux.jl")
+include("flux2d.jl")
 
 end
