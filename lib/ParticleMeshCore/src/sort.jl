@@ -143,7 +143,7 @@ end
 
 # N axes: the key is `(linear cell - 1)·capacity + slot - 1`, free slots `prod(n)·capacity + slot - 1`,
 # with the column-major linear cell of `linear_cell`; unique, so the permutation is fixed (A4).
-@kernel function sort_key_nd_kernel!(key, cell, status, n, ncell::Int64, cap::Int64)
+@kernel function sort_key_nd_kernel!(key, cell, @Const(status), n, ncell::Int64, cap::Int64)
     i = @index(Global, Linear)
     @inbounds begin
         L = linear_cell(map(c -> Int64(c[i]), cell), n)

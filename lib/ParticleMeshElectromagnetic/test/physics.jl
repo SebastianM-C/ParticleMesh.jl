@@ -1,15 +1,12 @@
 # The three 1D cases through the module (A5): T-213 to T-217. Rates are measured with the
 # observables of the case files (scripts/crosscode/analysis.jl, the same fits the Smilei runs
 # use) and recorded, not thresholded (A7: measure, then propose); only finiteness and sign are
-# asserted. The electrostatic reference (lib/ParticleMeshCore/test/es_reference.jl) runs the
-# same edge cases with the same seed, grid, time step and particles per cell; the schemes differ
-# by construction (Ampère with the relativistic Boris push against Gauss with the
-# nonrelativistic leapfrog), so their difference is recorded, never asserted.
+# asserted.
 
 const PHYSICS = Dict{String,Any}()
 
 # Test configurations: the case files with fewer particles. Landau also uses a larger
-# perturbation (5 %, as T-141 does): at the case's 1 % the damped signal falls under the noise
+# perturbation (5 %): at the case's 1 % the damped signal falls under the noise
 # floor before the fit window opens. At 4096 particles per cell only two maxima after the
 # case's fit_start clear its floor_factor (the fit needs three, measured); 8192 gives three.
 const LANDAU_OVERRIDES = (; ppc = 8192, amplitude = 1 // 20)
@@ -26,29 +23,6 @@ function run_case(name; be = CPU(), overrides...)
     return (; st, prob, case, h = histories(st), ts = history_times(prob), seconds = t)
 end
 
-"The electrostatic reference on the same edge case (same grid, Δt, particles per cell, seed)."
-function es_reference_run(name, prob, case)
-    s = case["species"]
-    tmax = prob.nsteps * prob.dt
-    if name == "landau"
-        e = s[1]
-        kλD = 2π / case["grid"]["length"] * e["thermal_velocity"] / sqrt(e["density"])
-        st, p, info = landau_case(Float64; n = prob.cells, ppc = prob.species[1].ppc, n0 = e["density"],
-                                  vth = e["thermal_velocity"], kλD, α = prob.species[1].amplitude,
-                                  dt_ωp = prob.dt, tmax_ωp = tmax, seed = prob.seed)
-    else
-        b = s[2]
-        n0 = 2b["density"]
-        kv0 = 2π / case["grid"]["length"] * abs(b["drift"]) / sqrt(n0)
-        st, p, info = two_stream_case(Float64; n = prob.cells, ppc = prob.species[1].ppc, n0, v0 = abs(b["drift"]),
-                                      kv0_ωp = kv0, α = prob.species[1].amplitude, dt_ωp = prob.dt,
-                                      tmax_ωp = tmax, seed = prob.seed)
-    end
-    ESReference.initialize!(st, p)
-    ESReference.run!(st, p, info.nsteps)
-    return field_energy_history(st)
-end
-
 "T-213: the transverse fields and momenta of an edge case are +0.0 bit for bit, at every step and at the end."
 function check_electrostatic(r)
     f = r.st.fields
@@ -63,7 +37,6 @@ function energy_drift(h)
     return maximum(abs, (tot .- tot[1]) ./ tot[1])
 end
 
-"T-214 on `be`; the comparison with the electrostatic reference runs on the CPU only (it is CPU test support, #97)."
 function body_T214(be)
     r = run_case("landau"; be, LANDAU_OVERRIDES...)
     o = r.case["observables"]["damping_rate"]
@@ -72,15 +45,8 @@ function body_T214(be)
     ω = landau_root(kλ)
     f = damping_from_peaks(r.ts, r.h.WEx; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
     rel = (f.gamma - (-imag(ω))) / (-imag(ω))
-    if be isa CPU
-        W_es = es_reference_run("landau", r.prob, r.case)
-        fe = damping_from_peaks(r.ts, W_es; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
-        @info "T-214 Landau" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
-    else
-        fe = nothing
-        @info "T-214 Landau on $(backend_label(be))" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) seconds = r.seconds
-    end
-    PHYSICS[physics_key("landau", be)] = (; r..., f, fe, ω)
+    @info "T-214 Landau" backend = backend_label(be) γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) seconds = r.seconds
+    PHYSICS[physics_key("landau", be)] = (; r..., f, ω)
     @test isfinite(f.gamma) && isfinite(f.omega)
     @test f.gamma > 0                    # the field damps (γ is the damping rate of the amplitude)
 end
@@ -89,7 +55,6 @@ end
     body_T214(CPU())
 end
 
-"T-215 on `be`; the electrostatic-reference comparison on the CPU only."
 function body_T215(be)
     r = run_case("two-stream"; be, TWO_STREAM_OVERRIDES...)
     o = r.case["observables"]["growth_rate"]
@@ -100,15 +65,8 @@ function body_T215(be)
     @test γth ≈ o["theory"] rtol = 1e-12
     f = growth_from_window(r.ts, r.h.WEx; window = o["window"])
     rel = (f.gamma - γth) / γth
-    if be isa CPU
-        W_es = es_reference_run("two-stream", r.prob, r.case)
-        fe = growth_from_window(r.ts, W_es; window = o["window"])
-        @info "T-215 two-stream" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
-    else
-        fe = nothing
-        @info "T-215 two-stream on $(backend_label(be))" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) seconds = r.seconds
-    end
-    PHYSICS[physics_key("two-stream", be)] = (; r..., f, fe, γth)
+    @info "T-215 two-stream" backend = backend_label(be) γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) seconds = r.seconds
+    PHYSICS[physics_key("two-stream", be)] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
 end

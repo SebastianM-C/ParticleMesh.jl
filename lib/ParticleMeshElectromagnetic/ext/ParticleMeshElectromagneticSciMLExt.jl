@@ -102,9 +102,9 @@ The in-place map of the harness, `m(u, uprev, p, t)`: copy `uprev` into `u`, the
 `step!` on `u` with the cache of `state`, as step `k = t` (`FunctionMap` passes the time at the
 end of the step). `p` is the `EMProblem`, read for the time step and the diagnostic wavenumber.
 `done` counts the steps of the current solve and `owner` holds the first array of the state
-it stepped (a reference, so `===` cannot match a later array at a reused address): a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and
-only the same integrator's state may continue, so that the histories and the state are those
-of `run!`.
+it stepped (a reference, so `===` cannot match a later array at a reused address): a solve
+must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and only the same
+integrator's state may continue, so that the histories and the state are those of `run!`.
 """
 struct EMMap{S<:EMState,B}
     state::S

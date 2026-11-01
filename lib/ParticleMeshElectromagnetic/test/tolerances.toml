@@ -33,21 +33,19 @@ status = "proposed"
 
 # Physics against linear theory (A5): relative errors recorded, no threshold asserted.
 ["T-214"]
-quantity = "Landau damping through the module, kλ_D = 1/2: (measured − theory)/theory, and the difference to the electrostatic reference"
+quantity = "Landau damping through the module, kλ_D = 1/2: (measured − theory)/theory"
 case = "landau.toml with 8192 particles per cell and amplitude 5 % (case: 400000 and 1 %), Δt = 0.0093266, 2681 steps, quadratic, Reference, Float64; the case's peak-envelope fit"
 theory = { omega = 1.4156618886045371, gamma = 0.15335946690960467 }
 measured = { omega = 1.4054923836479927, gamma = 0.1614265290944256 }
 relative_error = { omega = -0.0072, gamma = 0.0526 }
-es_reference = { gamma = 0.16282808731445753, relative_difference = -0.0086 }
 status = "proposed, noise-limited: three peaks enter the fit at 8192 particles per cell, two at 4096"
 
 ["T-215"]
-quantity = "cold two-stream growth rate through the module, k v₀/ω_p = √(3/8), against the γ₀³ value: (measured − theory)/theory, and the difference to the electrostatic reference"
+quantity = "cold two-stream growth rate through the module, k v₀/ω_p = √(3/8), against the γ₀³ value: (measured − theory)/theory"
 case = "two-stream.toml with 256 particles per cell per beam (case: 1000), Δt = 0.0076151, 5253 steps, quadratic, Reference, Float64; the case's window fit"
 theory = { gamma = 0.35087576924479724 }
 measured = { gamma = 0.3458435133298388 }
 relative_error = { gamma = -0.0143 }
-es_reference = { gamma = 0.34815981965353454, relative_difference = -0.0067 }
 status = "proposed"
 
 ["T-216"]

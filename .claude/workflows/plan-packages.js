@@ -119,7 +119,9 @@ async function cut() {
   // Readiness: where the plan leaves an interface, a layout or an owner of the slice open, planners
   // invent incompatible answers and every package fails on the same seams. One agent finds that first.
   phase('Readiness')
-  const ready = args.skip_readiness ? { ready: true, gaps: args.gaps || [] } : await agent(
+  if (args.skip_readiness && args.gaps !== undefined && !Array.isArray(args.gaps))
+    throw new Error('plan-packages: args.gaps must be an array of gaps, not a JSON-encoded string')
+  const ready = args.skip_readiness ? { ready: !(args.gaps || []).some(g => g.blocking), gaps: args.gaps || [] } : await agent(
     `${ctx} Before anyone cuts packages: list what the slice needs the plan to settle (the owner of each ` +
     `interface, data layout, configuration, boundary and communication point it touches, and the open ` +
     `items B it depends on), and check whether docs/plan/ settles each one without contradicting itself or ` +

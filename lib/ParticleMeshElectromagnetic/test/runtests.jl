@@ -2,8 +2,6 @@ using Test
 
 include("setup.jl")          # engine test setup, fd_scan, tolerances, case files
 include("em_helpers.jl")
-include(joinpath(CORE_TEST, "es_reference.jl"))   # the electrostatic edge-case reference (test support)
-using .ESReference: ESReference, landau_case, two_stream_case, field_energy_history
 include(joinpath(REPO, "scripts", "crosscode", "analysis.jl"))   # the case files' observables
 using .Observables: damping_from_peaks, growth_from_window
 include("theory.jl")

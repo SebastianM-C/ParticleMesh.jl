@@ -4,12 +4,17 @@
 #
 # Reads case.toml, scalars.txt and Fields0.h5 from the run directory; writes plots/<name>.png
 # with plots/<name>.json next to each, observables.json, and adds the results, the output hashes
-# and the image id (from the runner's log header or image.txt) to manifest.toml.
+# and the image id (from the runner's log header or image.txt) to manifest.toml. Schema-2 cases
+# (2D) go through `analyze_2d`, which evaluates every pre-registered observable of the case file
+# and also records the wall time and the particle-steps of the run.
 
 include(joinpath(@__DIR__, "read.jl"))
 include(joinpath(@__DIR__, "analysis.jl"))
 include(joinpath(@__DIR__, "manifest.jl"))
-using .SmileiRead, .Observables, .RunManifest
+include(joinpath(@__DIR__, "theory.jl"))
+using .SmileiRead, .Observables, .RunManifest, .Theory
+using Statistics: median, mean
+using Dates: DateTime, Millisecond
 using CairoMakie
 using JSON
 using TOML
@@ -62,6 +67,7 @@ end
 
 function analyze(dir; log = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
+    get(case, "schema", 1) == 2 && return analyze_2d(dir, case; log)
     name = case["name"]
     sc = read_scalars(dir)
     fl = read_fields(dir; names = ["Ex"], timestep = case["time"]["dt"])
@@ -164,6 +170,250 @@ function analyze(dir; log = nothing)
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
         "hardware" => hardware(dir),
         "observables" => Dict(k => v for (k, v) in result if v !== nothing)))
+    return result
+end
+
+"Wall time in seconds between the `# start:` and `# end:` lines of the run's container.txt, or nothing."
+function wall_seconds(dir)
+    f = joinpath(dir, "container.txt")
+    isfile(f) || return nothing
+    stamp(prefix) = for l in eachline(f)
+        startswith(l, prefix) && return DateTime(strip(l[length(prefix)+1:end])[1:23])
+    end
+    t0, t1 = stamp("# start:"), stamp("# end:")
+    (t0 === nothing || t1 === nothing) && return nothing
+    return (t1 - t0) / Millisecond(1000)
+end
+
+"The step count Smilei ran (`n_time` in smilei.log), or nothing."
+function smilei_steps(dir)
+    f = joinpath(dir, "smilei.log")
+    isfile(f) || return nothing
+    for l in eachline(f)
+        m = match(r"n_time = (\d+)", l)
+        m === nothing || return parse(Int, m[1])
+    end
+    return nothing
+end
+
+"""
+    run_size(case; steps) -> Dict
+
+Particles and particle-steps of a schema-2 case: the particles of every species
+(cells × particles per cell), those of the mobile species, and the products with the step
+count (`steps`, by default the case's round(t_end/dt)).
+"""
+function run_size(case; steps = round(Int, case["time"]["t_end"] / case["time"]["dt"]))
+    cells = prod(case["grid"]["cells"])
+    n(s) = cells * prod(s["particles_per_cell"])
+    total = sum(n, case["species"])
+    mobile = sum(n(s) for s in case["species"] if s["mobile"])
+    return Dict{String,Any}("cells" => cells, "steps" => steps, "particles" => total,
+        "mobile_particles" => mobile, "particle_steps" => total * steps,
+        "mobile_particle_steps" => mobile * steps)
+end
+
+"The time series (t, U) a pre-registered observable of a 2D case fits, and the mode coefficients it came from."
+function observable_series(obs, sc, fl, mode, lengths)
+    sig = obs["signal"]
+    if sig == "mode_projection"
+        a, b = obs["fields"]
+        c = project_mode(fl.fields[a], fl.fields[b], fl.x[a], fl.x[b], mode, lengths;
+            component = Symbol(obs["component"]))
+        return fl.time, abs2.(c)
+    elseif sig == "scalar_sum"
+        return sc.time, sum(sc.columns[k] for k in obs["columns"])
+    elseif sig == "scalar_ratio"
+        a, b = obs["columns"]
+        return sc.time, sc.columns[a] ./ sc.columns[b]
+    elseif sig == "mode_ratio"
+        a, b = obs["fields"]
+        ca = mode_coefficient(fl.fields[a], mode, fl.x[a], lengths)
+        cb = mode_coefficient(fl.fields[b], mode, fl.x[b], lengths)
+        return fl.time, abs2.(ca) ./ abs2.(cb)
+    end
+    error("unknown signal $sig")
+end
+
+function analyze_2d(dir, case; log = nothing)
+    name = case["name"]
+    observables = case["observables"]
+    sc = read_scalars(dir)
+    fieldnames = unique(vcat(String[], (get(o, "fields", String[]) for o in values(observables))...))
+    "Rho" in case["diagnostics"]["fields"] && push!(fieldnames, "Rho")   # for the loading checks below
+    fl = read_fields(dir; names = fieldnames, timestep = case["time"]["dt"])
+    lengths = Tuple(Float64.(case["grid"]["length"]))
+    mode = Tuple(Int.(case["wavevector"]["mode"]))
+    series = Dict(k => observable_series(o, sc, fl, mode, lengths) for (k, o) in observables)
+    fits = Dict{String,Any}()
+    results = Dict{String,Any}()
+    # rate fits first, then the observables that refer to a fit (`fit_of`)
+    order = sort(collect(keys(observables)); by = k -> (haskey(observables[k], "fit_of"), k))
+    for key in order
+        obs = observables[key]
+        t, U = series[key]
+        r = Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"])
+        if obs["method"] == "peak_envelope"
+            f = damping_from_peaks(t, U; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"])
+            fits[key] = f
+            r["measured"] = finite_or_nothing(f.gamma)
+            r["measured_stderr"] = finite_or_nothing(f.gamma_stderr)
+            r["measured_frequency"] = finite_or_nothing(f.omega)
+            r["theory_frequency"] = obs["theory_frequency"]
+            r["noise_floor"] = f.floor
+            r["fit_points"] = length(f.t_fit)
+            r["fit_range"] = isempty(f.t_fit) ? nothing : [first(f.t_fit), last(f.t_fit)]
+        elseif obs["method"] == "exponential_window"
+            f = growth_from_window(t, U; window = obs["window"])
+            fits[key] = f
+            r["measured"] = finite_or_nothing(f.gamma)
+            r["measured_stderr"] = finite_or_nothing(f.gamma_stderr)
+            r["fit_points"] = length(f.t_fit)
+            r["fit_range"] = isempty(f.t_fit) ? nothing : [first(f.t_fit), last(f.t_fit)]
+            r["saturation"] = Dict("t" => f.t_max, "value" => f.U_max)
+        elseif obs["method"] == "first_output"
+            r["measured"] = finite_or_nothing(U[1])
+            r["t"] = t[1]
+        elseif obs["method"] == "median_over_fit"
+            ref = fits[obs["fit_of"]]
+            idx = [argmin(abs.(t .- tp)) for tp in ref.t_fit]
+            r["measured"] = isempty(idx) ? nothing : finite_or_nothing(median(U[idx]))
+            r["points"] = length(idx)
+        else
+            error("unknown method $(obs["method"])")
+        end
+        haskey(obs, "theory_continuum") && (r["theory_continuum"] = obs["theory_continuum"])
+        r["relative_difference"] = r["measured"] === nothing ? nothing : (r["measured"] - obs["theory"]) / obs["theory"]
+        results[key] = r
+    end
+
+    # Plots: the fitted series (field energy from the scalars, mode amplitude from the dumps).
+    sign = any(o["method"] == "peak_envelope" for o in values(observables)) ? -1 : 1
+    for (plotname, sig, ylabel) in (("field-energy", "scalar_sum", "field energy (sum of $(join(unique(vcat((get(o, "columns", String[]) for o in values(observables) if o["signal"] == "scalar_sum")...)), " + ")))"),
+                                    ("mode-amplitude", "mode_projection", "|mode $(collect(mode))|² of the projected field"))
+        keys_ = sort([k for (k, o) in observables if o["signal"] == sig])
+        isempty(keys_) && continue
+        fig = Figure(size = (800, 500))
+        ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel, title = "$name: $plotname")
+        side = Dict{String,Any}("plot" => "$ylabel versus time, log scale")
+        for key in keys_
+            t, U = series[key]
+            obs, f, r = observables[key], fits[key], results[key]
+            pos = U .> 0
+            lines!(ax, t[pos], U[pos]; color = :black, label = "Smilei ($key)")
+            if f.fit !== nothing
+                lines!(ax, f.t_fit, exp.(f.fit.intercept .+ f.fit.slope .* f.t_fit); color = :red,
+                    linewidth = 2, label = "fit γ = $(round(f.gamma; sigdigits = 4))")
+                lines!(ax, f.t_fit, f.U_fit[1] .* exp.(2sign * obs["theory"] .* (f.t_fit .- f.t_fit[1]));
+                    color = :blue, linestyle = :dash, label = "theory γ = $(round(obs["theory"]; sigdigits = 4))")
+                obs["method"] == "peak_envelope" && scatter!(ax, f.t_fit, f.U_fit; color = :red, markersize = 6)
+            end
+            hasproperty(f, :floor) && hlines!(ax, [f.floor]; color = :gray, linestyle = :dot, label = "noise floor")
+            side[key] = merge(r, Dict("initial" => U[1], "max" => maximum(U), "final" => U[end]))
+        end
+        axislegend(ax; position = sign < 0 ? :rt : :lt)
+        save_plot(dir, plotname, fig, side)
+    end
+
+    # The Ex/Ey energy ratio, from the scalars and from the mode coefficients.
+    rkeys = sort([k for (k, o) in observables if o["signal"] in ("scalar_ratio", "mode_ratio")])
+    if !isempty(rkeys)
+        fig = Figure(size = (800, 500))
+        ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "Ex/Ey energy ratio", title = "$name: energy ratio")
+        side = Dict{String,Any}("plot" => "ratio of the Ex and Ey field energies (scalars) and of the mode coefficients, versus time")
+        for key in rkeys
+            t, R = series[key]
+            pos = R .> 0
+            lines!(ax, t[pos], R[pos]; label = key)
+            side[key] = merge(results[key], Dict("first" => R[1], "median" => median(R)))
+        end
+        o = observables[first(rkeys)]
+        hlines!(ax, [o["theory"]]; color = :blue, linestyle = :dash, label = "Yee grid $(round(o["theory"]; sigdigits = 6))")
+        hlines!(ax, [o["theory_continuum"]]; color = :gray, linestyle = :dot, label = "continuum $(o["theory_continuum"])")
+        axislegend(ax; position = :rt)
+        save_plot(dir, "energy-ratio", fig, side)
+    end
+
+    # Field snapshots: the first field of the projection at four times, and the k = 0 component
+    # (the mean over the box) of every dumped field.
+    fname = first(first(get(o, "fields", [""]) for o in values(observables) if o["signal"] == "mode_projection"))
+    F = fl.fields[fname]
+    nt = size(F, 3)
+    picks = unique(round.(Int, range(1, nt; length = 4)))
+    fig = Figure(size = (1000, 900))
+    side = Dict{String,Any}("plot" => "$fname(x, y) at four times", "max_abs_at_t" => Dict{String,Any}(),
+        "box_mean_at_first_output" => Dict(n => mean(fl.fields[n][1:end-1, 1:end-1, 1]) for n in fieldnames))
+    for (p, j) in enumerate(picks)
+        ax = Axis(fig[(p - 1) ÷ 2 + 1, (p - 1) % 2 + 1]; xlabel = "x [c/ω₀]", ylabel = "y [c/ω₀]",
+            title = "$fname, t = $(round(fl.time[j]; digits = 2))", aspect = DataAspect())
+        lim = max(maximum(abs, F[:, :, j]), floatmin())
+        heatmap!(ax, fl.x[fname][1], fl.x[fname][2], F[:, :, j]; colormap = :RdBu, colorrange = (-lim, lim))
+        side["max_abs_at_t"][string(round(fl.time[j]; digits = 4))] = maximum(abs, F[:, :, j])
+    end
+    save_plot(dir, "field-snapshots", fig, side)
+
+    # Loading checks at t = 0 (not observables): the box mean of the charge density, its largest
+    # deviation from the mean, and the amplitude of its mode (the loaded perturbation of the net
+    # charge; zero for opposite-phase beams).
+    checks = Dict{String,Any}()
+    if haskey(fl.fields, "Rho")
+        ρ = fl.fields["Rho"][1:end-1, 1:end-1, 1]
+        checks["rho_mean_t0"] = mean(ρ)
+        checks["rho_max_deviation_t0"] = maximum(abs.(ρ .- mean(ρ)))
+        checks["rho_mode_amplitude_t0"] = abs(only(mode_coefficient(fl.fields["Rho"][:, :, 1:1], mode, fl.x["Rho"], lengths)))
+    end
+    # Staggering checks on the dumps, which also check the reader's dual-axis positions (a dual
+    # point i at (i − ½)Δ, so Ex[i+1] − Ex[i] is centred on node i): Gauss's law at t = 0,
+    # max |∇·E − ρ| / max |ρ|, and the largest |∇·B| over all outputs relative to max |B|.
+    hx, hy = lengths ./ Tuple(case["grid"]["cells"])
+    Nx, Ny = Tuple(case["grid"]["cells"])
+    if all(haskey(fl.fields, n) for n in ("Ex", "Ey", "Rho"))
+        Ex, Ey, ρ = (fl.fields[n][:, :, 1] for n in ("Ex", "Ey", "Rho"))
+        checks["gauss_residual_t0_relative"] = maximum(abs((Ex[i+1, j] - Ex[i, j]) / hx +
+            (Ey[i, j+1] - Ey[i, j]) / hy - ρ[i, j]) for i in 1:Nx, j in 1:Ny) / maximum(abs, ρ)
+    end
+    if all(haskey(fl.fields, n) for n in ("Bx", "By"))
+        Bx, By = fl.fields["Bx"], fl.fields["By"]     # Bx: (primal x, dual y), By: (dual x, primal y)
+        divB = maximum(abs((Bx[i+1, j+1, n] - Bx[i, j+1, n]) / hx + (By[i+1, j+1, n] - By[i+1, j, n]) / hy)
+                       for i in 1:Nx, j in 1:Ny, n in axes(Bx, 3))
+        checks["divB_max_relative"] = divB / max(maximum(abs, Bx), maximum(abs, By))
+    end
+    # Post-hoc sensitivity, labelled as such (not a pre-registered observable): the Ex/Ey energy
+    # ratio at the first output with the box mean (k = 0 part) of each field removed. Smilei adds
+    # a uniform field after its initial Poisson solve (scripts/crosscode/README.md).
+    if all(haskey(fl.fields, n) for n in ("Ex", "Ey"))
+        e(n) = (f = fl.fields[n][1:end-1, 1:end-1, 1]; sum(abs2, f .- mean(f)))
+        checks["sensitivity_energy_ratio_t0_without_box_mean"] = e("Ex") / e("Ey")
+    end
+
+    # Energy conservation.
+    Utot = sc.columns["Utot"]
+    drift = (Utot .- Utot[1]) ./ Utot[1]
+    fig = Figure(size = (800, 500))
+    ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "(Utot - Utot(0)) / Utot(0)", title = "$name: total energy")
+    lines!(ax, sc.time, drift; color = :black)
+    save_plot(dir, "energy-conservation", fig, Dict("plot" => "relative change of the total energy versus time",
+        "max_abs_relative_change" => maximum(abs, drift), "final_relative_change" => drift[end],
+        "Utot0" => Utot[1], "Ukin0" => sc.columns["Ukin"][1], "Uelm0" => sc.columns["Uelm"][1]))
+
+    ran = smilei_steps(dir)
+    size_ = run_size(case; steps = something(ran, round(Int, case["time"]["t_end"] / case["time"]["dt"])))
+    size_["steps_source"] = ran === nothing ? "case (round(t_end/dt))" : "smilei.log (n_time)"
+    wall = wall_seconds(dir)
+    performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
+    wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
+    result = Dict{String,Any}("case" => name, "observables" => results, "performance" => performance, "checks" => checks)
+    open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
+    outputs = filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
+    m = read_manifest(dir)
+    outhash = Dict(relpath(f, dir) => "sha256:" * file_hash(f) for f in outputs)
+    image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => image_id(dir, log)))
+    flat = Dict(k => Dict(kk => vv for (kk, vv) in v if vv !== nothing) for (k, v) in results)
+    write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
+        "hardware" => hardware(dir), "performance" => performance, "checks" => checks, "observables" => flat,
+        "analysis" => (a = git_commit(dirname(dirname(@__DIR__)));
+            Dict{String,Any}("script" => "scripts/crosscode/analyze.jl", "commit" => a.commit,
+                "dirty" => coalesce(a.dirty, "unknown")))))
     return result
 end
 
