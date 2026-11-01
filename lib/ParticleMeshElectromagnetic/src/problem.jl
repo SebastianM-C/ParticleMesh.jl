@@ -97,20 +97,22 @@ neutralizing background, not particles). The velocity is the `drift` along x plu
 diagnostic wavenumber is that of the first perturbed species' mode.
 
 The keywords override the case for tests and scans: `ppc` for every mobile species, `cells`,
-`t_end` (keeping `dt`; the run takes `round(t_end/dt)` steps), and `amplitude`, which replaces
+`t_end` (the run takes `round(t_end/dt)` steps), `dt` (with `cells`, so that a finer grid keeps
+Δt < Δx, which `EMState` requires), and `amplitude`, which replaces
 the magnitude of every nonzero perturbation amplitude and keeps its sign (the parameter of the
 A3 gradient check, so it may be a `Dual`), and `seed`, the seed of the velocity draws (common
 random numbers on both sides of a gradient check, A7).
 """
 function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells = nothing, t_end = nothing,
-                           amplitude = nothing, seed = nothing, transverse_thermal::Bool = false) where {T}
+                           dt = nothing, amplitude = nothing, seed = nothing, transverse_thermal::Bool = false) where {T}
     grid = case["grid"]
     get(grid, "boundaries", "periodic") == "periodic" || throw(ArgumentError("only periodic boundaries are implemented"))
     L = T(grid["length"])
     n = cells === nothing ? Int(grid["cells"]) : Int(cells)
-    dt = T(case["time"]["dt"])
+    dt_run = dt === nothing ? case["time"]["dt"] : dt
+    dt = T(dt_run)
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
-    nsteps = round(Int, tend / case["time"]["dt"])
+    nsteps = round(Int, tend / dt_run)
     seed = seed === nothing ? Int(getnum(case["numerics"], "random_seed", 1)) : Int(seed)
     species = SpeciesDescription{T}[]
     for (k, s) in enumerate(case["species"])

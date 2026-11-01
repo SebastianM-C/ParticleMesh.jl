@@ -50,6 +50,21 @@ function extras_buffers(backend, cap, extras::Tuple, pool)
     return (buf, extras_buffers(backend, cap, Base.tail(extras), i === nothing ? (pool..., buf) : pool)...)
 end
 
+"""
+    check_workspace(ws, species, grid)
+
+Throw an `ArgumentError` unless `ws` was built for a species of this capacity and a grid of this
+many cells. The kernels that read the workspace run under `@inbounds`, so a mismatch would write
+out of bounds. Lengths are static shapes, so the check is host-side and allowed by §0.4.
+"""
+function check_workspace(ws::Workspace, s::Species, grid::PeriodicGrid)
+    length(ws.key) == capacity(s) ||
+        throw(ArgumentError("workspace built for capacity $(length(ws.key)), species has capacity $(capacity(s))"))
+    length(ws.seg_start) == prod(grid.n) ||
+        throw(ArgumentError("workspace built for $(length(ws.seg_start)) cells, grid has $(prod(grid.n))"))
+    return nothing
+end
+
 "Bytes of scratch held by a workspace (for the write-up's scratch-per-particle figure)."
 function scratch_bytes(ws::Workspace)
     core = (ws.tmp_i32, ws.tmp_T, ws.tmp_u8)
@@ -122,6 +137,7 @@ applies to the engine's own kernels; AcceleratedKernels' sort launches as its wo
 says.
 """
 function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; workgroupsize = nothing)
+    check_workspace(ws, s, grid)
     backend = get_backend(s)
     cap = capacity(s)
     n = ncells(grid)
@@ -168,6 +184,7 @@ end
 end
 
 function sort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; workgroupsize = nothing) where {N}
+    check_workspace(ws, s, grid)
     backend = get_backend(s)
     cap = capacity(s)
     ncell = prod(grid.n)

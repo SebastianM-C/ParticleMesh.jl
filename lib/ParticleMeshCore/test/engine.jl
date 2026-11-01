@@ -56,7 +56,9 @@ function body_T172(be)
         @test same_bits(out, scan_output(T, n; be)[1])                     # rerun
     end
     # Shapes are checked on the host before any launch.
-    let T = Float64, bad = (PeriodicGrid(0, 1.0, 2), PeriodicGrid(4, 1.0, 0))
+    # A grid of 0 cells is refused by its constructor (T-340); one without guards by the scan.
+    @test_throws ArgumentError PeriodicGrid(0, 1.0, 2)
+    let T = Float64, bad = (PeriodicGrid(4, 1.0, 0),)
         for grid in bad
             v = field(backend, T, PeriodicGrid(4, 1.0, 2))
             @test_throws ArgumentError on(be, cumsum_periodic!, similar(v), v, grid)

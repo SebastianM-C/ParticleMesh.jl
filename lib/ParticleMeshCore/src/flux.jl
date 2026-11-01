@@ -168,6 +168,7 @@ function _deposit_flux!(::Fast, Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, qy,
 end
 
 function _deposit_flux!(::Reference, Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, qy, qz, workgroupsize)
+    check_workspace(ws, s, grid)
     lo, hi = flux_reach(shape, stagger)
     launcher(flux_sorted_kernel!, get_backend(s), workgroupsize)(Jx, Jy, Jz, s, ws.seg_start, ws.seg_stop, shape, stagger,
                                                                 Int32(ncells(grid)), Int32(guards(grid)), lo, hi, sx, qy, qz;
