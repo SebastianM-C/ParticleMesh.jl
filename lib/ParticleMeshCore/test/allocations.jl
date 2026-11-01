@@ -30,7 +30,7 @@
             # dt = 1 (up to about half a cell) before each sort, outside the measured call.
             move!() = for i in 1:capacity(s)
                 s.status[i] == ParticleMeshCore.ALIVE || continue
-                s.cell[1][i], s.offset[1][i] = advance(s.cell[1][i], s.offset[1][i], s.u[1][i] * 4, Int32(n))
+                s.cell[1][i], s.offset[1][i] = advance(s.cell[1][i], s.offset[1][i], s.u[1][i] / cellsize(grid), Int32(n))
             end
             for (name, op) in pairs(ops)
                 prep = name === :sort ? move! : () -> nothing
