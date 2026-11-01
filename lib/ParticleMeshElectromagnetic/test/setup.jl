@@ -10,6 +10,8 @@ include(joinpath(CORE_TEST, "setup.jl"))     # ParticleMeshCore, backend, TYPES,
 include(joinpath(CORE_TEST, "helpers.jl"))   # fd_scan, test_species, ...
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: kick_kernel!, push_kernel!
+using LinearAlgebra: det
+using Random: Xoshiro
 
 const EMTOL = TOML.parsefile(joinpath(@__DIR__, "tolerances.toml"))
 "Proposed constant `C` of a test of this package, from its `tolerances.toml`."

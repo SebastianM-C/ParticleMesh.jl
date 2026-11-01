@@ -19,8 +19,8 @@ The table entries come from these papers:
 - **Higuera and Cary.**
   - Volume preservation and the E×B velocity: their Secs. IV–V.
   - Their pusher differs from Boris only in the γ used for the rotation: their Eq. 20 instead of Eq. 21, with γ₋ ≥ γ_new (Eq. 25).
-  - Near resonant orbits of their integrable test system (Eq. 48, H = 4, Δt = 1/10), Vay's energy error oscillates with amplitude δH ≈ 0.1, about 3% of H. They describe these errors as bounded and periodic. Boris and Higuera–Cary stay about 10² smaller (Figs. 3–4).
-  - They show the per-step volume change of Vay's scheme is a ratio J(x, u_i)/J(x, u_f) (Eqs. 40–42), which telescopes in constant fields.
+  - Near resonant orbits of their integrable test system (Eq. 48, H = 4, Δt = 1/10), Vay's energy error oscillates with amplitude δH ≈ 0.1, about 3% of H. They describe these errors as bounded and periodic. Boris and Higuera–Cary stay about 10² smaller (Figs. 3–4). This item is not in arXiv:1701.05605v1, which has only Figs. 1–2 (Poincaré sections at Δt = 1/40 and 1/10, with a Vay resonance island at p_y ≈ 1.7). It presumably comes from the journal version, which WP-015 did not read. WP-015's T-236 measures max |ΔH/H| ≈ 3% for Vay and ≈ 5·10⁻⁴ for the other three on this system (`reports/pushers.md`).
+  - They show the per-step volume change of Vay's scheme is a ratio J(x, u_i)/J(x, u_f) (Eqs. 40–42), which telescopes in constant fields. Their Eq. 41 is J(x, u) = 1 + (β² + (β·u)²)/γ⁴, with β = qBΔt/(2m) (Eq. 16).
 - **Boris-C (Zenitani and Umeda).** It removes the gyrophase error, but it no longer reproduces the E×B drift that plain Boris gets right nonrelativistically: its fixed point is off by a factor of about (θ/2)/tan(θ/2). The exact-rotation compositions of He et al. (below) are unstable at hω = kπ. Zenitani and Umeda nevertheless call Boris-C the safer choice at large Δt compared with their tan-half-angle variant.
 - **Ripperda et al. (ApJS 235, 21 (2018), DOI 10.3847/1538-4365/aab114)** compare Boris, Vay and Higuera–Cary on relativistic test-particle cases.
   - The three explicit schemes cost about the same (Sec. 2.5).
@@ -86,7 +86,12 @@ Boris-SDC is the one that handles time-dependent fields. It is the candidate if 
 - **The plane-wave figure-8 orbit** (Sarachik and Schappert, Phys. Rev. D 1, 2738 (1970)), scanned over a₀·ω₀Δt, the per-step kick where the field peaks.
   - The closed form assumes the electron was at rest before an adiabatically switched-on wave.
   - In a constant-amplitude wave, a particle started at rest must start at a zero of the vector potential, or it picks up a transverse drift.
-- **Higuera and Cary's integrable system** (their Eq. 48, Δt = 1/10, H = 4, p_z = 0, p_y,0 ∈ {1.625, 1.775}). It shows Vay's energy errors near resonant orbits. The remaining initial conditions are not stated in the text.
+- **Higuera and Cary's integrable system** (their Sec. VI, Eqs. 43–51 in arXiv:1701.05605v1; "Eq. 48" for short).
+  - Fields, with q = m = c = 1: E = −a x x̂ and B = b y x̂, with a = 1 and b = 2. So A_z = b y²/2 and φ = a x²/2.
+  - Invariants: H = √(1 + p_x² + p_y² + (p_z − A_z)²) + φ, p_z, and I_y = p_y² + (p_z − A_z)² (their Eqs. 46–47).
+  - They run H = 4, p_z = 0 and Δt = 1/10 (and 1/40). Their x oscillation has period 2π.
+  - It shows Vay's errors near resonant orbits.
+  - The values p_y,0 ∈ {1.625, 1.775} are not in arXiv v1, and no other initial condition is stated there. WP-015 starts on their section plane x = 0, at y = 0, with p_x from H.
 - **Nonrelativistic long-run cases with stated parameters:**
   - Qin et al. 2013 (B = r e_z, φ = 10⁻²/r);
   - Hairer and Lubich 2018, Examples 5.1–5.2;

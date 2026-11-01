@@ -1,0 +1,202 @@
+{
+  "hc_py1.625 Boris Float32": {
+    "drift_rate": 1.9721630129835135e-10,
+    "max_rel": 0.0005449652996638596,
+    "steps": 6283185
+  },
+  "hc_py1.625 Boris Float64": {
+    "drift_rate": 1.4249315434719564e-12,
+    "max_rel": 0.0005375722612853685,
+    "steps": 6283185
+  },
+  "hc_py1.625 BorisExactRotation Float32": {
+    "drift_rate": -1.223222865088327e-9,
+    "max_rel": 0.0013586879586391424,
+    "steps": 6283185
+  },
+  "hc_py1.625 BorisExactRotation Float64": {
+    "drift_rate": 1.4249317105473974e-12,
+    "max_rel": 0.0005375722613799595,
+    "steps": 6283185
+  },
+  "hc_py1.625 HigueraCary Float32": {
+    "drift_rate": -7.483613425038831e-11,
+    "max_rel": 0.0006167889008992255,
+    "steps": 6283185
+  },
+  "hc_py1.625 HigueraCary Float64": {
+    "drift_rate": 1.4249317553826459e-12,
+    "max_rel": 0.0005375722610814205,
+    "steps": 6283185
+  },
+  "hc_py1.625 RK4 Float32": {
+    "drift_rate": -2.0754726311692744e-8,
+    "max_rel": 0.013050497356086812,
+    "steps": 6283185
+  },
+  "hc_py1.625 RK4 Float64": {
+    "drift_rate": -2.1793641553316012e-8,
+    "max_rel": 0.013703309190183035,
+    "steps": 6283185
+  },
+  "hc_py1.625 Vay Float32": {
+    "drift_rate": -4.878291084686763e-9,
+    "max_rel": 0.031027020873249822,
+    "steps": 6283185
+  },
+  "hc_py1.625 Vay Float64": {
+    "drift_rate": -2.8473725417810903e-11,
+    "max_rel": 0.031036320541642518,
+    "steps": 6283185
+  },
+  "hc_py1.775 Boris Float32": {
+    "drift_rate": 5.558516425578891e-12,
+    "max_rel": 0.0005379915237426758,
+    "steps": 6283185
+  },
+  "hc_py1.775 Boris Float64": {
+    "drift_rate": -7.84265528172573e-13,
+    "max_rel": 0.0004787491876266925,
+    "steps": 6283185
+  },
+  "hc_py1.775 BorisExactRotation Float32": {
+    "drift_rate": -1.5740526642102466e-9,
+    "max_rel": 0.0015223026275634766,
+    "steps": 6283185
+  },
+  "hc_py1.775 BorisExactRotation Float64": {
+    "drift_rate": -7.84265818670435e-13,
+    "max_rel": 0.00047874918780954623,
+    "steps": 6283185
+  },
+  "hc_py1.775 HigueraCary Float32": {
+    "drift_rate": 1.4960342559199743e-10,
+    "max_rel": 0.0005258321762084961,
+    "steps": 6283185
+  },
+  "hc_py1.775 HigueraCary Float64": {
+    "drift_rate": -7.842653541964658e-13,
+    "max_rel": 0.0004787491874609362,
+    "steps": 6283185
+  },
+  "hc_py1.775 RK4 Float32": {
+    "drift_rate": -1.9804579266145838e-8,
+    "max_rel": 0.012445926666259766,
+    "steps": 6283185
+  },
+  "hc_py1.775 RK4 Float64": {
+    "drift_rate": -2.0722506795847234e-8,
+    "max_rel": 0.013011924941453534,
+    "steps": 6283185
+  },
+  "hc_py1.775 Vay Float32": {
+    "drift_rate": -5.096516735404359e-9,
+    "max_rel": 0.032830238342285156,
+    "steps": 6283185
+  },
+  "hc_py1.775 Vay Float64": {
+    "drift_rate": 3.8270242459025405e-13,
+    "max_rel": 0.02965454310485094,
+    "steps": 6283185
+  },
+  "qin_nonrelativistic Boris Float32": {
+    "drift_rate": 2.9841831825516583e-12,
+    "max_rel": 5.6372764907953845e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic Boris Float64": {
+    "drift_rate": -3.724619016103787e-15,
+    "max_rel": 3.447163333108687e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic BorisExactRotation Float32": {
+    "drift_rate": -2.290643740011379e-12,
+    "max_rel": 4.227957368096538e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic BorisExactRotation Float64": {
+    "drift_rate": -4.970129483199062e-15,
+    "max_rel": 3.448787992571928e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic HigueraCary Float32": {
+    "drift_rate": 7.466551210266578e-13,
+    "max_rel": 4.1105141078716345e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic HigueraCary Float64": {
+    "drift_rate": -6.678035932671097e-15,
+    "max_rel": 3.4471874351098395e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic RK4 Float32": {
+    "drift_rate": -1.077831634614768e-9,
+    "max_rel": 0.005834933497753898,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic RK4 Float64": {
+    "drift_rate": -1.0780578537074928e-9,
+    "max_rel": 0.005834338327653207,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic Vay Float32": {
+    "drift_rate": -1.6025685296124587e-13,
+    "max_rel": 4.462843888546346e-6,
+    "steps": 2000000
+  },
+  "qin_nonrelativistic Vay Float64": {
+    "drift_rate": -7.548245581172778e-15,
+    "max_rel": 3.6990309035341843e-6,
+    "steps": 2000000
+  },
+  "qin_relativistic Boris Float32": {
+    "drift_rate": 4.932838229595692e-11,
+    "max_rel": 8.307735211187639e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic Boris Float64": {
+    "drift_rate": -1.718860425284657e-13,
+    "max_rel": 5.883010479750775e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic BorisExactRotation Float32": {
+    "drift_rate": -1.0343223019878225e-10,
+    "max_rel": 7.097060230662807e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic BorisExactRotation Float64": {
+    "drift_rate": 3.78055539766157e-13,
+    "max_rel": 5.896794931931199e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic HigueraCary Float32": {
+    "drift_rate": -2.572708880817694e-11,
+    "max_rel": 6.153568694115869e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic HigueraCary Float64": {
+    "drift_rate": -2.4176019991418993e-14,
+    "max_rel": 5.8933359486881174e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic RK4 Float32": {
+    "drift_rate": -1.378107234391548e-8,
+    "max_rel": 0.2953147713201951,
+    "steps": 2000000
+  },
+  "qin_relativistic RK4 Float64": {
+    "drift_rate": -1.3781050548945151e-8,
+    "max_rel": 0.295314726390137,
+    "steps": 2000000
+  },
+  "qin_relativistic Vay Float32": {
+    "drift_rate": -4.097793486651223e-11,
+    "max_rel": 9.251226747734577e-5,
+    "steps": 2000000
+  },
+  "qin_relativistic Vay Float64": {
+    "drift_rate": -4.250580958323418e-13,
+    "max_rel": 8.813678109546695e-5,
+    "steps": 2000000
+  }
+}

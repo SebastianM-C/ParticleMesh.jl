@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "87c3d619295efec9f8be8aa61781f76ce7480854"
+project_hash = "609af82092e3e8a8be268a2fa66c43e6026ecb0e"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1095,6 +1095,13 @@ registries = "General"
 uuid = "d3585ca7-f5d3-4ba6-8057-292ed1abd90f"
 version = "2.3.0"
 
+[[deps.OrdinaryDiffEqVerner]]
+deps = ["DiffEqBase", "FastBroadcast", "LinearAlgebra", "MuladdMacro", "OrdinaryDiffEqCore", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "SciMLBase", "TruncatedStacktraces"]
+git-tree-sha1 = "5a66a18325e678f260e849a62840cb4903ece511"
+registries = "General"
+uuid = "79d7bb75-1356-48c1-b8c0-6832512096c2"
+version = "2.4.2"
+
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
@@ -1124,9 +1131,10 @@ deps = ["Adapt", "KernelAbstractions", "ParticleMeshCore"]
 path = "lib/ParticleMeshElectromagnetic"
 uuid = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
 version = "0.1.0-DEV"
-weakdeps = ["RecursiveArrayTools", "SciMLBase"]
+weakdeps = ["OrdinaryDiffEqCore", "RecursiveArrayTools", "SciMLBase"]
 
     [deps.ParticleMeshElectromagnetic.extensions]
+    ParticleMeshElectromagneticOrdinaryDiffEqCoreExt = ["OrdinaryDiffEqCore", "SciMLBase"]
     ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
 
 [[deps.Pkg]]

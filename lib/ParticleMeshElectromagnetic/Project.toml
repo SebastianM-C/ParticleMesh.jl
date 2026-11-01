@@ -12,10 +12,12 @@ KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"
 
 [weakdeps]
+OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 
 [extensions]
+ParticleMeshElectromagneticOrdinaryDiffEqCoreExt = ["OrdinaryDiffEqCore", "SciMLBase"]
 ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
 
 [sources]
@@ -24,6 +26,7 @@ ParticleMeshCore = {path = "../ParticleMeshCore"}
 [compat]
 Adapt = "4"
 KernelAbstractions = "0.10"
+OrdinaryDiffEqCore = "4"
 ParticleMeshCore = "0.1"
 RecursiveArrayTools = "4"
 SciMLBase = "3"
