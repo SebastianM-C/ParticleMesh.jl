@@ -1,0 +1,22 @@
+{
+  "fit_points": 164,
+  "fit_range": [
+    13.8290216,
+    18.7940668
+  ],
+  "measured": 0.34598700492848755,
+  "measured_from_mode": 0.33701184865551015,
+  "measured_from_mode_points": 20,
+  "measured_from_mode_stderr": 0.0025324903917858564,
+  "measured_stderr": 0.0008960735993549302,
+  "ns_per_particle_step": 34.54602971761959,
+  "observable": "growth_rate",
+  "particles": 512000,
+  "relative_difference": -0.013933034836893858,
+  "saturation_t": 24.9470676,
+  "seed": 20261031,
+  "steps": 10505,
+  "theory": 0.35087576924479724,
+  "theory_nonrelativistic": 0.3535533905932736,
+  "wall_seconds": 185.807893598
+}

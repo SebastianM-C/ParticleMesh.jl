@@ -246,6 +246,283 @@ end
     @test mode_amplitude(reshape(f, :, 1), 2)[1] ≈ 3 rtol = 1e-12
 end
 
+# WP-012: seed ensembles, the ParticleMesh column through the case files, analysis repairs.
+include(joinpath(CC, "ensemble.jl"))
+include(joinpath(CC, "manifest.jl"))
+using .Ensemble, .RunManifest
+using Random: Xoshiro, randn, rand
+using Statistics: mean, std, var
+using SHA: sha256
+
+# Narrowband noise like the thermal Langmuir fluctuations of a PIC run: K complex sinusoids with
+# random frequencies in [1, 2) ω_p, random phases and Gaussian amplitudes, mean energy σ².
+function narrowband_noise(rng, t, σ; K = 24)
+    ωk = 1 .+ rand(rng, K)
+    φ = 2π .* rand(rng, K)
+    a = randn(rng, ComplexF64, K) .* (σ / sqrt(K))
+    return [sum(a .* cis.(ωk .* ti .+ φ)) for ti in t]
+end
+
+@testset "T-180 ensemble fit recovers a damping rate; the floor falls as 1/M [A5, A7, WP-012]" begin
+    γ, ω = 0.1534, 1.4157
+    t = collect(0:0.0373:50)
+    signal = exp.(-γ .* t) .* cos.(ω .* t) .* cis(0.4)    # a standing wave's mode coefficient
+    # without noise the ensemble of identical seeds is the signal itself
+    e0 = ensemble_damping(t, [signal, signal, signal]; fit_start = 3.0, floor_factor = 10.0)
+    @test e0.ok
+    @test e0.gamma ≈ γ rtol = 1e-3
+    # 60 realizations of M = 8 seeds with independent noise, σ² = 3e-3 of the initial energy:
+    # the jackknife standard error over seeds covers the error like a standard error should
+    # (about 68 % within 1σ), and no realization is off by more than 4σ
+    M, R, σ = 8, 60, sqrt(3e-3)
+    pulls = Float64[]
+    for r in 1:R
+        rng = Xoshiro(1000r + M)
+        e = ensemble_damping(t, [signal .+ narrowband_noise(rng, t, σ) for _ in 1:M]; fit_start = 3.0, floor_factor = 10.0)
+        @test e.ok && e.M == M && length(e.used) >= 3
+        @test isfinite(e.jackknife.stderr) && e.jackknife.stderr > 0
+        push!(pulls, (e.gamma - γ) / e.jackknife.stderr)
+    end
+    @test mean(abs.(pulls) .<= 1) >= 0.5
+    @test maximum(abs, pulls) <= 4
+    # on the runs' own time grid (t ≤ 25, fields every 4 steps) and noise (per seed 2.5e-3 of the
+    # initial energy), where the floor window still holds signal: the jackknife still covers. The
+    # whole initial amplitude is modal here, so the signal-to-noise ratio is about twice the runs'
+    # (their non-modal part has phase-mixed away by fit_start); a coverage check, not a calibration.
+    tr = collect(0:4*0.0093266:25)
+    sr = exp.(-γ .* tr) .* cos.(ω .* tr)
+    pr = Float64[]
+    for r in 1:R
+        rng = Xoshiro(4242r)
+        e = ensemble_damping(tr, [sr .+ narrowband_noise(rng, tr, sqrt(2.5e-3)) for _ in 1:M]; fit_start = 3.0, floor_factor = 10.0)
+        e.ok && isfinite(e.jackknife.stderr) && push!(pr, (e.gamma - γ) / e.jackknife.stderr)
+    end
+    @test length(pr) >= R - 2
+    @test mean(abs.(pr) .<= 1) >= 0.5
+    @test mean(abs.(pr) .<= 2) >= 0.85
+    # the fitted floor (median of the last 20 % of |⟨Ê⟩|²) at M seeds against one seed, on a grid
+    # long enough (t ≤ 50) for the floor window to hold noise only: the ratio is M within three
+    # standard errors from the spread over realizations
+    for Mk in (4, 16)
+        f1, fM = Float64[], Float64[]
+        for r in 1:R
+            rng = Xoshiro(7919r + Mk)
+            cs = [signal .+ narrowband_noise(rng, t, σ) for _ in 1:Mk]
+            push!(fM, ensemble_damping(t, cs; fit_start = 3.0, floor_factor = 10.0).floor)
+            push!(f1, ensemble_damping(t, cs[1:1]; fit_start = 3.0, floor_factor = 10.0).floor)
+        end
+        ratio = mean(f1) / mean(fM)
+        δ = ratio * sqrt(var(f1) / (R * mean(f1)^2) + var(fM) / (R * mean(fM)^2))
+        @test abs(ratio - Mk) <= 3δ
+        @test δ < Mk / 4                                   # the check has power
+    end
+    # the complex coefficient keeps the phase that mode_amplitude drops
+    f = [3cos(2π * j / 16 + 0.3) for j in 0:16]
+    c = only(mode_coefficient(reshape(f, :, 1), 1))
+    @test abs(c) ≈ 3 rtol = 1e-12
+    @test angle(c) ≈ 0.3 rtol = 1e-12
+    @test abs(c) ≈ only(mode_amplitude(reshape(f, :, 1), 1)) rtol = 1e-14
+end
+
+# The value of the `random_seed = ` line of a namelist, and the namelist without that line.
+seed_line(text) = parse(Int, match(r"\n\s*random_seed = (\d+),\n", text)[1])
+without_seed(text) = replace(text, r"\n\s*random_seed = \d+,\n" => "\n")
+
+@testset "T-181 one namelist per seed, identical apart from the seed [A5, WP-003, WP-012]" begin
+    landau = load_case("landau")
+    seeds = case_seeds(landau)
+    @test length(seeds) >= 5 && allunique(seeds)
+    # Smilei seeds each patch with random_seed + patch index (Patch.cpp), so seeds closer than the
+    # patch count would share streams; the case spaces them further
+    np = smilei_parameters(landau).number_of_patches
+    @test minimum(diff(sort(seeds))) > np
+    texts = [namelist(landau; seed = s) for s in seeds]
+    @test [seed_line(x) for x in texts] == seeds
+    @test length(unique(bytes2hex.(sha256.(without_seed.(texts))))) == 1
+    @test all(x -> count("random_seed", x) == 1, texts)
+    # a case without the list keeps its single random_seed (schema 1 stays backward compatible)
+    ts = load_case("two-stream")
+    @test case_seeds(ts) == [ts["numerics"]["random_seed"]]
+    @test namelist(ts) == namelist(ts; seed = ts["numerics"]["random_seed"])
+    # prepare_run writes one directory per seed with that namelist, and one run.sh that runs them all
+    runs = mktempdir()
+    dir = prepare_run("landau"; tag = "t181", runs)
+    for s in seeds
+        @test read(joinpath(dir, "seed-$s", "smilei.py"), String) == namelist(landau; seed = s)
+        @test isfile(joinpath(dir, "seed-$s", "case.toml"))
+    end
+    sh = read(joinpath(dir, "run.sh"), String)
+    @test occursin("for seed in $(join(seeds, ' ')); do", sh) && occursin(raw"cd \"$top/seed-$seed\"", sh)
+    m = TOML.parsefile(joinpath(dir, "manifest.toml"))
+    @test m["seeds"] == seeds
+    @test all(s -> haskey(m["inputs"], "seed-$s/smilei.py"), seeds)
+end
+
+@testset "T-183 seed aggregation: mean and spread, refusal of a failed seed [A7, WP-012]" begin
+    rng = Xoshiro(183)
+    μ, σ, M = 0.15, 0.02, 400
+    fits = [(; gamma = μ + σ * randn(rng), ok = true, reason = "") for _ in 1:M]
+    a = aggregate_seeds(1:M, fits)
+    @test a.M == M
+    @test abs(a.mean - μ) <= 3σ / sqrt(M)
+    @test abs(a.std - σ) <= 3σ / sqrt(2(M - 1))          # standard error of a sample std
+    @test a.stderr ≈ a.std / sqrt(M)
+    # one failed seed refuses the whole aggregation and is named
+    bad = copy(fits)
+    bad[7] = (; gamma = NaN, ok = false, reason = "fewer than three maxima in the ensemble fit")
+    err = try
+        aggregate_seeds(101:100+M, bad); nothing
+    catch e
+        e
+    end
+    @test err isa SeedRefused
+    @test err.seeds == [107]
+    @test occursin("seed 107", sprint(showerror, err))
+    # damping_from_peaks results (no `ok` field) fail when γ is NaN: a pure-noise series
+    t = collect(0:0.05:25)
+    noisy = abs2.(narrowband_noise(Xoshiro(1), t, 1.0))
+    r = damping_from_peaks(t, noisy; fit_start = 3.0, floor_factor = 10.0)
+    @test !isfinite(r.gamma)
+    @test_throws SeedRefused aggregate_seeds([1, 2], [r, (; gamma = 0.1, t_fit = [1.0, 2.0, 3.0])])
+end
+
+@testset "T-184 the manifest stores the bare image id [A5, WP-012]" begin
+    id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+    dir = mktempdir()
+    log = joinpath(dir, "runner.log")
+    write(log, """
+    # gpu-run 2026-10-31T17:58:05Z
+    # worktree: <worktree> (HEAD 1b01ce7)
+    # command: smilei scripts/runs/smilei-landau-9a47a107
+    # image: localhost/particlemesh-smilei:e4f0148b8952fc87 id $id
+    # network: off, gpu: no, timeout: 7200s
+    # gpu-run finished: exit 0 after 51s; image: $id; log: <log>
+    """)
+    img = image_from_header(log)
+    @test img.id == id
+    @test img.name == "localhost/particlemesh-smilei:e4f0148b8952fc87"
+    # run-smilei.sh's image.txt writes "# image: <name> <id>" without the word id
+    txt = joinpath(dir, "image.txt")
+    write(txt, "# image: particlemesh-smilei:e4f0148b8952fc87 sha256:$id\n# podman run finished: exit 0\n")
+    @test image_from_header(nothing, txt).id == id
+    @test image_from_header(joinpath(dir, "absent.log")).id == "unknown"
+    write_manifest(dir; extra = Dict{String,Any}("image" => Dict{String,Any}("id" => img.id, "name" => img.name)))
+    m = read_manifest(dir)
+    @test m["image"]["id"] == id
+    @test occursin(r"^[0-9a-f]{64}$", m["image"]["id"])
+end
+
+@testset "T-185 the two-stream resolution pair differs only in resolution [A5, WP-012]" begin
+    a, b = load_case("two-stream"), load_case("two-stream-256")
+    @test b["grid"]["cells"] == 2a["grid"]["cells"]
+    @test b["time"]["dt"] ≈ a["time"]["dt"] / 2 rtol = 1e-12
+    # the output cadence in time is the same, so both fits see the same sampling
+    for k in ("scalars_every", "fields_every")
+        @test b["diagnostics"][k] == 2a["diagnostics"][k]
+    end
+    strip_res(c) = (c = deepcopy(c); for k in ("name", "description", "_path"); delete!(c, k); end;
+        delete!(c["grid"], "cells"); delete!(c["time"], "dt");
+        delete!(c["diagnostics"], "scalars_every"); delete!(c["diagnostics"], "fields_every"); c)
+    @test strip_res(a) == strip_res(b)
+    pb = smilei_parameters(b)
+    @test pb.number_of_timesteps == round(Int, b["time"]["t_end"] / b["time"]["dt"])
+    @test pb.timestep < pb.cell_length
+end
+
+@testset "T-186 a fit with too few points is refused, not reported [A5, WP-012]" begin
+    t = collect(0:0.24:40)                                 # two-stream field dumps every 32 steps
+    g = 0.35
+    U = @. min(1e-8 * exp(2g * t), 1e-2)
+    r = growth_from_window(t, U; window = (1e-3, 3e-2))
+    c = checked_fit(r; min_points = 5)
+    @test c.usable && c.gamma == r.gamma && c.points == length(r.t_fit)
+    @test c.points >= 5
+    # a window that the cadence crosses in four samples
+    tc = collect(0:1.6:40)
+    rc = growth_from_window(tc, @. min(1e-8 * exp(2g * tc), 1e-2); window = (1e-3, 3e-2))
+    cc = checked_fit(rc; min_points = 5)
+    @test !cc.usable && cc.gamma === nothing && cc.points < 5
+    @test occursin("points", cc.flag)
+    # a failed fit (NaN) is refused too
+    @test !checked_fit((; gamma = NaN, gamma_stderr = NaN, t_fit = Float64[])).usable
+end
+
+@testset "T-187 the seed scatter measures the noise of the mean without the signal [A5, WP-012]" begin
+    t = collect(0:0.0373:50)
+    signal = 0.3 .* exp.(-0.02 .* t) .* cos.(1.4 .* t)        # a large coherent part that must not enter
+    M, R, σ = 8, 40, sqrt(3e-3)
+    est = Float64[]
+    for r in 1:R
+        rng = Xoshiro(31r)
+        cs = [signal .+ narrowband_noise(rng, t, σ) for _ in 1:M]
+        sc = seed_scatter(cs, eachindex(t))
+        push!(est, sc.noise_of_mean)
+        @test sc.noise_per_seed ≈ M * sc.noise_of_mean
+    end
+    # the noise of each seed has mean energy σ² (over amplitudes and phases), so that of the mean is σ²/M
+    @test abs(mean(est) / (σ^2 / M) - 1) <= 3 * std(est) / sqrt(R) / (σ^2 / M) + 0.05
+    # noise shared by all seeds cancels in the scatter like the signal: the scatter is no independence test
+    shared = narrowband_noise(Xoshiro(5), t, σ)
+    @test seed_scatter([signal .+ shared for _ in 1:M], eachindex(t)).noise_of_mean ≈ 0 atol = 1e-30
+end
+
+# The ParticleMesh column (scripts/em1d/crosscode.jl, through the electromagnetic module), in a
+# module of its own so that its includes of the cross-code modules do not clash with the ones above.
+module PMCross
+include(joinpath(dirname(dirname(@__DIR__)), "em1d", "crosscode.jl"))
+end
+
+bits(x) = reinterpret(UInt64, Array(x))
+
+@testset "T-182 a seed means one ParticleMesh load and one set of observables [A4, WP-012]" begin
+    case = PMCross.load_case("landau")
+    small = deepcopy(case)                             # the case at 64 particles per cell and 2/ω₀
+    small["species"][1]["particles_per_cell"] = 64
+    small["time"]["t_end"] = 2.0
+    s1, s2 = PMCross.case_seeds(case)[1:2]
+    a = only(PMCross.build(small; seed = s1)[1].species)
+    b = only(PMCross.build(small; seed = s1)[1].species)
+    c = only(PMCross.build(small; seed = s2)[1].species)
+    @test Array(a.count) == Array(b.count) == [64 * 64]
+    @test Array(a.cell[1]) == Array(b.cell[1])
+    @test bits(a.offset[1]) == bits(b.offset[1]) && bits(a.w) == bits(b.w)
+    @test all(d -> bits(a.u[d]) == bits(b.u[d]), 1:3)
+    # another seed: the same lattice positions and weights (seed-independent), other velocities;
+    # the module draws the thermal spread along x only for these edge cases, so u_y = u_z = 0
+    @test Array(a.cell[1]) == Array(c.cell[1]) && bits(a.offset[1]) == bits(c.offset[1]) && bits(a.w) == bits(c.w)
+    ua, uc = Array(a.u[1]), Array(c.u[1])
+    @test count(ua .!= uc) == length(ua)
+    @test abs(std(uc) / std(ua) - 1) < 0.05            # both Maxwellian at v_th, 4096 draws
+    @test all(d -> all(iszero, Array(c.u[d])), 2:3)
+    # the default seed of a seeded case is its first one
+    @test bits(only(PMCross.build(small)[1].species).u[1]) == bits(a.u[1])
+    # rerun through the run path: bitwise identical series and identical observables; another seed differs
+    r1 = PMCross.simulate(small; seed = s1)
+    r2 = PMCross.simulate(small; seed = s1)
+    r3 = PMCross.simulate(small; seed = s2)
+    @test bits(r1.U) == bits(r2.U)
+    @test reinterpret(UInt64, r1.C) == reinterpret(UInt64, r2.C)
+    @test isequal(PMCross.observe(small, r1.tU, r1.U, r1.tC, abs2.(r1.C))[2], PMCross.observe(small, r2.tU, r2.U, r2.tC, abs2.(r2.C))[2])
+    @test bits(r3.U) != bits(r1.U)
+    @test length(r1.tC) == length(1:small["diagnostics"]["fields_every"]:r1.nsteps)
+end
+
+@testset "T-188 the ParticleMesh mode fit runs on the field cadence [A5, WP-012]" begin
+    # two-stream dumps fields every 32 steps and scalars every 4: each fit must use its own times
+    ts = PMCross.load_case("two-stream")
+    small = deepcopy(ts)
+    for s in small["species"]
+        s["mobile"] && (s["particles_per_cell"] = 100)
+    end
+    sim = PMCross.simulate(small)
+    @test length(sim.tC) == length(sim.C) && length(sim.tU) == length(sim.U)
+    @test sim.tC[2] - sim.tC[1] ≈ 32 * small["time"]["dt"] rtol = 1e-12
+    @test_throws ErrorException PMCross.observe(small, sim.tU, sim.U, sim.tU, abs2.(sim.C))
+    r, res = PMCross.observe(small, sim.tU, sim.U, sim.tC, abs2.(sim.C))
+    @test res["measured_from_mode_points"] >= 5
+    @test res["measured_from_mode"] ≈ res["measured"] rtol = 0.05     # two estimates of one growth rate
+end
+
 # ---------------------------------------------------------------------------------------------
 # WP-019: case schema 2, the 2D Smilei generator and reader, the 2D theory and the 2D mode fit.
 # ---------------------------------------------------------------------------------------------
@@ -298,7 +575,7 @@ pseudo_noise(i, j, n) = splitmix64(UInt64(i) | UInt64(j) << 21 | UInt64(n) << 42
     @test v.ndims == 1
     @test v.lengths == (0.6283185307179586,) && v.cells == (64,)
     e = v.species[1]
-    @test e.particles_per_cell == (400000,) && e.drift == (0.0, 0.0, 0.0)
+    @test e.particles_per_cell == (50000,) && e.drift == (0.0, 0.0, 0.0)          # per seed (WP-012)
     @test e.mode == (1,) && e.amplitude == 0.01
     @test v.species[2].mode === nothing
     @test case_view(load_case("two-stream")).species[1].drift == (-0.1, 0.0, 0.0)

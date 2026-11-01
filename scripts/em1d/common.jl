@@ -39,18 +39,18 @@ function input_files(script, case_name)
 end
 
 """
-    run_dir(name, script, case_name; params, work_package = "WP-014") -> dir
+    run_dir(name, script, case_name; params, work_package = "WP-014", extra_inputs = String[]) -> dir
 
 Create `scripts/runs/em1d-<name>-<timestamp>/` and write its `manifest.toml` (F3): the commit
 and dirty flag, the SHA-256 of every input (the case file among them unless `case_name` is
-`nothing`), the parameters, the work package, Julia version, thread count and CPU model.
+`nothing`, and the files in `extra_inputs`), the parameters, the work package, Julia version, thread count and CPU model.
 """
-function run_dir(name, script, case_name; params = Dict{String,Any}(), work_package = "WP-014")
+function run_dir(name, script, case_name; params = Dict{String,Any}(), work_package = "WP-014", extra_inputs = String[])
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = joinpath(REPO, "scripts", "runs", "em1d-$name-$stamp")
     mkpath(dir)
     # input paths relative to the repository root: absolute paths would carry the machine's home directory
-    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(script, case_name))
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in sort(unique([input_files(script, case_name); extra_inputs])))
     write_manifest(dir; root = REPO,
                    extra = Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => work_package, "parameters" => params,
                                             "julia" => string(VERSION), "threads" => Threads.nthreads(),

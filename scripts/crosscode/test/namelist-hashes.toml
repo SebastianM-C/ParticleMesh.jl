@@ -1,5 +1,7 @@
 # SHA-256 of the Smilei namelists of the schema-1 cases, from scripts/crosscode/smilei.jl at commit 3eec286401f4c76a023f0f374e098ab8a8b96efe,
-# recorded before the schema-2 change (WP-019) and checked byte for byte by T-270.
+# recorded before the schema-2 change (WP-019) and checked byte for byte by T-270. The landau hash is that of
+# the case as WP-012 pre-registered it (seeds, 50 000 electrons per cell per seed, field dumps every 4 steps; the
+# namelist of its first seed); the merged generator reproduces the earlier hash on the earlier case file.
 
-"landau" = "sha256:daa197b3958d9cc4dc9ce096977879a6495072dc7a10cc1cb717068d57e675ed"
+"landau" = "sha256:7cfea206b10d72fce2bb5718d2021405ed21b09e29caa133f2337c90cb76a541"
 "two-stream" = "sha256:01d07c824a3bb0b1d4d046062a50e8a61d78b9866e78354117796b3936438afe"

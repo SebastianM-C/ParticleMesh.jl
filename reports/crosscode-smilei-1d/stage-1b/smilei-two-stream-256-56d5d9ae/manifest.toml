@@ -1,0 +1,63 @@
+case = "two-stream-256"
+case_source = "scripts/crosscode/cases/two-stream-256.toml"
+code = "smilei"
+commit = "9d860489eccdbea8b771e1da7692b3a734ab2ef5"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:2c27829add81d6f1bb9dbe6e6b6f8889624c5bc7c8e37ebb75a866727a1c2c5f"
+run = "smilei-two-stream-256-56d5d9ae"
+seeds = [20261031]
+updated = "2026-11-01T10:19:44.669Z"
+
+[analysis]
+commit = "4d11c1d82a03c8764177518928e397254db1e552"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:1f6c97621d1fae66f5777a3dd0aa5cb96956525e79dde907b5c8fcaa72d35022"
+    "scripts/crosscode/analyze.jl" = "sha256:c13f34a6992a1da8813fb7115b3a35b551db00e77fa497f153d6c8e497486f39"
+    "scripts/crosscode/ensemble.jl" = "sha256:1d016376115def2a14eece90ab303ab255649d6c449629c9b4e6630becf59e1b"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:7e13e5634ae0bb3afbb7a8eda982fcff68e8f1bd92ae3256674012fb38cb63f0"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:5115fcc011da55f330613417c2f2cc71f338d846c1ea5ad56a7f32e86b095672"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 32
+threads = 32
+
+[image]
+id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:56d5d9ae1112bb3214922e279af980a202f0ab0607f8ffda9fb2141e541f3d91"
+"run.sh" = "sha256:ea417aee733fc40f598029f0c677de816ec5d23929567c24c19895e61643a668"
+"smilei.py" = "sha256:8988f8d60baf5e015ec0923db7cf197132a5ca9562016ac567ff3e0b1f6b607e"
+
+[observables]
+case = "two-stream-256"
+fit_points = 163
+fit_range = [13.8290216, 18.7636064]
+measured = 0.34592579149971553
+measured_from_mode = 0.33703425597413844
+measured_from_mode_points = 20
+measured_from_mode_stderr = 0.0025265855393508357
+measured_stderr = 0.0009032616173295208
+observable = "growth_rate"
+relative_difference = -0.014107493816788007
+theory = 0.35087576924479724
+theory_nonrelativistic = 0.3535533905932736
+
+    [observables.saturation]
+    U = 0.0019146222359
+    t = 24.9470676
+
+[outputs]
+"Fields0.h5" = "sha256:03f6121e49d64c1643c3b17eb08ffb38e753f10189b4ee94d63f867c0fdccafb"
+"container.txt" = "sha256:89f0d896bde5976585d566e51afe29d53670e1a80611eab3c8897fe902f8a1ee"
+"scalars.txt" = "sha256:eacf5d6ed1cb92a668b5bc89207a469b7706c33df436566f1a663bf8074a8c70"
+"smilei.log" = "sha256:5840c04dfd26b5c40e43327e97a65502e695e79222af5f385de58c7ecee66686"

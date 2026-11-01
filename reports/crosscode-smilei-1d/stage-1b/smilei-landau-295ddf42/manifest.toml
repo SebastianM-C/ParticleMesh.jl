@@ -1,0 +1,89 @@
+case = "landau"
+case_source = "scripts/crosscode/cases/landau.toml"
+code = "smilei"
+commit = "9d860489eccdbea8b771e1da7692b3a734ab2ef5"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:2c27829add81d6f1bb9dbe6e6b6f8889624c5bc7c8e37ebb75a866727a1c2c5f"
+run = "smilei-landau-295ddf42"
+seeds = [20261101, 20262101, 20263101, 20264101, 20265101, 20266101, 20267101, 20268101]
+updated = "2026-11-01T10:19:28.652Z"
+
+[analysis]
+commit = "4d11c1d82a03c8764177518928e397254db1e552"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:1f6c97621d1fae66f5777a3dd0aa5cb96956525e79dde907b5c8fcaa72d35022"
+    "scripts/crosscode/analyze.jl" = "sha256:c13f34a6992a1da8813fb7115b3a35b551db00e77fa497f153d6c8e497486f39"
+    "scripts/crosscode/ensemble.jl" = "sha256:1d016376115def2a14eece90ab303ab255649d6c449629c9b4e6630becf59e1b"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:7e13e5634ae0bb3afbb7a8eda982fcff68e8f1bd92ae3256674012fb38cb63f0"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:5115fcc011da55f330613417c2f2cc71f338d846c1ea5ad56a7f32e86b095672"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 8
+threads = 8
+
+[image]
+id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:295ddf422cb94ae059573be5cb4f1f5971f2b46bbf3502f62ec6e41ec8879de2"
+"run.sh" = "sha256:aefee5c168d4a14289494874fea0019ddf2a3d97c743b3d0f48c1fbe1e217212"
+"seed-20261101/smilei.py" = "sha256:7cfea206b10d72fce2bb5718d2021405ed21b09e29caa133f2337c90cb76a541"
+"seed-20262101/smilei.py" = "sha256:76ac476c34a010160b145889ba3fa078ac97ae984d3abcccbec980a0c15cd543"
+"seed-20263101/smilei.py" = "sha256:d2535848fea97e21d55a0923192c21d921662505712322f0e12e6bb153634d3a"
+"seed-20264101/smilei.py" = "sha256:6d18ef1523d2df468669566b4b7f9a1268b303d5e5ae4aab4cce909bdd38905b"
+"seed-20265101/smilei.py" = "sha256:3050f05b71cc5708b1aedc5ca5246a01e73dcd83166d83331c8f0543bb49bb24"
+"seed-20266101/smilei.py" = "sha256:41629872b881c089aaf6761c270061fcec40c575e870f7d97162c16913ec8c9e"
+"seed-20267101/smilei.py" = "sha256:ef89d5a40cc42fd3fdb17ca65234bf993cb551cf3edf317522659853e8619b6e"
+"seed-20268101/smilei.py" = "sha256:49180f12552582a0a848adb8e5e419739a387722c369bcfb9e04bb620924d225"
+
+[observables]
+M = 8
+ensemble_floor = 5.894681765637603e-10
+maxima_used = 6
+measured = 0.13026233259840186
+measured_stderr = 0.014393269121880993
+observable = "damping_rate_ensemble"
+observable_exists = true
+
+[outputs]
+"seed-20261101/Fields0.h5" = "sha256:906ec2b246790050b1eb20fc37f3b31a4ced40ecce1308c7e887fd5c3554ddc9"
+"seed-20261101/container.txt" = "sha256:93b6f1860e8d35a234f4b81faf09b8b971d03eedc445347d82b63dcb25c23c02"
+"seed-20261101/scalars.txt" = "sha256:2ff8e0f47ccdda2d66cd1a38b503d3fa74f797d0bfe7ef46c6bed6c0eca81f11"
+"seed-20261101/smilei.log" = "sha256:35188c88fddea0c41439b34f9e409e07e605dfcdf2fa59394e5356e6cfff314a"
+"seed-20262101/Fields0.h5" = "sha256:2ac03df71bbcb722d3de60b8f582f3788693670ac19eeeb2e6d252fdbb754d2e"
+"seed-20262101/container.txt" = "sha256:03aba7dfc538ddf15602ce053f1b22fffedf6896a2e5b88dc3c1bcb652adc169"
+"seed-20262101/scalars.txt" = "sha256:30a8feb88f6e02ca2e66289a1650b17139768646b8e1ca474f97e5dc6cc3a28e"
+"seed-20262101/smilei.log" = "sha256:b51b3453b4bbf64799effaae4e5c3950a8a7f919069f9b09f9d598dcb3f680c6"
+"seed-20263101/Fields0.h5" = "sha256:7ed1c3d12349a0edc21b80a2bff80ed105f6aa2f0a501db34f4fae1d274ab6de"
+"seed-20263101/container.txt" = "sha256:f43a9d69325ee39c49e32c3c176f10134f6a1ac609fb42368b8982f912ad0768"
+"seed-20263101/scalars.txt" = "sha256:84dceb7389d4931b488ee237372de5bccd56799cceae684b0159a76739d310b1"
+"seed-20263101/smilei.log" = "sha256:79070a33ed25aace6ec6c9a2f33cb4a443e3c26094362ccccdf5e5d730950da1"
+"seed-20264101/Fields0.h5" = "sha256:3440460598c116378d32bea7cda3027bbde2f17960adcc20d33ae60e3deb9eb4"
+"seed-20264101/container.txt" = "sha256:114857e0296c12bf605f7d0cb018ab3bfe476e606490402353cb14d45fa724fa"
+"seed-20264101/scalars.txt" = "sha256:3d3c0edf2c4f54dd6cc12b1a2d01e4671bc8b1d9c68d79393fce5eb5c46ab9b5"
+"seed-20264101/smilei.log" = "sha256:d875f5ca7d23c0b8ac78e0c87b386d26834b575470477fb472d60069b9721fe9"
+"seed-20265101/Fields0.h5" = "sha256:8c04307e2a20b052a0763ca83730423ba5b3cfa6feb7cc597c2b067e4c1c202b"
+"seed-20265101/container.txt" = "sha256:bc0548fa6a9c26fc2c04797c596add1a9e6ede73c6d493391eac00459912ffc0"
+"seed-20265101/scalars.txt" = "sha256:12ee2d72fab89197099396f2c80f1c31d0d4b1ba7bccc9262a5f416067dbc7a5"
+"seed-20265101/smilei.log" = "sha256:8def139d33a144ffa14ca76e909c410dc15af79e541e635979346abc4bdbb1a8"
+"seed-20266101/Fields0.h5" = "sha256:d73c1a537e83a6cd8bae6653325145fcdf05a2058cc5b456666c885467186c34"
+"seed-20266101/container.txt" = "sha256:ead10faf98f4b04ee45b796c806e28539c9f131a0e5f050528506c5cd6885d39"
+"seed-20266101/scalars.txt" = "sha256:64ae719e61aae3110c408934af54cec101fc9ee9b75cc4b45daea93491c5adcf"
+"seed-20266101/smilei.log" = "sha256:1e54cad43d474e46c4a57b322590dcc5bda326495a2fedf1b732bc3e0c0f9754"
+"seed-20267101/Fields0.h5" = "sha256:be000601198d710560216ea3e640a57f099994f4a0eee547118d76532f2e54cb"
+"seed-20267101/container.txt" = "sha256:950237e0c01d1b921a99f55c3f24fa6da4a34a286afdd2418bb569d9e3d74dfc"
+"seed-20267101/scalars.txt" = "sha256:ad8364dfc51c661364acd4b7698185ec5f2d712816f3b60e853d8efc0a06efdd"
+"seed-20267101/smilei.log" = "sha256:805f5ce489e85304e9fa2f72da5bfae48e259f1455871f60df1f54a3642b3a8b"
+"seed-20268101/Fields0.h5" = "sha256:f05dffbc5faa5ce15a395f50f1972c7b8b60bf7767c0c45289725800ae802672"
+"seed-20268101/container.txt" = "sha256:450c9b5cf07cdcb9762040625ab1ec5e60544695953b540521588cc6d3f8e4a5"
+"seed-20268101/scalars.txt" = "sha256:abe92d989c02a128acd23c224c5263649a0846af3062d4798a5cfa29e5d921bd"
+"seed-20268101/smilei.log" = "sha256:bb2da1f8071b8c4108e6e9d5fd806eee7697974824c1bea36764bc70e1cc0bf5"

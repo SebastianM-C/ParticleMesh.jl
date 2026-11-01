@@ -1,6 +1,6 @@
 +++
 id = "WP-012"
-status = "proposed"
+status = "done"
 goals = ["A1", "A4", "A5", "A7"]
 depends_on = ["WP-003", "WP-014"]
 adds_dependencies = []
@@ -29,7 +29,7 @@ This package owns the `seeds` field of the case schema. The velocity quiet start
 
 ## Deliverables
 
-1. **Case file**: `scripts/crosscode/cases/landau.toml` gains an optional `seeds = [...]` list (schema 1 stays backward compatible: when the list is absent, the single `random_seed` applies), the ensemble observable `damping_rate_ensemble` (a fit of the peaks of |⟨Ê₁⟩_seeds| with the same `fit_start` and `floor_factor` rule), and the particle count per seed. All of it is fixed in a commit before any run, and `scripts/crosscode/README.md` documents the field. The seed count is chosen from the measured per-seed spread and stated, with at least five seeds.
+1. **Case file**: `scripts/crosscode/cases/landau.toml` gains an optional `seeds = [...]` list (schema 1 stays backward compatible: when the list is absent, the single `random_seed` applies), the ensemble observable `damping_rate_ensemble` (a fit of the peaks of |⟨Ê₁⟩_seeds| with the same `fit_start` and `floor_factor` rule), and the particle count per seed. All of it is fixed in a commit before any run, and `scripts/crosscode/README.md` documents the field. The seed count is fixed with the rest before any run and stated, with at least five seeds; since no per-seed spread exists before the runs, it comes from the compute budget (Budgets), and the report checks it against the measured spread.
 2. **Generator and analysis**: `scripts/crosscode/smilei.jl` writes one namelist per seed. The ensemble reader and the per-seed and ensemble fits live in `scripts/crosscode/`, with the pre-registered rules unchanged and aggregation to a mean and standard deviation per code.
 3. **Analysis repairs**: the manifest's `image.id` stores the bare image id, not the runner's header line, and `measured_from_mode` refuses or flags a fit with too few points in the window instead of reporting an unusable value.
 4. **The ParticleMesh column**: `scripts/em1d/crosscode.jl` gains a seed loop over the same seeds as Philox keys (the `seed` keyword of `problem_from_case`), through the electromagnetic module in Reference Float64, writing the same observables and sidecars.
@@ -40,7 +40,7 @@ This package owns the `seeds` field of the case schema. The velocity quiet start
 
 ## Non-goals
 
-- No engine or test-support source change: no velocity quiet start and no loader option. The only ParticleMesh-side edit is the seed loop in `scripts/em1d/crosscode.jl`.
+- No engine or module source change: no velocity quiet start and no loader option. The ParticleMesh-side edits are the seed loop in `scripts/em1d/crosscode.jl`, an `extra_inputs` keyword of `run_dir` in `scripts/em1d/common.jl` (the manifest hashes the cross-code files the script includes), and the seed of T-214 pinned to that of its recorded measurement, because `landau.toml` lists `seeds` instead of `random_seed`.
 - No edit of `docs/goals/`: A5 values are proposed through the report and `questions/`, and the owner accepts them by editing the goals.
 - No A7 agreement threshold proposed, and none derived from the Smilei–ParticleMesh difference; that waits for the Smilei–PIConGPU spread (stage 2).
 - No threshold asserted in any test beyond finiteness and sign; the proposals are inputs for the owner.
@@ -57,6 +57,10 @@ Test ids T-180 to T-189.
 - T-182 through the case-file path, the same seed gives a bitwise identical ParticleMesh load and identical observables on rerun, and different seeds give different velocity draws (Philox stream check) [A4, WP-012].
 - T-183 the seed aggregation recovers the mean and spread of synthetic per-seed rates, and it refuses a seed whose fit fails the pre-registered criteria instead of dropping it silently [A7, WP-012].
 - T-184 the manifest writer stores the bare image id from a runner header line [A5, WP-012].
+- T-185 the two-stream resolution pair differs only in the cell count, the time step and the output cadence in steps [A5, WP-012].
+- T-186 a rate fit on too few points (or a failed one) is refused with its reason instead of reported [A5, WP-012].
+- T-187 the noise of the seed mean from the seeds' scatter about it recovers σ²/M on synthetic signals, without the coherent signal [A5, WP-012].
+- T-188 the ParticleMesh mode fit pairs the field-cadence series with the field-cadence times [A5, WP-012].
 - T-160 and T-161 still pass, and `julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl` is green on the CPU.
 - Both codes yield the pre-registered ensemble Landau observable (at least three maxima above `floor_factor` × the ensemble floor after `fit_start`), or the report states which code did not and why, with the numbers.
 - The report carries the Review row and the committed review findings, each answered (fixed, or argued with numbers). `questions/wp-012-a5-a7-proposals.md` lists the A5 proposals with their derivation and the A7 measurements with the thresholds marked pending PIConGPU, and the PR description points to it. `build.jl --check` passes.
