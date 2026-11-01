@@ -3,16 +3,16 @@
   "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
   "observables": {
     "growth_rate": {
-      "difference": 1.1031883414003296e-6,
-      "difference_relative": 3.189089189184719e-6,
-      "in_units_of_combined_stderr": 0.000863624408503982,
+      "difference": 1.0464710989976922e-6,
+      "difference_relative": 3.025131102801437e-6,
+      "in_units_of_combined_stderr": 0.0008192221629899228,
       "picongpu-fp32": {
-        "measured": 0.3459269384210513,
-        "measured_stderr": 0.0009032485890009715
+        "measured": 0.3459269132967062,
+        "measured_stderr": 0.000903248268388822
       },
       "picongpu-fp64": {
-        "measured": 0.3459258352327099,
-        "measured_stderr": 0.0009032588451018357
+        "measured": 0.3459258668256072,
+        "measured_stderr": 0.0009032624531803605
       }
     },
     "growth_rate_from_mode": {
@@ -33,7 +33,7 @@
   "plot": "Uelm_Ex of both runs versus time, log scale",
   "reference": "picongpu-fp64",
   "runs": {
-    "picongpu-fp32": "scripts/runs/picongpu-two-stream-256-fp32-56d5d9ae",
-    "picongpu-fp64": "scripts/runs/picongpu-two-stream-256-fp64-56d5d9ae"
+    "picongpu-fp32": "reports/crosscode-picongpu/picongpu-two-stream-256-fp32-56d5d9ae",
+    "picongpu-fp64": "reports/crosscode-picongpu/picongpu-two-stream-256-fp64-56d5d9ae"
   }
 }

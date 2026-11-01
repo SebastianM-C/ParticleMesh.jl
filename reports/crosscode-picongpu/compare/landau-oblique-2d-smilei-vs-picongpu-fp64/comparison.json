@@ -127,21 +127,21 @@
       }
     },
     "energy_ratio": {
-      "difference_of_means": 0.01131090600018636,
-      "difference_relative": 0.0028374543503133748,
+      "difference_of_means": 0.011311177397228978,
+      "difference_relative": 0.0028375224329867895,
       "in_units_of_combined_stderr_of_means": null,
       "in_units_of_other_seed_spread": null,
       "in_units_of_reference_seed_spread": null,
       "picongpu-fp64": {
-        "mean": 3.9975974162790773,
+        "mean": 3.99759768767612,
         "missing": 0,
         "n": 4,
         "std": 0.0,
         "values": [
-          3.9975974162790773,
-          3.9975974162790773,
-          3.9975974162790773,
-          3.9975974162790773
+          3.99759768767612,
+          3.99759768767612,
+          3.99759768767612,
+          3.99759768767612
         ]
       },
       "smilei-fp64": {
@@ -191,7 +191,7 @@
   },
   "reference": "smilei-fp64",
   "runs": {
-    "picongpu-fp64": "scripts/runs/picongpu-landau-oblique-2d-fp64-bc8fd6af",
-    "smilei-fp64": "scripts/runs/smilei-landau-oblique-2d-bc8fd6af"
+    "picongpu-fp64": "reports/crosscode-picongpu/picongpu-landau-oblique-2d-fp64-bc8fd6af",
+    "smilei-fp64": "reports/crosscode-picongpu/smilei-landau-oblique-2d-bc8fd6af"
   }
 }

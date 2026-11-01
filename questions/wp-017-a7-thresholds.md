@@ -8,8 +8,8 @@ PIConGPU 0.8.0 against Smilei v5.1, FP64 in both, on the matched cases (A5's mat
 
 | Observable | Smilei | PIConGPU | PIConGPU − Smilei | Statistical scale |
 |---|---|---|---|---|
-| two-stream `growth_rate`, 128 cells | 0.3456117 | 0.3456123 | +5.9 × 10⁻⁷ (1.7 × 10⁻⁶ relative) | none from seeds (cold, regular); fit residual 0.0009 |
-| two-stream `growth_rate`, 256 cells | 0.3459258 | 0.3459258 | +4.4 × 10⁻⁸ (1.3 × 10⁻⁷) | as above |
+| two-stream `growth_rate`, 128 cells | 0.3456117 | 0.3456123 | +5.8 × 10⁻⁷ (1.7 × 10⁻⁶ relative) | none from seeds (cold, regular); fit residual 0.0009 |
+| two-stream `growth_rate`, 256 cells | 0.3459258 | 0.3459259 | +7.5 × 10⁻⁸ (2.2 × 10⁻⁷) | as above |
 | two-stream γ from \|Ê₁\|², 128 / 256 cells | 0.3369876 / 0.3370343 | 0.3369876 / 0.3370343 | 6.9 × 10⁻⁸ / −2.8 × 10⁻⁹ | — |
 | Landau `damping_rate_ensemble` (8 seeds, quasi-1D in PIConGPU) | 0.1303 ± 0.0144 | 0.1360 ± 0.0131 | +0.0057: 0.29 combined jackknife errors | seed spread 0.027 (Smilei), 0.041 (PIConGPU) |
 | oblique 2D `damping_rate_mode_ensemble` (4 seeds) | 0.1570 ± 0.0060 | 0.1405 ± 0.0096 | −0.0165: 1.46 combined jackknife errors | seed spread 0.013 (Smilei), 0.007 (PIConGPU) |
@@ -27,9 +27,9 @@ Two kinds of observable, two kinds of spread:
 **P1, deterministic observables (two-stream).** ParticleMesh agrees with each reference code within **1 × 10⁻⁵ relative** in γ, with these conditions:
 
 - The fit is taken over the same output samples in both runs: the window of the reference run, applied to ParticleMesh's series. The pre-registered window rule is anchored on the saturation peak and jumps by one output when a curve shifts slightly; a one-sample shift moves γ by 1 × 10⁻³ in any code (`reports/crosscode-picongpu/README.md`, "ParticleMesh against both"), a hundred times this threshold.
-- ParticleMesh runs with the reference codes' initial-momentum convention (#226). With its A2 half-step kick, ParticleMesh differs by −1.0 × 10⁻⁴ over a common window and fails this threshold. Without the kick it agrees to six digits.
+- ParticleMesh runs with the reference codes' initial-momentum convention (#226). With its A2 half-step kick, ParticleMesh differs by −1.0 × 10⁻⁴ relative (−3.5 × 10⁻⁵ absolute) over a common window and fails this threshold. Without the kick it agrees to six digits.
 
-The value is about 5 times the larger measured difference (1.7 × 10⁻⁶), rounded up to a power of ten. It is roughly the size of the effect a cell-centred against per-particle weight sampling has on U (2 × 10⁻⁴ in energy, untested), so it may need relaxing to 5 × 10⁻⁵ if ParticleMesh keeps per-particle weights.
+The value is about 5 times the larger measured difference, rounded up to a power of ten. ParticleMesh's remaining constant factor of 1.0002 in U (attributed, untested, to per-particle against cell-centred weights) does not enter it: a constant factor does not change a slope over a fixed window, and the no-kick run has that factor and equals both codes' γ to six digits.
 
 **P2, noise-limited observables (Landau 1D and 2D).** ParticleMesh's ensemble γ agrees with each reference code's within **2 combined jackknife standard errors**, √(σ²_PM + σ²_ref), on the same case and seed count. The measured Smilei–PIConGPU differences are 0.29 and 1.46 such errors, both inside it. This is option (b) of `questions/wp-012-a5-a7-proposals.md`. The measurement shows the code-to-code spread is not resolved by these ensembles, so a threshold in units of the measured difference would be a threshold in units of noise. With the cases as registered, 2 errors are 0.039 in 1D (8 seeds each) and 0.023 in 2D (4 seeds each); a tighter threshold needs more seeds.
 

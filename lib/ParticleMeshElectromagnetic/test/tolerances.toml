@@ -177,10 +177,10 @@ status = "proposed: the Smilei–PIConGPU difference is not resolved by these en
 
 ["T-215".wp017]
 quantity = "cold two-stream growth rate γ/ω_p of the field amplitude, observable growth_rate of two-stream.toml and two-stream-256.toml"
-measured = { smilei_128 = 0.3456117, picongpu_128 = 0.3456123, smilei_256 = 0.3459258, picongpu_256 = 0.3459258 }
-smilei_picongpu_relative_difference = { c128 = 1.7e-6, c256 = 1.3e-7 }
-picongpu_fp32_minus_fp64_relative = { c128 = -9.2e-7, c256 = 3.2e-6 }
+measured = { smilei_128 = 0.3456117, picongpu_128 = 0.3456123, smilei_256 = 0.3459258, picongpu_256 = 0.3459259 }
+smilei_picongpu_relative_difference = { c128 = 1.7e-6, c256 = 2.2e-7 }
+picongpu_fp32_minus_fp64_relative = { c128 = -8.5e-7, c256 = 3.0e-6 }
 proposed_threshold = "|γ_PM/γ_ref − 1| ≤ 1e-5, fitted over the reference run's output samples, with ParticleMesh using the reference codes' initial-momentum convention (#226)"
-particlemesh_now = "−1.0e-4 over a common window with A2's start-up half-step kick; 0 to six digits without it"
+particlemesh_now = "−1.0e-4 relative over a common window with A2's start-up half-step kick; 0 to six digits without it"
 source = "reports/crosscode-picongpu/README.md; questions/wp-017-a7-thresholds.md (P1)"
 status = "proposed: about five times the measured Smilei–PIConGPU spread; conditional on #226; for the owner to accept by editing A7"

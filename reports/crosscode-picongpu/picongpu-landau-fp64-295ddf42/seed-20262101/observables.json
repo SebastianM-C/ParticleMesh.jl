@@ -1,5 +1,57 @@
 {
   "case": "landau",
+  "checks": {
+    "charge_per_species": {
+      "electron": {
+        "flagged_dumps": 25,
+        "flagged_iterations": [
+          56,
+          156,
+          192,
+          260,
+          500,
+          808,
+          1192,
+          1200,
+          1256,
+          1296,
+          1604,
+          1652,
+          1664,
+          1696,
+          1768,
+          1892,
+          1908,
+          1920,
+          2032,
+          2056,
+          2252,
+          2284,
+          2352,
+          2416,
+          2460
+        ],
+        "max_abs_relative_change": 0.0007689135222909146,
+        "max_abs_relative_change_unflagged": 1.998401444325281e-15
+      },
+      "ion": {
+        "flagged_dumps": 0,
+        "flagged_iterations": [],
+        "max_abs_relative_change": 0.0,
+        "max_abs_relative_change_unflagged": 0.0
+      }
+    },
+    "dumps": 671,
+    "flagged_dumps": 25,
+    "gauss_residual_max": 0.02200798661289406,
+    "gauss_residual_max_flagged": 0.02200798661289406,
+    "gauss_residual_max_iteration": 1192,
+    "gauss_residual_max_unflagged": 1.3337855125916676e-14,
+    "gauss_residual_t0": 9.219187913078741e-15,
+    "gauss_residual_t0_relative": 9.234011578537495e-13,
+    "note": "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)",
+    "rho_perturbation_t0": 0.009983946667888951
+  },
   "code": "picongpu",
   "fit_points": 0,
   "fit_range": null,
@@ -9,7 +61,7 @@
   "measured_from_mode_points": 5,
   "measured_from_mode_stderr": 0.0038566309502562385,
   "measured_stderr": null,
-  "noise_floor": 3.899563225582564e-9,
+  "noise_floor": 3.899561314604478e-9,
   "observable": "damping_rate",
   "relative_difference": null,
   "theory": 0.1533594669096052,

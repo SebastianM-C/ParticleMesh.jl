@@ -1,16 +1,16 @@
-updated = "2026-11-01T19:28:10.447Z"
+updated = "2026-11-01T20:01:06.184Z"
 
 [analysis]
-commit = "2d945903c053dbd443cd0146c470a5ec70e965bc"
-dirty = false
+commit = "2bd8c73e1e7b4e23acccf8059624f1f3b6b029f7"
+dirty = true
 
     [analysis.inputs]
     "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
-    "scripts/crosscode/analyze.jl" = "sha256:82cc95d55f47cbfc9788b53e27092453eb64d50228e4c027d6d159a8223c03b1"
+    "scripts/crosscode/analyze.jl" = "sha256:023bc2de02b96d8d31f43d504198656ad5a22babf4c284442b27b18d3901c3a1"
     "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
     "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
     "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
-    "scripts/crosscode/read.jl" = "sha256:120c3cbfbad1ee8aae00b8ccdc9f9a4a19f40b5ac89af3110b9fba5a967694d0"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
 
 [hardware]
 cpu = "Intel(R) Core(TM) i9-14900K"
@@ -32,10 +32,34 @@ fit_points = 0
 measured_from_mode = 0.11946057576489844
 measured_from_mode_points = 4
 measured_from_mode_stderr = 0.022757492608712286
-noise_floor = 3.738629831794682e-9
+noise_floor = 3.738630521776774e-9
 observable = "damping_rate"
 theory = 0.1533594669096052
 theory_frequency = 1.4156618886045358
+
+    [observables.checks]
+    dumps = 671
+    flagged_dumps = 30
+    gauss_residual_max = 0.021813704968982297
+    gauss_residual_max_flagged = 0.021813704968982297
+    gauss_residual_max_iteration = 2444
+    gauss_residual_max_unflagged = 1.4785048185750327e-14
+    gauss_residual_t0 = 9.219187913078741e-15
+    gauss_residual_t0_relative = 9.234011578537495e-13
+    note = "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)"
+    rho_perturbation_t0 = 0.009983946667888951
+
+        [observables.checks.charge_per_species.electron]
+        flagged_dumps = 30
+        flagged_iterations = [264, 472, 552, 596, 644, 768, 772, 800, 892, 900, 992, 1220, 1428, 1436, 1440, 1544, 1588, 1640, 1784, 1804, 1924, 1944, 2056, 2088, 2108, 2272, 2356, 2444, 2608, 2676]
+        max_abs_relative_change = 0.0006616208119033514
+        max_abs_relative_change_unflagged = 2.3314683517128276e-15
+
+        [observables.checks.charge_per_species.ion]
+        flagged_dumps = 0
+        flagged_iterations = []
+        max_abs_relative_change = 0.0
+        max_abs_relative_change_unflagged = 0.0
 
 [outputs]
 "chargeConservation.dat" = "sha256:83ac6d7eb96c6a8dff232b5e155f58439e2bfe34746227c0ca1f2f8619394052"

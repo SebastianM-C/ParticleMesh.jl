@@ -5,16 +5,16 @@
     13.7985612,
     18.7636064
   ],
-  "measured": 0.34561232901094685,
+  "measured": 0.3456123213846641,
   "measured_from_mode": 0.3369876414736611,
   "measured_from_mode_points": 20,
   "measured_from_mode_stderr": 0.0025211189480079748,
-  "measured_stderr": 0.0009017271076819486,
+  "measured_stderr": 0.0009017296127665683,
   "observable": "growth_rate",
   "plot": "field energy Uelm_Ex versus time, log scale",
-  "relative_difference": -0.015000865534770574,
+  "relative_difference": -0.015000887269764666,
   "saturation": {
-    "U": 0.0019114000199361803,
+    "U": 0.0019113961345325942,
     "t": 24.9470676
   },
   "theory": 0.35087576924479724,

@@ -8,7 +8,7 @@
   "measured_from_mode_points": 4,
   "measured_from_mode_stderr": 0.022757492608712286,
   "measured_stderr": null,
-  "noise_floor": 3.738629831794682e-9,
+  "noise_floor": 3.738630521776774e-9,
   "observable": "damping_rate",
   "plot": "field energy Uelm_Ex versus time, log scale",
   "relative_difference": null,
