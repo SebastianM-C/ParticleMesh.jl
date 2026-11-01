@@ -33,7 +33,7 @@ This package does three things:
 
 - Their 2×2 spinor form can be expanded into real arithmetic, with the common real denominator factored out as they suggest.
 - The proper-time step comes from the lab Δt through their second-order Eq. 22, the same inversion they use for their own lab-frame runs.
-- The update needs no square root and no branch in the fields.
+- The update needs no branch in the fields. The paper's form needs no square root; the module carries u alone, so γ is recomputed on entry with one square root, as in Boris (`questions/wp-016-resolution-choices.md` §1).
 
 Its properties, from their Secs. 3 and 4:
 
