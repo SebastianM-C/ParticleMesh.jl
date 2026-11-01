@@ -3,7 +3,7 @@ id = "WP-013"
 status = "done"
 goals = ["A2", "A4", "A5", "A6", "A7", "A8", "A9"]
 depends_on = ["WP-008", "WP-009", "WP-011", "WP-014", "WP-018"]
-adds_dependencies = ["CUDA"]
+adds_dependencies = ["CUDACore"]
 
 [checked]
 A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
