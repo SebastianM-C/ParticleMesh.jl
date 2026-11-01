@@ -384,8 +384,9 @@ end
 @testset "T-268 allocation does not grow in 2D [A7, A9, WP-018]" begin
     # Bytes per call after warm-up at two particle counts and two grid sizes, with and without
     # extras, measured as T-144 does: the CPU backend allocates a constant amount per launch;
-    # what must not happen is growth with the problem size. With more than one thread the sort
-    # allocates in AcceleratedKernels' threaded sample sort (#82), so that check is broken there.
+    # what must not happen is growth with the problem size. T-144 marks the sort broken with more
+    # than one thread (#82, AcceleratedKernels' threaded sample sort); at these sizes (at most 4608
+    # particles) no growth was measured at 1 or 4 threads, so the sort is asserted here too.
     for T in (Float32, Float64), extras in (NamedTuple(), (old_cell = Int32, old_offset = T))
         bytes = Dict{Tuple{String,Tuple{Int,Int},Tuple{Int,Int}},Int}()
         for (n, ppc) in (((16, 12), (2, 3)), ((16, 12), (4, 6)), ((32, 24), (2, 3)))
@@ -408,14 +409,13 @@ end
         end
         @info "T-268 bytes per call" T extras = keys(extras) bytes nthreads = Threads.nthreads()
         for name in ("sort", "reference", "fast", "gather", "fill", "fold", "load")
-            broken = name == "sort" && Threads.nthreads() > 1
             small = bytes[(name, (16, 12), (2, 3))]
             if VERSION >= v"1.14-"
                 @test_skip bytes[(name, (16, 12), (4, 6))] <= small
             else
-                @test bytes[(name, (16, 12), (4, 6))] <= small broken = broken
+                @test bytes[(name, (16, 12), (4, 6))] <= small
             end
-            @test bytes[(name, (32, 24), (2, 3))] <= small broken = broken
+            @test bytes[(name, (32, 24), (2, 3))] <= small
         end
     end
 end

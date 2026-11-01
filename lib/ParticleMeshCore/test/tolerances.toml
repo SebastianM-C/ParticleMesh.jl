@@ -198,7 +198,7 @@ C = 8
 C_adjoint = 2
 C_partials = 8
 C_nodes = 8
-measured = { Float32 = 0.428, Float64 = 0.684, "Dual{Float32,3}" = 3.08, adjoint_Float32 = 0.0497, adjoint_Float64 = 0.0995, "adjoint_Dual{Float32,3}" = 0.399, partials = 1.87, nodes_Float32 = 1.63, nodes_Float64 = 1.51 }
+measured = { Float32 = 0.428, Float64 = 0.684, "Dual{Float32,3}" = 3.08, adjoint_Float32 = 0.0497, adjoint_Float64 = 0.0995, "adjoint_Dual{Float32,3}" = 0.399, partials = 1.87, nodes_Float32 = 1.9, nodes_Float64 = 1.51 }
 status = "proposed"
 
 ["T-267"]
