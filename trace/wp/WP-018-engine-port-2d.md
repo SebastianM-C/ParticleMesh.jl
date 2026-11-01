@@ -108,7 +108,7 @@ Test ids T-260 to T-269. Every 2D test runs Float32, Float64 and `Dual{Float32,3
 
 ## Depends on
 
-- WP-011: the engine contracts of §0.7 this package generalizes, the extras, the quantity callable and the launch keyword, and the T-136 and T-170 baselines.
+- WP-011: the engine contracts of §0.7 this package generalizes, the extras, the quantity callable and the launch keyword.
 - WP-009: `deposit_flux!`, whose N = 1 bits the pre-port digest records and the port must keep.
 - WP-014: the electromagnetic module, whose 1D tests and T-218 digests the port must keep.
 
