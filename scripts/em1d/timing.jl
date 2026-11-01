@@ -115,7 +115,7 @@ function main_cuda()
     gpu = CUDACore.name(CUDACore.device())
     total = Int(CUDACore.totalmem(CUDACore.device()))
     params = Dict{String,Any}("cases" => [c for (c, _) in TIMING], "particles" => collect(CUDA_PARTICLES),
-                              "types" => string.(CUDA_TYPES))
+                              "types" => collect(string.(CUDA_TYPES)))
     dir = run_dir("timing-cuda", @__FILE__, "landau"; params, work_package = "WP-013", backend = "KernelAbstractions CUDA (CUDACore)",
                   extra = Dict{String,Any}("gpu" => gpu, "gpu_total_memory_bytes" => total,
                                            "cudacore" => string(pkgversion(CUDACore))))
