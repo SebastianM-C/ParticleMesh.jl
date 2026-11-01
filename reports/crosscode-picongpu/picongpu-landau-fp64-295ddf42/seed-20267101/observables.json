@@ -1,0 +1,17 @@
+{
+  "case": "landau",
+  "code": "picongpu",
+  "fit_points": 0,
+  "fit_range": null,
+  "measured": null,
+  "measured_frequency": null,
+  "measured_from_mode": 0.11161203278533902,
+  "measured_from_mode_points": 4,
+  "measured_from_mode_stderr": 0.005906743919236086,
+  "measured_stderr": null,
+  "noise_floor": 3.395423109888834e-9,
+  "observable": "damping_rate",
+  "relative_difference": null,
+  "theory": 0.1533594669096052,
+  "theory_frequency": 1.4156618886045358
+}

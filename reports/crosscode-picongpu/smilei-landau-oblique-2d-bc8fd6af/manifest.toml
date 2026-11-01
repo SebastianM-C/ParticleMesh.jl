@@ -1,0 +1,69 @@
+case = "landau-oblique-2d"
+case_source = "scripts/crosscode/cases/landau-oblique-2d.toml"
+code = "smilei"
+commit = "917f460f2050ec1a8efa5c59a2d71c2ae7cd9d1b"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:c552eaad24eb1cf4809c6656ff7f1c3a1692c6de7e60de0fc968a86625af9fc4"
+run = "smilei-landau-oblique-2d-bc8fd6af"
+seeds = [20261031, 20262031, 20263031, 20264031]
+updated = "2026-11-01T16:51:17.616Z"
+
+[analysis]
+commit = "2d945903c053dbd443cd0146c470a5ec70e965bc"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:82cc95d55f47cbfc9788b53e27092453eb64d50228e4c027d6d159a8223c03b1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:120c3cbfbad1ee8aae00b8ccdc9f9a4a19f40b5ac89af3110b9fba5a967694d0"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 16
+threads = 16
+
+[image]
+id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:bc8fd6af4ecafec6b964abdb3edab6ad973007396f6d271df9fa7b5818407403"
+"run.sh" = "sha256:848e4d21312f6b0b9d2b3ccb0409d7626b388119fc471ff1d7febffdc2680c0c"
+"seed-20261031/smilei.py" = "sha256:9c0baf350e423d6a8b61df878e7426905f7255b24d527eb92bbc2aa8f220dda2"
+"seed-20262031/smilei.py" = "sha256:ae150a6ffb692f55184e76e3d39d6f8bb1288f99c394b56ed79cf1ffac388d8b"
+"seed-20263031/smilei.py" = "sha256:78a147e8541736174fb2019a5335b203b7c568f638fbab1a264f33a19f6c9360"
+"seed-20264031/smilei.py" = "sha256:603d2371c1e7939029fffc9032e309834c42cf6a686a2f9983f4c4115285ae06"
+
+[observables]
+M = 4
+ensemble_floor = 4.321344713211855e-10
+maxima_used = 5
+measured = 0.15697804937223794
+measured_stderr = 0.006001821536177725
+observable = "damping_rate_mode_ensemble"
+observable_exists = true
+
+[outputs]
+"seed-20261031/Fields0.h5" = "sha256:34e983a35436b280a046574061a8a8fff53aa7eeb30510c84bbe64a5a4af4fc1"
+"seed-20261031/container.txt" = "sha256:99f6bce245acf28dbeb53e65d55bd8ff3aba4c692957ee4604f120b10ed3e55a"
+"seed-20261031/scalars.txt" = "sha256:d00565f5ec767157944bb4f435799362df5c8ef65c4fbd0996087b3fd43acb13"
+"seed-20261031/smilei.log" = "sha256:5296eef0c6d7a00be48ab6039ac1d94085e9f28a22f21d34b3dfe28afd2eb902"
+"seed-20262031/Fields0.h5" = "sha256:844159feb84a40916d5fa3923642ceb03c3b493afd09a15d1fbd0104fa856255"
+"seed-20262031/container.txt" = "sha256:4020b9fbcbc780b9069ffba68dd228e292c50315e9d285b10442bf05e942e282"
+"seed-20262031/scalars.txt" = "sha256:067083be6caaaccc27c37c85a4d43ae78dab6e5783302bdb097dace6f35f1530"
+"seed-20262031/smilei.log" = "sha256:c33cf9982dda0515ed7b76207ed4ce6aee0c2f151100d5e3a4f97ce9b71b1679"
+"seed-20263031/Fields0.h5" = "sha256:b3afb2de64aeff18ffee8e9b95f6035b70d2410c5bd46474a1d8135d84bfc9e6"
+"seed-20263031/container.txt" = "sha256:1f37d165c592cae8e00e415ad18b538f2ff24792d1791c810ea70b918953ac5e"
+"seed-20263031/scalars.txt" = "sha256:6443d92b107016307005f3cb3ce13e5c57f3168ee1c695878d95c3f332fd1b9a"
+"seed-20263031/smilei.log" = "sha256:22d6082db0436b4199a90e72617dd18b562da5a2953bbbd4cade35e19afdc3f3"
+"seed-20264031/Fields0.h5" = "sha256:7e486bdb0be99ad587f8f287bd6b0dd6a44aa0e193f0ccdc1f8027af8d43e32c"
+"seed-20264031/container.txt" = "sha256:b50d33022dc91a7053bb99a3bf154a7bd16696a6ff839cabaeb4f3468594ec19"
+"seed-20264031/scalars.txt" = "sha256:abea6fa3dd08bb55ab3d48185294f0d249d1154e1cf6d145ebe43a3390c7e27d"
+"seed-20264031/smilei.log" = "sha256:332b3d26cc85c3b2779bc268deb2d0158d76e076353670346230e6b3b61f4987"

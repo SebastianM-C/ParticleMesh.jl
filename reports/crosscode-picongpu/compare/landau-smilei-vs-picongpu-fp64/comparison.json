@@ -1,0 +1,159 @@
+{
+  "case": "landau",
+  "ensemble": {
+    "case": "landau",
+    "difference": 0.005720103808690313,
+    "difference_in_units_of_combined_stderr": 0.2936504271485713,
+    "difference_in_units_of_other_seed_spread": 0.1386205035721199,
+    "difference_in_units_of_reference_seed_spread": 0.21361567963670353,
+    "difference_relative": 0.043912186236717915,
+    "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+    "picongpu-fp64": {
+      "M": 8,
+      "ensemble_floor": 3.538136137093648e-10,
+      "fit_range": [
+        4.76972096032553,
+        16.01955121545615
+      ],
+      "maxima_used": 6,
+      "measured": 0.13598243640709218,
+      "measured_stderr": 0.013125425917960334
+    },
+    "reference_code": "smilei-fp64",
+    "seed_spread": {
+      "picongpu-fp64": {
+        "M": 8,
+        "gammas": [
+          0.12727633648796688,
+          0.07988128199097116,
+          0.10491615118532073,
+          0.21179377866964788,
+          0.10714455691336014,
+          0.16895542639948385,
+          0.13060455097099838,
+          0.14367067797525987
+        ],
+        "mean": 0.1342803450741261,
+        "refused": false,
+        "std": 0.041264485853741845,
+        "stderr": 0.01458919888467861
+      },
+      "smilei-fp64": {
+        "M": 8,
+        "gammas": [
+          0.10349023780098675,
+          0.1651148054357297,
+          0.12208475362213117,
+          0.12354959083418032,
+          0.14724375184775787,
+          0.1664436408134706,
+          0.10038376624114426,
+          0.10813320621234886
+        ],
+        "mean": 0.12955546910096868,
+        "refused": false,
+        "std": 0.026777546565956684,
+        "stderr": 0.009467292380163259
+      }
+    },
+    "smilei-fp64": {
+      "M": 8,
+      "ensemble_floor": 5.894681765637603e-10,
+      "fit_range": [
+        4.746131724220346,
+        15.929530992195552
+      ],
+      "maxima_used": 6,
+      "measured": 0.13026233259840186,
+      "measured_stderr": 0.014393269121880993
+    },
+    "theory": 0.1533594669096052
+  },
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "other": "picongpu-fp64",
+  "per_run_over_seeds": {
+    "damping_rate": {
+      "difference_of_means": null,
+      "difference_relative": null,
+      "in_units_of_combined_stderr_of_means": null,
+      "in_units_of_other_seed_spread": null,
+      "in_units_of_reference_seed_spread": null,
+      "picongpu-fp64": {
+        "mean": null,
+        "missing": 8,
+        "n": 0,
+        "std": null,
+        "values": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "smilei-fp64": {
+        "mean": null,
+        "missing": 8,
+        "n": 0,
+        "std": null,
+        "values": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "damping_rate_from_mode": {
+      "difference_of_means": 0.01984127428790408,
+      "difference_relative": 0.1770419693072471,
+      "in_units_of_combined_stderr_of_means": 1.1972785592317443,
+      "in_units_of_other_seed_spread": 0.529202653531531,
+      "in_units_of_reference_seed_spread": 0.9428041592382681,
+      "picongpu-fp64": {
+        "mean": 0.13191229544487384,
+        "missing": 1,
+        "n": 7,
+        "std": 0.0374927717302572,
+        "values": [
+          0.19740322265757046,
+          0.0781953930866612,
+          null,
+          0.15444071675160237,
+          0.12155054374519658,
+          0.11946057576489844,
+          0.11161203278533902,
+          0.1407235833228487
+        ]
+      },
+      "smilei-fp64": {
+        "mean": 0.11207102115696976,
+        "missing": 2,
+        "n": 6,
+        "std": 0.021044958376015967,
+        "values": [
+          0.10517139759499514,
+          0.09526874851805786,
+          0.10448641326106942,
+          0.14558333162045495,
+          null,
+          0.12968579612102252,
+          null,
+          0.09223043982621869
+        ]
+      }
+    }
+  },
+  "reference": "smilei-fp64",
+  "runs": {
+    "picongpu-fp64": "scripts/runs/picongpu-landau-fp64-295ddf42",
+    "smilei-fp64": "reports/crosscode-smilei-1d/stage-1b/smilei-landau-295ddf42"
+  }
+}

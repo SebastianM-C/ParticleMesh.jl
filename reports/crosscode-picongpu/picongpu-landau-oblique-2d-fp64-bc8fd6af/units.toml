@@ -1,0 +1,21 @@
+bfield = 13387.182587873049
+cell_size = [0.010976273017251136, 0.010976273017251136]
+cells = [128, 128]
+charge_density = 2.790927154853699e8
+density = 1.7419597163178322e27
+dt = 0.007373327228520544
+efield = 4.0133763737132617e12
+energy = 3.231125050667756e-9
+energy_note = "J per unit of the energy scalars: n_c m_e c² (c/ω₀)³ × depth (per unit depth, as in 2D)"
+lambda0 = 8.0e-7
+length = 1.2732395447351627e-7
+omega0 = 2.3545644591360665e15
+precision = "Float64"
+quasi1d = false
+steps = 3391
+time = 4.247069967100916e-16
+
+[background]
+ax = -0.000892884173615117
+ay = -0.00044657658732637413
+mode = [2, 1]

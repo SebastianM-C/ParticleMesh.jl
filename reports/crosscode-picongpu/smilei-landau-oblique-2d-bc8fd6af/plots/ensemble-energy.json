@@ -1,0 +1,152 @@
+{
+  "M": 4,
+  "case": "landau-oblique-2d",
+  "code": "smilei",
+  "ensemble_floor": 4.321344713211855e-10,
+  "fit_energies": [
+    1.3175596739888906e-7,
+    7.254996003894191e-8,
+    3.811915002277683e-8,
+    1.807427183954871e-8,
+    7.877564211801625e-9
+  ],
+  "fit_range": [
+    4.75417527330519,
+    13.697519264857252
+  ],
+  "fit_rules": {
+    "fit_start": 3.0,
+    "floor_factor": 10.0,
+    "minimum_maxima": 3,
+    "per_seed": "at_ensemble_peaks",
+    "stderr": "jackknife"
+  },
+  "fit_times": [
+    4.75417527330519,
+    6.994337724071686,
+    9.240393613401034,
+    11.47610134286049,
+    13.697519264857252
+  ],
+  "floor_ratio_seed_mean_over_ensemble": 2.1794798599664875,
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) i9-14900K",
+    "cpu_source": "run",
+    "cpus": 16,
+    "threads": 16
+  },
+  "initial_energy": 9.967221247323937e-7,
+  "jackknife_gammas": [
+    0.15545400780112956,
+    0.15246287577760514,
+    0.15816103891534417,
+    0.16186890709754903
+  ],
+  "maxima_used": 5,
+  "measured": 0.15697804937223794,
+  "measured_fit_stderr": 0.006419838917944601,
+  "measured_frequency": 1.4051087184200277,
+  "measured_stderr": 0.006001821536177725,
+  "measured_stderr_method": "jackknife over seeds",
+  "observable": "damping_rate_mode_ensemble",
+  "observable_exists": true,
+  "particle_steps_per_seed": 56891539456,
+  "particles_per_seed": 16777216,
+  "per_seed_at_ensemble_peaks": {
+    "M": 4,
+    "gammas": [
+      0.16095129427507698,
+      0.172395167310394,
+      0.1545493566445712,
+      0.14070010891066131
+    ],
+    "mean": 0.1571489817851759,
+    "refused": false,
+    "std": 0.013219016895541483,
+    "stderr": 0.0066095084477707415
+  },
+  "per_seed_single_run_rule_on_energy": {
+    "failed_seeds": [
+      20261031,
+      20262031,
+      20263031,
+      20264031
+    ],
+    "gammas": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "maxima_accepted": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "reasons": [
+      "fewer than three maxima above the floor after fit_start (0 accepted)",
+      "fewer than three maxima above the floor after fit_start (0 accepted)",
+      "fewer than three maxima above the floor after fit_start (0 accepted)",
+      "fewer than three maxima above the floor after fit_start (0 accepted)"
+    ],
+    "refused": true,
+    "succeeded": 0
+  },
+  "per_seed_single_run_rule_on_mode": {
+    "M": 4,
+    "gammas": [
+      0.1609299586220137,
+      0.17560999733497898,
+      0.13276673006592574,
+      0.11668555748743621
+    ],
+    "maxima_accepted": [
+      5,
+      4,
+      4,
+      4
+    ],
+    "mean": 0.14649806087758868,
+    "refused": false,
+    "std": 0.026665329056359852,
+    "stderr": 0.013332664528179926
+  },
+  "plot": "|⟨Ê₁⟩|² of the seed mean and |Ê₁|² of each seed versus time, log scale",
+  "relative_difference": 0.023595429324006222,
+  "seed_floor_mean": 9.418283770417894e-10,
+  "seed_floors": [
+    6.34471844718306e-10,
+    8.236717649971078e-10,
+    1.0150504915443888e-9,
+    1.2941194069073548e-9
+  ],
+  "seed_scatter_post_hoc": {
+    "floor_over_ln2_noise_of_mean": 5.529612165918722,
+    "noise_of_mean_after_fit_start": 1.4510182398841558e-10,
+    "noise_of_mean_floor_window": 1.1274538612576759e-10,
+    "noise_per_seed_floor_window": 4.5098154450307035e-10,
+    "snr_at_maxima_used": [
+      893.2076039228675,
+      465.81091982781743,
+      254.01866477003256,
+      75.24414188059366,
+      185.67106509519132
+    ]
+  },
+  "seeds": [
+    20261031,
+    20262031,
+    20263031,
+    20264031
+  ],
+  "steps": 3391,
+  "theory": 0.15335946690960509,
+  "theory_frequency": 1.4156618886045358,
+  "wall_seconds_per_seed": [
+    569.412,
+    559.442,
+    565.632,
+    564.599
+  ]
+}

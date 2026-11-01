@@ -1,0 +1,159 @@
+{
+  "M": 4,
+  "case": "landau-oblique-2d",
+  "code": "picongpu",
+  "compile_seconds": 68.179,
+  "ensemble_floor": 3.2259596628007355e-10,
+  "fit_energies": [
+    1.2719958544187443e-7,
+    6.445113513465445e-8,
+    3.207724788521564e-8,
+    1.6044467759478647e-8,
+    8.901359613307632e-9,
+    4.214706496637096e-9,
+    3.5474459204170175e-9
+  ],
+  "fit_range": [
+    4.786960525559186,
+    18.12217256129141
+  ],
+  "fit_rules": {
+    "fit_start": 3.0,
+    "floor_factor": 10.0,
+    "minimum_maxima": 3,
+    "per_seed": "at_ensemble_peaks",
+    "stderr": "jackknife"
+  },
+  "fit_times": [
+    4.786960525559186,
+    7.02343610252958,
+    9.261871774720726,
+    11.4916625603491,
+    13.717619060445186,
+    15.90411597786815,
+    18.12217256129141
+  ],
+  "floor_ratio_seed_mean_over_ensemble": 2.7653657426431577,
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) i9-14900K",
+    "cpus": "32",
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER, 595.104.02",
+    "picongpu": "0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89",
+    "source": "run"
+  },
+  "initial_energy": 9.966727813681088e-7,
+  "jackknife_gammas": [
+    0.13977730423825938,
+    0.1539622172088496,
+    0.14491830704061234,
+    0.15121399645329847
+  ],
+  "maxima_used": 7,
+  "measured": 0.14045099945216877,
+  "measured_fit_stderr": 0.006779936827256681,
+  "measured_frequency": 1.4135175257079253,
+  "measured_stderr": 0.009559880310298908,
+  "measured_stderr_method": "jackknife over seeds",
+  "observable": "damping_rate_mode_ensemble",
+  "observable_exists": true,
+  "particle_steps_per_seed": 56891539456,
+  "particles_per_seed": 16777216,
+  "per_seed_at_ensemble_peaks": {
+    "M": 4,
+    "gammas": [
+      0.13234486647682586,
+      0.137219151258267,
+      0.14566770014210814,
+      0.13103012585436352
+    ],
+    "mean": 0.13656546093289113,
+    "refused": false,
+    "std": 0.006626497859791014,
+    "stderr": 0.003313248929895507
+  },
+  "per_seed_single_run_rule_on_energy": {
+    "failed_seeds": [
+      20261031,
+      20262031,
+      20263031,
+      20264031
+    ],
+    "gammas": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "maxima_accepted": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "reasons": [
+      "fewer than three maxima above the floor after fit_start (0 accepted)",
+      "fewer than three maxima above the floor after fit_start (0 accepted)",
+      "fewer than three maxima above the floor after fit_start (0 accepted)",
+      "fewer than three maxima above the floor after fit_start (0 accepted)"
+    ],
+    "refused": true,
+    "succeeded": 0
+  },
+  "per_seed_single_run_rule_on_mode": {
+    "M": 4,
+    "gammas": [
+      0.1635103059233942,
+      0.1257478751860923,
+      0.17307384153269742,
+      0.14629209633213583
+    ],
+    "maxima_accepted": [
+      4,
+      5,
+      4,
+      5
+    ],
+    "mean": 0.15215602974357992,
+    "refused": false,
+    "std": 0.020802650310304583,
+    "stderr": 0.010401325155152292
+  },
+  "relative_difference": -0.08417131147857325,
+  "seed_floor_mean": 8.920958338657827e-10,
+  "seed_floors": [
+    9.701275978086357e-10,
+    9.992430862707938e-10,
+    6.373166005210969e-10,
+    9.616960508626047e-10
+  ],
+  "seed_scatter_post_hoc": {
+    "floor_over_ln2_noise_of_mean": 2.914026598058942,
+    "noise_of_mean_after_fit_start": 1.1886911774891198e-10,
+    "noise_of_mean_floor_window": 1.5971288699734496e-10,
+    "noise_per_seed_floor_window": 6.388515479893798e-10,
+    "snr_at_maxima_used": [
+      2558.1494908008585,
+      515.4633171138996,
+      143.98354801289653,
+      186.40497931635056,
+      118.97556209143214,
+      39.665207765756264,
+      27.52856724597718
+    ]
+  },
+  "seeds": [
+    20261031,
+    20262031,
+    20263031,
+    20264031
+  ],
+  "steps": 3391,
+  "theory": 0.15335946690960509,
+  "theory_frequency": 1.4156618886045358,
+  "wall_seconds_per_seed": [
+    332.968,
+    330.537,
+    326.705,
+    326.588
+  ]
+}

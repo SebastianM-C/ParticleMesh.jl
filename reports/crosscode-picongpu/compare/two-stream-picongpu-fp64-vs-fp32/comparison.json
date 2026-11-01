@@ -1,0 +1,38 @@
+{
+  "case": "two-stream",
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "observables": {
+    "growth_rate": {
+      "difference": -3.1968535457727043e-7,
+      "difference_relative": -9.249824955380709e-7,
+      "in_units_of_combined_stderr": -0.00025069700856203604,
+      "picongpu-fp32": {
+        "measured": 0.3456120093255923,
+        "measured_stderr": 0.0009016584468595761
+      },
+      "picongpu-fp64": {
+        "measured": 0.34561232901094685,
+        "measured_stderr": 0.0009017271076819486
+      }
+    },
+    "growth_rate_from_mode": {
+      "difference": 8.570944246000245e-7,
+      "difference_relative": 2.5434001699644374e-6,
+      "in_units_of_combined_stderr": 0.00024040222164223527,
+      "picongpu-fp32": {
+        "measured": 0.3369884985680857,
+        "measured_stderr": 0.002520908326806533
+      },
+      "picongpu-fp64": {
+        "measured": 0.3369876414736611,
+        "measured_stderr": 0.0025211189480079748
+      }
+    }
+  },
+  "other": "picongpu-fp32",
+  "reference": "picongpu-fp64",
+  "runs": {
+    "picongpu-fp32": "scripts/runs/picongpu-two-stream-fp32-736a428f",
+    "picongpu-fp64": "scripts/runs/picongpu-two-stream-fp64-736a428f"
+  }
+}
