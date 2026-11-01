@@ -81,3 +81,49 @@ case = "as T-219: landau.toml, 64 particles per cell, amplitude 0.01, seed 20261
 C = 1
 measured = { Float64 = 0.176 }
 status = "proposed"
+
+# Tolerances of WP-015 (the pushers), proposals like those above, one constant per pusher. The
+# measured values are the largest over Float32, Float64 and Dual{Float32,3}.
+["T-231"]
+quantity = "uniform Bz, E = 0: | |u| − |u₀| | (C) and the gyrophase error against the pusher's closed-form angle per step (C_phase)"
+scale = "steps·|u₀|; steps (radians); 2000 steps of Δt = 1/10 in B = 2, |u₀| ∈ {0.1, 1, 10}, u ⊥ B and (|u| only) u with a component along B"
+C = { Boris = 2, Vay = 3, HigueraCary = 2, BorisExactRotation = 2 }
+C_phase = { Boris = 1, Vay = 20, HigueraCary = 1, BorisExactRotation = 3 }
+measured = { Boris = 0.716, Vay = 1.33, HigueraCary = 0.667, BorisExactRotation = 0.559 }
+measured_phase = { Boris = 0.268, Vay = 9.42, HigueraCary = 0.434, BorisExactRotation = 1.32 }
+status = "proposed; Vay's phase constant is the rounding of its γ⁺ (Eq. 20 applied to u′) accumulating with |u|"
+
+["T-232"]
+quantity = "uniform Ex, B = 0: |uⁿ − (u₀ + (q/m)E₀·nΔt)|"
+scale = "steps·(|u₀| + E₀·nΔt), 200 steps of Δt = 1/10 from u₀ = 1/2 to u ≈ −19.5"
+C = { Boris = 1, Vay = 1, HigueraCary = 1, BorisExactRotation = 1 }
+measured = { Boris = 0.417, Vay = 0.179, HigueraCary = 0.417, BorisExactRotation = 0.417 }
+position = { error_at_dt_0_025_exact_start = 1.89e-5, error_at_dt_0_025_start_t0 = 3.73e-5, order_exact_start = 2.02, order_start_t0 = 2.0, note = "identical for the four pushers: in B = 0 they are the same map" }
+status = "proposed"
+
+["T-233"]
+quantity = "crossed fields E = E₀ŷ, B = ẑ, E₀ ∈ {0.1, 0.5, 0.9, 0.99}, started at v = E×B/B² (+ v∥ẑ): |uⁿ − u⁰| for Vay and Higuera–Cary"
+scale = "steps·|u⁰|, 10⁴ steps of Δt = 1/10, Float32 and Float64"
+C = { Vay = 2, HigueraCary = 1 }
+measured = { Vay = 0.876, HigueraCary = 0.142 }
+status = "proposed; the drift errors of Boris and BorisExactRotation are recorded in reports/pushers.md"
+
+["T-234"]
+quantity = "|det ∂u′/∂u − target|, target 1 (Boris, HigueraCary, BorisExactRotation) or J(u⁻)/J(u⁺) (Vay), the determinant in Float64 of the Jacobian computed in T"
+scale = "eps(T)·|target|, 50 random E, B (|E|, |B| ≤ 2), u directions per γ ∈ {1.1, 10, 100, 1000}, qm_h = −1/20"
+C = { Boris = 3, Vay = 8, HigueraCary = 3, BorisExactRotation = 5 }
+measured = { Boris = 1.5, Vay = 4.0, HigueraCary = 1.5, BorisExactRotation = 2.5 }
+status = "proposed; no growth with γ up to 10³"
+
+["T-235"]
+quantity = "figure-8 at a₀ ∈ {0.5, 2}: |observed order − 2| of the errors in γ − u_z and u_x + qA_x over ω₀Δt = 0.2 → 0.025 (order_tol), and of the closure error on one pair (order_tol_closure: 0.025 → 0.0125 in Float64, 0.05 → 0.025 in Float32 and duals)"
+order_tol = 0.15
+order_tol_closure = 0.35
+measured = { invariants = 0.069, closure = 0.177 }
+status = "proposed; error constants in reports/pushers.md"
+
+["T-237"]
+quantity = "figure-8 at a₀ = 2 with Vern9 through particle_problem: closure error and invariant error along the dense output, in units of the solver tolerance (abstol = reltol = 1e-12)"
+vern9 = 10
+measured = { closure = 3.4, invariants = 0.743 }
+status = "proposed"

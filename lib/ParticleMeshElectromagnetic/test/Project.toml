@@ -1,9 +1,13 @@
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
 OrdinaryDiffEqFunctionMap = "d3585ca7-f5d3-4ba6-8057-292ed1abd90f"
+OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
 ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"
 ParticleMeshElectromagnetic = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
@@ -18,7 +22,9 @@ ParticleMeshElectromagnetic = {path = ".."}
 [compat]
 ForwardDiff = "1"
 KernelAbstractions = "0.10"
+OrdinaryDiffEqCore = "4"
 OrdinaryDiffEqFunctionMap = "2"
+OrdinaryDiffEqVerner = "2"
 RecursiveArrayTools = "4"
 SciMLBase = "3"
 SpecialFunctions = "2"
