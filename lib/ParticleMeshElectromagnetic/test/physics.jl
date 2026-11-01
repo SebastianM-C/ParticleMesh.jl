@@ -9,7 +9,7 @@ const PHYSICS = Dict{String,Any}()
 # perturbation (5 %): at the case's 1 % the damped signal falls under the noise
 # floor before the fit window opens. At 4096 particles per cell only two maxima after the
 # case's fit_start clear its floor_factor (the fit needs three, measured); 8192 gives three.
-const LANDAU_OVERRIDES = (; ppc = 8192, amplitude = 1 // 20)
+const LANDAU_OVERRIDES = (; ppc = 8192, amplitude = 1 // 20, seed = 20261031)   # the seed of the recorded measurement (landau.toml now lists `seeds`, WP-012)
 const TWO_STREAM_OVERRIDES = (; ppc = 256)
 const WEIBEL_OVERRIDES = (;)
 
