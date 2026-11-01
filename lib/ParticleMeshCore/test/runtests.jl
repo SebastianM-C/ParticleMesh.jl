@@ -7,6 +7,7 @@ include("engine_cases.jl")
 include("flux_cases.jl")
 include("n1_digests.jl")
 include("engine2d_cases.jl")
+include("flux2d_cases.jl")
 include("spectral_cases.jl")
 
 @testset "ParticleMeshCore" begin
@@ -18,6 +19,7 @@ include("spectral_cases.jl")
         include("engine.jl")
         include("flux.jl")
         include("engine2d.jl")
+        include("flux2d.jl")        # WP-020: T-300 to T-309, the flux deposition at N = 2
         include("spectral.jl")      # WP-021: T-310 to T-316, the periodic solve
         include("input_checks.jl")  # T-340 to T-342, T-344: input checks and the Float32 draw (#194, #195, #201)
         include("switch.jl")        # WP-013: T-199, the GPU switch
