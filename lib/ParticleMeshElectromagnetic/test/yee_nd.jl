@@ -47,7 +47,7 @@ end
 Evec(u) = (u.Ex, u.Ey, u.Ez)
 Bvec(u) = (u.Bx, u.By, u.Bz)
 Jvec(u) = (u.Jx, u.Jy, u.Jz)
-dot3(a, b) = sum(sum(a[c] .* b[c]) for c in 1:3)
+field_dot3(a, b) = sum(sum(a[c] .* b[c]) for c in 1:3)
 
 """
     energy_form(u, v, Δ, dt)
@@ -64,7 +64,7 @@ definiteness for Δt below the Courant limit is what bounds the fields.
 function energy_form(u, v, Δ, dt)
     h = big(Float64(value_of(dt))) / 2
     Cu, Cv = curl_big(Evec(u), Δ, dplus), curl_big(Evec(v), Δ, dplus)
-    return dot3(Evec(u), Evec(v)) + dot3(Bvec(u), Bvec(v)) - h^2 * dot3(Cu, Cv)
+    return field_dot3(Evec(u), Evec(v)) + field_dot3(Bvec(u), Bvec(v)) - h^2 * field_dot3(Cu, Cv)
 end
 
 "Backward-difference divergence Σ_{d≤N} D⁻_d F_d (on ρ's nodes) and forward one Σ D⁺_d F_d (cell centres)."
@@ -310,10 +310,10 @@ end
                 u0, v0, u1, v1 = a[1], a[k + 1], b[1], b[k + 1]
                 Esum_u = Evec(u0) .+ Evec(u1)
                 Esum_v = Evec(v0) .+ Evec(v1)
-                work = -bdt / 2 * (dot3(Jvec(u0), Esum_v) + dot3(Jvec(v0), Esum_u))
+                work = -bdt / 2 * (field_dot3(Jvec(u0), Esum_v) + field_dot3(Jvec(v0), Esum_u))
                 res = energy_form(u1, v1, Δ, dt) - energy_form(u0, v0, Δ, dt) - work
-                absw = bdt / 2 * (dot3(map(x -> abs.(x), Jvec(u0)), map(x -> abs.(x), Esum_v)) +
-                                  dot3(map(x -> abs.(x), Jvec(v0)), map(x -> abs.(x), Esum_u)))
+                absw = bdt / 2 * (field_dot3(map(x -> abs.(x), Jvec(u0)), map(x -> abs.(x), Esum_v)) +
+                                  field_dot3(map(x -> abs.(x), Jvec(v0)), map(x -> abs.(x), Esum_u)))
                 scale = sqrt(energy_form(u0, u0, Δ, dt) * energy_form(v0, v0, Δ, dt)) +
                         sqrt(energy_form(u1, u1, Δ, dt) * energy_form(v1, v1, Δ, dt)) + absw
                 worstj = max(worstj, Float64(abs(res) / scale) / base_eps(T))
