@@ -245,3 +245,421 @@ end
     f = [3cos(2π * 2 * j / 16 + 0.3) + 0.5 for j in 0:16]   # 16 points plus the periodic duplicate
     @test mode_amplitude(reshape(f, :, 1), 2)[1] ≈ 3 rtol = 1e-12
 end
+
+# ---------------------------------------------------------------------------------------------
+# WP-019: case schema 2, the 2D Smilei generator and reader, the 2D theory and the 2D mode fit.
+# ---------------------------------------------------------------------------------------------
+
+using SHA: sha256
+
+# WP-014's 1D Weibel relation, included read-only in a module of its own (the file includes
+# scripts/crosscode/theory.jl itself and expects REPO).
+module EM1DTheory
+const REPO = normpath(joinpath(@__DIR__, "..", "..", ".."))
+include(joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "test", "theory.jl"))
+end
+
+const NAMELIST_HASHES = TOML.parsefile(joinpath(@__DIR__, "namelist-hashes.toml"))
+
+"A case file with `edit!` applied, written to a temporary file and loaded through `load_case`."
+function load_variant(name, edit!)
+    c = TOML.parsefile(joinpath(CC, "cases", name * ".toml"))
+    edit!(c)
+    path = joinpath(mktempdir(), name * ".toml")
+    open(io -> TOML.print(io, c), path, "w")
+    return load_case(path)
+end
+
+"SplitMix64 finalizer: a counter-based hash of 64 bits."
+function splitmix64(x::UInt64)
+    x += 0x9e3779b97f4a7c15
+    x = (x ⊻ (x >> 30)) * 0xbf58476d1ce4e5b9
+    x = (x ⊻ (x >> 27)) * 0x94d049bb133111eb
+    return x ⊻ (x >> 31)
+end
+"Deterministic uniform noise in [-1/2, 1/2) from indices 0 ≤ i, j, n < 2²¹ (counter-based, no RNG state)."
+pseudo_noise(i, j, n) = splitmix64(UInt64(i) | UInt64(j) << 21 | UInt64(n) << 42) / 2.0^64 - 0.5
+
+@testset "T-270 schema 2 keeps schema 1 [A1, A5, WP-019]" begin
+    # Schema-1 files load to the same values as before: load_case adds only the path.
+    for n in ("landau", "two-stream", "weibel")
+        raw = TOML.parsefile(joinpath(CC, "cases", n * ".toml"))
+        c = load_case(n)
+        @test c["schema"] == 1
+        @test delete!(copy(c), "_path") == raw
+    end
+    # The namelists of the schema-1 cases are byte-identical to those of the generator before
+    # the schema-2 change (hashes committed before it, test/namelist-hashes.toml).
+    for n in ("landau", "two-stream")
+        @test "sha256:" * bytes2hex(sha256(namelist(load_case(n)))) == NAMELIST_HASHES[n]
+    end
+    # A schema-1 file means a 1D grid; its per-axis view.
+    v = case_view(load_case("landau"))
+    @test v.ndims == 1
+    @test v.lengths == (0.6283185307179586,) && v.cells == (64,)
+    e = v.species[1]
+    @test e.particles_per_cell == (400000,) && e.drift == (0.0, 0.0, 0.0)
+    @test e.mode == (1,) && e.amplitude == 0.01
+    @test v.species[2].mode === nothing
+    @test case_view(load_case("two-stream")).species[1].drift == (-0.1, 0.0, 0.0)
+    w = case_view(load_case("weibel")).species
+    @test w[1].drift == (0.0, 0.3, 0.0) && w[2].drift == (0.0, -0.3, 0.0)   # transverse_drift = [v_y, v_z]
+    @test w[2].amplitude == -0.001
+
+    # Both 2D cases parse to their per-axis grid, mode vector, particles per cell and drift.
+    lo = case_view(load_case("landau-oblique-2d"))
+    @test lo.ndims == 2 && lo.cells == (128, 128)
+    @test all(L -> isapprox(L, 2π * sqrt(5) / 10; rtol = 1e-15), lo.lengths)
+    @test lo.species[1].particles_per_cell == (32, 32)
+    @test lo.species[1].mode == (2, 1) && lo.species[1].amplitude == 0.01
+    @test lo.species[1].drift == (0.0, 0.0, 0.0)
+    @test lo.species[2].particles_per_cell == (1, 1) && lo.species[2].mode === nothing
+    wb = case_view(load_case("weibel-2d"))
+    @test wb.ndims == 2 && wb.cells == (256, 256)
+    @test all(L -> isapprox(L, π * sqrt(5); rtol = 1e-15), wb.lengths)
+    bp, bm = wb.species[1], wb.species[2]
+    @test bp.particles_per_cell == (8, 8) && bm.particles_per_cell == (8, 8)
+    @test bp.drift == (0.0, 0.0, 0.3) && bm.drift == (0.0, 0.0, -0.3)      # beams along z
+    @test bp.mode == (2, 1) && bm.mode == (2, 1)
+    @test bp.amplitude == 0.001 && bm.amplitude == -0.001
+
+    # Validation.
+    pert(c) = c["species"][1]["perturbation"]
+    @test_throws ErrorException load_variant("weibel-2d", c -> pert(c)["mode"] = [1.5, 1])
+    @test_throws ErrorException load_variant("weibel-2d", c -> pert(c)["mode"] = [2])
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["grid"]["boundaries"] = ["periodic", "open"])
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["grid"]["boundaries"] = "periodic")
+    # a box in which the stated mode is not periodic
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["grid"]["length"][2] *= 1.1)
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["wavevector"]["angle"] += 0.01)
+    # a species perturbed along another mode than the stated wavevector
+    @test_throws ErrorException load_variant("weibel-2d", c -> pert(c)["mode"] = [1, 2])
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["species"][1]["particles_per_cell"] = 64)
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["species"][1]["drift"] = 0.3)
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["species"][1]["drift"] = [0.0, 0.0, 1.0])
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["species"][1]["transverse_drift"] = [0.3, 0.0])
+    @test_throws ErrorException load_variant("weibel-2d", c -> c["schema"] = 3)
+    @test load_variant("weibel-2d", identity)["name"] == "weibel-2d"   # the round trip itself loads
+end
+
+@testset "T-271 2D unit conversion and namelist [A1, A5, WP-019]" begin
+    # Hand-computed from cases/landau-oblique-2d.toml: L = 2π√5/10 per axis, 128 cells, so
+    # Δx = Δy = 2π√5/1280 = 0.0109762730172511; Δt = 0.95/√(2/Δ²) = 0.95Δ/√2 = 0.0073733272285205;
+    # steps = round(25/Δt) = round(3390.60) = 3391; v_th = 0.05 c gives T = 0.0025 m_e c²; 32 × 32
+    # electrons per cell; 128 cells per axis give 4 × 4 patches of 32 × 32 cells.
+    c = load_case("landau-oblique-2d")
+    p = smilei_parameters(c)
+    Δ = 2π * sqrt(5) / 1280
+    @test p.geometry == "2Dcartesian"
+    @test all(d -> isapprox(d, Δ; rtol = 1e-15), p.cell_length)
+    @test p.number_of_cells == (128, 128)
+    @test p.timestep == c["time"]["dt"]
+    @test p.timestep ≈ 0.95 * Δ / sqrt(2) rtol = 1e-14
+    @test p.number_of_timesteps == 3391
+    @test p.number_of_patches == (4, 4) && p.threads == 16
+    e, ion = p.species
+    @test e.density == 1.0
+    @test e.temperature ≈ 0.0025 rtol = 1e-15
+    @test e.momentum == "maxwell-juettner"
+    @test e.regular_number == (32, 32) && e.particles_per_cell == 1024
+    @test e.mean_velocity == (0.0, 0.0, 0.0)
+    @test e.profile.base == 1.0
+    @test e.profile.amplitude ≈ 0.01 rtol = 1e-15
+    @test e.profile.mode == (2, 1)
+    @test all(L -> isapprox(L, 2π * sqrt(5) / 10; rtol = 1e-15), e.profile.lengths)
+    @test e.time_frozen == 0.0
+    @test ion.profile === nothing && ion.regular_number == (1, 1) && ion.time_frozen > p.simulation_time
+
+    # Hand-computed from cases/weibel-2d.toml: L = π√5 per axis, 256 cells, Δ = π√5/256 =
+    # 0.0274406825431278; Δt = 0.95Δ/√2 = 0.0184333180713014; steps = round(40/Δt) =
+    # round(2170.0) = 2170; each beam 0.5 n_c with the relative amplitude ±0.001, so the
+    # absolute amplitude ±0.0005; drifts ±0.3 c along z; 8 × 8 per cell; 4 × 4 patches.
+    w = load_case("weibel-2d")
+    q = smilei_parameters(w)
+    Δw = π * sqrt(5) / 256
+    @test all(d -> isapprox(d, Δw; rtol = 1e-15), q.cell_length)
+    @test q.number_of_cells == (256, 256)
+    @test q.timestep ≈ 0.95 * Δw / sqrt(2) rtol = 1e-14
+    @test q.number_of_timesteps == 2170
+    @test q.number_of_patches == (4, 4)
+    b1, b2, _ = q.species
+    @test b1.density == 0.5
+    @test b1.profile.amplitude ≈ 0.0005 rtol = 1e-15
+    @test b2.profile.amplitude ≈ -0.0005 rtol = 1e-15
+    @test b1.mean_velocity == (0.0, 0.0, 0.3) && b2.mean_velocity == (0.0, 0.0, -0.3)
+    @test b1.momentum == "cold" && b1.regular_number == (8, 8) && b1.particles_per_cell == 64
+
+    # Both case files: Δt = 0.95 of the 2D Courant limit 1/√(1/Δx² + 1/Δy²), to roundoff.
+    for r in (p, q)
+        dx, dy = r.cell_length
+        @test r.timestep ≈ 0.95 / sqrt(1 / dx^2 + 1 / dy^2) rtol = 4eps()
+    end
+
+    # The patch rule on a box that is not square: powers of 2 per axis dividing the cells, more
+    # than 2·oversize + 1 = 5 cells per patch at order 2 (Smilei Params.cpp).
+    for cells in ((64, 32), (128, 128), (256, 64), (48, 40), (16, 8))
+        r = smilei_parameters(load_variant("landau-oblique-2d", c -> begin
+            c["grid"]["cells"] = collect(cells)
+            c["time"]["dt"] = 0.95 / sqrt(sum(abs2, cells ./ c["grid"]["length"]))
+        end))
+        for d in 1:2
+            np_ = r.number_of_patches[d]
+            @test ispow2(np_) && cells[d] % np_ == 0 && cells[d] ÷ np_ > 5
+        end
+        @test r.threads == prod(r.number_of_patches) <= 16
+    end
+
+    # The namelist carries the same numbers.
+    for (case, pp) in ((c, p), (w, q))
+        text = namelist(case)
+        @test occursin("geometry = \"2Dcartesian\"", text)
+        @test occursin("interpolation_order = 2", text)
+        @test occursin("cell_length = [$(pp.cell_length[1]), $(pp.cell_length[2])]", text)
+        @test occursin("number_of_cells = [$(pp.number_of_cells[1]), $(pp.number_of_cells[2])]", text)
+        @test nl_number(text, "timestep") == pp.timestep
+        @test nl_number(text, "number_of_timesteps") == pp.number_of_timesteps
+        m = match(r"number_of_patches = \[(\d+), (\d+)\]", text)
+        @test m !== nothing
+        for d in 1:2
+            np_ = parse(Int, m[d])
+            @test ispow2(np_) && pp.number_of_cells[d] % np_ == 0 && pp.number_of_cells[d] ÷ np_ > 5
+        end
+        @test occursin("EM_boundary_conditions = [[\"periodic\"], [\"periodic\"]]", text)
+        @test count("boundary_conditions = [[\"periodic\"], [\"periodic\"]]", text) ==
+              length(pp.species) + 1                                  # every species and Main
+        @test count("Species(", text) == length(pp.species)
+        @test occursin("import numpy as np", text)
+    end
+    text = namelist(w)
+    @test occursin("mean_velocity = [0.0, 0.0, 0.3]", text)
+    @test occursin("mean_velocity = [0.0, 0.0, -0.3]", text)
+    @test count("regular_number = [8, 8]", text) == 2
+    @test count("particles_per_cell = 64,", text) == 2
+    @test occursin("regular_number = [32, 32]", namelist(c))
+end
+
+# The density profiles of a generated 2D namelist: name => (base, amplitude, mx, Lx, my, Ly), or
+# a constant density. Parses the form `smilei.jl` writes.
+function nl_profiles(text)
+    out = Dict{String,Any}()
+    for m in eachmatch(r"def density_(\w+)\(x, y\):\n    return ([^\n]+)\n", text)
+        e = match(r"^(\S+) \+ (\S+) \* np\.cos\(2\.0 \* np\.pi \* \((\S+) \* x / (\S+) \+ (\S+) \* y / (\S+)\)\)$", m[2])
+        e === nothing && error("unexpected profile $(m[2])")
+        out[m[1]] = parse.(Float64, Tuple(e.captures))
+    end
+    return out
+end
+
+@testset "T-272 the oblique profile [A5, WP-019]" begin
+    for name in ("landau-oblique-2d", "weibel-2d")
+        c = load_case(name)
+        v = case_view(c)
+        prof = nl_profiles(namelist(c))
+        (Lx, Ly), (Nx, Ny) = v.lengths, v.cells
+        xs = ((0:Nx-1) .+ 0.5) .* (Lx / Nx)     # Smilei samples profiles at cell centres
+        ys = ((0:Ny-1) .+ 0.5) .* (Ly / Ny)
+        for s in v.species
+            s.mode === nothing && continue
+            @test haskey(prof, s.name)
+            base, amp, mx, lx, my, ly = prof[s.name]
+            @test (mx, my) == Float64.(s.mode) && lx == Lx && ly == Ly
+            f(x, y) = base + amp * cos(2.0 * π * (mx * x / lx + my * y / ly))
+            ref(x, y) = s.density * (1 + s.amplitude * cos(2π * (s.mode[1] * x / Lx + s.mode[2] * y / Ly)))
+            @test maximum(abs(f(x, y) - ref(x, y)) for x in xs, y in ys) <= 4eps() * s.density
+        end
+        # the namelist passes the function, not a separable cosine
+        @test !occursin("cosine(", namelist(c))
+    end
+    # The opposite-phase beams of weibel-2d give a uniform net density to roundoff.
+    c = load_case("weibel-2d")
+    v = case_view(c)
+    prof = nl_profiles(namelist(c))
+    (Lx, Ly), (Nx, Ny) = v.lengths, v.cells
+    n(p, x, y) = p[1] + p[2] * cos(2.0 * π * (p[3] * x / p[4] + p[5] * y / p[6]))
+    total = [n(prof["beam_plus"], x, y) + n(prof["beam_minus"], x, y)
+             for x in ((0:Nx-1) .+ 0.5) .* (Lx / Nx), y in ((0:Ny-1) .+ 0.5) .* (Ly / Ny)]
+    @test maximum(abs.(total .- 1.0)) <= 4eps()
+end
+
+@testset "T-273 theory of the 2D cases [A5, A7, WP-019]" begin
+    # Oblique Landau: |k| and the rate equal those of landau.toml.
+    landau = load_case("landau")
+    k1 = 2π / landau["grid"]["length"]
+    e1 = landau["species"][1]
+    c = load_case("landau-oblique-2d")
+    v = case_view(c)
+    wv = mode_wavevector(v.species[1].mode, v.lengths)
+    @test wv.k ≈ k1 rtol = 1e-14
+    @test wv.angle ≈ atan(1, 2) rtol = 1e-14                    # mode [2, 1] in a square box, not 45°
+    @test all(wv.kvec .* v.lengths ./ 2π .≈ (2, 1))             # periodic in the box
+    @test c["wavevector"]["magnitude"] ≈ wv.k rtol = 1e-14
+    @test c["wavevector"]["angle"] ≈ wv.angle rtol = 1e-14
+    e2 = c["species"][1]
+    @test e2["thermal_velocity"] == e1["thermal_velocity"] && e2["density"] == e1["density"]
+    kλ = wv.k * e2["thermal_velocity"] / sqrt(e2["density"])
+    ω = landau_root(kλ)
+    obs = c["observables"]
+    @test -imag(ω) ≈ landau["observables"]["damping_rate"]["theory"] rtol = 1e-13
+    @test real(ω) ≈ landau["observables"]["damping_rate"]["theory_frequency"] rtol = 1e-13
+    for key in ("damping_rate_mode", "damping_rate_energy")
+        @test obs[key]["theory"] ≈ -imag(ω) rtol = 1e-14
+        @test obs[key]["theory_frequency"] ≈ real(ω) rtol = 1e-14
+    end
+    # The Ex/Ey energy ratio of a longitudinal wave on the Yee grid, and its continuum limit.
+    p = smilei_parameters(c)
+    ratio = yee_energy_ratio(wv.kvec, p.cell_length)
+    @test obs["energy_ratio"]["theory"] ≈ ratio rtol = 1e-14
+    @test obs["energy_ratio"]["theory_continuum"] ≈ (wv.kvec[1] / wv.kvec[2])^2 rtol = 1e-14
+    @test ratio < (wv.kvec[1] / wv.kvec[2])^2                    # sin(a)/a falls with a: kx Δx > ky Δy
+    # continuum limit: the ratio approaches (kx/ky)² as Δ → 0
+    @test yee_energy_ratio(wv.kvec, p.cell_length ./ 1000) ≈ 4 rtol = 1e-6
+
+    # 2D Weibel: a root of the cold-fluid relation in the theory.jl header, equal to WP-014's 1D
+    # relation and to weibel.toml's value at the same |k|, v₀ and ω_p.
+    w = load_case("weibel-2d")
+    wv2 = case_view(w)
+    kw = mode_wavevector(wv2.species[1].mode, wv2.lengths)
+    @test kw.k ≈ 2 rtol = 1e-14
+    @test kw.angle ≈ atan(1, 2) rtol = 1e-14
+    @test all(kw.kvec .* wv2.lengths ./ 2π .≈ (2, 1))
+    @test w["wavevector"]["magnitude"] ≈ kw.k rtol = 1e-14
+    v0 = wv2.species[1].drift[3]
+    n0 = sum(s.density for s in wv2.species if s.name != "ion")
+    γ = weibel_cold_growth_2d(kw.k, v0; ωp2 = n0)
+    @test abs(weibel_dispersion_2d(im * γ, kw.k, v0; ωp2 = n0)) < 1e-12
+    @test γ ≈ EM1DTheory.weibel_cold_growth(kw.k, v0; ωp2 = n0) rtol = 1e-14
+    weibel1d = load_case("weibel")
+    @test weibel1d["species"][1]["transverse_drift"][1] == v0     # the same v₀ and n₀ as the 1D case
+    @test 2π / weibel1d["grid"]["length"] ≈ kw.k rtol = 1e-14
+    @test γ ≈ weibel1d["observables"]["growth_rate"]["theory"] rtol = 1e-13
+    for key in ("growth_rate_mode", "growth_rate_energy")
+        @test w["observables"][key]["theory"] ≈ γ rtol = 1e-14
+    end
+    # the rotation about k maps the 1D case onto the 2D one at every |k|, v₀ and ω_p
+    for k in (0.3, 1.0, 2.0, 7.5), u in (0.05, 0.3, 0.8), ωp2 in (0.5, 1.0)
+        @test weibel_cold_growth_2d(k, u; ωp2) ≈ EM1DTheory.weibel_cold_growth(k, u; ωp2) rtol = 1e-14
+    end
+end
+
+@testset "T-274 the 2D mode fit [A7, WP-019]" begin
+    # A non-square periodic box with Smilei's 2D layout: (Nx + 1) × (Ny + 1) points per field,
+    # the last row and column repeating the first, Yee positions (Ex at (i + ½, j), Ey at
+    # (i, j + ½), Bx at (i, j + ½), By at (i + ½, j), in cells).
+    Nx, Ny, Lx, Ly = 32, 24, 1.3, 0.7          # k_xΔx ≠ k_yΔy, so the Yee and continuum forms differ
+    Δx, Δy = Lx / Nx, Ly / Ny
+    mode = (2, 1)
+    wv = mode_wavevector(mode, (Lx, Ly))
+    kx, ky = wv.kvec
+    k̂ = wv.kvec ./ wv.k
+    pos(sx, sy) = (((0:Nx) .+ sx) .* Δx, ((0:Ny) .+ sy) .* Δy)
+    pEx, pEy = pos(0.5, 0.0), pos(0.0, 0.5)
+    pBx, pBy = pos(0.0, 0.5), pos(0.5, 0.0)
+    sample(f, p, nt) = [f(x, y, n) for x in p[1], y in p[2], n in 1:nt]
+    phase(x, y) = kx * x + ky * y
+
+    # A damped longitudinal wave: φ = A(t) cos(k·r) on the nodes, E = −∇φ by Yee differences,
+    # which gives Ex = A (2/Δx) sin(kxΔx/2) sin(k·r) at the Ex points (and likewise Ey), with
+    # A(t) = A₀ e^{−γt} cos(ωt), and noise on every point that sets the floor of the projected
+    # mode near t = 50, so that the last 20 % of the series (the floor estimate) is noise.
+    γ, ω, A0, σ = 0.15, 1.4, 1e-3, 2e-4
+    t = collect(0:0.05:60)
+    nt = length(t)
+    A(n) = A0 * exp(-γ * t[n]) * cos(ω * t[n])
+    sx, sy = 2sin(kx * Δx / 2) / Δx, 2sin(ky * Δy / 2) / Δy
+    Ex = sample((x, y, n) -> A(n) * sx * sin(phase(x, y)), pEx, nt)
+    Ey = sample((x, y, n) -> A(n) * sy * sin(phase(x, y)), pEy, nt)
+    # the noise, then the periodic duplicate restored
+    for F in (Ex, Ey), n in 1:nt, j in 1:Ny, i in 1:Nx
+        F[i, j, n] += σ * pseudo_noise(i, j + (F === Ey ? 100 : 0), n)
+    end
+    for F in (Ex, Ey)
+        F[Nx+1, :, :] .= F[1, :, :]
+        F[:, Ny+1, :] .= F[:, 1, :]
+    end
+    c = project_mode(Ex, Ey, pEx, pEy, mode, (Lx, Ly); component = :parallel)
+    @test length(c) == nt
+    # the noiseless amplitude of E·k̂ at t = 0 is A₀ (k̂x sx + k̂y sy)
+    @test abs(c[1]) ≈ A0 * (k̂[1] * sx + k̂[2] * sy) rtol = 1e-2
+    r = damping_from_peaks(t, abs2.(c); fit_start = 1.0, floor_factor = 10.0)
+    @test isfinite(r.gamma) && length(r.t_fit) >= 5
+    @test abs(r.gamma - γ) <= 3 * r.gamma_stderr
+    @test r.gamma ≈ γ rtol = 2e-2
+    # The frequency from the mean spacing of the maxima is not checked: the noise can split one
+    # maximum into two a few outputs apart, which leaves the rate intact (both lie on the line)
+    # but shortens one spacing (here ω ≈ 1.56 for 1.4).
+
+    # A growing transverse field B ⊥ k with noise in its amplitude (∇·B = 0 on the Yee grid is not
+    # needed for the projection):
+    # Bx = −k̂y b(t) sin(k·r), By = k̂x b(t) sin(k·r), b = b₀ e^{γt} until saturation.
+    g = 0.26
+    b(n) = 1e-6 * exp(g * min(t[n], 20.0))
+    Bx = sample((x, y, n) -> -k̂[2] * b(n) * sin(phase(x, y)) * (1 + 1e-3 * pseudo_noise(n, 1, 2)), pBx, nt)
+    By = sample((x, y, n) -> k̂[1] * b(n) * sin(phase(x, y)) * (1 + 1e-3 * pseudo_noise(n, 1, 2)), pBy, nt)
+    cp = project_mode(Bx, By, pBx, pBy, mode, (Lx, Ly); component = :perpendicular)
+    rg = growth_from_window(t, abs2.(cp); window = (1e-4, 1e-2))
+    @test isfinite(rg.gamma) && length(rg.t_fit) >= 10
+    @test abs(rg.gamma - g) <= 3 * rg.gamma_stderr + 1e-12
+    @test rg.gamma ≈ g rtol = 1e-3
+    # B ⊥ k has no component along k̂ (to roundoff, staggered positions included)
+    cpar = project_mode(Bx, By, pBx, pBy, mode, (Lx, Ly); component = :parallel)
+    @test maximum(abs.(cpar) ./ abs.(cp)) < 1e-12
+
+    # A field along a different mode projects to zero on (2, 1), to roundoff.
+    for other in ((1, 2), (2, -1), (-2, 1), (3, 1), (0, 1))
+        wo = mode_wavevector(other, (Lx, Ly))
+        F = sample((x, y, n) -> cos(wo.kvec[1] * x + wo.kvec[2] * y + 0.3), pEx, 1)
+        @test abs(only(mode_coefficient(F, mode, pEx, (Lx, Ly)))) < 1e-14
+        @test abs(only(mode_coefficient(F, other, pEx, (Lx, Ly)))) ≈ 1 rtol = 1e-13
+    end
+
+    # The Ex/Ey field-energy ratio of a longitudinal wave on the Yee grid, computed as Smilei's
+    # scalars do (½ ΔxΔy Σ E² over the distinct points), equals its Yee form to roundoff.
+    φ(i, j) = cos(kx * i * Δx + ky * j * Δy + 0.4)
+    ex = [(φ(i - 1, j) - φ(i, j)) / Δx for i in 1:Nx, j in 0:Ny-1]   # Smilei initE: (φ(i−1) − φ(i))/Δx
+    ey = [(φ(i, j - 1) - φ(i, j)) / Δy for i in 0:Nx-1, j in 1:Ny]
+    U(f) = 0.5 * Δx * Δy * sum(abs2, f)
+    @test U(ex) / U(ey) ≈ yee_energy_ratio(wv.kvec, (Δx, Δy)) rtol = 1e-13
+    @test !isapprox(U(ex) / U(ey), (kx / ky)^2; rtol = 1e-3)      # the grid form is not the continuum one
+end
+
+@testset "T-275 the 2D Smilei reader [WP-019]" begin
+    # Fields0.h5 as DiagnosticFields2D writes it: per iteration one dataset per field of C-order
+    # dimensions [Nx + 1, Ny + 1] (x slowest), with per-axis gridSpacing, gridGlobalOffset and
+    # position. HDF5.jl shows C-order dimensions reversed, so the test writes the transpose.
+    dir = mktempdir()
+    Nx, Ny, Δx, Δy, dt = 4, 3, 0.25, 0.5, 0.2
+    val(name, it) = [(name == "Ex" ? 1.0 : 2.0) * (i + 10j) + 1000it for i in 0:Nx, j in 0:Ny]
+    stag = Dict("Ex" => [0.5, 0.0], "Ey" => [0.0, 0.5], "Rho" => [0.0, 0.0])
+    h5open(joinpath(dir, "Fields0.h5"), "w") do f
+        for it in (0, 8)
+            g = create_group(f, "data/" * lpad(string(it), 10, '0'))
+            attributes(g)["time"] = it * dt
+            attributes(g)["dt"] = dt
+            for name in ("Ex", "Ey", "Rho")
+                g[name] = permutedims(val(name, it))
+                a = attributes(g[name])
+                a["gridSpacing"] = [Δx, Δy]
+                a["gridGlobalOffset"] = [0.0, 0.0]
+                a["position"] = stag[name]
+                a["axisLabels"] = ["x", "y"]
+                a["dataOrder"] = "C"
+            end
+        end
+    end
+    h5open(joinpath(dir, "Fields0.h5"), "r") do f
+        @test size(f["data/0000000000/Ex"]) == (Ny + 1, Nx + 1)      # C order [Nx + 1, Ny + 1]
+    end
+    fl = read_fields(dir)
+    @test fl.iterations == [0, 8]
+    @test fl.time ≈ [0.0, 1.6]
+    @test sort(collect(keys(fl.fields))) == ["Ex", "Ey", "Rho"]
+    @test size(fl.fields["Ex"]) == (Nx + 1, Ny + 1, 2)               # points × points × outputs
+    @test fl.fields["Ex"][:, :, 2] == val("Ex", 8)
+    @test fl.fields["Ey"][:, :, 1] == val("Ey", 0)
+    @test fl.fields["Ex"][3, 2, 1] == 2 + 10 * 1                     # (i, j) = (2, 1): x first
+    @test fl.x["Ex"] == ([0.125, 0.375, 0.625, 0.875, 1.125], [0.0, 0.5, 1.0, 1.5])
+    @test fl.x["Ey"] == ([0.0, 0.25, 0.5, 0.75, 1.0], [0.25, 0.75, 1.25, 1.75])
+    @test fl.x["Rho"] == ([0.0, 0.25, 0.5, 0.75, 1.0], [0.0, 0.5, 1.0, 1.5])
+    sub = read_fields(dir; names = ["Ey"])
+    @test collect(keys(sub.fields)) == ["Ey"]
+end
