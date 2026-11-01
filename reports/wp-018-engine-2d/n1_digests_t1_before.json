@@ -1,0 +1,113 @@
+{
+  "commit": "a9e63dc1d78a9d913dcf0567c91fc3add378ec4e",
+  "t218_digests": [
+    {
+      "case": "landau",
+      "digest": "6777508998453627565",
+      "threads": 1,
+      "type": "Float32"
+    },
+    {
+      "case": "landau",
+      "digest": "14317362512514169270",
+      "threads": 1,
+      "type": "Float64"
+    },
+    {
+      "case": "landau",
+      "digest": "14575494895427808270",
+      "threads": 1,
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "case": "two-stream",
+      "digest": "7602974514208842883",
+      "threads": 1,
+      "type": "Float32"
+    },
+    {
+      "case": "two-stream",
+      "digest": "14312315770589444498",
+      "threads": 1,
+      "type": "Float64"
+    },
+    {
+      "case": "two-stream",
+      "digest": "1666125976223384535",
+      "threads": 1,
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "case": "weibel",
+      "digest": "18375343539865868999",
+      "threads": 1,
+      "type": "Float32"
+    },
+    {
+      "case": "weibel",
+      "digest": "17439852029945674229",
+      "threads": 1,
+      "type": "Float64"
+    },
+    {
+      "case": "weibel",
+      "digest": "3225758549385268643",
+      "threads": 1,
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "case": "landau",
+      "digest": "6777508998453627565",
+      "threads": 4,
+      "type": "Float32"
+    },
+    {
+      "case": "landau",
+      "digest": "14317362512514169270",
+      "threads": 4,
+      "type": "Float64"
+    },
+    {
+      "case": "landau",
+      "digest": "14575494895427808270",
+      "threads": 4,
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "case": "two-stream",
+      "digest": "7602974514208842883",
+      "threads": 4,
+      "type": "Float32"
+    },
+    {
+      "case": "two-stream",
+      "digest": "14312315770589444498",
+      "threads": 4,
+      "type": "Float64"
+    },
+    {
+      "case": "two-stream",
+      "digest": "1666125976223384535",
+      "threads": 4,
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "case": "weibel",
+      "digest": "18375343539865868999",
+      "threads": 4,
+      "type": "Float32"
+    },
+    {
+      "case": "weibel",
+      "digest": "17439852029945674229",
+      "threads": 4,
+      "type": "Float64"
+    },
+    {
+      "case": "weibel",
+      "digest": "3225758549385268643",
+      "threads": 4,
+      "type": "Dual{Float32,3}"
+    }
+  ]
+}
