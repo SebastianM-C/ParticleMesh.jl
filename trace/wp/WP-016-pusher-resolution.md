@@ -93,7 +93,7 @@ Test ids T-240 to T-249.
   - every error decreases with an observed order of 2 within a measured tolerance where a₀·ω₀Δt ≤ 0.5;
   - every error is recorded against a₀·ω₀Δt, including the cases outside the asymptotic range.
 - **T-244 element types** [A8, WP-016]: T-241 passes for Float32, Float64 and `Dual{Float32,3}`.
-- **T-245 Float32 at weak rotation** [A2, A7, A8, WP-016]: for all five pushers in Float32, in uniform B with t² below eps(Float32) (#203's reproducer and |u| = 10 with B = 0.05), the drift of |u| over 10⁴ steps stays within C·eps(T)·√steps, the scale of unbiased rounding, with C measured and proposed; a linear drift fails it. T-230 to T-237 pass unchanged, and any change of their recorded values is stated in the PR.
+- **T-245 Float32 at weak rotation** [A2, A7, A8, WP-016]: for all five pushers in Float32, in uniform B with t² below eps(Float32) (#203's reproducer and |u| = 10 with B = 0.05, both at qm_h = −0.05, so t² = (qm_h·B/γ)² ≈ 6e-8), the drift of |u| over 10⁴ steps stays within C·eps(T)·√steps, the scale of unbiased rounding, with C measured and proposed; a linear drift fails it. T-230 to T-237 pass unchanged, and any change of their recorded values is stated in the PR.
 - `build.jl --check` passes and CPU CI is green.
 
 The implementing PR closes #203.
