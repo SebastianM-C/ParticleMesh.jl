@@ -4,7 +4,7 @@
 |---|---|
 | Work package | WP-020 (goals A2, A4, A7, A8, A9) |
 | Commits | base `0d6ecd7`; phase 1 (tests, 2D stencil, Fast path, prototype script) `1bf5276`; phase 2 (the Reference path) `52bcfa1`; contract text `4c58406`; folded prototype checks `9e6d587` |
-| Runs | prototypes (on `9e6d587`): `engine2d-flux-prototypes-t1-20261101T183639`, `engine2d-flux-prototypes-t32-20261101T183848`; engine (on `4c58406`; the engine sources are unchanged since): `engine2d-flux-ported-t1-20261101T182649`, `engine2d-flux-ported-t32-20261101T182740` |
+| Runs | prototypes (on `9e6d587`): `engine2d-flux-prototypes-t1-20261101T183639`, `engine2d-flux-prototypes-t32-20261101T183848`; engine (on `4c58406`; the engine sources are unchanged since, but `scripts/engine2d/flux_timing.jl` is not: these two runs record its hash `d97cbea…`, the script on `main` and in the prototype runs hashes `bf3182a…`, so the ported runs predate the final script, and what changed in it is not checked here): `engine2d-flux-ported-t1-20261101T182649`, `engine2d-flux-ported-t32-20261101T182740` |
 | Input hashes | SHA-256 of every input file in each run's manifest: `wp-020-flux-2d/<run>.manifest.toml`; all four say `dirty = false` |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10.4 CPU backend (POCL), AcceleratedKernels 0.5.11; Intel Core i9-14900K, 1 and 32 threads |
 | Figures | `wp-020-flux-2d/flux_prototypes_t{1,32}.png`, `flux_ported_t{1,32}.png`, each with its JSON sidecar; `flux_scratch.json` |
