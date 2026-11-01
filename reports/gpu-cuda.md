@@ -4,8 +4,8 @@
 |---|---|
 | Work package | WP-013 (goals A2, A4, A5, A6, A7, A8, A9) |
 | Commits | base `25f61c9`; tests and scripts `0f7133c` to `df31928` on branch `worktree-wp-013-cuda` |
-| Runs | GPU test runs (the GPU runner's logs, `$JULIA_DEPOT_PATH/gpu-logs/<tag>.log`): engine `wp-013-cuda-core-4` on `a639d89`, module `wp-013-cuda-em-2` on `216da62` (and `wp-013-cuda-em-3`, see §5); timing `em1d-timing-cuda-20261101T110748` (log `wp-013-cuda-timing-em1d-3`, on `df31928`) and `engine2d-cuda-20261101T105828` (log `wp-013-cuda-timing-2d-1`, on `216da62`) |
-| Input hashes | SHA-256 of every input file in each timing run's manifest: `gpu-cuda/<run>.manifest.toml`. The manifests say `commit = "unknown"`: the runner's sandbox mounts the worktree but not the repository's `.git`, so git cannot run inside a job (§6); the commit of each run is the `HEAD` in its log header, given above. |
+| Runs | GPU test runs (the GPU runner's logs, `$JULIA_DEPOT_PATH/gpu-logs/<tag>.log`): engine `wp-013-cuda-core-4` on `a639d89`, module `wp-013-cuda-em-3` on `df31928` (and `wp-013-cuda-em-2` on `216da62`, the same tests before the T-280 rename); timing `em1d-timing-cuda-20261101T110748` (log `wp-013-cuda-timing-em1d-3`, on `df31928`) and `engine2d-cuda-20261101T105828` (log `wp-013-cuda-timing-2d-1`, on `216da62`) |
+| Input hashes | SHA-256 of every input file in each timing run's manifest: `gpu-cuda/<run>.manifest.toml`. The manifests say `commit = "unknown"`: the runner's sandbox mounts the worktree but not the repository's `.git`, so git cannot run inside a job (#179); the commit of each run is the `HEAD` in its log header, given above. |
 | Environment | NVIDIA GeForce RTX 4080 SUPER (16 GB, 15.6 GiB reported), Intel Core i9-14900K host; Julia 1.13.3; KernelAbstractions 0.10, CUDACore 6.5.0, AcceleratedKernels 0.5; jobs one at a time on the machine's GPU runner, no network |
 | Figures | `gpu-cuda/timing-cuda.png` (module step, 1D), `gpu-cuda/proxy_cuda.png` (engine-only 2D proxy step), each with its JSON sidecar |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review (`CLAUDE.md`). The throughput and memory figures are first measurements for A7, proposed and not asserted. |
@@ -18,7 +18,7 @@ The GPU tests live in each package's `test/` and run whenever CUDA is functional
 
 ## 2. Test results
 
-Engine, run `wp-013-cuda-core-4`: 26 624 passed, 8 broken (T-144's known multi-thread allocation, #82), none failed. Module, run `wp-013-cuda-em-2`: 36 260 passed. Per testset:
+Engine, run `wp-013-cuda-core-4`: 26 624 passed, 8 broken (T-144's known multi-thread allocation, #82), none failed. Module, run `wp-013-cuda-em-3`: 36 260 passed (as in `wp-013-cuda-em-2`). Per testset:
 
 | Test | What ran on CUDA | Result |
 |---|---|---|
@@ -108,7 +108,6 @@ No throughput threshold is asserted (WP-013's non-goals): A7's budget is a facto
 
 ## 6. Open issues
 
-- The runner's job sandbox has no access to the repository's `.git`, so the run manifests record `commit = "unknown"` and the commit comes from the runner's log header. To be raised with the owner as a factory item (the runner's mounts are the owner's).
+- The runner's job sandbox has no access to the repository's `.git`, so the run manifests record `commit = "unknown"` and the commit comes from the runner's log header (#179).
 - The 592-byte step in the engine proxy's host bytes at 8 particles per cell (§4) is not explained.
 - The Reference flux deposition's 1D parallelism (§5) is a design property of one work item per face, not a defect; whether 1D GPU validation needs a faster Reference path is a question for a later package, not taken up here.
-- `wp-013-cuda-em-3` reruns the module's suite at the branch's last commit (the module's test files changed only by the T-280 rename after `em-2`); its result is in the PR.

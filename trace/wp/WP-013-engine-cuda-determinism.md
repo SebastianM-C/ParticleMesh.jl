@@ -1,6 +1,6 @@
 +++
 id = "WP-013"
-status = "proposed"
+status = "done"
 goals = ["A2", "A4", "A5", "A6", "A7", "A8", "A9"]
 depends_on = ["WP-008", "WP-009", "WP-011", "WP-014", "WP-018"]
 adds_dependencies = ["CUDA"]
