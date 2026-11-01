@@ -185,6 +185,61 @@ C_gather = 4
 measured = { Float32 = 1.52, Float64 = 1.47, "Dual{Float32,3}" = 1.52, gather_Float32 = 0.776, gather_Float64 = 1.55, "gather_Dual{Float32,3}" = 0.776 }
 status = "proposed"
 
+# WP-020: the flux deposition at N = 2 (grids of 16 × 12 cells of 1/4 × 3/8, displacements up to
+# 0.9 cells per axis, the corner crossed). Measured with 1 and 4 threads.
+
+["T-300"]
+quantity = "2D discrete continuity per node, |(ρ_new - ρ_old)/Δt + (Jx[j] - Jx[j - e₁])/Δx₁ + (Jy[j] - Jy[j - e₂])/Δx₂|"
+scale = "max|ρ|/Δt (400 particles, orders 1 and 2, every stagger pair, both modes)"
+C = 8
+measured = {}
+status = "proposed"
+
+["T-301"]
+quantity = "Σ Jz - Σ quantity_z of a moved species; per-node Jx, Jy, Jz of one particle against Esirkepov's weights by hand; N = 1 per-node Jy, Jz against quantity·(W_old + W_new)/2 by hand"
+scale = "count·max|quantity_z|; |q·w·Δx_d/Δt| and |quantity_z| (Float64); |quantity| (Float64)"
+C = 16
+C_hand = 8
+C_1d = 8
+measured = {}
+status = "proposed"
+
+["T-302"]
+quantity = "per-node difference of Reference and Fast Jx, Jy, Jz at N = 2"
+scale = "Σ|contributions| per node (3840 particles on 16 × 12 cells)"
+C = 32
+measured = {}
+status = "proposed"
+
+["T-304"]
+quantity = "y-sum of the 2D Jx and Jz of a y-constant load moving along x against the 1D deposit_flux! of the same particles"
+scale = "n_y·max|J_1D|"
+C = 8
+measured = {}
+status = "proposed"
+
+["T-305"]
+quantity = "partials of the 2D Jx, Jy, Jz from Dual weights against the Float64 flux of the partials"
+scale = "max|∂J|"
+C = 16
+measured = {}
+status = "proposed"
+
+["T-307"]
+quantity = "ForwardDiff derivative of Σ φ·Jx + Σ ψ·Jy + Σ χ·Jz in the displacement against fd_scan, end points within 1e-7 of a face or the corner: rel[istar] / floor_rel; and floor_rel itself"
+case = "order 2 asserted at every stagger pair, axis 1, axis 2 and the diagonal; order 1 at (Node, Node) recorded; h = 10^(-1:-0.5:-9)"
+C = 2
+floor_max = 1e-6
+measured = {}
+status = "proposed"
+
+["T-309"]
+quantity = "Σ Jx - Σ q·w·Δ₁·Δx₁/Δt, Σ Jy - Σ q·w·Δ₂·Δx₂/Δt, Σ Jz - Σ quantity_z at N = 2"
+scale = "count·max|q·w·Δx_d/Δt|; count·max|quantity_z|"
+C = 16
+measured = {}
+status = "proposed"
+
 # WP-013, the engine on CUDA (RTX 4080 SUPER, CUDACore 6.5). Where a CUDA ratio exceeds a CPU
 # bound, it gets its own entry here instead of a wider CPU bound. The device's arithmetic is not the host's: the
 # compiler fuses multiply-adds on the device (suspected from the last-bit differences of

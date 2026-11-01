@@ -188,6 +188,7 @@ end
         store_old_2d!(s2)
         nn = Int32.(n)
         for i in 1:np
+            s2.u[2][i] = seeded(T, cos(1.3i))                  # the Jz quantity q·w·u₂ (the load has no thermal spread)
             c, δ = advance((s2.cell[1][i], s2.cell[2][i]), (s2.offset[1][i], s2.offset[2][i]), (seeded(T, 0.85 * sin(0.37i)), zero(T)), nn)
             s2.cell[1][i], s2.cell[2][i] = c
             s2.offset[1][i], s2.offset[2][i] = δ

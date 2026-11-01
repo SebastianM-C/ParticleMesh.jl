@@ -147,3 +147,86 @@ function _deposit_flux_2d!(::Fast, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, w
                                                                    Int32(guards(grid)), sx, qz; ndrange = capacity(s))
     return Jx, Jy, Jz
 end
+
+# The Reference() path: per-cell patches, then a per-node reduction (the mechanism measured in
+# reports/wp-020-flux-2d.md against per-node recomputation and per-particle scratch).
+
+"The per-axis stencil width of the 2D flux as plain integers."
+@inline flux_widths(shape::Shape, st::NTuple{2,Stagger}) = map(s -> _valof(flux_width(shape, s)), st)
+_valof(::Val{V}) where {V} = V
+
+"""
+    flux_patch_values(shape, stagger::NTuple{2,Stagger})
+
+Values of `T` per linear cell in the flux patch of `Workspace(species, grid; flux = (shape,
+stagger))`: `3·M₁·M₂`, three components on the `M₁ × M₂` flux stencil.
+"""
+flux_patch_values(shape::Shape, st::NTuple{2,Stagger}) = 3 * prod(flux_widths(shape, st))
+flux_patch_values(shape::Shape, st) = throw(ArgumentError("flux scratch takes ρ's stagger pair at N = 2, got $st"))
+
+"Elementwise sum of two tuples of one length."
+@inline tuple_add(a::NTuple{K,Any}, b::NTuple{K,Any}) where {K} = ntuple(k -> a[k] + b[k], Val(K))
+
+# One work item per linear cell: its particles in slot order, each stencil entry summed from zero
+# in a register tuple and written once into the cell's patch (`patch[L, k]`, cell-major so that
+# neighbouring work items write neighbouring entries; the three components one after the other,
+# Jx first). An empty cell writes zeros.
+@kernel function flux_patch_2d_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), shape, st, n::NTuple{2,Int32}, sx,
+                                       quantity_z, ::Val{K}) where {K}
+    L = Int32(@index(Global, Linear))
+    T = eltype(patch)
+    ax = ntuple(_ -> zero(T), Val(K))
+    ay, az = ax, ax
+    @inbounds for i in seg_start[L]:seg_stop[L]
+        _, _, (jx, jy, jz) = flux_stencil(s, i, shape, st, n, sx, quantity_z)
+        ax = tuple_add(ax, jx)
+        ay = tuple_add(ay, jy)
+        az = tuple_add(az, jz)
+    end
+    @inbounds for k in 1:K
+        patch[L, k] = ax[k]
+        patch[L, K + k] = ay[k]
+        patch[L, 2K + k] = az[k]
+    end
+end
+
+# One work item per node (guards included): the patches of the cells whose flux stencil reaches
+# it, in increasing column-major linear index, summed from zero.
+@kernel function flux_reduce_2d_kernel!(Jx, Jy, Jz, @Const(patch), n::NTuple{2,Int32}, g::Int32, lo::NTuple{2,Int32},
+                                        hi::NTuple{2,Int32}, M::NTuple{2,Int32})
+    I = @index(Global, Cartesian)
+    T = eltype(Jx)
+    K = M[1] * M[2]
+    j1, j2 = Int32(I[1]) - g, Int32(I[2]) - g
+    ax, ay, az = zero(T), zero(T), zero(T)
+    @inbounds for c2 in max(Int32(1), j2 - hi[2]):min(n[2], j2 - lo[2]), c1 in max(Int32(1), j1 - hi[1]):min(n[1], j1 - lo[1])
+        L = c1 + (c2 - Int32(1)) * n[1]
+        k = (j1 - c1 - lo[1]) + (j2 - c2 - lo[2]) * M[1] + Int32(1)
+        ax += patch[L, k]
+        ay += patch[L, K + k]
+        az += patch[L, 2K + k]
+    end
+    @inbounds begin
+        Jx[I] += ax
+        Jy[I] += ay
+        Jz[I] += az
+    end
+end
+
+function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, workgroupsize)
+    check_workspace(ws, s, grid)
+    need = flux_patch_values(shape, st)
+    size(ws.flux_patch) == (prod(ncells(grid)), need) ||
+        throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
+                            "shape and stagger: $need values per cell, the workspace has $(size(ws.flux_patch, 2))"))
+    backend = get_backend(s)
+    n = Int32.(ncells(grid))
+    M = flux_widths(shape, st)
+    r = map(x -> flux_reach(shape, x), st)
+    lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
+    launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, n, sx, qz,
+                                                            Val(prod(M)); ndrange = prod(n))
+    launcher(flux_reduce_2d_kernel!, backend, workgroupsize)(Jx, Jy, Jz, ws.flux_patch, n, Int32(guards(grid)), lo, hi, Int32.(M);
+                                                             ndrange = size(Jx))
+    return Jx, Jy, Jz
+end

@@ -36,7 +36,7 @@ function flux_species_2d(::Type{T}, grid, np; seed = 3, maxstep = 9 / 10, dead =
     nextu() = (state = state * 0x5851f42d4c957f2d + 0x14057b7ef767814f; Float64(state >> 11) / 2.0^53)
     s.offset[1][1], s.offset[2][1] = seeded(T, 15 / 16), seeded(T, 15 / 16)
     s.offset[1][2], s.offset[2][2] = seeded(T, 1 / 16), seeded(T, 1 / 16)
-    foreach(i -> s.status[i] = ParticleMeshCore.FREE, dead)
+    foreach(i -> i <= capacity(s) && (s.status[i] = ParticleMeshCore.FREE), dead)
     store_old_2d!(s)
     maxstep == 0 && return s
     for i in 1:np
@@ -198,7 +198,7 @@ function hand_flux_2d(shape, st, X0, X1, qw, qz, sx, nodes)
     S1(d, j) = hand_weight(shape, st[d], X1[d], j)
     D(d, j) = S1(d, j) - S0(d, j)
     lo1, lo2 = first(nodes[1]) - 3, first(nodes[2]) - 3
-    Jx = Dict{Tuple{Int,Int},Float64}(); Jy = similar(Jx); Jz = similar(Jx)
+    Jx, Jy, Jz = (Dict{Tuple{Int,Int},Float64}() for _ in 1:3)
     for j2 in nodes[2], j1 in nodes[1]
         Jx[(j1, j2)] = -qw * sx[1] * sum(D(1, i) * (S0(2, j2) + D(2, j2) / 2) for i in lo1:j1)
         Jy[(j1, j2)] = -qw * sx[2] * sum(D(2, j) * (S0(1, j1) + D(1, j1) / 2) for j in lo2:j2)
