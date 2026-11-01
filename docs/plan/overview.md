@@ -18,8 +18,8 @@ Factory: the owner sets the goals and vetoes derived work from the daily digest 
  daily digest ◄── overseer (reads artifacts, no GPU) ◄── coverage  ◄── repository
  dashboard                                                 ▲   ▲   ▲        ▲
  steering session                                          │   │   │        │
-                      cloud sessions / workflows (CPU) ────┘   │   └── GPU runs on the 4080 (on demand)
-                      agent session records via hooks/OTel ────┘       run records, plots, sidecars
+                      factory sessions / workflows ────────┘   │   └── GPU runs on the 4080 (on demand)
+                      agent session records via hooks/OTel ────┘       run manifests, plots, sidecars
 ```
 
 ## 2. What is decided (pointers)

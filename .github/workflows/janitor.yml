@@ -42,6 +42,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # A failing gh or jq in a pipeline fails the step instead of reading as "no work".
+          set -euo pipefail
           # Issues that already have an open janitor PR (branch janitor/<issue>) are that run's until it merges.
           owned=$(gh pr list --state open --limit 100 --json headRefName \
             --jq '[.[] | .headRefName | select(startswith("janitor/")) | ltrimstr("janitor/") | tonumber?]')
@@ -108,4 +110,4 @@ jobs:
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 60
-            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin HEAD),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Read,Edit,Write,Grep,Glob"
+            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git ls-remote:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin HEAD),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Read,Edit,Write,Grep,Glob"
