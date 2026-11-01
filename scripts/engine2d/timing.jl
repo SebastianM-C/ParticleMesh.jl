@@ -12,10 +12,19 @@
 # order, with no float literal. Run once per thread count:
 #   julia +1.13 --project=scripts -t 1 scripts/engine2d/timing.jl prototypes
 #   julia +1.13 --project=scripts -t 4 scripts/engine2d/timing.jl prototypes
+#
+# Part 2, `ported` (deliverable 5, phase 3, on the ported engine): the engine's 2D Reference and
+# Fast deposition at the sizes of part 1, next to the `cartesian` prototype timed in the same
+# process; an engine-only proxy step (advance, sort, order-2 deposit, order-2 gather) at the CI
+# test size of `lib/ParticleMeshCore/test/engine2d_cases.jl` (16 × 12 cells, 2 × 3 per cell); and
+# the scratch bytes of the 2D `Workspace` per particle and per cell, with and without a two-array
+# extras tuple:
+#   julia +1.13 --project=scripts -t 1 scripts/engine2d/timing.jl ported
+#   julia +1.13 --project=scripts -t 4 scripts/engine2d/timing.jl ported
 include(joinpath(@__DIR__, "common.jl"))
 const PMC = ParticleMesh.ParticleMeshCore
 using .PMC: shape_weights, stencil_reach, pick, ALIVE, Stagger, Shape, Species, Workspace, sort_by_cell!, deposit!,
-            Reference, Fast, ChargeWeight, PeriodicGrid, field, capacity
+            Reference, Fast, ChargeWeight, PeriodicGrid, field, capacity, gather!
 using KernelAbstractions: @kernel, @index, @Const
 const Atomix = PMC.Atomix          # the engine's own; no dependency of the scripts environment
 
@@ -260,7 +269,140 @@ function prototypes()
     return dir
 end
 
+# ---------------------------------------------------------------------------------------------
+# Part 2: the ported engine
+
+"The engine's 2D deposition at the sizes of part 1, next to the `cartesian` prototype in the same process."
+function ported_rows()
+    rows = Dict{String,Any}[]
+    backend = CPU()
+    for T in (Float32, Float64), n in SIZES, (P, label, st) in STAGGER_CASES
+        shape = Shape{P}()
+        s, seg_start, seg_stop = sorted_species_2d(T, n, PPC)
+        np = capacity(s)
+        grid = PeriodicGrid(n, (one(T), one(T)), P)
+        ws = Workspace(s, grid)
+        sort_by_cell!(s, grid, ws)
+        @assert ws.seg_start == seg_start && ws.seg_stop == seg_stop     # the host-built order is the engine's
+        lo = Int32.(map(x -> stencil_reach(shape, x)[1], st))
+        hi = Int32.(map(x -> stencil_reach(shape, x)[2], st))
+        ρp = field(backend, T, grid)
+        runp() = proto_cartesian!(backend)(ρp, s, ChargeWeight(), seg_start, seg_stop, shape, st, Int32.(n), Int32(P), lo, hi;
+                                           ndrange = size(ρp))
+        ρR, ρF = field(backend, T, grid), field(backend, T, grid)
+        runR() = deposit!(Reference(), ρR, s, shape, st, grid, ws)
+        runF() = deposit!(Fast(), ρF, s, shape, st, grid, ws)
+        runp(); runR()
+        same = reinterpret(UInt8, vec(ρp)) == reinterpret(UInt8, vec(ρR))
+        for (k, f) in (("cartesian", runp), ("ported_ref", runR), ("ported_fast", runF))
+            r = timed(f)
+            row = Dict{String,Any}("T" => string(T), "cells" => collect(n), "particles" => np, "order" => P, "stagger" => label,
+                                   "method" => k, "ns_per_particle" => 1e9 * r.median / np,
+                                   "ns_per_particle_min" => 1e9 * r.min / np, "ns_per_particle_max" => 1e9 * r.max / np)
+            k == "ported_ref" && (row["bitwise_equal_prototype"] = same)
+            push!(rows, row)
+        end
+        println(T, " ", n, " P=", P, " ", label, ": ",
+                join(("$(r["method"])=$(round(r["ns_per_particle"], sigdigits = 3))" for r in rows[(end - 2):end]), " "), " bitwise=", same)
+    end
+    return rows
+end
+
+"Move every alive particle by `u₁·dt/dx₁`, `u₂·dt/dx₂` cells through the engine's per-axis `advance` (the proxy step's push)."
+@kernel function proxy_advance!(s, dt_dx::NTuple{2}, n::NTuple{2,Int32})
+    i = @index(Global, Linear)
+    @inbounds if s.status[i] == ALIVE
+        c, δ = PMC.advance((s.cell[1][i], s.cell[2][i]), (s.offset[1][i], s.offset[2][i]),
+                           (s.u[1][i] * dt_dx[1], s.u[2][i] * dt_dx[2]), n)
+        s.cell[1][i], s.cell[2][i] = c
+        s.offset[1][i], s.offset[2][i] = δ
+    end
+end
+
+struct ProxyDensity end
+@inline (::ProxyDensity)(x, p) = p[1] * (one(p[1]) + p[2] * cos(p[3] * x[1] + p[4] * x[2]))
+
+"""
+    proxy_rows(; steps)
+
+The engine-only proxy step at the CI test size: per step, advance, sort (Reference only),
+order-2 deposit at (Center, Center) and order-2 gather of the deposited field. CPU ns per
+particle-step, median and spread of 7 runs of `steps` steps.
+"""
+function proxy_rows(; steps = 50)
+    rows = Dict{String,Any}[]
+    backend = CPU()
+    for T in (Float32, Float64), mode in (Reference(), Fast()), (n, ppc) in (((16, 12), (2, 3)), ((16, 12), (8, 8)))
+        grid = PeriodicGrid(n, (T(1 // 4), T(3 // 8)), 2)
+        s = Species(backend, T, prod(n) * prod(ppc); q = -1, m = 1, N = 2)
+        p = (one(T), T(1 // 10), T(2π / (n[1] / 4)), T(2π / (n[2] * 3 / 8)))
+        PMC.load_quiet!(s, grid, ProxyDensity(), p, ppc; vth = (T(1 // 5), T(1 // 5), T(1 // 5)), seed = 1, stream = 1)
+        ws = Workspace(s, grid)
+        ρ = field(backend, T, grid)
+        out = similar(s.w)
+        st = (PMC.Center(), PMC.Center())
+        dt_dx = (T(1 // 2), T(1 // 3))
+        step!() = begin
+            proxy_advance!(backend)(s, dt_dx, Int32.(n); ndrange = capacity(s))
+            mode isa Reference && sort_by_cell!(s, grid, ws)
+            fill!(ρ, zero(T))
+            deposit!(mode, ρ, s, PMC.Quadratic, st, grid, ws)
+            PMC.fold_guards!(ρ, grid)
+            PMC.fill_guards!(ρ, grid)
+            gather!(out, ρ, s, PMC.Quadratic, st, grid)
+        end
+        r = timed(() -> foreach(_ -> step!(), 1:steps); reps = 7, inner = 1)
+        np = capacity(s)
+        push!(rows, Dict{String,Any}("T" => string(T), "mode" => string(nameof(typeof(mode))), "cells" => collect(n), "ppc" => collect(ppc),
+                                     "particles" => np, "steps" => steps,
+                                     "ns_per_particle_step" => 1e9 * r.median / (np * steps),
+                                     "ns_per_particle_step_min" => 1e9 * r.min / (np * steps),
+                                     "ns_per_particle_step_max" => 1e9 * r.max / (np * steps)))
+        println(rows[end])
+    end
+    return rows
+end
+
+"Scratch of the 2D `Workspace`, split into bytes per particle (capacity) and per linear cell (segment bounds)."
+function scratch_rows()
+    rows = Dict{String,Any}[]
+    for T in (Float32, Float64), extras in (NamedTuple(), (old_cell = Int32, old_offset = T)), (n, ppc) in (((16, 12), 6), ((64, 48), 64))
+        grid = PeriodicGrid(n, (one(T), one(T)), 2)
+        s = Species(CPU(), T, prod(n) * ppc; q = -1, m = 1, N = 2, extras)
+        ws = Workspace(s, grid)
+        total = PMC.scratch_bytes(ws)
+        cellb = sizeof(ws.seg_start) + sizeof(ws.seg_stop)
+        push!(rows, Dict{String,Any}("T" => string(T), "extras" => string(keys(extras)), "cells" => collect(n), "capacity" => capacity(s),
+                                     "bytes" => total, "bytes_per_cell" => cellb / prod(n),
+                                     "bytes_per_particle" => (total - cellb) / capacity(s)))
+        println(rows[end])
+    end
+    return rows
+end
+
+function ported()
+    nt = Threads.nthreads()
+    dir = run_dir("ported-t$nt", @__FILE__; params = Dict{String,Any}("sizes" => [collect(n) for n in SIZES], "ppc" => PPC,
+                                                                      "proxy" => "16x12 cells, 2x3 and 8x8 per cell, 50 steps, 7 runs",
+                                                                      "timer" => "median of 7 samples, each the mean of 5 calls, after one warm-up call"))
+    rows = ported_rows()
+    fig = bars_figure(rows, ("cartesian", "ported_ref", "ported_fast"), "Deposition, ported engine, $nt thread(s), $(cpu_model())")
+    save_plot(dir, "ported_t$nt", fig, Dict("rows" => rows, "threads" => nt, "cpu" => cpu_model(), "ppc" => PPC))
+    prows = proxy_rows()
+    fig = Figure(size = (800, 450))
+    labels = ["$(r["T"] == "Float32" ? "F32" : "F64") $(r["mode"]) $(r["ppc"][1])×$(r["ppc"][2])" for r in prows]
+    ax = Axis(fig[1, 1]; ylabel = "ns per particle-step", xticks = (1:length(prows), labels), xticklabelrotation = π / 8,
+              title = "Engine-only proxy step, 16 × 12 cells, $nt thread(s), $(cpu_model())")
+    barplot!(ax, 1:length(prows), [r["ns_per_particle_step"] for r in prows])
+    rangebars!(ax, 1:length(prows), [r["ns_per_particle_step_min"] for r in prows], [r["ns_per_particle_step_max"] for r in prows]; color = :black)
+    save_plot(dir, "proxy_t$nt", fig, Dict("rows" => prows, "threads" => nt, "cpu" => cpu_model()))
+    srows = scratch_rows()
+    open(io -> JSON.print(io, Dict("rows" => srows), 2), joinpath(dir, "scratch.json"), "w")
+    println("ported: outputs in ", relpath(dir, REPO))
+    return dir
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__()
     part = isempty(ARGS) ? "prototypes" : ARGS[1]
-    part == "prototypes" ? prototypes() : error("unknown part $part")
+    part == "prototypes" ? prototypes() : part == "ported" ? ported() : error("unknown part $part")
 end
