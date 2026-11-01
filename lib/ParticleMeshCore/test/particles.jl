@@ -17,19 +17,24 @@ end
 position(s, i) = (s.cell[1][i] - 1) + s.offset[1][i]
 
 @testset "T-138 free streaming at zero field and periodic wrap [A2, A7, A8, WP-010]" begin
-    # Uncharged particles through the electrostatic step (Reference mode, so each step also
-    # sorts): zero field, so x(N) = x₀ + N·v·dt/dx exactly when the displacement is dyadic.
+    # Uncharged particles: every step sorts by cell (as a Reference step does) and advances each
+    # particle by v·dt/dx with dt = dx = 1, so x(N) = x₀ + N·v exactly when the displacement is
+    # dyadic.
     C = tolC("T-138")
     n, np, N = 8, 40, 400
     for T in TYPES
         grid = PeriodicGrid(n, one(basetype(T)), 2)
-        p = ESParams(one(T), one(T))
         for (label, v) in (("dyadic", seeded(T, 1 // 8)), ("general", seeded(T, 0.3)))
             s = streaming_species(T, n, np, v)
             x0 = Dict(Int(value_of(s.u[2][i])) => position(s, i) for i in 1:np)
-            st = ESState(ESConfig(Quadratic, Reference()), grid, (s,), N)
-            initialize!(st, p)
-            run!(st, p, N)
+            ws = Workspace(s, grid)
+            for _ in 1:N
+                sort_by_cell!(s, grid, ws)
+                for i in 1:capacity(s)
+                    s.status[i] == ParticleMeshCore.ALIVE || continue
+                    s.cell[1][i], s.offset[1][i] = advance(s.cell[1][i], s.offset[1][i], s.u[1][i], Int32(n))
+                end
+            end
             @test alive_count(s) == np
             @test count(==(ParticleMeshCore.ALIVE), s.status) == np
             worst = 0.0

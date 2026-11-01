@@ -8,8 +8,8 @@ interfaces described in `docs/plan/architecture-draft.md` §0.
 
 This umbrella package currently re-exports `ParticleMeshCore`. The only physics module (A9),
 `ParticleMeshElectromagnetic` in `lib/`, is a workspace member of its own and is loaded
-directly; the electrostatic reference of the WP-010 spike is test-support code,
-`lib/ParticleMeshCore/test/es_reference.jl`. See `docs/plan/overview.md`.
+directly; it runs the electrostatic cases with no transverse fields. See
+`docs/plan/overview.md`.
 """
 module ParticleMesh
 

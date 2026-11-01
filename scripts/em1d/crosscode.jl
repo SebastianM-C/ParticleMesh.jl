@@ -1,44 +1,26 @@
-# ParticleMesh on the WP-003 case files (scripts/crosscode/cases/*.toml), fitted with WP-003's
-# own analysis (scripts/crosscode/analysis.jl) so that the numbers compare with Smilei's, and
-# an overlay with a finished Smilei run.
-#   julia +1.13 --project=scripts -t 16 scripts/es1d/crosscode.jl run landau|two-stream
-#   julia +1.13 --project=scripts scripts/es1d/crosscode.jl compare <pm run dir> <smilei run dir>
+# ParticleMesh on the WP-003 case files (scripts/crosscode/cases/*.toml), through the
+# electromagnetic module (the 1D edge cases, no transverse fields), fitted with WP-003's own
+# analysis (scripts/crosscode/analysis.jl) so that the numbers compare with Smilei's, and an
+# overlay with a finished Smilei run.
+#   julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau|two-stream
+#   julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run dir> <smilei run dir>
 include(joinpath(@__DIR__, "common.jl"))
-include(joinpath(REPO, "scripts", "crosscode", "analysis.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "read.jl"))
-using .Observables
+using .Observables: local_maxima
 using .SmileiRead
-using TOML
 
-const CASES = joinpath(REPO, "scripts", "crosscode", "cases")
+"""
+    build(case) -> (state, params, problem)
 
-"The ParticleMesh state of a case file (electrostatic, nonrelativistic, quadratic, Reference, Float64)."
+The module's state of a case file, initialized: `problem_from_case` and `numerics_from_case`
+in `Reference()` mode, Float64 (quadratic shape, Esirkepov current, relativistic Boris).
+"""
 function build(case)
     @assert case["grid"]["boundaries"] == "periodic" && case["numerics"]["shape_order"] == 2
-    L = case["grid"]["length"]
-    n = case["grid"]["cells"]
-    dt, t_end = case["time"]["dt"], case["time"]["t_end"]
-    seed = case["numerics"]["random_seed"]
-    mobile = [s for s in case["species"] if s["mobile"]]
-    n0 = sum(s["density"] for s in mobile)          # immobile species: the neutralizing background
-    ωp = sqrt(n0)
-    k = 2π / L
-    pert = only(unique(s["perturbation"] for s in mobile))
-    @assert pert["mode"] == 1
-    α = pert["amplitude"]
-    common = (; n, n0, α, dt_ωp = dt * ωp, tmax_ωp = t_end * ωp, shape = Quadratic, mode = Reference(), seed)
-    if length(mobile) == 1
-        s = only(mobile)
-        st, p, info = landau_case(Float64; common..., ppc = s["particles_per_cell"], vth = s["thermal_velocity"],
-                                  kλD = k * s["thermal_velocity"] / ωp)
-    else
-        v0 = maximum(s["drift"] for s in mobile)
-        @assert sort([s["drift"] for s in mobile]) == [-v0, v0] && all(s -> s["thermal_velocity"] == 0, mobile)
-        st, p, info = two_stream_case(Float64; common..., ppc = only(unique(s["particles_per_cell"] for s in mobile)),
-                                      v0, kv0_ωp = k * v0 / ωp, vth = 0)
-    end
-    @assert isapprox(length(st.grid), L; rtol = 1e-12) && info.nsteps == round(Int, t_end / dt)
-    return st, p, info
+    prob = problem_from_case(case, Float64)
+    st = EMState(prob, numerics_from_case(case; mode = Reference()))
+    initialize!(st, prob)
+    return st, params(prob), prob
 end
 
 "Fit as WP-003's analyze.jl does, on the field energy U and on the mode amplitude squared."
@@ -61,20 +43,20 @@ function observe(case, t, U, Ek2)
 end
 
 function run_case(name)
-    case = TOML.parsefile(joinpath(CASES, "$name.toml"))
-    st, p, info = build(case)
-    dir = run_dir("pm-$name", @__FILE__; params = Dict("case" => name, "case_sha256" => bytes2hex(open(sha256, joinpath(CASES, "$name.toml")))))
-    initialize!(st, p)
-    wall = @elapsed run!(st, p, info.nsteps)
+    case = load_case(name)
+    st, p, prob = build(case)
+    dir = run_dir("pm-$name", @__FILE__, name; params = Dict{String,Any}("case" => name), work_package = "WP-003")
+    wall = @elapsed run!(st, p, prob.nsteps)
     every = case["diagnostics"]["scalars_every"]
-    W, A = field_energy_history(st), mode_amplitude_history(st)
-    idx = 1:every:info.nsteps                         # the case's scalar cadence; entry k is t = (k-1)dt
-    t = (idx .- 1) .* Float64(info.dt)
+    h = histories(st)
+    W, A = h.WEx, mode_amplitude_history(h, :Ex)
+    idx = 1:every:prob.nsteps                        # the case's scalar cadence; entry k is t = (k-1)dt
+    t = (idx .- 1) .* prob.dt
     r, result = observe(case, t, W[idx], A[idx] .^ 2)
-    result["particles"] = info.n * info.ppc * length(st.species)
-    result["steps"] = info.nsteps
+    result["particles"] = sum(alive_count, st.species)
+    result["steps"] = prob.nsteps
     result["wall_seconds"] = wall
-    result["ns_per_particle_step"] = 1e9 * wall / (result["particles"] * info.nsteps)
+    result["ns_per_particle_step"] = 1e9 * wall / (result["particles"] * prob.nsteps)
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
     open(io -> JSON.print(io, Dict("t" => t, "U" => W[idx], "E1" => A[idx]), 2), joinpath(dir, "series.json"), "w")
     println("pm-$name: γ = $(r.gamma) ± $(r.gamma_stderr) (theory $(result["theory"]), rel $(result["relative_difference"])); $(round(wall, digits = 1)) s; outputs in $dir")

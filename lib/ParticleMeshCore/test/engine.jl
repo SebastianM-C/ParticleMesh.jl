@@ -1,4 +1,4 @@
-# The engine contracts of WP-011: T-171 to T-177. T-170 is in split.jl (it needs the physics runs).
+# The engine contracts of WP-011: T-171 to T-177.
 
 "The output lines of `threads_worker.jl` run with `nt` threads (cached: one subprocess per thread count)."
 const WORKER_OUTPUT = Dict{Int,Vector{String}}()
@@ -216,7 +216,8 @@ end
         @test r.istar == argmin(spread) + 1
         @test r.floor_rel == spread[r.istar - 1] / abs(ad)
         # The exact derivative within C times the floor. For a smooth function the floor at its
-        # minimum is about the error itself, so the measured ratio sits near 1 (T-143: 0.70).
+        # minimum is about the error itself, so the measured ratio sits near 1 (and below 1
+        # through the module's whole step, T-219).
         @test r.rel[r.istar] <= tolC("T-176") * r.floor_rel
         MEASURED["T-176 rel/floor"] = merge(get(MEASURED, "T-176 rel/floor", Dict{String,Float64}()), Dict(label => r.rel[r.istar] / r.floor_rel))
         floors[label] = r.floor_rel
@@ -230,7 +231,6 @@ end
     @test_throws ArgumentError fd_scan((x, m, s) -> Float32(sin(x)), 1.0, hs; seed = 1, ad = cos(1.0))
     @test_throws ArgumentError fd_scan(gsin, 1.0, Float32.(hs); seed = 1, ad = cos(1.0))
     @test_throws ArgumentError fd_scan(gsin, 1.0, hs[1:4]; seed = 1, ad = cos(1.0))
-    @test TOL["T-143"]["C"] isa Real                        # T-143 reads its multiple from tolerances.toml
 end
 
 @testset "T-177 the launch keyword [A4, WP-011]" begin
