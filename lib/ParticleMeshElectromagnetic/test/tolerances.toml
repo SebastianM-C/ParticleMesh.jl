@@ -73,3 +73,11 @@ case = "landau.toml, 64 particles per cell, amplitude 0.01, seed 20261031, Float
 C = 1
 measured = { Float64 = 0.176 }
 status = "proposed"
+
+# Tolerances of WP-008 (the SciML harness), proposals like those above.
+["T-105"]
+quantity = "ForwardDiff derivative of the Ex energy after 322 steps with respect to the Landau amplitude, through solve of a remake_reload problem (FunctionMap), against fd_scan: rel at the minimising step ≤ C·floor"
+case = "as T-219: landau.toml, 64 particles per cell, amplitude 0.01, seed 20261031, Float64 Reference"
+C = 1
+measured = { Float64 = 0.176 }
+status = "proposed"

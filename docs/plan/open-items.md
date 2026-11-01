@@ -37,5 +37,5 @@ Reactant as a production backend (2D on Reactant-CUDA, sharding, multi-host, TPU
 - MethodOfLines stays a dev dependency of the optional extension only, never of the core.
 - Reactant raising covers a growing but incomplete class of kernels and the compile time of a many-kernel step is unmeasured; the CI smoke test (once Reactant is unparked, A9) and B9 keep this visible without letting phases 1 to 3 depend on it.
 - OrdinaryDiffEq's Reactant path is a draft PR (#4436); the Reactant time loop uses SimpleDiffEq or a `@trace` loop until it lands. The MOL Ferrite backend has no public trace yet; do not plan around it.
-- The `FunctionMap` harness's double buffering and the tangent layout both multiply memory; a 2D case must be sized for the 4080 explicitly.
+- The `FunctionMap` harness and the tangent layout both multiply memory: with `save_everystep = false` the harness holds five copies of the state after `init` and six after `solve` (T-104: `u0`, `u`, `uprev`, the cache's unused `tmp`, and the saved start and end states), against the factor of two A7's memory budget assumes; a 2D case must be sized for the 4080 explicitly.
 - The objective and the gradient-versus-Bayesian decision must land before the tangent layer is frozen (end of phase 2), because they fix which parameters are active and which diagnostic is reduced.
