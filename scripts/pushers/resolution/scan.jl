@@ -239,14 +239,13 @@ function main()
     # Gordon and Hafizi's diagnostic
     gh = Dict(pname(P) => gordon_hafizi(P, 10.0, 0.1, 63) for P in PUSHERS)
     gh["QuadraticUnitary in proper time"] = gordon_hafizi_proper(10.0, 0.1, 63)
-    fig = Figure(size = (900, 600))
+    fig = Figure(size = (1150, 600))
     ax = Axis(fig[1, 1]; xlabel = "z − v_d t (c/ω₀)", ylabel = "x (c/ω₀)",
               title = "a₀ = 10, 63 steps of ω₀Δs = 0.1, lab steps from the inverse of Eq. 22")
     vd = 100 / 104
     r = gh["Boris"]
     tt = range(0, r.t_end; length = 2000)
     ex = [exact_state(10.0, t)[1] for t in tt]
-    lines!(ax, [p[3] - vd * t for (p, t) in zip(ex, tt)], [p[1] for p in ex]; color = :black, label = "exact")
     side = Dict{String,Any}()
     for (i, name) in enumerate((map(pname, PUSHERS)..., "QuadraticUnitary in proper time"))
         g = gh[name]
@@ -257,7 +256,9 @@ function main()
                               "gamma" => g.gamma, "canonical" => g.canonical, "max_distance" => g.max_distance,
                               "end_distance" => g.end_distance, "t_end" => g.t_end)
     end
-    axislegend(ax; position = :rt)
+    lines!(ax, [p[3] - vd * t for (p, t) in zip(ex, tt)], [p[1] for p in ex]; color = :black, linestyle = :dash,
+           linewidth = 2, label = "exact")
+    Legend(fig[1, 2], ax)
     save(joinpath(dir, "gordon_hafizi_a0_10.png"), fig; px_per_unit = 2)
     open(io -> JSON.print(io, side), joinpath(dir, "gordon_hafizi_a0_10.json"), "w")
     summary["gordon_hafizi"] = Dict(k => Dict(f => v[f] for f in ("gamma", "canonical", "max_distance", "end_distance", "t_end"))
