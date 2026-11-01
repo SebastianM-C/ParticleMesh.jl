@@ -12,14 +12,20 @@ Toolchain in the image, as `pm-versions` reports it: PIConGPU 0.8.0 (`6bb3470e`)
 
 The image carries no driver. The runner gives `picongpu` jobs the GPU, which supplies the host driver's user-space libraries at run time. The host driver is 595.104.02, which supports up to CUDA 13.2 according to `nvidia-smi`, so the image's CUDA 12.5 runs on it without compatibility packages. A driver downgrade below CUDA 12.5 support would break the image.
 
-## 3. No upstream image was used
+## 3. The base image: built from source, by the owner's choice
 
-WP-017 asks to build on a maintained upstream image if one exists. Two candidates exist, and neither was inspected, because the sandbox cannot reach container registries:
+WP-017 asks to build on a maintained upstream image if one exists. The owner chose to keep the from-source build: the official `ubuntu:24.04` pinned by digest, CUDA from NVIDIA's apt repository, and openPMD-api and PIConGPU built at pinned tags. The reasons:
 
-- PIConGPU's CI images, `registry.hzdr.de/crp/alpaka-group-container/alpaka-ci-<ubuntu>-cuda<ver>-gcc-pic:<tag>` (named in `share/ci/compiler_nvcc_cuda.yml` at 0.8.0). They are CI images for alpaka and PIConGPU, not release images.
+- Every part is pinned.
+- PIConGPU compiles each setup at run time anyway, so an image only supplies the toolchain.
+- The image passed the GPU smoke run (§5).
+
+Two upstream candidates were not used, and neither was inspected, because the sandbox cannot reach container registries:
+
+- PIConGPU's CI images, `registry.hzdr.de/crp/alpaka-group-container/alpaka-ci-<ubuntu>-cuda<ver>-gcc-pic:<tag>`. These are CI images, not release images.
 - NVIDIA's `nvidia/cuda:12.5.x-devel-ubuntu24.04`.
 
-Assumption I proceeded on: build on the digest-pinned Ubuntu 24.04 that `smilei.Containerfile` already uses, so the recipe is fully pinned without a registry lookup. Switching to `nvidia/cuda` is a change of the `FROM` line (with its digest) and removing the CUDA `RUN` step. To answer: say so if you prefer either image, and give its digest.
+If the base changes later, switching to `nvidia/cuda` means changing the `FROM` line, with its digest, and removing the CUDA `RUN` step.
 
 ## 4. Pins and choices
 
