@@ -13,7 +13,7 @@ Two steps of the recipe could not be tried from the factory sandbox, which reach
 
 ## 2. Driver and GPU passthrough
 
-The image carries no driver. The runner gives `picongpu` jobs the GPU, which supplies the host driver's user-space libraries at run time. A CUDA 12.5 build needs a host driver that supports 12.5, or minor-version compatibility from an older 12.x driver; the exact minimum is in NVIDIA's CUDA compatibility table, not checked here. To answer: the host driver version (`nvidia-smi`), if it is older than the 555 series.
+The image carries no driver. The runner gives `picongpu` jobs the GPU, which supplies the host driver's user-space libraries at run time. The host driver is 595.104.02, which supports up to CUDA 13.2 according to `nvidia-smi`, so the image's CUDA 12.5 runs on it without compatibility packages. A driver downgrade below CUDA 12.5 support would break the image.
 
 ## 3. No upstream image was used
 
