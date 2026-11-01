@@ -12,8 +12,8 @@ using OrdinaryDiffEqVerner: Vern9
 figure8_fields(a0) = ((x, t) -> (-a0 * cos(t - x[3]), zero(a0), zero(a0)),
                       (x, t) -> (zero(a0), -a0 * cos(t - x[3]), zero(a0)))
 
-@testset "T-237 the SciML interface [A7, A8, A10, WP-015]" begin
-    @testset "solve reproduces push_particle bit for bit, $(pname(P)), $(type_label(T))" for P in PUSHERS, T in TYPES
+@testset "T-237 the SciML interface [A7, A8, A10, WP-015, WP-016]" begin
+    @testset "solve reproduces push_particle bit for bit, $(pname(P)), $(type_label(T))" for P in (PUSHERS..., QuadraticUnitary()), T in TYPES
         V = basetype(T)
         a0 = seeded(T, V(2))
         E, B = figure8_fields(a0)

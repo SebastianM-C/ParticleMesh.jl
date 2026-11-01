@@ -112,13 +112,13 @@ status = "proposed"
 ["T-231"]
 quantity = "uniform Bz, E = 0: | |u| − |u₀| | (C) and the gyrophase error against the pusher's closed-form angle per step (C_phase); the relative error of the Eq. 20 γ (Vay, Higuera–Cary) against BigFloat for |τ| from 1/2 to 10³ (C_eq20, scale eps(T))"
 scale = "steps·|u₀|; steps (radians); 2000 steps of Δt = 1/10 in B = 2, |u₀| ∈ {0.1, 1, 10}, u ⊥ B and (|u| only) u with a component along B"
-C = { Boris = 2, Vay = 3, HigueraCary = 2, BorisExactRotation = 2 }
-C_phase = { Boris = 1, Vay = 20, HigueraCary = 1, BorisExactRotation = 3 }
+C = { Boris = 2, Vay = 2, HigueraCary = 2, BorisExactRotation = 2 }
+C_phase = { Boris = 1, Vay = 2, HigueraCary = 1, BorisExactRotation = 1 }
 C_eq20 = 2
-measured = { Boris = 0.716, Vay = 1.33, HigueraCary = 0.667, BorisExactRotation = 0.559 }
-measured_phase = { Boris = 0.268, Vay = 9.42, HigueraCary = 0.434, BorisExactRotation = 1.32 }
+measured = { Boris = 0.716, Vay = 0.716, HigueraCary = 0.667, BorisExactRotation = 0.559 }
+measured_phase = { Boris = 0.268, Vay = 0.628, HigueraCary = 0.434, BorisExactRotation = 0.5 }
 measured_eq20 = 0.599
-status = "proposed; Vay's phase constant is the rounding of its γ⁺ (Eq. 20 applied to u′) accumulating with |u|"
+status = "proposed; Vay and BorisExactRotation re-measured after the #203 rewrites (WP-016)"
 
 ["T-232"]
 quantity = "uniform Ex, B = 0: |uⁿ − (u₀ + (q/m)E₀·nΔt)|"
@@ -131,15 +131,15 @@ status = "proposed"
 ["T-233"]
 quantity = "crossed fields E = E₀ŷ, B = ẑ, E₀ ∈ {0.1, 0.5, 0.9, 0.99}, started at v = E×B/B² (+ v∥ẑ): |uⁿ − u⁰| for Vay and Higuera–Cary"
 scale = "steps·|u⁰|, 10⁴ steps of Δt = 1/10, Float32 and Float64"
-C = { Vay = 2, HigueraCary = 1 }
-measured = { Vay = 0.876, HigueraCary = 0.142 }
+C = { Vay = 1, HigueraCary = 1 }
+measured = { Vay = 0.0781, HigueraCary = 0.142 }
 status = "proposed; the drift errors of Boris and BorisExactRotation are recorded in reports/pushers.md"
 
 ["T-234"]
 quantity = "|det ∂u′/∂u − target|, target 1 (Boris, HigueraCary, BorisExactRotation) or J(u⁻)/J(u⁺) (Vay), the determinant in Float64 of the Jacobian computed in T"
 scale = "eps(T)·|target|, 50 random E, B (|E|, |B| ≤ 2), u directions per γ ∈ {1.1, 10, 100, 1000}, qm_h = −1/20"
-C = { Boris = 3, Vay = 8, HigueraCary = 3, BorisExactRotation = 5 }
-measured = { Boris = 1.5, Vay = 4.0, HigueraCary = 1.5, BorisExactRotation = 2.5 }
+C = { Boris = 3, Vay = 4, HigueraCary = 3, BorisExactRotation = 3 }
+measured = { Boris = 1.5, Vay = 2.0, HigueraCary = 1.5, BorisExactRotation = 1.5 }
 status = "proposed; no growth with γ up to 10³"
 
 ["T-235"]
@@ -164,3 +164,38 @@ quantity = "figure-8 at a₀ = 2 with Vern9 through particle_problem: closure er
 vern9 = 10
 measured = { closure = 3.4, invariants = 0.743 }
 status = "proposed"
+
+# Tolerances of WP-016 (the quadratic-unitary pusher, the figure-8 scan, Float32 at weak rotation),
+# proposals like those above. The measured values of T-241 are the largest over Float32, Float64
+# and Dual{Float32,3} (T-244).
+["T-241"]
+quantity = "QuadraticUnitary: |γ² − |u|² − 1| with (γ, u) carried by quadratic_unitary_step (C_minkowski); | |u| − |u₀| | (C_energy) and the gyrophase against 4·atan(ΩΔt/(4γ)) (C_phase) in uniform B; |γ − u_z − 1| along the figure-8 (C_planewave)"
+scale = "eps(T)·γ²·steps, 60 random uniform E, B (|E|, |B| ≤ 2) from γ ∈ {1.1, 10, 100}, 200 steps of qm_h = −1/20; eps(T)·|u₀|·steps and eps(T)·steps (radians), T-231's setup; eps(T)·(1 + a₀²/2)·steps, one period at a₀ ∈ {2, 10}, Δt = 1/10"
+C_minkowski = 5
+C_energy = 2
+C_phase = 3
+C_planewave = 0.1
+measured = { minkowski = 2.46, energy = 0.716, phase = 1.29, planewave = 0.0417 }
+status = "proposed"
+
+["T-242"]
+quantity = "QuadraticUnitary in T-233's crossed fields: |uⁿ − u⁰| started at E×B/B² (C_exb); the u and x errors in T-232's uniform E are recorded"
+scale = "eps(T)·|u⁰|·steps, 10⁴ steps of Δt = 1/10, Float32 and Float64"
+C_exb = 0.2
+measured = { exb = 0.0955 }
+uniform_E = { relative_u_error_at_dt_0_025 = 3.24e-7, u_order = 1.85, x_error_at_dt_0_025 = 1.02e-4, x_order = 2.0 }
+status = "proposed"
+
+["T-243"]
+quantity = "figure-8 scan, five pushers, a₀ ∈ {1, 2, 5, 10}: |observed order − 2| of γ − u_z and u_x + qA_x over ω₀Δt ∈ {0.2, …, 0.025} on pairs with a₀·ω₀Δt ≤ 1/2 (order_tol), and of the drift and position errors over ω₀Δt down to 0.2/2⁷ on pairs with a₀·ω₀Δt ≤ 1/16 (order_tol_orbit)"
+order_tol = 0.2
+order_tol_orbit = 0.25
+measured = { invariants = 0.147, orbit = 0.17 }
+status = "proposed; the largest deviations are QuadraticUnitary's u_x + qA_x (converging from above) and Vay's drift at a₀ = 10; the errors themselves are in reports/pushers.md"
+
+["T-245"]
+quantity = "Float32, uniform B ⊥ u, E = 0, t² = 6.25e-8 < eps(Float32): | |uᴺ| − |u⁰| | at N = 10⁴ and 4·10⁴"
+scale = "eps(Float32)·|u⁰|·√N; |u| = 10⁴ with B = 50 and |u| = 10 with B = 0.05, qm_h = −0.05"
+C = 1
+measured = { Boris = 0.241, Vay = 0.39, HigueraCary = 0.216, BorisExactRotation = 0.241, QuadraticUnitary = 0.221 }
+status = "proposed; before the #203 fixes Vay measured 39 and the exact rotation 13 at N = 10⁴"
