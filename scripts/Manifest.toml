@@ -1501,6 +1501,13 @@ path = "../lib/ParticleMeshElectromagnetic"
 uuid = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
 version = "0.1.0-DEV"
 
+    [deps.ParticleMeshElectromagnetic.extensions]
+    ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
+
+    [deps.ParticleMeshElectromagnetic.weakdeps]
+    RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+    SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
 git-tree-sha1 = "e4a6721aa89e62e5d4217c0b21bd714263779dda"

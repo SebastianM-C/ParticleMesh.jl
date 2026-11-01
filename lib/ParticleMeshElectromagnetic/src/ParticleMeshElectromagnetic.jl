@@ -20,6 +20,10 @@ an [`EMProblem`](@ref) holds the grid extent, the species and the parameters in 
 names no kernel; an [`EMNumerics`](@ref) chooses, by type, the shape, the deposition mode, the
 pusher ([`Boris`](@ref)) and the mesh solver ([`Yee`](@ref)). Every kernel is a
 KernelAbstractions kernel, generic in the element type and within the Reactant rules of §0.4.
+
+With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
+`DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
+with [`state_partition`](@ref), [`remake_reload`](@ref) and [`harness_state`](@ref).
 """
 module ParticleMeshElectromagnetic
 
@@ -36,6 +40,7 @@ export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, probl
 export EMState, initialize!, step!, run!, params
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
+export state_partition, remake_reload, harness_state
 
 include("layout.jl")
 include("yee.jl")
@@ -43,5 +48,6 @@ include("pushers.jl")
 include("problem.jl")
 include("step.jl")
 include("diagnostics.jl")
+include("harness.jl")
 
 end
