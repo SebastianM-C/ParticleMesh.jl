@@ -232,7 +232,7 @@ every interior index `j`, written into the fields `G[d]` with their guards fille
 `φ` are not read: the neighbour of the last interior node is the first). `G[d][j]` is the face
 half a cell to the right of node `j` along axis `d`, stored at index `j`: with `φ` on ρ's nodes
 it is `Center()` on axis `d` and `Node()` on the others, which for `N = 2` is the Yee layout of
-`Ex` at (Center, Node) and `Ey` at (Node, Center) (`docs/plan/architecture-draft.md` §0.8 item 5),
+`Ex` at (Center, Node) and `Ey` at (Node, Center) (the module's paragraph of `docs/plan/architecture-draft.md` §0.7),
 and for `N = 1` the layout of `Ex` and of [`cumsum_periodic!`](@ref)'s output. Its
 backward-difference divergence `Σ_d (G[d][j] - G[d][j - e_d])/Δ_d` is the discrete Laplacian of
 [`inverse_laplacian_periodic!`](@ref), so after that solve it equals `s - mean(s)` to roundoff
