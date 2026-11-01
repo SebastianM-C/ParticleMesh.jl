@@ -1,0 +1,32 @@
+{
+  "case": "landau-oblique-2d",
+  "difference": -0.016527049920069176,
+  "difference_in_units_of_combined_stderr": -1.4641587687035027,
+  "difference_in_units_of_reference_seed_spread": -1.2502480366481283,
+  "difference_relative": -0.10528255374660067,
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "picongpu-fp64": {
+    "M": 4,
+    "ensemble_floor": 3.2259596628007355e-10,
+    "fit_range": [
+      4.786960525559186,
+      18.12217256129141
+    ],
+    "maxima_used": 7,
+    "measured": 0.14045099945216877,
+    "measured_stderr": 0.009559880310298908
+  },
+  "reference_code": "smilei-fp64",
+  "smilei-fp64": {
+    "M": 4,
+    "ensemble_floor": 4.321344713211855e-10,
+    "fit_range": [
+      4.75417527330519,
+      13.697519264857252
+    ],
+    "maxima_used": 5,
+    "measured": 0.15697804937223794,
+    "measured_stderr": 0.006001821536177725
+  },
+  "theory": 0.15335946690960509
+}

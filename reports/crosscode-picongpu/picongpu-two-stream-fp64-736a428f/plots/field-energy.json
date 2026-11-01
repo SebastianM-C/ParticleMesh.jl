@@ -1,0 +1,22 @@
+{
+  "case": "two-stream",
+  "fit_points": 164,
+  "fit_range": [
+    13.7985612,
+    18.7636064
+  ],
+  "measured": 0.34561232901094685,
+  "measured_from_mode": 0.3369876414736611,
+  "measured_from_mode_points": 20,
+  "measured_from_mode_stderr": 0.0025211189480079748,
+  "measured_stderr": 0.0009017271076819486,
+  "observable": "growth_rate",
+  "plot": "field energy Uelm_Ex versus time, log scale",
+  "relative_difference": -0.015000865534770574,
+  "saturation": {
+    "U": 0.0019114000199361803,
+    "t": 24.9470676
+  },
+  "theory": 0.35087576924479724,
+  "theory_nonrelativistic": 0.3535533905932736
+}

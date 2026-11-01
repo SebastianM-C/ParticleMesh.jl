@@ -1,0 +1,22 @@
+{
+  "case": "two-stream-256",
+  "code": "picongpu",
+  "fit_points": 163,
+  "fit_range": [
+    13.829021599999999,
+    18.7636064
+  ],
+  "measured": 0.3459269384210513,
+  "measured_from_mode": 0.33703416071236614,
+  "measured_from_mode_points": 20,
+  "measured_from_mode_stderr": 0.0025266037477111097,
+  "measured_stderr": 0.0009032485890009715,
+  "observable": "growth_rate",
+  "relative_difference": -0.01410422507771759,
+  "saturation": {
+    "U": 0.0019146200095110965,
+    "t": 24.9470676
+  },
+  "theory": 0.35087576924479724,
+  "theory_nonrelativistic": 0.3535533905932736
+}

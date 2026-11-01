@@ -1,0 +1,197 @@
+{
+  "case": "landau-oblique-2d",
+  "ensemble": {
+    "case": "landau-oblique-2d",
+    "difference": -0.016527049920069176,
+    "difference_in_units_of_combined_stderr": -1.4641587687035027,
+    "difference_in_units_of_other_seed_spread": -2.494085151729062,
+    "difference_in_units_of_reference_seed_spread": -1.2502480366481283,
+    "difference_relative": -0.10528255374660067,
+    "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+    "picongpu-fp64": {
+      "M": 4,
+      "ensemble_floor": 3.2259596628007355e-10,
+      "fit_range": [
+        4.786960525559186,
+        18.12217256129141
+      ],
+      "maxima_used": 7,
+      "measured": 0.14045099945216877,
+      "measured_stderr": 0.009559880310298908
+    },
+    "reference_code": "smilei-fp64",
+    "seed_spread": {
+      "picongpu-fp64": {
+        "M": 4,
+        "gammas": [
+          0.13234486647682586,
+          0.137219151258267,
+          0.14566770014210814,
+          0.13103012585436352
+        ],
+        "mean": 0.13656546093289113,
+        "refused": false,
+        "std": 0.006626497859791014,
+        "stderr": 0.003313248929895507
+      },
+      "smilei-fp64": {
+        "M": 4,
+        "gammas": [
+          0.16095129427507698,
+          0.172395167310394,
+          0.1545493566445712,
+          0.14070010891066131
+        ],
+        "mean": 0.1571489817851759,
+        "refused": false,
+        "std": 0.013219016895541483,
+        "stderr": 0.0066095084477707415
+      }
+    },
+    "smilei-fp64": {
+      "M": 4,
+      "ensemble_floor": 4.321344713211855e-10,
+      "fit_range": [
+        4.75417527330519,
+        13.697519264857252
+      ],
+      "maxima_used": 5,
+      "measured": 0.15697804937223794,
+      "measured_stderr": 0.006001821536177725
+    },
+    "theory": 0.15335946690960509
+  },
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "other": "picongpu-fp64",
+  "per_run_over_seeds": {
+    "damping_rate_energy": {
+      "difference_of_means": null,
+      "difference_relative": null,
+      "in_units_of_combined_stderr_of_means": null,
+      "in_units_of_other_seed_spread": null,
+      "in_units_of_reference_seed_spread": null,
+      "picongpu-fp64": {
+        "mean": null,
+        "missing": 4,
+        "n": 0,
+        "std": null,
+        "values": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "smilei-fp64": {
+        "mean": null,
+        "missing": 4,
+        "n": 0,
+        "std": null,
+        "values": [
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "damping_rate_mode": {
+      "difference_of_means": 0.005657968865991236,
+      "difference_relative": 0.038621459097120336,
+      "in_units_of_combined_stderr_of_means": 0.33459341921137176,
+      "in_units_of_other_seed_spread": 0.271983078194059,
+      "in_units_of_reference_seed_spread": 0.21218447572998445,
+      "picongpu-fp64": {
+        "mean": 0.15215602974357992,
+        "missing": 0,
+        "n": 4,
+        "std": 0.020802650310304583,
+        "values": [
+          0.1635103059233942,
+          0.1257478751860923,
+          0.17307384153269742,
+          0.14629209633213583
+        ]
+      },
+      "smilei-fp64": {
+        "mean": 0.14649806087758868,
+        "missing": 0,
+        "n": 4,
+        "std": 0.026665329056359852,
+        "values": [
+          0.1609299586220137,
+          0.17560999733497898,
+          0.13276673006592574,
+          0.11668555748743621
+        ]
+      }
+    },
+    "energy_ratio": {
+      "difference_of_means": 0.01131090600018636,
+      "difference_relative": 0.0028374543503133748,
+      "in_units_of_combined_stderr_of_means": null,
+      "in_units_of_other_seed_spread": null,
+      "in_units_of_reference_seed_spread": null,
+      "picongpu-fp64": {
+        "mean": 3.9975974162790773,
+        "missing": 0,
+        "n": 4,
+        "std": 0.0,
+        "values": [
+          3.9975974162790773,
+          3.9975974162790773,
+          3.9975974162790773,
+          3.9975974162790773
+        ]
+      },
+      "smilei-fp64": {
+        "mean": 3.986286510278891,
+        "missing": 0,
+        "n": 4,
+        "std": 0.0,
+        "values": [
+          3.986286510278891,
+          3.986286510278891,
+          3.986286510278891,
+          3.986286510278891
+        ]
+      }
+    },
+    "energy_ratio_mode": {
+      "difference_of_means": 0.14044333239478934,
+      "difference_relative": 0.035578360412346695,
+      "in_units_of_combined_stderr_of_means": 2.2973471689428906,
+      "in_units_of_other_seed_spread": 1.2758347273496284,
+      "in_units_of_reference_seed_spread": 2.63938049627406,
+      "picongpu-fp64": {
+        "mean": 4.087880222883187,
+        "missing": 0,
+        "n": 4,
+        "std": 0.11007956546734003,
+        "values": [
+          4.189918383697656,
+          4.140890165180915,
+          4.0848905084351665,
+          3.935821834219008
+        ]
+      },
+      "smilei-fp64": {
+        "mean": 3.9474368904883974,
+        "missing": 0,
+        "n": 4,
+        "std": 0.053210718421633135,
+        "values": [
+          3.945003677041125,
+          3.9455061171281436,
+          4.014714855583818,
+          3.8845229122005023
+        ]
+      }
+    }
+  },
+  "reference": "smilei-fp64",
+  "runs": {
+    "picongpu-fp64": "scripts/runs/picongpu-landau-oblique-2d-fp64-bc8fd6af",
+    "smilei-fp64": "scripts/runs/smilei-landau-oblique-2d-bc8fd6af"
+  }
+}

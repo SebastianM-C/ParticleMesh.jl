@@ -1,0 +1,92 @@
+arguments = "-d 1 1 -g 128 8 -s 5253 --periodic 1 1 --currentInterpolation none --fieldBackground.duplicateFields --openPMD.period 32 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source fields_all --fields_energy.period 4 --chargeConservation.period 32 --beam_minus_energy.period 4 --beam_minus_energy.filter all --beam_plus_energy.period 4 --beam_plus_energy.filter all"
+case = "two-stream"
+case_source = "scripts/crosscode/cases/two-stream.toml"
+cells = [128, 8]
+code = "picongpu"
+commit = "917f460f2050ec1a8efa5c59a2d71c2ae7cd9d1b"
+dirty = false
+generator = "scripts/crosscode/picongpu.jl"
+generator_hash = "sha256:01315b1d7f4c356fd1505fe6e848be95bbe784bd4baa0ac13446cea1c3b9c738"
+precision = "Float32"
+quasi1d = true
+reference_wavelength_m = 8.0e-7
+run = "picongpu-two-stream-fp32-736a428f"
+seeds = [20261031]
+updated = "2026-11-01T15:50:25.812Z"
+
+[analysis]
+commit = "2d945903c053dbd443cd0146c470a5ec70e965bc"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:82cc95d55f47cbfc9788b53e27092453eb64d50228e4c027d6d159a8223c03b1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:120c3cbfbad1ee8aae00b8ccdc9f9a4a19f40b5ac89af3110b9fba5a967694d0"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpus = "32"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
+picongpu = "0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89"
+source = "run"
+
+[image]
+id = "1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b"
+name = "localhost/particlemesh-picongpu:a743cbb40f17cdae"
+recipe = "scripts/crosscode/containers/picongpu.Containerfile"
+recipe_hash = "sha256:972f6c3760a33328b67d7d1cbff5e36fdab856d9a493c4a62eb83ffb937f8c99"
+
+[inputs]
+"case.toml" = "sha256:736a428fe67b795543c2c1380a73c94a115d4ec803fb81d59b0089293814a817"
+"params/density.param" = "sha256:fdc4df9e4248d2a341cc85e6e20f8cdce00b35a7dd758144c9bf47dfe3cd997a"
+"params/dimension.param" = "sha256:feaa54d466164339c53f86e6be65b71033b86250c29113785659b3768e3d0b3d"
+"params/fieldBackground.param" = "sha256:f5cd20f5f050b8a6d4a9f9c39bed43d65d4fbe52c1597da8b7b1663edae04c28"
+"params/fieldSolver.param" = "sha256:d96d64abd92519594ffdcf24154c703f3c8784c59859bd33b39e85661faf32d5"
+"params/fileOutput.param" = "sha256:456e22acb5a2872e32f5169037f38fad520f20bfce63b7a7120d4c37cd2ab942"
+"params/memory.param" = "sha256:0dfc12e276d971eae16a11ec73e8367606fdf3d33ed332617b8422e9dcc7e06f"
+"params/particle.param" = "sha256:2769d96fe2b5a50a94b6030c4159b1e9e0c6e5d2b5b00a10f91debbb9a855059"
+"params/precision.param" = "sha256:80ff2e2d7efedd4909f604a2d4a1c3b62a9f39062bae7c04fdaf9cbb6a64ed1a"
+"params/random.param" = "sha256:d857f1176eb3c36ec85f78c91ac74452d0de76e892dd20314928aa1b77afb990"
+"params/simulation.param" = "sha256:40f82c6f4f3bfcd3ff4fafe3a7564d72e1c3da500e47db1bc3bffad408f5df32"
+"params/species.param" = "sha256:57779e625d11587ebdaeb6bf6f209a836bf974cce8cf59582e626d5aaafabde5"
+"params/speciesDefinition.param" = "sha256:1e53136a427d3ae1a6ef15c9b976cfdd1974857261761df6c01bc09b1dc6470f"
+"params/speciesInitialization.param" = "sha256:964cd2abeebbf5ce1be3e67f8b3bac1dfb47eae41747661ad553c92d76ea4a8e"
+"run.sh" = "sha256:2b247b6c7d94cd68718f9ff5b101ac4ee942007bd373c744317e08e8d37d1a8e"
+"units.toml" = "sha256:c98035a1a9324fe6e1f865600a00458b6429e35c672b586aae7a648d9022bcaa"
+
+[observables]
+case = "two-stream"
+code = "picongpu"
+fit_points = 164
+fit_range = [13.7985612, 18.7636064]
+measured = 0.3456120093255923
+measured_from_mode = 0.3369884985680857
+measured_from_mode_points = 20
+measured_from_mode_stderr = 0.002520908326806533
+measured_stderr = 0.0009016584468595761
+observable = "growth_rate"
+relative_difference = -0.015001776641728073
+theory = 0.35087576924479724
+theory_nonrelativistic = 0.3535533905932736
+
+    [observables.saturation]
+    U = 0.0019114000199361803
+    t = 24.9470676
+
+[outputs]
+"beam_minus_energy_all.dat" = "sha256:e996936e409d1657b4eebe17b9e20cef0c6e0b63a9994a0aafd7e13671ea29eb"
+"beam_plus_energy_all.dat" = "sha256:a9d2ddf74e4912c196bae6328e3c0a840fc682a659fbb22d71d2be22bcbcf8a0"
+"build.log" = "sha256:06f6dc6025c996026d5af458553f134bbd8290c7fc117768b4f79a3adcf053ca"
+"chargeConservation.dat" = "sha256:701227dca939c5735c631baf99e7884a64cca89fe764be723fa836c69862dcbe"
+"container.txt" = "sha256:5613f4e29724ce838e55d78d1f7f8fe28675ca31fe97fc71bf9c0776404be555"
+"fields_energy.dat" = "sha256:cda481f9b2527a9680708252bd7718089fa6891304b1946183bd528eb3b01908"
+"openPMD/simData.h5" = "sha256:da8e64a22f3f8f501b46a92dbcb8b563737bd5ea127b4df019b6a9de362c9358"
+"picongpu.log" = "sha256:fafaed5b9af6cc588e2e76058721560bce5377b5687b3ca25e271324eed5910b"
+"versions.toml" = "sha256:0813fca98c7e45f80c744e498c2daf79c2f31322f27062bb28c767819e7f7a32"
+
+[transverse]
+cells = 8
+ratio = 8

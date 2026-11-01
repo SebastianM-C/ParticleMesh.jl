@@ -1,0 +1,32 @@
+{
+  "case": "landau",
+  "difference": 0.005720103808690313,
+  "difference_in_units_of_combined_stderr": 0.2936504271485713,
+  "difference_in_units_of_reference_seed_spread": 0.21361567963670353,
+  "difference_relative": 0.043912186236717915,
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "picongpu-fp64": {
+    "M": 8,
+    "ensemble_floor": 3.538136137093648e-10,
+    "fit_range": [
+      4.76972096032553,
+      16.01955121545615
+    ],
+    "maxima_used": 6,
+    "measured": 0.13598243640709218,
+    "measured_stderr": 0.013125425917960334
+  },
+  "reference_code": "smilei-fp64",
+  "smilei-fp64": {
+    "M": 8,
+    "ensemble_floor": 5.894681765637603e-10,
+    "fit_range": [
+      4.746131724220346,
+      15.929530992195552
+    ],
+    "maxima_used": 6,
+    "measured": 0.13026233259840186,
+    "measured_stderr": 0.014393269121880993
+  },
+  "theory": 0.1533594669096052
+}

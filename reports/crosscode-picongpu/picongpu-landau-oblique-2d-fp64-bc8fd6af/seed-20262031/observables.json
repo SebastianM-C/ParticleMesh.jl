@@ -1,0 +1,72 @@
+{
+  "case": "landau-oblique-2d",
+  "checks": {
+    "gauss_residual_t0_relative": 1.0892492052401431e-12,
+    "rho_max_deviation_t0": 0.00997994270724496,
+    "rho_mean_t0": -6.710533821327469e-17,
+    "rho_mode_amplitude_t0": 0.009979942707242753,
+    "sensitivity_energy_ratio_t0_without_box_mean": 3.997590912410344
+  },
+  "code": "picongpu",
+  "observables": {
+    "damping_rate_energy": {
+      "fit_points": 0,
+      "fit_range": null,
+      "measured": null,
+      "measured_frequency": null,
+      "measured_stderr": null,
+      "method": "peak_envelope",
+      "noise_floor": 3.9174961666630854e-8,
+      "relative_difference": null,
+      "signal": "scalar_sum",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "damping_rate_mode": {
+      "fit_points": 5,
+      "fit_range": [
+        4.800965716630812,
+        13.875199331246357
+      ],
+      "measured": 0.1257478751860923,
+      "measured_frequency": 1.3848409847107053,
+      "measured_stderr": 0.0027645940194037668,
+      "method": "peak_envelope",
+      "noise_floor": 9.992430862707938e-10,
+      "relative_difference": -0.180044911996127,
+      "signal": "mode_projection",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "energy_ratio": {
+      "measured": 3.9975974162790773,
+      "method": "first_output",
+      "relative_difference": 1.6269470477129126e-6,
+      "signal": "scalar_ratio",
+      "t": 0.0,
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    },
+    "energy_ratio_mode": {
+      "measured": 4.140890165180915,
+      "method": "median_over_fit",
+      "points": 5,
+      "relative_difference": 0.0358464024734758,
+      "signal": "mode_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    }
+  },
+  "performance": {
+    "cells": 16384,
+    "compile_seconds": 68.179,
+    "mobile_particle_steps": 56891539456,
+    "mobile_particles": 16777216,
+    "ns_per_mobile_particle_step": 5.809950005934324,
+    "particle_steps": 56947097600,
+    "particles": 16793600,
+    "steps": 3391,
+    "steps_source": "case (round(t_end/dt)); PIConGPU runs -s exactly that",
+    "wall_seconds": 330.537
+  }
+}

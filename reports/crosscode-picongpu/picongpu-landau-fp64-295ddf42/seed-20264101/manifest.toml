@@ -1,0 +1,45 @@
+updated = "2026-11-01T19:28:09.272Z"
+
+[analysis]
+commit = "2d945903c053dbd443cd0146c470a5ec70e965bc"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:82cc95d55f47cbfc9788b53e27092453eb64d50228e4c027d6d159a8223c03b1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:120c3cbfbad1ee8aae00b8ccdc9f9a4a19f40b5ac89af3110b9fba5a967694d0"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpus = "32"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
+picongpu = "0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89"
+source = "run"
+
+[image]
+id = "1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b"
+name = "localhost/particlemesh-picongpu:a743cbb40f17cdae"
+
+[inputs]
+
+[observables]
+case = "landau"
+code = "picongpu"
+fit_points = 0
+measured_from_mode = 0.15444071675160237
+measured_from_mode_points = 3
+measured_from_mode_stderr = 0.012285668031087592
+noise_floor = 3.2484611776223513e-9
+observable = "damping_rate"
+theory = 0.1533594669096052
+theory_frequency = 1.4156618886045358
+
+[outputs]
+"chargeConservation.dat" = "sha256:85317b34c4870336628cc43899746734ef220daf0b29003a20957df584d9a043"
+"electron_energy_all.dat" = "sha256:2bdfa7aeebe2b81ec66fea3384d12a94d2645002d44170763514792ffc829a6f"
+"fields_energy.dat" = "sha256:c1a0f7a1b872dad61be30aee3fd81903248da816ccdc7eec5ec3caa582f61543"
+"openPMD/simData.h5" = "sha256:741f022385f936281b806b2c945d581df859b033525f7b91c7268388d196cdd8"
+"picongpu.log" = "sha256:1aa685baf8f9038f62bef115d84d979a496b881528c783e75b3f35e06ddeafca"
