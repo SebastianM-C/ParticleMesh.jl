@@ -1,0 +1,6 @@
+# smilei binary: /usr/local/bin/smilei
+# smilei version: v5.1 438d43d8ab727d02dd8f4402c50393343e871b99
+# threads: 16, cpus: 16
+# cpu model: Intel(R) Core(TM) i9-14900K
+# start: 2026-11-01T09:21:09.742309172Z
+# end: 2026-11-01T09:24:57.400700098Z

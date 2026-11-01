@@ -6,23 +6,10 @@
 module Ensemble
 
 using Statistics: mean, median, std
-using ..Observables: damping_from_peaks, linear_fit, refine_peak
+using ..Observables: damping_from_peaks, linear_fit, refine_peak, mode_coefficient
 
 export mode_coefficient, ensemble_energy, ensemble_damping, fit_at_peaks, aggregate_seeds,
        SeedRefused, seed_scatter
-
-"""
-    mode_coefficient(f, m; periodic_duplicate = true) -> Vector{ComplexF64}
-
-Complex coefficient (2/N) Σ_j f_j exp(-2πi m j / N) of Fourier mode m of each column of f, so
-that f_j = A cos(2π m j / N + φ) gives A e^{iφ}; `abs` of it is `mode_amplitude`. When the last
-point repeats the first (Smilei's periodic dumps), it is dropped.
-"""
-function mode_coefficient(f::AbstractMatrix, m::Integer; periodic_duplicate = true)
-    N = size(f, 1) - (periodic_duplicate ? 1 : 0)
-    phase = cis.(-2π * m .* (0:N-1) ./ N)
-    return [2 * sum(view(f, 1:N, c) .* phase) / N for c in axes(f, 2)]
-end
 
 """
     ensemble_energy(coeffs) -> Vector

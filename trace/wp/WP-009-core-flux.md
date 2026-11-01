@@ -8,7 +8,7 @@ adds_dependencies = []
 [checked]
 A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
 A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
-A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
+A4 = "0997b929ff6d0c55f79b6f562c66d6e86c8f8e24"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
 A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
 +++
@@ -20,7 +20,7 @@ Esirkepov's scheme is the source of A7's strongest conservation claim, Gauss's l
 
 The third engine transfer next to `gather!` and `deposit!`: `deposit_flux!` for N = 1. Jx comes from the differences of the shape weights between the old and the new position (Esirkepov's formula, which in 1D reduces to a prefix sum of the weight differences over the stencil). Jy and Jz come from the weights averaged over the old and new positions, times a module-supplied quantity. The function has a Reference mode (sorted, node-wise reduction) and a Fast mode (atomics), with the accumulation trait, and supports shapes of order 1 and 2. The caller declares the old cell and offset as Species extras, using WP-011's mechanism, and supplies the quantity as WP-011's callable. Like every engine launch it takes WP-011's launch keyword `workgroupsize`, with the backend default. The flux is normalized by the step: the caller passes `dt`, Δx comes from the grid, and Jx holds q·w·Δx/Δt per particle, so continuity reads (ρⁿ⁺¹−ρⁿ)/Δt + D·J = 0 with no later division (`lib/ParticleMeshCore/src/flux.jl`, the docstring of `deposit_flux!` and `sx = cellsize(grid) / dt`). Esirkepov's stencil reaches one node further than the scalar shape on each side, so the flux targets need `flux_guard_width(shape, stagger)` guard cells, one more than `guard_width(shape)` except for order 2 at `Center()`, and the function checks that the grid has them (`flux.jl`, `flux_reach`, `flux_guard_width` and the `ArgumentError` in `deposit_flux!`).
 
-The engine knows no Maxwell equations. The package is proven by exact discrete continuity against the engine's own `deposit!`, held to roundoff, and by the smoothness of the flux through a cell crossing (A2's AD-smoothness rule). Gauss's law is WP-014's test and builds on this one. The N-D generalization (the 3D formula with collapsed axes) belongs to the first N-generic package, and this text and `architecture-draft.md` §2 say so. This package is the single owner of `deposit_flux!`. Its CUDA run belongs to WP-013 if this package merges before WP-013's runs; otherwise to the `follow-up` issue WP-013 opens for it.
+The engine knows no Maxwell equations. The package is proven by exact discrete continuity against the engine's own `deposit!`, held to roundoff, and by the smoothness of the flux through a cell crossing (A2's AD-smoothness rule). Gauss's law is WP-014's test and builds on this one. The N-D generalization (the 3D formula with collapsed axes) belongs to the first N-generic package, and this text and `architecture-draft.md` §2 say so. This package is the single owner of `deposit_flux!`. Its CUDA run belongs to WP-013.
 
 ## Deliverables
 
@@ -34,7 +34,7 @@ The engine knows no Maxwell equations. The package is proven by exact discrete c
 
 - No N > 1 kernels or tests, and no 3D formula specialized down to 1D.
 - No Maxwell solve, no Yee update, no pusher, no Gauss-law test of a field (WP-014), and no current filter (A2's binomial filter waits for the 2D LWFA module).
-- No change to `Species`, `sort_by_cell!`, `deposit!`, the quantity callable or the launch keyword (owned by WP-011). No CUDA path and no GPU test here (WP-013 or its follow-up issue).
+- No change to `Species`, `sort_by_cell!`, `deposit!`, the quantity callable or the launch keyword (owned by WP-011). No CUDA path and no GPU test here (WP-013).
 - No multi-cell moves per step: the precondition is documented, not handled.
 - Parameters never enter through positions (A3): the flux is linear in the weights. No Reactant (A9).
 
