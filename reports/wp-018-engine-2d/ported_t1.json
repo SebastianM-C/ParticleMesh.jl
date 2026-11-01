@@ -1,0 +1,695 @@
+{
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "ppc": 64,
+  "rows": [
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 11.123958333333333,
+      "ns_per_particle_max": 19.871175130208332,
+      "ns_per_particle_min": 11.017106119791668,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 12.588981119791667,
+      "ns_per_particle_max": 19.23570963541667,
+      "ns_per_particle_min": 11.833723958333335,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 33.394710286458334,
+      "ns_per_particle_max": 40.23367513020833,
+      "ns_per_particle_min": 31.023209635416666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 59.895849609375,
+      "ns_per_particle_max": 68.04093424479166,
+      "ns_per_particle_min": 56.736035156250004,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 58.83430989583334,
+      "ns_per_particle_max": 82.54612630208335,
+      "ns_per_particle_min": 47.11845703125001,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 35.93055013020833,
+      "ns_per_particle_max": 41.262988281249996,
+      "ns_per_particle_min": 31.462825520833334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 37.866943359375,
+      "ns_per_particle_max": 40.480419921875004,
+      "ns_per_particle_min": 36.45577799479167,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 42.532470703125,
+      "ns_per_particle_max": 52.51775716145833,
+      "ns_per_particle_min": 38.49010416666666,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 64.28211263020833,
+      "ns_per_particle_max": 68.47817382812501,
+      "ns_per_particle_min": 59.946370442708336,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 134.09775390625,
+      "ns_per_particle_max": 140.97703450520834,
+      "ns_per_particle_min": 106.20712890624999,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 118.160400390625,
+      "ns_per_particle_max": 125.42107747395833,
+      "ns_per_particle_min": 110.29075520833334,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 88.74599609375001,
+      "ns_per_particle_max": 96.77916666666665,
+      "ns_per_particle_min": 68.28229166666667,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 7.898805745442708,
+      "ns_per_particle_max": 7.981071980794272,
+      "ns_per_particle_min": 7.733857218424479,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 11.36283365885417,
+      "ns_per_particle_max": 11.744744873046875,
+      "ns_per_particle_min": 11.184658813476561,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 24.80782165527344,
+      "ns_per_particle_max": 25.965409342447916,
+      "ns_per_particle_min": 24.503274536132817,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 48.18558756510416,
+      "ns_per_particle_max": 50.66301981608073,
+      "ns_per_particle_min": 47.11714274088541,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 49.87395222981771,
+      "ns_per_particle_max": 51.28418680826823,
+      "ns_per_particle_min": 47.88019510904948,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 26.89291788736979,
+      "ns_per_particle_max": 28.97245076497396,
+      "ns_per_particle_min": 26.021161905924483,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 26.23928934733073,
+      "ns_per_particle_max": 27.699637858072915,
+      "ns_per_particle_min": 21.53491414388021,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 31.972317504882813,
+      "ns_per_particle_max": 32.71958516438802,
+      "ns_per_particle_min": 31.182880655924478,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 52.44524943033854,
+      "ns_per_particle_max": 54.14148356119792,
+      "ns_per_particle_min": 49.548560587565106,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 121.96364746093751,
+      "ns_per_particle_max": 136.17227579752605,
+      "ns_per_particle_min": 110.17252807617187,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 130.92242228190105,
+      "ns_per_particle_max": 186.12618001302084,
+      "ns_per_particle_min": 127.84043782552084,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 58.04614054361979,
+      "ns_per_particle_max": 61.716078694661455,
+      "ns_per_particle_min": 53.67725524902343,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 17.713313802083334,
+      "ns_per_particle_max": 37.97057291666666,
+      "ns_per_particle_min": 11.314404296874999,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 13.903043619791667,
+      "ns_per_particle_max": 20.272867838541664,
+      "ns_per_particle_min": 13.641162109375001,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 38.33860677083333,
+      "ns_per_particle_max": 41.70579427083333,
+      "ns_per_particle_min": 34.20227864583334,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 99.83670247395834,
+      "ns_per_particle_max": 110.18126627604168,
+      "ns_per_particle_min": 98.41350911458333,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 89.90833333333332,
+      "ns_per_particle_max": 98.39446614583333,
+      "ns_per_particle_min": 86.39887695312501,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 35.46315104166666,
+      "ns_per_particle_max": 39.863378906250006,
+      "ns_per_particle_min": 32.984684244791666,
+      "order": 1,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 41.13330078125,
+      "ns_per_particle_max": 49.26861979166667,
+      "ns_per_particle_min": 36.649723307291666,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 43.682649739583326,
+      "ns_per_particle_max": 45.13981119791668,
+      "ns_per_particle_min": 37.857845052083334,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 77.26604817708333,
+      "ns_per_particle_max": 90.19353841145833,
+      "ns_per_particle_min": 74.690380859375,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 145.64593098958335,
+      "ns_per_particle_max": 152.9384765625,
+      "ns_per_particle_min": 140.19934895833333,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 256.11549479166666,
+      "ns_per_particle_max": 265.42750651041666,
+      "ns_per_particle_min": 252.53810221354163,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 67.67648111979167,
+      "ns_per_particle_max": 74.54428710937499,
+      "ns_per_particle_min": 67.01692708333334,
+      "order": 2,
+      "particles": 12288,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 8.330475870768229,
+      "ns_per_particle_max": 8.605774943033854,
+      "ns_per_particle_min": 8.20867919921875,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 11.200048828125,
+      "ns_per_particle_max": 17.578243001302084,
+      "ns_per_particle_min": 10.917363484700521,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 25.351093546549475,
+      "ns_per_particle_max": 26.270027669270835,
+      "ns_per_particle_min": 24.044505818684897,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 53.782642618815096,
+      "ns_per_particle_max": 54.92288004557292,
+      "ns_per_particle_min": 51.305866495768235,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 62.08446350097656,
+      "ns_per_particle_max": 98.12652384440104,
+      "ns_per_particle_min": 54.660571289062496,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 28.52666015625,
+      "ns_per_particle_max": 52.859667968749996,
+      "ns_per_particle_min": 26.549359130859372,
+      "order": 1,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 43.30952555338541,
+      "ns_per_particle_max": 49.47024739583333,
+      "ns_per_particle_min": 26.156481933593753,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 31.888009643554685,
+      "ns_per_particle_max": 32.408034261067705,
+      "ns_per_particle_min": 28.47467041015625,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 53.116485595703125,
+      "ns_per_particle_max": 67.47500712076824,
+      "ns_per_particle_min": 51.48563842773438,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "natural"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "cartesian",
+      "ns_per_particle": 154.10013122558595,
+      "ns_per_particle_max": 169.36580607096354,
+      "ns_per_particle_min": 132.1186045328776,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "bitwise_equal_prototype": true,
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_ref",
+      "ns_per_particle": 134.17752787272136,
+      "ns_per_particle_max": 138.5559285481771,
+      "ns_per_particle_min": 120.84637044270835,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "other"
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        64,
+        48
+      ],
+      "method": "ported_fast",
+      "ns_per_particle": 54.30183919270832,
+      "ns_per_particle_max": 55.93597106933594,
+      "ns_per_particle_min": 52.15078430175782,
+      "order": 2,
+      "particles": 196608,
+      "stagger": "other"
+    }
+  ],
+  "threads": 1
+}
