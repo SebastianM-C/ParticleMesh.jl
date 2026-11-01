@@ -1,0 +1,32 @@
+commit = "716ddc08a7fd5a85648b59de5d1188e2447942db"
+cpu = "Intel(R) Xeon(R) Processor @ 2.80GHz"
+dirty = false
+julia = "1.13.3"
+run_id = "pushers-energy-20261101T093146"
+test = "T-236"
+threads = 4
+updated = "2026-11-01T09:31:47.105Z"
+work_package = "WP-015"
+
+[inputs]
+"Manifest.toml" = "sha256:fc3d84762a3b658b52773973dc3ffd15005a898234b38d395d28e1695740ccef"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:7873890c20630a7e672be9ddfcc6b30c1f7e4952dc65b1f119a26e4a3d0425ad"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:445a7e6099d93bbcbeae425b92f1f8942d7c1664b3431a56e02af083c92b0509"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:8882d7203bc6e0ffccb1948ec684b53d099b649c6b1818f740e30ac555f12ce8"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:5e334d6c6882139105fce6c079f371dd2e892a691be44719512abc7493081008"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:070cf2a82c5d03dcc1564e00f3df3c9912d1e98f550660a3d47a11577aea0a98"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:09d226aef23986eeaaab2be9a61ef6baee5f91581d6981f36b5862a6dbb73065"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:1793274bf2de2c7dfaf9e1ddb190cb22c7e13e443bac09661ed6157e787ee52f"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:ed8a5656ef169aef8c591c3ff890f8d308171b7986407eaefe1f4f8342b8ae5a"
+"scripts/Manifest.toml" = "sha256:9cffddfdb8d1f45a804873925eefbbee7350953009aa12efc7edc9ed7df41a10"
+"scripts/crosscode/manifest.jl" = "sha256:6ad54e61d302166dc84df7435a96a416402677a99f9eadfe45edd5b618fcaf6b"
+"scripts/pushers/energy.jl" = "sha256:454ba15ef40af295b6b5acad3dbfd607025575b292d374e8b3c20927e208de72"
+
+[parameters]
+dt = "π/10"
+field = "B = r ẑ, φ = 0.01/r, q/m = 1"
+periods = 100000
+steps = 2000000
+u0 = [[0.1, 0.01, 0.0], [1.0, 0.1, 0.0]]
+x0 = [0, -1, 0]
