@@ -38,7 +38,7 @@ If the base changes later, switching to `nvidia/cuda` means changing the `FROM` 
 
 ## 5. Smoke run
 
-Runner job `picongpu-recipe-smoke-2` (worktree HEAD `d34008f`, image `1b4f3d0f…`, GPU on, network off) ran the script below and exited 0 after 93 s, a figure that may include time in the queue. `pic-build` of the 2D, 64-bit `Empty` setup took 1 min 10 s of wall time inside the job. Ten steps on a 64×64 grid ran in 12 ms, with initialization taking 1.05 s. The setup was compiled only for `sm_89` and ran, so the job ran on the RTX 4080 SUPER. PIConGPU reports its random number generator as `RNGProvider2XorMin` with seed 42 by default; WP-017's generator sets the seed per run. The run directory is `scripts/runs/picongpu-smoke/` (not committed), and its `run.sh` is:
+Runner job `picongpu-recipe-smoke-2` (worktree HEAD `d34008f`, image `1b4f3d0f…`, GPU on, network off) ran the script below and exited 0 after 93 s, a figure that may include time in the queue. `pic-build` of the 2D, 64-bit `Empty` setup took 1 min 10 s of wall time inside the job. Ten steps on a 64×64 grid ran in 12 ms, with initialization taking 1.05 s. The setup was compiled only for `sm_89` and ran, so the job ran on an `sm_89` GPU; that it was the RTX 4080 SUPER is inferred, since the job log's device line was not quoted. PIConGPU reports its random number generator as `RNGProvider2XorMin` with seed 42 by default; WP-017's generator sets the seed per run. The run directory is `scripts/runs/picongpu-smoke/` (not committed), and its `run.sh` is:
 
 ```bash
 #!/usr/bin/env bash

@@ -20,7 +20,7 @@ hash=$( { echo $family.Containerfile; find $family -type f 2>/dev/null; } | LC_A
 podman build -f $family.Containerfile -t particlemesh-$family:$hash .
 ```
 
-The build needs the network (apt, NVIDIA's CUDA repository for `picongpu`, and GitHub). The `picongpu` build needs no GPU. Compiling one 2D setup took about 1 min 10 s with `-j 16` in the smoke run (`questions/wp-017-picongpu-image.md` §5), and every run pays that compile again. A changed recipe gives a new tag either way, so a run names the recipe it came from.
+The build needs the network (apt, NVIDIA's CUDA repository for `picongpu`, and GitHub). The `picongpu` build needs no GPU. Compiling one 2D setup in a runner job took about 1 min 10 s with `-j 16` in the smoke run (`questions/wp-017-picongpu-image.md` §5), and every run pays that compile again; the time and memory of the image build, whose own smoke compile uses `-j "$(nproc)"`, were not measured. A changed recipe gives a new tag either way, so a run names the recipe it came from.
 
 ## Pinning
 
