@@ -52,7 +52,7 @@ No electromagnetic code (WP-022 and WP-023), no mesh solve (WP-021), no GPU run 
 ## Acceptance
 
 - T-300 discrete continuity at N = 2 [A2, A7, WP-020]: for particles moving less than one cell per axis, crossing both seams and the corner, (ρⁿ⁺¹ − ρⁿ)/Δt + ∇·J = 0 at every node to C·eps(T) scaled by count and max|q|, with ρ from `deposit!` at the matching stagger, orders 1 and 2, all four stagger pairs (ρ at (Node, Node) among them), Float32, Float64, `Dual{Float32,3}`.
-- T-301 the Jz weight [A2, WP-020]: a particle moving only in z deposits Jz equal to the charge-weighted shape at its position; a particle moving in x, y and z deposits Σ Jz = q·vz·w to roundoff, and the per-node Jz equals a hand-evaluated Esirkepov out-of-plane weight in one test case.
+- T-301 the Jz weight [A2, WP-020]: a particle moving only in z deposits Jz equal to the charge-weighted shape at its position; a particle moving in x, y and z deposits Σ Jz = q·vz·w to roundoff, and the per-node Jz equals a hand-evaluated Esirkepov out-of-plane weight in one test case. At N = 1, the per-node Jy and Jz of a particle crossing a cell boundary equal hand-evaluated old/new averages of its weights, so the test fails on a mutation that uses the new-position weights only (today only digest tests catch it).
 - T-302 Reference and Fast agree per node within C·eps(T)·Σ|contributions| [A4, WP-020].
 - T-303 Reference is bitwise across reruns, 1 and 4 threads, and two explicit `workgroupsize` values, per element type [A4, WP-020].
 - T-304 reduction to 1D [A7, WP-020]: motion along x only with a y-constant load gives y-summed Jx equal to the 1D `deposit_flux!` to C·eps(T), and Jy exactly zero.
