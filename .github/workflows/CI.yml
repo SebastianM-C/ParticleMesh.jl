@@ -30,7 +30,14 @@ jobs:
             exit 0
           fi
           # The pull_request checkout is the merge commit; its first parent is the base branch.
-          files=$(git diff --name-only HEAD^1 HEAD)
+          # If the diff itself fails (a shallow checkout without the base, say), run everything rather than
+          # skip the tests and leave the required checks to a job that never ran.
+          if ! files=$(git diff --name-only HEAD^1 HEAD); then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "manifests=true" >> "$GITHUB_OUTPUT"
+            echo "git diff failed: run everything"
+            exit 0
+          fi
           echo "$files"
           code=false; manifests=false
           if grep -qE '^(src|lib|test|benchmark)/|^(Project|Manifest(-v[0-9.]+)?)\.toml$|^\.github/workflows/CI\.yml$' <<< "$files"; then
@@ -72,14 +79,20 @@ jobs:
       - name: Test every lib/ subpackage in its own process (ParticleMeshReactant has its own job)
         if: needs.changes.outputs.code == 'true'
         run: |
+          # Every subpackage runs and its log group closes even when an earlier one fails.
+          failed=""
           for project in lib/*/Project.toml; do
             [ -f "$project" ] || continue
             dir=$(dirname "$project")
             [ "$dir" = lib/ParticleMeshReactant ] && continue
             echo "::group::$dir"
-            julia --color=yes --project="$dir" -e 'using Pkg; Pkg.test()'
+            julia --color=yes --project="$dir" -e 'using Pkg; Pkg.test()' || failed="$failed $dir"
             echo "::endgroup::"
           done
+          if [ -n "$failed" ]; then
+            echo "failed:$failed" >&2
+            exit 1
+          fi
   reactant:
     # The Reactant CPU smoke test (architecture-draft.md §0.4 rule 7) lives in its own workspace member,
     # so the root julia-runtest job does not run it. Until the member exists this job passes trivially,
@@ -89,7 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@v7
       - id: member
         name: Does lib/ParticleMeshReactant exist yet, and does this change touch code
         env:
@@ -100,6 +114,10 @@ jobs:
             echo "No code paths changed in this pull request; the smoke test is skipped."
           elif [ -f lib/ParticleMeshReactant/Project.toml ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q 'ParticleMeshReactant' Project.toml; then
+            # A renamed or moved member must not turn this required check into a trivial pass.
+            echo "the root workspace names ParticleMeshReactant, but lib/ParticleMeshReactant/Project.toml is missing" >&2
+            exit 1
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "lib/ParticleMeshReactant does not exist yet; nothing to test"
