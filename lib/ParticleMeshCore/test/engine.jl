@@ -1,4 +1,4 @@
-# The engine contracts of WP-011: T-171 to T-177. T-170 is in split.jl (it needs the physics runs).
+# The engine contracts of WP-011: T-171 to T-177.
 
 "The output lines of `threads_worker.jl` run with `nt` threads (cached: one subprocess per thread count)."
 const WORKER_OUTPUT = Dict{Int,Vector{String}}()

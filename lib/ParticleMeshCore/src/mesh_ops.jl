@@ -89,9 +89,8 @@ the tile sums added in tile order to the first one), divided by `n`. So a grid o
 configuration or the backend; every backend implementing it gives the same association, and
 results differ across backends only by their own arithmetic.
 
-It runs as one work item on every backend for now (O(n), serial), which ignores
-`workgroupsize`; the guard fill takes it. A parallel scan of the same order is a later
-backend's (WP-013).
+It runs as one work item on every backend (O(n), serial), which ignores `workgroupsize`;
+the guard fill takes it. A parallel kernel of the same order is for when a profile shows it.
 """
 function cumsum_periodic!(out::AbstractVector, a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = nothing)
     ncells(grid) >= 1 || throw(ArgumentError("cumsum_periodic! needs at least 1 cell"))

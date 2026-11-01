@@ -53,7 +53,7 @@ Every PIConGPU-specific choice the generator makes is verified from the source a
 
 ## Deliverables
 
-0. **Container recipe**: `scripts/crosscode/containers/picongpu.Containerfile` (build context `scripts/crosscode/containers/`, extra files in `picongpu/`). The base image is pinned by digest, and PIConGPU is fetched at a release tag and checked against its commit. The recipe includes the CUDA toolchain for the RTX 4080 SUPER and the dependencies PIConGPU's install guide lists for that release. Check upstream first for a maintained image that can be pinned, and build on it if one exists. `containers/README.md` gains the row. The implementer cannot build images; the owner builds with `crosscode-image <worktree> picongpu`.
+0. **Container recipe**: `scripts/crosscode/containers/picongpu.Containerfile` (PIConGPU 0.8.0, CUDA 12.5 for `sm_89`, openPMD-api 0.15.2 with HDF5, on the digest-pinned Ubuntu 24.04 base), landed ahead of the rest of the package with T-253 and `pm-versions` for the manifest. Its pins, the choices behind them and what the owner still checks at build time are in `questions/wp-017-picongpu-image.md`. This package keeps the recipe working: the generator relies on its environment (`PICSRC`, `PIC_EXAMPLES`, `PIC_BACKEND`), and a recipe change goes through the same question file. The owner builds with `crosscode-image <worktree> picongpu`.
 1. **Generator**: `scripts/crosscode/picongpu.jl` reading schema 1 and WP-019's schema 2, with `picongpu_parameters` (the unit conversion), the `.param` and configuration writers, and `prepare_run`, which writes `scripts/runs/<tag>/` with a `run.sh` that compiles, then runs, then converts output where needed.
 2. **Reader**: PIConGPU's openPMD in 1D and 2D, into the schema `read.jl` documents. 2D fields come back as points × points × outputs, with the y-average helper the quasi-1D observables use.
 3. **Ensemble observable**: the oblique Landau rate over the seed set, added to `landau-oblique-2d.toml` as a new pre-registered entry in a commit before any run of this package; WP-019's entries stay as they are.
@@ -75,7 +75,7 @@ Every PIConGPU-specific choice the generator makes is verified from the source a
 
 ## Factory side (owner, outside the repository)
 
-Build the PIConGPU image from deliverable 0 with `crosscode-image <worktree> picongpu`. The runner already accepts `picongpu` jobs and gives them the GPU. Until the image exists, the package finishes everything except the PIConGPU runs. It then writes `questions/wp-017-picongpu-image.md` and opens the PR with those runs marked absent; the Smilei 2D seed runs go ahead.
+Build the PIConGPU image from deliverable 0 with `crosscode-image <worktree> picongpu`, then the smoke run of `questions/wp-017-picongpu-image.md` §5. The runner already accepts `picongpu` jobs and gives them the GPU. Until the image exists, the package finishes everything except the PIConGPU runs and opens the PR with those runs marked absent, pointing to that question file; the Smilei 2D seed runs go ahead.
 
 ## Non-goals
 

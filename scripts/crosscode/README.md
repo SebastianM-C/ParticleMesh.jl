@@ -6,7 +6,7 @@ Reference numbers from other codes on the cases of the A5 benchmark set, matched
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau      # writes scripts/runs/smilei-landau-<hash>/
 scripts/crosscode/run-smilei.sh scripts/runs/smilei-landau-<hash>              # outside the factory (podman)
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-landau-<hash> [runner log]
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010, T-012, T-013, T-160, T-161
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010, T-012, T-013, T-160, T-161, T-253
 ```
 
 Inside the factory the run goes through the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`), which executes the same `run.sh` in the same container with the same mounts.
