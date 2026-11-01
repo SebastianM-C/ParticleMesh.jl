@@ -15,7 +15,7 @@ All kernels are KernelAbstractions kernels, generic in the element type `T`, wit
 shapes and no host-side branching on device data (`docs/plan/architecture-draft.md` §0.4);
 every launch takes `workgroupsize = nothing` (the backend default), which selects the launch
 shape only. `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
-the flux deposition and the prefix sum, which are `N = 1` only). The contracts are those of
+the prefix sum, which is `N = 1` only). The contracts are those of
 `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore
@@ -34,7 +34,7 @@ export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
 export Workspace, sort_by_cell!, deposit!, gather!, ChargeWeight
 export cumsum_periodic!
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
-export deposit_flux!, flux_guard_width
+export deposit_flux!, flux_guard_width, flux_extras
 export philox4x32, uniform_open, box_muller
 export load_quiet!
 
@@ -50,5 +50,6 @@ include("transfers.jl")
 include("mesh_ops.jl")
 include("spectral.jl")
 include("flux.jl")
+include("flux2d.jl")
 
 end
