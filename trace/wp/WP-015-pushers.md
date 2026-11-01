@@ -7,11 +7,11 @@ adds_dependencies = ["SciMLBase", "OrdinaryDiffEqCore", "OrdinaryDiffEqVerner"]
 
 [checked]
 A1 = "69f5bec32fe5d073e16e7811300bcb1ef5092a73"
-A10 = "66d01e20241b6a7137b53d5c2346b113ac0d3e71"
+A10 = "30906c6b96b63dab1b6d4eab77c5f25dcb8e1213"
 A2 = "62bdc24bd734ccab5ce4c723c2a3d72b5d6a8336"
-A6 = "ea80cb6a8044e825be16a39e91d6c45b6dfdb6f9"
+A6 = "aff99231bff58eb556176499946572ea44ab38dc"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
 +++
 # WP-015: swappable relativistic pushers (Boris, Vay, Higuera–Cary, exact-rotation Boris) as device functions and as OrdinaryDiffEq algorithms, against exact orbits
 
@@ -69,7 +69,7 @@ The derivation, with these conventions, goes in the test header.
    - the measured orders, error constants, drift errors and energy behaviour per pusher;
    - the answers to the SciML questions above;
    - a recommendation, stated as a proposal against A2. WP-016 adds the resolution rule to the same report.
-6. **Tier 2**: the edit of `lib/ParticleMeshElectromagnetic/Project.toml` is a code-owner path, so an unattended session opens the PR as a draft.
+6. **Tier 2** (F4): the edit of `lib/ParticleMeshElectromagnetic/Project.toml` is a code-owner path.
 
 ## Non-goals
 
@@ -107,7 +107,7 @@ Test ids T-230 to T-237.
   - Through `solve`, each pusher reproduces the orbit of its device function, stepped by hand, bitwise for the same Δt and start.
   - The figure-8 at a₀ = 2, solved with `Vern9` through the same problem, agrees with the closed form within the solver tolerance.
   - T-231, T-234 and T-235 at a₀ = 2 also pass for Float32, Float64 and `Dual{Float32,3}`, including duals through `BorisExactRotation` near B = 0.
-- `build.jl --check` passes and CPU CI is green. The PR is a draft when unattended (tier 2).
+- `build.jl --check` passes and CPU CI is green. Tier 2 (F4).
 
 ## Depends on
 

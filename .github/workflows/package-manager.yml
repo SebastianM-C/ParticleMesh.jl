@@ -59,7 +59,7 @@ jobs:
           {
             case "$EVENT" in
               schedule)
-                echo "TASK: the weekly dependency update (brief, item 1), and the open Dependabot pull requests (brief, item 3)." ;;
+                echo "TASK: the weekly dependency update (brief, item 1), and the open Dependabot pull requests (brief, item 4)." ;;
               workflow_dispatch)
                 echo "TASK (from the owner): $DISPATCH_TASK" ;;
             esac

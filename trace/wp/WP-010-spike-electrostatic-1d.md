@@ -12,12 +12,12 @@ A3 = "2e44fafc2ffe3634ff3dd6e84bb90825e76c585e"
 A4 = "8c6d1910f937970d7f14e1a844ed3ff49f67802a"
 A5 = "d8ba66a9b95c54fa5e30ede80993135d051424b6"
 A7 = "25b4f7853f52a9efd57ebd467f84844c7b105f70"
-A8 = "ca00019a5a518e1747bce0643e09c87eb11494b2"
-A9 = "d30c76a6cdd40296c596e59d188ed4da9d2fb621"
+A8 = "3429520bcb753b60ac02a9e6f89007c64e13f927"
+A9 = "89b2103e556ff49abca35bdb96e72429b5d30845"
 +++
 # WP-010: spike, a 1D periodic electrostatic PIC with a checked gradient
 
-The first runnable result and the bootstrap of the factory (A0: the first implementation of an area is a spike; contracts are written from working code). One session, sequential, in `lib/ParticleMeshCore`, which this package creates. It replaces the parked WP-004 to WP-009; their text is the proposal this spike tests, and `docs/plan/architecture-draft.md` §0.7 lists the decisions that bind and the proposals that do not. The spike ends with a write-up from which the next planning round cuts the packages that split engine from module and settle the interfaces.
+The first runnable result and the bootstrap of the factory (A0: the first implementation of an area is a spike; contracts are written from working code). One session, sequential, in `lib/ParticleMeshCore`, which this package creates. The spike ends with a write-up from which the next planning round cuts the packages that split engine from module and settle the interfaces.
 
 ## Scope
 
@@ -30,7 +30,7 @@ Everything a 1D periodic electrostatic particle-in-cell simulation needs, writte
 3. **Electrostatic step** (the `Electrostatic` submodule of the spike package, not a physics module, A9). The field from the deposited density by a discrete Gauss law on the periodic grid (a prefix sum of the zero-mean density is enough and makes the Gauss law exact; an FFT solve through FFTW.jl, which accepts only its own `Float32` and `Float64` element types and so cannot carry `Dual`, is not needed), a leapfrog or Boris push, and a step that is a pure function of state and parameters, composed in the order the module chooses; a plain `run!` loop.
 4. **Physics.** Landau damping of a small-amplitude wave and the two-stream growth rate, each compared with linear theory for the chosen parameters, the measured and theoretical values recorded without a threshold (A7: measure, then propose) in `lib/ParticleMeshCore/test/tolerances.toml`, which this package creates, and the standard plots from `scripts/` with JSON sidecars (F3). The theory values are computed in the test from the dispersion relation, with the derivation referenced; nothing from memory.
 5. **Gradient.** A `ForwardDiff` derivative of a smooth scalar diagnostic (the field energy at a fixed time, or a log-sum-exp maximum) with respect to a parameter that enters through the weights (the amplitude of the initial density perturbation), compared with a Float64 finite-difference scan in `Reference` mode with common seeds; the run is long enough that particles cross cells and the periodic seam. The floor is measured from the scan as A7 states (at least five step sizes, the spread of the three neighbouring difference quotients around its minimum), never computed from `eps` and the step: the spike found the formula floor `eps·|f|/h` four orders of magnitude below the real one, because the particle dynamics amplify rounding. Report the floor and the agreement.
-6. **Write-up.** `reports/spike-electrostatic-1d.md`: what was built, which of the parked packages' contracts held, which broke and how (expected friction: `floor` and comparisons on `Dual` offsets, the sorted reduction's scratch and determinism, the ordering of the step), measured CPU time per particle-step and scratch per particle for both deposition modes, and a proposed list of the next packages. This is the input of the next planning round; the trace tooling is not touched.
+6. **Write-up.** `reports/spike-electrostatic-1d.md`: what was built, which of the proposed engine contracts held, which broke and how (expected friction: `floor` and comparisons on `Dual` offsets, the sorted reduction's scratch and determinism, the ordering of the step), measured CPU time per particle-step and scratch per particle for both deposition modes, and a proposed list of the next packages. This is the input of the next planning round; the trace tooling is not touched.
 
 ## Non-goals
 
@@ -54,7 +54,7 @@ Test ids T-130 to T-159, each named with its id and what it verifies, for exampl
 - T-141: the Landau damping rate and T-142: the two-stream growth rate match linear theory, with the measured relative error recorded in `tolerances.toml` as a proposal and no threshold asserted in this package.
 - T-143: the finite-difference gradient check of deliverable 5: the ForwardDiff derivative agrees with the central differences within a stated multiple of the measured floor (A7), the multiple measured and proposed like every other tolerance. The spike measured a ratio of 0.70 (relative difference 1.94e-9 against a floor of 2.78e-9) and asserts agreement within `C` times the floor, with `C = 1` recorded as a proposed entry in `lib/ParticleMeshCore/test/tolerances.toml` (`gradient.jl` reads it from there).
 - T-144: allocation of one step after warm-up does not grow between two particle counts and two grid sizes.
-- `julia +1.13 --project=scripts scripts/trace/build.jl --check` passes; CI is green; the write-up and the plots with sidecars are in the PR.
+- The trace check passes; CI is green; the write-up and the plots with sidecars are in the PR.
 
 ## Depends on
 
@@ -62,4 +62,4 @@ Nothing. The next packages depend on its write-up.
 
 ## Budgets
 
-CPU timings and scratch recorded without thresholds (A7's throughput budget is on the GPU). Tier 2: the PR edits `/Project.toml` and `/lib/*/Project.toml`, so the owner approves it; a session the owner steers may mark it ready, an unattended one leaves it as a draft.
+CPU timings and scratch recorded without thresholds (A7's throughput budget is on the GPU). Tier 2 (F4): the PR edits `/Project.toml` and `/lib/*/Project.toml`.

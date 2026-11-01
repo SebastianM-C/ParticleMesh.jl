@@ -9,7 +9,7 @@ Short version: the PIC step itself (Yee + Boris + Esirkepov) reuses nothing and 
 | Piece | Reuse | Verdict |
 |---|---|---|
 | OrdinaryDiffEq generic integrators (Tsit5, symplectic `VerletLeapfrog`, ...) on the full PIC state | no | the Yee/Boris leapfrog is a specific splitting with E, B and momentum staggered in time; a generic method breaks charge conservation and multiplies RHS evaluations |
-| `DiscreteProblem` + `FunctionMap()` (OrdinaryDiffEq) or `SimpleFunctionMap` (SimpleDiffEq) around `step!` | yes, as the harness | verified in OrdinaryDiffEq's `lib/OrdinaryDiffEqFunctionMap`: the in-place form calls `f(u, uprev, p, t + dt)`, i.e. "write the next state from the previous one", with `scale_by_time = false`. That is a ping-pong buffer pair; the step itself sorts and compacts in place (`architecture-draft.md` §0.7 items 6 and 11), so the harness copies the previous state into the next before calling it. Overhead per step is microseconds |
+| `DiscreteProblem` + `FunctionMap()` (OrdinaryDiffEq) or `SimpleFunctionMap` (SimpleDiffEq) around `step!` | yes, as the harness | verified in OrdinaryDiffEq's `lib/OrdinaryDiffEqFunctionMap`: the in-place form calls `f(u, uprev, p, t + dt)`, i.e. "write the next state from the previous one", with `scale_by_time = false`. That is a ping-pong buffer pair; the module's step sorts the particle buffers in place (`sort_by_cell!`, `architecture-draft.md` §0.7 item 9; compaction will be in place too, §0.4 rule 1), so the harness copies the previous state into the next before calling it. Overhead per step is microseconds |
 | `RecursiveArrayTools.ArrayPartition` as the state container | yes | holds the six field arrays and the particle SoA buffers (including `Int32` cell indices) as one `AbstractVector`; works with GPU arrays. To verify early: integrator initialization with mixed element types, `saveat` copies |
 | `init`/`step!` integrator interface | yes | interactive stepping, diagnostics between steps, natural place to hang checkpointing |
 | `DiscreteCallback`, DiffEqCallbacks `PeriodicCallback`, `SavingCallback`, `PresetTimeCallback` | yes | output cadence, running reductions (energy, spectra, bunch moments), window advance as a callback if preferred |
@@ -18,7 +18,7 @@ Short version: the PIC step itself (Yee + Boris + Esirkepov) reuses nothing and 
 
 Alternative to the wrapper: implement `PICProblem <: SciMLBase.AbstractDEProblem` with its own `solve` and a `AbstractTimeseriesSolution`, as MethodOfLines does with `PDETimeSeriesSolution`. Same ecosystem benefits, own loop; decide when the step is stable. Fixed-capacity particle buffers with an alive mask are required either way, since the state length cannot change.
 
-Reactant and the harness: SimpleDiffEq runs under Reactant (prior work by the authors), and OrdinaryDiffEq PR #4436 (draft) makes explicit solves run the ordinary `solve!` loop inside Reactant compilation, with untraceable options (implicit algorithms, callbacks, `saveat`, user `tstops`) throwing before tracing. For the Reactant path use `SimpleFunctionMap` or a `@trace` loop around `step!` now; move to the shared OrdinaryDiffEq loop when #4436 lands (whether it covers `FunctionMap` is part of the B9 spike). The reduced models of §5 go through the same solvers, so the ladder is on the Reactant path end to end (architecture §0.6).
+Reactant and the harness: architecture §0.6 (SimpleDiffEq under Reactant now, the shared OrdinaryDiffEq loop once PR #4436 lands; the PR in the landscape table). The reduced models of §5 go through the same solvers.
 
 ## 2. Per-particle integration
 
@@ -39,7 +39,7 @@ Reactant and the harness: SimpleDiffEq runs under Reactant (prior work by the au
 | `LinearSolve.jl` with Krylov methods on GPU arrays, `SciMLOperators.FunctionOperator` for matrix-free stencils | yes | Poisson solves for the initial field of the electrostatic cases and for the initial self-fields of an injected bunch, Lorenz-gauge and divergence checks (EDM's gauge and beam verification scripts already do this kind of thing), any implicit field step |
 | `NonlinearSolve`, `SteadyStateDiffEq` | yes | matched spot size and density, quasi-static equilibria of the reduced models |
 
-Same ecosystem, outside SciML proper: Trixi.jl (DG for hyperbolic laws, `semidiscretize` → `ODEProblem`, a 1D Maxwell equation type in the inspected copy) is a possible DG Maxwell backend for the mesh-solve slot long term; the Ferrite backend MOL is expected to get would add unstructured FEM for geometry-heavy electrostatic problems, which no planned module covers (A9); TrixiParticles.jl with PointNeighbors.jl is the KA particle-framework precedent and a neighbour-search candidate for a pairwise/P³M slot. Assessment in architecture §0.5: none of them serves the LWFA module, all of them exercise the description/implementation split.
+Same ecosystem, outside SciML proper: Trixi.jl (DG), the Ferrite backend MOL is expected to get (FEM), and TrixiParticles.jl with PointNeighbors.jl; their assessment as mesh-solve backends and neighbour search is architecture §0.5.
 
 ## 4. Gradients
 

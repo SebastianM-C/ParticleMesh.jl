@@ -1,6 +1,6 @@
 # Saved Claude Code workflows: a primer for ParticleMesh
 
-Source: the Claude Code workflow docs (https://code.claude.com/docs/en/workflows.md) and the bundled authoring reference. Purpose: enough to read, write and run the workflows the factory will use.
+Source: the Claude Code workflow docs (https://code.claude.com/docs/en/workflows.md) and the bundled authoring reference. Purpose: enough to read, write and run the factory's workflows.
 
 ## What a workflow is
 
@@ -24,92 +24,23 @@ Contrast with the two other delegation mechanisms: a subagent spawned from a ses
 
 Adversarial verification (several independent skeptics per finding, keep what survives a majority), perspective-diverse verifiers (distinct lenses rather than identical refuters), judge panels over independent attempts, loop-until-dry for discovery of unknown size, a completeness critic at the end, and never a silent cap.
 
-## A first workflow for this project: review the plan
+## `plan-review`: review the plan
 
-Read-only, useful now, and it exercises every primitive. Five reviewers read the planning documents through different lenses, each finding is adversarially checked by two refuters, and the survivors come back as a structured list. Arguments: the document paths and a date stamp.
+Read-only, and it exercises every primitive. Five reviewers read the planning documents through different lenses, each finding is adversarially checked by two refuters, and the survivors come back as a structured list. Arguments: the document paths and a date stamp.
 
-```js
-export const meta = {
-  name: 'plan-review',
-  description: 'Review the ParticleMesh planning documents through five lenses and verify each finding',
-  whenToUse: 'Before handing the plan to the implementation team, or after a substantial edit of the docs',
-  phases: [
-    { title: 'Review', detail: 'one reviewer per lens over all documents' },
-    { title: 'Verify', detail: 'two refuters per finding' },
-    { title: 'Synthesize', detail: 'ranked list of surviving findings' },
-  ],
-}
+The script is `.claude/workflows/plan-review.js`.
 
-const DOCS = args.docs            // e.g. ["landscape-and-requirements.md", "architecture-draft.md", ...]
-const DATE = args.date            // stamped by the caller; Date.now() is unavailable here
+How it is used: run `/plan-review` with the plan documents as `args` after each substantial edit. The same skeleton, with an implementer stage in a worktree and a test-runner stage instead of the reviewers, becomes the work-package workflow.
 
-const LENSES = [
-  { key: 'physics',   prompt: 'LWFA physics: wrong or missing scalings, regimes, injection and objective assumptions' },
-  { key: 'numerics',  prompt: 'PIC numerics: scheme choices, conservation, resolution, boundary and window handling, FP32 risks' },
-  { key: 'ad',        prompt: 'differentiability: where gradients are undefined, noisy or mis-specified; tangent layout; atomics' },
-  { key: 'software',  prompt: 'software and infrastructure: package layout, GPU portability, dependencies, CI, reproducibility' },
-  { key: 'process',   prompt: 'process: requirements that are untestable, decisions without rationale, work that is unowned or unsequenced' },
-]
+## The factory's workflows
 
-const FINDINGS = {
-  type: 'object',
-  properties: {
-    findings: { type: 'array', items: {
-      type: 'object',
-      properties: {
-        doc: { type: 'string' }, section: { type: 'string' },
-        claim: { type: 'string' }, why: { type: 'string' },
-        severity: { type: 'string', enum: ['blocking', 'major', 'minor'] },
-      },
-      required: ['doc', 'section', 'claim', 'why', 'severity'],
-    }},
-  },
-  required: ['findings'],
-}
-
-const VERDICT = {
-  type: 'object',
-  properties: { refuted: { type: 'boolean' }, reason: { type: 'string' } },
-  required: ['refuted', 'reason'],
-}
-
-// Review → Verify as a pipeline: a lens whose review finishes early has its findings verified
-// while slower lenses are still reading. No barrier until the synthesis needs everything.
-const verified = await pipeline(
-  LENSES,
-  lens => agent(
-    `Read these planning documents in ${args.dir}: ${DOCS.join(', ')}. ` +
-    `Review them through this lens only: ${lens.prompt}. ` +
-    `Report concrete findings with the document and section they refer to. Do not edit anything.`,
-    { label: `review:${lens.key}`, phase: 'Review', schema: FINDINGS }),
-  (review, lens) => review ? parallel(review.findings.map(f => () =>
-    parallel([0, 1].map(i => () => agent(
-      `A reviewer claims, about ${f.doc} (${f.section}): "${f.claim}" because "${f.why}". ` +
-      `Read that document in ${args.dir} and try to refute the claim. Default to refuted=true if uncertain.`,
-      { label: `verify:${lens.key}:${i}`, phase: 'Verify', schema: VERDICT })))
-      .then(votes => ({ ...f, lens: lens.key,
-                        survives: votes.filter(Boolean).filter(v => !v.refuted).length === 2 })))) : [],
-)
-
-const survivors = verified.filter(Boolean).flat().filter(f => f.survives)
-log(`${survivors.length} findings survived verification`)
-
-phase('Synthesize')
-const report = await agent(
-  `Here are verified review findings on the ParticleMesh plan (${DATE}): ${JSON.stringify(survivors)}. ` +
-  `Rank them by severity and by how early they bite, merge duplicates, and write a short markdown report ` +
-  `with one line per finding: document, section, claim, suggested change.`,
-  { label: 'synthesize', effort: 'high' })
-
-return { date: DATE, survivors, report }
-```
-
-How it is used: run it once with the plan documents as `args`, save it with `s`, and from then on run `/plan-review` after each substantial edit. The same skeleton, with an implementer stage in a worktree and a test-runner stage instead of the reviewers, becomes the work-package workflow.
-
-## What the factory's workflows would look like
+Saved in `.claude/workflows/`:
 
 - `plan-review` (above): read-only review of the planning documents.
-- `plan-packages`, two modes. `cut` takes the next work packages from a named slice of the goals and the plan: one agent first checks that the plan settles what the slice needs (owners of interfaces, layouts, configuration, boundaries) and stops with the gaps if it does not; then two planners (interface-first and validation-first, both ordering by risk) propose, one judge merges and orders, two verifiers read the whole set (scope and ownership, goal compliance) and grade each finding blocking or fixable, and a writer applies the fixable findings and saves every package without a blocking one under `trace/wp/`. The verifiers read the set rather than one package each because the defects that matter sit between packages. `rederive` runs after a goal edit, on the stale packages `scripts/trace/build.jl` lists: one agent per package confirms, edits, splits or withdraws it and fixes the plan text that cites the goal, one refuter checks the result. The caller refreshes the `[checked]` entries of the packages that hold (`build.jl --refresh`), and opens the PR; it merges on the automated review, and the digest lists the packages for the owner to veto.
+- `plan-packages`, two modes: `cut` takes the next work packages from a named slice of the goals and the plan, `rederive` re-derives the packages a goal edit made stale. The stages, the models per agent and the caller's steps are in `.claude/workflows/plan-packages.js`. In `cut` the verifiers read the whole set rather than one package each, because the defects that matter sit between packages. Its PR merges on the automated review, and the digest lists the packages for the owner to veto.
+
+Planned (`factory-and-observability.md` §4):
+
 - `wp-implement`: for one work package, an implementer agent in a worktree (role from `.claude/agents/`), then a test-runner stage, then a plot-inspector stage reading the standard plots and their sidecars, then two reviewers with distinct lenses, then a report; the script writes nothing itself, the agents commit on a branch.
 - `cross-code-validate`: run the matched case in ParticleMesh, Smilei and PIConGPU on the local GPU, produce the overlay plots, judge agreement against the tolerances of A7.
 

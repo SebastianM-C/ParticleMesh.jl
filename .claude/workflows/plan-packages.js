@@ -18,7 +18,8 @@ export const meta = {
 //   date      stamped by the caller
 // cut:
 //   scope     one sentence naming the slice to cut, e.g. "the engine core on the CPU backend"
-//   next_id   the first free package number; one past the highest in trace/wp
+//   next_id   the first free package number; one past the highest ever used, deleted packages
+//             included (trace/README.md)
 //   max       upper bound on packages per run (default 6)
 //   skip_readiness  true to skip the readiness check, after the caller fixed the gaps it reported
 //   gaps      with skip_readiness: the non-blocking gaps of an earlier readiness check, passed on
@@ -45,7 +46,7 @@ const CONTEXT =
   `factory-and-observability.md section 5). Work packages are trace/wp/WP-<nnn>-<slug>.md with TOML front ` +
   `matter as trace/README.md specifies; the existing ones show structure and tone. A package is one pull ` +
   `request by one session: it implements one interface or one validation step, names the goals it serves, ` +
-  `the tests that prove it (with trace tags such as [A2, WP-004]), the budgets of A7 where they apply, the ` +
+  `the tests that prove it (with trace tags such as [A2, WP-009]), the budgets of A7 where they apply, the ` +
   `Julia packages it adds, what it must not do, and the packages it depends on. The rules in CLAUDE.md hold.`
 
 const PACKAGE = {
@@ -208,8 +209,9 @@ async function rederive() {
       `checked against them. For each goal, the front matter's [checked] entry is the git blob id of the old ` +
       `version: see the change with \`git diff <old blob id> <new blob id>\`, the new one from ` +
       `\`git hash-object docs/goals/<file>\`. Decide whether the package still holds: confirm it unchanged, ` +
-      `edit it, split it (new packages numbered one past the highest in trace/wp/), or withdraw it ` +
-      `(status "withdrawn", one line saying why). Make the edits in trace/wp/, and update any text in ` +
+      `edit it, split it (new packages numbered one past the highest id ever used, deleted ones included, ` +
+      `trace/README.md), or withdraw it (delete its file and say why in the summary, for the commit ` +
+      `message). Make the edits in trace/wp/, and update any text in ` +
       `docs/plan/ that cites the changed goals and no longer matches them. Never edit docs/goals/. ` +
       `Do not touch [checked] and do not commit. Report the files you changed.`,
       { label: `rederive:${s.id}`, phase: 'Rederive', schema: REDERIVED, model: 'sonnet', effort: 'high' }),

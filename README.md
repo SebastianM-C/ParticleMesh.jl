@@ -22,9 +22,12 @@ NVIDIA and AMD GPUs and, through Reactant, as a traced, raised and sharded progr
 
 ## Status
 
-Nothing runs yet. The design record in `docs/plan/` (start with `overview.md`) is the current
-state of the project; the aims and decisions in `docs/goals/` are binding for anyone,
-human or agent, who works here.
+Early. The engine core (`lib/ParticleMeshCore`) and the electromagnetic module
+(`lib/ParticleMeshElectromagnetic`) run one-dimensional periodic cases (Landau damping,
+two-stream, Weibel) on the KernelAbstractions CPU backend; GPU runs and the 2D laser-wakefield
+case are still to come. Results so far are in `reports/`, not independently reviewed. The design
+record in `docs/plan/` (start with `overview.md`) describes where the project is going; the aims
+and decisions in `docs/goals/` are binding for anyone, human or agent, who works here.
 
 ## Layout
 
