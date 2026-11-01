@@ -139,22 +139,30 @@ end
 
 `"kind|type|case|workgroupsize|digest"` of every 2D result whose bits must not depend on the
 launch shape or the thread count: the sort with extras, the Reference deposition of a moved
-species (both seams and the corner crossed) for both orders, every stagger pair and two
-quantities, the gather, fill and fold, and the load.
+species (both seams and the corner crossed) for both orders, two stagger pairs per order (the
+natural pair and the mixed pair (Center, Node), which takes the `floor` path on one axis) and
+two quantities, the gather at the natural pair, fill and fold, and the load. Every stagger pair
+is covered in process by T-262 to T-265; this set is kept small because each subprocess
+compiles it anew.
 """
+
+"The stagger pairs of the subprocess digests: the natural pair of the order and the mixed pair."
+digest_pairs(::Shape{1}) = ((Node(), Node()), (Center(), Node()))
+digest_pairs(::Shape{2}) = ((Center(), Center()), (Center(), Node()))
 function engine2d_digests()
     lines = String[]
     for T in TYPES, wg in WG_SIZES
         L = type_label(T)
         s, ws, grid = sorted_2d(T; workgroupsize = wg)
         push!(lines, "sort2d|$L|extras|$wg|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
-        for shape in SHAPES, st in STAGGER_PAIRS
+        for shape in SHAPES, st in digest_pairs(shape)
             grid = grid2(T, guard_width(shape))
             for (ql, quantity) in (("qw", ChargeWeight()), ("qwuy", ChargeUy2()))
                 m = moved_species_2d(T, grid, 300; dead = DEAD2)
                 ρ = deposited_2d(Reference(), m, shape, st, grid; quantity, workgroupsize = wg)
                 push!(lines, "deposit2d|$L|$(order(shape)),$(stagger_label(st)),$ql|$wg|$(fnv_digest(ρ))")
             end
+            st === first(digest_pairs(shape)) || continue
             m = moved_species_2d(T, grid, 300; dead = DEAD2)
             f = test_field_2d(T, grid, (a, b) -> seeded(T, sin(0.7a) + cos(0.3b) / 2))
             out = fill!(similar(m.w), zero(T))
