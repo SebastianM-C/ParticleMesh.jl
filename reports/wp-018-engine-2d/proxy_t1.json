@@ -1,0 +1,142 @@
+{
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "rows": [
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Reference",
+      "ns_per_particle_step": 543.2455381944444,
+      "ns_per_particle_step_max": 594.6611458333333,
+      "ns_per_particle_step_min": 489.48713541666666,
+      "particles": 1152,
+      "ppc": [
+        2,
+        3
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Reference",
+      "ns_per_particle_step": 154.063154296875,
+      "ns_per_particle_step_max": 173.17389485677083,
+      "ns_per_particle_step_min": 141.46321126302084,
+      "particles": 12288,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Fast",
+      "ns_per_particle_step": 270.15873263888886,
+      "ns_per_particle_step_max": 290.465,
+      "ns_per_particle_step_min": 249.4582465277778,
+      "particles": 1152,
+      "ppc": [
+        2,
+        3
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Fast",
+      "ns_per_particle_step": 106.96694824218751,
+      "ns_per_particle_step_max": 127.29963541666666,
+      "ns_per_particle_step_min": 102.07258138020835,
+      "particles": 12288,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Reference",
+      "ns_per_particle_step": 542.4983680555556,
+      "ns_per_particle_step_max": 584.1491319444444,
+      "ns_per_particle_step_min": 514.3331944444444,
+      "particles": 1152,
+      "ppc": [
+        2,
+        3
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Reference",
+      "ns_per_particle_step": 175.53612955729167,
+      "ns_per_particle_step_max": 257.079111328125,
+      "ns_per_particle_step_min": 164.94171223958332,
+      "particles": 12288,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Fast",
+      "ns_per_particle_step": 266.7826909722222,
+      "ns_per_particle_step_max": 359.12817708333336,
+      "ns_per_particle_step_min": 234.02130208333332,
+      "particles": 1152,
+      "ppc": [
+        2,
+        3
+      ],
+      "steps": 50
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        16,
+        12
+      ],
+      "mode": "Fast",
+      "ns_per_particle_step": 105.91044270833333,
+      "ns_per_particle_step_max": 116.3119775390625,
+      "ns_per_particle_step_min": 97.30218424479166,
+      "particles": 12288,
+      "ppc": [
+        8,
+        8
+      ],
+      "steps": 50
+    }
+  ],
+  "threads": 1
+}

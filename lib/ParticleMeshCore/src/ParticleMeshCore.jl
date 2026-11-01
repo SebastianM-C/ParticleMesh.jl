@@ -12,7 +12,8 @@ The engine holds no physics (A9): a physics module composes its own step from th
 All kernels are KernelAbstractions kernels, generic in the element type `T`, with static
 shapes and no host-side branching on device data (`docs/plan/architecture-draft.md` §0.4);
 every launch takes `workgroupsize = nothing` (the backend default), which selects the launch
-shape only. Only `N = 1` is implemented and tested. The contracts are those of
+shape only. `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
+the flux deposition and the prefix sum). The contracts are those of
 `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore
@@ -23,9 +24,9 @@ import Atomix
 import Adapt
 import AcceleratedKernels as AK
 
-export PeriodicGrid, ncells, cellsize, guards, field, interior, interior_view
+export PeriodicGrid, ncells, cellsize, guards, field, interior, interior_view, linear_cell, cartesian_cell
 export Species, capacity, alive_count
-export Shape, Linear, Quadratic, Node, Center, order, guard_width, shape_weights, advance
+export Shape, Linear, Quadratic, Node, Center, order, guard_width, shape_weights, tensor_weights, advance
 export fill_guards!, fold_guards!
 export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
 export Workspace, sort_by_cell!, deposit!, gather!, ChargeWeight

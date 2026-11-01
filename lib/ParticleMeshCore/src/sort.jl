@@ -4,8 +4,8 @@
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
 arrays (`Int32`, `T`, `UInt8`), the buffers of the species' extras, and the per-cell segment
-bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the `Reference` deposition reads
-(an empty cell has `seg_start = 1`, `seg_stop = 0`).
+bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the `Reference` deposition reads,
+one entry per linear cell (`prod(n)` of them; an empty cell has `seg_start = 1`, `seg_stop = 0`).
 
 `tmp_extras` holds one permutation buffer per extra, in the extras' order: the core buffer of
 the same element type where there is one (so `Int32`- and `T`-valued extras cost no scratch),
@@ -24,7 +24,7 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple}
     seg_stop::VI
 end
 
-function Workspace(s::Species{1,T}, grid::PeriodicGrid{1}) where {T}
+function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}) where {N,T}
     backend = get_backend(s)
     cap = capacity(s)
     key = KernelAbstractions.zeros(backend, Int64, cap)
@@ -34,7 +34,7 @@ function Workspace(s::Species{1,T}, grid::PeriodicGrid{1}) where {T}
     tmp_T = KernelAbstractions.zeros(backend, T, cap)
     tmp_u8 = KernelAbstractions.zeros(backend, UInt8, cap)
     tmp_extras = extras_buffers(backend, cap, Tuple(values(s.extras)), (tmp_i32, tmp_T, tmp_u8))
-    n = ncells(grid)
+    n = prod(grid.n)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
     return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop)
@@ -112,7 +112,8 @@ end
 """
     sort_by_cell!(species, grid, ws; workgroupsize = nothing)
 
-Sort the particles in place by (cell, slot), with free slots last; apply the one permutation to
+Sort the particles in place by (cell, slot), with free slots last (for N > 1 by the column-major
+linear cell of `linear_cell`, then slot); apply the one permutation to
 every SoA array, the module's extras included (`ws.perm[i]` is the slot that slot `i` held
 before); write the per-cell segment bounds into `ws` and the alive count into `species.count`.
 Deterministic: the keys are unique, so the result does not depend on the sort algorithm, the
@@ -137,5 +138,56 @@ function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; work
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = n)
     launcher(segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell[1], s.status,
                                                        Int32(cap); ndrange = cap)
+    return s
+end
+
+# N axes: the key is `(linear cell - 1)·capacity + slot - 1`, free slots `prod(n)·capacity + slot - 1`,
+# with the column-major linear cell of `linear_cell`; unique, so the permutation is fixed (A4).
+@kernel function sort_key_nd_kernel!(key, cell, status, n, ncell::Int64, cap::Int64)
+    i = @index(Global, Linear)
+    @inbounds begin
+        L = linear_cell(map(c -> Int64(c[i]), cell), n)
+        c = ifelse(status[i] == ALIVE, L - 1, ncell)
+        key[i] = c * cap + (i - 1)
+    end
+end
+
+@kernel function segments_nd_kernel!(seg_start, seg_stop, count, cell, @Const(status), n, cap::Int32)
+    i32 = Int32(@index(Global, Linear))
+    @inbounds if status[i32] == ALIVE
+        c = linear_cell(map(a -> a[i32], cell), n)
+        last_alive = i32 == cap || status[i32 + Int32(1)] != ALIVE
+        if i32 == Int32(1) || linear_cell(map(a -> a[i32 - Int32(1)], cell), n) != c
+            seg_start[c] = i32
+        end
+        if last_alive || linear_cell(map(a -> a[i32 + Int32(1)], cell), n) != c
+            seg_stop[c] = i32
+        end
+        last_alive && (count[1] = i32)
+    end
+end
+
+function sort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; workgroupsize = nothing) where {N}
+    backend = get_backend(s)
+    cap = capacity(s)
+    ncell = prod(grid.n)
+    ncell <= typemax(Int32) || throw(ArgumentError("$ncell cells exceed the Int32 segment index"))
+    (Int128(ncell) + 1) * cap <= typemax(Int64) || throw(ArgumentError("sort key overflows Int64: $ncell cells × capacity $cap"))
+    launcher(sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(ncell), Int64(cap);
+                                                          ndrange = cap)
+    AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
+    for d in 1:N
+        permute!(s.cell[d], ws.tmp_i32, ws.perm, workgroupsize)
+        permute!(s.offset[d], ws.tmp_T, ws.perm, workgroupsize)
+    end
+    for d in 1:3
+        permute!(s.u[d], ws.tmp_T, ws.perm, workgroupsize)
+    end
+    permute!(s.w, ws.tmp_T, ws.perm, workgroupsize)
+    permute!(s.status, ws.tmp_u8, ws.perm, workgroupsize)
+    permute_all!(Tuple(values(s.extras)), ws.tmp_extras, ws.perm, workgroupsize)
+    launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = ncell)
+    launcher(segments_nd_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell, s.status,
+                                                          Int32.(grid.n), Int32(cap); ndrange = cap)
     return s
 end
