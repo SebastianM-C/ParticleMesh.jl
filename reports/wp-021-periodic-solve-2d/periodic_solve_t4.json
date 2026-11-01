@@ -1,0 +1,648 @@
+{
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "rows": [
+    {
+      "N": 1,
+      "cells": 64,
+      "inner": 50,
+      "max_s": 0.00019984864000000002,
+      "median_s": 0.00018899688,
+      "min_s": 0.00015572644,
+      "n": [
+        64
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 64,
+      "inner": 50,
+      "max_s": 5.140774e-5,
+      "median_s": 4.4905020000000006e-5,
+      "min_s": 4.1434000000000003e-5,
+      "n": [
+        64
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 256,
+      "inner": 50,
+      "max_s": 0.00044553664,
+      "median_s": 0.00038002614,
+      "min_s": 0.00036640552,
+      "n": [
+        256
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 256,
+      "inner": 50,
+      "max_s": 5.0718739999999995e-5,
+      "median_s": 4.638276e-5,
+      "min_s": 4.52141e-5,
+      "n": [
+        256
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 1024,
+      "inner": 50,
+      "max_s": 0.00178014654,
+      "median_s": 0.00140949874,
+      "min_s": 0.00115332922,
+      "n": [
+        1024
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 1024,
+      "inner": 50,
+      "max_s": 0.0001252817,
+      "median_s": 8.424868e-5,
+      "min_s": 5.143282e-5,
+      "n": [
+        1024
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 4096,
+      "inner": 5,
+      "max_s": 0.0352719984,
+      "median_s": 0.0219828482,
+      "min_s": 0.0140160796,
+      "n": [
+        4096
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 4096,
+      "inner": 50,
+      "max_s": 0.00026052013999999996,
+      "median_s": 6.664292e-5,
+      "min_s": 5.152542e-5,
+      "n": [
+        4096
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 16384,
+      "inner": 1,
+      "max_s": 0.247760661,
+      "median_s": 0.212554808,
+      "min_s": 0.204778168,
+      "n": [
+        16384
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 16384,
+      "inner": 50,
+      "max_s": 7.329292e-5,
+      "median_s": 6.958324e-5,
+      "min_s": 6.851088e-5,
+      "n": [
+        16384
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float32"
+    },
+    {
+      "N": 2,
+      "cells": 192,
+      "inner": 50,
+      "max_s": 0.00044512522,
+      "median_s": 0.00044252538000000004,
+      "min_s": 0.00043358038000000003,
+      "n": [
+        16,
+        12
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 2,
+      "cells": 768,
+      "inner": 50,
+      "max_s": 0.00056382856,
+      "median_s": 0.00055043518,
+      "min_s": 0.0005467239,
+      "n": [
+        32,
+        24
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 2,
+      "cells": 3072,
+      "inner": 50,
+      "max_s": 0.0013875576,
+      "median_s": 0.00113248628,
+      "min_s": 0.0010382488199999998,
+      "n": [
+        64,
+        48
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 2,
+      "cells": 12288,
+      "inner": 30,
+      "max_s": 0.004288551,
+      "median_s": 0.0038845341333333333,
+      "min_s": 0.0036102084000000003,
+      "n": [
+        128,
+        96
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 2,
+      "cells": 49152,
+      "inner": 6,
+      "max_s": 0.024981269666666667,
+      "median_s": 0.018622874666666667,
+      "min_s": 0.017385774833333333,
+      "n": [
+        256,
+        192
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 2,
+      "cells": 196608,
+      "inner": 1,
+      "max_s": 0.142461716,
+      "median_s": 0.133327683,
+      "min_s": 0.131604273,
+      "n": [
+        512,
+        384
+      ],
+      "op": "solve+gradient",
+      "type": "Float32"
+    },
+    {
+      "N": 1,
+      "cells": 64,
+      "inner": 50,
+      "max_s": 0.00023876591999999998,
+      "median_s": 0.00023190717999999999,
+      "min_s": 0.000228101,
+      "n": [
+        64
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 64,
+      "inner": 50,
+      "max_s": 4.939136e-5,
+      "median_s": 4.516182e-5,
+      "min_s": 4.4523e-5,
+      "n": [
+        64
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 256,
+      "inner": 50,
+      "max_s": 0.00036257857999999997,
+      "median_s": 0.00032016952,
+      "min_s": 0.00029855400000000003,
+      "n": [
+        256
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 256,
+      "inner": 50,
+      "max_s": 4.178714e-5,
+      "median_s": 3.819856e-5,
+      "min_s": 3.766938e-5,
+      "n": [
+        256
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 1024,
+      "inner": 50,
+      "max_s": 0.0014808090600000002,
+      "median_s": 0.00104815218,
+      "min_s": 0.00100160714,
+      "n": [
+        1024
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 1024,
+      "inner": 50,
+      "max_s": 6.894592e-5,
+      "median_s": 6.001836e-5,
+      "min_s": 4.755444e-5,
+      "n": [
+        1024
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 4096,
+      "inner": 6,
+      "max_s": 0.016023002166666665,
+      "median_s": 0.013257820666666668,
+      "min_s": 0.012530628833333333,
+      "n": [
+        4096
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 4096,
+      "inner": 50,
+      "max_s": 5.43437e-5,
+      "median_s": 5.2145179999999995e-5,
+      "min_s": 5.0998959999999995e-5,
+      "n": [
+        4096
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 16384,
+      "inner": 1,
+      "max_s": 0.20578175,
+      "median_s": 0.205330079,
+      "min_s": 0.191418591,
+      "n": [
+        16384
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 16384,
+      "inner": 50,
+      "max_s": 9.208177999999999e-5,
+      "median_s": 8.4435e-5,
+      "min_s": 8.135744e-5,
+      "n": [
+        16384
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Float64"
+    },
+    {
+      "N": 2,
+      "cells": 192,
+      "inner": 50,
+      "max_s": 0.00068002066,
+      "median_s": 0.00054696778,
+      "min_s": 0.0005198162800000001,
+      "n": [
+        16,
+        12
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 2,
+      "cells": 768,
+      "inner": 50,
+      "max_s": 0.0006982078,
+      "median_s": 0.0006388389599999999,
+      "min_s": 0.0006047975,
+      "n": [
+        32,
+        24
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 2,
+      "cells": 3072,
+      "inner": 50,
+      "max_s": 0.001134753,
+      "median_s": 0.001113825,
+      "min_s": 0.00104629054,
+      "n": [
+        64,
+        48
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 2,
+      "cells": 12288,
+      "inner": 18,
+      "max_s": 0.005995911277777778,
+      "median_s": 0.0045013591666666665,
+      "min_s": 0.003997359222222222,
+      "n": [
+        128,
+        96
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 2,
+      "cells": 49152,
+      "inner": 5,
+      "max_s": 0.0344648086,
+      "median_s": 0.023265852,
+      "min_s": 0.0182987352,
+      "n": [
+        256,
+        192
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 2,
+      "cells": 196608,
+      "inner": 1,
+      "max_s": 0.239905304,
+      "median_s": 0.231502354,
+      "min_s": 0.218428718,
+      "n": [
+        512,
+        384
+      ],
+      "op": "solve+gradient",
+      "type": "Float64"
+    },
+    {
+      "N": 1,
+      "cells": 64,
+      "inner": 50,
+      "max_s": 0.00021428694,
+      "median_s": 0.0002077852,
+      "min_s": 0.00020196656,
+      "n": [
+        64
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 64,
+      "inner": 50,
+      "max_s": 4.8464240000000005e-5,
+      "median_s": 4.597602e-5,
+      "min_s": 4.1568919999999996e-5,
+      "n": [
+        64
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 256,
+      "inner": 50,
+      "max_s": 0.00042032392,
+      "median_s": 0.00041044518000000004,
+      "min_s": 0.00040130776,
+      "n": [
+        256
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 256,
+      "inner": 50,
+      "max_s": 4.606722e-5,
+      "median_s": 4.537394e-5,
+      "min_s": 4.423784e-5,
+      "n": [
+        256
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 1024,
+      "inner": 41,
+      "max_s": 0.0021320435365853657,
+      "median_s": 0.0019799133902439025,
+      "min_s": 0.0015041792926829267,
+      "n": [
+        1024
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 1024,
+      "inner": 50,
+      "max_s": 3.751098e-5,
+      "median_s": 3.659952e-5,
+      "min_s": 3.532886e-5,
+      "n": [
+        1024
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 4096,
+      "inner": 5,
+      "max_s": 0.0331899926,
+      "median_s": 0.0215297488,
+      "min_s": 0.019471665399999998,
+      "n": [
+        4096
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 4096,
+      "inner": 50,
+      "max_s": 6.543068e-5,
+      "median_s": 6.0488520000000003e-5,
+      "min_s": 5.825068e-5,
+      "n": [
+        4096
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 16384,
+      "inner": 1,
+      "max_s": 0.483340029,
+      "median_s": 0.358066337,
+      "min_s": 0.342955274,
+      "n": [
+        16384
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 1,
+      "cells": 16384,
+      "inner": 50,
+      "max_s": 0.00013766,
+      "median_s": 0.00013337152,
+      "min_s": 0.00012538254,
+      "n": [
+        16384
+      ],
+      "op": "cumsum_periodic!",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 2,
+      "cells": 192,
+      "inner": 50,
+      "max_s": 0.00055179882,
+      "median_s": 0.00052423588,
+      "min_s": 0.00051754052,
+      "n": [
+        16,
+        12
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 2,
+      "cells": 768,
+      "inner": 50,
+      "max_s": 0.0007459697999999999,
+      "median_s": 0.00067585756,
+      "min_s": 0.00063698778,
+      "n": [
+        32,
+        24
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 2,
+      "cells": 3072,
+      "inner": 50,
+      "max_s": 0.0022855515400000003,
+      "median_s": 0.0015879682,
+      "min_s": 0.00150557168,
+      "n": [
+        64,
+        48
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 2,
+      "cells": 12288,
+      "inner": 9,
+      "max_s": 0.011584554777777777,
+      "median_s": 0.009647660111111112,
+      "min_s": 0.007710359222222222,
+      "n": [
+        128,
+        96
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 2,
+      "cells": 49152,
+      "inner": 2,
+      "max_s": 0.0553488295,
+      "median_s": 0.054619535,
+      "min_s": 0.0509002415,
+      "n": [
+        256,
+        192
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    },
+    {
+      "N": 2,
+      "cells": 196608,
+      "inner": 1,
+      "max_s": 0.75317732,
+      "median_s": 0.689455443,
+      "min_s": 0.65340037,
+      "n": [
+        512,
+        384
+      ],
+      "op": "solve+gradient",
+      "type": "Dual{Float32,3}"
+    }
+  ],
+  "threads": 4
+}
