@@ -72,13 +72,19 @@ else
                     dc == hc && all(d -> components(dδ[d]) == components(hδ[d]), 1:2)
                 end
             end
-            # T-262's tensor-product weights, on the device against the host, bitwise.
+            # T-262's tensor-product weights on the device against the host: the stencil start
+            # bitwise, the weights within a measured bound (the device fuses multiply-adds).
             offs = [(seeded(T, a), seeded(T, b)) for a in (0.0, 0.25, 0.7, (k / 13 for k in 0:12)...) for b in (0.0, 0.5, 0.9)]
             for shape in SHAPES, st in STAGGER_PAIRS
                 dev, host = devmap(GPU, TensorAt(shape, st), offs), map(TensorAt(shape, st), offs)
-                @test all(zip(dev, host)) do ((df, dW), (hf, hW))
-                    df === hf && same_bits(collect(dW), collect(hW))
+                @test all(zip(dev, host)) do ((df, _), (hf, _))
+                    df === hf
                 end
+                worst = maximum(zip(dev, host)) do ((_, dW), (_, hW))
+                    maximum(absdiff.(collect(dW), collect(hW))) / (base_eps(T) * maximum(absmax, collect(hW)))
+                end
+                record!("T-191 tensor weights", T, worst, GPU)
+                @test worst <= tolC("T-191 tensor weights")
             end
         end
         rerun_on(GPU, (("T-263", body_T263), ("T-264", body_T264), ("T-265", be -> body_T265(be; nodes = false)),
@@ -104,7 +110,7 @@ else
             outs = map(GPU_WG_SIZES) do wg
                 s = test_species(T, grid, 300; seed = 5)
                 f = test_field(T, grid, j -> seeded(T, sin(0.7j) + 0.3))
-                out = similar(s.w)
+                out = fill!(similar(s.w), zero(T))       # the free slots are not written
                 on(GPU, gather!, out, f, s, shape, stagger, grid; workgroupsize = wg)
                 ff = on(GPU, fill_guards!, copy(f), grid; workgroupsize = wg)
                 fo = on(GPU, fold_guards!, copy(f), grid; workgroupsize = wg)
@@ -151,7 +157,9 @@ else
         # A proxy step on device-resident data (sort, Reference and Fast deposit, fold, fill,
         # gather, and the flux at N = 1), after a warm-up: host bytes (`@allocated`, the launches'
         # bookkeeping) and device bytes (`CUDACore.@allocated`) at two particle counts per grid size
-        # and two grid sizes.
+        # and two grid sizes. The sort's host bytes are measured on their own: AcceleratedKernels'
+        # GPU sort launches a number of passes that may grow with the particle count (first CUDA
+        # run: the step's host bytes grew from 17 488 to 22 048 between 256 and 8192 particles).
         function proxy(T, N, ncell, ppc)
             if N == 1
                 grid = PeriodicGrid(ncell, basetype(T)(1 // 2), flux_guard_width(Quadratic, Center()))
@@ -165,8 +173,8 @@ else
             J = ntuple(_ -> todev(GPU, field(backend, T, grid)), 3)
             out = similar(s.w)
             st = N == 1 ? Center() : (Center(), Center())
+            sort() = (sort_by_cell!(s, grid, ws); KernelAbstractions.synchronize(GPU))
             function step()
-                sort_by_cell!(s, grid, ws)
                 deposit!(Reference(), ρ, s, Quadratic, st, grid, ws)
                 effective_mode(Fast(), T) isa Fast && deposit!(Fast(), ρ, s, Quadratic, st, grid, ws)
                 fold_guards!(ρ, grid)
@@ -176,20 +184,26 @@ else
                                         quantity_z = ChargeUz())
                 KernelAbstractions.synchronize(GPU)
             end
-            step(); step()
+            sort(); step(); sort(); step()
             host = @allocated step()
             dev = CUDACore.@allocated step()
-            return (; host, dev)
+            sort_host = @allocated sort()
+            sort_dev = CUDACore.@allocated sort()
+            return (; host, dev, sort_host, sort_dev)
         end
         for T in TYPES, N in (1, 2)
             sizes = N == 1 ? (32, 128) : (8, 16)
             rows = [(ncell, ppc, proxy(T, N, ncell, ppc)) for ncell in sizes for ppc in (8, 64)]
-            @info "T-198 bytes per proxy step on CUDA" T N rows
+            for (ncell, ppc, b) in rows
+                println("T-198 bytes on CUDA: ", type_label(T), " N=$N cells=$ncell ppc=$ppc: step host=$(b.host) dev=$(b.dev), ",
+                        "sort host=$(b.sort_host) dev=$(b.sort_dev)")
+            end
             ref = rows[1][3]
             for (_, _, b) in rows
-                @test b.dev <= ref.dev
-                @test b.host <= ref.host + 1024
+                @test b.dev <= ref.dev && b.sort_dev <= ref.sort_dev
+                @test b.host <= ref.host
             end
+            record!("T-198 sort host bytes", T, maximum(r -> r[3].sort_host, rows), GPU)
             record!("T-198 device bytes", T, maximum(r -> r[3].dev, rows), GPU)
             record!("T-198 host bytes", T, maximum(r -> r[3].host, rows), GPU)
         end

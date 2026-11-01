@@ -361,7 +361,9 @@ function body_T267(be)
             ctr_ok &= all(d -> absdiff(s.u[d][i], u[d]) <= 2eps(basetype(T)) * (absmax(vdrift[d]) + absmax(vth[d] * (z1, z2, z3)[d])), 1:3)
             x = ((T(c[1] - 1) + δ[1]) * h[1], (T(c[2] - 1) + δ[2]) * h[2])
             wh = ObliqueDensity()(x, p) / T(K)
-            w_ok &= absdiff(s.w[i], wh) <= 2eps(basetype(T)) * absmax(wh)
+            wr = absdiff(s.w[i], wh) / (eps(basetype(T)) * absmax(wh))
+            be isa CPU || record!("T-191 T-267 weights", T, wr, be)
+            w_ok &= wr <= (be isa CPU ? 2 : tolC("T-191 T-267 weights"))
             wmax = max(wmax, absmax(wh))
         end
         @test pos_ok

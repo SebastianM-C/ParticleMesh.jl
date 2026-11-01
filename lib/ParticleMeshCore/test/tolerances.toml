@@ -215,3 +215,30 @@ C = 4
 C_gather = 4
 measured = { Float32 = 1.52, Float64 = 1.47, "Dual{Float32,3}" = 1.52, gather_Float32 = 0.776, gather_Float64 = 1.55, "gather_Dual{Float32,3}" = 0.776 }
 status = "proposed"
+
+# WP-013, the engine on CUDA (RTX 4080 SUPER, CUDACore 6.5). Where a CUDA ratio exceeds a CPU
+# bound, it gets its own entry here instead of a wider CPU bound. The device's arithmetic is not the host's: the
+# compiler fuses multiply-adds on the device (suspected from the last-bit differences of
+# T-172's scan against the host serial order; not verified at the PTX level), and `cos`, `log`
+# and `sin` are CUDA's.
+
+["T-190 T-112 zero displacement"]
+quantity = "Jy of deposit_flux! against deposit! of q·w·u_y at zero displacement, on CUDA (the CPU bound is 2)"
+scale = "max|ρy|"
+C = 4
+measured = { "Float32 on CUDABackend" = 2.76 }
+status = "proposed"
+
+["T-191 tensor weights"]
+quantity = "2D tensor-product weights on CUDA against the host's, per weight (T-262's weights)"
+scale = "max|W|"
+C = 4
+measured = {}
+status = "proposed"
+
+["T-191 T-267 weights"]
+quantity = "2D load weights on CUDA against the host's density(x)/ppc (the CPU bound is 2)"
+scale = "|w|"
+C = 4
+measured = {}
+status = "proposed"

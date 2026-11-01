@@ -52,7 +52,7 @@ function body_T172(be)
         T === D3 && @test any(x -> !iszero(partials(x)), oi)               # the partials are exercised
         @test same_bits(out[1:g], out[(n + 1):(n + g)])                    # guards filled
         @test same_bits(out[(n + g + 1):end], out[(g + 1):(2g)])
-        @test same_bits(oi, serial_tiled_cumsum(ai, dx, tile))             # the documented order
+        @test same_bits(oi, serial_tiled_cumsum_on(be, ai, dx, tile))      # the documented order, on the same backend
         @test same_bits(out, scan_output(T, n; be)[1])                     # rerun
     end
     # Shapes are checked on the host before any launch.

@@ -78,6 +78,64 @@ function serial_tiled_cumsum(a::Vector{T}, dx, tile) where {T}
     return out
 end
 
+# The documented order as a one-work-item kernel, for the comparison on a device: the device's
+# arithmetic (it fuses multiply-adds) differs from the host's, so the device scan is compared
+# with the documented order run on the same device (WP-013, T-190).
+@kernel function serial_tiled_kernel!(out, @Const(a), dx, tile::Int32)
+    T = eltype(out)
+    n = Int32(length(a))
+    nt = cld(n, tile)
+    r(k) = ((k - Int32(1)) * tile + Int32(1)):min(k * tile, n)
+    function tsum(v, k)
+        s = zero(T)
+        for j in r(k)
+            s += v[j]
+        end
+        return s
+    end
+    @inbounds begin
+        t = tsum(a, Int32(1))
+        for k in Int32(2):nt
+            t += tsum(a, k)
+        end
+        ā = t / T(n)
+        for k in Int32(1):nt
+            acc = zero(T)
+            for j in r(k)
+                acc += (a[j] - ā) * dx
+                out[j] = acc
+            end
+        end
+        if nt > Int32(1)
+            off = out[last(r(Int32(1)))]
+            for k in Int32(2):nt
+                total = out[last(r(k))]
+                for j in r(k)
+                    out[j] += off
+                end
+                off += total
+            end
+        end
+        t = tsum(out, Int32(1))
+        for k in Int32(2):nt
+            t += tsum(out, k)
+        end
+        Ē = t / T(n)
+        for j in Int32(1):n
+            out[j] -= Ē
+        end
+    end
+end
+
+"`serial_tiled_cumsum` on `be`: the host function on the CPU, `serial_tiled_kernel!` on a device."
+serial_tiled_cumsum_on(::CPU, a, dx, tile) = serial_tiled_cumsum(a, dx, tile)
+function serial_tiled_cumsum_on(be, a, dx, tile)
+    out = KernelAbstractions.allocate(be, eltype(a), length(a))
+    serial_tiled_kernel!(be)(out, todev(be, a), dx, Int32(tile); ndrange = 1)
+    KernelAbstractions.synchronize(be)
+    return Array(out)
+end
+
 # The spike's q·w deposition kernels (WP-010, `src/transfers.jl` at the commit before WP-011),
 # copied verbatim as the oracle of T-174's bitwise check of the default quantity.
 @kernel function spike_deposit_atomic_kernel!(ρ, s, shape::Shape{P}, stagger, g::Int32) where {P}

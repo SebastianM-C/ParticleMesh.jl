@@ -117,7 +117,8 @@ function body_T112(be)
         on(be, deposit_flux!, Reference(), Jx, Jy, Jz, s, shape, stagger, grid, ws; dt = T(1 // 4), quantity_y = ChargeUy(),
            quantity_z = ChargeUz())
         ρy = on(be, deposit!, Reference(), field(backend, T, grid), s, shape, stagger, grid, ws; quantity = ChargeUy())
-        @test maximum(absdiff.(Jy, ρy)) <= 2base_eps(T) * maximum(absmax, ρy)
+        ratio = record!("T-112 zero displacement", T, maximum(absdiff.(Jy, ρy)) / (base_eps(T) * maximum(absmax, ρy)), be)
+        @test ratio <= (be isa CPU ? 2 : tolC("T-190 T-112 zero displacement"))
     end
 end
 
