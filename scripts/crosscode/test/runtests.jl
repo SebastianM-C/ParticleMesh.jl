@@ -172,7 +172,9 @@ end
     @test count("git clone", recipe) == 2
     @test !occursin(r"\b(master|main|develop)\b", recipe)
     # the CUDA series is fixed and checked against the installed nvcc
-    @test occursin(r"ARG CUDA_SERIES=\d+-\d+\n", recipe)
+    series = match(r"ARG CUDA_SERIES=(\d+)-(\d+)\n", recipe)
+    release = match(r"ARG CUDA_RELEASE=(\d+)\.(\d+)\n", recipe)
+    @test series !== nothing && release !== nothing && series.captures == release.captures
     @test occursin("grep -q \"release \${CUDA_RELEASE}\"", recipe)
     @test isfile(joinpath(CC, "containers", "picongpu", "pm-versions.sh"))
 end

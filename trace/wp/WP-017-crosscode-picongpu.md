@@ -94,7 +94,7 @@ Test ids T-250 to T-259.
 - T-250 unit conversion to PIConGPU [A1, WP-017]: the generated `.param` values for a case reproduce hand-computed SI values for density, cell size, time step, the reference wavelength and the perturbation.
 - T-251 the oblique profile in both generators [A5, WP-017]: for `landau-oblique-2d.toml`, PIConGPU's generated density profile and the Smilei profile from WP-019's generator agree at the cell centres to roundoff. Schema-2 parsing is WP-019's T-270.
 - T-252 openPMD reader [WP-017]: small files written by the test in PIConGPU's 1D and 2D openPMD layout are read into the documented schema and values.
-- T-253 the PIConGPU recipe is pinned [A6, WP-017]: the `FROM` line names a digest, and PIConGPU is fetched at a tag or commit, never a branch.
+- T-253 the PIConGPU recipe is pinned [A6, WP-017]: every `FROM` line names a digest, PIConGPU and openPMD-api are each cloned at a release tag and checked against a 40-hex commit, never a branch, and the CUDA series agrees with the CUDA release checked against the installed `nvcc`.
 - T-254 quasi-1D equivalence [A5, WP-017]: the quasi-1D deck has the same per-x-column particle count, density and perturbation as the 1D case, read back from the generated files.
 - The ensemble observable's commit precedes every run commit of this package, and WP-019's pre-registered entries are unchanged on the diff.
 - The runs, manifests, plots, sidecars, report, review and both question files are in the PR, or the runs are marked absent with the image question.
