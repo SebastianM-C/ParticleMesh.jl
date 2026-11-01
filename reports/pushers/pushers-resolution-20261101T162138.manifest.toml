@@ -1,0 +1,36 @@
+commit = "822245e55bf670dab498c17fcd2c8dadbcf552e5"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = false
+julia = "1.13.3"
+run_id = "pushers-resolution-20261101T162138"
+test = "T-243"
+threads = 4
+updated = "2026-11-01T16:21:39.004Z"
+work_package = "WP-016"
+
+[inputs]
+"Manifest.toml" = "sha256:61cc5b9e0d0d0f68b4e26697008438369899d1d11952454f5c377e410cd571f9"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:b4d128eb9f35809f9ed01d1810bc54020c3680ec2d46b13caf780c295d975a60"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:445a7e6099d93bbcbeae425b92f1f8942d7c1664b3431a56e02af083c92b0509"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:8882d7203bc6e0ffccb1948ec684b53d099b649c6b1818f740e30ac555f12ce8"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:f14ead5a5742a924efc0727845bb5f56c040ddd4aca7665a1dd12e702bb0b572"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:bb71a54cc94eddbf752940ea77440657c98191ade740a57c8baad13d49837d40"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:ed8a5656ef169aef8c591c3ff890f8d308171b7986407eaefe1f4f8342b8ae5a"
+"scripts/Manifest.toml" = "sha256:dc9a0bad46f018173171d0445c350c1afa2bb3a60a7d3b1f9828596496e82a3b"
+"scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+"scripts/pushers/resolution/scan.jl" = "sha256:4dc51453c5dbf926f431dde946ee0b857aaebf8cf486d2ecfad6cf8bde4299ee"
+
+[parameters]
+a0 = [1.0, 2.0, 5.0, 10.0]
+lwfa_steps = "0.95 of the 2D Courant limit, Δy = 4Δx, N_λ ∈ {16, 24, 32, 48, 64} cells per wavelength along x"
+omega0_dt = [0.4, 0.28284271247461906, 0.2, 0.14142135623730953, 0.1, 0.07071067811865477, 0.05, 0.03535533905932738, 0.025, 0.01767766952966369, 0.0125]
+qm = -1
+tolerances = [0.001, 0.01]
+
+    [parameters.gordon_hafizi]
+    a0 = 10
+    omega0_ds = 0.1
+    steps = 63

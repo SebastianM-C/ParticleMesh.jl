@@ -112,13 +112,13 @@ status = "proposed"
 ["T-231"]
 quantity = "uniform Bz, E = 0: | |u| − |u₀| | (C) and the gyrophase error against the pusher's closed-form angle per step (C_phase); the relative error of the Eq. 20 γ (Vay, Higuera–Cary) against BigFloat for |τ| from 1/2 to 10³ (C_eq20, scale eps(T))"
 scale = "steps·|u₀|; steps (radians); 2000 steps of Δt = 1/10 in B = 2, |u₀| ∈ {0.1, 1, 10}, u ⊥ B and (|u| only) u with a component along B"
-C = { Boris = 2, Vay = 3, HigueraCary = 2, BorisExactRotation = 2 }
-C_phase = { Boris = 1, Vay = 20, HigueraCary = 1, BorisExactRotation = 3 }
+C = { Boris = 2, Vay = 2, HigueraCary = 2, BorisExactRotation = 2 }
+C_phase = { Boris = 1, Vay = 2, HigueraCary = 1, BorisExactRotation = 1 }
 C_eq20 = 2
-measured = { Boris = 0.716, Vay = 1.33, HigueraCary = 0.667, BorisExactRotation = 0.559 }
-measured_phase = { Boris = 0.268, Vay = 9.42, HigueraCary = 0.434, BorisExactRotation = 1.32 }
+measured = { Boris = 0.716, Vay = 0.716, HigueraCary = 0.667, BorisExactRotation = 0.559 }
+measured_phase = { Boris = 0.268, Vay = 0.628, HigueraCary = 0.434, BorisExactRotation = 0.5 }
 measured_eq20 = 0.599
-status = "proposed; Vay's phase constant is the rounding of its γ⁺ (Eq. 20 applied to u′) accumulating with |u|"
+status = "proposed; Vay and BorisExactRotation re-measured after the #203 rewrites (WP-016)"
 
 ["T-232"]
 quantity = "uniform Ex, B = 0: |uⁿ − (u₀ + (q/m)E₀·nΔt)|"
@@ -131,15 +131,15 @@ status = "proposed"
 ["T-233"]
 quantity = "crossed fields E = E₀ŷ, B = ẑ, E₀ ∈ {0.1, 0.5, 0.9, 0.99}, started at v = E×B/B² (+ v∥ẑ): |uⁿ − u⁰| for Vay and Higuera–Cary"
 scale = "steps·|u⁰|, 10⁴ steps of Δt = 1/10, Float32 and Float64"
-C = { Vay = 2, HigueraCary = 1 }
-measured = { Vay = 0.876, HigueraCary = 0.142 }
+C = { Vay = 1, HigueraCary = 1 }
+measured = { Vay = 0.0781, HigueraCary = 0.142 }
 status = "proposed; the drift errors of Boris and BorisExactRotation are recorded in reports/pushers.md"
 
 ["T-234"]
 quantity = "|det ∂u′/∂u − target|, target 1 (Boris, HigueraCary, BorisExactRotation) or J(u⁻)/J(u⁺) (Vay), the determinant in Float64 of the Jacobian computed in T"
 scale = "eps(T)·|target|, 50 random E, B (|E|, |B| ≤ 2), u directions per γ ∈ {1.1, 10, 100, 1000}, qm_h = −1/20"
-C = { Boris = 3, Vay = 8, HigueraCary = 3, BorisExactRotation = 5 }
-measured = { Boris = 1.5, Vay = 4.0, HigueraCary = 1.5, BorisExactRotation = 2.5 }
+C = { Boris = 3, Vay = 4, HigueraCary = 3, BorisExactRotation = 3 }
+measured = { Boris = 1.5, Vay = 2.0, HigueraCary = 1.5, BorisExactRotation = 1.5 }
 status = "proposed; no growth with γ up to 10³"
 
 ["T-235"]

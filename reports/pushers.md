@@ -1,4 +1,4 @@
-# WP-015: swappable relativistic pushers against exact orbits
+# WP-015 and WP-016: swappable relativistic pushers against exact orbits, and their resolution in the laser
 
 | | |
 |---|---|
@@ -8,6 +8,10 @@
 | Input hashes | SHA-256 of every input (module sources, the script, both manifests) in `pushers/pushers-energy-20261101T100328.manifest.toml` |
 | Environment | Julia 1.13.3, CPU only; the energy run used 4 threads on an Intel Xeon at 2.80 GHz (cloud container); the numbers are single-particle and do not depend on the thread count |
 | Figures | `pushers/energy_{hc_py1.625,hc_py1.775,qin_nonrelativistic,qin_relativistic}.png` with their JSON sidecars; `pushers/pushers-energy-20261101T100328.summary.json` |
+| Work package, resolution | WP-016 (goals A1, A2, A7, A8): section 4 and the recommendation in section 5 |
+| Commits, resolution | code, tests and scan script: `822245e55bf670dab498c17fcd2c8dadbcf552e5`, the scan ran on it with a clean tree |
+| Runs, resolution | `pushers-resolution-20261101T162138` (`scripts/pushers/resolution/scan.jl`); input hashes in `pushers/pushers-resolution-20261101T162138.manifest.toml`; the test numbers of T-240 to T-245 come from `test/pushers_resolution.jl` at the same commit |
+| Figures, resolution | `pushers/resolution_{gamma,canonical,drift,position}.png` and `pushers/gordon_hafizi_a0_10.png`, each with its JSON sidecar; `pushers/pushers-resolution-20261101T162138.summary.json` |
 | Status | measured, not independently reviewed. Every tolerance below is a proposal (A7), held in `lib/ParticleMeshElectromagnetic/test/tolerances.toml`. Papers were read in arXiv:1701.05605v1 (Higuera and Cary), whose equation numbers are used; the journal version was not read |
 
 ## 1. Setup
@@ -24,20 +28,19 @@ There are four pushers, `Boris`, `Vay`, `HigueraCary` and `BorisExactRotation`. 
 
 ### Exactness and structure (T-231 to T-234)
 
-Each entry is the largest measured err/(eps(T)·scale) over Float32, Float64 and `Dual{Float32,3}`, with the proposed C in brackets. The scales are given in `tolerances.toml`.
+Each entry is the largest measured err/(eps(T)·scale) over Float32, Float64 and `Dual{Float32,3}`, with the proposed C in brackets. The scales are given in `tolerances.toml`. The Vay and exact-rotation entries are measured after WP-016's rounding fixes (section 4), at the resolution commit; the other entries did not change.
 
 | | Boris | Vay | Higuera–Cary | Exact rotation |
 |---|---|---|---|---|
-| T-231 \|u\| in uniform B, per step | 0.72 [2] | 1.33 [3] | 0.67 [2] | 0.56 [2] |
-| T-231 gyrophase against the closed form, per step | 0.27 [1] | 9.4 [20] | 0.43 [1] | 1.3 [3] |
+| T-231 \|u\| in uniform B, per step | 0.72 [2] | 0.72 [2] | 0.67 [2] | 0.56 [2] |
+| T-231 gyrophase against the closed form, per step | 0.27 [1] | 0.63 [2] | 0.43 [1] | 0.50 [1] |
 | T-232 u in uniform E, per step | 0.42 [1] | 0.18 [1] | 0.42 [1] | 0.42 [1] |
-| T-233 stays at E×B/B², per step (Float32, Float64) | (drifts, below) | 0.88 [2] | 0.14 [1] | (drifts, below) |
-| T-234 det ∂u′/∂u against target, γ ≤ 10³ | 1.5 [3] | 4.0 [8] | 1.5 [3] | 2.5 [5] |
+| T-233 stays at E×B/B², per step (Float32, Float64) | (drifts, below) | 0.078 [1] | 0.14 [1] | (drifts, below) |
+| T-234 det ∂u′/∂u against target, γ ≤ 10³ | 1.5 [3] | 2.0 [4] | 1.5 [3] | 1.5 [3] |
 
 - T-231's closed-form angles are 2·atan(ΩΔt/2γ) for Boris and Vay, ΩΔt/γ for the exact rotation, and 2·atan(β/γ_new) for Higuera–Cary. All four hold to roundoff.
-- Vay's larger phase constant is rounding in its γ⁺ accumulating as |u| wanders. It is not a scheme error: the first-step angle is within 0.1 eps for every pusher.
 - Higuera–Cary written as a midpoint, as in the paper, measured 1.6 for |u| and 14 for the phase. The module writes it in Boris's rotation form, the same map in exact arithmetic (`questions/wp-015-pusher-choices.md` §2).
-- T-234: the determinant is 1 for Boris, Higuera–Cary and the exact rotation. For Vay it is J(u⁻)/J(u⁺) with J(u) = 1 + (τ² + (u·τ)²)/γ⁴, derived in the test header and identical to Higuera and Cary's Eq. 41 (their β is τ). Neither constant grows with γ up to 10³. Over 1000 steps in constant fields, the product of Vay's determinants equals J(u⁰)/J(u¹⁰⁰⁰) to 2 eps in Float64 and 67 eps in Float32, and differs from 1 by 4·10⁻⁵.
+- T-234: the determinant is 1 for Boris, Higuera–Cary and the exact rotation. For Vay it is J(u⁻)/J(u⁺) with J(u) = 1 + (τ² + (u·τ)²)/γ⁴, derived in the test header and identical to Higuera and Cary's Eq. 41 (their β is τ). Neither constant grows with γ up to 10³. Over 1000 steps in constant fields, the product of Vay's determinants equals J(u⁰)/J(u¹⁰⁰⁰) to 6 eps in Float64 and 57 eps in Float32, and differs from 1 by 4·10⁻⁵.
 
 ### Uniform E: position error (T-232)
 
@@ -143,18 +146,156 @@ The extension is `ParticleMeshElectromagneticOrdinaryDiffEqCoreExt`, with weak d
 
   Neither is needed for the in-loop push, which stays a KernelAbstractions kernel (`sciml-reuse.md` §1).
 
-## 4. Recommendation (a proposal against A2, for the owner)
+## 4. Resolution in the laser (WP-016)
 
-The measurements give no reason to move the default away from Boris now.
+### The quadratic-unitary pusher (T-240 to T-242, T-244)
 
-- In the structural tests, Higuera–Cary matches Boris: |u|, phase and volume to roundoff. It also fixes the relativistic E×B drift exactly, and it has the smallest figure-8 closure error at a₀ = 2. For one extra square root, it is the candidate to replace Boris as the default once WP-016's a₀·ω₀Δt scan confirms the advantage at laser resolution.
-- Vay is not volume-preserving. It has the largest closure error at a₀ = 2, and on Higuera and Cary's integrable system its energy error is 60× the others' and it loses the invariant I_y.
-- The exact rotation removes the phase error but makes the E×B drift worse. It needs the series switch to stay smooth for duals. It is not a default candidate.
-- All four are equally smooth for AD (A2's tie-break): T-234 and T-237 run duals through them with finite derivatives, including at B = 0.
+`QuadraticUnitary` is Gordon and Hafizi's Eq. 18 (arXiv:2006.10146v1), expanded into real arithmetic in `quadratic_unitary_step`. The expansion agrees with the complex 2×2 spinor form ζ′ = ΛζΛ† to 4·10⁻¹⁵ relative, over 1000 random states and fields in Float64 (a check during development, not a test). Its proper-time step comes from their Eq. 22 at the incoming momentum: κ = (q/m)Δs/2 = (qm_h/γ)(1 − qm_h(E·u)/γ²). Choices and their reasons are in `questions/wp-016-resolution-choices.md`.
 
-Proposed edit of A2, after WP-016: "Boris, or Higuera–Cary where WP-016 shows the gain, with half-step momentum centring". This is not part of this package.
+What the tests measure, as err/(eps(T)·scale), the largest over Float32, Float64 and `Dual{Float32,3}`, with the proposed C in brackets:
 
-## 5. Open items
+| | measured [C] |
+|---|---|
+| T-241 Minkowski norm γ² − \|u\|² − 1 with γ carried, random uniform fields | 2.46 [5] |
+| T-241 \|u\| for E = 0, per step | 0.72 [2] |
+| T-241 gyrophase against 4·atan(ΩΔt/(4γ)), per step | 1.29 [3] |
+| T-241 γ − u_z − 1 along the figure-8, per step, scale γ_max | 0.042 [0.1] |
+| T-242 stays at E×B/B², per step (Float32, Float64) | 0.096 [0.2] |
 
-- WP-016 adds the quadratic-unitary pusher and the resolution rule to this report.
+- **Gyrophase.** In uniform B the angle per step is 4·atan(ΩΔt/(4γ)), derived in the header of `test/pushers_resolution.jl`. Its error against the exact ΩΔt/γ is (ΩΔt/γ)³/48, a quarter of Boris's (ΩΔt/γ)³/12.
+- **The plane wave.** The fields at the particle are a null field, so Λ is the exact operator and every step preserves γ − u_z, whatever Δs is. Along the discrete orbit γ − u_z = 1 holds to roundoff.
+- **Crossed fields.** With E·B = 0, Λ is the exact operator of the same field over a rescaled step. A particle at E×B/B² therefore stays there to roundoff, like Vay and Higuera–Cary. The relative drift error is ≤ 1.9·10⁻¹³ in Float64.
+- **Uniform E.** Here the update is not exact, unlike Boris, Vay and Higuera–Cary. The relative u error at t ≈ 10 is 3.2·10⁻⁷ at ω₀Δt = 0.025, with order 1.85 on the last pair. The position error from the exact x¹ᐟ² start is 1.0·10⁻⁴, 5× that of the other four (T-232), with order 2.0.
+- **The slot.** T-240 runs the Landau case with `QuadraticUnitary`, bitwise reproducibly. T-237 checks that `solve` with `pusher_algorithm(QuadraticUnitary())` gives the same bits as `push_particle`.
+
+### Float32 at weak rotation (T-245, #203)
+
+The setup has t² = (qm_h·B/γ)² = 6.25·10⁻⁸ < eps(Float32), uniform B ⊥ u, and 4·10⁴ steps. T-245 bounds |Δ|u||/(eps·|u₀|·√N) at N = 10⁴ and 4·10⁴:
+
+| | Boris | Vay | Higuera–Cary | Exact rotation | Quadratic-unitary |
+|---|---|---|---|---|---|
+| before the fixes, N = 10⁴ (#203's reproducer) | 0.16 | 39 | 0.15 | 13 | – |
+| after, max over both setups and both N | 0.24 | 0.39 | 0.22 | 0.24 | 0.22 |
+
+The proposed C is 1. A linear drift of 0.01 eps per step reaches 1.0 at N = 10⁴ and 2.0 at 4·10⁴, so it fails.
+
+- **Vay.** `1 + t²` rounds, and dividing the whole vector by it changes |u| by the same relative amount every step. The increment form from #203, u′ + ((u′·t)t + u′×t − t²u′)/(1 + t²), rounds only the small correction.
+- **Exact rotation.** Rodrigues' formula multiplies u⁻ by the rounded cos θ ≈ 1. Writing it as an increment with cos θ − 1 = −kθ² did not remove the drift: 1200 eps over 10⁴ steps, against 1300 before. What removes it is the same rotation in Boris's two-cross-product form, u⁻ + (u⁻ + u⁻×t)×s with t = tan(θ/2)·ŵ and s = sin θ·ŵ. That form is the Cayley transform at the exact half angle, and it rounds like Boris. It is used for θ² < 1, and Rodrigues' formula above, where tan(θ/2) is unbounded at θ = π. The map is unchanged in exact arithmetic.
+- **Effect on WP-015's values.** The fixes also lower Vay's constants in T-231 (|u| 1.33 → 0.72, gyrophase 9.4 → 0.63), T-233 (0.88 → 0.078) and T-234 (4.0 → 2.0), and the exact rotation's in T-231 (gyrophase 1.3 → 0.50) and T-234 (2.5 → 1.5). The tables of section 2 carry the new values, and their proposed C are tightened to about twice them. Vay's former phase constant was this same rounding accumulating with |u|. Every T-230 to T-237 test passes, and T-235 and T-236 change only in rounding.
+
+### The figure-8 scan (T-243 and `scripts/pushers/resolution/scan.jl`)
+
+The scan runs one figure-8 period (T-235's orbit) for a₀ ∈ {1, 2, 5, 10} and ω₀Δt from 0.4 to 0.0125 in steps of √2, in Float64. It measures four relative errors:
+
+- γ − u_z, whose exact value is 1;
+- u_x + qA_x, relative to a₀;
+- the drift velocity over the period, against a₀²/(4 + a₀²);
+- the position after the period, against (0, 0, πa₀²/2) and relative to πa₀²/2.
+
+Over one period the drift error is the z component of the position error.
+
+![](pushers/resolution_position.png)
+
+The errors at two steps (relative):
+
+| ω₀Δt | a₀ | error | Boris | Vay | Higuera–Cary | Exact rotation | Quadratic-unitary |
+|---|---|---|---|---|---|---|---|
+| 0.1 | 2 | γ − u_z | 6.5·10⁻⁴ | 2.6·10⁻³ | 1.3·10⁻³ | 1.9·10⁻³ | 9·10⁻¹⁶ |
+| | | u_x + qA_x | 1.1·10⁻³ | 2.8·10⁻⁴ | 1.4·10⁻³ | 1.4·10⁻³ | 2.0·10⁻³ |
+| | | position | 1.5·10⁻³ | 7.8·10⁻³ | 2.8·10⁻⁴ | 1.7·10⁻³ | 2.1·10⁻³ |
+| 0.1 | 10 | γ − u_z | 3.2·10⁻² | 8.5·10⁻² | 3.9·10⁻² | 5.4·10⁻² | 7·10⁻¹⁵ |
+| | | u_x + qA_x | 5.6·10⁻³ | 1.0·10⁻⁴ | 8.5·10⁻³ | 8.4·10⁻³ | 1.7·10⁻² |
+| | | drift | 5.5·10⁻³ | 8.4·10⁻³ | 5.3·10⁻³ | 5.7·10⁻³ | 2.1·10⁻³ |
+| | | position | 2.2·10⁻² | 4.5·10⁻² | 2.2·10⁻² | 2.6·10⁻² | 6.0·10⁻³ |
+| 0.025 | 10 | γ − u_z | 2.0·10⁻³ | 5.2·10⁻³ | 2.6·10⁻³ | 3.3·10⁻³ | 1.4·10⁻¹⁴ |
+| | | drift | 1.8·10⁻³ | 2.7·10⁻³ | 1.7·10⁻³ | 1.9·10⁻³ | 4.8·10⁻⁵ |
+| | | position | 3.1·10⁻³ | 6.2·10⁻³ | 2.9·10⁻³ | 3.3·10⁻³ | 5.5·10⁻⁵ |
+
+The full grid is in `pushers/pushers-resolution-20261101T162138.summary.json`. One sidecar per error holds the plotted values.
+
+**Orders.**
+- The two invariant errors have order 2 within 0.15 wherever a₀·ω₀Δt ≤ 1/2, for every pusher. The exception is `QuadraticUnitary`'s γ − u_z, which is roundoff. The largest deviation is `QuadraticUnitary`'s u_x + qA_x, which converges from above.
+- The drift and position errors of the four Boris-type pushers converge more slowly at large a₀. At a₀ = 10 their orders over ω₀Δt = 0.2 → 0.025 are 0.6 to 1.5, and order 2 is reached only from ω₀Δt ≈ 0.006 on. At a₀·ω₀Δt = 0.25, a₀ = 5 is already at order 1.9 and a₀ = 10 at 1.1. So a₀·ω₀Δt does not alone set their asymptotic range.
+- T-243 asserts their order on Δt down to 0.2/2⁷, where a₀·ω₀Δt ≤ 1/16; the largest deviation there is 0.17.
+- Boris's drift error at a₀ = 1 is 10 to 100 times below the others' and has irregular orders at large Δt. This looks like a cancellation between error terms, as Vay's closure at a₀ = 1/2 in T-235. It is not a general advantage.
+
+**Where each pusher stands.**
+- **Boris, Higuera–Cary and the exact rotation** are within a factor 2.8 of each other at a₀ ≥ 5 on every error for ω₀Δt ≤ 0.05, and within 6 over the whole grid.
+- **Higuera–Cary** has the smallest drift and position errors at a₀ ≤ 2 among the lab-time pushers: 5× below Boris at a₀ = 2. Boris has the smallest γ − u_z error of the four. At a₀ ≥ 5, Higuera–Cary's errors are at most 2.2× Boris's, and Boris's are up to 4.6× Higuera–Cary's.
+- **Vay** has by far the smallest u_x + qA_x error, but the largest γ − u_z, drift and position errors.
+- **Quadratic-unitary** holds γ − u_z exactly. At a₀ = 10 its drift and position errors fall fastest: 35 to 110× below the others at ω₀Δt = 0.025. At a₀ ≤ 2, though, its drift error is 7 to 9× Higuera–Cary's at ω₀Δt = 0.025, and its u_x + qA_x error is the largest of the five at ω₀Δt = 0.1.
+
+### Thresholds
+
+For each pusher and error, the threshold is the largest scanned a₀·ω₀Δt such that every scanned point at or below it, over all four a₀, stays below the tolerance. The grid is √2-spaced, so a threshold is conservative by up to √2. The table gives the most restrictive of the four errors (`QuadraticUnitary`'s γ − u_z has no threshold). In brackets: the largest ω₀Δt at a₀ = 10 for which the run and every smaller step pass, with 0 meaning none on the grid.
+
+| tolerance | Boris | Vay | Higuera–Cary | Exact rotation | Quadratic-unitary |
+|---|---|---|---|---|---|
+| 10⁻³ | 0.14 [0.0125] | 0.071 [0] | 0.14 [0.0125] | 0.10 [0] | 0.088 [0.025] |
+| 10⁻² | 0.40 [0.05] | 0.25 [0.025] | 0.40 [0.035] | 0.40 [0.035] | 0.25 [0.071] |
+
+- **What limits each pusher.** Boris, Higuera–Cary and the exact rotation are limited at 10⁻³ by γ − u_z, drift and position alike. Vay is limited by drift and position. Quadratic-unitary is limited by drift and position at a₀ ≤ 2.
+- **a₀·ω₀Δt as a variable.** It collapses γ − u_z within about a factor 2 across a₀. It does less well for the drift of the Boris family at a₀ ≥ 5, and not at all for quadratic-unitary, whose drift error falls with a₀ at fixed a₀·ω₀Δt.
+
+### Gordon and Hafizi's diagnostic
+
+Their run is a₀ = 10 with 63 constant proper-time steps of ω₀Δs = 0.1, which is a constant phase step, about one period. The lab-time pushers take lab steps from the inverse of their Eq. 22, Δt = γΔs + (q/m)(E·u)Δs²/2, as theirs do. `QuadraticUnitary` runs twice:
+- as the module calls it, with a lab Δt and Eq. 22 inside;
+- as they run it, in proper time with the world line leapfrogged (their Eq. 20, γ carried).
+
+The reference is the closed form, with η found from t by Newton's method.
+
+![](pushers/gordon_hafizi_a0_10.png)
+
+| | Boris | Vay | Higuera–Cary | Exact rotation | Quadratic-unitary, lab Δt | Quadratic-unitary, proper time |
+|---|---|---|---|---|---|---|
+| max \|γ − u_z − 1\| | 1.41 | 0.27 | 0.096 | 0.55 | 4·10⁻¹⁵ | 7·10⁻¹⁵ |
+| max \|u_x + qA_x\|/a₀ | 0.20 | 0.005 | 0.044 | 0.11 | 0.11 | 4·10⁻⁴ |
+| max distance from the exact orbit / (πa₀²/2) | 0.084 | 0.082 | 0.027 | 0.10 | 0.060 | 8·10⁻⁴ |
+
+- **At their resolution their verdict holds.** Boris and Vay are far off: Boris's γ − u_z error exceeds 100 %. Higuera–Cary is visibly off. Quadratic-unitary run in proper time follows the exact orbit to 10⁻³.
+- **The advantage needs the proper-time step.** Run through a lab step and Eq. 22, as a PIC code must, quadratic-unitary is off by 6 % in position. The steps are up to ω₀Δt ≈ 5 where γ ≈ 50, and Eq. 22's second-order inversion is the error at those steps.
+- **At PIC resolution the verdict softens.** With a fixed lab step, quadratic-unitary is still the best at a₀ = 10 on drift and position, by 2.5 to 7.5× at ω₀Δt = 0.1 and by 35 to 110× at 0.025. At ω₀Δt = 0.2 all five are within a factor 2 of each other on position: 4 to 6·10⁻² at a₀ = 10.
+
+### Applied to LWFA time steps
+
+A5's 2D LWFA case is not specified yet: it has no a₀, resolution or Δt. The steps below are therefore representative, not planned ones: 0.95 of the 2D Courant limit with Δy = 4Δx, for N_λ cells per laser wavelength along x. This gives ω₀Δt ≈ 5.79/N_λ.
+
+| N_λ | ω₀Δt | a₀·ω₀Δt at a₀ = 1 | 2 | 3 | 5 | 10 |
+|---|---|---|---|---|---|---|
+| 16 | 0.36 | 0.36 | 0.72 | 1.09 | 1.81 | 3.6 |
+| 24 | 0.24 | 0.24 | 0.48 | 0.72 | 1.21 | 2.4 |
+| 32 | 0.18 | 0.18 | 0.36 | 0.54 | 0.90 | 1.8 |
+| 48 | 0.12 | 0.12 | 0.24 | 0.36 | 0.60 | 1.2 |
+| 64 | 0.090 | 0.090 | 0.18 | 0.27 | 0.45 | 0.90 |
+
+- **The usual resolutions are outside the asymptotic range.** At 16 to 32 cells per wavelength, a₀·ω₀Δt is 0.2 to 1.8 for a₀ = 1 to 5. That is outside the asymptotic range of every pusher, and beyond the 10⁻² threshold for a₀ ≥ 2.
+- **Meeting 10⁻²** per period at a₀ = 2 takes about 48 cells per wavelength. At a₀ = 5 it takes ω₀Δt ≤ 0.05 to 0.07 by the per-a₀ scan, about 80 to 115 cells per wavelength.
+- **What these errors are.** They are one-period errors in an infinite plane wave. An electron crosses a finite pulse in a few periods, and the field it sees is below the peak a₀ for most of them. So these numbers bound the error per period at the peak, not the error of a run.
+
+## 5. Recommendation (a proposal against A2, for the owner)
+
+Higuera–Cary as the default, with a Δt rule in a₀·ω₀Δt next to the CFL condition. Neither is decided by this report.
+
+- **Higuera–Cary** is the most even of the lab-time pushers:
+  - In the structural tests (WP-015) it matches Boris on |u|, phase and volume to roundoff.
+  - It gets the relativistic E×B drift exactly.
+  - In the figure-8 scan it has the smallest drift and position errors at a₀ ≤ 2, and at a₀ ≥ 5 its errors are at most 2.2× Boris's on every error, while Boris's reach 4.6× its own.
+  - It costs one square root more than Boris.
+- **Quadratic-unitary** is the candidate for runs at a₀ ≳ 5:
+  - It holds γ − u_z exactly, and its drift and position errors at a₀ = 10 fall fastest with Δt.
+  - It is worse than Higuera–Cary at a₀ ≤ 2, and not exact in uniform E: a wakefield's E lies along the drift, so this matters for the accelerated electrons.
+  - Its decisive advantage in Gordon and Hafizi's test comes from stepping in proper time, which a PIC step with a global lab Δt cannot do.
+  - Proposed as an option for high-a₀ runs, not as the default.
+- **Vay** keeps the largest drift and position errors, and WP-015's energy and volume findings stand. **The exact rotation** brings no gain at laser resolution. Neither is a default candidate.
+- **A Δt rule (proposal):** keep a₀·ω₀Δt ≤ 0.25 for a one-period figure-8 error below 10⁻² with any of the five pushers, and a₀·ω₀Δt ≤ 0.07 for 10⁻³. Check it next to the CFL condition when a run is planned, as a warning, not an error. These thresholds are measured on the scan grid, not taken from the literature.
+- **AD.** All five are equally smooth for AD (A2's tie-break). T-234, T-237 and T-244 run duals through them with finite derivatives.
+
+Proposed edit of A2: "Higuera–Cary with half-step momentum centring, Boris and quadratic-unitary selectable; the time step satisfies a₀·ω₀Δt ≤ 0.25 at the peak a₀ unless the run states otherwise". This is not part of this package.
+
+## 6. Open items
+
 - The journal version of Higuera and Cary (Phys. Plasmas 24, 052104) was not read. The figures our literature note cites from it (Figs. 3–4, δH ≈ 0.1) and the p_y,0 values are not in arXiv v1.
+- Gordon and Hafizi were read in arXiv:2006.10146v1. The arXiv record lists DOI 10.1016/j.cpc.2020.107628, which was not checked against the journal.
+- The LWFA application should be redone with A5's 2D case once it is specified, and checked in a focused, finite pulse against a high-order reference (a non-goal of WP-016).
+- WP-016's results have not been independently reviewed.
