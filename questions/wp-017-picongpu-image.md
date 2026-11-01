@@ -4,7 +4,7 @@ Work package: `trace/wp/WP-017-crosscode-picongpu.md`, deliverable 0, done ahead
 
 ## 1. The image has to be built by the owner
 
-Sessions cannot build images. To answer: build it with `crosscode-image <worktree> picongpu` from the worktree of the PR (or from `main` once it merges), and note the tag and image id here or on the PR.
+Sessions cannot build images. The runner expects `localhost/particlemesh-picongpu:a743cbb40f17cdae` for this recipe; a smoke request (tag `picongpu-recipe-smoke-1`) was refused with "image ... is not built", as expected. To answer: build it with `crosscode-image <worktree> picongpu` from the worktree of the PR (or from `main` once it merges), and note the image id here or on the PR.
 
 Two steps of the recipe could not be tried from the factory sandbox, which reaches only GitHub and the Julia servers:
 
