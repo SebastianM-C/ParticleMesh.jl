@@ -132,6 +132,11 @@ end
                 @test all(isfinite, components(g))
                 worst = max(worst, Float64(abs(value_of(g) - ex) / ex) / base_eps(T))
             end
+            # B = 0: γ(u) itself, and both select branches finite (the unused one included)
+            u = (seeded(T, V(3) / 10), zero(T), zero(T))
+            z = (zero(T), zero(T), zero(T))
+            @test value_of(eq20(u, z)) ≈ value_of(lorentz_factor(u))
+            @test all(isfinite, components(eq20(u, z)))
             record!("T-231 Eq. 20 γ", T, worst)
             @test worst <= EMTOL["T-231"]["C_eq20"]
         end
