@@ -4,7 +4,7 @@
 |---|---|
 | Work package | WP-019 (goals A1, A5, A6, A7) |
 | Runs | `smilei-landau-oblique-2d-c8709f77`, `smilei-weibel-2d-dca1230a` |
-| Commit of the inputs | `310c2ee63b0c56d0c661091d878878e7767fa8b2` (clean tree, recorded in each `manifest.toml`); the case files and their observables were fixed in that commit, before the runs |
+| Commit of the inputs | `310c2ee63b0c56d0c661091d878878e7767fa8b2` (clean tree, recorded in each `manifest.toml`); the case files and their observables were fixed in that commit, before the runs. It and the analysis commit below are on the branch `wp-019-runs-provenance`, the history before the PR was rebased onto `main`; the PR's commits carry the same content under new ids |
 | Case hashes (SHA-256) | `landau-oblique-2d.toml` `c8709f77…` and `weibel-2d.toml` `dca1230a…`; full hashes in each run's `manifest.toml` under `inputs` |
 | Code | Smilei v5.1, commit `438d43d8ab727d02dd8f4402c50393343e871b99`, CPU build; image `localhost/particlemesh-smilei:e4f0148b8952fc87`, id `7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c`, from `scripts/crosscode/containers/smilei.Containerfile` (unchanged since WP-003) |
 | Hardware | Intel Core i9-14900K; OpenMP with one thread per patch (4 × 4 patches, 16 threads), one MPI rank |
