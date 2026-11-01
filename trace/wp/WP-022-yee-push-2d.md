@@ -26,11 +26,11 @@ The first half of `docs/plan/architecture-draft.md` §0.8 item 5, cut so that it
 - The 2D push: gather all six components at their staggers (engine `gather!` at N = 2), any pusher of `pushers.jl` unchanged, positions advanced through the engine. The current deposition call is left for WP-023: this package's step may take `J = 0` or a prescribed J.
 - Bx is a dynamic component at N = 2: the 2D Yee update advances it and fills its guards (the 1D `yee_b_half!` leaves Bx untouched and never fills its guards, harmless only while Bx stays zero).
 - Diagnostics that take a wave vector: electrostatic energy Σ(Ex² + Ey²), magnetic and electric energies, mode amplitude as the projection on k. They run as a parallel reduction with a fixed association order, not as the 1D single-work-item kernel (`diagnostics.jl`), whose 3·n sin/cos per step would cost milliseconds on 2D grids of about 10⁶ cells (an estimate from the review of `b714331`).
-- The kinetic energy is a deterministic per-particle reduction (for example per-cell sums over the sort's segment bounds, then over cells in order), not a deposition onto the grid: only its total is used, and the review of `b714331` measured the deposition at 17.3 ns per particle against 1.1 ns for a plain particle sum (CPU, 1 thread), about 11 % of the 1D Reference step. The 1D method may switch as well; the PR states any bits of T-218 that change.
+- The kinetic energy is a deterministic per-particle reduction (for example per-cell sums over the sort's segment bounds, then over cells in order), not a deposition onto the grid: only its total is used, and the review of `b714331` measured the deposition at 17.3 ns per particle against 1.1 ns for a plain particle sum (CPU, 1 thread), about 11 % of the 1D Reference step (unverified: no run manifest or JSON of the review's timings is in the repository). The 1D method may switch as well; the PR states any bits of T-218 that change.
 
 ## Acceptance
 
-Tests T-320 to T-326, Float32, Float64 and `Dual{Float32,3}` where they apply:
+Tests T-320 to T-327, Float32, Float64 and `Dual{Float32,3}` where they apply:
 
 - T-320 vacuum plane wave at an oblique angle [A2, A7, WP-022]: the measured phase velocity matches the Yee numerical dispersion relation (closed form, stated in the test) to a tolerance set from a resolution pair, not from eps.
 - T-321 ∇·B stays at its initial value to C·eps(T) scaled by n and steps; ∇·E is unchanged with J = 0 [A2, A7, WP-022].
@@ -38,8 +38,8 @@ Tests T-320 to T-326, Float32, Float64 and `Dual{Float32,3}` where they apply:
 - T-323 2D reduces to 1D: a y-invariant field state evolves as the 1D solver to C·eps(T) [A7, WP-022].
 - T-324 single particle in prescribed fields [A2, WP-022]: gyration in uniform Bz and E×B drift with uniform Ex, Bz match the closed forms of the pusher used (as T-230 to T-237 do in 1D), and an oblique uniform E accelerates along E in both axes, so a transposed stagger fails.
 - T-325 the gather picks each component at its own stagger: a field linear in x and y per component is reproduced at every particle to C·eps(T) [A7, WP-022].
-- T-327 the 2D diagnostics and the kinetic-energy reduction are bitwise across reruns, thread counts and two `workgroupsize` values, and equal a serial sum to C·eps(T)·count [A4, A7, WP-022].
 - T-326 `Dual` through one vacuum step and one push, primal bitwise equal to the Float32 run [A8, WP-022].
+- T-327 the 2D diagnostics and the kinetic-energy reduction are bitwise across reruns, thread counts and two `workgroupsize` values, and equal a serial sum to C·eps(T)·count [A4, A7, WP-022].
 - T-210 to T-221, T-230 to T-237 and the harness tests pass unchanged. `build.jl --check` passes; CPU CI green.
 
 ## Non-goals
