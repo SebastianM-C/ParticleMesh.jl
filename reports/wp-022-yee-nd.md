@@ -91,4 +91,3 @@ Verified: the staggers of every component at N = 2 in both codes, as quoted. Not
 ## 6. Open items
 
 - No GPU run (WP-022 is CPU only); the kernels follow §0.4 and take `workgroupsize`.
-- The engine docstring of `gradient_periodic!` (`lib/ParticleMeshCore/src/spectral.jl`) still cites §0.8 item 5 for the Yee layout, which now lives in the module's paragraph of §0.7; the package does not change engine code.
