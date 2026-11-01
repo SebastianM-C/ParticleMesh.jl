@@ -26,8 +26,15 @@
                    fill = () -> fill_guards!(ρ, grid), fold = () -> fold_guards!(ρ, grid),
                    cumsum = () -> cumsum_periodic!(E, ρ, grid),
                    load = () -> load_quiet!(s, grid, N1Density(), p, ppc; vth, seed = 1, stream = 1))
+            # The sort sees moved particles, as in a step: a host-side advance by u·dt/dx with
+            # dt = 1 (up to about half a cell) before each sort, outside the measured call.
+            move!() = for i in 1:capacity(s)
+                s.status[i] == ParticleMeshCore.ALIVE || continue
+                s.cell[1][i], s.offset[1][i] = advance(s.cell[1][i], s.offset[1][i], s.u[1][i] * 4, Int32(n))
+            end
             for (name, op) in pairs(ops)
-                op(); op()
+                prep = name === :sort ? move! : () -> nothing
+                prep(); op(); prep(); op(); prep()
                 bytes[(string(name), n, ppc)] = @allocated op()
             end
         end

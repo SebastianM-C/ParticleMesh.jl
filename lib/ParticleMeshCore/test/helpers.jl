@@ -112,3 +112,16 @@ function staggered_divergence(Jx, grid::PeriodicGrid{1})
     n, g, dx = ncells(grid), guards(grid), cellsize(grid)
     return [(Jx[g + j] - Jx[g + mod1(j - 1, n)]) / dx for j in 1:n]
 end
+
+"""
+    CosineDensity()
+
+The density callable `n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x))` for `load_quiet!`: background
+density, relative amplitude and wavenumber.
+"""
+struct CosineDensity end
+@inline (::CosineDensity)(x, p) = p[1] * (1 + p[2] * cos(p[3] * x))
+
+"The stagger at which a shape of order 1 or 2 has its nodes: `Node()` for order 1, `Center()` for order 2."
+natural_stagger(::Shape{1}) = Node()
+natural_stagger(::Shape{2}) = Center()
