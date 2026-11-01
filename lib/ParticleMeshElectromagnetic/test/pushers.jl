@@ -132,11 +132,17 @@ end
                 @test all(isfinite, components(g))
                 worst = max(worst, Float64(abs(value_of(g) - ex) / ex) / base_eps(T))
             end
-            # B = 0: γ(u) itself, and both select branches finite (the unused one included)
-            u = (seeded(T, V(3) / 10), zero(T), zero(T))
+            # B = 0 and |u| = 10⁴ ≫ |τ| (σ ≈ 10⁸, where r − σ rounds to 0 in Float32): the result is
+            # correct and finite with its derivatives; the unused branch's denominator is 1 there by
+            # construction, which a forward-mode result cannot show and the source states
             z = (zero(T), zero(T), zero(T))
-            @test value_of(eq20(u, z)) ≈ value_of(lorentz_factor(u))
-            @test all(isfinite, components(eq20(u, z)))
+            for (u, τ) in (((seeded(T, V(3) / 10), zero(T), zero(T)), z),
+                           ((seeded(T, V(10)^4), zero(T), zero(T)), (zero(T), T(V(1)), zero(T))))
+                g = eq20(u, τ)
+                ex = eq20(big.(Float64.(value_of.(u))), big.(Float64.(value_of.(τ))))
+                @test all(isfinite, components(g))
+                @test Float64(abs(value_of(g) - ex) / ex) <= EMTOL["T-231"]["C_eq20"] * base_eps(T)
+            end
             record!("T-231 Eq. 20 γ", T, worst)
             @test worst <= EMTOL["T-231"]["C_eq20"]
         end

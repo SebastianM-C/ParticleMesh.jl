@@ -125,7 +125,8 @@ The γ of Higuera and Cary's Eq. 20 for momentum `u` and `τ = qm_h·B`: the pos
 γ⁴ − σγ² − q = 0, σ = 1 + u² − τ², q = τ² + (u·τ)². For σ ≥ 0 it is γ² = (σ + √(σ² + 4q))/2;
 for σ < 0 (|τ| > γ(u), ΩΔt/γ > 2) that sum cancels, and the equal form 2q/(√(σ² + 4q) − σ) is
 used instead (q > 0 there). The two are chosen with `ifelse`, a select, not a branch; the
-denominator of the second is kept positive so that the unused value is finite at B = 0.
+second's denominator is itself selected (1 where σ ≥ 0), so the unused value is finite for
+every input.
 """
 @inline function eq20_gamma(u::NTuple{3,T}, τ::NTuple{3,T}) where {T}
     τ² = dot3(τ, τ)
@@ -133,9 +134,11 @@ denominator of the second is kept positive so that the unused value is finite at
     σ = one(T) + dot3(u, u) - τ²
     q = τ² + uτ * uτ
     r = sqrt(σ * σ + 4 * q)
-    # the unused branch must stay finite too: at B = 0 (q = 0, r = σ) it would be 0/0, harmless
-    # for a select in forward mode but NaN in a reverse-mode adjoint
-    return sqrt(ifelse(σ >= zero(T), (σ + r) / 2, 2 * q / max(r - σ, floatmin(T))))
+    # the unused branch must stay finite too (a select evaluates both, and a reverse-mode adjoint
+    # multiplies the unused one's partials by zero): its denominator is selected on the input,
+    # 1 where σ ≥ 0, so 2q/d is finite for every input; where σ < 0, r − σ > −σ > 0
+    d = ifelse(σ >= zero(T), one(T), r - σ)
+    return sqrt(ifelse(σ >= zero(T), (σ + r) / 2, 2 * q / d))
 end
 
 # u⁺ solving u⁺ = v + u⁺ × t: u⁺ = (v + (v·t)t + v×t)/(1 + t²) (the inverse of I − [t]ₓ).
