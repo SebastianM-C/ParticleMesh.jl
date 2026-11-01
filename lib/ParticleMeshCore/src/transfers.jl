@@ -111,7 +111,10 @@ periodic seam; `fold_guards!` moves them into the interior ("deposit into guards
 `Reference()` needs `sort_by_cell!(species, grid, ws)` since the last particle move and is
 bitwise deterministic: one work item per node adds, in increasing cell order and within a cell
 in slot order, the contributions of the cells in its stencil. `Fast()` uses atomics where
-`accumulation` allows them and falls back to `Reference()` otherwise (`effective_mode`). In
+`accumulation` allows them and falls back to `Reference()` otherwise (`effective_mode`), so for
+element types without atomics (`Dual`) `Fast()` also needs the sort: a caller that sorts only
+when needed asks `effective_mode(mode, T) isa Reference`. Without it, the deposition reads the
+segment bounds of the last sort and silently gives a wrong result (#196). In
 both modes `deposit!` is the adjoint of `gather!` with the same weighting, including fill and
 fold (T-132, T-175).
 
@@ -132,6 +135,7 @@ function _deposit!(::Fast, ρ, s, quantity, shape, stagger, grid, ws, workgroups
 end
 
 function _deposit!(::Reference, ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
+    check_workspace(ws, s, grid)
     lo, hi = stencil_reach(shape, stagger)
     launcher(deposit_sorted_kernel!, get_backend(s), workgroupsize)(ρ, s, quantity, ws.seg_start, ws.seg_stop, shape,
                                                                    stagger, Int32(ncells(grid)), Int32(guards(grid)),
@@ -233,6 +237,7 @@ function _deposit_nd!(::Fast, ρ, s, quantity, shape, stagger, grid, ws, workgro
 end
 
 function _deposit_nd!(::Reference, ρ, s, quantity, shape, stagger, grid::PeriodicGrid{N}, ws, workgroupsize) where {N}
+    check_workspace(ws, s, grid)
     r = stencil_reach(shape, stagger)
     lo = ntuple(d -> Int32(r[d][1]), Val(N))
     hi = ntuple(d -> Int32(r[d][2]), Val(N))

@@ -32,11 +32,13 @@ end
     bare = test_species(Float64, grid, 50)
     @test_throws ArgumentError deposit_flux!(Fast(), J, copy(J), copy(J), bare, Quadratic, Center(), grid, Workspace(bare, grid);
                                              dt = 0.25, quantity_y = ChargeUy(), quantity_z = ChargeUz())
-    # A grid of two cells is too small for the stencils, whatever the guards.
-    tiny = PeriodicGrid(2, 0.5, flux_guard_width(Quadratic, Node()))
+    # A grid of two cells is too small for the stencils, whatever the guards: with the guards
+    # the stencil needs, its constructor refuses it (n < 2g, T-340); with one guard, deposit_flux!.
+    @test_throws ArgumentError PeriodicGrid(2, 0.5, flux_guard_width(Quadratic, Node()))
+    tiny = PeriodicGrid(2, 0.5, 1)
     s = moved_species(Float64, tiny, 20; seed = 1)
     J = field(backend, Float64, tiny)
-    @test_throws ArgumentError deposit_flux!(Fast(), J, copy(J), copy(J), s, Quadratic, Node(), tiny, Workspace(s, tiny);
+    @test_throws ArgumentError deposit_flux!(Fast(), J, copy(J), copy(J), s, Linear, Node(), tiny, Workspace(s, tiny);
                                              dt = 0.25, quantity_y = ChargeUy(), quantity_z = ChargeUz())
 end
 

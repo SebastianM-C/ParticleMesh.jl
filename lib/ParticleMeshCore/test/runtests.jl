@@ -17,6 +17,7 @@ include("engine2d_cases.jl")
         include("engine.jl")
         include("flux.jl")
         include("engine2d.jl")
+        include("input_checks.jl")  # T-340 to T-342: input checks and the Float32 draw (#194, #195, #201)
         include("switch.jl")        # WP-013: T-199, the GPU switch
         include("gpu.jl")           # WP-013: the GPU testsets, or one line saying why they do not run
     finally

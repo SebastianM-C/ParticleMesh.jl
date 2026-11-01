@@ -3,8 +3,16 @@
 # Reference sort allocates per particle in AcceleratedKernels' threaded CPU sample sort (#82,
 # the open item of the engine's T-144); CI runs one thread.
 
+# The case's dt on a grid of `cells` cells, scaled down with Δx when the grid is finer than the
+# case's, so that the run keeps Δt < Δx (EMState refuses it otherwise, #202).
+function alloc_dt(name, cells)
+    case = load_case(name)
+    dt = case["time"]["dt"]
+    return min(dt, dt * case["grid"]["cells"] / cells)
+end
+
 function step_bytes(name, mode; ppc, cells)
-    st, p, prob, _ = case_state(name, Float64; mode, ppc, cells, t_end = 1)
+    st, p, prob, _ = case_state(name, Float64; mode, ppc, cells, t_end = 1, dt = alloc_dt(name, cells))
     step!(st, p, 1)
     step!(st, p, 2)
     return @allocated step!(st, p, 3)
@@ -12,7 +20,7 @@ end
 
 "Host and device bytes of one synchronized step on the device backend `be`, after warm-up (T-198)."
 function device_step_bytes(be, name, mode; ppc, cells)
-    st, p, prob, _ = case_state(name, Float64; mode, ppc, cells, t_end = 1, be)
+    st, p, prob, _ = case_state(name, Float64; mode, ppc, cells, t_end = 1, dt = alloc_dt(name, cells), be)
     sync_step!(k) = (step!(st, p, k); KernelAbstractions.synchronize(be))
     sync_step!(1)
     sync_step!(2)

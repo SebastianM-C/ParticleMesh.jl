@@ -19,7 +19,7 @@ struct PeriodicGrid{N,T}
     PeriodicGrid{N,T}(n, dx, g) where {N,T} = new{N,T}(n, dx, g)
 end
 
-PeriodicGrid(n::Integer, dx::T, g::Integer) where {T} = PeriodicGrid{1,T}((Int(n),), (dx,), Int(g))
+PeriodicGrid(n::Integer, dx::T, g::Integer) where {T} = PeriodicGrid((n,), (dx,), g)
 
 function PeriodicGrid(n::NTuple{N,Integer}, dx::NTuple{N,T}, g::Integer) where {N,T}
     g >= 0 || throw(ArgumentError("guard width $g < 0"))

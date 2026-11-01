@@ -38,9 +38,15 @@ end
     uniform_open(T, x::UInt32)
 
 A number in the open interval (0, 1) of type `T` from 32 random bits: `(x + 1/2) / 2³²`.
-It is never zero; in Float32 it may round up to one, which the callers tolerate.
+It is never zero. In Float32 the quotient rounds up to one for the top 128 draws; those are
+mapped to `1 − eps(T)/2`, the largest Float32 below one, so that `log(u)` in `box_muller` stays
+nonzero and a `Dual` gets no `0·Inf` partials (#201). No other draw changes, and in Float64 the
+quotient never reaches one.
 """
-@inline uniform_open(::Type{T}, x::UInt32) where {T} = (T(x) + one(T) / 2) / T(4294967296)
+@inline function uniform_open(::Type{T}, x::UInt32) where {T}
+    u = (T(x) + one(T) / 2) / T(4294967296)
+    return ifelse(u < one(T), u, one(T) - eps(T) / 2)
+end
 
 """
     box_muller(T, x1, x2) -> (z1, z2)
