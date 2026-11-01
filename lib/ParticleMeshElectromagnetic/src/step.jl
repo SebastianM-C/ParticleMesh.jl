@@ -109,8 +109,9 @@ loaded by [`initialize!`](@ref).
 function EMState(problem::EMProblem{T}, numerics::EMNumerics; backend = CPU()) where {T}
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
-    # |v| < c, so Δt < Δx keeps every particle within one cell per step, which deposit_flux!
-    # needs for charge conservation; it is also the 1D Courant limit of the Yee solver (#202).
+    # |v| < c, so Δt ≤ Δx keeps every particle within one cell per step, which deposit_flux!
+    # needs for charge conservation; Δt ≤ Δx is also the 1D Courant limit of the Yee solver (#202).
+    # The check is strict, which is safe.
     problem.dt < cellsize(grid) ||
         throw(ArgumentError("dt = $(problem.dt) must be below the cell size Δx = $(cellsize(grid)) (one cell per step and the Courant limit)"))
     species = map(problem.species) do d

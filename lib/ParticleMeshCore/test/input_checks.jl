@@ -47,3 +47,16 @@ end
     @test all(isfinite, components(z1)) && all(isfinite, components(z2))
     @test value(z1) === box_muller(Float32, top, UInt32(77))[1]
 end
+
+@testset "T-344 a loaded Dual species has finite partials at a top draw [A8]" begin
+    # Seed 24485953, stream 1, cell 1, k = 1 gives the Philox draw r[3] = 0xffffffa3, one of the top 128
+    # that rounded to 1f0 before the fix; the loader turns r[3] into u[3]. Found by scanning seeds (#201).
+    r = philox4x32((UInt32(1), UInt32(0), UInt32(0), UInt32(1) << 16), (UInt32(24485953), UInt32(1)))
+    @test r[3] >= typemax(UInt32) - 127
+    grid = PeriodicGrid(4, 0.25, 1)
+    for T in (Float32, D3)
+        s = load_quiet!(Species(backend, T, 4; q = -1, m = 1), grid, (x, p) -> p, one(T), 1;
+                        vth = (one(T), one(T), one(T)), seed = 24485953, stream = 1)
+        @test all(isfinite, components(Array(s.u[3])[1]))
+    end
+end
