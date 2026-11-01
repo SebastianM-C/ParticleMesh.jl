@@ -464,10 +464,10 @@ end
     @test seed_scatter([signal .+ shared for _ in 1:M], eachindex(t)).noise_of_mean ≈ 0 atol = 1e-30
 end
 
-# The ParticleMesh column (scripts/es1d/crosscode.jl), in a module of its own so that its
-# includes of the cross-code modules do not clash with the ones above.
+# The ParticleMesh column (scripts/em1d/crosscode.jl, through the electromagnetic module), in a
+# module of its own so that its includes of the cross-code modules do not clash with the ones above.
 module PMCross
-include(joinpath(dirname(dirname(@__DIR__)), "es1d", "crosscode.jl"))
+include(joinpath(dirname(dirname(@__DIR__)), "em1d", "crosscode.jl"))
 end
 
 bits(x) = reinterpret(UInt64, Array(x))
@@ -485,27 +485,24 @@ bits(x) = reinterpret(UInt64, Array(x))
     @test Array(a.cell[1]) == Array(b.cell[1])
     @test bits(a.offset[1]) == bits(b.offset[1]) && bits(a.w) == bits(b.w)
     @test all(d -> bits(a.u[d]) == bits(b.u[d]), 1:3)
-    # another seed: the same lattice positions and weights (seed-independent), other velocities
+    # another seed: the same lattice positions and weights (seed-independent), other velocities;
+    # the module draws the thermal spread along x only for these edge cases, so u_y = u_z = 0
     @test Array(a.cell[1]) == Array(c.cell[1]) && bits(a.offset[1]) == bits(c.offset[1]) && bits(a.w) == bits(c.w)
-    for d in 1:3
-        ua, uc = Array(a.u[d]), Array(c.u[d])
-        @test count(ua .!= uc) == length(ua)
-        @test abs(std(uc) / std(ua) - 1) < 0.05        # both Maxwellian at v_th, 4096 draws
-    end
+    ua, uc = Array(a.u[1]), Array(c.u[1])
+    @test count(ua .!= uc) == length(ua)
+    @test abs(std(uc) / std(ua) - 1) < 0.05            # both Maxwellian at v_th, 4096 draws
+    @test all(d -> all(iszero, Array(c.u[d])), 2:3)
     # the default seed of a seeded case is its first one
     @test bits(only(PMCross.build(small)[1].species).u[1]) == bits(a.u[1])
-    # rerun through the run path: bitwise identical series and identical observables
-    r1 = PMCross.simulate(small; seed = s1, diagnostics_every = 40)
-    r2 = PMCross.simulate(small; seed = s1, diagnostics_every = 40)
+    # rerun through the run path: bitwise identical series and identical observables; another seed differs
+    r1 = PMCross.simulate(small; seed = s1)
+    r2 = PMCross.simulate(small; seed = s1)
     r3 = PMCross.simulate(small; seed = s2)
     @test bits(r1.U) == bits(r2.U)
     @test reinterpret(UInt64, r1.C) == reinterpret(UInt64, r2.C)
     @test isequal(PMCross.observe(small, r1.tU, r1.U, r1.tC, abs2.(r1.C))[2], PMCross.observe(small, r2.tU, r2.U, r2.tC, abs2.(r2.C))[2])
-    # chunked (with diagnostics) and unchunked runs give the same bits
     @test bits(r3.U) != bits(r1.U)
-    r1b = PMCross.simulate(small; seed = s1)
-    @test bits(r1b.U) == bits(r1.U)
-    @test length(r1.tC) == length(1:small["diagnostics"]["fields_every"]:r1.info.nsteps)
+    @test length(r1.tC) == length(1:small["diagnostics"]["fields_every"]:r1.nsteps)
 end
 
 @testset "T-188 the ParticleMesh mode fit runs on the field cadence [A5, WP-012]" begin

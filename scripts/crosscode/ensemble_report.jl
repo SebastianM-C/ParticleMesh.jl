@@ -1,5 +1,5 @@
 # The ensemble observable of a seeded case, its plots and sidecars, for either code (WP-012):
-# Smilei's analyze.jl and ParticleMesh's scripts/es1d/crosscode.jl call the same functions on the
+# Smilei's analyze.jl and ParticleMesh's scripts/em1d/crosscode.jl call the same functions on the
 # complex mode coefficients of their seeds. Include analysis.jl and ensemble.jl before this file.
 
 module EnsembleReport

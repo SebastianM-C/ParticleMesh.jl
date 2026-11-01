@@ -67,4 +67,5 @@ A Pkg workspace (F1): the umbrella package at the root, with `test/`, `docs/`, `
 
 - Find a package's location with `julia +1.13 --startup=no --project -e "using X; Base.pkgdir(X)"`; package versions are in the `Manifest.toml` of the environment you are in (a manifest may be versioned per Julia release, `Manifest-v1.13.toml`).
 - Test and docs environments use `[sources]` to reach the packages in this repository; do not `Pkg.develop` over them.
+- The jld daemon (the julia-daemon skill) needs Unix sockets. Where `jld` is installed, try `jld start` once; if it fails with `bind: operation not permitted (EPERM)`, the sandbox blocks Unix sockets (Claude Code's Linux sandbox blocks all of them unless `sandbox.network.allowAllUnixSockets` is set), so use plain `julia +1.13` runs for the rest of the session and do not retry (#54). Without a daemon, put several checks into one process rather than one run per check.
 - Prefer `foreachindex`-style KernelAbstractions kernels; `Atomix` for atomics; `Adapt` for structs crossing to the device.

@@ -9,9 +9,6 @@
 # lines have the kind `depositfast`: their bits are an A4 claim on one thread only.
 # `N1_RECORDED` holds the lines computed on the commit before the port (89fbe78, the WP-018 base),
 # on the CPU backend with Julia 1.13 at 1 and 4 threads (identical, the Fast lines included).
-# `T136_RECORDED` holds T-136's subprocess digests on the same commit (`Base.hash`, so valid for
-# Julia 1.13 only; `full` equals T-170's `SPLIT_T136`), and `T136_RESULTS` receives T-136's
-# subprocess results when that test runs first, so T-260 does not repeat the long run.
 
 "The density callable of the N = 1 load digest: `p[1]·(1 + p[2]·cos(p[3]·x))`."
 struct N1Density end
@@ -157,6 +154,3 @@ const N1_RECORDED = String[
     "advance|Dual{Float32,3}|200 steps|10912305070894470551",
 ]
 
-const T136_RECORDED = (one = 0xd4eb2865f48db4c8, full = 0xf07021cf9f95d7c0)
-
-const T136_RESULTS = Ref{Any}(nothing)

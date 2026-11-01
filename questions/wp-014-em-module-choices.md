@@ -18,7 +18,7 @@ Assumption: 1D1V thermal loading for the edge cases; the keyword is there for a 
 
 ## 3. The Landau test perturbation is 5 %, not the case's 1 %
 
-At the case's amplitude of 0.01, the damped Ex energy falls below the noise floor of 4096 particles per cell before the fit window opens. The peak-envelope fit then finds no points (measured). The case file's 400 000 particles per cell would take hours on the CPU in CI. T-214 therefore uses `amplitude = 0.05`, as the engine's T-141 does, with the case file otherwise unchanged. The driver `scripts/em1d/case.jl` runs the case file as is unless told otherwise.
+At the case's amplitude of 0.01, the damped Ex energy falls below the noise floor of 4096 particles per cell before the fit window opens. The peak-envelope fit then finds no points (measured). The case file's 400 000 particles per cell would take hours on the CPU in CI. T-214 therefore uses `amplitude = 0.05`, with the case file otherwise unchanged. The driver `scripts/em1d/case.jl` runs the case file as is unless told otherwise.
 
 Assumption: the override is acceptable for the test; the report gives the amplitude next to every number.
 

@@ -1,5 +1,6 @@
 # Shared plumbing of the 1D electromagnetic runs (WP-014): case loading, run directories with a
-# manifest (F3), PNG + JSON sidecar output, host-side checks. Used by case.jl and timing.jl.
+# manifest (F3), PNG + JSON sidecar output, host-side checks. Used by case.jl, timing.jl,
+# crosscode.jl and flux_timing.jl.
 
 using ParticleMesh
 using ParticleMeshElectromagnetic
@@ -10,7 +11,6 @@ using TOML
 using Dates
 
 const REPO = normpath(joinpath(@__DIR__, "..", ".."))
-const CORE_TEST = joinpath(REPO, "lib", "ParticleMeshCore", "test")
 const EM_TEST = joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "test")
 const CASES = joinpath(REPO, "scripts", "crosscode", "cases")
 
@@ -18,13 +18,11 @@ include(joinpath(REPO, "scripts", "crosscode", "manifest.jl"))
 using .RunManifest: write_manifest
 include(joinpath(REPO, "scripts", "crosscode", "analysis.jl"))
 using .Observables: damping_from_peaks, growth_from_window
-include(joinpath(CORE_TEST, "es_reference.jl"))   # the electrostatic edge-case reference (test support)
-using .ESReference: ESReference, landau_case, two_stream_case, field_energy_history
 include(joinpath(EM_TEST, "theory.jl"))             # Theory (Landau, two-stream) and weibel_cold_growth; reads REPO
 
 load_case(name) = TOML.parsefile(joinpath(CASES, "$name.toml"))
 
-"Files whose content defines a run: the engine and module sources, the case, the theory, the scripts, the manifests."
+"Files whose content defines a run: the engine and module sources, the case (if any), the theory, the scripts, the manifests."
 function input_files(script, case_name)
     files = String[]
     for pkg in ("ParticleMeshCore", "ParticleMeshElectromagnetic")
@@ -32,28 +30,29 @@ function input_files(script, case_name)
             endswith(f, ".jl") && push!(files, joinpath(root, f))
         end
     end
-    append!(files, [joinpath(CASES, "$case_name.toml"), joinpath(EM_TEST, "theory.jl"),
+    case_name === nothing || push!(files, joinpath(CASES, "$case_name.toml"))
+    append!(files, [joinpath(EM_TEST, "theory.jl"),
                     joinpath(REPO, "scripts", "crosscode", "theory.jl"), joinpath(REPO, "scripts", "crosscode", "analysis.jl"),
-                    joinpath(CORE_TEST, "es_reference.jl"), joinpath(@__DIR__, "common.jl"), script,
+                    joinpath(@__DIR__, "common.jl"), script,
                     joinpath(REPO, "Manifest.toml"), joinpath(REPO, "scripts", "Manifest.toml")])
     return sort(files)
 end
 
 """
-    run_dir(name, script, case_name; params) -> dir
+    run_dir(name, script, case_name; params, work_package = "WP-014", extra_inputs = String[]) -> dir
 
 Create `scripts/runs/em1d-<name>-<timestamp>/` and write its `manifest.toml` (F3): the commit
-and dirty flag, the SHA-256 of every input, the parameters, Julia version, thread count and CPU
-model.
+and dirty flag, the SHA-256 of every input (the case file among them unless `case_name` is
+`nothing`, and the files in `extra_inputs`), the parameters, the work package, Julia version, thread count and CPU model.
 """
-function run_dir(name, script, case_name; params = Dict{String,Any}())
+function run_dir(name, script, case_name; params = Dict{String,Any}(), work_package = "WP-014", extra_inputs = String[])
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = joinpath(REPO, "scripts", "runs", "em1d-$name-$stamp")
     mkpath(dir)
     # input paths relative to the repository root: absolute paths would carry the machine's home directory
-    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(script, case_name))
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in sort(unique([input_files(script, case_name); extra_inputs])))
     write_manifest(dir; root = REPO,
-                   extra = Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => "WP-014", "parameters" => params,
+                   extra = Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => work_package, "parameters" => params,
                                             "julia" => string(VERSION), "threads" => Threads.nthreads(),
                                             "cpu" => Sys.cpu_info()[1].model, "backend" => "KernelAbstractions CPU"))
     return dir

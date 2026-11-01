@@ -2,7 +2,6 @@
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"
-SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
@@ -13,4 +12,3 @@ ParticleMeshCore = {path = ".."}
 ForwardDiff = "1"
 KernelAbstractions = "0.10"
 ParticleMeshCore = "0.1"
-SpecialFunctions = "2"

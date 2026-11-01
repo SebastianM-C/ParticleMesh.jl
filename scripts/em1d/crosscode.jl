@@ -1,84 +1,61 @@
-# ParticleMesh on the cross-code case files (scripts/crosscode/cases/*.toml), fitted with the
-# cross-code analysis (scripts/crosscode/analysis.jl, and ensemble.jl for a seeded case) so that
-# the numbers compare with Smilei's, and an overlay with a finished Smilei run.
-#   julia +1.13 --project=scripts -t 16 scripts/es1d/crosscode.jl run landau|two-stream|two-stream-256
-#   julia +1.13 --project=scripts scripts/es1d/crosscode.jl analyze <pm run dir>     # recompute the ensemble
-#   julia +1.13 --project=scripts scripts/es1d/crosscode.jl compare <pm run dir> <smilei run dir>
+# ParticleMesh on the cross-code case files (scripts/crosscode/cases/*.toml), through the
+# electromagnetic module (the 1D edge cases, no transverse fields), fitted with the cross-code
+# analysis (scripts/crosscode/analysis.jl, and ensemble.jl for a seeded case) so that the numbers
+# compare with Smilei's, and an overlay with a finished Smilei run.
+#   julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau|two-stream|two-stream-256
+#   julia +1.13 --project=scripts scripts/em1d/crosscode.jl analyze <pm run dir>     # recompute the ensemble
+#   julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run dir> <smilei run dir>
 # A case with a `seeds` list (WP-012) runs once per seed, each seed the Philox key of the
-# velocity draws, into seed-<seed>/ subdirectories; the ensemble observable goes into the top one.
+# velocity draws (`problem_from_case`'s `seed`), into seed-<seed>/ subdirectories; the ensemble
+# observable goes into the top one.
 include(joinpath(@__DIR__, "common.jl"))
-include(joinpath(REPO, "scripts", "crosscode", "analysis.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "read.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "smilei.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble_report.jl"))
-using .Observables
+using .Observables: local_maxima, checked_fit
 using .SmileiRead
-using .SmileiDeck: load_case, case_seeds
 using .Ensemble
 using .EnsembleReport
-using TOML
 
 const CROSSCODE = joinpath(REPO, "scripts", "crosscode")
-const CASES = joinpath(CROSSCODE, "cases")
+
+"The seeds of a case: its `seeds` list, or its single `random_seed` (`scripts/crosscode/smilei.jl`)."
+case_seeds(case) = SmileiDeck.case_seeds(case)
 
 """
-    build(case; seed) -> (state, params, info)
+    build(case; seed) -> (state, params, problem)
 
-The ParticleMesh state of a case file (electrostatic, nonrelativistic, quadratic, Reference,
-Float64), with `seed` as the Philox key of the velocity draws (default: the case's first seed).
+The module's state of a case file, initialized: `problem_from_case` (with `seed` as the Philox
+key of the velocity draws; default the case's first seed) and `numerics_from_case` in
+`Reference()` mode, Float64 (quadratic shape, Esirkepov current, relativistic Boris).
 """
 function build(case; seed = first(case_seeds(case)))
     @assert case["grid"]["boundaries"] == "periodic" && case["numerics"]["shape_order"] == 2
-    L = case["grid"]["length"]
-    n = case["grid"]["cells"]
-    dt, t_end = case["time"]["dt"], case["time"]["t_end"]
-    mobile = [s for s in case["species"] if s["mobile"]]
-    n0 = sum(s["density"] for s in mobile)          # immobile species: the neutralizing background
-    ωp = sqrt(n0)
-    k = 2π / L
-    pert = only(unique(s["perturbation"] for s in mobile))
-    @assert pert["mode"] == 1
-    α = pert["amplitude"]
-    common = (; n, n0, α, dt_ωp = dt * ωp, tmax_ωp = t_end * ωp, shape = Quadratic, mode = Reference(), seed)
-    if length(mobile) == 1
-        s = only(mobile)
-        st, p, info = landau_case(Float64; common..., ppc = s["particles_per_cell"], vth = s["thermal_velocity"],
-                                  kλD = k * s["thermal_velocity"] / ωp)
-    else
-        v0 = maximum(s["drift"] for s in mobile)
-        @assert sort([s["drift"] for s in mobile]) == [-v0, v0] && all(s -> s["thermal_velocity"] == 0, mobile)
-        st, p, info = two_stream_case(Float64; common..., ppc = only(unique(s["particles_per_cell"] for s in mobile)),
-                                      v0, kv0_ωp = k * v0 / ωp, vth = 0)
-    end
-    @assert isapprox(length(st.grid), L; rtol = 1e-12) && info.nsteps == round(Int, t_end / dt)
-    return st, p, info
+    prob = problem_from_case(case, Float64; seed)
+    st = EMState(prob, numerics_from_case(case; mode = Reference()))
+    initialize!(st, prob)
+    return st, params(prob), prob
 end
 
 """
-    simulate(case; seed, diagnostics_every = 0) -> NamedTuple
+    simulate(case; seed) -> NamedTuple
 
-Build and run the case: the field energy at the case's scalar cadence (`tU`, `U`), the complex
-mode-1 coefficient of E at its field cadence (`tC`, `C`; entry k of the histories is t = (k-1)dt),
-the wall time, and, with `diagnostics_every > 0`, the host diagnostics (kinetic and field energy)
-every that many steps.
+Build and run the case: the field energy of Ex at the case's scalar cadence (`tU`, `U`), the
+complex mode coefficient of Ex at its field cadence (`tC`, `C`; entry k of the histories is
+t = (k-1)dt), the total energy at integer times, and the wall time.
 """
-function simulate(case; seed = first(case_seeds(case)), diagnostics_every = 0)
-    st, p, info = build(case; seed)
-    initialize!(st, p)
-    ts, diags = Float64[], NamedTuple[]
-    wall = @elapsed if diagnostics_every > 0
-        ts, diags = run_with_diagnostics!(st, p, info.nsteps; every = diagnostics_every)
-    else
-        run!(st, p, info.nsteps)
-    end
+function simulate(case; seed = first(case_seeds(case)))
+    st, p, prob = build(case; seed)
+    wall = @elapsed run!(st, p, prob.nsteps)
+    h = histories(st)
     d = case["diagnostics"]
-    iU = 1:d["scalars_every"]:info.nsteps
-    iC = 1:d["fields_every"]:info.nsteps
-    W, Ere, Eim = field_energy_history(st), Array(st.Ere), Array(st.Eim)
-    dt = Float64(info.dt)
-    return (; tU = (iU .- 1) .* dt, U = W[iU], tC = (iC .- 1) .* dt, C = complex.(Ere[iC], Eim[iC]),
-              wall, info, st, ts, diags, seed, particles = info.n * info.ppc * length(st.species))
+    iU = 1:d["scalars_every"]:prob.nsteps
+    iC = 1:d["fields_every"]:prob.nsteps
+    dt = Float64(prob.dt)
+    return (; tU = (iU .- 1) .* dt, U = h.WEx[iU], tC = (iC .- 1) .* dt, C = complex.(h.Ex_re[iC], h.Ex_im[iC]),
+              total = total_energy_history(h), dt, wall, seed, nsteps = prob.nsteps,
+              particles = sum(alive_count, st.species), state = st)
 end
 
 "The per-run observable of a case (a seeded case also has the ensemble one)."
@@ -88,7 +65,9 @@ run_observable(case) = only((k, o) for (k, o) in case["observables"] if o["metho
     observe(case, tU, U, tC, Ek2) -> (r, result)
 
 Fit as the cross-code analyze.jl does, on the field energy U (at the scalar cadence, times tU)
-and on the mode amplitude squared Ek2 (at the field cadence, times tC).
+and on the mode amplitude squared Ek2 (at the field cadence, times tC). The module pushes
+relativistically, so the relative difference is against the case's `theory` (the γ₀³ value for
+two-stream).
 """
 function observe(case, tU, U, tC, Ek2)
     length(tU) == length(U) && length(tC) == length(Ek2) || error("observe: a series and its times differ in length")
@@ -116,8 +95,8 @@ end
 
 """
 The standard plot set of one ParticleMesh run (F3), each a PNG with its JSON sidecar in
-`dir/plots/`: the field energy with the case's fit, the mode-1 amplitude, the relative change of
-the total energy (kinetic, at t - dt/2, plus field).
+`dir/plots/`: the field energy of Ex with the case's fit, the mode-1 amplitude of Ex, the
+relative change of the total energy (fields plus kinetic, at integer times).
 """
 function standard_plots(dir, case, sim, r, result)
     out = joinpath(dir, "plots")
@@ -132,7 +111,7 @@ function standard_plots(dir, case, sim, r, result)
     end
     hasproperty(r, :floor) && hlines!(ax, [r.floor]; color = :gray, linestyle = :dot, label = "noise floor")
     axislegend(ax; position = :rt)
-    save_plot(out, "field-energy", fig, merge(Dict("plot" => "field energy versus time, log scale"), result))
+    save_plot(out, "field-energy", fig, merge(Dict("plot" => "field energy of Ex versus time, log scale"), result))
 
     A = abs.(sim.C)
     fig = Figure(size = (800, 500))
@@ -141,28 +120,26 @@ function standard_plots(dir, case, sim, r, result)
     save_plot(out, "mode-amplitude", fig, Dict("plot" => "amplitude of Fourier mode 1 of Ex versus time", "initial" => A[1],
         "max" => maximum(A), "final" => A[end], "gamma_from_mode" => result["measured_from_mode"]))
 
-    if !isempty(sim.ts)
-        tot = [d.kinetic + d.field for d in sim.diags]
-        drift = (tot .- tot[1]) ./ tot[1]
-        fig = Figure(size = (800, 500))
-        ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "(U - U(0)) / U(0)", title = "$name, ParticleMesh: total energy")
-        lines!(ax, sim.ts, drift; color = :black)
-        save_plot(out, "energy-conservation", fig, Dict("plot" => "relative change of kinetic (t - dt/2) plus field energy versus time",
-            "max_abs_relative_change" => maximum(abs, drift), "final_relative_change" => drift[end],
-            "max_gauss_residual_over_scale" => maximum(d.gauss / d.gauss_scale for d in sim.diags)))
-    end
+    tot = sim.total
+    drift = (tot .- tot[1]) ./ tot[1]
+    t = (0:length(tot) - 1) .* sim.dt
+    fig = Figure(size = (800, 500))
+    ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "(U - U(0)) / U(0)", title = "$name, ParticleMesh: total energy")
+    lines!(ax, t, drift; color = :black)
+    save_plot(out, "energy-conservation", fig, Dict("plot" => "relative change of field plus kinetic energy versus time (integer times)",
+        "max_abs_relative_change" => maximum(abs, drift), "final_relative_change" => drift[end]))
 end
 
 "One run of a case into `dir`: series, observables and the standard plots; returns (sim, r, result)."
 function run_one(dir, case; seed)
     mkpath(dir)
-    sim = simulate(case; seed, diagnostics_every = 40)
+    sim = simulate(case; seed)
     r, result = observe(case, sim.tU, sim.U, sim.tC, abs2.(sim.C))
     result["seed"] = seed
     result["particles"] = sim.particles
-    result["steps"] = sim.info.nsteps
+    result["steps"] = sim.nsteps
     result["wall_seconds"] = sim.wall
-    result["ns_per_particle_step"] = 1e9 * sim.wall / (sim.particles * sim.info.nsteps)
+    result["ns_per_particle_step"] = 1e9 * sim.wall / (sim.particles * sim.nsteps)
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
     open(io -> JSON.print(io, Dict("t" => sim.tU, "U" => sim.U, "tC" => sim.tC, "E1_re" => real.(sim.C), "E1_im" => imag.(sim.C)), 2),
          joinpath(dir, "series.json"), "w")
@@ -172,34 +149,36 @@ end
 
 function run_case(name)
     case = load_case(name)
+    path = joinpath(CASES, "$name.toml")
     seeds = case_seeds(case)
     seeded = haskey(case["numerics"], "seeds")
-    inputs = [case["_path"]; joinpath.(CROSSCODE, ["analysis.jl", "ensemble.jl", "ensemble_report.jl", "smilei.jl", "read.jl"])]
-    dir = run_dir("pm-$name", @__FILE__; work_package = "WP-012", extra_inputs = inputs,
-        params = Dict("case" => name, "case_sha256" => bytes2hex(open(sha256, case["_path"])), "seeds" => seeds,
-                      "element_type" => "Float64", "mode" => "Reference"))
-    cp(case["_path"], joinpath(dir, "case.toml"))
+    inputs = joinpath.(CROSSCODE, ["ensemble.jl", "ensemble_report.jl", "smilei.jl", "read.jl"])
+    dir = run_dir("pm-$name", @__FILE__, name; work_package = "WP-012", extra_inputs = inputs,
+        params = Dict{String,Any}("case" => name, "seeds" => seeds, "element_type" => "Float64", "mode" => "Reference",
+                                  "module" => "ParticleMeshElectromagnetic"))
+    cp(path, joinpath(dir, "case.toml"))
     if !seeded
         sim, r, result = run_one(dir, case; seed = only(seeds))
         println("pm-$name: γ = $(r.gamma) ± $(r.gamma_stderr) (theory $(result["theory"])); $(round(sim.wall, digits = 1)) s; outputs in $dir")
         return dir
     end
     coeffs, per_run, walls, tC = Vector{ComplexF64}[], [], Float64[], nothing
-    sim = nothing
+    particles, nsteps = 0, 0
     for s in seeds
         sim, r, result = run_one(joinpath(dir, "seed-$s"), case; seed = s)
         tC === nothing ? (tC = sim.tC) : @assert(sim.tC == tC)
         push!(coeffs, sim.C)
         push!(per_run, r)
         push!(walls, sim.wall)
+        particles, nsteps = sim.particles, sim.nsteps
         println("pm-$name seed $s: $(round(sim.wall, digits = 1)) s, single-run γ = $(result["measured"]) ($(result["fit_points"]) maxima)")
-        sim = (; sim.particles, sim.info)                 # free the state before the next seed
+        sim = nothing
         GC.gc()
     end
     res = write_ensemble(dir, case, tC, coeffs, seeds; code = "particlemesh", per_run,
-        extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => sim.particles,
-            "steps" => sim.info.nsteps, "particle_steps_per_seed" => sim.particles * sim.info.nsteps,
-            "ns_per_particle_step" => 1e9 .* walls ./ (sim.particles * sim.info.nsteps),
+        extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
+            "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps,
+            "ns_per_particle_step" => 1e9 .* walls ./ (particles * nsteps),
             "threads" => Threads.nthreads(), "cpu" => Sys.cpu_info()[1].model))
     println("pm-$name ensemble: γ = $(res["measured"]) ± $(res["measured_stderr"]) ($(res["maxima_used"]) maxima); outputs in $dir")
     return dir

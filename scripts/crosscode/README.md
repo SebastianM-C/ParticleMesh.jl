@@ -7,8 +7,8 @@ julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau      # 
 scripts/crosscode/run-smilei.sh scripts/runs/smilei-landau-<hash>              # outside the factory (podman)
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-landau-<hash> [runner log]
 julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-253, T-270 to T-275
-julia +1.13 --project=scripts -t 16 scripts/es1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
-julia +1.13 --project=scripts scripts/es1d/crosscode.jl compare <pm run> <smilei run>
+julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
+julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run> <smilei run>
 ```
 
 A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory.

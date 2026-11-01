@@ -1,7 +1,7 @@
 # CPU time per particle of deposit_flux! against deposit! in both modes, and scratch per
 # particle with the two old-position extras (WP-009 budget). Recorded without thresholds.
-#   julia +1.13 --project=scripts -t 1 scripts/es1d/flux_timing.jl
-#   julia +1.13 --project=scripts -t 16 scripts/es1d/flux_timing.jl
+#   julia +1.13 --project=scripts -t 1 scripts/em1d/flux_timing.jl
+#   julia +1.13 --project=scripts -t 16 scripts/em1d/flux_timing.jl
 include(joinpath(@__DIR__, "common.jl"))
 using ParticleMesh.ParticleMeshCore: Workspace, scratch_bytes, advance, ALIVE
 
@@ -31,7 +31,8 @@ function timed(f, k)
 end
 
 function flux_timing(; ppcs = (256, 4096), n = 64, k = 21)
-    dir = run_dir("flux-timing-t$(Threads.nthreads())", @__FILE__; params = Dict("ppcs" => collect(ppcs), "n" => n, "repetitions" => k))
+    dir = run_dir("flux-timing-t$(Threads.nthreads())", @__FILE__, nothing; work_package = "WP-009",
+                  params = Dict{String,Any}("ppcs" => collect(ppcs), "n" => n, "repetitions" => k))
     rows = []
     for T in (Float32, Float64), mode in (Fast(), Reference()), ppc in ppcs
         s, grid = moved(T, n, ppc)

@@ -1,6 +1,6 @@
 # WP-011: T-144 at 4 threads, and the signature of `fd_scan`
 
-Work package: WP-011. Files: `lib/ParticleMeshCore/test/electrostatic.jl` (T-144), `lib/ParticleMeshCore/test/helpers.jl` (`fd_scan`), `trace/wp/WP-011-engine-module-split.md`.
+Work package: WP-011. Files: `lib/ParticleMeshCore/test/allocations.jl` (T-144), `lib/ParticleMeshCore/test/helpers.jl` (`fd_scan`), `trace/wp/WP-011-engine-module-split.md`.
 
 ## 1. T-144 does not hold at 4 threads, before or after the move
 

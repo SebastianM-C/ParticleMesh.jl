@@ -1,10 +1,6 @@
 using Test
 
 include("setup.jl")          # ParticleMeshCore, the backend, the A8 matrix, tolerances, comparisons
-include("es_reference.jl")   # the electrostatic edge-case reference (test support, not engine code)
-using .ESReference
-include("cases.jl")
-include("theory.jl")
 include("helpers.jl")
 include("digest.jl")
 include("engine_cases.jl")
@@ -16,12 +12,9 @@ include("engine2d_cases.jl")
     try
         include("transfers.jl")
         include("particles.jl")
-        include("electrostatic.jl")
-        include("physics.jl")
-        include("gradient.jl")
+        include("allocations.jl")
         include("determinism.jl")
         include("engine.jl")
-        include("split.jl")
         include("flux.jl")
         include("engine2d.jl")
     finally

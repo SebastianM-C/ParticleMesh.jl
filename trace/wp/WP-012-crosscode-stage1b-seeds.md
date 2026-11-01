@@ -2,7 +2,7 @@
 id = "WP-012"
 status = "done"
 goals = ["A1", "A4", "A5", "A7"]
-depends_on = ["WP-003", "WP-011"]
+depends_on = ["WP-003", "WP-014"]
 adds_dependencies = []
 
 [checked]
@@ -17,7 +17,7 @@ This closes the A5 gap early. The 1D set has no accepted expected values, and th
 
 ## Scope
 
-`scripts/crosscode/`, `scripts/es1d/crosscode.jl`, `reports/` and `questions/`, plus "proposed" entries in `lib/ParticleMeshCore/test/tolerances.toml`. It takes up WP-003's open item: neither code reached the pre-registered Landau observable. The route is several seeds in both codes, with no engine change. Seeds are case inputs (Smilei's `random_seed`, and Philox keys on the ParticleMesh side).
+`scripts/crosscode/`, `scripts/em1d/crosscode.jl`, `reports/` and `questions/`, plus "proposed" entries in `lib/ParticleMeshElectromagnetic/test/tolerances.toml`. It takes up WP-003's open item: neither code reached the pre-registered Landau observable. The route is several seeds in both codes, with no engine change. Seeds are case inputs (Smilei's `random_seed`, and Philox keys on the ParticleMesh side).
 
 α stays at 1/100 so that the run stays linear: the stated estimate puts the bounce frequency √α·ω_p at about 0.1, below γ ≈ 0.153, while α = 1/20 would put it above. The report checks that estimate. Noise is reduced by averaging the complex mode-1 amplitude of Ex over seeds, which keeps the signal coherent and divides the noise energy by the number of seeds, and the per-seed spread is reported as well. The fit rules are pre-registered in the case file before any run.
 
@@ -32,15 +32,15 @@ This package owns the `seeds` field of the case schema. The velocity quiet start
 1. **Case file**: `scripts/crosscode/cases/landau.toml` gains an optional `seeds = [...]` list (schema 1 stays backward compatible: when the list is absent, the single `random_seed` applies), the ensemble observable `damping_rate_ensemble` (a fit of the peaks of |⟨Ê₁⟩_seeds| with the same `fit_start` and `floor_factor` rule), and the particle count per seed. All of it is fixed in a commit before any run, and `scripts/crosscode/README.md` documents the field. The seed count is chosen from the measured per-seed spread and stated, with at least five seeds.
 2. **Generator and analysis**: `scripts/crosscode/smilei.jl` writes one namelist per seed. The ensemble reader and the per-seed and ensemble fits live in `scripts/crosscode/`, with the pre-registered rules unchanged and aggregation to a mean and standard deviation per code.
 3. **Analysis repairs**: the manifest's `image.id` stores the bare image id, not the runner's header line, and `measured_from_mode` refuses or flags a fit with too few points in the window instead of reporting an unusable value.
-4. **The ParticleMesh column**: `scripts/es1d/crosscode.jl` gains a seed loop over the same seeds as Philox keys, in Reference Float64, through the include path WP-011 set up, writing the same observables and sidecars.
+4. **The ParticleMesh column**: `scripts/em1d/crosscode.jl` gains a seed loop over the same seeds as Philox keys (the `seed` keyword of `problem_from_case`), through the electromagnetic module in Reference Float64, writing the same observables and sidecars.
 5. **Runs**: Smilei for every Landau seed and for the two-stream case on the machine's runner (the Smilei CPU family and container image of WP-003; the request and its exact command go in the PR), and ParticleMesh on the CPU. Two-stream also runs as a resolution pair (128 and 256 cells). Every run directory has its manifest, `observables.json` and the standard plot set with JSON sidecars (F3).
 6. **Report**: `reports/crosscode-smilei-1d/README.md` gains a stage 1b section: γ per seed, the mean and standard deviation per code, the ensemble γ with its standard error, the Smilei seed-to-seed spread as the noise floor, the Smilei–ParticleMesh difference in units of that spread (a measurement, not a threshold), the theory values from `scripts/crosscode/theory.jl`, and the bounce-frequency check for the chosen α.
 7. **Independent review**: the numerics-reviewer role (`.claude/agents/numerics-reviewer.md`) runs as a fresh subagent on the report and the sidecars. Its findings are committed as `reports/crosscode-smilei-1d/review.md` and each one is answered in the report. The report header gets a "Review" row (reviewer role, model id, date, findings file), `reports/README.md` adds that row to its header list, and the spike report's header is updated if the review covers its numbers.
-8. **Proposals**: `questions/wp-012-a5-a7-proposals.md` keeps the A5/A7 split explicit. Under A5 it lists the proposed expected values (theory with the measured ensemble spread) with their derivation. Under A7 it lists the measured Smilei noise floors and the Smilei–ParticleMesh difference in units of them, and states that the agreement thresholds are pending PIConGPU (stage 2), with no number proposed. Only the A5 expected values and the noise floors go into `lib/ParticleMeshCore/test/tolerances.toml`, as `status = "proposed"` entries for T-141 and T-142.
+8. **Proposals**: `questions/wp-012-a5-a7-proposals.md` keeps the A5/A7 split explicit. Under A5 it lists the proposed expected values (theory with the measured ensemble spread) with their derivation. Under A7 it lists the measured Smilei noise floors and the Smilei–ParticleMesh difference in units of them, and states that the agreement thresholds are pending PIConGPU (stage 2), with no number proposed. Only the A5 expected values and the noise floors go into `lib/ParticleMeshElectromagnetic/test/tolerances.toml`, as `status = "proposed"` entries for T-214 and T-215.
 
 ## Non-goals
 
-- No engine or test-support source change: no velocity quiet start and no loader option. The only ParticleMesh-side edit is the seed loop in `scripts/es1d/crosscode.jl`.
+- No engine or test-support source change: no velocity quiet start and no loader option. The only ParticleMesh-side edit is the seed loop in `scripts/em1d/crosscode.jl`.
 - No edit of `docs/goals/`: A5 values are proposed through the report and `questions/`, and the owner accepts them by editing the goals.
 - No A7 agreement threshold proposed, and none derived from the Smilei–ParticleMesh difference; that waits for the Smilei–PIConGPU spread (stage 2).
 - No threshold asserted in any test beyond finiteness and sign; the proposals are inputs for the owner.
@@ -63,8 +63,8 @@ Test ids T-180 to T-189.
 
 ## Depends on
 
-WP-003 (the Smilei container, case files, generator, reader and the stage 1 runs) and WP-011, because this package edits `scripts/es1d/crosscode.jl`, which WP-011 rewires to the moved electrostatic reference.
+WP-003 (the Smilei container, case files, generator, reader and the stage 1 runs) and WP-014, the electromagnetic module, through whose `problem_from_case` `scripts/em1d/crosscode.jl` runs the case files.
 
 ## Budgets
 
-The A7 agreement thresholds are not proposed here: they wait for the measured Smilei–PIConGPU spread (stage 2). This package measures the Smilei seed-to-seed noise floor and the Smilei–ParticleMesh difference in units of it, and proposes A5 expected values. Compute: the total Smilei cost stays within about one WP-003 reference run (2.56·10⁷ electrons; one such seed took 379 s on 8 threads of an Intel Core i9-14900K), for example 8 seeds × 50 000 ppc. The ParticleMesh side runs at about 11 ns per particle-step at 16 threads. Wall time and particle-steps per seed are recorded for both codes, with the hardware named by CPU model. No GPU, and no throughput budget (A7's is on the GPU). Tier 1.
+The A7 agreement thresholds are not proposed here: they wait for the measured Smilei–PIConGPU spread (stage 2). This package measures the Smilei seed-to-seed noise floor and the Smilei–ParticleMesh difference in units of it, and proposes A5 expected values. Compute: the total Smilei cost stays within about one WP-003 reference run (2.56·10⁷ electrons; one such seed took 379 s on 8 threads of an Intel Core i9-14900K), for example 8 seeds × 50 000 ppc. The ParticleMesh side runs the module at about 64 ns per particle-step at 16 threads in Reference mode on the Landau case (`reports/em-module-1d.md`, a single run), so a seed of 50 000 ppc costs about nine minutes there (an estimate from that figure, not measured). Wall time and particle-steps per seed are recorded for both codes, with the hardware named by CPU model. No GPU, and no throughput budget (A7's is on the GPU). Tier 1.
