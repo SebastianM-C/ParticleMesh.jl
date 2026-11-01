@@ -1,0 +1,203 @@
+{
+  "M": 8,
+  "case": "landau",
+  "code": "smilei",
+  "ensemble_floor": 5.894681765637603e-10,
+  "fit_energies": [
+    1.251228815371415e-7,
+    7.023739496888537e-8,
+    4.0483955203511566e-8,
+    1.8249291535034317e-8,
+    1.1920067295104166e-8,
+    7.183605573067802e-9
+  ],
+  "fit_range": [
+    4.746131724220346,
+    15.929530992195552
+  ],
+  "fit_rules": {
+    "fit_start": 3.0,
+    "floor_factor": 10.0,
+    "minimum_maxima": 3,
+    "per_seed": "at_ensemble_peaks",
+    "stderr": "jackknife"
+  },
+  "fit_times": [
+    4.746131724220346,
+    6.966470402917988,
+    9.217517439375593,
+    11.463157567865965,
+    13.688491415169379,
+    15.929530992195552
+  ],
+  "floor_ratio_seed_mean_over_ensemble": 4.40220187932106,
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) i9-14900K",
+    "cpu_source": "run",
+    "cpus": 8,
+    "threads": 8
+  },
+  "initial_energy": 9.976324576128632e-7,
+  "jackknife_gammas": [
+    0.13468266470017887,
+    0.12559754414605498,
+    0.13444113290261536,
+    0.13048521358379075,
+    0.1281977271098115,
+    0.12438982100787299,
+    0.13401863660551605,
+    0.14221559895441316
+  ],
+  "maxima_used": 6,
+  "measured": 0.13026233259840186,
+  "measured_fit_stderr": 0.004914287676726401,
+  "measured_frequency": 1.4045785982916934,
+  "measured_stderr": 0.014393269121880993,
+  "measured_stderr_method": "jackknife over seeds",
+  "observable": "damping_rate_ensemble",
+  "observable_exists": true,
+  "particle_steps_per_seed": 8579200000,
+  "particles_per_seed": 3200000,
+  "per_seed_at_ensemble_peaks": {
+    "M": 8,
+    "gammas": [
+      0.10349023780098675,
+      0.1651148054357297,
+      0.12208475362213117,
+      0.12354959083418032,
+      0.14724375184775787,
+      0.1664436408134706,
+      0.10038376624114426,
+      0.10813320621234886
+    ],
+    "mean": 0.12955546910096868,
+    "refused": false,
+    "std": 0.026777546565956684,
+    "stderr": 0.009467292380163259
+  },
+  "per_seed_single_run_rule_on_energy": {
+    "failed_seeds": [
+      20261101,
+      20262101,
+      20263101,
+      20264101,
+      20265101,
+      20266101,
+      20267101,
+      20268101
+    ],
+    "gammas": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "maxima_accepted": [
+      1,
+      2,
+      2,
+      1,
+      1,
+      2,
+      1,
+      2
+    ],
+    "reasons": [
+      "fewer than three maxima above the floor after fit_start (1 accepted)",
+      "fewer than three maxima above the floor after fit_start (2 accepted)",
+      "fewer than three maxima above the floor after fit_start (2 accepted)",
+      "fewer than three maxima above the floor after fit_start (1 accepted)",
+      "fewer than three maxima above the floor after fit_start (1 accepted)",
+      "fewer than three maxima above the floor after fit_start (2 accepted)",
+      "fewer than three maxima above the floor after fit_start (1 accepted)",
+      "fewer than three maxima above the floor after fit_start (2 accepted)"
+    ],
+    "refused": true,
+    "succeeded": 0
+  },
+  "per_seed_single_run_rule_on_mode": {
+    "failed_seeds": [
+      20265101,
+      20267101
+    ],
+    "gammas": [
+      0.10517139759499514,
+      0.09526874851805021,
+      0.10448641326106942,
+      0.14558333162045495,
+      null,
+      0.12968579612172568,
+      null,
+      0.09223043982621869
+    ],
+    "maxima_accepted": [
+      4,
+      3,
+      4,
+      4,
+      2,
+      4,
+      2,
+      5
+    ],
+    "reasons": [
+      "fewer than three maxima above the floor after fit_start (2 accepted)",
+      "fewer than three maxima above the floor after fit_start (2 accepted)"
+    ],
+    "refused": true,
+    "succeeded": 6
+  },
+  "relative_difference": -0.15060781558935318,
+  "seed_floor_mean": 2.5949579146689443e-9,
+  "seed_floors": [
+    1.885977867801281e-9,
+    1.536699305644734e-9,
+    2.7787196435796197e-9,
+    1.7731074913114104e-9,
+    5.822196469261243e-9,
+    1.312995233823508e-9,
+    4.3820797135898195e-9,
+    1.267887592339938e-9
+  ],
+  "seed_scatter_post_hoc": {
+    "floor_over_ln2_noise_of_mean": 2.0054838704663744,
+    "noise_of_mean_after_fit_start": 3.124398878006439e-10,
+    "noise_of_mean_floor_window": 4.2404869349192595e-10,
+    "noise_per_seed_floor_window": 3.3923895479354076e-9,
+    "snr_at_maxima_used": [
+      543.3932897590016,
+      237.28081982768543,
+      202.11137138011543,
+      50.70861779214007,
+      54.27582213472156,
+      38.99618740762737
+    ]
+  },
+  "seeds": [
+    20261101,
+    20262101,
+    20263101,
+    20264101,
+    20265101,
+    20266101,
+    20267101,
+    20268101
+  ],
+  "steps": 2681,
+  "theory": 0.1533594669096052,
+  "theory_frequency": 1.4156618886045358,
+  "wall_seconds_per_seed": [
+    95.11600017547607,
+    79.75300002098083,
+    95.90199995040894,
+    89.07299995422363,
+    81.2810001373291,
+    85.13800001144409,
+    79.18600010871887,
+    78.85899996757507
+  ]
+}

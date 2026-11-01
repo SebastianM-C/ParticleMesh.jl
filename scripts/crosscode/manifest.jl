@@ -6,7 +6,7 @@ using SHA: sha256
 using TOML
 using Dates: now, UTC
 
-export file_hash, write_manifest, read_manifest, git_commit
+export file_hash, write_manifest, read_manifest, git_commit, image_from_header
 
 file_hash(path) = bytes2hex(open(sha256, path))
 
@@ -61,5 +61,24 @@ function write_manifest(dir; inputs = String[], extra = Dict{String,Any}(), root
 end
 
 read_manifest(dir) = TOML.parsefile(joinpath(dir, "manifest.toml"))
+
+"""
+    image_from_header(files...) -> (; name, id)
+
+The container image of a run from the first `# image:` line found in `files` (the runner's
+log, whose header reads `# image: <name> id <id>`, or run-smilei.sh's `image.txt`, which reads
+`# image: <name> <id>`; `nothing` entries and missing files are skipped). `id` is the bare
+64-hex image id, without a `sha256:` prefix; both fields are `"unknown"` when no line is found.
+"""
+function image_from_header(files...)
+    for f in files
+        (f === nothing || !isfile(f)) && continue
+        for line in eachline(f)
+            m = match(r"^#\s*image:\s*(\S+)\s+(?:id\s+)?(?:sha256:)?([0-9a-f]{64})\s*$"i, line)
+            m === nothing || return (; name = String(m.captures[1]), id = lowercase(m.captures[2]))
+        end
+    end
+    return (; name = "unknown", id = "unknown")
+end
 
 end
