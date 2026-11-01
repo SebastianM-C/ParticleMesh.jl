@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | Work package | WP-013 (goals A2, A4, A5, A6, A7, A8, A9) |
-| Commits | base `25f61c9`; tests and scripts `0f7133c` to `df31928` on branch `worktree-wp-013-cuda` |
-| Runs | GPU test runs (the GPU runner's logs, `$JULIA_DEPOT_PATH/gpu-logs/<tag>.log`): engine `wp-013-cuda-core-4` on `a639d89`, module `wp-013-cuda-em-3` on `df31928` (and `wp-013-cuda-em-2` on `216da62`, the same tests before the T-280 rename); timing `em1d-timing-cuda-20261101T110748` (log `wp-013-cuda-timing-em1d-3`, on `df31928`) and `engine2d-cuda-20261101T105828` (log `wp-013-cuda-timing-2d-1`, on `216da62`) |
+| Commits | base `25f61c9`, merged with `main` at `0d5e9f5`; branch `worktree-wp-013-cuda` (squashed on merge: see the PR) |
+| Runs | GPU test runs (the GPU runner's logs, `$JULIA_DEPOT_PATH/gpu-logs/<tag>.log`): engine `wp-013-cuda-core-5` and module `wp-013-cuda-em-4`, both on `0d5e9f5` (the branch merged with `main` after #151; before the merge the same tests passed in `wp-013-cuda-core-4` on `a639d89` and `wp-013-cuda-em-3` on `df31928`); timing `em1d-timing-cuda-20261101T110748` (log `wp-013-cuda-timing-em1d-3`, on `df31928`) and `engine2d-cuda-20261101T105828` (log `wp-013-cuda-timing-2d-1`, on `216da62`) |
 | Input hashes | SHA-256 of every input file in each timing run's manifest: `gpu-cuda/<run>.manifest.toml`. The manifests say `commit = "unknown"`: the runner's sandbox mounts the worktree but not the repository's `.git`, so git cannot run inside a job (#179); the commit of each run is the `HEAD` in its log header, given above. |
 | Environment | NVIDIA GeForce RTX 4080 SUPER (16 GB, 15.6 GiB reported), Intel Core i9-14900K host; Julia 1.13.3; KernelAbstractions 0.10, CUDACore 6.5.0, AcceleratedKernels 0.5; jobs one at a time on the machine's GPU runner, no network |
 | Figures | `gpu-cuda/timing-cuda.png` (module step, 1D), `gpu-cuda/proxy_cuda.png` (engine-only 2D proxy step), each with its JSON sidecar |
@@ -18,7 +18,7 @@ The GPU tests live in each package's `test/` and run whenever CUDA is functional
 
 ## 2. Test results
 
-Engine, run `wp-013-cuda-core-4`: 26 624 passed, 8 broken (T-144's known multi-thread allocation, #82), none failed. Module, run `wp-013-cuda-em-3`: 36 260 passed (as in `wp-013-cuda-em-2`). Per testset:
+Engine, run `wp-013-cuda-core-5`: 26 613 passed, 16 broken (T-144's and T-268's known multi-thread sort allocation, #82), none failed. Module, run `wp-013-cuda-em-4`: 36 260 passed. The per-testset counts below are from `wp-013-cuda-core-4` and `wp-013-cuda-em-3`, which print the full table. Per testset:
 
 | Test | What ran on CUDA | Result |
 |---|---|---|
