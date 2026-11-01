@@ -34,8 +34,26 @@ end
 allocated_bytes(::CPU, f) = @allocated f()
 allocated_bytes(::CUDABackend, f) = CUDACore.@allocated f()
 
-function state_for(name, ::Type{T}, mode, be; ppc = nothing, nsteps) where {T}
-    case = load_case(name)
+"""
+    tiled(case, f) -> case
+
+The case repeated `f` times along x: length and cells times `f` (Δx, and with it the case's
+CFL ratio Δt/Δx, unchanged) and every perturbation's mode times `f` (its wavenumber unchanged).
+The loader's counter layout holds at most 65 535 particles per cell, so the largest timing sizes
+need more cells than the case's.
+"""
+function tiled(case, f)
+    c = deepcopy(case)
+    c["grid"]["length"] *= f
+    c["grid"]["cells"] *= f
+    for s in c["species"]
+        haskey(s, "perturbation") && (s["perturbation"]["mode"] *= f)
+    end
+    return c
+end
+
+state_for(name::AbstractString, ::Type{T}, mode, be; kw...) where {T} = state_for(load_case(name), T, mode, be; kw...)
+function state_for(case::AbstractDict, ::Type{T}, mode, be; ppc = nothing, nsteps) where {T}
     prob = problem_from_case(case, T; ppc, t_end = (nsteps + 10) * case["time"]["dt"])
     num = numerics_from_case(case; mode)
     local st
@@ -55,10 +73,12 @@ end
 "The CUDA row of one case, element type, mode and particle count: the step and its phases."
 function time_case_cuda(name, ::Type{T}, mode, nparticles, be) where {T}
     case = load_case(name)
-    nspecies = count(s -> s["mobile"], case["species"])
+    nspecies = count(s -> get(s, "mobile", true), case["species"])
+    f = nextpow(2, max(1, cld(nparticles, nspecies * case["grid"]["cells"] * 4096)))
+    case = tiled(case, f)
     ppc = max(1, nparticles ÷ (nspecies * case["grid"]["cells"]))
     nsteps = nparticles >= 2^24 ? 10 : 30
-    st, p, prob, bytes = state_for(name, T, mode, be; ppc, nsteps = nsteps + 10)
+    st, p, prob, bytes = state_for(case, T, mode, be; ppc, nsteps = nsteps + 10)
     np = sum(alive_count, st.species)
     k = Ref(0)
     step() = step!(st, p, (k[] = mod1(k[] + 1, length(st.hist.K)); k[]))
@@ -80,7 +100,7 @@ function time_case_cuda(name, ::Type{T}, mode, nparticles, be) where {T}
     scratch = similar(st.ρ)
     t_scan = timed(() -> cumsum_periodic!(scratch, st.ρ, grid), be)
     ns(t) = t / np * 1e9
-    return Dict{String,Any}("case" => name, "type" => string(T), "mode" => string(mode), "particles" => np, "ppc" => ppc,
+    return Dict{String,Any}("case" => name, "type" => string(T), "mode" => string(mode), "particles" => np, "ppc" => ppc, "tiles" => f,
                             "cells" => ncells(grid), "steps" => nsteps,
                             "ns_per_particle_step" => ns(t_step), "sort_ns" => ns(t_sort), "flux_ns" => ns(t_flux),
                             "solve_ns" => ns(t_solve), "scan_ns" => ns(t_scan), "scan_us" => t_scan * 1e6,
