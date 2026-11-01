@@ -43,6 +43,7 @@ Schema 2 describes a periodic box with one perturbed Fourier mode. The LWFA case
 - **Grid constraints.** PIConGPU needs every axis to be a multiple of the supercell (8 per axis in 2D here) with at least three supercells, and refuses to compile a time step beyond the Courant limit; Smilei needs powers of 2 of patches dividing the cells. A box size that satisfies both should be chosen once.
 - **Precision.** PIConGPU defaults to FP32, Smilei runs FP64 (A5). WP-017 measures the FP32–FP64 difference on the 1D set; for LWFA the comparison should name its precision per column.
 - **Thermal loading.** PIConGPU's `Temperature` manipulator is the non-relativistic Maxwellian in momentum, Smilei's `maxwell-juettner` below T = 0.1 m_e c² samples the classical energy distribution and sets |p| relativistically; for a cold LWFA plasma this is irrelevant, for a warm one it is an O(T) difference.
+- **Kinetic energy.** PIConGPU's particle-energy plugin reports p²/2m below γ = 1.005 and (γ − 1)mc² above (`algorithms/KinEnergy.hpp`); an energy balance of a warm or partly relativistic plasma must be formed from its total-energy column instead, as WP-017's reader does.
 - **Diagnostics.** PIConGPU prints the per-component field energies with 6 significant digits (`plugins/EnergyFields.x.cpp`), and every openPMD dump costs about 0.6 s on the RTX 4080 SUPER whatever its size; a moving-window LWFA run with frequent dumps will be dominated by output.
 
 ## Assumption

@@ -46,6 +46,18 @@ function run_case(dir)
     return TOML.parsefile(src)
 end
 
+"""
+The repository path recorded for a run: its committed record under reports/ when one with the
+same directory name exists (the raw run under scripts/runs/ is not committed), else its path.
+"""
+function recorded_path(dir)
+    name = basename(abspath(dir))
+    for r in (joinpath(REPO, "reports", "crosscode-picongpu", name), joinpath(REPO, "reports", "crosscode-smilei-1d", "stage-1b", name))
+        isdir(r) && return relpath(r, REPO)
+    end
+    return relpath(abspath(dir), REPO)
+end
+
 ratio(x, y) = (x === nothing || y === nothing || y == 0) ? nothing : x / y
 
 function compare_runs(a, b, out)
@@ -56,7 +68,7 @@ function compare_runs(a, b, out)
     la, lb = run_label(a), run_label(b)
     seeded = haskey(case["numerics"], "seeds")
     result = Dict{String,Any}("case" => case["name"], "reference" => la, "other" => lb,
-        "runs" => Dict(la => relpath(abspath(a), REPO), lb => relpath(abspath(b), REPO)),
+        "runs" => Dict(la => recorded_path(a), lb => recorded_path(b)),
         "note" => "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)")
     if seeded
         seeds = collect(Int, case["numerics"]["seeds"])

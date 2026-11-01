@@ -101,6 +101,50 @@ function hardware(dir)
     return h
 end
 
+"""
+    picongpu_dump_checks(dir) -> Dict
+
+Checks of a PIConGPU run on its 2D dumps (before any y-average), at every dump: Gauss's law with
+PIConGPU's staggering (E_x at (i + ½, j), E_y at (i, j + ½), ρ at the nodes, so the backward
+difference is centred on node i), max |∇·E − ρ| in the units of A1; and each species' total
+charge relative to the first dump. A dump is flagged when a species' total charge differs from
+the first dump's by more than 10⁻⁶ (FP64 and FP32 roundoff of the sum are far below it), and
+the Gauss residuals at flagged and unflagged dumps are reported apart. Not observables.
+"""
+function picongpu_dump_checks(dir)
+    u = PIConGPURead.picongpu_units(dir)
+    hx, hy = u["cell_size"]
+    Nx, Ny = u["cells"]
+    all_ = read_picongpu_fields(dir; names = nothing)
+    species = sort([replace(k, "Rho_" => "") for k in keys(all_.fields) if startswith(k, "Rho_")])
+    Ex, Ey, ρ = all_.fields["Ex"], all_.fields["Ey"], all_.fields["Rho"]
+    P(a, i, j, n) = a[mod1(i, Nx), mod1(j, Ny), n]
+    res = [maximum(abs((P(Ex, i, j, n) - P(Ex, i - 1, j, n)) / hx + (P(Ey, i, j, n) - P(Ey, i, j - 1, n)) / hy - ρ[i, j, n])
+               for i in 1:Nx, j in 1:Ny) for n in axes(Ex, 3)]
+    ρ0 = ρ[1:Nx, 1:Ny, 1]
+    pert = maximum(abs.(ρ0 .- mean(ρ0)))
+    charge = Dict{String,Any}()
+    flagged = falses(length(res))
+    for s in species
+        q = [sum(view(all_.fields["Rho_" * s], 1:Nx, 1:Ny, n)) for n in axes(Ex, 3)]
+        rel = (q .- q[1]) ./ abs(q[1])
+        bad = abs.(rel) .> 1e-6
+        flagged .|= bad
+        charge[s] = Dict{String,Any}("max_abs_relative_change" => maximum(abs, rel),
+            "flagged_dumps" => count(bad), "max_abs_relative_change_unflagged" => maximum(abs, rel[.!bad]; init = 0.0),
+            "flagged_iterations" => all_.iterations[bad])
+    end
+    good = .!flagged
+    return Dict{String,Any}("dumps" => length(res),
+        "gauss_residual_t0" => res[1], "gauss_residual_t0_relative" => res[1] / pert,
+        "gauss_residual_max" => maximum(res), "gauss_residual_max_iteration" => all_.iterations[argmax(res)],
+        "gauss_residual_max_unflagged" => maximum(res[good]; init = 0.0),
+        "gauss_residual_max_flagged" => any(flagged) ? maximum(res[flagged]) : nothing,
+        "flagged_dumps" => count(flagged), "charge_per_species" => charge,
+        "rho_perturbation_t0" => pert,
+        "note" => "PIConGPU dumps, 2D before the y-average; a flagged dump is one where the derived charge density of a species is short (see reports/crosscode-picongpu)")
+end
+
 function analyze(dir; log = nothing, image = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
     get(case, "schema", 1) == 2 && return analyze_2d(dir, case; log, image)
@@ -198,6 +242,7 @@ function analyze(dir; log = nothing, image = nothing)
         "Utot0" => Utot[1], "Ukin0" => sc.columns["Ukin"][1], "Uelm0" => sc.columns["Uelm"][1]))
 
     result["code"] = code_of(dir)
+    code_of(dir) == "picongpu" && (result["checks"] = picongpu_dump_checks(dir))
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
     outputs = output_files(dir)
     m = isfile(joinpath(dir, "manifest.toml")) ? read_manifest(dir) : Dict{String,Any}()
@@ -523,9 +568,9 @@ function analyze_2d(dir, case; log = nothing, image = nothing)
         checks["rho_max_deviation_t0"] = maximum(abs.(ρ .- mean(ρ)))
         checks["rho_mode_amplitude_t0"] = abs(only(mode_coefficient(fl.fields["Rho"][:, :, 1:1], mode, fl.x["Rho"], lengths)))
     end
-    # Staggering checks on the dumps, which also check the reader's dual-axis positions (a dual
-    # point i at (i − ½)Δ, so Ex[i+1] − Ex[i] is centred on node i): Gauss's law at t = 0,
-    # max |∇·E − ρ| / max |ρ|, and the largest |∇·B| over all outputs relative to max |B|.
+    # Staggering checks on the dumps, which also check the readers' positions: Gauss's law at
+    # t = 0, max |∇·E − ρ| / max |ρ|, and the largest |∇·B| over all outputs relative to max |B|
+    # (the ∇·B stencil is Smilei's; no PIConGPU case dumps Bx, By here).
     hx, hy = lengths ./ Tuple(case["grid"]["cells"])
     Nx, Ny = Tuple(case["grid"]["cells"])
     if all(haskey(fl.fields, n) for n in ("Ex", "Ey", "Rho"))
@@ -570,6 +615,7 @@ function analyze_2d(dir, case; log = nothing, image = nothing)
     performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
     wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
     code_of(dir) == "picongpu" && (performance["compile_seconds"] = something(compile_seconds(dir), "not recorded"))
+    code_of(dir) == "picongpu" && (checks["dumps"] = picongpu_dump_checks(dir))
     result = Dict{String,Any}("case" => name, "code" => code_of(dir), "observables" => results,
         "performance" => performance, "checks" => checks)
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")

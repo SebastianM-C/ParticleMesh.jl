@@ -313,19 +313,25 @@ end
                 println(io, s, " ", 3J * (s + 1), " 0 0 0 ", J * (s + 1), " ", 2J * (s + 1), " 0")
             end
         end
+        # the case gives the rest energy: electrons of density 1 n_c and mass 1 m_e over the box
+        cp(joinpath(CC, "cases", "landau-oblique-2d.toml"), joinpath(d2, "case.toml"))
+        rest = 1.0 * 1.0 * prod(load_case("landau-oblique-2d")["grid"]["length"])
         open(joinpath(d2, "electron_energy_all.dat"), "w") do io
             println(io, "#step Ekin_Joule E_Joule ")
             for s in (0, 4, 8)
-                println(io, s, " ", 10 * u["energy"], " ", 11 * u["energy"])
+                # Ekin_Joule is PIConGPU's threshold diagnostic, E_Joule the exact Σ γmc²
+                println(io, s, " ", 9 * u["energy"], " ", (rest + 10) * u["energy"])
             end
         end
         sc = read_picongpu_scalars(d2)
         @test sc.time ≈ [0, 4, 8] .* 0.05 rtol = 1e-14
-        @test sc.columns["Uelm_Ex"] ≈ [1, 5, 9] rtol = 1e-14
+        @test sc.columns["Uelm_Ex"] ≈ [1, 5, 9] rtol = 1e-13          # Uelm minus the other components
+        @test sc.columns["Uelm_Ex_printed"] ≈ [1, 5, 9] rtol = 1e-14
         @test sc.columns["Uelm_Ey"] ≈ [2, 10, 18] rtol = 1e-14
         @test sc.columns["Uelm"] ≈ [3, 15, 27] rtol = 1e-14
-        @test sc.columns["Ukin"] ≈ [10, 10, 10] rtol = 1e-14
-        @test sc.columns["Utot"] ≈ [13, 25, 37] rtol = 1e-14
+        @test sc.columns["Ukin"] ≈ [10, 10, 10] rtol = 1e-12           # E_Joule minus the rest energy
+        @test sc.columns["Ukin_threshold"] ≈ [9, 9, 9] rtol = 1e-14
+        @test sc.columns["Utot"] ≈ [13, 25, 37] rtol = 1e-12
         @test PIConGPURead.picongpu_output(d2) && !PIConGPURead.picongpu_output(top)
         # the energy unit: per unit depth in 2D, per unit transverse area in quasi-1D
         uq = PIConGPUDeck.units_record(picongpu_parameters(load_case("landau")))

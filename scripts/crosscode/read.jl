@@ -154,7 +154,9 @@ end
 #                        (0, 0.5), B_x at (0, 0.5), B_y at (0.5, 0), the charge density at (0, 0),
 #                        fields/YeeCell.hpp). Values times `unitSI` are SI.
 #   fields_energy.dat    plugins/EnergyFields.x.cpp: "#step total Bx By Bz Ex Ey Ez" in J.
-#   <species>_energy_all.dat  plugins/EnergyParticles.x.cpp: "#step Ekin_Joule E_Joule" in J.
+#   <species>_energy_all.dat  plugins/EnergyParticles.x.cpp: "#step Ekin_Joule E_Joule" in J;
+#                        Ekin_Joule is p²/2m below γ = 1.005 (algorithms/KinEnergy.hpp), E_Joule
+#                        the exact Σ γmc², from which the reader forms the kinetic energy.
 #   units.toml           written by scripts/crosscode/picongpu.jl: the SI value of each unit of
 #                        A1 for the run, and the J per unit of the energy scalars.
 #
@@ -199,26 +201,63 @@ function read_dat(file)
     return rows
 end
 
+"""
+The rest energy of each mobile species in the units of the energy scalars: Σ_s n_s m_s × the box
+length (quasi-1D, per unit transverse area) or the box area (2D, per unit depth), from the run's
+case.toml (in `dir` or its parent). The loaded weights sum to n·V exactly for an integer-mode
+cosine profile, so this is Σ w m c² of the load.
+"""
+function rest_energy(dir, u)
+    f = isfile(joinpath(dir, "case.toml")) ? joinpath(dir, "case.toml") : joinpath(dirname(abspath(dir)), "case.toml")
+    case = TOML.parsefile(f)
+    L = case["grid"]["length"]
+    V = u["quasi1d"] ? Float64(L isa AbstractVector ? L[1] : L) : prod(Float64.(L))
+    return Dict(s["name"] => Float64(s["density"]) * Float64(s["mass"]) * V for s in case["species"] if s["mobile"])
+end
+
+"""
+    read_picongpu_scalars(dir) -> (; time, columns)
+
+PIConGPU's energy files in the units of A1 and Smilei's column names.
+
+- `Uelm` is the 16-digit total of `fields_energy.dat`; its components are printed with 6
+  significant digits, so `Uelm_Ex` is formed as `Uelm` minus the other five components (an
+  absolute error of 5 × 10⁻⁷ of those, which are small next to Ex in these cases), and the
+  printed component is kept as `Uelm_Ex_printed`.
+- `Ukin` is the exact relativistic kinetic energy Σ (γ − 1) m c², taken as the `E_Joule` column
+  (Σ γ m c², exact) minus the rest energy of the load (`rest_energy`). PIConGPU's own `Ekin_Joule`
+  column switches to p²/2m below γ = 1.005 (`algorithms/KinEnergy.hpp`, `GAMMA_THRESH` in
+  `param/speciesConstants.param`); it is kept as `Ukin_threshold`. In FP32 runs the subtraction
+  carries the float rounding of the total energy, about 10⁻⁵ of the kinetic energy.
+"""
 function read_picongpu_scalars(dir)
     u = picongpu_units(dir)
     J = u["energy"]
     rows = read_dat(joinpath(dir, "fields_energy.dat"))
     steps = [Int(r[1]) for r in rows]
     cols = Dict{String,Vector{Float64}}()
-    for (k, n) in enumerate(("Uelm", "Uelm_Bx_m", "Uelm_By_m", "Uelm_Bz_m", "Uelm_Ex", "Uelm_Ey", "Uelm_Ez"))
+    for (k, n) in enumerate(("Uelm", "Uelm_Bx_m", "Uelm_By_m", "Uelm_Bz_m", "Uelm_Ex_printed", "Uelm_Ey", "Uelm_Ez"))
         cols[n] = [r[k+1] / J for r in rows]
     end
+    cols["Uelm_Ex"] = cols["Uelm"] .- cols["Uelm_Ey"] .- cols["Uelm_Ez"] .- cols["Uelm_Bx_m"] .- cols["Uelm_By_m"] .- cols["Uelm_Bz_m"]
+    rest = rest_energy(dir, u)
     ukin = zeros(length(steps))
+    uthr = zeros(length(steps))
     for f in readdir(dir)
         m = match(r"^(.+)_energy_all\.dat$", f)
         m === nothing && continue
+        sp = m.captures[1]
         r = read_dat(joinpath(dir, f))
         Int.(first.(r)) == steps || error("$f: steps differ from fields_energy.dat")
-        e = [x[2] / J for x in r]
-        cols["Ukin_" * m.captures[1]] = e
+        haskey(rest, sp) || error("$f: species $sp is not a mobile species of the case")
+        e = [x[3] / J - rest[sp] for x in r]
+        cols["Ukin_" * sp] = e
+        cols["Ukin_threshold_" * sp] = [x[2] / J for x in r]
         ukin .+= e
+        uthr .+= cols["Ukin_threshold_" * sp]
     end
     cols["Ukin"] = ukin
+    cols["Ukin_threshold"] = uthr
     cols["Utot"] = ukin .+ cols["Uelm"]
     cols["time"] = steps .* u["dt"]
     return (; time = cols["time"], columns = cols)
