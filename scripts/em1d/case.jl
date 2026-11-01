@@ -42,28 +42,6 @@ function observable(name, case, ts, h)
     end
 end
 
-"The electrostatic reference on the same edge case (same grid, Δt, particles per cell, amplitude, seed)."
-function es_reference(name, prob, case)
-    tmax = prob.nsteps * prob.dt
-    if name == "landau"
-        e = case["species"][1]
-        kλD = 2π / case["grid"]["length"] * e["thermal_velocity"] / sqrt(e["density"])
-        st, p, info = landau_case(Float64; n = prob.cells, ppc = prob.species[1].ppc, n0 = e["density"],
-                                  vth = e["thermal_velocity"], kλD, α = prob.species[1].amplitude, dt_ωp = prob.dt,
-                                  tmax_ωp = tmax, seed = prob.seed)
-    else
-        b = case["species"][2]
-        n0 = 2b["density"]
-        kv0 = 2π / case["grid"]["length"] * abs(b["drift"]) / sqrt(n0)
-        st, p, info = two_stream_case(Float64; n = prob.cells, ppc = prob.species[1].ppc, n0, v0 = abs(b["drift"]),
-                                      kv0_ωp = kv0, α = prob.species[1].amplitude, dt_ωp = prob.dt, tmax_ωp = tmax,
-                                      seed = prob.seed)
-    end
-    ESReference.initialize!(st, p)
-    t = @elapsed ESReference.run!(st, p, info.nsteps)
-    return field_energy_history(st), t
-end
-
 function main(args)
     name = args[1]
     kw = parse_overrides(args[2:end])
@@ -102,14 +80,11 @@ function main(args)
     U = getfield(h, obs.signal)
     f = obs.fit(U)
     rel = (f.gamma - obs.theory) / obs.theory
-    es = name == "weibel" ? nothing : es_reference(name, prob, case)
-    fe = es === nothing ? nothing : obs.fit(es[1])
 
     # 1. the observable's signal with the fit and the theory slope
     fig = Figure(size = (800, 450))
     ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t (1/ω₀)", ylabel = "$(obs.label) (mₑc²n_c c/ω₀)", title = "$name through ParticleMeshElectromagnetic")
     lines!(ax, ts, max.(U, 1e-30); label = "module")
-    es === nothing || lines!(ax, ts[1:length(es[1])], max.(es[1], 1e-30); color = (:gray, 0.7), label = "electrostatic reference")
     if !isempty(f.t_fit)
         scatter!(ax, f.t_fit, f.U_fit; color = :black, markersize = 4, label = "fit points, γ = $(round(f.gamma, digits = 4))")
         U0 = f.U_fit[1] * exp(-2 * obs.sign * obs.theory * f.t_fit[1])
@@ -120,9 +95,7 @@ function main(args)
     save_plot(dir, "$(name)_signal", fig, Dict(
         "signal" => string(obs.signal), "gamma_measured" => f.gamma, "gamma_theory" => obs.theory, "relative_error" => rel,
         "omega_measured" => get(f, :omega, nothing), "omega_theory" => obs.theory_omega, "fit_points" => length(f.t_fit),
-        "fit_window_t" => isempty(f.t_fit) ? nothing : [first(f.t_fit), last(f.t_fit)],
-        "gamma_es_reference" => fe === nothing ? nothing : fe.gamma,
-        "relative_difference_to_es_reference" => fe === nothing ? nothing : (f.gamma - fe.gamma) / fe.gamma))
+        "fit_window_t" => isempty(f.t_fit) ? nothing : [first(f.t_fit), last(f.t_fit)]))
 
     # 2. every field energy and the kinetic energy change
     fig = Figure(size = (800, 450))
@@ -162,8 +135,6 @@ function main(args)
     summary = Dict("case" => name, "mode" => string(mode), "particles" => np, "steps" => prob.nsteps, "wall_seconds" => wall,
                    "ns_per_particle_step" => wall / (np * prob.nsteps) * 1e9, "threads" => Threads.nthreads(),
                    "gamma" => f.gamma, "gamma_theory" => obs.theory, "relative_error" => rel,
-                   "gamma_es_reference" => fe === nothing ? nothing : fe.gamma,
-                   "es_reference_seconds" => es === nothing ? nothing : es[2],
                    "energy_drift_max" => maximum(abs, drift), "gauss_max" => maximum(gauss))
     open(io -> JSON.print(io, summary, 2), joinpath(dir, "summary.json"), "w")
     println(JSON.json(summary, 2))

@@ -1,10 +1,7 @@
 # The three 1D cases through the module (A5): T-213 to T-217. Rates are measured with the
 # observables of the case files (scripts/crosscode/analysis.jl, the same fits the Smilei runs
 # use) and recorded, not thresholded (A7: measure, then propose); only finiteness and sign are
-# asserted. The electrostatic reference (lib/ParticleMeshCore/test/es_reference.jl) runs the
-# same edge cases with the same seed, grid, time step and particles per cell; the schemes differ
-# by construction (Ampère with the relativistic Boris push against Gauss with the
-# nonrelativistic leapfrog), so their difference is recorded, never asserted.
+# asserted.
 
 const PHYSICS = Dict{String,Any}()
 
@@ -21,29 +18,6 @@ function run_case(name; overrides...)
     st, p, prob, case = case_state(name, Float64; overrides...)
     t = @elapsed run!(st, p, prob.nsteps)
     return (; st, prob, case, h = histories(st), ts = history_times(prob), seconds = t)
-end
-
-"The electrostatic reference on the same edge case (same grid, Δt, particles per cell, seed)."
-function es_reference_run(name, prob, case)
-    s = case["species"]
-    tmax = prob.nsteps * prob.dt
-    if name == "landau"
-        e = s[1]
-        kλD = 2π / case["grid"]["length"] * e["thermal_velocity"] / sqrt(e["density"])
-        st, p, info = landau_case(Float64; n = prob.cells, ppc = prob.species[1].ppc, n0 = e["density"],
-                                  vth = e["thermal_velocity"], kλD, α = prob.species[1].amplitude,
-                                  dt_ωp = prob.dt, tmax_ωp = tmax, seed = prob.seed)
-    else
-        b = s[2]
-        n0 = 2b["density"]
-        kv0 = 2π / case["grid"]["length"] * abs(b["drift"]) / sqrt(n0)
-        st, p, info = two_stream_case(Float64; n = prob.cells, ppc = prob.species[1].ppc, n0, v0 = abs(b["drift"]),
-                                      kv0_ωp = kv0, α = prob.species[1].amplitude, dt_ωp = prob.dt,
-                                      tmax_ωp = tmax, seed = prob.seed)
-    end
-    ESReference.initialize!(st, p)
-    ESReference.run!(st, p, info.nsteps)
-    return field_energy_history(st)
 end
 
 "T-213: the transverse fields and momenta of an edge case are +0.0 bit for bit, at every step and at the end."
@@ -67,11 +41,9 @@ end
     kλ = 2π / r.case["grid"]["length"] * e["thermal_velocity"] / sqrt(e["density"])
     ω = landau_root(kλ)
     f = damping_from_peaks(r.ts, r.h.WEx; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
-    W_es = es_reference_run("landau", r.prob, r.case)
-    fe = damping_from_peaks(r.ts, W_es; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
     rel = (f.gamma - (-imag(ω))) / (-imag(ω))
-    @info "T-214 Landau" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
-    PHYSICS["landau"] = (; r..., f, fe, ω)
+    @info "T-214 Landau" γ_theory = -imag(ω) γ = f.gamma ω_theory = real(ω) ω = f.omega rel peaks = length(f.t_fit) seconds = r.seconds
+    PHYSICS["landau"] = (; r..., f, ω)
     @test isfinite(f.gamma) && isfinite(f.omega)
     @test f.gamma > 0                    # the field damps (γ is the damping rate of the amplitude)
 end
@@ -85,11 +57,9 @@ end
     γth = two_stream_cold_growth(kv0; gamma0 = 1 / sqrt(1 - v0^2))
     @test γth ≈ o["theory"] rtol = 1e-12
     f = growth_from_window(r.ts, r.h.WEx; window = o["window"])
-    W_es = es_reference_run("two-stream", r.prob, r.case)
-    fe = growth_from_window(r.ts, W_es; window = o["window"])
     rel = (f.gamma - γth) / γth
-    @info "T-215 two-stream" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) γ_es = fe.gamma rel_es = (f.gamma - fe.gamma) / fe.gamma seconds = r.seconds
-    PHYSICS["two-stream"] = (; r..., f, fe, γth)
+    @info "T-215 two-stream" γ_theory = γth γ = f.gamma rel window = extrema(f.t_fit) seconds = r.seconds
+    PHYSICS["two-stream"] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
 end
