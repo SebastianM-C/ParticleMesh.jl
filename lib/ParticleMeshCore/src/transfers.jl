@@ -15,12 +15,20 @@ accumulation(::Type) = Sorted()
     effective_mode(mode, T)
 
 The mode deposition actually runs in: `Fast()` for element types without atomics (`Dual`,
-compensated types) falls back to `Reference()`. A step that sorts only when needed asks this.
+compensated types) falls back to `Reference()`, and sorts by cell itself before it, since
+`Fast()` has no sort precondition (#196). A step that sorts only when needed asks this, and
+passes the result to the deposition so that the fallback does not sort a second time.
 """
 effective_mode(::Reference, ::Type) = Reference()
 effective_mode(::Fast, ::Type{T}) where {T} = _effective(accumulation(T))
 _effective(::Atomic) = Fast()
 _effective(::Sorted) = Reference()
+
+# The sort that `Fast()` runs before its fallback to `Reference()`; nothing in every other case.
+# The branch is on the type, not on device data (§0.4).
+fallback_sort!(::Reference, ::Type, s, grid, ws, workgroupsize) = nothing
+fallback_sort!(::Fast, ::Type{T}, s, grid, ws, workgroupsize) where {T} =
+    effective_mode(Fast(), T) isa Reference ? (sort_by_cell!(s, grid, ws; workgroupsize); nothing) : nothing
 
 """
     gather_at(a, c, δ, shape, stagger, g)
@@ -108,15 +116,15 @@ end
 Add `quantity(species, i)` (by default `q·w`) of every alive particle into the field `ρ` (with
 guards) with the given shape and stagger. Guards receive the contributions that cross the
 periodic seam; `fold_guards!` moves them into the interior ("deposit into guards, then fold").
-`Reference()` needs `sort_by_cell!(species, grid, ws)` since the last particle move and is
-bitwise deterministic: one work item per node adds, in increasing cell order and within a cell
-in slot order, the contributions of the cells in its stencil. `Fast()` uses atomics where
-`accumulation` allows them and falls back to `Reference()` otherwise (`effective_mode`), so for
-element types without atomics (`Dual`) `Fast()` also needs the sort: a caller that sorts only
-when needed asks `effective_mode(mode, T) isa Reference`. Without it, the deposition reads the
-segment bounds of the last sort and silently gives a wrong result (#196). In
-both modes `deposit!` is the adjoint of `gather!` with the same weighting, including fill and
-fold (T-132, T-175).
+`Reference()` needs `sort_by_cell!(species, grid, ws)` since the last particle move (without
+it, it reads the segment bounds of the last sort) and is bitwise deterministic: one work item
+per node adds, in increasing cell order and within a cell in slot order, the contributions of
+the cells in its stencil. `Fast()` needs no sort: it uses atomics where `accumulation` allows
+them, and otherwise (`Dual`) sorts the species by cell itself and runs `Reference()`
+(`effective_mode`), which permutes the particles' slots (#196). A caller that sorts anyway
+passes `effective_mode(mode, T)` so that the species is not sorted twice. In both modes
+`deposit!` is the adjoint of `gather!` with the same weighting, including fill and fold
+(T-132, T-175).
 
 For N = 2, `ρ` is a matrix with guards, `stagger` an `NTuple{2,Stagger}` and the weights the
 tensor product of the per-axis weights; `Reference()` needs the 2D `sort_by_cell!`, and a node
@@ -125,6 +133,7 @@ cell in slot order (the A4 bitwise contract for N = 2; T-265, T-266).
 """
 function deposit!(mode, ρ::AbstractVector{T}, s::Species{1}, shape::Shape, stagger::Stagger,
                   grid::PeriodicGrid{1}, ws::Workspace; quantity = ChargeWeight(), workgroupsize = nothing) where {T}
+    fallback_sort!(mode, T, s, grid, ws, workgroupsize)
     _deposit!(effective_mode(mode, T), ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
 end
 
@@ -227,6 +236,7 @@ end
 
 function deposit!(mode, ρ::AbstractArray{T,N}, s::Species{N}, shape::Shape, stagger::NTuple{N,Stagger},
                   grid::PeriodicGrid{N}, ws::Workspace; quantity = ChargeWeight(), workgroupsize = nothing) where {T,N}
+    fallback_sort!(mode, T, s, grid, ws, workgroupsize)
     _deposit_nd!(effective_mode(mode, T), ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
 end
 

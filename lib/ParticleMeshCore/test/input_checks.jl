@@ -1,4 +1,5 @@
-# Input checks and the Float32 uniform draw, from a review of b714331 (#194, #195, #201).
+# Input checks, the Float32 uniform draw and the sort of the Fast() fallback, from a review of
+# b714331 (#194, #195, #196, #201).
 
 @testset "T-340 the 1D grid constructor applies the n ≥ max(1, 2g) check of the tuple constructor [A4, A7]" begin
     # For g < n < 2g the left and right guards fold into the same interior nodes, a race (#194).
@@ -59,4 +60,77 @@ end
                         vth = (one(T), one(T), one(T)), seed = 24485953, stream = 1)
         @test all(isfinite, components(Array(s.u[3])[1]))
     end
+end
+
+"`ρ` of `s` in `Reference()` on a copy of `s`, sorted first: the result `Fast()` must reproduce for `Dual`."
+function sorted_reference(s, ρ0, shape, stagger, grid)
+    c = deepcopy(s)
+    ws = Workspace(c, grid)
+    sort_by_cell!(c, grid, ws)
+    return deposit!(Reference(), copy(ρ0), c, shape, stagger, grid, ws)
+end
+
+@testset "T-345 Fast() needs no prior sort, also where it falls back to Reference() [A4, A8]" begin
+    # Fast() on a Dual species ran the sorted kernel on the segment bounds of the last sort: with
+    # none it deposited zero, after a move it used stale bounds, silently (#196). The fallback now
+    # sorts first, so it equals Reference() after a sort bitwise, partials included.
+    n, np = 12, 200
+    for shape in SHAPES, stagger in STAGGERS
+        grid = PeriodicGrid(n, 0.5f0, guard_width(shape))
+        # never sorted: the slots of test_species are not in cell order
+        s = test_species(D3, grid, np; seed = 7)
+        expect = sorted_reference(s, field(backend, D3, grid), shape, stagger, grid)
+        ρ = deposit!(Fast(), field(backend, D3, grid), s, shape, stagger, grid, Workspace(s, grid))
+        @test same_bits(ρ, expect)
+        @test absdiff(sum(ρ), s.q * sum(s.w[1:np])) <= 4np * eps(Float32) * absmax(s.q * sum(s.w[1:np]))
+        # sorted, then moved: the bounds of that sort are stale
+        s = test_species(D3, grid, np; seed = 8)
+        ws = Workspace(s, grid)
+        sort_by_cell!(s, grid, ws)
+        for i in 1:np
+            s.status[i] == ParticleMeshCore.ALIVE || continue
+            c, δ = advance(s.cell[1][i], s.offset[1][i], seeded(D3, 0.9 * cos(2.3i)), Int32(n))
+            s.cell[1][i], s.offset[1][i] = c, δ
+        end
+        expect = sorted_reference(s, field(backend, D3, grid), shape, stagger, grid)
+        @test same_bits(deposit!(Fast(), field(backend, D3, grid), s, shape, stagger, grid, ws), expect)
+    end
+    # Float32 keeps its atomic path, which neither sorts nor needs a sort
+    grid = PeriodicGrid(n, 0.5f0, 2)
+    s = test_species(Float32, grid, np; seed = 7)
+    cells = copy(s.cell[1])
+    ρ = deposit!(Fast(), field(backend, Float32, grid), s, Quadratic, Center(), grid, Workspace(s, grid))
+    @test s.cell[1] == cells
+    @test abs(sum(ρ) - s.q * sum(s.w[1:np])) <= 4np * eps(Float32) * abs(s.q * sum(s.w[1:np]))
+    # N = 2
+    grid2 = PeriodicGrid((6, 5), (0.5f0, 0.25f0), 2)
+    for st in ((Node(), Node()), (Center(), Node()))
+        s = test_species_2d(D3, grid2, 150; seed = 4)
+        expect = sorted_reference(s, field(backend, D3, grid2), Quadratic, st, grid2)
+        @test same_bits(deposit!(Fast(), field(backend, D3, grid2), s, Quadratic, st, grid2, Workspace(s, grid2)), expect)
+    end
+    # deposit_flux!, never sorted
+    for shape in SHAPES
+        grid = PeriodicGrid(10, 0.5f0, flux_guard_width(shape, Node()))
+        s = moved_species(D3, grid, 300; seed = 5, dead = (40, 41))
+        c = deepcopy(s)
+        wc = Workspace(c, grid)
+        sort_by_cell!(c, grid, wc)
+        J(mode, sp, ws) = deposit_flux!(mode, field(backend, D3, grid), field(backend, D3, grid), field(backend, D3, grid),
+                                        sp, shape, Node(), grid, ws; dt = 0.25f0, quantity_y = ChargeUy(), quantity_z = ChargeUz())
+        @test all(same_bits.(J(Fast(), s, Workspace(s, grid)), J(Reference(), c, wc)))
+    end
+    # A caller that has sorted passes the effective mode, which does not sort again; Fast() sorts,
+    # and on a sorted species that is the identity permutation
+    s = test_species(D3, grid, np; seed = 9)
+    ws = Workspace(s, grid)
+    sort_by_cell!(s, grid, ws)
+    perm = copy(ws.perm)
+    @test perm != 1:capacity(s)
+    before = deepcopy(s)
+    ρ = deposit!(effective_mode(Fast(), D3), field(backend, D3, grid), s, Quadratic, Center(), grid, ws)
+    @test ws.perm == perm
+    @test same_bits(deposit!(Fast(), field(backend, D3, grid), s, Quadratic, Center(), grid, ws), ρ)
+    @test ws.perm == 1:capacity(s)
+    @test all(same_bits(getfield(s, f)[d], getfield(before, f)[d]) for f in (:cell, :offset, :u) for d in eachindex(getfield(s, f)))
 end
