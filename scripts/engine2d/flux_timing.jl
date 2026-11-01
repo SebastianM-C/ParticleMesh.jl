@@ -389,14 +389,18 @@ function prototype_rows()
             results["patch_tuple_nn"] = timed_adaptive(run_q)
         end
         ref = outs["recompute"]
+        # The relative differences compare folded fields: a nearest-node bin that wraps the seam
+        # deposits into the other side's guards, which is the same current after the fold.
+        fo(k) = map(x -> PMC.fold_guards!(copy(x), grid), outs[k])
+        frel(a, b) = maxrel(fo(a), fo(b))
         checks = Dict{String,Any}(
             "scratch_bitwise_recompute" => same(outs["scratch"], ref),
             "patches_bitwise_equal" => all(same(outs[k], outs["patch_global"]) for k in ("patch_tuple", "patch_global_cm", "patch_tuple_cm")),
             "patch_bitwise_recompute" => same(outs["patch_global"], ref),
-            "patch_maxrel_recompute" => maxrel(outs["patch_global"], ref),
-            "fast_maxrel_recompute" => maxrel(outs["fast"], ref))
-        haskey(outs, "recompute_nn") && (checks["nn_maxrel_recompute"] = maxrel(outs["recompute_nn"], ref);
-                                         checks["patch_nn_maxrel_recompute"] = maxrel(outs["patch_tuple_nn"], ref))
+            "patch_maxrel_recompute" => frel("patch_global", "recompute"),
+            "fast_maxrel_recompute" => frel("fast", "recompute"))
+        haskey(outs, "recompute_nn") && (checks["nn_maxrel_recompute"] = frel("recompute_nn", "recompute");
+                                         checks["patch_nn_maxrel_recompute"] = frel("patch_tuple_nn", "recompute"))
         for (k, v) in results
             push!(rows, row(T, n, np, P, label, k, v, checks))
         end
