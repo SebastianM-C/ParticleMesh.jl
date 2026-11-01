@@ -22,4 +22,4 @@ The engine keeps no step. A physics-free "proxy step" made of the same engine pi
 
 CI runs the module's suite next to the engine's, so a change in an engine kernel is still exercised by a full step on every pull request. The engine does not depend on the module.
 
-The same change points WP-012's ParticleMesh column at the module (`scripts/em1d/crosscode.jl`). It also re-derives WP-013 so that its CUDA validation runs the module's step rather than the reference. That re-derivation was agreed with the owner in the session that made the change.
+The same change points WP-012's ParticleMesh column at the module (`scripts/em1d/crosscode.jl`). WP-013's CUDA validation already runs the module's step rather than the reference (re-derived in #141).
