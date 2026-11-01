@@ -199,3 +199,68 @@ scale = "eps(Float32)·|u⁰|·√N; |u| = 10⁴ with B = 50 and |u| = 10 with B
 C = 1
 measured = { Boris = 0.241, Vay = 0.39, HigueraCary = 0.216, BorisExactRotation = 0.241, QuadraticUnitary = 0.221 }
 status = "proposed; before the #203 fixes Vay measured 39 and the exact rotation 13 at N = 10⁴"
+
+# Tolerances of WP-022 (the Yee solver in N dimensions), proposals like those above, on the grids
+# of test/yee_nd_cases.jl (N = 1: 48 cells on 2π; N = 2: 24 × 16 cells on 2π × 3π/2, Δx ≠ Δy).
+# The measured values are the largest over N = 1 and N = 2; the solver is bitwise across thread
+# counts (T-327), so one measurement covers 1 and 4 threads.
+["T-320"]
+quantity = "an oblique discrete eigenmode (m = 3 at N = 1, (3, −2) at N = 2) in each polarization against the exact Yee relation: largest field error over every E and B component, value and partials (C); phase error and relative amplitude error of its Fourier coefficient (C_phase)"
+scale = "steps (amplitude 1), 400 steps at Δt = 1/2 and 95/100 of the Courant limit"
+C = 0.5
+C_phase = 0.5
+measured = { Float32 = 0.0797, Float64 = 0.135, "Dual{Float32,3}" = 0.0797 }
+measured_phase = { Float32 = 0.065, Float64 = 0.121, "Dual{Float32,3}" = 0.065 }
+status = "proposed"
+
+["T-321"]
+quantity = "phase-velocity error 1 − ω/|k| of the code against c at Courant number 0.95, polarization 2, one period, Float64: |observed order − 2| over 16, 32, 64 cells per wavelength along x (N = 1; N = 2 with Δy = 4Δx/3 on 2π × 2π), along the axis (mode (1, 0)) and the diagonal (mode (1, 1))"
+order_tol = 0.05
+measured = { Float64 = 0.0153 }
+errors = { n1 = [6.35e-4, 1.57e-4, 3.92e-5], axis = [2.74e-3, 6.80e-4, 1.70e-4], diagonal = [1.52e-3, 3.77e-4, 9.39e-5] }
+status = "proposed; the anisotropy (diagonal error / axis error, 0.55) is in reports/wp-022-yee-nd.md"
+
+["T-322"]
+quantity = "∇·B by forward differences, change after up to 200 steps (C); one step's change of the backward-difference ∇·E plus Δt·∇·J with a prescribed J (C_current); random fields, every part of the duals, 95/100 of the Courant limit"
+scale = "max|B|·Σ_d 2/Δ_d·steps (C); max(|E|, |B|, Δt|J|)·Σ_d 2/Δ_d (C_current)"
+C = 0.2
+C_current = 1
+measured = { Float32 = 0.0379, Float64 = 0.0328, "Dual{Float32,3}" = 0.0471 }
+measured_current = { Float32 = 0.354, Float64 = 0.323, "Dual{Float32,3}" = 0.388 }
+status = "proposed"
+
+["T-323"]
+quantity = "the scheme's conserved energy form W(u, v) = E·E + B·B − (Δt/2)²·C⁺E·C⁺E: relative change in vacuum over 400 steps (C); per step with a prescribed J, the change minus the work term −(Δt/2)·[J_u·(E_vⁿ + E_vⁿ⁺¹) + J_v·(E_uⁿ + E_uⁿ⁺¹)] (C_current); random fields, value and value × partial for duals, 95/100 of the Courant limit"
+scale = "steps·√(W(u,u)·W(v,v)) (C); the sum of the two √(W(u,u)·W(v,v)) and |work| (C_current)"
+C = 0.1
+C_current = 0.5
+measured = { Float32 = 0.00492, Float64 = 0.00996, "Dual{Float32,3}" = 0.0172 }
+measured_current = { Float32 = 0.0998, Float64 = 0.0969, "Dual{Float32,3}" = 0.0828 }
+status = "proposed"
+
+["T-324"]
+quantity = "a y-invariant 2D run (48 × 8 cells) against the 1D run (C) and the axis-exchanged run against the exchanged result (C_exchange), every E and B entry, 100 steps"
+scale = "steps·max|field|"
+C = 0.1
+C_exchange = 0.2
+measured = { Float32 = 0.0, Float64 = 0.0, "Dual{Float32,3}" = 0.0 }
+measured_exchange = { Float32 = 0.05, Float64 = 0.0322, "Dual{Float32,3}" = 0.0379 }
+status = "proposed; the y-invariant run is bitwise the 1D run for every element type, the exchanged run is not (the curl terms add in the other order), recorded, not asserted"
+
+["T-325"]
+quantity = "the highest mode of the grid: relative change of the energy form over 400 steps at 0.99 of the Courant limit (C), and the deviation of the run from the closed form Mⁿ·(1, 0) of the one-step matrix (C_rotation); at 1.01, the deviation of the run from λⁿ times the initial eigenvector over 40 steps, λ the growing eigenvalue of the one-step matrix, |λ| = (S + √(S² − 1))² ≈ 1.3266 (C_growth)"
+scale = "steps·W₀ (C); steps (amplitude 1, C_rotation); steps·|λ|ⁿ·max|F₀| (C_growth)"
+C = 0.25
+C_rotation = 2
+C_growth = 10
+measured = { Float32 = 0.0365, Float64 = 0.0383, "Dual{Float32,3}" = 0.0365 }
+measured_rotation = { Float32 = 0.396, Float64 = 0.612, "Dual{Float32,3}" = 0.396 }
+measured_growth = { Float32 = 3.16, Float64 = 3.31, "Dual{Float32,3}" = 3.16 }
+status = "proposed; the growth ratio is larger because d log|λ|/dS = 2/√(S² − 1) ≈ 14 amplifies the rounding of S"
+
+["T-328"]
+quantity = "Dual{Float32,3} solve against Float32 solves of its value and of each partial, every E and B entry, 100 steps"
+scale = "eps(Float32)·steps·max|reference|"
+C = 0.5
+measured = { primal = 0.0, partials = 0.0 }
+status = "proposed; both bitwise at N = 1 and N = 2 on the CPU backend, recorded, not asserted (A4)"
