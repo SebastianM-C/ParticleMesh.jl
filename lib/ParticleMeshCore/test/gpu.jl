@@ -188,10 +188,12 @@ else
                 KernelAbstractions.synchronize(GPU)
             end
             sort(); step(); sort(); step()
-            host = @allocated step()
-            dev = CUDACore.@allocated step()
-            sort_host = @allocated sort()
-            sort_dev = CUDACore.@allocated sort()
+            # the minimum of three samples: a single host sample once came out 288 bytes high
+            # without a pattern (the third CUDA run)
+            host = minimum(_ -> @allocated(step()), 1:3)
+            dev = maximum(_ -> CUDACore.@allocated(step()), 1:3)
+            sort_host = minimum(_ -> @allocated(sort()), 1:3)
+            sort_dev = maximum(_ -> CUDACore.@allocated(sort()), 1:3)
             return (; host, dev, sort_host, sort_dev)
         end
         for T in TYPES, N in (1, 2)

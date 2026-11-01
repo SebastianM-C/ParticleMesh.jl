@@ -52,19 +52,20 @@ The electrostatic reference (`lib/ParticleMeshCore/test/es_reference.jl`, `scrip
 
 ## Acceptance
 
-Test ids T-190 to T-199. On CUDA, "with the CPU's C" means the tolerance constant the CPU test uses (`tolerances.toml`); a larger measured ratio on the GPU is recorded as its own proposed entry, never as a silent widening.
+Test ids T-190 to T-199 and T-280. On CUDA, "with the CPU's C" means the tolerance constant the CPU test uses (`tolerances.toml`); a larger measured ratio on the GPU is recorded as its own proposed entry, never as a silent widening.
 
 - T-190 the engine's N = 1 identities on CUDA, for Float32, Float64 and `Dual{Float32,3}`, with the CPU's C: T-130 to T-135, T-139, T-140, T-172 to T-175, and the flux identities T-110, T-112, T-114 and T-115 [A7, A8, WP-013].
 - T-191 the engine's N = 2 identities on CUDA, for the same element types, with the CPU's C: T-261 to T-265, T-267 and T-269 [A7, A8, WP-013].
 - T-192 Reference mode of the engine on CUDA is bitwise identical across three reruns and three launch shapes (`workgroupsize = nothing`, 64 and 256), per element type, for `sort_by_cell!`, `deposit!`, `deposit_flux!`, `gather!`, `fill_guards!`, `fold_guards!` and `cumsum_periodic!`, at N = 1 and N = 2 with particles crossing every seam (the CUDA counterpart of T-136, T-177, T-113 and T-266) [A4, WP-013].
-- T-193 the Philox integer outputs and `uniform_open` on CUDA are bitwise equal to the CPU's, and so is a quiet-start load; the Box–Muller velocities agree within a measured number of ulp (CUDA's `log` and `sincos` may differ from Base), recorded as a proposal [A4, WP-013].
+- T-193 the Philox integer outputs and `uniform_open` on CUDA are bitwise equal to the CPU's, and so are the cells and offsets of a quiet-start load; its weights (the density's `cos` is CUDA's on the device) and the Box–Muller velocities (`log`, `cos`, `sin`) agree within a measured number of eps and ulp, recorded as proposals [A4, WP-013].
 - T-194 Fast and Reference on CUDA agree per node and per face within the CPU's C for `deposit!` and `deposit_flux!` at N = 1 and `deposit!` at N = 2 (atomic order is not deterministic), the measured ratios recorded next to T-135's, T-113's and T-265's [A4, A7, WP-013].
 - T-195 the module on CUDA passes its CPU tests with the CPU's tolerances: T-210, T-211, T-212 (Gauss's law after every step), T-214 to T-217, and T-219 in Float64 [A2, A5, A7, A8, WP-013].
 - T-196 the module's Reference step on CUDA is bitwise identical across three reruns and two launch shapes for the Landau, two-stream and Weibel cases (a digest of the final fields and particles), per element type, and the harness's `solve` equals `initialize!` plus `run!` bit for bit on CUDA (the CUDA counterpart of T-218 and T-100) [A4, A9, WP-013].
 - T-197 CPU and CUDA Reference runs of the module's three cases differ in their rates and field-energy histories by a measured relative amount, recorded as A4's cross-backend tolerance proposal, not bitwise; the CPU–CUDA difference of `cumsum_periodic!` alone is recorded too, since both backends run one association order [A4, A7, WP-013].
-- T-198 host and device allocation per step after warm-up on CUDA does not grow with particle count or grid size, for the engine at N = 1 and N = 2 and for the module's step (the CUDA counterpart of T-117, T-268 and T-220) [A7, WP-013].
+- T-198 device allocation per step after warm-up on CUDA does not grow with particle count or grid size for the engine at N = 1 and N = 2, nor does the host allocation of every launch but the sort's; the sort's host bookkeeping grows by at most 1 KiB per doubling of the capacity, one merge pass of AcceleratedKernels' GPU merge sort per doubling (the CUDA counterpart of T-117 and T-268) [A7, WP-013].
+- T-280 the same for the module's step, the sort's bound per sorted species (the CUDA counterpart of T-220) [A7, WP-013].
 - T-199 the GPU switch, tested on the CPU in a subprocess: without a functional GPU and without `PM_TEST_GPU` the GPU testsets do not run and the suite prints the one line; with `PM_TEST_GPU=0` they do not run; with `PM_TEST_GPU=1` and no functional GPU the suite fails [A6, WP-013].
-- On CPU CI the suites pass unchanged apart from T-199 and the one line. Through the runner, the log ends with `# gpu-run finished: exit 0` and T-190 to T-198 pass, or the runs are marked absent and the question file exists. `build.jl --check` passes.
+- On CPU CI the suites pass unchanged apart from T-199 and the one line. Through the runner, the log ends with `# gpu-run finished: exit 0` and T-190 to T-198 and T-280 pass, or the runs are marked absent and the question file exists. `build.jl --check` passes.
 
 ## Depends on
 

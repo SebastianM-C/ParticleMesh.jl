@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-198. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -69,12 +69,12 @@ else
         end
     end
 
-    @testset "T-198 module allocation per step on CUDA does not grow with particle count or grid size [A7, WP-013]" begin
+    @testset "T-280 module allocation per step on CUDA does not grow with particle count or grid size [A7, WP-013]" begin
         for name in ("landau", "weibel"), mode in (Reference(), Fast())
             small = device_step_bytes(GPU, name, mode; ppc = 16, cells = 64)
             more_particles = device_step_bytes(GPU, name, mode; ppc = 256, cells = 64)
             larger_grid = device_step_bytes(GPU, name, mode; ppc = 16, cells = 512)
-            @info "T-198 bytes per step on CUDA" name mode small more_particles larger_grid
+            @info "T-280 bytes per step on CUDA" name mode small more_particles larger_grid
             @test more_particles.dev <= small.dev && larger_grid.dev <= small.dev
             # Host bytes: constant up to 1 KiB, plus, per sorted species, AcceleratedKernels' GPU
             # merge sort's bookkeeping, one merge-pass launch per doubling of the capacity (the
