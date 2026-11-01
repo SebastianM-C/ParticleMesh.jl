@@ -147,7 +147,7 @@ function kinetic!(st::EMState{2})
 end
 
 """
-    initialize!(state::EMState{2}, problem::EMProblem{2}) -> state
+    initialize!(state::EMState{2}, problem::EMProblem{2}; momenta_at = :t0) -> state
 
 The 2D state at t = 0, as in 1D: each species loaded by the engine's 2D quiet start (weights
 `density·(1 + amplitude·cos(k·x))/prod(ppc)` with `k_d = 2π·mode_d/L_d`, so the parameters enter
@@ -155,10 +155,13 @@ through the weights, A3), the velocities converted to momenta; the fields zero; 
 the deposited charge by the engine's periodic solve, `φ` from `inverse_laplacian_periodic!` of ρ
 and `E = G` from `gradient_periodic!`, so that the backward-difference divergence of E is
 ρ − mean(ρ) to roundoff (the mean is the immobile background); the background fields `E0`, `B0`
-added where nonzero; then the momenta half a step back by the pusher with −Δt/2 in E⁰, B⁰
-(half-step centring, A2) and the kinetic energy at t = −Δt/2.
+added where nonzero; then the momenta at t = −Δt/2 (half-step centring, A2) and the kinetic
+energy there: with `momenta_at = :t0` (the default) the loaded momenta are u⁰ and are moved
+half a step back by the pusher with −Δt/2 in E⁰, B⁰; with `:t_minus_half` they are taken as
+u⁻¹ᐟ², the convention of Smilei and PIConGPU, and kept as loaded.
 """
-function initialize!(st::EMState{2}, problem::EMProblem{2})
+function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol = :t0)
+    check_momenta_at(momenta_at)
     (; numerics, grid, aux) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
@@ -181,10 +184,12 @@ function initialize!(st::EMState{2}, problem::EMProblem{2})
     inverse_laplacian_periodic!(aux.φ, st.ρ, grid, aux.spectral; workgroupsize = wgs)
     gradient_periodic!((st.fields.Ex, st.fields.Ey), aux.φ, grid; workgroupsize = wgs)
     add_background!(st.fields, problem.E0, problem.B0)
-    g = Int32(guards(grid))
-    for s in st.species
-        launcher(kick_2d_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
-                                                       -s.q / s.m * problem.dt / 4; ndrange = capacity(s))
+    if momenta_at === :t0
+        g = Int32(guards(grid))
+        for s in st.species
+            launcher(kick_2d_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
+                                                           -s.q / s.m * problem.dt / 4; ndrange = capacity(s))
+        end
     end
     kinetic!(st)
     return st
