@@ -216,7 +216,8 @@ end
         @test r.istar == argmin(spread) + 1
         @test r.floor_rel == spread[r.istar - 1] / abs(ad)
         # The exact derivative within C times the floor. For a smooth function the floor at its
-        # minimum is about the error itself, so the measured ratio sits near 1 (through the module's step, T-219: 0.176).
+        # minimum is about the error itself, so the measured ratio sits near 1 (the module's
+        # T-219, through a whole step: 0.176 in its tolerances.toml).
         @test r.rel[r.istar] <= tolC("T-176") * r.floor_rel
         MEASURED["T-176 rel/floor"] = merge(get(MEASURED, "T-176 rel/floor", Dict{String,Float64}()), Dict(label => r.rel[r.istar] / r.floor_rel))
         floors[label] = r.floor_rel
