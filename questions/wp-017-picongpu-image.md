@@ -2,14 +2,11 @@
 
 Work package: `trace/wp/WP-017-crosscode-picongpu.md`, deliverable 0, done ahead of the rest of the package so that the image can be built while WP-012 and WP-019 run. Files: `scripts/crosscode/containers/picongpu.Containerfile`, `scripts/crosscode/containers/picongpu/pm-versions.sh`, the `picongpu` row in `scripts/crosscode/containers/README.md`, T-253 in `scripts/crosscode/test/runtests.jl`.
 
-## 1. The image has to be built by the owner
+## 1. The image
 
-Sessions cannot build images. The runner expects `localhost/particlemesh-picongpu:a743cbb40f17cdae` for this recipe; a smoke request (tag `picongpu-recipe-smoke-1`) was refused with "image ... is not built", as expected. To answer: build it with `crosscode-image <worktree> picongpu` from the worktree of the PR (or from `main` once it merges), and note the image id here or on the PR.
+The owner built `localhost/particlemesh-picongpu:a743cbb40f17cdae`, image id `1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b`, from commit `89984e7` of this recipe. NVIDIA's `ubuntu2404` repository served `cuda-minimal-build-12-5` and `cuda-libraries-dev-12-5` (nvcc 12.5.82), and the build-time smoke compile passed. A recipe change gives a new tag, which the owner builds again with `crosscode-image <worktree> picongpu`.
 
-Two steps of the recipe could not be tried from the factory sandbox, which reaches only GitHub and the Julia servers:
-
-- **CUDA from NVIDIA's apt repository.** The recipe installs `cuda-minimal-build-12-5` and `cuda-libraries-dev-12-5` from `https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/` through `cuda-keyring_1.1-1_all.deb`. That the `ubuntu2404` repository carries the 12.5 series under these package names is from memory, unverified. If it does not, two fallbacks: `cuda-toolkit-12-5` (larger: it pulls Nsight), or the base `ubuntu:22.04` pinned by digest with the `ubuntu2204` repository and `g++-12` (PIConGPU's CI accepts CUDA 12.5 with g++ ≤ 13).
-- **The smoke compile.** The last `RUN` compiles PIConGPU's `Empty` example in 2D at 64-bit precision for `sm_89` and discards it, so a broken toolchain fails at build time rather than in a runner job. Its time and memory are not measured; if it runs out of memory, lower its `-j`.
+Toolchain in the image, as `pm-versions` reports it: PIConGPU 0.8.0 (`6bb3470e`), openPMD-api 0.15.2, nvcc 12.5.82, gcc 13.3.0, CMake 3.28.3, OpenMPI 4.1.6, HDF5 1.10.10 (Ubuntu `1.10.10+repack-3.1ubuntu4`), Boost 1.83, `cuda_arch = 89`. PNGwriter is not installed, so the PNG plugin is unavailable; the runs use openPMD.
 
 ## 2. Driver and GPU passthrough
 
@@ -33,9 +30,9 @@ Assumption I proceeded on: build on the digest-pinned Ubuntu 24.04 that `smilei.
 - Single-rank OpenMPI without CUDA awareness: `OMPI_MCA_mpi_leave_pinned=0` (PIConGPU's dependencies.rst), and `OMPI_MCA_btl_vader_single_copy_mechanism=none` because runs have no capabilities.
 - `pm-versions` prints the toolchain as TOML lines for the run manifest. The build also writes that output to `/opt/picongpu/VERSION`.
 
-## 5. Smoke run once the image exists
+## 5. Smoke run
 
-Before any WP-017 case runs, one runner job checks the image, the GPU passthrough and the driver end to end. The run directory is `scripts/runs/picongpu-smoke/` (not committed), and its `run.sh` is:
+Runner job `picongpu-recipe-smoke-2` (worktree HEAD `d34008f`, image `1b4f3d0f…`, GPU on, network off) ran the script below and exited 0 after 93 s, a figure that may include time in the queue. `pic-build` of the 2D, 64-bit `Empty` setup took 1 min 10 s of wall time inside the job. Ten steps on a 64×64 grid ran in 12 ms, with initialization taking 1.05 s. The setup was compiled only for `sm_89` and ran, so the job ran on the RTX 4080 SUPER. PIConGPU reports its random number generator as `RNGProvider2XorMin` with seed 42 by default; WP-017's generator sets the seed per run. The run directory is `scripts/runs/picongpu-smoke/` (not committed), and its `run.sh` is:
 
 ```bash
 #!/usr/bin/env bash
@@ -51,4 +48,4 @@ time pic-build -j 16
 mpiexec -n 1 bin/picongpu -d 1 1 -g 64 64 -s 10 --periodic 1 1 --versionOnce
 ```
 
-It is requested from the runner with `command: picongpu scripts/runs/picongpu-smoke` after the image is built. Until then, a request fails with "image ... is not built", as expected.
+Request it again with `command: picongpu scripts/runs/picongpu-smoke` after any recipe change.
