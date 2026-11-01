@@ -98,7 +98,7 @@ diagnostic wavenumber is that of the first perturbed species' mode.
 
 The keywords override the case for tests and scans: `ppc` for every mobile species, `cells`,
 `t_end` (the run takes `round(t_end/dt)` steps), `dt` (with `cells`, so that a finer grid keeps
-Δt < Δx, which `EMState` requires), and `amplitude`, which replaces
+Δt below the Courant limit, which `EMState` requires), and `amplitude`, which replaces
 the magnitude of every nonzero perturbation amplitude and keeps its sign (the parameter of the
 A3 gradient check, so it may be a `Dual`), and `seed`, the seed of the velocity draws (common
 random numbers on both sides of a gradient check, A7).

@@ -47,7 +47,7 @@ This is a spike in the A0 sense: the choices below are starting points, and the 
 
 ## Non-goals
 
-No electromagnetic code (WP-022 and WP-023), no mesh solve (WP-021), no GPU run (requested from the GPU runner after merge, a follow-up), no `Project.toml` or Manifest change, no change of `pushers.jl`.
+No electromagnetic code (WP-022 to WP-024), no mesh solve (WP-021), no GPU run (requested from the GPU runner after merge, a follow-up), no `Project.toml` or Manifest change, no change of `pushers.jl`.
 
 ## Acceptance
 
@@ -66,4 +66,4 @@ No electromagnetic code (WP-022 and WP-023), no mesh solve (WP-021), no GPU run 
 
 ## Depends on
 
-WP-018 (N = 2 engine), WP-009 (the N = 1 flux and its tests). Runs in parallel with WP-021 and WP-022; WP-023 builds on all three. Test ids T-300 to T-309.
+WP-018 (N = 2 engine), WP-009 (the N = 1 flux and its tests). Runs in parallel with WP-022 and WP-024; WP-023 builds on it. Test ids T-300 to T-309.

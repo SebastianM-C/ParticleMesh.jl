@@ -32,7 +32,7 @@ end
 end
 
 # Store the old position (the extras deposit_flux! reads), push the momentum in Eⁿ, Bⁿ at xⁿ,
-# and move the particle by Δt·uₓ/γ (less than one cell for Δt < Δx, as deposit_flux! requires).
+# and move the particle by Δt·uₓ/γ (less than one cell below the Courant limit, as deposit_flux! requires).
 @kernel function push_kernel!(s, f, pusher, shape, g::Int32, qm_h, dt_dx, n::Int32)
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
@@ -104,16 +104,14 @@ Allocate the state of `problem` (an [`EMProblem`](@ref)) for `numerics`: the gri
 [`em_guard_width`](@ref) guards, one species per [`SpeciesDescription`](@ref) at capacity
 `cells·ppc` with the extras `(old_cell = Int32, old_offset = T)` that `deposit_flux!` reads,
 the workspaces, the fields and the histories for `problem.nsteps` steps. The particles are
-loaded by [`initialize!`](@ref).
+loaded by [`initialize!`](@ref). Throws an `ArgumentError` naming the limit unless
+`problem.dt < courant_limit(numerics.solver, grid)` ([`check_courant`](@ref)): the solver is then
+stable and every particle moves less than one cell per step, as `deposit_flux!` needs.
 """
 function EMState(problem::EMProblem{T}, numerics::EMNumerics; backend = CPU()) where {T}
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
-    # |v| < c, so Δt ≤ Δx keeps every particle within one cell per step, which deposit_flux!
-    # needs for charge conservation; Δt ≤ Δx is also the 1D Courant limit of the Yee solver (#202).
-    # The check is strict, which is safe.
-    problem.dt < cellsize(grid) ||
-        throw(ArgumentError("dt = $(problem.dt) must be below the cell size Δx = $(cellsize(grid)) (one cell per step and the Courant limit)"))
+    check_courant(numerics.solver, grid, problem.dt)
     species = map(problem.species) do d
         Species(backend, T, n * d.ppc; q = d.charge, m = d.mass, extras = (old_cell = Int32, old_offset = T))
     end

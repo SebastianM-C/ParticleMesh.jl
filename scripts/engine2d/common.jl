@@ -33,15 +33,15 @@ end
 """
     run_dir(name, script; params, extra_inputs) -> dir
 
-Create `scripts/runs/engine2d-<name>-<timestamp>/` and write its `manifest.toml` (F3): the
+Create `scripts/runs/<prefix>-<name>-<timestamp>/` (prefix `engine2d` by default) and write its `manifest.toml` (F3): the
 commit and dirty flag, the SHA-256 of every input (paths relative to the repository root), the
 parameters, Julia version, thread count, CPU model and backend, plus `extra` (the GPU model of
 a CUDA run).
 """
 function run_dir(name, script; params = Dict{String,Any}(), extra_inputs = String[], work_package = "WP-018",
-                 backend = "KernelAbstractions CPU", extra = Dict{String,Any}())
+                 backend = "KernelAbstractions CPU", extra = Dict{String,Any}(), prefix = "engine2d")
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
-    dir = joinpath(REPO, "scripts", "runs", "engine2d-$name-$stamp")
+    dir = joinpath(REPO, "scripts", "runs", "$prefix-$name-$stamp")
     mkpath(dir)
     inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(script; extra = extra_inputs))
     write_manifest(dir; root = REPO,
