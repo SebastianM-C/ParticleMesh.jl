@@ -11,12 +11,12 @@
     "theory_continuum": 4.0
   },
   "energy_ratio_mode": {
-    "first": 3.997590912410345,
-    "measured": 3.9450036770411256,
+    "first": 3.9975909124103444,
+    "measured": 3.945003677041125,
     "median": 4.002175504350209,
     "method": "median_over_fit",
     "points": 5,
-    "relative_difference": -0.013154731567445777,
+    "relative_difference": -0.013154731567445888,
     "signal": "mode_ratio",
     "theory": 3.9975909124103444,
     "theory_continuum": 4.0

@@ -6,9 +6,15 @@ dirty = false
 generator = "scripts/crosscode/smilei.jl"
 generator_hash = "sha256:1283ef8570499aeadbba75268394705e4036c190325e46c54d563117d8bfb177"
 run = "smilei-landau-oblique-2d-c8709f77"
-updated = "2026-11-01T09:39:40.862Z"
+updated = "2026-11-01T09:56:12.742Z"
+
+[analysis]
+commit = "b80311dd4e4a877b40feed45fe8f7f41ea816db6"
+dirty = false
+script = "scripts/crosscode/analyze.jl"
 
 [checks]
+gauss_residual_t0_relative = 6.507615507653712e-10
 rho_max_deviation_t0 = 0.00998017283915162
 rho_mean_t0 = -2.9638077224144034e-16
 rho_mode_amplitude_t0 = 0.00998018974812877
@@ -40,13 +46,13 @@ theory_frequency = 1.4156618886045358
 
 [observables.damping_rate_mode]
 fit_points = 5
-fit_range = [4.747706104432604, 13.60705058038013]
-measured = 0.16093507801533882
-measured_frequency = 1.418431199788647
-measured_stderr = 0.007833844268724022
+fit_range = [4.747808726873879, 13.607022976743746]
+measured = 0.1609299586220137
+measured_frequency = 1.4184520500273217
+measured_stderr = 0.007833858169781138
 method = "peak_envelope"
-noise_floor = 6.349028157372099e-10
-relative_difference = 0.049397740213840476
+noise_floor = 6.34471844718306e-10
+relative_difference = 0.049364358555516526
 signal = "mode_projection"
 theory = 0.15335946690960509
 theory_frequency = 1.4156618886045358
@@ -61,10 +67,10 @@ theory = 3.9975909124103444
 theory_continuum = 4.0
 
 [observables.energy_ratio_mode]
-measured = 3.9450036770411256
+measured = 3.945003677041125
 method = "median_over_fit"
 points = 5
-relative_difference = -0.013154731567445777
+relative_difference = -0.013154731567445888
 signal = "mode_ratio"
 theory = 3.9975909124103444
 theory_continuum = 4.0
@@ -77,10 +83,11 @@ theory_continuum = 4.0
 
 [performance]
 cells = 16384
-mobile_particle_steps = 56891539456
+mobile_particle_steps = 56874762240
 mobile_particles = 16777216
-ns_per_mobile_particle_step = 12.592399623041763
-particle_steps = 56947097600
+ns_per_mobile_particle_step = 12.596114195201952
+particle_steps = 56930304000
 particles = 16793600
-steps = 3391
+steps = 3390
+steps_source = "smilei.log (n_time)"
 wall_seconds = 716.401
