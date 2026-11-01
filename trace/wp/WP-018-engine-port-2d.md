@@ -73,7 +73,7 @@ A larger-size proxy-step study is out of this package; the PR opens it as a `fol
 ## Non-goals
 
 - No 2D `deposit_flux!`, no Esirkepov in 2D, no per-axis old-position extras, no per-axis flux guard width (§0.8 item 2).
-- No 2D periodic mesh solve and no 2D `cumsum_periodic!` (§0.8 item 3).
+- No 2D periodic mesh solve and no 2D `cumsum_periodic!` (WP-021).
 - No electromagnetic code: no 2D Yee, no change to `EMState`, `EMProblem`, `step!(st, p, k)`, `initialize!` or the field layout (§0.8 item 5). Never `pushers.jl` (WP-015). No edit of `lib/ParticleMeshElectromagnetic` beyond what keeping its 1D tests green requires, and no new test in it.
 - No new dependency and no edit of any `Project.toml` or `Manifest.toml` (WP-008 and WP-015 edit those).
 - The slice is single-device and periodic: no bounded axes, no dynamic grid state of B1, no `gstate` argument, no `exchange_particles!`, no multi-device signatures of §3. §0.7 contract 5's signature `fill_guards!(a, grid)` stands and the grid stays a plain struct, so a later window field changes no kernel signature.
