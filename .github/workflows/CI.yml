@@ -153,6 +153,8 @@ jobs:
         run: julia --project=scripts -e 'using Pkg; Pkg.instantiate()'
       - name: Tests of the trace checker
         run: julia --project=scripts scripts/trace/test/runtests.jl
+      - name: Tests of the cross-code scripts (T-010, T-012, T-013, T-160, T-161)
+        run: julia --project=scripts scripts/crosscode/test/runtests.jl
       - name: Goal links, test tags and engine dependencies (stale packages only warn)
         run: julia --project=scripts scripts/trace/build.jl --check
   leak-scan:
