@@ -9,7 +9,7 @@
 | Environment | Julia 1.13.3, KernelAbstractions 0.10.4 CPU backend, AcceleratedKernels 0.5.11, Atomix 1.7.0, Adapt 4.7.4, ForwardDiff 1.4.6; Intel Core i9-14900K, 1 and 16 threads |
 | Figures | `spike-electrostatic-1d/*.png`, each with its JSON sidecar of the plotted scalars |
 | Status | measured, not independently reviewed, except as the Review row says; no other number here is to leave the repository before that review |
-| Review | Only the two-stream comparison with Smilei in section 2 ("Against Smilei"): WP-012 re-measured it (γ = 0.34816 and 0.34561, the same values) and its independent review covers it, `crosscode-smilei-1d/review.md` (numerics-reviewer role, model claude-opus-5-5, 2026-11-01). The Landau case is compared over seed ensembles in `crosscode-smilei-1d/README.md`, "Stage 1b" |
+| Review | Only Smilei's two-stream γ in section 2 ("Against Smilei"), 0.34561: WP-012 re-measured it with the same value, and its independent review covers it, `crosscode-smilei-1d/review.md` (numerics-reviewer role, model claude-opus-5-5, 2026-11-01). ParticleMesh's numbers there come from the electrostatic reference, which no longer exists, and are not reviewed; WP-012 measured the ParticleMesh column through the electromagnetic module instead (`crosscode-smilei-1d/README.md`, "Stage 1b"), Landau over seed ensembles |
 
 This is the input of the next planning round (A0): what was built, which of the parked packages' contracts (WP-004 to WP-009, `docs/plan/architecture-draft.md` §0.7) held and which broke, measurements, and a proposed list of next packages.
 

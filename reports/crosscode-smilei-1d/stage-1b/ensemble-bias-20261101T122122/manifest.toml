@@ -1,0 +1,12 @@
+commit = "c67c156a82dd173d891a226548395881d5939b05"
+dirty = false
+julia = "1.13.3"
+kind = "post-hoc sensitivity"
+runs = ["smilei-landau-295ddf42", "em1d-pm-landau-20261101T111127"]
+updated = "2026-11-01T12:21:31.716Z"
+work_package = "WP-012"
+
+[inputs]
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+"scripts/crosscode/ensemble_bias.jl" = "sha256:4a300f010592bf4493caecb2d15220ddf5eeda96aafa3fe1aaa596bf89c999e8"

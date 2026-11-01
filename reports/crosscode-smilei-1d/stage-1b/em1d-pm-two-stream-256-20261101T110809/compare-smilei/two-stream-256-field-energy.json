@@ -1,0 +1,32 @@
+{
+  "U0": {
+    "particlemesh": 6.839579037359465e-9,
+    "smilei": 6.839270027e-9
+  },
+  "case": "two-stream-256",
+  "particlemesh": {
+    "fit_points": 164,
+    "fit_range": [
+      13.8290216,
+      18.7940668
+    ],
+    "measured": 0.34598700492848755,
+    "measured_stderr": 0.0008960735993549302,
+    "relative_difference": -0.013933034836893858
+  },
+  "particlemesh_run": "em1d-pm-two-stream-256-20261101T110809",
+  "pm_minus_smilei_relative": 0.0001769553767778909,
+  "sensitivity_post_hoc": [],
+  "smilei": {
+    "fit_points": 163,
+    "fit_range": [
+      13.8290216,
+      18.7636064
+    ],
+    "measured": 0.34592579149971553,
+    "measured_stderr": 0.0009032616173295208,
+    "relative_difference": -0.014107493816788007
+  },
+  "smilei_run": "smilei-two-stream-256-56d5d9ae",
+  "theory": 0.35087576924479724
+}

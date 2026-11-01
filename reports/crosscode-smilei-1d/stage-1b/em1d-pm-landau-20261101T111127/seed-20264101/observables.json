@@ -1,0 +1,20 @@
+{
+  "fit_points": 0,
+  "fit_range": null,
+  "measured": null,
+  "measured_frequency": null,
+  "measured_from_mode": 0.12946086845368965,
+  "measured_from_mode_points": 4,
+  "measured_from_mode_stderr": 0.023982722897663473,
+  "measured_stderr": null,
+  "noise_floor": 1.2866087363837977e-9,
+  "ns_per_particle_step": 61.48489721384279,
+  "observable": "damping_rate",
+  "particles": 3200000,
+  "relative_difference": null,
+  "seed": 20264101,
+  "steps": 2681,
+  "theory": 0.1533594669096052,
+  "theory_frequency": 1.4156618886045358,
+  "wall_seconds": 527.491230177
+}
