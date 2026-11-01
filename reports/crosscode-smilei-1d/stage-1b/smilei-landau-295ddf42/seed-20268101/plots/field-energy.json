@@ -1,0 +1,17 @@
+{
+  "case": "landau",
+  "fit_points": 0,
+  "fit_range": null,
+  "measured": null,
+  "measured_frequency": null,
+  "measured_from_mode": 0.09223043982621869,
+  "measured_from_mode_points": 5,
+  "measured_from_mode_stderr": 0.01860758202598048,
+  "measured_stderr": null,
+  "noise_floor": 9.6971539442e-10,
+  "observable": "damping_rate",
+  "plot": "field energy Uelm_Ex versus time, log scale",
+  "relative_difference": null,
+  "theory": 0.1533594669096052,
+  "theory_frequency": 1.4156618886045358
+}

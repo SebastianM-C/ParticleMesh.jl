@@ -1,0 +1,6 @@
+{
+  "final_relative_change": -3.215146725917829e-7,
+  "max_abs_relative_change": 4.2077669494155395e-7,
+  "max_gauss_residual_over_scale": 4.723277444060416e-16,
+  "plot": "relative change of kinetic (t - dt/2) plus field energy versus time"
+}

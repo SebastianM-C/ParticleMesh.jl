@@ -1,0 +1,17 @@
+{
+  "case": "landau",
+  "fit_points": 0,
+  "fit_range": null,
+  "measured": null,
+  "measured_frequency": null,
+  "measured_from_mode": null,
+  "measured_from_mode_flag": "refused: the fit failed (0 points)",
+  "measured_from_mode_points": 0,
+  "measured_from_mode_stderr": null,
+  "measured_stderr": null,
+  "noise_floor": 1.5603256917e-9,
+  "observable": "damping_rate",
+  "relative_difference": null,
+  "theory": 0.1533594669096052,
+  "theory_frequency": 1.4156618886045358
+}

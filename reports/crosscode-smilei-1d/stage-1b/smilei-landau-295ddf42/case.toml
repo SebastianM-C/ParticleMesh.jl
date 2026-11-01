@@ -1,0 +1,81 @@
+# Linear Landau damping of a Langmuir wave, kλ_D = 0.5, 1D periodic, immobile ions.
+# Units (A1): time 1/ω₀, length c/ω₀, velocity c, density n_c, temperature m_e c².
+# With density = 1 n_c the plasma frequency equals the reference frequency, ω_p = ω₀.
+# Schema: scripts/crosscode/README.md. A proposal; the spike's write-up may change it.
+
+schema = 1
+name = "landau"
+description = "Linear Landau damping, k λ_D = 0.5, density perturbation 1 %, immobile ions"
+
+[grid]
+length = 0.6283185307179586       # one wavelength, 2π/k with k = 0.5/λ_D = 10 ω₀/c
+cells = 64                        # Δx = 0.19635 λ_D
+boundaries = "periodic"
+
+[time]
+dt = 0.0093266                    # 0.95 Δx (CFL of the 1D Yee solver Smilei runs: Δt < Δx)
+t_end = 25.0
+
+[numerics]
+shape_order = 2                   # quadratic (A2); Smilei interpolation_order = 2
+current_deposition = "esirkepov"
+filter_passes = 0
+precision = "Float64"
+# One run per seed (WP-012), fixed before any run. Eight seeds of 50 000 electrons per cell keep the
+# Smilei cost at about one 400 000-per-cell run (the WP-012 budget); the ensemble mean then carries
+# the noise energy of 400 000 per cell (1/M), which left 5 maxima in run smilei-landau-d7d19f86.
+# The count was set by that budget, not by a measured per-seed spread (none existed before these
+# runs; questions/wp-012-a5-a7-proposals.md). Smilei seeds patch p with random_seed + p
+# (src/Patch/Patch.cpp), so the seeds are 1000 apart, more than the 8 patches; on the
+# ParticleMesh side each seed is the Philox key (seed, stream).
+seeds = [20261101, 20262101, 20263101, 20264101, 20265101, 20266101, 20267101, 20268101]
+
+[[species]]
+name = "electron"
+charge = -1.0                     # e
+mass = 1.0                        # m_e
+density = 1.0                     # n_c
+particles_per_cell = 50000        # per seed; one seed alone stays above Smilei's noise floor for 2 maxima (run smilei-landau-9a47a107), the ensemble of 8 seeds is the observable
+position = "regular"
+velocity = "maxwellian"
+thermal_velocity = 0.05           # v_th = √(T/m) in c, so λ_D = v_th/ω_p = 0.05 c/ω₀
+drift = 0.0
+mobile = true
+perturbation = { amplitude = 0.01, mode = 1 }   # n(x) = density (1 + amplitude cos(2π mode x / length))
+
+[[species]]
+name = "ion"
+charge = 1.0
+mass = 1836.0
+density = 1.0
+particles_per_cell = 1
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = 0.0
+mobile = false                    # immobile ions (A2)
+
+[diagnostics]
+scalars_every = 4                 # steps
+fields_every = 4                  # steps; the ensemble observable is fitted on the field dumps, so at the scalars' cadence
+fields = ["Ex", "Rho"]
+
+[observables.damping_rate]
+signal = "Uelm_Ex"                # field energy of Ex
+method = "peak_envelope"          # fit log of the local maxima of the field energy; slope = -2γ
+fit_start = 3.0                   # after the ballistic transient of the initial density kick
+floor_factor = 10.0               # use peaks above floor_factor × the noise floor (median of the last 20 % of the run)
+theory = 0.1533594669096052       # γ / ω_p, field amplitude
+theory_frequency = 1.4156618886045358   # ω_r / ω_p
+formula = "least-damped root of 1 + (kλ_D)⁻² [1 + ζ Z(ζ)] = 0, ζ = ω/(√2 k v_th), Z the plasma dispersion function (Fried and Conte 1961); nonrelativistic Maxwellian; computed by scripts/crosscode/theory.jl (T-160)"
+caveat = "Smilei loads a Maxwell–Jüttner distribution at T = 2.5e-3 m_e c²; the relativistic correction to the root is not computed here"
+
+[observables.damping_rate_ensemble]
+signal = "Ex mode"                # complex Fourier coefficient Ê of Ex at the perturbation's mode, from the field dumps
+method = "ensemble_peak_envelope" # damping_from_peaks on |⟨Ê⟩_seeds|², the seed mean of the complex coefficient
+fit_start = 3.0                   # the same rule as damping_rate
+floor_factor = 10.0               # the same rule: maxima above 10 × the median of the last 20 % of |⟨Ê⟩|²
+minimum_maxima = 3                # the observable exists when the fit takes at least this many maxima
+stderr = "jackknife"              # standard error: jackknife over seeds (each seed left out in turn); the fit's residual error is recorded next to it
+per_seed = "at_ensemble_peaks"    # γ of each seed from its own |Ê_s|² at the maxima the ensemble fit used; their mean and standard deviation per code
+theory_from = "damping_rate"      # theory value and formula as in [observables.damping_rate]

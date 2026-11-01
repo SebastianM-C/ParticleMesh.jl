@@ -1,0 +1,30 @@
+updated = "2026-11-01T09:39:19.322Z"
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 8
+threads = 8
+
+[image]
+id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+
+[inputs]
+
+[observables]
+case = "landau"
+fit_points = 0
+measured_from_mode = 0.09223043982621869
+measured_from_mode_points = 5
+measured_from_mode_stderr = 0.01860758202598048
+noise_floor = 9.6971539442e-10
+observable = "damping_rate"
+theory = 0.1533594669096052
+theory_frequency = 1.4156618886045358
+
+[outputs]
+"Fields0.h5" = "sha256:f05dffbc5faa5ce15a395f50f1972c7b8b60bf7767c0c45289725800ae802672"
+"container.txt" = "sha256:450c9b5cf07cdcb9762040625ab1ec5e60544695953b540521588cc6d3f8e4a5"
+"scalars.txt" = "sha256:abe92d989c02a128acd23c224c5263649a0846af3062d4798a5cfa29e5d921bd"
+"smilei.log" = "sha256:bb2da1f8071b8c4108e6e9d5fd806eee7697974824c1bea36764bc70e1cc0bf5"

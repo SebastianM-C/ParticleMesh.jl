@@ -1,0 +1,34 @@
+{
+  "case": "landau",
+  "difference": 0.010471560204172309,
+  "difference_in_units_of_combined_stderr": 0.6574959923854228,
+  "difference_in_units_of_reference_seed_spread": 0.39105749208126495,
+  "difference_relative": 0.08038824420913816,
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "particlemesh": {
+    "M": 8,
+    "ensemble_floor": 7.51727296421215e-10,
+    "fit_range": [
+      4.7559254727260685,
+      13.649409049938162
+    ],
+    "maxima_used": 5,
+    "measured": 0.14073389280257417,
+    "measured_stderr": 0.006817976061823397
+  },
+  "particlemesh_run": "pm-landau-20261101T094624",
+  "reference_code": "smilei",
+  "smilei": {
+    "M": 8,
+    "ensemble_floor": 5.894681765637603e-10,
+    "fit_range": [
+      4.746131724220346,
+      15.929530992195552
+    ],
+    "maxima_used": 6,
+    "measured": 0.13026233259840186,
+    "measured_stderr": 0.014393269121880993
+  },
+  "smilei_run": "smilei-landau-295ddf42",
+  "theory": 0.1533594669096052
+}

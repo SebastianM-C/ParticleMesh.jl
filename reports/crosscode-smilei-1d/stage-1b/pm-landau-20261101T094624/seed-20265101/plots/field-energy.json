@@ -1,0 +1,22 @@
+{
+  "fit_points": 0,
+  "fit_range": null,
+  "measured": null,
+  "measured_frequency": null,
+  "measured_from_mode": null,
+  "measured_from_mode_flag": "refused: the fit failed (0 points)",
+  "measured_from_mode_points": 0,
+  "measured_from_mode_stderr": null,
+  "measured_stderr": null,
+  "noise_floor": 2.012360678838703e-9,
+  "ns_per_particle_step": 11.675174675027975,
+  "observable": "damping_rate",
+  "particles": 3200000,
+  "plot": "field energy versus time, log scale",
+  "relative_difference": null,
+  "seed": 20265101,
+  "steps": 2681,
+  "theory": 0.1533594669096052,
+  "theory_frequency": 1.4156618886045358,
+  "wall_seconds": 100.163658572
+}

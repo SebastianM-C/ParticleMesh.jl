@@ -1,0 +1,47 @@
+{
+  "backend": "KernelAbstractions CPU",
+  "commit": "64b3841198a8c2c8a60a4edec4de1737e43e1b66",
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "created_utc": "2026-11-01T09:45:22.330",
+  "dirty": true,
+  "inputs": {
+    "Manifest.toml": "61db9aad43ed8130882ec4914137e43d5ee80675051ccdcf61bd313c44bf6da5",
+    "lib/ParticleMeshCore/src/ParticleMeshCore.jl": "4cd1c7650d55e73c6b16993ad47b00afba520e82080177397feb925f00f8d935",
+    "lib/ParticleMeshCore/src/flux.jl": "d259209f945706ddd31e1f74000346d174f7c2b8e90d804557e317fa9d978f49",
+    "lib/ParticleMeshCore/src/grid.jl": "23e2b0cf00db92744ab09c8599e40f7d4792de5d7b743b97b96b4b4d9145e2db",
+    "lib/ParticleMeshCore/src/guards.jl": "729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081",
+    "lib/ParticleMeshCore/src/launch.jl": "de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359",
+    "lib/ParticleMeshCore/src/loading.jl": "62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd",
+    "lib/ParticleMeshCore/src/mesh_ops.jl": "aed3575cb49d7a834c81ecf1eb22647b79b5e76c92ee9e9c20a0bb0822fcf455",
+    "lib/ParticleMeshCore/src/philox.jl": "6f04e72280f937439c111463cae4a09165851169c030a37026bcf992895a2c62",
+    "lib/ParticleMeshCore/src/shapes.jl": "a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11",
+    "lib/ParticleMeshCore/src/sort.jl": "b7fa142c341abead484b5310a5f50b8d55c66c71cec138026224ad02f168ef20",
+    "lib/ParticleMeshCore/src/species.jl": "46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5",
+    "lib/ParticleMeshCore/src/transfers.jl": "9ab0566b59a967a9d744dc57d15f86f2c6a5056010f59f7c319356826215bb34",
+    "lib/ParticleMeshCore/test/cases.jl": "79f597a906d3e34aa8bb9adee8daf4ccef37f4cdca635d86086d6cae67196b94",
+    "lib/ParticleMeshCore/test/es_reference.jl": "0adfced03e3bb911c945216485933bd5600e7be4b2e4d14e7c37027634372beb",
+    "lib/ParticleMeshCore/test/theory.jl": "305836a5f51aae771e0c1b92fbf7548db25f985f244226ff557bc04ccb049c2b",
+    "scripts/Manifest.toml": "6c49d57c412f46806bccac8feb415c25a8805092b6ef75902cd3a631f9812e87",
+    "scripts/crosscode/analysis.jl": "1f6c97621d1fae66f5777a3dd0aa5cb96956525e79dde907b5c8fcaa72d35022",
+    "scripts/crosscode/cases/two-stream-256.toml": "56d5d9ae1112bb3214922e279af980a202f0ab0607f8ffda9fb2141e541f3d91",
+    "scripts/crosscode/ensemble.jl": "1d016376115def2a14eece90ab303ab255649d6c449629c9b4e6630becf59e1b",
+    "scripts/crosscode/ensemble_report.jl": "7e13e5634ae0bb3afbb7a8eda982fcff68e8f1bd92ae3256674012fb38cb63f0",
+    "scripts/crosscode/read.jl": "5115fcc011da55f330613417c2f2cc71f338d846c1ea5ad56a7f32e86b095672",
+    "scripts/crosscode/smilei.jl": "2c27829add81d6f1bb9dbe6e6b6f8889624c5bc7c8e37ebb75a866727a1c2c5f",
+    "scripts/es1d/common.jl": "c3cc521ec604c2dccf92c64a4af3937d58dbf260835b713ec51deb24457f5136",
+    "scripts/es1d/crosscode.jl": "9843e301488ad1c8d0ab7d9378306795e68ede91d7e52af71892a64329202667"
+  },
+  "julia": "1.13.3",
+  "parameters": {
+    "case": "two-stream-256",
+    "case_sha256": "56d5d9ae1112bb3214922e279af980a202f0ab0607f8ffda9fb2141e541f3d91",
+    "element_type": "Float64",
+    "mode": "Reference",
+    "seeds": [
+      20261031
+    ]
+  },
+  "run_id": "pm-two-stream-256-20261101T094522",
+  "threads": 16,
+  "work_package": "WP-012"
+}

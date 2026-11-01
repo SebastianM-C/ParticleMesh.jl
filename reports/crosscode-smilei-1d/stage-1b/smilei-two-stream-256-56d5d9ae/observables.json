@@ -1,0 +1,21 @@
+{
+  "case": "two-stream-256",
+  "fit_points": 163,
+  "fit_range": [
+    13.8290216,
+    18.7636064
+  ],
+  "measured": 0.34592579149971553,
+  "measured_from_mode": 0.33703425597413844,
+  "measured_from_mode_points": 20,
+  "measured_from_mode_stderr": 0.0025265855393508357,
+  "measured_stderr": 0.0009032616173295208,
+  "observable": "growth_rate",
+  "relative_difference": -0.014107493816788007,
+  "saturation": {
+    "U": 0.0019146222359,
+    "t": 24.9470676
+  },
+  "theory": 0.35087576924479724,
+  "theory_nonrelativistic": 0.3535533905932736
+}

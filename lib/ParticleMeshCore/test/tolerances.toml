@@ -84,6 +84,30 @@ measured = { gamma = 0.35456900794051743 }
 relative_error = { gamma = 0.0033 }
 status = "proposed"
 
+# WP-012: A5 expected values and noise floors on the cross-code cases (scripts/crosscode/cases/),
+# proposals only; the A7 agreement thresholds wait for the Smilei–PIConGPU spread (stage 2).
+# Derivation: questions/wp-012-a5-a7-proposals.md.
+["T-141".wp012]
+quantity = "Landau damping rate γ/ω_p of the field amplitude, observable damping_rate_ensemble of scripts/crosscode/cases/landau.toml"
+case = "kλ_D = 1/2, α = 1/100, 64 cells, 8 seeds × 50 000 electrons per cell, Δt = 0.0093266/ω₀, t_end = 25/ω₀, quadratic; ParticleMesh Reference Float64"
+expected = { gamma = 0.1533594669096052, omega = 1.4156618886045358 }
+expected_source = "linear theory, scripts/crosscode/theory.jl (T-160)"
+ensemble_stderr = { smilei = 0.0144, particlemesh = 0.0068, synthetic_at_measured_noise = 0.013 }
+noise_floor_smilei = { seed_spread = 0.0268, ensemble_stderr = 0.0144 }
+measured = { smilei = 0.1303, particlemesh = 0.1407 }
+rule_bias_synthetic = -0.017
+status = "proposed: the A5 expected value with the measured ensemble spread, and the Smilei noise floor; agreement threshold pending the Smilei–PIConGPU spread"
+
+["T-142".wp012]
+quantity = "cold two-stream growth rate γ/ω_p of the field amplitude, observable growth_rate of scripts/crosscode/cases/two-stream.toml and two-stream-256.toml"
+case = "k v₀ = √(3/8) ω_p, v₀ = 0.1 c, 2 × 1000 electrons per cell, 128 and 256 cells; ParticleMesh Reference Float64"
+expected = { gamma_relativistic = 0.35087576924479724, gamma_nonrelativistic = 0.3535533905932736 }
+expected_source = "cold-fluid dispersion relation with the longitudinal mass γ₀³m, scripts/crosscode/theory.jl (T-160); relativistic for Smilei, nonrelativistic for the electrostatic module"
+offset_from_own_theory = { smilei_128 = -0.0150, smilei_256 = -0.0141, particlemesh_128 = -0.0152, particlemesh_256 = -0.0151 }
+noise_floor_smilei = { seed_spread = 0.0, fit_stderr = 0.0009 }
+measured = { smilei_128 = 0.34561, smilei_256 = 0.34593, particlemesh_128 = 0.34816, particlemesh_256 = 0.34821 }
+status = "proposed: the theory with the measured common offset of the fit window; no seed spread (cold); agreement threshold pending the Smilei–PIConGPU spread"
+
 ["T-143"]
 quantity = "ForwardDiff dW/dα against a central finite-difference scan (fd_scan), Float64, Reference mode: rel[istar] / floor_rel"
 case = "32 cells, 64 particles per cell, quadratic, 25/ω_p (about 2 box lengths of thermal travel), h = 10^(-1:-0.5:-9)"
