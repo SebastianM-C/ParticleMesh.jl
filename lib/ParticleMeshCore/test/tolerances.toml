@@ -92,10 +92,12 @@ quantity = "Landau damping rate γ/ω_p of the field amplitude, observable dampi
 case = "kλ_D = 1/2, α = 1/100, 64 cells, 8 seeds × 50 000 electrons per cell, Δt = 0.0093266/ω₀, t_end = 25/ω₀, quadratic; ParticleMesh Reference Float64"
 expected = { gamma = 0.1533594669096052, omega = 1.4156618886045358 }
 expected_source = "linear theory, scripts/crosscode/theory.jl (T-160)"
-ensemble_stderr = { smilei = 0.0144, particlemesh = 0.0068, synthetic_at_measured_noise = 0.013 }
+ensemble_stderr = { smilei_jackknife = 0.0144, particlemesh_jackknife = 0.0068, synthetic_spread_smilei = 0.0128, synthetic_spread_particlemesh = 0.0120 }
+ensemble_stderr_note = "the ParticleMesh jackknife is probably an underestimate (its leave-one-out fits never change their number of maxima); the synthetic spread is the better single number"
 noise_floor_smilei = { seed_spread = 0.0268, ensemble_stderr = 0.0144 }
 measured = { smilei = 0.1303, particlemesh = 0.1407 }
-rule_bias_synthetic = -0.017
+rule_bias_synthetic = "about -0.01 (-0.007 to -0.018 across independent replicates)"
+pooled_deficit = "both ensembles below theory: pooled 0.1358 ± 0.0088, 2.0 synthetic spreads; a common systematic not quantified"
 status = "proposed: the A5 expected value with the measured ensemble spread, and the Smilei noise floor; agreement threshold pending the Smilei–PIConGPU spread"
 
 ["T-142".wp012]
@@ -104,7 +106,7 @@ case = "k v₀ = √(3/8) ω_p, v₀ = 0.1 c, 2 × 1000 electrons per cell, 128 
 expected = { gamma_relativistic = 0.35087576924479724, gamma_nonrelativistic = 0.3535533905932736 }
 expected_source = "cold-fluid dispersion relation with the longitudinal mass γ₀³m, scripts/crosscode/theory.jl (T-160); relativistic for Smilei, nonrelativistic for the electrostatic module"
 offset_from_own_theory = { smilei_128 = -0.0150, smilei_256 = -0.0141, particlemesh_128 = -0.0152, particlemesh_256 = -0.0151 }
-noise_floor_smilei = { seed_spread = 0.0, fit_stderr = 0.0009 }
+noise_floor_smilei = { seed_spread = "none by construction (cold, regular loading); not measured", fit_residual_stderr = 0.0009 }
 measured = { smilei_128 = 0.34561, smilei_256 = 0.34593, particlemesh_128 = 0.34816, particlemesh_256 = 0.34821 }
 status = "proposed: the theory with the measured common offset of the fit window; no seed spread (cold); agreement threshold pending the Smilei–PIConGPU spread"
 

@@ -8,7 +8,8 @@
 | Input hashes | SHA-256 of every input file (core sources, `test/cases.jl`, `test/theory.jl`, the script, both manifests) in each run's manifest: `spike-electrostatic-1d/<run>.manifest.json` |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10.4 CPU backend, AcceleratedKernels 0.5.11, Atomix 1.7.0, Adapt 4.7.4, ForwardDiff 1.4.6; Intel Core i9-14900K, 1 and 16 threads |
 | Figures | `spike-electrostatic-1d/*.png`, each with its JSON sidecar of the plotted scalars |
-| Status | measured, not independently reviewed; no number here is to leave the repository before that review |
+| Status | measured, not independently reviewed, except as the Review row says; no other number here is to leave the repository before that review |
+| Review | Only the two-stream comparison with Smilei in section 2 ("Against Smilei"): WP-012 re-measured it (γ = 0.34816 and 0.34561, the same values) and its independent review covers it, `crosscode-smilei-1d/review.md` (numerics-reviewer role, model claude-opus-5-5, 2026-11-01). The Landau case is compared over seed ensembles in `crosscode-smilei-1d/README.md`, "Stage 1b" |
 
 This is the input of the next planning round (A0): what was built, which of the parked packages' contracts (WP-004 to WP-009, `docs/plan/architecture-draft.md` §0.7) held and which broke, measurements, and a proposed list of next packages.
 
