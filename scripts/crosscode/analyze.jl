@@ -4,15 +4,20 @@
 #
 # Reads case.toml, scalars.txt and Fields0.h5 from the run directory; writes plots/<name>.png
 # with plots/<name>.json next to each, observables.json, and adds the results, the output hashes
-# and the image id (from the runner's log header or image.txt) to manifest.toml.
+# and the image id (from the runner's log header or image.txt) to manifest.toml. A seeded run
+# (a case with a `seeds` list, WP-012) is analyzed per seed-<seed>/ subdirectory as above, and
+# the ensemble observable goes into the top directory (scripts/crosscode/ensemble_report.jl).
 
 include(joinpath(@__DIR__, "read.jl"))
 include(joinpath(@__DIR__, "analysis.jl"))
 include(joinpath(@__DIR__, "manifest.jl"))
-using .SmileiRead, .Observables, .RunManifest
+include(joinpath(@__DIR__, "ensemble.jl"))
+include(joinpath(@__DIR__, "ensemble_report.jl"))
+using .SmileiRead, .Observables, .RunManifest, .Ensemble, .EnsembleReport
 using CairoMakie
 using JSON
 using TOML
+using Dates
 
 function save_plot(dir, name, fig, sidecar)
     mkpath(joinpath(dir, "plots"))
@@ -24,17 +29,8 @@ end
 
 finite_or_nothing(x) = isfinite(x) ? x : nothing
 
-"The image line of the runner's log header or of run-smilei.sh's image.txt, if any."
-function image_id(dir, log)
-    for f in (log, joinpath(dir, "image.txt"))
-        (f === nothing || !isfile(f)) && continue
-        for line in eachline(f)
-            m = match(r"^#\s*image:\s*(.*)$"i, line)
-            m === nothing || return strip(m.captures[1])
-        end
-    end
-    return "unknown"
-end
+"The per-run observable of a case (a seeded case also has the ensemble one)."
+run_observable(case) = only((k, o) for (k, o) in case["observables"] if o["method"] != "ensemble_peak_envelope")
 
 "CPU model, thread count and CPU count from the run's container.txt; \"unknown\" where the run did not record them."
 function hardware(dir)
@@ -60,13 +56,13 @@ function hardware(dir)
     return h
 end
 
-function analyze(dir; log = nothing)
+function analyze(dir; log = nothing, image = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
     name = case["name"]
     sc = read_scalars(dir)
     fl = read_fields(dir; names = ["Ex"], timestep = case["time"]["dt"])
     t, U = sc.time, sc.columns["Uelm_Ex"]
-    obs_key, obs = only(case["observables"])
+    obs_key, obs = run_observable(case)
     mode = only(unique(s["perturbation"]["mode"] for s in case["species"] if haskey(s, "perturbation")))
     Ek = mode_amplitude(fl.fields["Ex"], mode)
 
@@ -83,8 +79,7 @@ function analyze(dir; log = nothing)
         result["measured_stderr"] = finite_or_nothing(r.gamma_stderr)
         result["measured_frequency"] = finite_or_nothing(r.omega)
         result["theory_frequency"] = obs["theory_frequency"]
-        result["measured_from_mode"] = finite_or_nothing(rk.gamma)
-        result["measured_from_mode_stderr"] = finite_or_nothing(rk.gamma_stderr)
+        record_mode_fit!(result, rk; min_points = 3)
         result["noise_floor"] = r.floor
         result["fit_points"] = length(r.t_fit)
         result["fit_range"] = isempty(r.t_fit) ? nothing : [first(r.t_fit), last(r.t_fit)]
@@ -102,8 +97,7 @@ function analyze(dir; log = nothing)
         rk = growth_from_window(fl.time, Ek .^ 2; window = obs["window"])
         result["measured"] = finite_or_nothing(r.gamma)
         result["measured_stderr"] = finite_or_nothing(r.gamma_stderr)
-        result["measured_from_mode"] = finite_or_nothing(rk.gamma)
-        result["measured_from_mode_stderr"] = finite_or_nothing(rk.gamma_stderr)
+        record_mode_fit!(result, rk; min_points = 5)
         result["theory_nonrelativistic"] = obs["theory_nonrelativistic"]
         result["fit_points"] = length(r.t_fit)
         result["fit_range"] = isempty(r.t_fit) ? nothing : [first(r.t_fit), last(r.t_fit)]
@@ -158,18 +152,92 @@ function analyze(dir; log = nothing)
 
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
     outputs = filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
-    m = read_manifest(dir)
+    m = isfile(joinpath(dir, "manifest.toml")) ? read_manifest(dir) : Dict{String,Any}()
     outhash = Dict(relpath(f, dir) => "sha256:" * file_hash(f) for f in outputs)
-    image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => image_id(dir, log)))
+    img = something(image, image_from_header(log, joinpath(dir, "image.txt")))
+    image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
         "hardware" => hardware(dir),
         "observables" => Dict(k => v for (k, v) in result if v !== nothing)))
     return result
 end
 
+"""
+The mode-amplitude estimate as it may be reported (WP-012): `measured_from_mode` only when the
+fit is usable (`checked_fit`: finite, at least `min_points` points), with the point count and,
+otherwise, the reason it was refused.
+"""
+function record_mode_fit!(result, rk; min_points)
+    c = checked_fit(rk; min_points)
+    result["measured_from_mode"] = c.gamma
+    result["measured_from_mode_stderr"] = c.gamma_stderr
+    result["measured_from_mode_points"] = c.points
+    c.usable || (result["measured_from_mode_flag"] = c.flag)
+    return result
+end
+
+"""
+    analyze_seeded(dir; log) -> result
+
+A seeded run: `analyze` of every seed-<seed>/ subdirectory (its own plots, observables and
+manifest), then the ensemble observable of the complex mode coefficients of Ex over the seeds,
+written to the top directory with its plots, and the manifest of the run updated.
+"""
+function analyze_seeded(dir; log = nothing)
+    case = TOML.parsefile(joinpath(dir, "case.toml"))
+    seeds = collect(Int, case["numerics"]["seeds"])
+    img = image_from_header(log, joinpath(dir, "image.txt"))
+    _, obs = run_observable(case)
+    mode = only(unique(s["perturbation"]["mode"] for s in case["species"] if haskey(s, "perturbation")))
+    coeffs = Vector{ComplexF64}[]
+    per_run = []
+    t = nothing
+    outputs = Dict{String,Any}()
+    for s in seeds
+        sd = joinpath(dir, "seed-$s")
+        analyze(sd; image = img)
+        fl = read_fields(sd; names = ["Ex"], timestep = case["time"]["dt"])
+        t === nothing ? (t = fl.time) : (fl.time == t || error("seed $s: field dump times differ"))
+        push!(coeffs, mode_coefficient(fl.fields["Ex"], mode))
+        sc = read_scalars(sd)
+        push!(per_run, damping_from_peaks(sc.time, sc.columns["Uelm_Ex"]; fit_start = obs["fit_start"], floor_factor = obs["floor_factor"]))
+        for f in filter(isfile, joinpath.(sd, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
+            outputs[relpath(f, dir)] = "sha256:" * file_hash(f)
+        end
+    end
+    hw = [hardware(joinpath(dir, "seed-$s")) for s in seeds]
+    walls = [wall_seconds(joinpath(dir, "seed-$s")) for s in seeds]
+    nsteps = round(Int, case["time"]["t_end"] / case["time"]["dt"])
+    particles = case["grid"]["cells"] * sum(s["particles_per_cell"] for s in case["species"] if s["mobile"])
+    r = write_ensemble(dir, case, t, coeffs, seeds; code = "smilei", per_run,
+        extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
+            "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps,
+            "hardware" => first(hw)))
+    m = read_manifest(dir)
+    image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
+    write_manifest(dir; extra = Dict{String,Any}("outputs" => outputs, "image" => image, "hardware" => first(hw),
+        "observables" => Dict(k => r[k] for k in ("observable", "measured", "measured_stderr", "maxima_used",
+            "ensemble_floor", "observable_exists", "M") if r[k] !== nothing)))
+    return r
+end
+
+"Wall time of a Smilei run from the start and end stamps in its container.txt, or nothing."
+function wall_seconds(dir)
+    f = joinpath(dir, "container.txt")
+    isfile(f) || return nothing
+    stamp(key) = (l = findfirst(x -> startswith(x, "# $key:"), readlines(f)); l === nothing ? nothing :
+        strip(split(readlines(f)[l], ":"; limit = 2)[2]))
+    a, b = stamp("start"), stamp("end")
+    (a === nothing || b === nothing) && return nothing
+    secs(x) = (d = Dates.DateTime(x[1:23], dateformat"yyyy-mm-ddTHH:MM:SS.sss"); Dates.datetime2unix(d))
+    return secs(b) - secs(a)
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
     dir = ARGS[1]
-    r = analyze(dir; log = get(ARGS, 2, nothing))
+    log = get(ARGS, 2, nothing)
+    seeded = haskey(TOML.parsefile(joinpath(dir, "case.toml"))["numerics"], "seeds")
+    r = seeded ? analyze_seeded(dir; log) : analyze(dir; log)
     JSON.print(stdout, r, 2)
     println()
 end

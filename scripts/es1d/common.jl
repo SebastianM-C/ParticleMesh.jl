@@ -36,21 +36,21 @@ catch
 end
 
 """
-    run_dir(name, script; params) -> dir
+    run_dir(name, script; params, work_package = "WP-011", extra_inputs = String[]) -> dir
 
 Create `scripts/runs/<name>-<timestamp>/` and write its `manifest.json`: commit, dirty flag,
-the SHA-256 of every input file, the parameters, Julia version, thread count and CPU model.
+the SHA-256 of every input file (`input_files(script)` and `extra_inputs`), the parameters, Julia version, thread count and CPU model.
 """
-function run_dir(name, script; params = Dict())
+function run_dir(name, script; params = Dict(), work_package = "WP-011", extra_inputs = String[])
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = joinpath(REPO, "scripts", "runs", "$name-$stamp")
     mkpath(dir)
     manifest = Dict(
         "run_id" => "$name-$stamp",
-        "work_package" => "WP-011",
+        "work_package" => work_package,
         "commit" => git("rev-parse", "HEAD"),
         "dirty" => !isempty(git("status", "--porcelain", "--", "lib", "src", "scripts/es1d", "Manifest.toml", "scripts/Manifest.toml")),
-        "inputs" => Dict(relpath(f, REPO) => bytes2hex(open(sha256, f)) for f in input_files(script)),
+        "inputs" => Dict(relpath(f, REPO) => bytes2hex(open(sha256, f)) for f in sort(unique([input_files(script); extra_inputs]))),
         "parameters" => params,
         "julia" => string(VERSION),
         "threads" => Threads.nthreads(),

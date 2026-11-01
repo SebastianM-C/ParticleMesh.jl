@@ -6,7 +6,7 @@ module Observables
 
 using Statistics: mean, median
 
-export linear_fit, local_maxima, damping_from_peaks, growth_from_window, mode_amplitude
+export linear_fit, local_maxima, damping_from_peaks, growth_from_window, mode_amplitude, checked_fit
 
 """
     linear_fit(x, y) -> (; slope, intercept, slope_stderr, n)
@@ -35,7 +35,8 @@ Damping rate γ of the field amplitude from the local maxima of the field energy
 standing Langmuir wave (two maxima per wave period). The noise floor is the median of U over
 the last 20 % of the series; the fit uses the maxima at t ≥ fit_start that lie above
 floor_factor × floor, up to the first one that is larger than its predecessor. γ = -slope/2
-of log U at the maxima; the frequency is π over the mean spacing of the maxima used.
+of log U at the maxima; the frequency is π over the mean spacing of the maxima used. `used`
+holds the sample indices of the maxima the fit took (all candidates when it failed).
 """
 function damping_from_peaks(t, U; fit_start, floor_factor)
     n = length(U)
@@ -48,13 +49,13 @@ function damping_from_peaks(t, U; fit_start, floor_factor)
         push!(used, i)
     end
     length(used) >= 3 || return (; gamma = NaN, gamma_stderr = NaN, omega = NaN,
-        floor, t_fit = Float64[], U_fit = Float64[], fit = nothing)
+        floor, t_fit = Float64[], U_fit = Float64[], fit = nothing, used)
     refined = [refine_peak(t, log.(U), i) for i in used]
     tp, lp = first.(refined), last.(refined)
     fit = linear_fit(tp, lp)
     omega = π / mean(diff(tp))
     return (; gamma = -fit.slope / 2, gamma_stderr = fit.slope_stderr / 2, omega, floor,
-              t_fit = tp, U_fit = exp.(lp), fit)
+              t_fit = tp, U_fit = exp.(lp), fit, used)
 end
 
 """
@@ -118,6 +119,24 @@ function mode_amplitude(f::AbstractMatrix, m::Integer; periodic_duplicate = true
     j = 0:N-1
     phase = cis.(-2π * m .* j ./ N)
     return [2 * abs(sum(view(f, 1:N, c) .* phase)) / N for c in axes(f, 2)]
+end
+
+"""
+    checked_fit(r; min_points = 5) -> (; usable, gamma, gamma_stderr, points, flag)
+
+A rate fit (`damping_from_peaks` or `growth_from_window`) as it may be reported: `usable` when
+γ is finite and the fit took at least `min_points` points, and then `gamma` and `gamma_stderr`
+are its values; otherwise both are `nothing` and `flag` says why, so that a fit on too few
+points (a coarse output cadence crossing the window in a few samples) is not reported as a
+number.
+"""
+function checked_fit(r; min_points = 5)
+    n = length(r.t_fit)
+    flag = !isfinite(r.gamma) ? "refused: the fit failed ($n points)" :
+        n < min_points ? "refused: $n points in the fit window, fewer than $min_points" : ""
+    usable = isempty(flag)
+    return (; usable, gamma = usable ? r.gamma : nothing,
+              gamma_stderr = usable ? r.gamma_stderr : nothing, points = n, flag)
 end
 
 end
