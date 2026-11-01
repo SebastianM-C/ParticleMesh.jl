@@ -193,11 +193,14 @@ end
     @test_throws ArgumentError inverse_laplacian_periodic!(φ, s, grid, SpectralWorkspace(backend, Float64, grid2(Float64, 2; n = (12, 16))))
     @test_throws ArgumentError inverse_laplacian_periodic!(φ, s, grid, SpectralWorkspace(backend, Float32, grid))
     @test_throws ArgumentError inverse_laplacian_periodic!(φ, s[1:(end - 1), :], grid, ws)
+    @test_throws ArgumentError inverse_laplacian_periodic!(φ[1:(end - 1), :], s, grid, ws)
     g0 = PeriodicGrid((16, 12), (0.25, 0.375), 0)
     @test_throws ArgumentError inverse_laplacian_periodic!(field(backend, Float64, g0), field(backend, Float64, g0), g0,
                                                            SpectralWorkspace(backend, Float64, g0))
     G = (field(backend, Float64, grid), field(backend, Float64, grid))
     @test_throws ArgumentError gradient_periodic!((φ, G[2]), φ, grid)
     @test_throws ArgumentError gradient_periodic!(G, φ[:, 1:(end - 1)], grid)
+    @test_throws ArgumentError gradient_periodic!((G[1][1:(end - 1), :], G[2]), φ, grid)
+    @test_throws ArgumentError gradient_periodic!((G[1], G[2][:, 1:(end - 1)]), φ, grid)
     @test_throws ArgumentError SpectralWorkspace(backend, Float64, PeriodicGrid((4, 4, 4), (1.0, 1.0, 1.0), 1))
 end
