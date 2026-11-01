@@ -124,7 +124,11 @@ Proposals, not yet tested in code: kernels generic in `N` through `CartesianInde
 
 The next slice brings the engine and the electromagnetic module to `N = 2`, periodic, on one device, on the CPU backend. These are the starting choices its packages implement; as A0 asks, each becomes a §0.7 contract once its code and test exist, and changes if the code shows a better one.
 
-Order of packages. The engine port and the scripts-only 2D case core come first and run in parallel with each other and with WP-008 and WP-015. Then come the 2D flux deposition and the periodic mesh solve, two engine packages that only need the port. The module's 2D step and its validation come last.
+The engine port comes first and runs in parallel with WP-008 and WP-015.
+
+Order of the other packages: the 2D flux deposition and the periodic mesh solve, two engine packages that only need the engine port, follow it, and the module's 2D step and its validation come last.
+
+The scripts-only 2D case core comes first: it needs no engine code, and runs in parallel with WP-008 and WP-015.
 
 1. **The engine port.** One package owns every N = 2 signature change in grid, guards, shapes, gather, deposit, sort and loading, so that no package is cut against a guessed signature. Its first deliverable measures the cost of the tensor-product Reference deposition (the §0.7 proposal), and the kernel mechanism (`CartesianIndex{N}`, `Val{N}` or per-axis loops) is chosen from that measurement.
    - The grid is `PeriodicGrid{N,T}`, a plain immutable struct. A stagger is an `NTuple{N,Stagger}`, and a module layout holds one per component.
