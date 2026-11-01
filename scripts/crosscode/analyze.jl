@@ -29,6 +29,18 @@ end
 
 finite_or_nothing(x) = isfinite(x) ? x : nothing
 
+"""
+The provenance of the analysis (F3): the commit of the checkout and the hashes of the analysis
+code, recorded in the run's manifest next to the preparation commit.
+"""
+function analysis_record()
+    root = dirname(dirname(@__DIR__))
+    c = git_commit(root)
+    files = ("analyze.jl", "analysis.jl", "ensemble.jl", "ensemble_report.jl", "read.jl", "manifest.jl")
+    return Dict{String,Any}("commit" => c.commit, "dirty" => coalesce(c.dirty, "unknown"),
+        "inputs" => Dict{String,Any}("scripts/crosscode/" * f => "sha256:" * file_hash(joinpath(@__DIR__, f)) for f in files))
+end
+
 "The per-run observable of a case (a seeded case also has the ensemble one)."
 run_observable(case) = only((k, o) for (k, o) in case["observables"] if o["method"] != "ensemble_peak_envelope")
 
@@ -157,7 +169,7 @@ function analyze(dir; log = nothing, image = nothing)
     img = something(image, image_from_header(log, joinpath(dir, "image.txt")))
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outhash, "image" => image,
-        "hardware" => hardware(dir),
+        "hardware" => hardware(dir), "analysis" => analysis_record(),
         "observables" => Dict(k => v for (k, v) in result if v !== nothing)))
     return result
 end
@@ -216,6 +228,7 @@ function analyze_seeded(dir; log = nothing)
     m = read_manifest(dir)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outputs, "image" => image, "hardware" => first(hw),
+        "analysis" => analysis_record(),
         "observables" => Dict(k => r[k] for k in ("observable", "measured", "measured_stderr", "maxima_used",
             "ensemble_floor", "observable_exists", "M") if r[k] !== nothing)))
     return r

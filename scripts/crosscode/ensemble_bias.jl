@@ -9,7 +9,8 @@
 #
 # Writes scripts/runs/ensemble-bias-<stamp>/ with bias.png, its sidecar bias.json (every fitted
 # γ), bias-summary.json and manifest.toml. The noise model is narrowband (sinusoids with frequencies in [1, 2) ω_p, as in
-# T-180), not the PIC noise itself.
+# T-180), stationary in time, with no early non-modal transient in the signal; not the PIC noise
+# itself. Each run gets its own random numbers.
 
 include(joinpath(@__DIR__, "analysis.jl"))
 include(joinpath(@__DIR__, "ensemble.jl"))
@@ -27,7 +28,7 @@ function narrowband_noise(rng, t, σ; K = 24)
     return [sum(a .* cis.(ωk .* ti .+ φ)) for ti in t]
 end
 
-function calibrate(rundir; R = 400)
+function calibrate(rundir; R = 400, stream = 0)
     o = JSON.parsefile(joinpath(rundir, "observables.json"))
     ens = o["fit_rules"]
     t = Float64.(JSON.parsefile(joinpath(rundir, "ensemble-series.json"))["t"])
@@ -37,7 +38,7 @@ function calibrate(rundir; R = 400)
     signal = A .* exp.(-γ .* t) .* cos.(ω .* t)
     g, se, fails = Float64[], Float64[], 0
     for r in 1:R
-        rng = Xoshiro(20261101 + r)
+        rng = Xoshiro(20261101 + 100_000 * stream + r)     # independent draws per run
         e = ensemble_damping(t, [signal .+ narrowband_noise(rng, t, sqrt(σ2)) for _ in 1:M];
                              fit_start = ens["fit_start"], floor_factor = ens["floor_factor"])
         (e.ok && length(e.used) >= ens["minimum_maxima"]) || (fails += 1; continue)
@@ -60,7 +61,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     runs = ARGS
     out = joinpath(dirname(@__DIR__), "runs", "ensemble-bias-" * format(now(UTC), "yyyymmddTHHMMSS"))
     mkpath(out)
-    res = [calibrate(r) for r in runs]
+    res = [calibrate(r; stream = i) for (i, r) in enumerate(runs)]
     open(io -> JSON.print(io, res, 2), joinpath(out, "bias.json"), "w")
     fig = Figure(size = (900, 450))
     ax = Axis(fig[1, 1]; xlabel = "γ fitted on synthetic ensembles [ω_p]", ylabel = "count",
@@ -73,8 +74,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
     axislegend(ax; position = :lt)
     save(joinpath(out, "bias.png"), fig; px_per_unit = 2)
     open(io -> JSON.print(io, [Dict(k => v for (k, v) in r if k != "gammas") for r in res], 2), joinpath(out, "bias-summary.json"), "w")
-    write_manifest(out; root = dirname(dirname(@__DIR__)),
-        inputs = [joinpath(@__DIR__, f) for f in ("ensemble_bias.jl", "ensemble.jl", "analysis.jl")],
+    root = dirname(dirname(@__DIR__))
+    write_manifest(out; root,
+        extra = Dict{String,Any}("inputs" => Dict{String,Any}(relpath(joinpath(@__DIR__, f), root) => "sha256:" * file_hash(joinpath(@__DIR__, f))
+                                 for f in ("ensemble_bias.jl", "ensemble.jl", "analysis.jl"))))
+    write_manifest(out;
         extra = Dict{String,Any}("runs" => basename.(normpath.(runs)), "work_package" => "WP-012",
             "kind" => "post-hoc sensitivity", "julia" => string(VERSION)))
     for r in res

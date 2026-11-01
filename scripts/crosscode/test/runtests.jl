@@ -261,8 +261,22 @@ end
     end
     @test mean(abs.(pulls) .<= 1) >= 0.5
     @test maximum(abs, pulls) <= 4
-    # the fitted floor (median of the last 20 % of |⟨Ê⟩|²) at M seeds against one seed: the ratio
-    # is M within three standard errors from the spread over realizations
+    # on the runs' own time grid (t ≤ 25, fields every 4 steps) and noise (per seed 2.5e-3 of the
+    # initial energy), where the floor window still holds signal: the jackknife still covers
+    tr = collect(0:4*0.0093266:25)
+    sr = exp.(-γ .* tr) .* cos.(ω .* tr)
+    pr = Float64[]
+    for r in 1:R
+        rng = Xoshiro(4242r)
+        e = ensemble_damping(tr, [sr .+ narrowband_noise(rng, tr, sqrt(2.5e-3)) for _ in 1:M]; fit_start = 3.0, floor_factor = 10.0)
+        e.ok && isfinite(e.jackknife.stderr) && push!(pr, (e.gamma - γ) / e.jackknife.stderr)
+    end
+    @test length(pr) >= R - 2
+    @test mean(abs.(pr) .<= 1) >= 0.5
+    @test mean(abs.(pr) .<= 2) >= 0.85
+    # the fitted floor (median of the last 20 % of |⟨Ê⟩|²) at M seeds against one seed, on a grid
+    # long enough (t ≤ 50) for the floor window to hold noise only: the ratio is M within three
+    # standard errors from the spread over realizations
     for Mk in (4, 16)
         f1, fM = Float64[], Float64[]
         for r in 1:R
