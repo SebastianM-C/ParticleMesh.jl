@@ -39,8 +39,8 @@ The interface this package owns is the case description of a 2D periodic problem
 
 Both cases use Δt = 0.95 of the 2D Courant limit 1/√(1/Δx² + 1/Δy²) (§0.8 item 5). Their observables and fit windows are pre-registered in a commit before any run:
 
-- Landau: the electrostatic energy from Smilei's scalars, the mode amplitude projected on k from the field dumps, and the ratio of the Ex and Ey energies, which for a longitudinal wave is (kx/ky)².
-- Weibel: the in-plane magnetic energy and the mode amplitude of B projected on k.
+- Landau: the electrostatic energy from Smilei's scalars, the mode amplitude projected on k from the field dumps (E·k̂), and the ratio of the Ex and Ey energies, which for a longitudinal wave on the Yee grid is (sin(kxΔx/2)/Δx)² / (sin(kyΔy/2)/Δy)², equal to (kx/ky)² only in the continuum limit; the case file states the value at its resolution.
+- Weibel: the in-plane magnetic energy and the Fourier amplitude at k of the in-plane B component perpendicular to k (B·k̂ vanishes by ∇·B = 0).
 
 The expected values are proposals for the owner to accept in A5.
 
@@ -86,7 +86,7 @@ Test ids T-270 to T-279, in `scripts/crosscode/test/runtests.jl`. T-010, T-012, 
 - T-271 2D unit conversion and namelist [A1, A5, WP-019]: `smilei_parameters` of each 2D case reproduces hand-computed per-axis cell lengths and counts, the time step and step count, densities and the drift. The namelist has `2Dcartesian`, a power-of-2 patch count per axis that divides the cells with more than 5 cells per patch at order 2, periodic boundaries on both axes and the drift as `mean_velocity`. Both case files have Δt equal to 0.95 of 1/√(1/Δx² + 1/Δy²) to roundoff.
 - T-272 the oblique profile [A5, WP-019]: the profile read back from a generated namelist, evaluated at the cell centres, equals n₀ (1 + amplitude cos(2π (mx x/Lx + my y/Ly))) to roundoff; the opposite-phase beams of `weibel-2d` give a uniform net density to roundoff.
 - T-273 theory of the 2D cases [A5, A7, WP-019]: the oblique Landau |k| equals `landau.toml`'s k to roundoff, and its theory value equals the 1D one to roundoff. The 2D Weibel value is a root of the cold-fluid relation in the `theory.jl` header, and equals WP-014's 1D relation (`lib/ParticleMeshElectromagnetic/test/theory.jl`, included read-only) and `weibel.toml`'s theory value at the same |k|, v₀ and ω_p to roundoff. Both modes are periodic in their boxes with the stated |k| and angle, and each case file's `theory` field equals the function's output.
-- T-274 the 2D mode fit [A7, WP-019]: on synthetic 2D fields with a known oblique mode amplitude, a known rate and added noise, the projection on k and the pre-registered fit recover the rate within its reported error. A field along a different mode projects to zero to roundoff, and the Ex/Ey energy ratio of a synthetic longitudinal wave equals (kx/ky)² to roundoff.
+- T-274 the 2D mode fit [A7, WP-019]: on synthetic 2D fields with a known oblique mode amplitude, a known rate and added noise, the projection on k and the pre-registered fit recover the rate within its reported error. A field along a different mode projects to zero to roundoff, and the Ex/Ey energy ratio of a synthetic longitudinal wave equals its Yee-grid form to roundoff.
 - T-275 the 2D Smilei reader [WP-019]: a small file written by the test in Smilei's 2D field layout is read into the documented schema, values and positions.
 - The case files with observables, windows and theory are in a commit that precedes every run commit in the PR history; every pre-registered observable names its signal, method and window.
 - Either the runs with manifests, observables, plots, sidecars, the report and the answered review are in the PR, or `questions/wp-019-smilei-2d-image.md` explains why they are absent. `questions/wp-019-a5-2d-proposals.md` exists and the PR points to it.
@@ -102,7 +102,7 @@ It runs in parallel with WP-008, WP-015 and WP-018: it touches only `scripts/` f
 
 ## Budgets
 
-- **A7:** theory identities (equal |k|, theory values equal to the 1D ones, profile values, the (kx/ky)² ratio) to roundoff; fit recovery on synthetic signals within the reported error; no agreement threshold.
+- **A7:** theory identities (equal |k|, theory values equal to the 1D ones, profile values, the Yee-grid Ex/Ey energy ratio) to roundoff; fit recovery on synthetic signals within the reported error; no agreement threshold.
 - **CPU for Smilei:** each 2D run within the cost of WP-003's 1D Landau reference run (2.56·10⁷ electrons, 379 s on 8 threads, `reports/crosscode-smilei-1d/README.md`), with cells per axis, particles per cell and steps chosen from that bound and stated in the case header; wall time and particle-steps recorded per run.
 - **Tests:** the `scripts/crosscode` test suite stays within seconds to a minute (no Smilei run inside it).
 - No GPU and no throughput budget.
