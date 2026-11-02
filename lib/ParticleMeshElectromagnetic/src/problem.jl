@@ -52,7 +52,8 @@ number of steps `nsteps`, the mobile `species` (a tuple of [`SpeciesDescription`
 immobile species of uniform density are the neutralizing background and carry no particles,
 A2), the `seed` of the velocity draws, the diagnostic `kmode` and the uniform background fields
 `E0` and `B0` (three components each, zero by default), which [`initialize!`](@ref) adds to the
-fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles). At N = 1
+fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
+not differentiable parameters, A3: the addition tests them for zero on the host). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -184,7 +185,7 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
     nsteps = round(Int, tend / dt_run)
     seed = seed === nothing ? Int(getnum(case["numerics"], "random_seed", 1)) : Int(seed)
-    species = SpeciesDescription{T}[]
+    species = SpeciesDescription{T,Int}[]
     for (k, s) in enumerate(case["species"])
         pert = getnum(s, "perturbation", Dict("amplitude" => 0.0, "mode" => 1))
         a0 = pert["amplitude"]
