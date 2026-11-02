@@ -39,17 +39,17 @@ function input_files(script, case_name)
 end
 
 """
-    run_dir(name, script, case_name; params, work_package = "WP-014", extra_inputs = String[], backend, extra) -> dir
+    run_dir(name, script, case_name; params, work_package = "WP-014", extra_inputs = String[], backend, extra, prefix = "em1d") -> dir
 
-Create `scripts/runs/em1d-<name>-<timestamp>/` and write its `manifest.toml` (F3): the commit
+Create `scripts/runs/<prefix>-<name>-<timestamp>/` and write its `manifest.toml` (F3): the commit
 and dirty flag, the SHA-256 of every input (the case file among them unless `case_name` is
 `nothing`, and the files in `extra_inputs`), the parameters, the work package, Julia version,
 thread count, CPU model and backend, plus `extra` (the GPU model of a CUDA run).
 """
 function run_dir(name, script, case_name; params = Dict{String,Any}(), work_package = "WP-014", extra_inputs = String[],
-                 backend = "KernelAbstractions CPU", extra = Dict{String,Any}())
+                 backend = "KernelAbstractions CPU", extra = Dict{String,Any}(), prefix = "em1d")
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
-    dir = joinpath(REPO, "scripts", "runs", "em1d-$name-$stamp")
+    dir = joinpath(REPO, "scripts", "runs", "$prefix-$name-$stamp")
     mkpath(dir)
     # input paths relative to the repository root: absolute paths would carry the machine's home directory
     inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in sort(unique([input_files(script, case_name); extra_inputs])))

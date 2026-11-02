@@ -1,0 +1,23 @@
+{
+  "growth_rate_energy": {
+    "final": 0.19637473905277786,
+    "fit_points": 121,
+    "fit_range": [
+      12.313456471629308,
+      21.16144914585396
+    ],
+    "initial": 0.0,
+    "max": 0.3165487065410934,
+    "measured": 0.2610730411118432,
+    "measured_stderr": 0.000912654804429043,
+    "method": "exponential_window",
+    "relative_difference": -0.01005753110376185,
+    "saturation": {
+      "t": 32.00024017177916,
+      "value": 0.3165487065410934
+    },
+    "signal": "scalar_sum",
+    "theory": 0.26372546821123183
+  },
+  "plot": "field-energy versus time, log scale"
+}

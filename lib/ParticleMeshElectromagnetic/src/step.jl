@@ -116,8 +116,8 @@ loaded by [`initialize!`](@ref). Throws an `ArgumentError` naming the limit unle
 stable and every particle moves less than one cell per step, as `deposit_flux!` needs.
 """
 function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU()) where {T}
-    numerics.current === nothing ||
-        throw(ArgumentError("the 1D step deposits the charge-conserving current itself: EMNumerics needs current = nothing at N = 1, got $(numerics.current)"))
+    numerics.current isa Esirkepov ||
+        throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)

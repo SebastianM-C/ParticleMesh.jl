@@ -335,3 +335,50 @@ C_partials = 16
 measured = { "Dual{Float32,3}" = 6.38 }
 measured_partials = { "Dual{Float32,3}" = 5.3 }
 status = "proposed; the primal is not bitwise the Float32 run (recorded by the test, not asserted, A4)"
+
+["T-360"]
+quantity = "after every 2D step with the Esirkepov current, two species crossing cells and seams, 40 steps, both modes: Gauss's law |D⁻ₓEx + D⁻_yEy − (ρ − mean ρ)| (C); |D⁺ₓBx + D⁺_yBy| (C_divB); |Σ Jz − Σ q·w·u_z/γ| (C_Jz)"
+scale = "(n₁ + n₂)·max|ρ|·√(k + 1) after k steps (C); (Σ_d 2/Δ_d)·max|B|·√k (C_divB); Σ|q·w·u_z/γ| (C_Jz)"
+C = 2
+C_divB = 2
+C_Jz = 32
+measured = { Float32 = 0.33, Float64 = 0.432, "Dual{Float32,3}" = 0.306 }
+measured_divB = { Float32 = 0.289, Float64 = 0.343, "Dual{Float32,3}" = 0.347 }
+measured_Jz = { Float32 = 7.41, Float64 = 10.8, "Dual{Float32,3}" = 7.44 }
+status = "proposed; the WP-023 physics breaker found at most 1.37 (C) and 0.706 (C_divB) over other seeds, grids, particles per cell, 400 steps, CFL 0.99, order 1 and drifts up to 0.97c"
+
+["T-361"]
+quantity = "a 2D run invariant along y (along x) against the 1D run (rotated by 90°), after initialize! and after every step: every mapped component on every line of the invariant axis, and the 2D-only in-plane B component; 30 steps of two cold counter-streaming beams, one perturbed"
+scale = "k·n·√ppc·max|1D value of its kind| (E and B together, J together) after k ≥ 1 steps, n the 1D cells and ppc the 1D particles per cell"
+C = 32
+measured = { Float32 = 2.78, Float64 = 2.61, "Dual{Float32,3}" = 0.328 }
+status = "proposed; the scale n·√ppc follows the WP-023 physics breaker's measurement at 16 to 64 cells and 8 to 64 particles per cell (the 1D prefix-sum field and the atomic sums), whose largest value would be about 15 under it"
+
+["T-362"]
+quantity = "the Reference and Fast 2D steps: every field and current, and the kinetic-energy history, after k steps (20 steps)"
+scale = "k·√(prod(ppc))·max|Reference value| per component"
+C = 32
+measured = { Float32 = 7.79, Float64 = 8.25 }
+status = "proposed; valid while the plasma's instability has not amplified the roundoff (the breaker measured exponential growth of the difference beyond about 100 steps)"
+
+["T-364"]
+quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electrons per cell, 5 % perturbation, t = 18, the case's default seed): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|ê·Ê|/max|k̂·Ê| of mode (2, 1) (transverse)"
+rate = 0.8
+frequency = 0.08
+transverse = 0.05
+measured = { rate = -0.0110, frequency = 0.026, transverse = 0.00864 }
+status = "proposed; rate is three seed standard deviations at this size (20 seeds, scripts/em2d/landau_seeds.jl: std 0.266 of theory, seed mean −2.2 %, 0.36 standard errors from theory; 2 of 20 seeds give fewer than three maxima), so it is an order check; frequency covers the largest seed deviation, 4.6 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/"
+
+["T-365"]
+quantity = "2D Weibel at test size (64 × 64 cells, 4 × 4 per beam per cell): |γ − γ_theory|/γ_theory (rate) and max|k̂·B̂|/max|ê·B̂| of mode (2, 1) (longitudinal)"
+rate = 0.05
+longitudinal = 0.01
+measured = { rate = -0.0135, longitudinal = 0.000482 }
+status = "proposed; cold beams, no seed noise; the breaker found −0.0229 at 32 × 32 and −0.0113 at 128 × 128 cells"
+
+["T-366"]
+quantity = "Dual{Float32,3} through 10 steps of the 2D step with current: the primal of every E and B component against the Float32 run"
+scale = "k·max|Float32 value| per component"
+C = 8
+measured = { "Dual{Float32,3}" = 1.49 }
+status = "proposed; not bitwise (A4)"

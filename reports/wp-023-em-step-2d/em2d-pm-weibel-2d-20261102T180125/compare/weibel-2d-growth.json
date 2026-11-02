@@ -1,0 +1,26 @@
+{
+  "case": "weibel-2d",
+  "note": "measurements, not thresholds (A7)",
+  "particlemesh_run": "em2d-pm-weibel-2d-20261102T180125",
+  "single_run_seed_20261031": {
+    "growth_rate_energy": {
+      "combined_stderr_units": 7.918821070128956e-5,
+      "particlemesh": 0.2610730411118432,
+      "particlemesh_stderr": 0.000912654804429043,
+      "pm_minus_smilei_relative": 3.9148899976100753e-7,
+      "smilei": 0.2610729389046595,
+      "smilei_stderr": 0.0009126520702121924,
+      "theory": 0.26372546821123183
+    },
+    "growth_rate_mode": {
+      "combined_stderr_units": -0.010189193423420952,
+      "particlemesh": 0.26083858373910374,
+      "particlemesh_stderr": 0.0019099379899497428,
+      "pm_minus_smilei_relative": -0.00010550320816738697,
+      "smilei": 0.2608661059501836,
+      "smilei_stderr": 0.0019100193461593033,
+      "theory": 0.26372546821123183
+    }
+  },
+  "smilei_single_run": "reports/crosscode-smilei-2d/smilei-weibel-2d-dca1230a"
+}
