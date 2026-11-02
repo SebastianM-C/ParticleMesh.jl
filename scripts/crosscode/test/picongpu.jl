@@ -47,7 +47,7 @@ param_number(text, name) =
     k_SI = 2π * e.profile.mode[1] / (64 * p.cell_size_SI[1])
     @test k_SI ≈ 10 * ω0 / c0 rtol = 1e-14
     @test ion.profile === nothing
-    # the reference wavelength is recorded and can be set by the case
+    # the reference wavelength is recorded and can be set by the `lambda0` keyword
     @test picongpu_parameters(case; lambda0 = 1.0e-6).units.omega0 ≈ 2π * c0 / 1.0e-6 rtol = 1e-15
 
     # The generated files carry these values.
@@ -96,6 +96,7 @@ end
     sm = SmileiDeck.smilei_parameters(c)
     (Nx, Ny), (Lx, Ly) = sm.number_of_cells, sm.grid_length
     for (s, ss) in zip(p.species, sm.species)
+        maxdev = 0.0
         for i in 0:Nx-1, j in 0:Ny-1
             # PIConGPU: the generated functor at the position FreeFormulaImpl passes (the cell
             # centre, in SI), divided by n_c; Smilei: its profile at the cell centre.
@@ -104,9 +105,9 @@ end
             nsm = ss.profile === nothing ? ss.density :
                 ss.profile.base + ss.profile.amplitude * cos(2π * (ss.profile.mode[1] * x / ss.profile.lengths[1] +
                                                                     ss.profile.mode[2] * y / ss.profile.lengths[2]))
-            abs(npic - nsm) <= 8eps() || (@test abs(npic - nsm) <= 8eps(); break)
+            maxdev = max(maxdev, abs(npic - nsm))
         end
-        @test true
+        @test maxdev <= 8eps()
     end
     # The functor reads the mode, the cell counts and the amplitude of the case.
     dens = param_files(c)["density.param"]
