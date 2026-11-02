@@ -1,6 +1,12 @@
 [deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 ParticleMesh = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
 ParticleMesh = {path = ".."}
+
+[compat]
+Aqua = "0.8"
+JET = "0.13"

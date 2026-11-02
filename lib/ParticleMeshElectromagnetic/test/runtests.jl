@@ -25,6 +25,7 @@ include("em2d_cases.jl")       # WP-024: the 2D problems and digests of em2d.jl 
         include("em2d.jl")          # WP-024: T-350 to T-358, after determinism.jl (T-355 reuses its worker runs)
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
+        include("qa.jl")            # T-372 to T-374: Aqua and JET
     finally
         println("\nMeasured err/(eps(T)·scale) per test (compare with tolerances.toml):")
         for id in sort(collect(keys(MEASURED)))

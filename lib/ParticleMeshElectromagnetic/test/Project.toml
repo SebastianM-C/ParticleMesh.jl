@@ -1,6 +1,8 @@
 [deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
@@ -21,8 +23,10 @@ ParticleMeshCore = {path = "../../ParticleMeshCore"}
 ParticleMeshElectromagnetic = {path = ".."}
 
 [compat]
+Aqua = "0.8"
 CUDACore = "6"
 ForwardDiff = "1"
+JET = "0.13"
 KernelAbstractions = "0.10"
 OrdinaryDiffEqCore = "4"
 OrdinaryDiffEqFunctionMap = "2"

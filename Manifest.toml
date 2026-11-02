@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "609af82092e3e8a8be268a2fa66c43e6026ecb0e"
+project_hash = "73cee0a6bdbfae3d79b29d70017c081168efbaa3"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -92,6 +92,13 @@ version = "4.7.4"
     [deps.Adapt.weakdeps]
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[[deps.Aqua]]
+deps = ["Compat", "Pkg", "Test"]
+git-tree-sha1 = "4096262296646ab75ff2316c47798f8c2a92f641"
+registries = "General"
+uuid = "4c88cf16-eb10-579e-8560-4a9242c79595"
+version = "0.8.18"
 
 [[deps.ArgCheck]]
 git-tree-sha1 = "f9e9a66c9b7be1ad7372bbd9b062d9230c30c5ce"
@@ -204,6 +211,10 @@ registries = "General"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.5.0"
 
+[[deps.CRC32c]]
+uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
+version = "1.11.0"
+
 [[deps.CUDACore]]
 deps = ["Adapt", "BFloat16s", "CEnum", "CUDA_Compiler_jll", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "ExprTools", "GPUArrays", "GPUCompiler", "GPUToolbox", "KernelInterface", "LLVM", "LLVMLoopInfo", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "NVPTX_LLVM_Backend_jll", "PrecompileTools", "Preferences", "Printf", "Random", "Random123", "RandomNumbers", "ScopedValues", "UnsafeAtomics"]
 git-tree-sha1 = "9d504f23d39a56f827d1da4bfd1580990a28adbb"
@@ -254,6 +265,13 @@ registries = "General"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 version = "0.25.0+3"
 
+[[deps.CodeTracking]]
+deps = ["InteractiveUtils", "REPL", "UUIDs"]
+git-tree-sha1 = "cfb7a2e89e245a9d5016b70323db412b3a7438d5"
+registries = "General"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "3.0.2"
+
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
 git-tree-sha1 = "970758a3d591a2a5c2a907c53f2e2f8c1b1d3537"
@@ -285,6 +303,12 @@ weakdeps = ["Dates", "LinearAlgebra"]
 
     [deps.Compat.extensions]
     CompatLinearAlgebraExt = "LinearAlgebra"
+
+[[deps.Compiler]]
+git-tree-sha1 = "382d79bfe72a406294faca39ef0c3cef6e6ce1f1"
+registries = "General"
+uuid = "807dbc54-b67e-4c79-8afb-eafe4df6f2e1"
+version = "0.1.1"
 
 [[deps.CompilerCaching]]
 deps = ["LMDB", "SHA", "Scratch"]
@@ -744,6 +768,13 @@ registries = "General"
 uuid = "82899510-4779-5014-852e-03e436cf321d"
 version = "1.0.0"
 
+[[deps.JET]]
+deps = ["CodeTracking", "Compiler", "InteractiveUtils", "JuliaInterpreter", "JuliaSyntax", "Libdl", "LoweredCodeUtils", "MacroTools", "PrecompileTools", "Preferences", "Revise", "Test"]
+git-tree-sha1 = "74c6150d8d3ee1598d0d03bad75f59794d859e07"
+registries = "General"
+uuid = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+version = "0.13.1"
+
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
 git-tree-sha1 = "7204148362dafe5fe6a273f855b8ccbe4df8173e"
@@ -765,6 +796,19 @@ version = "1.13.4"
     [deps.JSON.weakdeps]
     ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
     Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[deps.JuliaInterpreter]]
+deps = ["CodeTracking", "InteractiveUtils", "Random"]
+git-tree-sha1 = "c35411a62b74a0288934ffcfad4fa8dd09b72630"
+registries = "General"
+uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
+version = "0.12.2"
+
+[[deps.JuliaSyntax]]
+git-tree-sha1 = "0d4b3dab95018bcf3925204475693d9f09dc45b8"
+registries = "General"
+uuid = "70703baa-626e-46a2-a12c-08ffd08c73b4"
+version = "1.0.2"
 
 [[deps.JuliaSyntaxHighlighting]]
 deps = ["StyledStrings"]
@@ -937,6 +981,13 @@ git-tree-sha1 = "f00544d95982ea270145636c181ceda21c4e2575"
 registries = "General"
 uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 version = "1.2.0"
+
+[[deps.LoweredCodeUtils]]
+deps = ["CodeTracking", "Compiler", "JuliaInterpreter"]
+git-tree-sha1 = "b3383cd2b17d8ad4ab7becf07cea43ad692c58bf"
+registries = "General"
+uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
+version = "3.10.2"
 
 [[deps.MSVCRuntime_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1295,6 +1346,17 @@ git-tree-sha1 = "140c074bb63518a0e1ec2c8aba2a8a5719bcf21c"
 registries = "General"
 uuid = "9fe22ead-9e00-4db2-8b46-706a60d40f5e"
 version = "1.3.0"
+
+[[deps.Revise]]
+deps = ["CRC32c", "CodeTracking", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Preferences", "REPL", "Serialization", "UUIDs"]
+git-tree-sha1 = "da47b1bd8be0a3f80073d9b8bf0c614a3c474d58"
+registries = "General"
+uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
+version = "3.18.0"
+weakdeps = ["Distributed"]
+
+    [deps.Revise.extensions]
+    DistributedExt = "Distributed"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "PrecompileTools", "SHA", "Serialization"]

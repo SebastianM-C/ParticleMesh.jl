@@ -11,3 +11,5 @@ end
     @test isdefined(ParticleMesh, :PeriodicGrid) && ParticleMesh.PeriodicGrid === ParticleMesh.ParticleMeshCore.PeriodicGrid
     @test isdefined(ParticleMesh, :deposit!) && ParticleMesh.deposit! === ParticleMesh.ParticleMeshCore.deposit!
 end
+
+include("qa.jl")
