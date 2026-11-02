@@ -349,7 +349,7 @@ end
 @testset "T-256 the oblique seed ensemble in both codes [A5, WP-017]" begin
     c = load_case("landau-oblique-2d")
     seeds = case_seeds(c)
-    @test length(seeds) == 4 && allunique(seeds) && first(seeds) == 20261031   # WP-019's run is seed 1
+    @test length(seeds) >= 4 && allunique(seeds) && first(seeds) == 20261031   # WP-019's run is seed 1 (T-390: the 32 seeds of WP-025)
     # Smilei seeds patch p with random_seed + p: the seeds are spaced beyond its patch count
     @test minimum(diff(sort(seeds))) > prod(SmileiDeck.smilei_parameters(c).number_of_patches)
     # WP-019's four pre-registered entries are unchanged: the hash of their canonical TOML as

@@ -951,3 +951,4 @@ end
     @test collect(keys(sub.fields)) == ["Ey"]
 end
 include(joinpath(@__DIR__, "picongpu.jl"))
+include(joinpath(@__DIR__, "seeds.jl"))

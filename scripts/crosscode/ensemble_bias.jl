@@ -31,15 +31,23 @@ function narrowband_noise(rng, t, σ; K = 24)
     return [sum(a .* cis.(ωk .* ti .+ φ)) for ti in t]
 end
 
-function calibrate(rundir; R = 400, stream = 0, amplitude = :initial)
+"""
+    calibrate(rundir; R = 400, stream = 0, amplitude = :initial, M = nothing) -> Dict
+
+`R` synthetic ensembles at the run's measured per-seed noise through the run's rule. `M` is
+the number of seeds per synthetic ensemble, the run's own by default; another value predicts
+the rule's spread at that seed count from the same per-seed noise (`seed_count.jl`).
+"""
+function calibrate(rundir; R = 400, stream = 0, amplitude = :initial, M = nothing)
     o = JSON.parsefile(joinpath(rundir, "observables.json"))
     ens = o["fit_rules"]
     t = Float64.(JSON.parsefile(joinpath(rundir, "ensemble-series.json"))["t"])
-    γ, ω, M = o["theory"], o["theory_frequency"], o["M"]
+    γ, ω, Mrun = o["theory"], o["theory_frequency"], o["M"]
+    M = something(M, Mrun)
     A = amplitude === :initial ? sqrt(o["initial_energy"]) :
         amplitude === :first_maximum ? sqrt(o["fit_energies"][1]) * exp(γ * o["fit_times"][1]) :
         error("amplitude must be :initial or :first_maximum")
-    σ2 = o["seed_scatter_post_hoc"]["noise_of_mean_after_fit_start"] * M
+    σ2 = o["seed_scatter_post_hoc"]["noise_of_mean_after_fit_start"] * Mrun
     signal = A .* exp.(-γ .* t) .* cos.(ω .* t)
     g, se, fails = Float64[], Float64[], 0
     for r in 1:R
@@ -52,7 +60,7 @@ function calibrate(rundir; R = 400, stream = 0, amplitude = :initial)
     end
     ok = isfinite.(se)
     return Dict{String,Any}("run" => basename(normpath(rundir)), "code" => o["code"], "amplitude_model" => String(amplitude), "theory" => γ, "M" => M,
-        "realizations" => R, "failed_fits" => fails, "initial_amplitude" => A, "noise_per_seed" => σ2,
+        "run_M" => Mrun, "realizations" => R, "failed_fits" => fails, "initial_amplitude" => A, "noise_per_seed" => σ2,
         "mean_gamma" => mean(g), "bias" => mean(g) - γ, "bias_relative" => (mean(g) - γ) / γ,
         "bias_stderr" => std(g) / sqrt(length(g)), "sd_gamma" => std(g),
         "mean_jackknife_stderr" => mean(se[ok]), "jackknife_finite" => count(ok),
