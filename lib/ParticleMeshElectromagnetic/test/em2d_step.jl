@@ -163,7 +163,8 @@ function invariant_error(s1, s2, axis)
         lines = axis == 1 ? [A2[(g2 + 1):(g2 + n), g2 + r] for r in 1:ncells(s2.grid)[2]] :
                             [A2[g2 + r, (g2 + 1):(g2 + n)] for r in 1:ncells(s2.grid)[1]]
         for l in lines
-            err = max(err, Float64(maximum(absmax, sgn .* l .- a1)) / scale[kind(c)])
+            d = Float64(maximum(absmax, sgn .* l .- a1))
+            err = max(err, iszero(d) ? 0.0 : d / scale[kind(c)])     # J is zero after initialize!
         end
     end
     extra = axis == 1 ? s2.fields.Bx : s2.fields.By

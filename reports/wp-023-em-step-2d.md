@@ -4,7 +4,7 @@
 |---|---|
 | Work package | WP-023 (goals A1, A2, A4, A5, A7, A8) |
 | Code | the step `2ae4382` (`lib/ParticleMeshElectromagnetic/src/step2d.jl`, `problem.jl`, `diagnostics.jl`); the tests T-360 to T-369, T-380, T-381 and this report in WP-023's pull request |
-| Runs | `em2d-pm-landau-oblique-2d-20261102T163231` (four seeds, commit `2ae4382`), `em2d-pm-weibel-2d-20261102T180125` (commit `8195786`); each directory under `wp-023-em-step-2d/` holds its `manifest.toml` with the SHA-256 of every input |
+| Runs | `em2d-pm-landau-oblique-2d-20261102T163231` (four seeds, commit `2ae4382`), `em2d-pm-weibel-2d-20261102T180125` (commit `8195786`), `em2d-landau-seeds-20261102T183806` (the test-size seed scan, commit `eb26ff0`); each directory under `wp-023-em-step-2d/` holds its `manifest.toml` with the SHA-256 of every input |
 | Provenance note | the Weibel run was repeated at 24 threads from `8195786` (clean) after a change of the script's Gauss check; its observables equal those of a first run at 32 threads from `2ae4382` to every printed digit (Reference mode is bitwise across thread counts). The Landau manifest records `dirty = true`: test files were being edited in the worktree when it started. Every one of its 34 recorded inputs (the engine and module sources, the case, the scripts, both manifests) has the content of commit `2ae4382` (checked against `git show 2ae4382:<path>`), so the run is that commit's code |
 | Case files | `scripts/crosscode/cases/landau-oblique-2d.toml` (`bc8fd6af…`, the four seeds of WP-017) and `weibel-2d.toml` (`dca1230a…`), unchanged; each run directory holds a copy (`case.toml`) |
 | References | Smilei v5.1: WP-019's single runs (`reports/crosscode-smilei-2d/`) and WP-017's four-seed Landau ensemble; PIConGPU 0.8.0 FP64: WP-017's four-seed Landau ensemble (`reports/crosscode-picongpu/`). Theory: `scripts/crosscode/theory.jl` (T-160, T-273), the values of the case files |
@@ -23,14 +23,15 @@ Measured ratios are in `lib/ParticleMeshElectromagnetic/test/tolerances.toml`; t
 |---|---|---|---|
 | T-360 | Gauss's law after every step, two species of opposite charge crossing cells and both seams, 40 steps, both modes; per step in units of eps·(n₁ + n₂)·max\|ρ\|·√(k + 1) | 0.44 (Float64, Fast); CUDA 0.42 | 2 |
 | T-360 | ∇·B after every step, in eps·(Σ 2/Δ)·max\|B\|·√k | 0.41; CUDA 0.35 | 2 |
-| T-361 | a 2D run invariant along y, and one invariant along x rotated by 90°, against the 1D run: E, B, J on every line, 30 steps of two cold beams with drifts in all three components, in eps·k·(largest 1D value of the kind) | 1350 (Float32, Fast); Reference 311 | 4096 |
-| T-362 | Reference against Fast, every field and current and the kinetic energy, in eps·k·max | 36 | 128 |
+| T-360 | Σ Jz over the nodes against Σ q·w·u_z/γ over the particles, in eps·Σ\|q·w·u_z/γ\| | 10.8 | 32 |
+| T-361 | a 2D run invariant along y, and one invariant along x rotated by 90°, against the 1D run: E, B, J on every line after `initialize!` and every step, 30 steps of two cold beams with drifts in all three components, one perturbed (a net charge wave, so the initial field and the half kick back are not zero), in eps·k·n·√ppc·(largest 1D value of the kind) | 2.78 (Float32, Fast) | 32 |
+| T-362 | Reference against Fast, every field and current and the kinetic energy, 20 steps, in eps·k·√(particles per cell)·max | 8.3 | 32 |
 | T-363 | the Reference step bitwise across reruns, workgroup sizes 32 and 256, 1 and 4 threads, three element types; CUDA (T-381) across reruns and workgroup sizes 64 and 256 | bitwise | — |
 | T-366 | the primal of a Dual{Float32,3} run against Float32, 10 steps, in eps·k·max | 1.49 | 8 |
 
 Gauss's law is not re-solved: the initial field comes from the periodic spectral solve (T-353), and continuity of the Esirkepov current (T-300) with the transpose structure of the discrete curls keeps it. At full size the relative residual max|∇·E − (ρ − ρ̄)|/max|ρ| after 3390 steps is 1.9–2.6 × 10⁻¹³ in the four Landau seeds (3.7 × 10⁻¹³ at t = 0), and ∇·B/max|B| is 0.9–1.1 × 10⁻¹² (`seed-*/observables.json`, `checks`).
 
-Deliberate breaks seen to fail (scratch runs, each reverted): no guard fold of Jy fails T-360 (6 of 18 checks) and T-361 (12 of 24); the y component of the momentum in place of the z component for Jz fails T-361 (12 of 24) and passes T-360, as it must (Jz has no divergence at N = 2); no sort before the Reference deposition fails T-360 (4 of 18) and T-361 (8 of 24). The breakers' mutations are in the pull request.
+Deliberate breaks seen to fail (scratch runs, each reverted): no guard fold of Jy fails T-360 and T-361; the y component of the momentum in place of the z component for Jz fails T-361 (Jz has no divergence at N = 2, so Gauss's law cannot see it); no sort before the Reference deposition fails T-360 and T-361; no half kick back in `initialize!`, or a forward one, fails T-361 (12 of 36); Jz without the 1/γ fails T-360's Σ Jz check (6 of 24). An independent mutation breaker ran 56 mutations; the pull request lists what it found and what changed.
 
 ## 3. Linear theory and the reference codes
 
@@ -81,9 +82,13 @@ Both codes sit 1.1 % below the cold-fluid rate, by the same amount: the cold, qu
 ![Weibel mode](wp-023-em-step-2d/em2d-pm-weibel-2d-20261102T180125/plots/mode-amplitude.png)
 ![Weibel with Smilei's rate](wp-023-em-step-2d/em2d-pm-weibel-2d-20261102T180125/compare/weibel-2d-growth.png)
 
-### Test size (CI, T-364 and T-365)
+### Test size (CI, T-364 and T-365) and the seed spread
 
-A quarter of the cells per axis, Δt four times the case's (Courant fraction 0.95 kept), every step's diagnostics: oblique Landau at 16 × 16 electrons per cell with a 5 % perturbation to t = 18 gives γ −1.1 % and ω +2.6 % from theory over three maxima, the field perpendicular to k at 0.9 % of the parallel one; 2D Weibel at 4 × 4 per beam gives γ −1.35 %, the B component along k at 5 × 10⁻⁴ of the perpendicular one. The bounds (10 % rate, 5 % frequency and transverse for Landau; 5 % rate and 1 % longitudinal for Weibel) are proposed in `tolerances.toml`: one seed and three maxima make the Landau rate bound a gross-error check. On CUDA the same tests give the same rates to 2.4 × 10⁻¹¹ (Landau) and 2 × 10⁻¹⁶ (Weibel) relative (T-381).
+A quarter of the cells per axis, Δt four times the case's (Courant fraction 0.95 kept), every step's diagnostics: oblique Landau at 16 × 16 electrons per cell with a 5 % perturbation to t = 18 gives, for the case's default seed, γ −1.1 % and ω +2.6 % from theory over three maxima, the field perpendicular to k at 0.9 % of the parallel one; 2D Weibel at 4 × 4 per beam gives γ −1.35 %, the B component along k at 5 × 10⁻⁴ of the perpendicular one.
+
+The −1.1 % of one seed is luck. Over the case's four seeds and seeds 1 to 16 at the test size (`scripts/em2d/landau_seeds.jl`, run `em2d-landau-seeds-20261102T183806`), 18 seeds give a fit and 2 give fewer than three maxima; γ = 0.1499 ± 0.0096 (standard error), 0.36 standard errors from theory, with a seed standard deviation of 27 % of theory; only 8 of the 18 lie within 10 %. ω lies within 4.6 % for every seed. So T-364 bounds the rate by three seed standard deviations (0.8), an order check, and the frequency by 8 %; the rate itself is the full-size ensemble's. The Weibel case is cold and quiet-loaded: its test-size history does not depend on the seed.
+
+![seed scan](wp-023-em-step-2d/em2d-landau-seeds-20261102T183806/landau-seeds.png) On CUDA the same tests give the same rates to 2.4 × 10⁻¹¹ (Landau) and 2 × 10⁻¹⁶ (Weibel) relative (T-381).
 
 ## 4. Cost
 
@@ -102,5 +107,7 @@ The runs shared the machine with the test suites and other sessions' jobs, incre
 
 ## 6. Open items
 
-- The CI-size Landau test fits three maxima of one seed; its rate bound is loose by design.
+- The CI-size Landau test fits three maxima of one seed; its rate bound is an order check by design (§3), and a seed change can drop it below three maxima (2 of 20 seeds).
+- A thermal load that draws |v| ≥ 1 gives NaN momenta (`velocity_to_momentum_kernel!`), then an uninformative kernel exception (#257).
+- The cross term ΔS₁·ΔS₂/12 of Esirkepov's out-of-plane weight is checked by the engine's T-301 only: no module-level test here is sensitive to it (T-361 has ΔS = 0 along the invariant axis, and Gauss's law does not involve Jz).
 - Throughput was not measured on an idle machine.
