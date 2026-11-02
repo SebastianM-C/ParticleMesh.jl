@@ -107,25 +107,33 @@ Base.eltype(::EMProblem{N,T}) where {N,T} = T
 Base.ndims(::EMProblem{N}) where {N} = N
 
 """
+    Esirkepov()
+
+The charge-conserving current of an [`EMNumerics`](@ref), the default at N = 1 and N = 2: the
+engine's `deposit_flux!` from each particle's position before and after the move (Esirkepov's
+decomposition for the in-plane components; at N = 1 `q·w·u_{y,z}/γ` for Jy and Jz, at N = 2
+`q·w·u_z/γ` for Jz), so that with ρ deposited by the same shape the discrete continuity
+equation, and with it Gauss's law, holds to roundoff after every step (T-212, T-360).
+"""
+struct Esirkepov end
+
+"""
     NoCurrent()
 
 The current choice of an [`EMNumerics`](@ref) that deposits no current: the step pushes the
 particles through the fields and solves Maxwell's equations with J = 0. For prescribed-field
-runs and test particles at N = 2, where the step is otherwise not complete; the 1D step always
-deposits the current and refuses it.
+runs and test particles at N = 2; the 1D step always deposits the current and refuses it.
 """
 struct NoCurrent end
 
 """
-    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = nothing)
+    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov())
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
 solver and the current. `workgroupsize` is passed to every engine launch (it selects the launch
-shape only). `current = nothing` is the 1D step's charge-conserving current (the engine's
-`deposit_flux!`); at N = 2 the current must be chosen explicitly, and [`NoCurrent`](@ref) is the
-only choice so far, so a 2D state refuses `nothing` rather than run a step that silently leaves
-the current out, and a 1D state refuses `NoCurrent()`.
+shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at N = 1 and
+N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses any other.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
     shape::S
@@ -136,7 +144,7 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
     current::C
 end
 
-EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = nothing) =
+EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov()) =
     EMNumerics(shape, mode, pusher, solver, workgroupsize, current)
 
 """
@@ -156,35 +164,66 @@ params(p::EMProblem) = EMParams(p.dt, p.kmode)
 getnum(d, key, default) = haskey(d, key) ? d[key] : default
 
 """
-    problem_from_case(case, T; ppc = nothing, cells = nothing, t_end = nothing, amplitude = nothing,
-                      seed = nothing, transverse_thermal = false) -> EMProblem{1,T}
+    case_seed(case) -> Int
 
-The problem description of a parsed case file (`scripts/crosscode/cases/<case>.toml`, schema 1
-with the per-species `transverse_drift = [v_y, v_z]` extension, in A1 units). Mobile species
-become [`SpeciesDescription`](@ref)s; immobile species must be uniform (they are the
-neutralizing background, not particles). The velocity is the `drift` along x plus the
-`transverse_drift`, with a thermal spread `thermal_velocity` along x only, unless
-`transverse_thermal = true` (the electrostatic edge cases have no transverse momenta). The
-diagnostic wavenumber is that of the first perturbed species' mode.
+The default seed of a case file's velocity draws: the first entry of its `seeds` list (a seed
+ensemble, WP-012, WP-017) or its single `random_seed`. A case with both keys, or neither, is an
+`ArgumentError`, as for the cross-code generator (`scripts/crosscode/smilei.jl`).
+"""
+function case_seed(case::AbstractDict)
+    num = case["numerics"]
+    a, b = haskey(num, "seeds"), haskey(num, "random_seed")
+    a && b && throw(ArgumentError("case $(case["name"]): give either seeds or random_seed, not both"))
+    a || b || throw(ArgumentError("case $(case["name"]): no seeds and no random_seed"))
+    if a
+        seeds = num["seeds"]
+        seeds isa AbstractVector && !isempty(seeds) || throw(ArgumentError("case $(case["name"]): seeds must be a non-empty list"))
+        return Int(first(seeds))
+    end
+    return Int(num["random_seed"])
+end
 
-The keywords override the case for tests and scans: `ppc` for every mobile species, `cells`,
-`t_end` (the run takes `round(t_end/dt)` steps), `dt` (with `cells`, so that a finer grid keeps
-Δt below the Courant limit, which `EMState` requires), and `amplitude`, which replaces
-the magnitude of every nonzero perturbation amplitude and keeps its sign (the parameter of the
-A3 gradient check, so it may be a `Dual`), and `seed`, the seed of the velocity draws (common
-random numbers on both sides of a gradient check, A7).
+"""
+    problem_from_case(case, T; ppc = nothing, cells = nothing, t_end = nothing, dt = nothing, amplitude = nothing,
+                      seed = nothing, transverse_thermal = false) -> EMProblem{1,T} or EMProblem{2,T}
+
+The problem description of a parsed case file (`scripts/crosscode/cases/<case>.toml`, in A1
+units): schema 1 gives an `EMProblem{1}` (with the per-species `transverse_drift = [v_y, v_z]`
+extension), schema 2 an `EMProblem{2}`. Mobile species become [`SpeciesDescription`](@ref)s;
+immobile species must be uniform (they are the neutralizing background, not particles).
+
+Schema 1: the velocity is the `drift` along x plus the `transverse_drift`, with a thermal spread
+`thermal_velocity` along x only, unless `transverse_thermal = true` (the electrostatic edge
+cases have no transverse momenta); the diagnostic wavenumber is that of the first perturbed
+species' mode. Schema 2: two box lengths, cells, particles per cell and mode integers per axis,
+the drift `[v_x, v_y, v_z]`, an isotropic thermal spread `thermal_velocity` in all three
+components (Smilei's scalar temperature), and the diagnostic mode the case's `wavevector.mode`.
+
+The default seed is [`case_seed`](@ref)`(case)`: the first of a `seeds` list or the
+`random_seed`. The keywords override the case for tests and scans: `ppc` for every mobile species
+(an integer at schema 1, two at schema 2), `cells` (likewise), `t_end` (the run takes
+`round(t_end/dt)` steps), `dt` (with `cells`, so that a finer grid keeps Δt below the Courant
+limit, which `EMState` requires), `amplitude`, which replaces the magnitude of every nonzero
+perturbation amplitude and keeps its sign (the parameter of the A3 gradient check, so it may be a
+`Dual`), and `seed`, the seed of the velocity draws (common random numbers on both sides of a
+gradient check, A7; one member of a seed ensemble).
 """
 function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells = nothing, t_end = nothing,
                            dt = nothing, amplitude = nothing, seed = nothing, transverse_thermal::Bool = false) where {T}
+    schema = getnum(case, "schema", 1)
+    schema in (1, 2) || throw(ArgumentError("case schema $schema: 1 and 2 are implemented"))
     grid = case["grid"]
-    get(grid, "boundaries", "periodic") == "periodic" || throw(ArgumentError("only periodic boundaries are implemented"))
-    L = T(grid["length"])
-    n = cells === nothing ? Int(grid["cells"]) : Int(cells)
+    bounds = getnum(grid, "boundaries", "periodic")
+    all(==("periodic"), bounds isa AbstractVector ? bounds : [bounds]) ||
+        throw(ArgumentError("only periodic boundaries are implemented"))
     dt_run = dt === nothing ? case["time"]["dt"] : dt
-    dt = T(dt_run)
+    dtT = T(dt_run)
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
     nsteps = round(Int, tend / dt_run)
-    seed = seed === nothing ? Int(getnum(case["numerics"], "random_seed", 1)) : Int(seed)
+    seed = seed === nothing ? case_seed(case) : Int(seed)
+    schema == 2 && return problem_from_case_2d(case, T, ppc, cells, dtT, nsteps, amplitude, seed)
+    L = T(grid["length"])
+    n = cells === nothing ? Int(grid["cells"]) : Int(cells)
     species = SpeciesDescription{T,Int}[]
     for (k, s) in enumerate(case["species"])
         pert = getnum(s, "perturbation", Dict("amplitude" => 0.0, "mode" => 1))
@@ -207,21 +246,51 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
     i = findfirst(s -> !iszero(s.amplitude), species)
     m = i === nothing ? 1 : species[i].mode
     kmode = 2 * T(π) * m / L
+    return EMProblem(String(case["name"]), L, n, dtT, nsteps, Tuple(species), seed, kmode)
+end
+
+pair(v) = (Int(v[1]), Int(v[2]))
+
+# Schema 2 (WP-019's 2D cases): every per-axis entry is a pair, the drift has three components,
+# the thermal spread is isotropic.
+function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude, seed) where {T}
+    grid = case["grid"]
+    L = (T(grid["length"][1]), T(grid["length"][2]))
+    n = cells === nothing ? pair(grid["cells"]) : pair(cells)
+    species = SpeciesDescription{T,NTuple{2,Int}}[]
+    for (k, s) in enumerate(case["species"])
+        pert = getnum(s, "perturbation", Dict("amplitude" => 0.0, "mode" => [0, 0]))
+        a0 = pert["amplitude"]
+        if !getnum(s, "mobile", true)
+            iszero(a0) || throw(ArgumentError("immobile species $(s["name"]) must be uniform: it is the background"))
+            continue
+        end
+        a = amplitude === nothing || iszero(a0) ? T(a0) : T(sign(a0)) * T(amplitude)
+        vth = getnum(s, "velocity", "cold") == "cold" ? zero(T) : T(getnum(s, "thermal_velocity", 0.0))
+        v = getnum(s, "drift", [0.0, 0.0, 0.0])
+        length(v) == 3 || throw(ArgumentError("species $(s["name"]): a schema-2 drift has three components, got $v"))
+        push!(species, SpeciesDescription{T}(Symbol(s["name"]), T(s["charge"]), T(s["mass"]), T(s["density"]), a,
+                                             pair(pert["mode"]), ppc === nothing ? pair(s["particles_per_cell"]) : pair(ppc),
+                                             (T(v[1]), T(v[2]), T(v[3])), (vth, vth, vth), k))
+    end
+    isempty(species) && throw(ArgumentError("the case has no mobile species"))
+    kmode = pair(case["wavevector"]["mode"])
     return EMProblem(String(case["name"]), L, n, dt, nsteps, Tuple(species), seed, kmode)
 end
 
 """
     numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing) -> EMNumerics
 
-The numerics a case file asks for: its `shape_order` (1 or 2); the deposition must be
-`"esirkepov"` (the engine's `deposit_flux!`) and `filter_passes` zero (the binomial filter is
-deferred to the 2D LWFA module). The mode, the pusher and the launch shape are not in the case.
+The numerics a case file asks for (either schema): its `shape_order` (1 or 2); the deposition
+must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`) and `filter_passes`
+zero (the binomial filter is deferred to the 2D LWFA module). The mode, the pusher and the
+launch shape are not in the case.
 """
 function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
     num = case["numerics"]
     getnum(num, "current_deposition", "esirkepov") == "esirkepov" ||
         throw(ArgumentError("current_deposition must be \"esirkepov\""))
-    iszero(getnum(num, "filter_passes", 0)) || throw(ArgumentError("the binomial filter is not implemented in 1D"))
+    iszero(getnum(num, "filter_passes", 0)) || throw(ArgumentError("the binomial filter is not implemented"))
     shape = Int(getnum(num, "shape_order", 2)) == 1 ? Linear : Quadratic
-    return EMNumerics(; shape, mode, pusher, workgroupsize)
+    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov())
 end

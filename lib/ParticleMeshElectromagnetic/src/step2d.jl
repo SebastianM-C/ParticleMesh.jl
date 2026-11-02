@@ -1,6 +1,5 @@
-# The module at N = 2 (WP-024): the state, the initial field, the push and the kinetic energy.
-# The step deposits a current only when the numerics name one (`NoCurrent()` is the only
-# choice so far, WP-023 adds the charge-conserving one); the order of step.jl otherwise.
+# The module at N = 2: the state, the initial field, the push and the kinetic energy (WP-024),
+# and the charge-conserving current of the periodic 2D3V step (WP-023); the order of step.jl.
 
 "The module's 2D field layout, [`field_layout`](@ref)`(Val(2))`."
 const FIELD_LAYOUT_2D = field_layout(Val(2))
@@ -63,8 +62,9 @@ end
     lo = (c - Int32(1)) * chunk + Int32(1)
     hi = min(c * chunk, cap)
     @inbounds for i in lo:hi
-        e = KineticEnergy()(s, i)
-        acc += ifelse(s.status[i] == ALIVE, e, zero(T))
+        if s.status[i] == ALIVE
+            acc += KineticEnergy()(s, i)
+        end
     end
     @inbounds K[first + c - Int32(1)] = acc
 end
@@ -93,18 +93,19 @@ The state of a 2D problem: the grid of `problem.cells` cells per axis with
 `prod(cells)·prod(ppc)` with the extras of `flux_extras(T, 2)` (the old position per axis, which
 the push stores), the workspaces, the fields of [`field_layout`](@ref)`(Val(2))`, `ρ`, the
 kinetic-energy chunks `K` (one entry per [`KINETIC_CHUNK`](@ref) slots of each species), the
-histories for `problem.nsteps` steps (the 1D keys and the longitudinal projection `El_re`,
-`El_im`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
+histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
 diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
 axis (written once) and the diagnostics' per-row partial sums.
 
-Throws an `ArgumentError` unless the numerics name the current (`current = NoCurrent()`; a 2D
-step without a deposition is never the default) and unless `problem.dt` is below the Courant
-limit of the numerics' solver ([`check_courant`](@ref)).
+With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
+`Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
+used by `Fast()` on an element type without atomics). Throws an `ArgumentError` unless the
+current is `Esirkepov()` or [`NoCurrent`](@ref)`()` and unless `problem.dt` is below the
+Courant limit of the numerics' solver ([`check_courant`](@ref)).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
-    numerics.current isa NoCurrent ||
-        throw(ArgumentError("a 2D state needs the current chosen in EMNumerics(; current = ...): NoCurrent() is the only 2D choice so far, got $(numerics.current)"))
+    numerics.current isa Union{Esirkepov,NoCurrent} ||
+        throw(ArgumentError("a 2D state takes current = Esirkepov() or NoCurrent() in EMNumerics, got $(numerics.current)"))
     n = problem.cells
     wgs = numerics.workgroupsize
     grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
@@ -112,7 +113,8 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     species = map(problem.species) do d
         Species(backend, T, prod(n) * prod(d.ppc); q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
     end
-    ws = map(s -> Workspace(s, grid), species)
+    flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
+    ws = map(s -> Workspace(s, grid; flux), species)
     nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), species; init = 0)
     hist = NamedTuple{HISTORY_KEYS_2D}(ntuple(_ -> KernelAbstractions.zeros(backend, T, problem.nsteps), length(HISTORY_KEYS_2D)))
     tables = ntuple(Val(2)) do d
@@ -186,8 +188,31 @@ function initialize!(st::EMState{2}, problem::EMProblem{2})
     return st
 end
 
-# The current of the step, by the numerics' choice: none.
+# The current of the step, by the numerics' choice: none, or the charge-conserving one.
 current!(::NoCurrent, st::EMState{2}, p::EMParams) = st
+
+# Sort where the deposition mode needs it (the old positions in the extras follow the
+# particles), zero Jx, Jy, Jz, add every species' Esirkepov current from its old and new
+# positions (`q·w·u_z/γ` for Jz) and fold the guards.
+function current!(::Esirkepov, st::EMState{2}, p::EMParams)
+    (; numerics, grid, fields) = st
+    T = eltype(st.ρ)
+    wgs = numerics.workgroupsize
+    for (s, ws) in zip(st.species, st.ws)
+        sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
+    end
+    fill!(fields.Jx, zero(T))
+    fill!(fields.Jy, zero(T))
+    fill!(fields.Jz, zero(T))
+    for (s, ws) in zip(st.species, st.ws)
+        deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER_2D, grid, ws;
+                      dt = p.dt, quantity_z = CurrentZ(), workgroupsize = wgs)
+    end
+    fold_guards!(fields.Jx, grid; workgroupsize = wgs)
+    fold_guards!(fields.Jy, grid; workgroupsize = wgs)
+    fold_guards!(fields.Jz, grid; workgroupsize = wgs)
+    return st
+end
 
 """
     step!(state::EMState{2}, params, k) -> state
@@ -195,8 +220,11 @@ current!(::NoCurrent, st::EMState{2}, p::EMParams) = st
 Step `k` at N = 2, the order of the 1D step: the diagnostics of Eⁿ, Bⁿ and of the kinetic
 energy at n − 1/2 (parallel reductions in a fixed order); per species, store the old position,
 push the momentum in Eⁿ, Bⁿ gathered at xⁿ on each component's stagger and move the particle
-along both axes; the current of the numerics' choice (none for `NoCurrent()`: J stays zero);
-the kinetic energy at n + 1/2; the mesh solve. `k` must lie within the allocated steps and
+along both axes; the current of the numerics' choice (for [`Esirkepov`](@ref)`()`: sort where
+the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the guards; for
+`NoCurrent()` J stays zero); the kinetic energy at n + 1/2; the mesh solve (Yee: B half step, E
+full step with J, B half step). With `Esirkepov()`, Gauss's law then holds to roundoff after
+every step (T-360). `k` must lie within the allocated steps and
 `params.kmode` must be the state's diagnostic mode (an `ArgumentError` otherwise).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer)
