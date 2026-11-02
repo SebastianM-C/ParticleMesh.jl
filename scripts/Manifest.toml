@@ -199,10 +199,10 @@ version = "1.11.0"
 
 [[deps.CRlibm]]
 deps = ["CRlibm_jll"]
-git-tree-sha1 = "32e8293800e4cf5b850fb2a8a73621daa4564d68"
+git-tree-sha1 = "0db159493e83ecb2d122f9c40138d89b70d43963"
 registries = "General"
 uuid = "96374032-68de-5a5b-8d9e-752f78720389"
-version = "1.1.0"
+version = "1.1.1"
 
 [[deps.CRlibm_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -269,11 +269,11 @@ uuid = "159f3aea-2a34-519c-b102-8c37f9878175"
 version = "1.1.1"
 
 [[deps.CairoMakie]]
-deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
-git-tree-sha1 = "90fc72982362b84546b64b44fa13e39a4ccb461e"
+deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "FreeType2_jll", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
+git-tree-sha1 = "2d9e0c818e6e5af309192a5b3638c8848c7119b5"
 registries = "General"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.15.16"
+version = "0.15.17"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -309,10 +309,10 @@ version = "0.4.2"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "b0fd3f56fa442f81e0a47815c92245acfaaa4e34"
+git-tree-sha1 = "060adaf7a5c2e14bca025edf0eea0206ffdebd87"
 registries = "General"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.31.0"
+version = "3.32.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -392,10 +392,10 @@ weakdeps = ["InverseFunctions"]
 
 [[deps.ComputePipeline]]
 deps = ["Observables", "Preferences"]
-git-tree-sha1 = "7bc84b769c1d384315e7b5c4ac03a6c303e6cf35"
+git-tree-sha1 = "b56df0c58a9d37b4a926f84f3f4f283a5987680e"
 registries = "General"
 uuid = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
-version = "0.1.8"
+version = "0.1.9"
 
 [[deps.ConstructionBase]]
 git-tree-sha1 = "b4b092499347b18a015186eae3042f72267106cb"
@@ -551,10 +551,10 @@ version = "9.0.2+0"
 
 [[deps.FFTA]]
 deps = ["AbstractFFTs", "DocStringExtensions", "LinearAlgebra", "MuladdMacro", "Primes", "Random", "Reexport"]
-git-tree-sha1 = "65e55303b72f4a567a51b174dd2c47496efeb95a"
+git-tree-sha1 = "16aa62b6b2c5c65a642155bd1bce90633b8d3130"
 registries = "General"
 uuid = "b86e33f2-c0db-4aa1-a6e0-ab43e668529e"
-version = "0.3.1"
+version = "0.3.2"
 
 [[deps.FastInterpolations]]
 deps = ["AdaptiveArrayPools", "HelpPlots", "LinearAlgebra", "Preferences", "Printf"]
@@ -684,10 +684,10 @@ version = "4.1.1"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "d95a7a3a7e0f2fffc6291bd33035830aab01310b"
+git-tree-sha1 = "70329abc09b886fd2c5d94ad2d9527639c421e3e"
 registries = "General"
 uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
-version = "2.15.0+0"
+version = "2.14.3+1"
 
 [[deps.FreeTypeAbstraction]]
 deps = ["BaseDirs", "ColorVectorSpace", "Colors", "FreeType", "GeometryBasics", "Mmap"]
@@ -1123,10 +1123,10 @@ version = "3.100.3+0"
 
 [[deps.LERC_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "39bca05343661c347aae0bca57a5994a0bf4f08d"
+git-tree-sha1 = "6d7c65411dda4bfa0beb7490476122b4f805cf31"
 registries = "General"
 uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
-version = "4.2.0+0"
+version = "4.3.0+0"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "PrecompileTools", "Preferences", "Printf", "ScopedValues", "Unicode"]
@@ -1337,10 +1337,10 @@ version = "0.5.16"
 
 [[deps.Makie]]
 deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "ComputePipeline", "Contour", "Dates", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FastInterpolations", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageBase", "ImageIO", "InteractiveUtils", "Interpolations", "IntervalSets", "InverseFunctions", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "PNGFiles", "Packing", "Pkg", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun", "Unitful"]
-git-tree-sha1 = "5fbafd8aa82e808712f7dee8b52ef87118243fd6"
+git-tree-sha1 = "8ff1cd11162828e9f517e32d83b49d2af63391c6"
 registries = "General"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.24.16"
+version = "0.24.17"
 
     [deps.Makie.extensions]
     MakieDynamicQuantitiesExt = "DynamicQuantities"
@@ -1471,10 +1471,10 @@ version = "0.3.3"
 
 [[deps.OpenEXR_jll]]
 deps = ["Artifacts", "Imath_jll", "JLLWrappers", "Libdl", "OpenJPH_jll", "Zlib_jll", "Zstd_jll", "libdeflate_jll"]
-git-tree-sha1 = "eb47260eaf61dca5c0e17bd126f4426edac35975"
+git-tree-sha1 = "afa66dc1246b28b68600d053715e00a379268980"
 registries = "General"
 uuid = "18a262bb-aa17-5467-a713-aee519bc75cb"
-version = "3.5.2+0"
+version = "3.5.3+0"
 
 [[deps.OpenJPH_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libtiff_jll"]
@@ -2343,10 +2343,10 @@ version = "1.1.7+0"
 
 [[deps.libaom_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "0343a4dc329ca4dd71bf5c5b3fc1a8c2f6e0692d"
+git-tree-sha1 = "21e05cef1411bfe6b22a1ca8cbdc64a297d4b447"
 registries = "General"
 uuid = "a4ae2306-e953-59d6-aa16-d00cac43593b"
-version = "3.15.2+0"
+version = "3.15.3+0"
 
 [[deps.libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
