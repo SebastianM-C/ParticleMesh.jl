@@ -1,4 +1,4 @@
-# The N = 1 engine bits before the 2D port (WP-018 deliverable 0), checked by T-260. Shared by
+# The N = 1 engine bits before the 2D port (WP-018), checked by T-260. Shared by
 # engine2d.jl and threads_worker.jl, which repeats them with 1 and 4 threads. Needs setup.jl,
 # helpers.jl, digest.jl, engine_cases.jl and flux_cases.jl.
 #

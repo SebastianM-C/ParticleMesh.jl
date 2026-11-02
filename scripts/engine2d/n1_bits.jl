@@ -1,4 +1,4 @@
-# The N = 1 bits and timings before and after the 2D port (WP-018 deliverable 0, T-260): the
+# The N = 1 bits and timings before and after the 2D port (WP-018, T-260): the
 # electromagnetic module's T-218 state digests of each case and element type (its own
 # subprocess worker, run in the module's test environment at 1 and 4 threads), and 1D timings
 # of the module's step on the Landau case (64 cells, four particle counts, repeated for the

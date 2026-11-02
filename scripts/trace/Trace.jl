@@ -62,7 +62,7 @@ function load_goals(dir::AbstractString)
 end
 
 """
-    front_matter(text) -> (meta, body_start) or nothing
+    front_matter(text) -> meta or nothing
 
 TOML between a first line `+++` and the next line `+++`.
 """
@@ -71,7 +71,7 @@ function front_matter(text::AbstractString)
     (isempty(lines) || rstrip(lines[1]) != "+++") && return nothing
     close = findnext(l -> rstrip(l) == "+++", lines, 2)
     close === nothing && return nothing
-    return TOML.parse(join(lines[2:close-1], '\n')), close + 1
+    return TOML.parse(join(lines[2:close-1], '\n'))
 end
 
 """
@@ -97,7 +97,7 @@ function load_packages(dir::AbstractString)
             push!(errors, "$f: no front matter (a first line +++, TOML, a line +++)")
             continue
         end
-        meta = fm[1]
+        meta = fm
         id = String(m[1])
         get(meta, "id", nothing) == id || push!(errors, "$f: front matter id must be \"$id\"")
         haskey(packages, id) && push!(errors, "$f: package id $id is used twice")

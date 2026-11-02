@@ -7,4 +7,4 @@ adds_dependencies = ["SciMLBase", "RecursiveArrayTools", "OrdinaryDiffEqFunction
 +++
 # WP-008: the SciML harness: the electromagnetic step as a `DiscreteProblem`
 
-Wrap the electromagnetic module's `step!` as a SciML `DiscreteProblem`, so callbacks, ensembles and `remake` over parameters work on it, with the same bits as the plain loop.
+Wrap the electromagnetic module's `step!` as a SciML `DiscreteProblem`, so callbacks, ensembles and `remake` over parameters work on it, with the same bits as the plain loop. Outcome: #131.

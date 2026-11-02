@@ -7,4 +7,4 @@ adds_dependencies = []
 +++
 # WP-021: a periodic inverse of the discrete Laplacian at N = 2
 
-Add a periodic spectral solve of the discrete Poisson equation for the initial 2D field. Outcome: `reports/wp-021-periodic-solve-2d.md`.
+Add a periodic spectral solve of the discrete Poisson equation for the initial 2D field, exact to roundoff against the discrete Laplacian. Outcome: `reports/wp-021-periodic-solve-2d.md`.

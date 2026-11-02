@@ -1,6 +1,6 @@
 # CPU timing of the 2D deposition (WP-018). No thresholds: the throughput budget of A7 is on the GPU.
 #
-# Part 1, `prototypes` (deliverable 1, phase 1, before the mechanism is fixed): prototype 2D
+# Part 1, `prototypes` (before the mechanism is fixed): prototype 2D
 # Reference deposition kernels written here, one per candidate mechanism, against a prototype 2D
 # Fast (atomic) deposition and the engine's existing 1D deposition at the same particle count:
 #   cartesian  a `CartesianIndices` stencil loop over the cells of the node's stencil;
@@ -13,7 +13,7 @@
 #   julia +1.13 --project=scripts -t 1 scripts/engine2d/timing.jl prototypes
 #   julia +1.13 --project=scripts -t 4 scripts/engine2d/timing.jl prototypes
 #
-# Part 2, `ported` (deliverable 5, phase 3, on the ported engine): the engine's 2D Reference and
+# Part 2, `ported` (on the ported engine): the engine's 2D Reference and
 # Fast deposition at the sizes of part 1, next to the `cartesian` prototype timed in the same
 # process; an engine-only proxy step (advance, sort, order-2 deposit, order-2 gather) at the CI
 # test size of `lib/ParticleMeshCore/test/engine2d_cases.jl` (16 × 12 cells, 2 × 3 per cell); and

@@ -10,7 +10,7 @@ Software: a generic particle–mesh engine with pluggable physics modules, the e
 
 Validation: the 1D benchmarks and one matched 2D LWFA case against Smilei and PIConGPU (A5), conservation residuals and gradient checks to the tolerances of A7, FP32-versus-FP64 drift (open-items B5).
 
-Factory: the owner sets the goals and vetoes derived work from the daily digest (A0); the links and staleness are in `trace/README.md`, and the compute split, the overseer, the human interface and the merge policy in `factory-and-observability.md` (§2, §3d, §3e, F4).
+Factory: the owner sets the goals and vetoes derived work from the daily digest (A0); the links are in `trace/README.md`, and the compute split, the overseer, the human interface and the merge policy in `factory-and-observability.md` (§2, §3d, §3e, F4).
 
 ```
  you ──edit docs/goals, answer questions, veto from the digest───────────┐

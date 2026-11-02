@@ -1,6 +1,6 @@
 # WP-017: the PIConGPU image
 
-Work package: `trace/wp/WP-017-crosscode-picongpu.md`, deliverable 0, done ahead of the rest of the package so that the image can be built while WP-012 and WP-019 run. Files: `scripts/crosscode/containers/picongpu.Containerfile`, `scripts/crosscode/containers/picongpu/pm-versions.sh`, the `picongpu` row in `scripts/crosscode/containers/README.md`, T-253 in `scripts/crosscode/test/runtests.jl`.
+Work package: `trace/wp/WP-017-crosscode-picongpu.md`; the image was done ahead of the rest of the package so that the image can be built while WP-012 and WP-019 run. Files: `scripts/crosscode/containers/picongpu.Containerfile`, `scripts/crosscode/containers/picongpu/pm-versions.sh`, the `picongpu` row in `scripts/crosscode/containers/README.md`, T-253 in `scripts/crosscode/test/runtests.jl`.
 
 ## 1. The image
 

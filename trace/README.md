@@ -28,7 +28,7 @@ Requirements, interfaces and plans are prose in `docs/plan/` that cites goal ids
 
 ## When a goal changes
 
-Whoever edits a goal reads the open packages that list it and rewrites the sentences that no longer fit; at two sentences a package is re-read, not re-derived. The prose in `docs/plan/` that cites the goal is updated in the same PR.
+The overseer's digest lists the open packages that cite each goal edited since the last digest. The next session that picks one up re-reads it against the goal and rewrites the sentences that no longer fit; at two sentences a package is re-read, not re-derived.
 
 ## Commands
 

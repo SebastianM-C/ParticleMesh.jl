@@ -1,6 +1,6 @@
 # WP-017: proposed A7 agreement thresholds from the measured Smilei–PIConGPU spread
 
-Work package: `trace/wp/WP-017-crosscode-picongpu.md`, deliverable 6. A7 bases the agreement thresholds of the benchmark set on the measured spread between Smilei and PIConGPU for equivalent inputs, and the owner accepts a value by editing A7. This file proposes values; until the owner accepts them, nothing binds. The entries `["T-214".wp017]` and `["T-215".wp017]` in `lib/ParticleMeshElectromagnetic/test/tolerances.toml` carry the same numbers with `status = "proposed"`; no test asserts them. The measurements are in `reports/crosscode-picongpu/README.md`.
+Work package: `trace/wp/WP-017-crosscode-picongpu.md`. A7 bases the agreement thresholds of the benchmark set on the measured spread between Smilei and PIConGPU for equivalent inputs, and the owner accepts a value by editing A7. This file proposes values; until the owner accepts them, nothing binds. The entries `["T-214".wp017]` and `["T-215".wp017]` in `lib/ParticleMeshElectromagnetic/test/tolerances.toml` carry the same numbers with `status = "proposed"`; no test asserts them. The measurements are in `reports/crosscode-picongpu/README.md`.
 
 ## What was measured
 
