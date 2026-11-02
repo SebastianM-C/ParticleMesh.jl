@@ -53,10 +53,9 @@ Derived design choices without a goal id (2D Cartesian first with the envelope m
 14. **Envelope model scoping** (B2) and **multi-GPU prerequisites** (B7).
 
 ### Process
-15. **Plan reviews.** How often the planning documents are reviewed (the `plan-review` workflow on a schedule).
-16. **Cost model.** Per-package and monthly ceilings, alerts, and what happens when a pool runs out mid-package.
-17. **The tier thresholds**: which paths are tier 2 (`.github/CODEOWNERS`) and when a package type moves between tiers, adjusted on evidence (F4).
+15. **Cost model.** Per-package and monthly ceilings, alerts, and what happens when a pool runs out mid-package.
+16. **The tier thresholds**: which paths are tier 2 (`.github/CODEOWNERS`) and when a package type moves between tiers, adjusted on evidence (F4).
 
 ## 4. Suggested order for closing them
 
-Items 1 to 4 come first. Items 5 to 10 can be written while the CPU-side work runs, since they bite only when GPU work starts. Items 11 to 13 are deferred by decision (A0, open-items D); the level-0 reduced model will produce the first data for them. Items 14 to 17 can wait for evidence.
+Items 1 to 4 come first. Items 5 to 10 can be written while the CPU-side work runs, since they bite only when GPU work starts. Items 11 to 13 are deferred by decision (A0, open-items D); the level-0 reduced model will produce the first data for them. Items 14 to 16 can wait for evidence.

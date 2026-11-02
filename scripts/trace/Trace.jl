@@ -3,39 +3,29 @@
 
 Links between the owner's goals (`docs/goals/A<n>-<slug>.md`), the work packages
 (`trace/wp/WP-<nnn>-<slug>.md` with TOML front matter) and the tests (testset names with
-trace tags), and one check over them. History and content addresses come from git; this
-module only reads the links and compares git blob ids. Specification: `trace/README.md`.
+trace tags), and one check over them. History comes from git; this module only reads the
+links. Specification: `trace/README.md`.
 """
 module Trace
 
-using SHA, TOML
+using TOML
 
-export blob_id, load_goals, load_packages, scan_testsets, check, summary_text, refresh!
+export load_goals, load_packages, scan_testsets, check, summary_text
 
 const GOAL_FILE_RE = r"^(A\d+)-[a-z0-9-]+\.md$"
 const WP_FILE_RE = r"^(WP-\d{3,})-[a-z0-9-]+\.md$"
 const STATUSES = ("proposed", "active", "done", "parked", "withdrawn")
-const KEYS = ("id", "status", "goals", "depends_on", "adds_dependencies", "checked")
+const KEYS = ("id", "status", "goals", "depends_on", "adds_dependencies")
 const TEST_DIRS = ("test", "lib", "scripts", "benchmark")
 # A testset whose name starts with a T- id, then the name, then the tags in brackets.
 const TESTSET_RE = r"@testset\s+\"(T-\d{3,})\s+([^\"\[]*?)\s*(?:\[([^\]\"]*)\])?\s*\""
 # Packages the engine (the root package and lib/) must not depend on (CLAUDE.md).
 const FORBIDDEN = ("ModelingToolkit", "MethodOfLines", "Molly", "Checkpointing")
 
-"""
-    blob_id(bytes) / blob_id(path)
-
-The git blob id of the content: the value `git hash-object <path>` prints.
-"""
-blob_id(bytes::AbstractVector{UInt8}) =
-    bytes2hex(sha1(vcat(Vector{UInt8}("blob $(length(bytes))\0"), bytes)))
-blob_id(path::AbstractString) = blob_id(read(path))
-
 struct Goal
     id::String
     file::String
     title::String
-    blob::String
 end
 
 struct Package
@@ -66,7 +56,7 @@ function load_goals(dir::AbstractString)
             continue
         end
         haskey(goals, id) && push!(errors, "$f: goal id $id is used twice")
-        goals[id] = Goal(id, f, String(h[2]), blob_id(path))
+        goals[id] = Goal(id, f, String(h[2]))
     end
     return goals, errors
 end
@@ -149,12 +139,11 @@ struct Report
     packages::Dict{String,Package}
     testsets::Vector
     errors::Vector{String}
-    stale::Dict{String,Vector{String}}   # package id => goals changed since it was checked
 end
 
 string_list(x) = x isa AbstractVector && all(v -> v isa AbstractString, x)
 
-function check_package!(errors, stale, p::Package, goals, packages)
+function check_package!(errors, p::Package, goals, packages)
     m, f = p.meta, p.file
     for k in keys(m)
         k in KEYS || push!(errors, "$f: unknown front-matter key $k")
@@ -170,24 +159,13 @@ function check_package!(errors, stale, p::Package, goals, packages)
     string_list(deps) || (push!(errors, "$f: depends_on must be a list of package ids"); deps = String[])
     string_list(get(m, "adds_dependencies", String[])) ||
         push!(errors, "$f: adds_dependencies must be a list of package names")
-    checked = get(m, "checked", Dict{String,Any}())
-    checked isa AbstractDict || (push!(errors, "$f: checked must be a table"); checked = Dict{String,Any}())
     for g in gs
-        haskey(goals, g) || (push!(errors, "$f: unknown goal $g"); continue)
-        haskey(checked, g) || push!(errors, "$f: no checked entry for $g (run build.jl --refresh $(p.id))")
+        haskey(goals, g) || push!(errors, "$f: unknown goal $g")
     end
     for d in deps
         haskey(packages, d) || push!(errors, "$f: depends on unknown package $d")
         d == p.id && push!(errors, "$f: depends on itself")
     end
-    for (g, v) in checked
-        g in gs || push!(errors, "$f: checked entry for $g, which is not in goals")
-        v isa AbstractString && occursin(r"^[0-9a-f]{40}$", v) ||
-            push!(errors, "$f: checked.$g must be a git blob id (40 hex digits)")
-    end
-    status == "withdrawn" && return
-    changed = sort!([g for g in gs if haskey(goals, g) && haskey(checked, g) && checked[g] != goals[g].blob])
-    isempty(changed) || (stale[p.id] = changed)
     return
 end
 
@@ -223,9 +201,8 @@ function check(root::AbstractString;
     goals, gerr = load_goals(goals_dir)
     packages, perr = load_packages(wp_dir)
     errors = vcat(gerr, perr)
-    stale = Dict{String,Vector{String}}()
     for id in sort!(collect(keys(packages)))
-        check_package!(errors, stale, packages[id], goals, packages)
+        check_package!(errors, packages[id], goals, packages)
     end
     testsets = scan_testsets(root)
     seen = Dict{String,Any}()
@@ -240,7 +217,7 @@ function check(root::AbstractString;
         end
     end
     check_engine_dependencies!(errors, root)
-    return Report(goals, packages, testsets, errors, stale)
+    return Report(goals, packages, testsets, errors)
 end
 
 goal_sort(id) = parse(Int, id[2:end])
@@ -257,44 +234,11 @@ function summary_text(r::Report)
         println(io, "  $g $(r.goals[g].title): ",
             isempty(wps) ? "-" : join(wps, ", "), "; ", isempty(tests) ? "-" : join(tests, ", "))
     end
-    println(io, "stale packages (goal changed since the package was checked against it):")
-    if isempty(r.stale)
-        println(io, "  none")
-    else
-        for id in sort!(collect(keys(r.stale)))
-            println(io, "  $id ($(r.packages[id].file)): ", join(r.stale[id], ", "))
-        end
-    end
     println(io, "errors: ", isempty(r.errors) ? "none" : "")
     for e in r.errors
         println(io, "  ", e)
     end
     return String(take!(io))
-end
-
-const ORDER = Dict(k => i for (i, k) in enumerate(KEYS))
-
-"""
-    refresh!(path, goals)
-
-Set the `checked` entries of the package at `path` to the current blob ids of the goals it
-lists: the package has been checked against them as they stand.
-"""
-function refresh!(path::AbstractString, goals::Dict{String,Goal})
-    text = read(path, String)
-    fm = front_matter(text)
-    fm === nothing && error("$path has no front matter")
-    meta, body_start = fm
-    unknown = [g for g in get(meta, "goals", String[]) if !haskey(goals, g)]
-    isempty(unknown) || error("$path names unknown goals: $(join(unknown, ", "))")
-    meta["checked"] = Dict{String,Any}(g => goals[g].blob for g in meta["goals"])
-    io = IOBuffer()
-    println(io, "+++")
-    TOML.print(io, meta; sorted = true, by = k -> (get(ORDER, k, length(ORDER) + 1), k))
-    println(io, "+++")
-    print(io, join(split(text, '\n')[body_start:end], '\n'))
-    write(path, String(take!(io)))
-    return meta
 end
 
 end
