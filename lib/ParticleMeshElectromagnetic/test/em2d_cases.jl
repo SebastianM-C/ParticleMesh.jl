@@ -40,9 +40,10 @@ function plasma_2d(::Type{T}; density = one(T), amplitude = one(T) / 20, mode = 
     return EMProblem("plasma-2d", L, cells, T(dt), nsteps, sp, seed, mode; E0, B0)
 end
 
-"The 2D state of `prob` with `NoCurrent()`, initialized."
-function state_2d(prob; mode = Reference(), workgroupsize = nothing, pusher = Boris(), shape = Quadratic, be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, pusher, shape, current = NoCurrent()); backend = be)
+"The 2D state of `prob` with the `current` (`NoCurrent()` by default, WP-024's prescribed fields), initialized."
+function state_2d(prob; mode = Reference(), workgroupsize = nothing, pusher = Boris(), shape = Quadratic, be = CPU(),
+                  current = NoCurrent())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, pusher, shape, current); backend = be)
     initialize!(st, prob)
     return st
 end
@@ -78,3 +79,43 @@ end
 
 "The momenta of the first alive particle of the first species, on the host."
 first_u(st) = (s = first(st.species); (Array(s.u[1])[1], Array(s.u[2])[1], Array(s.u[3])[1]))
+
+# --- WP-023: the 2D step with the charge-conserving current -------------------------------
+
+"""
+    plasma_step_2d(T; amplitude = 1/10, cells = (10, 8), ppc = (3, 3), nsteps = 40, seed = 7) -> EMProblem{2}
+
+Two mobile species that cross cells and the periodic seams within a few steps: thermal electrons
+(v_th = 0.1 in every component) with the drift (0.3, −0.2, 0.1) and an oblique perturbation of
+mode (2, 1), and positive particles of mass 4 (v_th = 0.05) drifting along (−0.2, 0.25, −0.15)
+with the mode (1, −1), on a box of 2π × 3π/2 (Δx ≠ Δy), Δt at 0.9 of the Courant limit. The
+loader draws velocities, so v_th keeps every |v| well below c. The electrons' `amplitude` may be
+a dual (T-366).
+"""
+function plasma_step_2d(::Type{T}; amplitude = one(T) / 10, cells = (10, 8), ppc = (3, 3), nsteps = 40, seed = 7) where {T}
+    L = (2 * T(π), 3 * T(π) / 2)
+    dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2))) / 10
+    tenth = one(T) / 10
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), T(amplitude), (2, 1), ppc, (3tenth, -2tenth, tenth),
+                              (tenth, tenth, tenth), 1)
+    p = SpeciesDescription{T}(:positive, one(T), 4 * one(T), one(T) / 2, tenth / 2, (1, -1), ppc, (-2tenth, 5tenth / 2, -3tenth / 2),
+                              (tenth / 2, tenth / 2, tenth / 2), 2)
+    return EMProblem("plasma-step-2d", L, cells, T(dt), nsteps, (e, p), seed, (2, 1))
+end
+
+"""
+    em2d_step_digests(; workgroupsize = nothing, be = CPU()) -> Vector{(T, digest)}
+
+T-363: a Reference run of [`plasma_step_2d`](@ref) with the `Esirkepov()` current, 20 steps,
+per element type, one digest each.
+"""
+function em2d_step_digests(; workgroupsize = nothing, be = CPU())
+    out = Tuple{DataType,UInt64}[]
+    for T in TYPES
+        prob = plasma_step_2d(T; nsteps = 20)
+        st = state_2d(prob; workgroupsize, be, current = Esirkepov())
+        run!(st, params(prob), prob.nsteps)
+        push!(out, (T, state_digest_2d(st)))
+    end
+    return out
+end

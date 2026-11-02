@@ -16,10 +16,15 @@ using .EnsembleReport
 using Statistics: mean, median, std
 
 const CROSSCODE = joinpath(REPO, "scripts", "crosscode")
-"The committed Smilei runs this script compares with (WP-019's single runs, WP-017's Landau ensemble)."
+"""
+The committed reference runs this script compares with: WP-019's single Smilei runs and WP-017's
+four-seed Landau ensembles of Smilei and PIConGPU (FP64). The two reference ensembles differ by
+1.5 combined errors (reports/crosscode-picongpu/), so their numbers are recorded, not thresholds.
+"""
 const SMILEI = Dict("landau-oblique-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-landau-oblique-2d-c8709f77"),
-                                            ensemble = joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-bc8fd6af")),
-                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensemble = nothing))
+                                            ensembles = ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-bc8fd6af"),
+                                                         "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-bc8fd6af"))),
+                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = ()))
 
 "The seeds of a case: its `seeds` list, or its single `random_seed`."
 case_seeds(case) = haskey(case["numerics"], "seeds") ? Int.(case["numerics"]["seeds"]) : [Int(case["numerics"]["random_seed"])]
@@ -27,8 +32,10 @@ case_seeds(case) = haskey(case["numerics"], "seeds") ? Int.(case["numerics"]["se
 """
     gauss_2d(state) -> (; gauss, divB)
 
-Host checks between steps: the discrete Gauss law max|D⁻ₓEx + D⁻_yEy − (ρ − mean ρ)| relative to
-max|ρ − mean ρ|, with ρ deposited now in the state's mode, and max|D⁻ₓBx + D⁻_yBy| (Bx at
+Host checks between steps: the discrete Gauss law max|D⁻ₓEx + D⁻_yEy − (ρ − mean ρ)|, absolute
+and relative to max|ρ| of the mobile charge (not to its deviation from the mean, which is
+roundoff for the neutral beams of the Weibel case), with ρ deposited now in the state's mode, and
+max|D⁻ₓBx + D⁻_yBy| (Bx at
 (Node, Center), By at (Center, Node), so the forward differences meet at the cell centres)
 relative to max(|Bx|, |By|), zero where B is zero.
 """
@@ -48,7 +55,7 @@ function gauss_2d(st)
     res = maximum(abs((Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2] - (ρ[i, j] - ρ̄)) for i in I1, j in I2)
     divB = maximum(abs((Bx[i + 1, j] - Bx[i, j]) / h[1] + (By[i, j + 1] - By[i, j]) / h[2]) for i in I1, j in I2)
     Bmax = max(maximum(abs, Bx[I1, I2]), maximum(abs, By[I1, I2]))
-    return (; gauss = res / dev, divB = Bmax > 0 ? divB / Bmax : 0.0, gauss_absolute = res, rho_deviation = dev)
+    return (; gauss = res / maximum(abs, ρ[I1, I2]), divB = Bmax > 0 ? divB / Bmax : 0.0, gauss_absolute = res, rho_deviation = dev)
 end
 
 "The problem of `case` at `seed`, optionally scaled to `ppc` and `cells` per axis (Δt at the case's Courant fraction)."
@@ -202,6 +209,8 @@ function run_one(dir, case, seed; ppc = nothing, cells = nothing)
     results, fits, series = observe(case, sim)
     out = Dict{String,Any}("case" => case["name"], "code" => "particlemesh", "seed" => seed, "observables" => results,
         "checks" => Dict("gauss_relative_initial" => sim.checks.initial.gauss, "gauss_relative_final" => sim.checks.final.gauss,
+                         "gauss_absolute_initial" => sim.checks.initial.gauss_absolute, "gauss_absolute_final" => sim.checks.final.gauss_absolute,
+                         "rho_deviation_initial" => sim.checks.initial.rho_deviation,
                          "divB_relative_final" => sim.checks.final.divB,
                          "energy_max_abs_relative_change" => maximum(abs, (sim.total .- sim.total[1]) ./ sim.total[1]),
                          "kinetic_energy_initial" => sim.K[1]),
@@ -262,24 +271,26 @@ fmt(x; d = 4) = x === nothing ? "none" : string(round(x; sigdigits = d))
 """
     compare(pmdir) -> sidecar
 
-The ParticleMesh run against the committed Smilei runs of its case: every per-run observable
-against WP-019's single Smilei run (seed 20261031) and, for the seeded Landau case, the per-seed
-observables against WP-017's Smilei seeds and the ensembles against each other
-(`compare_ensembles`, in units of Smilei's seed spread and of the combined jackknife error).
-Writes `dir/compare-smilei/`. A measurement, not a threshold (A7).
+The ParticleMesh run against the committed reference runs of its case: every per-run observable
+against WP-019's single Smilei run (seed 20261031) and, for the seeded Landau case, against each
+reference ensemble of WP-017 (Smilei and PIConGPU FP64, same case file and seeds): the per-seed
+observables (difference of the seed means in combined errors of the means) and the ensembles
+(`compare_ensembles`, in units of the reference's seed spread and of the combined jackknife
+error), with an overlay of the three ensembles. Writes `dir/compare/`. Measurements, not
+thresholds (A7).
 """
 function compare(pmdir)
     case = TOML.parsefile(joinpath(pmdir, "case.toml"))
     name = case["name"]
     ref = SMILEI[name]
-    out = joinpath(pmdir, "compare-smilei")
+    out = joinpath(pmdir, "compare")
     mkpath(out)
     seeded = haskey(case["numerics"], "seeds")
     sm1 = JSON.parsefile(joinpath(ref.single, "observables.json"))
     first_seed = first(case_seeds(case))
     pm1 = JSON.parsefile(joinpath(seeded ? joinpath(pmdir, "seed-$first_seed") : pmdir, "observables.json"))
     side = Dict{String,Any}("case" => name, "smilei_single_run" => relpath(ref.single, REPO), "particlemesh_run" => basename(normpath(pmdir)),
-                            "note" => "a measurement, not a threshold (A7)")
+                            "note" => "measurements, not thresholds (A7)")
     single = Dict{String,Any}()
     for (k, o) in pm1["observables"]
         s = get(sm1["observables"], k, nothing)
@@ -292,27 +303,48 @@ function compare(pmdir)
                              (b - a) / hypot(s["measured_stderr"], o["measured_stderr"]))
     end
     side["single_run_seed_$(first_seed)"] = single
-    if seeded && ref.ensemble !== nothing
+    if seeded && !isempty(ref.ensembles)
         seeds = case_seeds(case)
-        per = Dict{String,Any}()
-        for k in ("damping_rate_mode", "energy_ratio_mode")
-            sv = [JSON.parsefile(joinpath(ref.ensemble, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]
-            pv = [JSON.parsefile(joinpath(pmdir, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]
-            ok(v) = Float64[x for x in v if x !== nothing]
-            st(v) = length(ok(v)) >= 2 ? (mean(ok(v)), std(ok(v)), length(ok(v))) : nothing
-            a, b = st(sv), st(pv)
-            per[k] = Dict("smilei" => sv, "particlemesh" => pv,
-                          "smilei_mean_std_n" => a, "particlemesh_mean_std_n" => b,
-                          "difference_of_means_in_combined_errors" => a === nothing || b === nothing ? nothing :
-                              (b[1] - a[1]) / hypot(a[2] / sqrt(a[3]), b[2] / sqrt(b[3])))
-        end
-        side["per_seed"] = per
         series(d) = JSON.parsefile(joinpath(d, "ensemble-series.json"))
-        sm, pm = series(ref.ensemble), series(pmdir)
-        A = (; code = "smilei", t = Float64.(sm["t"]), U = Float64.(sm["U"]), result = JSON.parsefile(joinpath(ref.ensemble, "observables.json")))
+        pm = series(pmdir)
         B = (; code = "particlemesh", t = Float64.(pm["t"]), U = Float64.(pm["U"]), result = JSON.parsefile(joinpath(pmdir, "observables.json")))
-        side["ensemble"] = compare_ensembles(out, case, A, B)
-        side["ensemble"]["smilei_run"] = relpath(ref.ensemble, REPO)
+        ok(v) = Float64[x for x in v if x !== nothing]
+        st(v) = length(ok(v)) >= 2 ? (mean(ok(v)), std(ok(v)), length(ok(v))) : nothing
+        fig = Figure(size = (900, 550))
+        ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|⟨k̂·Ê⟩|² of mode $(case["wavevector"]["mode"]), seed mean",
+                  title = "$name: four-seed ensembles of three codes")
+        overlay = Dict{String,Any}("plot" => "ensemble |⟨k̂·Ê⟩|² of each code versus time, log scale", "theory" => B.result["theory"])
+        for (code, dir) in ref.ensembles
+            per = Dict{String,Any}()
+            for k in ("damping_rate_mode", "energy_ratio_mode")
+                sv = [JSON.parsefile(joinpath(dir, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]
+                pv = [JSON.parsefile(joinpath(pmdir, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]
+                a, b = st(sv), st(pv)
+                per[k] = Dict(code => sv, "particlemesh" => pv, "$(code)_mean_std_n" => a, "particlemesh_mean_std_n" => b,
+                              "difference_of_means_in_combined_errors" => a === nothing || b === nothing ? nothing :
+                                  (b[1] - a[1]) / hypot(a[2] / sqrt(a[3]), b[2] / sqrt(b[3])))
+            end
+            r = series(dir)
+            A = (; code, t = Float64.(r["t"]), U = Float64.(r["U"]), result = JSON.parsefile(joinpath(dir, "observables.json")))
+            e = compare_ensembles(joinpath(out, "vs-$code"), case, A, B)
+            e["reference_run"] = relpath(dir, REPO)
+            side["$(code)_ensemble"] = e
+            side["$(code)_per_seed"] = per
+            p = A.U .> 0
+            lines!(ax, A.t[p], A.U[p]; label = "$code, γ = $(fmt(A.result["measured"])) ± $(fmt(A.result["measured_stderr"]; d = 2))")
+            overlay[code] = Dict("measured" => A.result["measured"], "measured_stderr" => A.result["measured_stderr"], "run" => relpath(dir, REPO))
+        end
+        p = B.U .> 0
+        lines!(ax, B.t[p], B.U[p]; color = :black, linewidth = 2,
+               label = "ParticleMesh, γ = $(fmt(B.result["measured"])) ± $(fmt(B.result["measured_stderr"]; d = 2))")
+        overlay["particlemesh"] = Dict("measured" => B.result["measured"], "measured_stderr" => B.result["measured_stderr"])
+        if B.result["fit_times"] !== nothing && !isempty(B.result["fit_times"])
+            tf = Float64.(B.result["fit_times"])
+            lines!(ax, tf, Float64(B.result["fit_energies"][1]) .* exp.(-2B.result["theory"] .* (tf .- tf[1])); color = :blue, linestyle = :dot,
+                   label = "theory γ = $(fmt(B.result["theory"])), from ParticleMesh's first maximum")
+        end
+        axislegend(ax; position = :rt)
+        save_plot(out, "$name-three-ensembles", fig, overlay)
     end
     if !seeded
         # The primary observable's series of ParticleMesh with Smilei's fitted rate drawn from the same start.

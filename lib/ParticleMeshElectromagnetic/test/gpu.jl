@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -25,6 +25,27 @@ else
         rerun_module_on(GPU, (("T-210", body_T210), ("T-211", body_T211), ("T-212", body_T212), ("T-214", body_T214),
                               ("T-215", body_T215), ("T-216", body_T216), ("T-213", body_T213), ("T-217", body_T217),
                               ("T-219", body_T219)))
+    end
+
+    @testset "T-380 the 2D step on CUDA passes T-360, T-361, T-364 and T-365 with the CPU's tolerances [A2, A5, A7, A8, WP-023]" begin
+        rerun_module_on(GPU, (("T-360", body_T360), ("T-361", body_T361), ("T-364", body_T364), ("T-365", body_T365)))
+    end
+
+    @testset "T-381 the 2D step with current on CUDA is bitwise across reruns and launch shapes, and its rates differ from the CPU's by a measured amount [A4, A7, WP-023]" begin
+        first = em2d_step_digests(; be = GPU)
+        @test em2d_step_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test em2d_step_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+        # CPU and CUDA: the 2D physics runs differ by a measured relative amount (as T-197)
+        for name in ("landau-oblique-2d", "weibel-2d")
+            haskey(PHYSICS_2D, name) && haskey(PHYSICS_2D, physics_key(name, GPU)) || continue
+            c, g = PHYSICS_2D[name], PHYSICS_2D[physics_key(name, GPU)]
+            rate = abs(g.f.gamma - c.f.gamma) / abs(c.f.gamma)
+            @info "T-381 CPU–CUDA 2D" name rate
+            get!(MEASURED, "T-381 CPU-CUDA relative rate", Dict{String,Float64}())[name] = rate
+            @test isfinite(rate)
+        end
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin

@@ -335,3 +335,49 @@ C_partials = 16
 measured = { "Dual{Float32,3}" = 6.38 }
 measured_partials = { "Dual{Float32,3}" = 5.3 }
 status = "proposed; the primal is not bitwise the Float32 run (recorded by the test, not asserted, A4)"
+
+["T-360"]
+quantity = "Gauss's law after every 2D step with the Esirkepov current: |D⁻ₓEx + D⁻_yEy − (ρ − mean ρ)| (C); |D⁺ₓBx + D⁺_yBy| (C_divB); two species crossing cells and seams, 40 steps, both modes"
+scale = "(n₁ + n₂)·max|ρ|·√(k + 1) after k steps (C); (Σ_d 2/Δ_d)·max|B|·√k (C_divB)"
+C = 2
+C_divB = 2
+measured = { Float32 = 0.383, Float64 = 0.416, "Dual{Float32,3}" = 0.306 }
+measured_divB = { Float32 = 0.308, Float64 = 0.353, "Dual{Float32,3}" = 0.347 }
+status = "proposed"
+
+["T-361"]
+quantity = "a 2D run invariant along y (along x) against the 1D run (rotated by 90°): every mapped component on every line of the invariant axis, and the 2D-only in-plane B component"
+scale = "k·max|1D value of its kind| (E and B together, J together) after k steps; 30 steps of two cold counter-streaming beams"
+C = 4096
+measured = { Float32 = 1200, Float64 = 1010, "Dual{Float32,3}" = 41.5 }
+measured_reference = { Float32 = 311, Float64 = 269, "Dual{Float32,3}" = 41.5 }
+status = "proposed; Fast is about 3.5 times Reference (the atomic order), and the two-stream growth amplifies the roundoff"
+
+["T-362"]
+quantity = "the Reference and Fast 2D steps: every field and current, and the kinetic-energy history, after k steps"
+scale = "k·max|Reference value| per component"
+C = 128
+measured = { Float32 = 23.5, Float64 = 36.4 }
+status = "proposed"
+
+["T-364"]
+quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electrons per cell, 5 % perturbation, t = 18): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|ê·Ê|/max|k̂·Ê| of mode (2, 1) (transverse)"
+rate = 0.1
+frequency = 0.05
+transverse = 0.05
+measured = { rate = -0.0110, frequency = 0.026, transverse = 0.00864 }
+status = "proposed; one seed and three maxima, so the rate bound is a gross-error check (the full-size runs against Smilei are in reports/wp-023-em-step-2d/)"
+
+["T-365"]
+quantity = "2D Weibel at test size (64 × 64 cells, 4 × 4 per beam per cell): |γ − γ_theory|/γ_theory (rate) and max|k̂·B̂|/max|ê·B̂| of mode (2, 1) (longitudinal)"
+rate = 0.05
+longitudinal = 0.01
+measured = { rate = -0.0135, longitudinal = 0.000482 }
+status = "proposed"
+
+["T-366"]
+quantity = "Dual{Float32,3} through 10 steps of the 2D step with current: the primal of every E and B component against the Float32 run"
+scale = "k·max|Float32 value| per component"
+C = 8
+measured = { "Dual{Float32,3}" = 1.49 }
+status = "proposed; not bitwise (A4)"
