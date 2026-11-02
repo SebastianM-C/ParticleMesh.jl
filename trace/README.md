@@ -45,4 +45,4 @@ julia +1.13 --project=scripts scripts/trace/test/runtests.jl
 
 ## Digests
 
-The overseer writes `trace/digests/<date>.md`.
+The overseer writes the digests into `trace/digests/`, named as `.claude/agents/overseer.md` says.
