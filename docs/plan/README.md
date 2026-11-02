@@ -11,4 +11,4 @@ The design derived from the owner's aims and decisions in `../goals/` (A0 to A10
 | `landscape-and-requirements.md` | background: what exists (Julia, JAX, production PIC, BO practice, reduced models), the MethodOfLines v1 measurements, requirements R1 to R13, risks, sources | when a package points there |
 | `sciml-reuse.md` | background: what to reuse from SciML per layer, with what was verified in the package sources | when a package points there |
 | `pushers-literature.md` | background for WP-015 and WP-016: the relativistic pushers, the claims of each paper, the test problems | for those packages |
-| `workflows-primer.md` | background: how saved Claude Code workflows work, and the factory's workflows | when writing or running a workflow |
+| `workflows-primer.md` | background: how saved Claude Code workflows work, and the ones planned | when writing or running a workflow |

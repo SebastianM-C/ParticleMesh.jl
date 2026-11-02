@@ -13,8 +13,7 @@
       "Bash(gh issue list:*)",
       "Bash(gh issue comment:*)",
       "Bash(gh issue create:*)",
-      "Bash(scripts/gpu-lock.sh:*)",
-      "Workflow(plan-review)"
+      "Bash(scripts/gpu-lock.sh:*)"
     ],
     "deny": [
       "Bash(gh issue edit:*)",

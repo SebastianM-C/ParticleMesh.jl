@@ -36,8 +36,6 @@ T-243 asserts:
 - the drift and position orders on a grid extended to ω₀Δt = 0.2/2⁷, where a₀·ω₀Δt ≤ 1/16;
 - that every error falls over the package's grid.
 
-The acceptance text of WP-016 says so.
-
 ## 6. The exact-rotation fix rewrites the formula, not the map (#203)
 
 Rodrigues' formula, cos θ·u⁻ + …, multiplies u⁻ by the rounded cos θ ≈ 1. Writing it as an increment with cos θ − 1 = −kθ² does not remove the drift either: the issue reported that, and I reproduced it at about 1200 eps over 10⁴ steps. What removes it is writing the same rotation in Boris's two-cross-product form, u⁻ + (u⁻ + u⁻×t)×s, with t = tan(θ/2)·ŵ and s = sin θ·ŵ: the Cayley form at the exact half angle.

@@ -14,11 +14,11 @@ To answer: build the image from the recipe (`crosscode-image` for `localhost/par
 
 ## 2. Recipe path and run route differ from the work package's text
 
-WP-003 deliverables 0 and 3 name `scripts/crosscode/containers/smilei/Containerfile` and a plain `podman run` from `run-smilei.sh`. The machine's runner expects the recipe at `scripts/crosscode/containers/<family>.Containerfile` with the build context `scripts/crosscode/containers/`, and runs `bash /run-dir/run.sh` from the run directory in its container; podman cannot run inside a factory sandbox.
+WP-003 named `scripts/crosscode/containers/smilei/Containerfile` and a plain `podman run` from `run-smilei.sh`. The machine's runner expects the recipe at `scripts/crosscode/containers/<family>.Containerfile` with the build context `scripts/crosscode/containers/`, and runs `bash /run-dir/run.sh` from the run directory in its container; podman cannot run inside a factory sandbox.
 
 Decision (the owner's, given in the session): follow the runner's layout, `scripts/crosscode/containers/smilei.Containerfile`, run through the runner with `gpu: no`, and keep `run-smilei.sh` as the plain-podman route for runs outside the factory. Both routes execute the same generated `run.sh` with the same mounts (run directory read-write at `/run-dir`, worktree read-only at `/worktree`, no network, no GPU).
 
-The PR edits WP-003's deliverables 0 and 3 (and the non-goal that excluded the runner's `smilei` command family) to name this layout, so that the package text and the code agree.
+The code uses this layout.
 
 ## 3. Image tag convention
 

@@ -24,20 +24,9 @@ Contrast with the two other delegation mechanisms: a subagent spawned from a ses
 
 Adversarial verification (several independent skeptics per finding, keep what survives a majority), perspective-diverse verifiers (distinct lenses rather than identical refuters), judge panels over independent attempts, loop-until-dry for discovery of unknown size, a completeness critic at the end, and never a silent cap.
 
-## `plan-review`: review the plan
-
-Read-only, and it exercises every primitive. Five reviewers read the planning documents through different lenses, each finding is adversarially checked by two refuters, and the survivors come back as a structured list. Arguments: the document paths and a date stamp.
-
-The script is `.claude/workflows/plan-review.js`.
-
-How it is used: run `/plan-review` with the plan documents as `args` after each substantial edit. The same skeleton, with an implementer stage in a worktree and a test-runner stage instead of the reviewers, becomes the work-package workflow.
-
 ## The factory's workflows
 
-Saved in `.claude/workflows/`:
-
-- `plan-review` (above): read-only review of the planning documents.
-- `plan-packages`, two modes: `cut` takes the next work packages from a named slice of the goals and the plan, `rederive` re-derives the packages a goal edit made stale. The stages, the models per agent and the caller's steps are in `.claude/workflows/plan-packages.js`. In `cut` the verifiers read the whole set rather than one package each, because the defects that matter sit between packages. Its PR merges on the automated review, and the digest lists the packages for the owner to veto.
+None is saved at the moment: work packages are one or two sentences, cut by hand, so planning needs no workflow.
 
 Planned (`factory-and-observability.md` §4):
 

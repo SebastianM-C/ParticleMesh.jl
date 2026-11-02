@@ -1,6 +1,6 @@
 # WP-017: what the 2D LWFA case still needs before it can be written in both codes
 
-Work package: `trace/wp/WP-017-crosscode-picongpu.md`, deliverable 7. A5 asks for one 2D LWFA case, fully specified and run in ParticleMesh, Smilei and PIConGPU. After WP-019 (schema 2, the Smilei 2D generator) and WP-017 (the PIConGPU generator, the 2D periodic path proven in both codes), this is what is missing. No value is proposed here; the parameters are the owner's (A5).
+Work package: `trace/wp/WP-017-crosscode-picongpu.md`. A5 asks for one 2D LWFA case, fully specified and run in ParticleMesh, Smilei and PIConGPU. After WP-019 (schema 2, the Smilei 2D generator) and WP-017 (the PIConGPU generator, the 2D periodic path proven in both codes), this is what is missing. No value is proposed here; the parameters are the owner's (A5).
 
 ## 1. Parameters A5 names, with no value yet
 
@@ -48,4 +48,4 @@ Schema 2 describes a periodic box with one perturbed Fourier mode. The LWFA case
 
 ## Assumption
 
-The LWFA case is not written in this package (WP-017 non-goals). The parameters above stay open until the owner sets them in A5.
+The LWFA case is not written in this package (it was outside WP-017). The parameters above stay open until the owner sets them in A5.
