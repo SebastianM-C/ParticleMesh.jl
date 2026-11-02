@@ -5,79 +5,149 @@
     CosineProfile()
 
 The density profile `n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x))`: background density (n_c), relative
-perturbation amplitude and wavenumber (ω₀/c). An isbits callable for the engine's loader, so
-the parameters enter through the weights (A3).
+perturbation amplitude and wavenumber (ω₀/c); at N = 2, for a position `x::NTuple{2}`,
+`n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x[1] + p[4]·x[2]))` with the wave vector `(p[3], p[4])`. An
+isbits callable for the engine's loader, so the parameters enter through the weights (A3).
 """
 struct CosineProfile end
 @inline (::CosineProfile)(x, p) = p[1] * (1 + p[2] * cos(p[3] * x))
+@inline (::CosineProfile)(x::NTuple{2}, p) = p[1] * (1 + p[2] * cos(p[3] * x[1] + p[4] * x[2]))
 
 """
     SpeciesDescription{T}
 
 One mobile species of the problem, in A1 units: `charge` (e), `mass` (mₑ), `density` (n_c),
-`amplitude` and `mode` of the cosine perturbation n(x) = density·(1 + amplitude·cos(2π·mode·x/L)),
-`ppc` particles per cell (quiet start), the drift velocity `drift` and the thermal speeds
-`thermal` per component (v_th = √(T/m), in c; a velocity-space Maxwellian, converted to the
-momentum `u = γv` after loading), and the Philox `stream` of its velocity draws.
+`amplitude` and `mode` of the cosine perturbation, `ppc` particles per cell (quiet start), the
+drift velocity `drift` and the thermal speeds `thermal` per component (v_th = √(T/m), in c; a
+velocity-space Maxwellian, converted to the momentum `u = γv` after loading), and the Philox
+`stream` of its velocity draws. At N = 1 `mode` and `ppc` are integers and
+n(x) = density·(1 + amplitude·cos(2π·mode·x/L)); at N = 2 both are `NTuple{2,Int}`, one integer
+per axis, and n(x, y) = density·(1 + amplitude·cos(2π(mode₁·x/L₁ + mode₂·y/L₂))) on a lattice of
+`ppc₁ × ppc₂` particles per cell. A species of zero density is a set of test particles: zero
+weight, so it carries no charge and no current.
 """
-struct SpeciesDescription{T}
+struct SpeciesDescription{T,M}
     name::Symbol
     charge::T
     mass::T
     density::T
     amplitude::T
-    mode::Int
-    ppc::Int
+    mode::M
+    ppc::M
     drift::NTuple{3,T}
     thermal::NTuple{3,T}
     stream::Int
 end
 
-"""
-    EMProblem{T}
+SpeciesDescription{T}(name, charge, mass, density, amplitude, mode::M, ppc::M, drift, thermal, stream) where {T,M} =
+    SpeciesDescription{T,M}(name, charge, mass, density, amplitude, mode, ppc, drift, thermal, stream)
 
-The problem description of a 1D periodic electromagnetic run, in A1 units (time 1/ω₀, length
-c/ω₀, density n_c, velocity c): the box `length` and number of `cells`, the time step `dt` and
-the number of steps `nsteps`, the mobile `species` (a tuple of [`SpeciesDescription`](@ref);
-immobile species of uniform density are the neutralizing background and carry no particles,
-A2), the `seed` of the velocity draws and the diagnostic wavenumber `kmode`. It names no
-kernel: the same description runs with any [`EMNumerics`](@ref).
 """
-struct EMProblem{T,S<:Tuple}
+    EMProblem{N,T}
+
+The problem description of a periodic electromagnetic run in `N = 1` or `N = 2` dimensions, in
+A1 units (time 1/ω₀, length c/ω₀, density n_c, velocity c, fields mₑcω₀/e): the box `length`
+and number of `cells` (a number at N = 1, one per axis at N = 2), the time step `dt` and the
+number of steps `nsteps`, the mobile `species` (a tuple of [`SpeciesDescription`](@ref);
+immobile species of uniform density are the neutralizing background and carry no particles,
+A2), the `seed` of the velocity draws, the diagnostic `kmode` and the uniform background fields
+`E0` and `B0` (three components each, zero by default), which [`initialize!`](@ref) adds to the
+fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles). At N = 1
+`kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
+vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
+any [`EMNumerics`](@ref).
+
+    EMProblem(name, length, cells, dt, nsteps, species, seed, kmode; E0 = zeros, B0 = zeros)
+
+checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
+of each at N = 2), that the cells and the particles per cell are positive and, at N = 2, that
+`kmode` is not the zero mode (an `ArgumentError` otherwise).
+"""
+struct EMProblem{N,T,S<:Tuple,L,C,K}
     name::String
-    length::T
-    cells::Int
+    length::L
+    cells::C
     dt::T
     nsteps::Int
     species::S
     seed::Int
-    kmode::T
+    kmode::K
+    E0::NTuple{3,T}
+    B0::NTuple{3,T}
 end
 
-Base.eltype(::EMProblem{T}) where {T} = T
+function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, seed::Integer, kmode;
+                   E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3)) where {T}
+    N = cells isa Integer ? 1 : length(cells)
+    N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
+    M = N == 1 ? Int : NTuple{2,Int}
+    if N == 1
+        box isa Number || throw(ArgumentError("a 1D problem takes one box length, got $box"))
+        kmode isa Number || throw(ArgumentError("a 1D problem takes the diagnostic wavenumber as a number, got $kmode"))
+    else
+        box isa NTuple{2} || throw(ArgumentError("a 2D problem takes two box lengths, got $box"))
+        kmode isa NTuple{2,Int} || throw(ArgumentError("a 2D problem takes the diagnostic mode as two integers, got $kmode"))
+        kmode == (0, 0) && throw(ArgumentError("the diagnostic mode must not be (0, 0)"))
+    end
+    all(>(0), cells) || throw(ArgumentError("cells = $cells must be positive"))
+    for d in species
+        d.mode isa M && d.ppc isa M ||
+            throw(ArgumentError("species $(d.name): mode $(d.mode) and ppc $(d.ppc) must be $(N == 1 ? "integers" : "two integers each") for N = $N"))
+        all(>(0), d.ppc) || throw(ArgumentError("species $(d.name): ppc = $(d.ppc) must be positive"))
+    end
+    L = N == 1 ? T(box) : T.(box)
+    c = N == 1 ? Int(cells) : Int.(Tuple(cells))
+    k = N == 1 ? T(kmode) : kmode
+    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k)}(String(name), L, c, dt, Int(nsteps), species,
+                                                                         Int(seed), k, T.(Tuple(E0)), T.(Tuple(B0)))
+end
+
+Base.eltype(::EMProblem{N,T}) where {N,T} = T
+Base.ndims(::EMProblem{N}) where {N} = N
 
 """
-    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing)
+    NoCurrent()
+
+The current choice of an [`EMNumerics`](@ref) that deposits no current: the step pushes the
+particles through the fields and solves Maxwell's equations with J = 0. For prescribed-field
+runs and test particles at N = 2, where the step is otherwise not complete; the 1D step always
+deposits the current and refuses it.
+"""
+struct NoCurrent end
+
+"""
+    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = nothing)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
-(`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher and the
-mesh solver. `workgroupsize` is passed to every engine launch (it selects the launch shape only).
+(`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
+solver and the current. `workgroupsize` is passed to every engine launch (it selects the launch
+shape only). `current = nothing` is the 1D step's charge-conserving current (the engine's
+`deposit_flux!`); at N = 2 the current must be chosen explicitly, and [`NoCurrent`](@ref) is the
+only choice so far, so a 2D state refuses `nothing` rather than run a step that silently leaves
+the current out, and a 1D state refuses `NoCurrent()`.
 """
-struct EMNumerics{S<:Shape,M,P<:Pusher,F,W}
+struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
     shape::S
     mode::M
     pusher::P
     solver::F
     workgroupsize::W
+    current::C
 end
 
-EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing) =
-    EMNumerics(shape, mode, pusher, solver, workgroupsize)
+EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = nothing) =
+    EMNumerics(shape, mode, pusher, solver, workgroupsize, current)
 
-"Run parameters of the step: the time step and the diagnostic wavenumber, both of type `T`."
-struct EMParams{T}
+"""
+    EMParams(dt, kmode)
+
+Run parameters of the step: the time step and the diagnostic `kmode` of the problem (the
+wavenumber at N = 1; the integer mode per axis at N = 2, which must be the state's, since the
+2D state holds its phase tables).
+"""
+struct EMParams{T,K}
     dt::T
-    kmode::T
+    kmode::K
 end
 
 params(p::EMProblem) = EMParams(p.dt, p.kmode)
@@ -86,7 +156,7 @@ getnum(d, key, default) = haskey(d, key) ? d[key] : default
 
 """
     problem_from_case(case, T; ppc = nothing, cells = nothing, t_end = nothing, amplitude = nothing,
-                      seed = nothing, transverse_thermal = false) -> EMProblem{T}
+                      seed = nothing, transverse_thermal = false) -> EMProblem{1,T}
 
 The problem description of a parsed case file (`scripts/crosscode/cases/<case>.toml`, schema 1
 with the per-species `transverse_drift = [v_y, v_z]` extension, in A1 units). Mobile species
