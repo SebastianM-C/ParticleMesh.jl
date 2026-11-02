@@ -40,7 +40,25 @@ end
 # T-322), and deposit_flux! makes (ρⁿ⁺¹ − ρⁿ)/Δt + D⁻·J = 0 to roundoff (T-300), so D⁻·Eⁿ⁺¹ =
 # ρⁿ⁺¹ − mean ρ after every step. The residual is not re-solved: each step adds its roundoff, a
 # random walk, hence the scale (n₁ + n₂)·max|ρ|·√(k + 1). ∇·B starts at zero and stays at roundoff
-# of the curl updates, scaled by (Σ 2/Δ_d)·max|B|·√k.
+# of the curl updates, scaled by (Σ 2/Δ_d)·max|B|·√k. Jz has no divergence at N = 2, so Gauss's
+# law cannot see it; its total is exact instead: the shape weights sum to one, so after the fold
+# Σ Jz over the nodes equals Σ q·w·u_z/γ over the particles at the momenta uⁿ⁺¹ᐟ² (T-309), which
+# the step's `CurrentZ` must supply (the drifts make γ up to about 1.1, so a missing 1/γ shows).
+
+"Σ q·w·u_z/γ over the alive particles of every species, on the host, and Σ of its absolute values."
+function current_z_total(st)
+    tot, mag = zero(eltype(st.ρ)), zero(eltype(st.ρ))
+    for s in st.species
+        w, st_, u = Array(s.w), Array(s.status), map(Array, s.u)
+        for i in eachindex(w)
+            st_[i] == ParticleMeshCore.ALIVE || continue
+            jz = s.q * w[i] * u[3][i] / sqrt(1 + u[1][i]^2 + u[2][i]^2 + u[3][i]^2)
+            tot += jz
+            mag += abs(jz)
+        end
+    end
+    return tot, mag
+end
 function body_T360(be)
     C, CB = emC("T-360"), emC("T-360", "C_divB")
     for T in TYPES, mode in (Reference(), Fast())
@@ -49,24 +67,30 @@ function body_T360(be)
         p = params(prob)
         r = gauss_residual_2d(st)
         worst = r.res / (base_eps(T) * r.scale)
-        worstB = 0.0
+        worstB = worstZ = 0.0
+        g, n = guards(st.grid), ncells(st.grid)
         for k in 1:prob.nsteps
             step!(st, p, k)
             r = gauss_residual_2d(st)
             worst = max(worst, r.res / (base_eps(T) * r.scale * sqrt(k + 1)))
             r.bscale > 0 && (worstB = max(worstB, r.divB / (base_eps(T) * r.bscale * sqrt(k))))
+            tot, mag = current_z_total(st)
+            Jz = sum(Array(st.fields.Jz)[(g + 1):(g + n[1]), (g + 1):(g + n[2])])
+            worstZ = max(worstZ, Float64(absmax(Jz - tot)) / (base_eps(T) * Float64(value_of(mag))))
         end
         # a current flows and a magnetic field grows (over 40 steps the drifts carry the particles
         # across several cells and both seams)
         @test all(c -> maximum(absmax, Array(getfield(st.fields, c))) > 0, (:Jx, :Jy, :Jz, :Bx, :By, :Bz))
         record!("T-360 $(nameof(typeof(mode)))", T, worst, be)
         record!("T-360 divB $(nameof(typeof(mode)))", T, worstB, be)
+        record!("T-360 sum Jz $(nameof(typeof(mode)))", T, worstZ, be)
         @test worst <= C
         @test worstB <= CB
+        @test worstZ <= emC("T-360", "C_Jz")
     end
 end
 
-@testset "T-360 Gauss's law to roundoff after every 2D step with moving particles, both modes [A2, A7, A8, WP-023]" begin
+@testset "T-360 Gauss's law and ∇·B to roundoff after every 2D step with moving particles, and Σ Jz exact, both modes [A2, A7, A8, WP-023]" begin
     body_T360(CPU())
 end
 
@@ -74,12 +98,17 @@ end
 
 # The 2D step on a problem that does not vary along one axis is the 1D step: two cold beams with
 # opposite drifts in all three components (Jx through 2D Esirkepov along the resolved axis, the
-# motion along the invariant axis through the other Esirkepov component, Jz) and opposite density
-# perturbations. y-invariant: mode (1, 0), the 1D fields on every row. x-invariant: mode (0, 1)
-# and the problem rotated by +90° about z, x̂ → ŷ, ŷ → −x̂, so the 1D (Ex, Ey, Ez, Bx, By, Bz) are
-# the 2D (Ey, −Ex, Ez, By, −Bx, Bz) on every column. The quiet start fills each invariant column
-# with a uniform lattice, so every deposit is invariant by the partition of unity of the shape;
-# the 2D initial field from the spectral solve and the 1D prefix sum agree to roundoff.
+# motion along the invariant axis through the other Esirkepov component, Jz), one of them with a
+# density perturbation, so the net charge is perturbed and the initial field and the half kick
+# back of initialize! are not zero. y-invariant: mode (1, 0), the 1D fields on every row.
+# x-invariant: mode (0, 1) and the problem rotated by +90° about z, x̂ → ŷ, ŷ → −x̂, so the 1D
+# (Ex, Ey, Ez, Bx, By, Bz) are the 2D (Ey, −Ex, Ez, By, −Bx, Bz) on every column. The quiet start
+# fills each invariant column with a uniform lattice, so every deposit is invariant by the
+# partition of unity of the shape; the 2D initial field from the spectral solve and the 1D prefix
+# sum agree to roundoff (compared after initialize!, then after every step). The 1D prefix sum's
+# error grows with the cell count n and the atomic sums' with the particles per cell, hence the
+# scale k·n·√ppc·(largest 1D value of the kind), k ≥ 1 (measured by the WP-023 breakers at 16 to
+# 64 cells and 8 to 64 particles per cell).
 
 const INV_DRIFT = (1 // 5, 3 // 20, -1 // 10)
 
@@ -88,7 +117,7 @@ function beams_1d(::Type{T}; n = 16, ppc = 8, nsteps = 30, amplitude = one(T) / 
     dx = L / n
     v = T.(INV_DRIFT)
     sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), 1, ppc, v, zero3(T), 1),
-          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, -T(amplitude), 1, ppc, .-v, zero3(T), 2))
+          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), 1, ppc, .-v, zero3(T), 2))
     return EMProblem("beams-1d", L, n, 4dx / 5, nsteps, sp, 1, 2 * T(π) / L)
 end
 
@@ -104,7 +133,7 @@ function beams_2d(::Type{T}, axis; n = 16, ppc = 8, nsteps = 30, amplitude = one
     p2 = axis == 1 ? (ppc, 2) : (2, ppc)
     m = axis == 1 ? (1, 0) : (0, 1)
     sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), m, p2, v2, zero3(T), 1),
-          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, -T(amplitude), m, p2, .-v2, zero3(T), 2))
+          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), m, p2, .-v2, zero3(T), 2))
     return EMProblem("beams-2d", box, cells, 4dx / 5, nsteps, sp, 1, m)
 end
 
@@ -150,11 +179,13 @@ function body_T361(be)
         s2 = EMState(p2, EMNumerics(; mode); backend = be)
         initialize!(s1, p1)
         initialize!(s2, p2)
-        worst = 0.0
+        @test maximum(absmax, Array(s1.fields.Ex)) > 0          # the initial field is not trivial
+        scale = ncells(s1.grid) * sqrt(p1.species[1].ppc)
+        worst = invariant_error(s1, s2, axis) / (base_eps(T) * scale)
         for k in 1:p1.nsteps
             step!(s1, params(p1), k)
             step!(s2, params(p2), k)
-            worst = max(worst, invariant_error(s1, s2, axis) / (base_eps(T) * k))
+            worst = max(worst, invariant_error(s1, s2, axis) / (base_eps(T) * k * scale))
         end
         # the run is not trivial: every 1D component it compares carries a field
         f1 = s1.fields
@@ -171,8 +202,11 @@ end
 # --- T-362 ----------------------------------------------------------------------------------
 
 # A4 rule 3: the two deposition modes agree. Their currents differ by the association order of
-# the atomic sums only, so after k steps the fields differ by roundoff that the dynamics carry
-# along; measured relative to the largest field, per step.
+# the atomic sums only, a roundoff that grows as the square root of the contributions per node,
+# so after k steps the fields differ by roundoff that the dynamics carry along; measured
+# relative to k·√(particles per cell per species)·(the largest Reference value), for 20 steps (the
+# plasma is unstable: over a few hundred steps the instability amplifies the difference
+# exponentially, as it amplifies any roundoff; measured by the WP-023 breakers).
 @testset "T-362 the Reference and Fast 2D steps agree to roundoff [A4, A7, WP-023]" begin
     C = emC("T-362")
     for T in (Float32, Float64)
@@ -187,12 +221,12 @@ end
             for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz, :Jx, :Jy, :Jz)
                 a, b = Array(getfield(sr.fields, c)), Array(getfield(sf.fields, c))
                 iszero(maximum(abs, a)) && continue
-                worst = max(worst, maximum(abs, a .- b) / (eps(T) * maximum(abs, a) * k))
+                worst = max(worst, maximum(abs, a .- b) / (eps(T) * maximum(abs, a) * k * sqrt(prod(prob.species[1].ppc))))
                 bitwise &= a == b
             end
         end
         hr, hf = histories(sr), histories(sf)
-        worst = max(worst, maximum(abs, hr.K .- hf.K) / (eps(T) * maximum(abs, hr.K) * prob.nsteps))
+        worst = max(worst, maximum(abs, hr.K .- hf.K) / (eps(T) * maximum(abs, hr.K) * prob.nsteps * sqrt(prod(prob.species[1].ppc))))
         @info "T-362 Reference against Fast" T worst bitwise
         record!("T-362", T, worst)
         @test worst <= C
@@ -223,8 +257,13 @@ end
 # The case files of WP-019 scaled down to test size (a quarter of the cells per axis, Δt four
 # times the case's, so the Courant fraction 0.95 stays), fitted with the case's own rules on the
 # module's diagnostics at every step. Landau also uses 16 × 16 electrons per cell and a 5 %
-# perturbation, so that enough maxima clear the noise floor; the full-size runs against Smilei
-# are in reports/wp-023-em-step-2d/.
+# perturbation, so that enough maxima clear the noise floor. At this size the thermal noise of
+# one seed spreads the fitted Landau rate by 27 % of theory (20 seeds, `scripts/em2d/landau_seeds.jl`,
+# whose seed mean agrees with theory), so T-364 bounds the rate by three seed standard deviations:
+# it checks that the wave damps at the right order, and the frequency (which every seed gives
+# within 5 %) and the longitudinal polarization more closely. The rate itself is established by
+# the full-size runs against theory, Smilei and PIConGPU in reports/wp-023-em-step-2d/. The cold
+# Weibel case has no seed noise.
 const PHYSICS_2D = Dict{String,Any}()
 
 function run_case_2d(name; be = CPU(), ppc, cells, amplitude = nothing, t_end = nothing)
@@ -257,6 +296,7 @@ function body_T364(be)
     d = get!(MEASURED, "T-364 relative to theory", Dict{String,Float64}())
     d["γ $(backend_label(be))"], d["ω $(backend_label(be))"], d["transverse $(backend_label(be))"] = rel, relω, transverse
     @test length(f.t_fit) >= 3
+    @test f.gamma > 0
     @test abs(rel) <= emC("T-364", "rate")
     @test abs(relω) <= emC("T-364", "frequency")
     @test transverse <= emC("T-364", "transverse")
@@ -372,6 +412,17 @@ end
     @test w isa EMProblem{2,Float32} && w.cells == (16, 12)
     @test [s.drift for s in w.species] == [(0f0, 0f0, 0.3f0), (0f0, 0f0, -0.3f0)]
     @test [s.amplitude for s in w.species] == [0.1f0, -0.1f0] && all(s -> s.ppc == (2, 3) && s.thermal == (0f0, 0f0, 0f0), w.species)
+    # an asymmetric schema-2 case: every per-axis entry keeps its axis (both committed cases are
+    # symmetric per axis, so they cannot show a swap)
+    asym = deepcopy(weibel)
+    asym["grid"]["length"], asym["grid"]["cells"], asym["wavevector"]["mode"] = [3.0, 2.0], [12, 10], [2, -1]
+    asym["species"][1]["particles_per_cell"], asym["species"][1]["drift"] = [3, 2], [0.1, -0.2, 0.3]
+    asym["species"][1]["perturbation"] = Dict("amplitude" => 0.01, "mode" => [2, -1])
+    pa = problem_from_case(asym, Float64)
+    @test pa.length == (3.0, 2.0) && pa.cells == (12, 10) && pa.kmode == (2, -1)
+    a1 = first(pa.species)
+    @test a1.ppc == (3, 2) && a1.drift == (0.1, -0.2, 0.3) && a1.mode == (2, -1) && a1.amplitude == 0.01
+    @test problem_from_case(asym, Float64; ppc = (5, 4), cells = (9, 7)).species[2].ppc == (5, 4)
     @test numerics_from_case(lo).current isa Esirkepov
     # the current: Esirkepov() at N = 1 and 2 (the default), NoCurrent() at N = 2 only
     @test EMNumerics().current isa Esirkepov
