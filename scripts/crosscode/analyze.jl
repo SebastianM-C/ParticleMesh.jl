@@ -274,7 +274,8 @@ end
 
 A seeded run of either code: `analyze` of every seed-<seed>/ subdirectory (its own plots,
 observables and manifest), then the ensemble observable of the complex mode coefficients over
-the seeds, written to the top directory with its plots, and the manifest of the run updated.
+the seeds, written to the top directory with its plots and the seeds' coefficients
+(`seed-coefficients.json`), and the manifest of the run updated.
 Schema 1: the coefficient of Ex at the perturbation's mode, the per-run fits on Uelm_Ex.
 Schema 2: the coefficient the ensemble observable's `signal` names (`mode_projection` of its
 `fields`), the per-run fits on the scalar sum of the case's `damping_rate_energy` columns.
@@ -328,6 +329,10 @@ function analyze_seeded(dir; log = nothing)
         "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps, "hardware" => first(hw))
     code == "picongpu" && (extra["compile_seconds"] = compile_seconds(dir))
     r = write_ensemble(dir, case, t, coeffs, seeds; code, per_run, extra)
+    # the complex mode coefficient of every seed, so that sub-ensembles and later comparisons
+    # need no dumps (which are not committed): seed-coefficients.json
+    open(io -> JSON.print(io, Dict("observable" => ekey, "t" => t, "seeds" => seeds,
+        "re" => [real.(c) for c in coeffs], "im" => [imag.(c) for c in coeffs])), joinpath(dir, "seed-coefficients.json"), "w")
     m = read_manifest(dir)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outputs, "image" => image, "hardware" => first(hw),

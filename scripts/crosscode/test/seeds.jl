@@ -90,3 +90,44 @@ end
         @test count(l -> startswith(l, "# compile start:"), lines) == 2   # appended, not overwritten
     end
 end
+
+include(joinpath(CC, "subensembles.jl"))
+using JSON
+using Random: Xoshiro
+
+@testset "T-392 sub-ensembles are the ensemble rule on disjoint groups of seeds [A7, WP-025]" begin
+    # Synthetic seed coefficients: a damped standing wave plus independent noise per seed, on
+    # the oblique case's dump grid; run b damps faster than run a.
+    c = load_case("landau-oblique-2d")
+    dt = c["time"]["dt"] * c["diagnostics"]["fields_every"]
+    t = collect(0:dt:c["time"]["t_end"])
+    rng = Xoshiro(392)
+    wave(γ) = 3e-4 .* exp.(-γ .* t) .* cos.(1.4 .* t)
+    noisy(γ) = [wave(γ) .+ 2e-6 .* complex.(randn(rng, length(t)), randn(rng, length(t))) for _ in 1:8]
+    ca, cb = noisy(0.15), noisy(0.17)
+    o = c["observables"]["damping_rate_mode_ensemble"]
+    mktempdir() do root
+        dirs = map(("a", "b"), (ca, cb)) do n, cs
+            d = mkpath(joinpath(root, n))
+            cp(c["_path"], joinpath(d, "case.toml"))
+            open(io -> JSON.print(io, Dict("t" => t, "seeds" => collect(1:8), "re" => [real.(x) for x in cs],
+                "im" => [imag.(x) for x in cs])), joinpath(d, "seed-coefficients.json"), "w")
+            d
+        end
+        tt, ss, cc = seed_coefficients(dirs[1])
+        @test tt == t && ss == 1:8 && cc == ca                       # the coefficients round-trip exactly
+        r = subensembles(dirs..., joinpath(root, "out"))
+        rule(cs) = ensemble_damping(t, cs; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
+        @test r["g4"]["groups"] == 2 && r["g8"]["groups"] == 1
+        @test r["g4"]["a"]["fits"][2]["gamma"] == rule(ca[5:8]).gamma   # group 2 holds seeds 5 to 8
+        @test r["g4"]["a"]["fits"][1]["indices"] == 1:4
+        @test r["g8"]["b"]["fits"][1]["gamma"] == rule(cb).gamma
+        @test r["g8"]["difference_b_minus_a"][1] == rule(cb).gamma - rule(ca).gamma
+        @test r["g4"]["a"]["sd_gamma"] ≈ abs(rule(ca[1:4]).gamma - rule(ca[5:8]).gamma) / sqrt(2)
+        for (cs, γ) in ((ca, 0.15), (cb, 0.17))         # the rule sees each rate within 3 jackknife errors
+            e = rule(cs)
+            @test abs(e.gamma - γ) < 3 * e.jackknife.stderr
+        end
+        @test isfile(joinpath(root, "out", "subensembles.png")) && isfile(joinpath(root, "out", "subensembles.json"))
+    end
+end

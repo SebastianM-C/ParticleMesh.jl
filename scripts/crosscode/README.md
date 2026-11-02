@@ -9,13 +9,14 @@ julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-l
 julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare landau [tag] [--precision Float32] [--budget <s>]   # writes scripts/runs/picongpu-landau-fp64-<hash>/
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/picongpu-landau-fp64-<hash> [runner log]
 julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes or two precisions on one case
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390, T-391
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-392
 julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>   # seeds per code for a two-code comparison
+julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>   # the ensemble rule on disjoint groups of seeds, both runs
 julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
 julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run> <smilei run>
 ```
 
-A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory. The `run.sh` of a seeded run skips the seeds that finished in an earlier job (Smilei: the seed's `container.txt` has its `# end:` line; PIConGPU: the top `container.txt`, appended to by every job, has the seed's end line), so a long ensemble runs as several jobs on one directory. With `--budget <s>` it starts no new seed once the job has run that long and prints the seeds that remain (T-391); a job then lasts the budget plus one seed.
+A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory, with every seed's complex mode coefficient in `seed-coefficients.json` (the dumps are not committed). The `run.sh` of a seeded run skips the seeds that finished in an earlier job (Smilei: the seed's `container.txt` has its `# end:` line; PIConGPU: the top `container.txt`, appended to by every job, has the seed's end line), so a long ensemble runs as several jobs on one directory. With `--budget <s>` it starts no new seed once the job has run that long and prints the seeds that remain (T-391); a job then lasts the budget plus one seed.
 
 Inside the factory the run goes through the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`; `command: picongpu scripts/runs/<tag>`, which always gets the GPU), which executes the same `run.sh` in the same container with the same mounts. A PIConGPU `run.sh` compiles the setup once (`pic-create` of the `Empty` example, the generated `params/*.param` copied over its defaults, `pic-build`), then runs each seed with `PIC_SEED`; `container.txt` times the compile and every run separately.
 
@@ -36,6 +37,7 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | `ensemble.jl` | The ensemble fit with the jackknife over seeds, per-seed fits at the ensemble's maxima, `aggregate_seeds`, the seeds' scatter (T-180, T-183, T-187) |
 | `ensemble_report.jl` | The ensemble observable of either code, its plots, sidecars and `observables.json`; the two-code overlay |
 | `ensemble_bias.jl` | Post hoc: the bias of the ensemble rule on synthetic ensembles at a run's measured noise |
+| `subensembles.jl` | Post hoc: the ensemble rule on disjoint consecutive groups of 4, 8, 16 and all seeds of two runs, from their `seed-coefficients.json`: the measured spread of a g-seed ensemble against its jackknife estimate, and the group-by-group two-run difference (T-392) |
 | `seed_count.jl` | Design: the spread of the ensemble γ and of a two-code difference against the seed count, from synthetic ensembles at two runs' measured noise and from their jackknife errors scaled as 1/√M |
 | `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases |
 | `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the runner's log (T-184) |
