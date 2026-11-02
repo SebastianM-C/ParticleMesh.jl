@@ -1,0 +1,214 @@
+{
+  "case": "landau-oblique-2d",
+  "note": "measurements, not thresholds (A7)",
+  "particlemesh_run": "em2d-pm-landau-oblique-2d-20261102T163231",
+  "picongpu_ensemble": {
+    "case": "landau-oblique-2d",
+    "difference": 0.005632366373650333,
+    "difference_in_units_of_combined_stderr": 0.4996428080067249,
+    "difference_in_units_of_reference_seed_spread": 0.8499763363430658,
+    "difference_relative": 0.04010200280253941,
+    "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+    "particlemesh": {
+      "M": 4,
+      "ensemble_floor": 4.494444585464974e-10,
+      "fit_range": [
+        4.758163793854501,
+        13.658851938103561
+      ],
+      "maxima_used": 5,
+      "measured": 0.1460833658258191,
+      "measured_stderr": 0.00597364119777999
+    },
+    "picongpu": {
+      "M": 4,
+      "ensemble_floor": 3.2259596628007355e-10,
+      "fit_range": [
+        4.786960525559186,
+        18.12217256129141
+      ],
+      "maxima_used": 7,
+      "measured": 0.14045099945216877,
+      "measured_stderr": 0.009559880310298908
+    },
+    "reference_code": "picongpu",
+    "reference_run": "reports/crosscode-picongpu/picongpu-landau-oblique-2d-fp64-bc8fd6af",
+    "theory": 0.15335946690960509
+  },
+  "picongpu_per_seed": {
+    "damping_rate_mode": {
+      "difference_of_means_in_combined_errors": -0.5665707947253347,
+      "particlemesh": [
+        0.1601867678073345,
+        0.14593066061570797,
+        0.12714871385812213,
+        0.14719470150792016
+      ],
+      "particlemesh_mean_std_n": [
+        0.14511521094727117,
+        0.013600687274228772,
+        4
+      ],
+      "picongpu": [
+        0.1635103059233942,
+        0.1257478751860923,
+        0.17307384153269742,
+        0.14629209633213583
+      ],
+      "picongpu_mean_std_n": [
+        0.15215602974357992,
+        0.020802650310304583,
+        4
+      ]
+    },
+    "energy_ratio_mode": {
+      "difference_of_means_in_combined_errors": -0.9932419040506535,
+      "particlemesh": [
+        4.071709029302986,
+        4.067202624054636,
+        3.9833269229986525,
+        3.991003990269921
+      ],
+      "particlemesh_mean_std_n": [
+        4.028310641656549,
+        0.04764916063317992,
+        4
+      ],
+      "picongpu": [
+        4.189918383697656,
+        4.140890165180915,
+        4.0848905084351665,
+        3.935821834219008
+      ],
+      "picongpu_mean_std_n": [
+        4.087880222883187,
+        0.11007956546734003,
+        4
+      ]
+    }
+  },
+  "single_run_seed_20261031": {
+    "damping_rate_energy": {
+      "combined_stderr_units": null,
+      "particlemesh": null,
+      "particlemesh_stderr": null,
+      "pm_minus_smilei_relative": null,
+      "smilei": null,
+      "smilei_stderr": null,
+      "theory": 0.15335946690960509
+    },
+    "damping_rate_mode": {
+      "combined_stderr_units": -0.06665917548642403,
+      "particlemesh": 0.1601867678073345,
+      "particlemesh_stderr": 0.007933059429956462,
+      "pm_minus_smilei_relative": -0.004618101073553178,
+      "smilei": 0.1609299586220137,
+      "smilei_stderr": 0.007833858169781138,
+      "theory": 0.15335946690960509
+    },
+    "energy_ratio": {
+      "combined_stderr_units": null,
+      "particlemesh": 3.997590912410345,
+      "particlemesh_stderr": null,
+      "pm_minus_smilei_relative": 0.002835822789532258,
+      "smilei": 3.986286510278891,
+      "smilei_stderr": null,
+      "theory": 3.9975909124103444
+    },
+    "energy_ratio_mode": {
+      "combined_stderr_units": null,
+      "particlemesh": 4.071709029302986,
+      "particlemesh_stderr": null,
+      "pm_minus_smilei_relative": 0.0321179300793184,
+      "smilei": 3.945003677041125,
+      "smilei_stderr": null,
+      "theory": 3.9975909124103444
+    }
+  },
+  "smilei_ensemble": {
+    "case": "landau-oblique-2d",
+    "difference": -0.010894683546418843,
+    "difference_in_units_of_combined_stderr": -1.286577973051135,
+    "difference_in_units_of_reference_seed_spread": -0.8241674575734453,
+    "difference_relative": -0.06940259220946596,
+    "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+    "particlemesh": {
+      "M": 4,
+      "ensemble_floor": 4.494444585464974e-10,
+      "fit_range": [
+        4.758163793854501,
+        13.658851938103561
+      ],
+      "maxima_used": 5,
+      "measured": 0.1460833658258191,
+      "measured_stderr": 0.00597364119777999
+    },
+    "reference_code": "smilei",
+    "reference_run": "reports/crosscode-picongpu/smilei-landau-oblique-2d-bc8fd6af",
+    "smilei": {
+      "M": 4,
+      "ensemble_floor": 4.321344713211855e-10,
+      "fit_range": [
+        4.75417527330519,
+        13.697519264857252
+      ],
+      "maxima_used": 5,
+      "measured": 0.15697804937223794,
+      "measured_stderr": 0.006001821536177725
+    },
+    "theory": 0.15335946690960509
+  },
+  "smilei_per_seed": {
+    "damping_rate_mode": {
+      "difference_of_means_in_combined_errors": -0.0923945952423589,
+      "particlemesh": [
+        0.1601867678073345,
+        0.14593066061570797,
+        0.12714871385812213,
+        0.14719470150792016
+      ],
+      "particlemesh_mean_std_n": [
+        0.14511521094727117,
+        0.013600687274228772,
+        4
+      ],
+      "smilei": [
+        0.1609299586220137,
+        0.17560999733497898,
+        0.13276673006592574,
+        0.11668555748743621
+      ],
+      "smilei_mean_std_n": [
+        0.14649806087758868,
+        0.026665329056359852,
+        4
+      ]
+    },
+    "energy_ratio_mode": {
+      "difference_of_means_in_combined_errors": 2.2645133573245273,
+      "particlemesh": [
+        4.071709029302986,
+        4.067202624054636,
+        3.9833269229986525,
+        3.991003990269921
+      ],
+      "particlemesh_mean_std_n": [
+        4.028310641656549,
+        0.04764916063317992,
+        4
+      ],
+      "smilei": [
+        3.945003677041125,
+        3.9455061171281436,
+        4.014714855583818,
+        3.8845229122005023
+      ],
+      "smilei_mean_std_n": [
+        3.9474368904883974,
+        0.053210718421633135,
+        4
+      ]
+    }
+  },
+  "smilei_single_run": "reports/crosscode-smilei-2d/smilei-landau-oblique-2d-c8709f77"
+}

@@ -1,0 +1,23 @@
+{
+  "growth_rate_mode": {
+    "final": 0.015809853315040312,
+    "fit_points": 30,
+    "fit_range": [
+      12.387189743914515,
+      20.940249328998345
+    ],
+    "initial": 0.0,
+    "max": 0.02505814026137524,
+    "measured": 0.26083858373910374,
+    "measured_stderr": 0.0019099379899497428,
+    "method": "exponential_window",
+    "relative_difference": -0.010946551699041188,
+    "saturation": {
+      "t": 32.147706716349575,
+      "value": 0.02505814026137524
+    },
+    "signal": "mode_projection",
+    "theory": 0.26372546821123183
+  },
+  "plot": "mode-amplitude versus time, log scale"
+}

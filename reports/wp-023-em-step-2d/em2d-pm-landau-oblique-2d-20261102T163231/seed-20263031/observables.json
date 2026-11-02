@@ -1,0 +1,75 @@
+{
+  "case": "landau-oblique-2d",
+  "checks": {
+    "divB_relative_final": 8.625030824151271e-13,
+    "energy_max_abs_relative_change": 1.7697678921231899e-7,
+    "gauss_relative_final": 2.558647443144656e-13,
+    "gauss_relative_initial": 3.6770760575553677e-13,
+    "kinetic_energy_initial": 0.007470334590894532
+  },
+  "code": "particlemesh",
+  "observables": {
+    "damping_rate_energy": {
+      "fit_points": 0,
+      "fit_range": null,
+      "measured": null,
+      "measured_frequency": null,
+      "measured_stderr": null,
+      "method": "peak_envelope",
+      "noise_floor": 3.9375797016568586e-8,
+      "relative_difference": null,
+      "signal": "scalar_sum",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "damping_rate_mode": {
+      "fit_points": 6,
+      "fit_range": [
+        4.8332877499226585,
+        16.02441011711769
+      ],
+      "measured": 0.12714871385812213,
+      "measured_frequency": 1.4036092853380218,
+      "measured_stderr": 0.010379753237952634,
+      "method": "peak_envelope",
+      "noise_floor": 4.372934027610995e-10,
+      "relative_difference": -0.17091056443833627,
+      "signal": "mode_projection",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "energy_ratio": {
+      "measured": 3.997590912410345,
+      "method": "first_output",
+      "relative_difference": 1.1108920837082335e-16,
+      "signal": "scalar_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    },
+    "energy_ratio_mode": {
+      "measured": 3.9833269229986525,
+      "method": "median_over_fit",
+      "points": 6,
+      "relative_difference": -0.003568146347193731,
+      "signal": "mode_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    }
+  },
+  "performance": {
+    "cells": [
+      128,
+      128
+    ],
+    "ns_per_particle_step": 23.704048848317388,
+    "particles": 16777216,
+    "ppc": [
+      32,
+      32
+    ],
+    "steps": 3391,
+    "threads": 32,
+    "wall_seconds": 1348.559830321
+  },
+  "seed": 20263031
+}

@@ -1,0 +1,66 @@
+{
+  "case": "weibel-2d",
+  "checks": {
+    "divB_relative_final": 6.276378553249633e-13,
+    "energy_max_abs_relative_change": 0.00019981426530097477,
+    "gauss_absolute_final": 2.946254351599009e-14,
+    "gauss_absolute_initial": 9.809791315210155e-16,
+    "gauss_relative_final": 2.1851909661068136e-14,
+    "gauss_relative_initial": 9.809791315210151e-16,
+    "kinetic_energy_initial": 2.3827611850826975,
+    "rho_deviation_initial": 5.551115123125783e-16
+  },
+  "code": "particlemesh",
+  "observables": {
+    "growth_rate_energy": {
+      "fit_points": 121,
+      "fit_range": [
+        12.313456471629308,
+        21.16144914585396
+      ],
+      "measured": 0.2610730411118432,
+      "measured_stderr": 0.000912654804429043,
+      "method": "exponential_window",
+      "relative_difference": -0.01005753110376185,
+      "saturation": {
+        "t": 32.00024017177916,
+        "value": 0.3165487065410934
+      },
+      "signal": "scalar_sum",
+      "theory": 0.26372546821123183
+    },
+    "growth_rate_mode": {
+      "fit_points": 30,
+      "fit_range": [
+        12.387189743914515,
+        20.940249328998345
+      ],
+      "measured": 0.26083858373910374,
+      "measured_stderr": 0.0019099379899497428,
+      "method": "exponential_window",
+      "relative_difference": -0.010946551699041188,
+      "saturation": {
+        "t": 32.147706716349575,
+        "value": 0.02505814026137524
+      },
+      "signal": "mode_projection",
+      "theory": 0.26372546821123183
+    }
+  },
+  "performance": {
+    "cells": [
+      256,
+      256
+    ],
+    "ns_per_particle_step": 32.52254524934127,
+    "particles": 8388608,
+    "ppc": [
+      8,
+      8
+    ],
+    "steps": 2170,
+    "threads": 24,
+    "wall_seconds": 592.016976672
+  },
+  "seed": 20261031
+}

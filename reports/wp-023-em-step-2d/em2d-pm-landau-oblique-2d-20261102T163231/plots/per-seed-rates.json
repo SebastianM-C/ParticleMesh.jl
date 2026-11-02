@@ -1,0 +1,25 @@
+{
+  "ensemble": 0.1460833658258191,
+  "ensemble_stderr": 0.00597364119777999,
+  "per_seed_at_ensemble_peaks": {
+    "M": 4,
+    "gammas": [
+      0.15696137356844073,
+      0.14592324686504604,
+      0.12408897593140254,
+      0.14719470150792016
+    ],
+    "mean": 0.14354207446820236,
+    "refused": false,
+    "std": 0.013874584646021771,
+    "stderr": 0.006937292323010886
+  },
+  "plot": "γ of each seed at the ensemble's maxima, with mean, spread, ensemble γ and theory",
+  "seeds": [
+    20261031,
+    20262031,
+    20263031,
+    20264031
+  ],
+  "theory": 0.15335946690960509
+}

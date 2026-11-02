@@ -1,0 +1,18 @@
+{
+  "particlemesh": {
+    "measured": 0.1460833658258191,
+    "measured_stderr": 0.00597364119777999
+  },
+  "picongpu": {
+    "measured": 0.14045099945216877,
+    "measured_stderr": 0.009559880310298908,
+    "run": "reports/crosscode-picongpu/picongpu-landau-oblique-2d-fp64-bc8fd6af"
+  },
+  "plot": "ensemble |⟨k̂·Ê⟩|² of each code versus time, log scale",
+  "smilei": {
+    "measured": 0.15697804937223794,
+    "measured_stderr": 0.006001821536177725,
+    "run": "reports/crosscode-picongpu/smilei-landau-oblique-2d-bc8fd6af"
+  },
+  "theory": 0.15335946690960509
+}
