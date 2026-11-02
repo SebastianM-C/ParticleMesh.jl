@@ -77,23 +77,30 @@ end
 end
 
 """
-    EMState
+    EMState{N}
 
-Everything a step reads and writes, allocated once: the numerics, the grid, the species and
-their workspaces (tuples), the fields of [`FIELD_LAYOUT`](@ref) (with guards), the scratch
-fields `ρ` (the charge for the initial field) and `K` (the kinetic energy density), and the
-diagnostic histories, one entry per step (see [`histories`](@ref)).
+Everything a step reads and writes, allocated once: the numerics, the grid (`PeriodicGrid{N}`),
+the species and their workspaces (tuples), the fields of [`field_layout`](@ref)`(Val(N))` (with
+guards), the scratch field `ρ` (the charge for the initial field), the kinetic energy buffer `K`,
+the diagnostic histories, one entry per step (see [`histories`](@ref)), and `aux`, what only
+one dimension needs (empty at N = 1; at N = 2 the spectral workspace and potential of the
+initial solve, the diagnostics' phase tables and partial sums, see [`EMState`](@ref)'s 2D
+constructor). At N = 1 `K` is the kinetic energy density, a field; at N = 2 it holds the kinetic
+energy of fixed chunks of particle slots, in order (its size is fixed by the capacities).
 """
-struct EMState{NU<:EMNumerics,G,SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,H<:NamedTuple}
+struct EMState{N,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,KB,H<:NamedTuple,X<:NamedTuple}
     numerics::NU
     grid::G
     species::SP
     ws::WS
     fields::F
     ρ::A
-    K::A
+    K::KB
     hist::H
+    aux::X
 end
+
+Base.ndims(::EMState{N}) where {N} = N
 
 const HISTORY_KEYS = (:WEx, :WEy, :WEz, :WBx, :WBy, :WBz, :K, :Ex_re, :Ex_im, :Ey_re, :Ey_im, :Bz_re, :Bz_im)
 
@@ -108,7 +115,9 @@ loaded by [`initialize!`](@ref). Throws an `ArgumentError` naming the limit unle
 `problem.dt < courant_limit(numerics.solver, grid)` ([`check_courant`](@ref)): the solver is then
 stable and every particle moves less than one cell per step, as `deposit_flux!` needs.
 """
-function EMState(problem::EMProblem{T}, numerics::EMNumerics; backend = CPU()) where {T}
+function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU()) where {T}
+    numerics.current === nothing ||
+        throw(ArgumentError("the 1D step deposits the charge-conserving current itself: EMNumerics needs current = nothing at N = 1, got $(numerics.current)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)
@@ -118,7 +127,7 @@ function EMState(problem::EMProblem{T}, numerics::EMNumerics; backend = CPU()) w
     ws = map(s -> Workspace(s, grid), species)
     hist = NamedTuple{HISTORY_KEYS}(ntuple(_ -> KernelAbstractions.zeros(backend, T, problem.nsteps), length(HISTORY_KEYS)))
     return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
-                   field(backend, T, grid), hist)
+                   field(backend, T, grid), hist, NamedTuple())
 end
 
 # The mode the depositions of `s` run in: the step sorts when it is `Reference()` and passes it,
@@ -127,7 +136,7 @@ deposit_mode(st::EMState, s) = effective_mode(st.numerics.mode, eltype(s))
 sorts(st::EMState, s) = deposit_mode(st, s) isa Reference
 
 "Deposit the kinetic energy density at the current momenta into `st.K` (positions sorted if the mode needs it)."
-function kinetic!(st::EMState)
+function kinetic!(st::EMState{1})
     (; numerics, grid) = st
     fill!(st.K, zero(eltype(st.K)))
     for (s, ws) in zip(st.species, st.ws)
@@ -137,19 +146,29 @@ function kinetic!(st::EMState)
     return st
 end
 
+# The uniform background fields of the problem, added to every entry (guards included, so they
+# stay filled) of each component whose background is nonzero; a zero background leaves the
+# component's bits as they are (−0.0 + 0.0 would be +0.0). The test is on host values.
+function add_background!(f, E0, B0)
+    for (a, v) in ((f.Ex, E0[1]), (f.Ey, E0[2]), (f.Ez, E0[3]), (f.Bx, B0[1]), (f.By, B0[2]), (f.Bz, B0[3]))
+        iszero(v) || (a .+= v)
+    end
+    return f
+end
+
 """
     initialize!(state, problem) -> state
 
 The state at t = 0 from the problem description: each species loaded by the engine's quiet
 start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
 through the weights, A3; velocities `drift + thermal·z` from Philox draws keyed by the problem's
-seed and the species' stream), the velocities converted to momenta `u = γv`; the transverse
-fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
+seed and the species' stream), the velocities converted to momenta `u = γv`; the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
 ρ, so that (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ) to roundoff, the mean being the immobile
-neutralizing background; then the momenta half a step back, `uⁿ⁻¹ᐟ²` from `u⁰` by the pusher
+neutralizing background; the background fields `E0` and `B0` of the problem added where they
+are nonzero (so a problem without them keeps the bits of the fields); then the momenta half a step back, `uⁿ⁻¹ᐟ²` from `u⁰` by the pusher
 with −Δt/2 in E⁰, B⁰ (half-step centring, A2), and the kinetic energy density at t = −Δt/2.
 """
-function initialize!(st::EMState, problem::EMProblem)
+function initialize!(st::EMState{1}, problem::EMProblem{1})
     (; numerics, grid) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
@@ -170,6 +189,7 @@ function initialize!(st::EMState, problem::EMProblem)
     end
     fold_guards!(st.ρ, grid; workgroupsize = wgs)
     cumsum_periodic!(st.fields.Ex, st.ρ, grid; workgroupsize = wgs)
+    add_background!(st.fields, problem.E0, problem.B0)
     g = Int32(guards(grid))
     for s in st.species
         launcher(kick_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
@@ -200,7 +220,7 @@ continuity (T-212). A function of the
 state and the parameters only, every buffer in the state, no host-side branch on device data
 (§0.4).
 """
-function step!(st::EMState, p::EMParams, k::Integer)
+function step!(st::EMState{1}, p::EMParams, k::Integer)
     (; numerics, grid, fields) = st
     # k is a host integer (not device data): the diagnostics kernel writes entry k of the
     # histories under @inbounds, so a k past their length must not reach it.

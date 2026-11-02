@@ -68,7 +68,7 @@ end
 """
     state_on(state, u) -> EMState
 
-An `EMState` that shares the cache of `state` (numerics, grid, workspaces, extras, `ρ`, the
+An `EMState` that shares the cache of `state` (numerics, grid, workspaces, extras, `ρ`, `aux`, the
 histories) and whose particle and field arrays and `K` are the arrays of the partition `u`.
 Zero-copy; the array types of `u` must be those of the state.
 """
@@ -77,7 +77,7 @@ function state_on(st::EMState, u::ArrayPartition)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     K = only(drop(a, nf))
-    return EMState(st.numerics, st.grid, species, st.ws, fields, st.ρ, K, st.hist)
+    return EMState(st.numerics, st.grid, species, st.ws, fields, st.ρ, K, st.hist, st.aux)
 end
 
 function check_layout(st::EMState, u::ArrayPartition)

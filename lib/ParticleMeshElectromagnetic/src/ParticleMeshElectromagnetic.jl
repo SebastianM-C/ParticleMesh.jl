@@ -2,7 +2,8 @@
     ParticleMeshElectromagnetic
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
-`N = 1` periodic, with the field layout and the field solver also at `N = 2`. It owns the physics
+`N = 1` periodic; at `N = 2` the field layout, the field solver, the problem, state, push and
+diagnostics, with the current a choice of the numerics (`NoCurrent()` so far). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
 their Courant limit, the relativistic Boris pusher behind a pusher type, the step composition
@@ -38,7 +39,7 @@ export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
-export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, problem_from_case, numerics_from_case
+export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, NoCurrent, problem_from_case, numerics_from_case
 export EMState, initialize!, step!, run!, params
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
@@ -50,6 +51,7 @@ include("pushers.jl")
 include("test_particles.jl")
 include("problem.jl")
 include("step.jl")
+include("step2d.jl")
 include("diagnostics.jl")
 include("harness.jl")
 

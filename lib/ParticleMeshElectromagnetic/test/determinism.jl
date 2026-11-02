@@ -8,10 +8,8 @@
     for wgs in (32, 256)
         @test determinism_digests(; workgroupsize = wgs) == first
     end
-    worker = joinpath(@__DIR__, "determinism_worker.jl")
-    project = dirname(Base.active_project())
     for nt in (1, 4)
-        out = read(`$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$project $worker`, String)
+        out = worker_output(nt)
         lines = filter(startswith("DIGEST"), split(out, '\n'))
         got = Dict((String(f[3]), String(f[4])) => parse(UInt64, f[5]) for f in split.(lines))
         @test all(f -> parse(Int, f[2]) == nt, split.(lines))

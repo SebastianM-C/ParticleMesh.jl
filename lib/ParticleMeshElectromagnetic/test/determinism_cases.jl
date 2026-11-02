@@ -13,3 +13,10 @@ function determinism_digests(; workgroupsize = nothing, be = CPU())
     end
     return out
 end
+
+"The output of determinism_worker.jl at `nt` threads, run once per suite (T-218 and T-355 read it)."
+const DETERMINISM_WORKER_OUTPUT = Dict{Int,String}()
+worker_output(nt) = get!(DETERMINISM_WORKER_OUTPUT, nt) do
+    worker = joinpath(@__DIR__, "determinism_worker.jl")
+    read(`$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$(dirname(Base.active_project())) $worker`, String)
+end

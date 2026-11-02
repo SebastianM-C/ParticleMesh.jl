@@ -44,13 +44,122 @@ end
     end
 end
 
+# --- N = 2: parallel reductions in a fixed association order -------------------------------
+
+"History keys of a 2D state: the 1D keys and the Fourier amplitude of the longitudinal projection k̂·E."
+const HISTORY_KEYS_2D = (HISTORY_KEYS..., :El_re, :El_im)
+"Rows of the 2D diagnostics' partial sums: six energies and the real and imaginary sums of Ex, Ey, Bz."
+const DIAG_ROWS = 12
+
+# e^{−i(θ₁ + θ₂)} from the per-axis tables: (cos θ₁ cos θ₂ − sin θ₁ sin θ₂, sin θ₁ cos θ₂ + cos θ₁ sin θ₂).
+@inline phase(c1, s1, c2, s2) = (c1 * c2 - s1 * s2, s1 * c2 + c1 * s2)
+
+# Stage 1: one work item per index j₁ along axis 1 sums its line along axis 2 serially, from
+# zero, in increasing j₂: the squares of the six components and the Fourier sums of Ex, Ey and
+# Bz, each with the phases of its own stagger (Ex at (Center, Node), Ey at (Node, Center), Bz at
+# (Center, Center)). Adjacent work items read adjacent memory.
+@kernel function diagnostics_rows_2d_kernel!(P, f, @Const(t1), @Const(t2), n2::Int32, g::Int32)
+    j1 = Int32(@index(Global, Linear))
+    T = eltype(P)
+    i1 = g + j1
+    @inbounds begin
+        c1N, s1N, c1C, s1C = t1[j1, 1], t1[j1, 2], t1[j1, 3], t1[j1, 4]
+        wEx = wEy = wEz = wBx = wBy = wBz = zero(T)
+        exr = exi = eyr = eyi = bzr = bzi = zero(T)
+        for j2 in Int32(1):n2
+            i2 = g + j2
+            c2N, s2N, c2C, s2C = t2[j2, 1], t2[j2, 2], t2[j2, 3], t2[j2, 4]
+            ex, ey, ez = f.Ex[i1, i2], f.Ey[i1, i2], f.Ez[i1, i2]
+            bx, by, bz = f.Bx[i1, i2], f.By[i1, i2], f.Bz[i1, i2]
+            wEx += ex * ex
+            wEy += ey * ey
+            wEz += ez * ez
+            wBx += bx * bx
+            wBy += by * by
+            wBz += bz * bz
+            cs, sn = phase(c1C, s1C, c2N, s2N)
+            exr += ex * cs
+            exi -= ex * sn
+            cs, sn = phase(c1N, s1N, c2C, s2C)
+            eyr += ey * cs
+            eyi -= ey * sn
+            cs, sn = phase(c1C, s1C, c2C, s2C)
+            bzr += bz * cs
+            bzi -= bz * sn
+        end
+        P[1, j1], P[2, j1], P[3, j1], P[4, j1], P[5, j1], P[6, j1] = wEx, wEy, wEz, wBx, wBy, wBz
+        P[7, j1], P[8, j1], P[9, j1], P[10, j1], P[11, j1], P[12, j1] = exr, exi, eyr, eyi, bzr, bzi
+    end
+end
+
+@inline function row_sum(P, q::Int, n1::Int32, ::Type{T}) where {T}
+    acc = zero(T)
+    @inbounds for j in Int32(1):n1
+        acc += P[q, j]
+    end
+    return acc
+end
+
+# Stage 2: one work item adds the rows' partial sums in increasing j₁ and the kinetic-energy
+# chunks in order, and writes entry k of the histories.
+@kernel function diagnostics_total_2d_kernel!(h, @Const(P), @Const(K), n1::Int32, nK::Int32, dA, amp, khat, k::Int32)
+    T = eltype(K)
+    @inbounds begin
+        h.WEx[k] = row_sum(P, 1, n1, T) * dA / 2
+        h.WEy[k] = row_sum(P, 2, n1, T) * dA / 2
+        h.WEz[k] = row_sum(P, 3, n1, T) * dA / 2
+        h.WBx[k] = row_sum(P, 4, n1, T) * dA / 2
+        h.WBy[k] = row_sum(P, 5, n1, T) * dA / 2
+        h.WBz[k] = row_sum(P, 6, n1, T) * dA / 2
+        kin = zero(T)
+        for j in Int32(1):nK
+            kin += K[j]
+        end
+        h.K[k] = kin * dA
+        exr, exi = row_sum(P, 7, n1, T) * amp, row_sum(P, 8, n1, T) * amp
+        eyr, eyi = row_sum(P, 9, n1, T) * amp, row_sum(P, 10, n1, T) * amp
+        h.Ex_re[k], h.Ex_im[k] = exr, exi
+        h.Ey_re[k], h.Ey_im[k] = eyr, eyi
+        h.Bz_re[k], h.Bz_im[k] = row_sum(P, 11, n1, T) * amp, row_sum(P, 12, n1, T) * amp
+        h.El_re[k] = khat[1] * exr + khat[2] * eyr
+        h.El_im[k] = khat[1] * exi + khat[2] * eyi
+    end
+end
+
+"""
+    record_diagnostics!(state::EMState{2}, k)
+
+Entry `k` of the 2D histories from the current fields and the kinetic-energy chunks: the field
+energies ½Σ(component)²·ΔxΔy (per unit length along z), the kinetic energy Σ m·w·(γ − 1)·ΔxΔy,
+and at the state's diagnostic mode the Fourier amplitude 2/(n₁n₂)·Σ a·e^{−ik·x} of Ex, Ey and Bz,
+each over the positions of its own stagger, and of the longitudinal projection, k̂ₓÊₓ + k̂_yÊ_y.
+Two launches with a fixed association order (stage 1: O(n₁) work items of O(n₂) serial work;
+stage 2: one work item of O(n₁ + chunks)), so the bits do not depend on the thread count or the
+launch shape; the phases come from the per-axis tables of the state (no trigonometric
+evaluation per step).
+"""
+function record_diagnostics!(st::EMState{2}, k::Integer)
+    (; grid, aux) = st
+    T = eltype(st.ρ)
+    n = ncells(grid)
+    dx = cellsize(grid)
+    be = get_backend(st.ρ)
+    launcher(diagnostics_rows_2d_kernel!, be, st.numerics.workgroupsize)(aux.partials, st.fields, aux.tables[1], aux.tables[2],
+                                                                        Int32(n[2]), Int32(guards(grid)); ndrange = n[1])
+    diagnostics_total_2d_kernel!(be)(st.hist, aux.partials, st.K, Int32(n[1]), Int32(length(st.K)), dx[1] * dx[2],
+                                     2 / T(n[1] * n[2]), aux.khat, Int32(k); ndrange = 1)
+    return st
+end
+
 """
     histories(state) -> NamedTuple
 
 Host copies of the per-step diagnostics, entry `k` recorded at the start of step `k`, at
 t = (k − 1)Δt: the field energies `WEx … WBz` = ½Σ(component)²Δx of Eⁿ and Bⁿ (in mₑc²·n_c·c/ω₀,
 A1), the kinetic energy `K` = Σ m·w·(γ − 1)·Δx at t − Δt/2, and the real and imaginary parts of the
-Fourier amplitude at `kmode` of Ex, Ey and Bz (each at its own stagger).
+Fourier amplitude at `kmode` of Ex, Ey and Bz (each at its own stagger). A 2D state also records
+`El_re`, `El_im`, the amplitude of the longitudinal projection k̂·E, and sums its energies over
+ΔxΔy ([`record_diagnostics!`](@ref)).
 """
 histories(st::EMState) = map(Array, st.hist)
 

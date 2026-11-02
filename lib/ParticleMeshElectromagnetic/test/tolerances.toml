@@ -283,3 +283,55 @@ proposed_threshold = "|γ_PM/γ_ref − 1| ≤ 1e-5, fitted over the reference r
 particlemesh_now = "−1.0e-4 relative over a common window with A2's start-up half-step kick; 0 to six digits without it"
 source = "reports/crosscode-picongpu/README.md; questions/wp-017-a7-thresholds.md (P1)"
 status = "proposed: about five times the measured Smilei–PIConGPU spread; conditional on #226; for the owner to accept by editing A7"
+
+# WP-024 (the module at N = 2 in prescribed fields), measured on the CPU backend (Julia 1.13.3,
+# one thread), as the entries above.
+
+["T-350"]
+quantity = "test particles at N = 2 in uniform fields: | |u| − |u₀| | and, oblique E with B = 0, |u − (q/m)E(k − 1/2)Δt| (C); the gyrophase against the Boris closed form (C_phase); the E×B drift is held to T-211's drift_rel"
+scale = "steps·|u₀|, steps·|Δu per step| and steps·box for the displacement; steps (radians) for the phase (200 steps of Δt = 1/10 in Bz = 2)"
+C = 8
+C_phase = 2
+measured = { Float32 = 3.42, Float64 = 2.22, "Dual{Float32,3}" = 3.42 }
+measured_phase = { Float32 = 0.308, Float64 = 0.444, "Dual{Float32,3}" = 0.308 }
+measured_drift_rel = { Float32 = 5.36e-4, Float64 = 5.37e-4 }
+status = "proposed"
+
+["T-351"]
+quantity = "the 2D gather of the push: a field linear in x and y per component, on its own stagger, at random particle positions"
+scale = "|a| + |b|·L_x + |c|·L_y of the component (7 × 6 cells, 300 positions, both shapes)"
+C = 4
+measured = { Float32 = 1.59, Float64 = 1.98, "Dual{Float32,3}" = 1.59 }
+status = "proposed"
+
+["T-353"]
+quantity = "the initial field at N = 2: |D⁻ₓEx + D⁻_yEy − (ρ − mean ρ)| after initialize!"
+scale = "(n₁ + n₂)·(max|ρ| + ‖L‖·max|φ|), as T-310 (12 × 9 cells, modes (2, 1) and (1, −3))"
+C = 1
+measured = { Float32 = 0.171, Float64 = 0.143, "Dual{Float32,3}" = 0.0949 }
+status = "proposed"
+
+["T-354"]
+quantity = "the 2D diagnostics: Fourier amplitude of Ex, Ey, Bz and k̂·E against A·e^{iψ} (C), and a y-invariant state against the 1D amplitudes and energies (C); field energies against A²L₁L₂/4 (C_energy)"
+scale = "|A| for the amplitudes (1 for k̂·E), 2 for the 1D amplitudes, the energy for the energies (12 × 10 cells, mode (2, −1))"
+C = 12
+C_energy = 1
+measured = { Float32 = 4.74, Float64 = 3.56, "Dual{Float32,3}" = 4.74 }
+measured_energy = { Float32 = 0.26, Float64 = 0.255, "Dual{Float32,3}" = 0.26 }
+status = "proposed"
+
+["T-355"]
+quantity = "the 2D kinetic energy and Ex energy of the diagnostics against serial sums on the host, both deposition modes"
+scale = "terms·|sum| (particles for K, cells for W_Ex)"
+C = 1
+measured = { Float32 = 0.00976, Float64 = 0.00976, "Dual{Float32,3}" = 0.0293 }
+status = "proposed"
+
+["T-356"]
+quantity = "Dual{Float32,3} at N = 2: the primal of Ex, Ey, Bz and u after initialize! and one step against the Float32 run (C); after initialize!, |∂E/∂n₀ − E/n₀| (C_partials)"
+scale = "max|E| (|u| for the momenta); (n₁ + n₂)·max|E| for the partials, as T-314"
+C = 16
+C_partials = 16
+measured = { "Dual{Float32,3}" = 6.38 }
+measured_partials = { "Dual{Float32,3}" = 5.3 }
+status = "proposed; the primal is not bitwise the Float32 run (recorded by the test, not asserted, A4)"
