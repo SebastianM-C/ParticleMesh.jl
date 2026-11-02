@@ -91,11 +91,11 @@ The kinetic energy is the exact Σ(γ − 1)mc², formed by the reader from PICo
 
 1. The openPMD dump and the `chargeConservation` plugin derive the density separately from the same particle state at the same iterations. Their spikes fall on different steps (in seed 20261101, 21 against 20, sharing one step). One state gives two densities, so the derivation is not deterministic.
 2. The particle-energy plugin runs at the same steps over the same particles and is smooth to 10⁻⁸. A loss of 10⁻⁴ of the electrons would show at 10⁻⁴.
-3. At the glitched steps examined, the missing charge sits in one 16 × 1 supercell plus the TSC footprint, away from the periodic seam. About 0.35 % of that supercell's electrons are missing, some 22 frames of 16 particles. That points at the frame traversal of the deposit to the grid.
+3. At the glitched steps examined, the missing charge sits in one 16 × 1 supercell plus the TSC footprint, away from the periodic seam. About 0.35 % of that supercell's electrons are missing, some 22 frames of 16 particles. That is the footprint of a race in the write-back of `FieldTmp`'s deposit (#241): the supercell stride is fixed at 3 (`fields/FieldTmpOperations.hpp:66`) and the global add is not atomic, so with TSC on supercells one cell high two blocks of the same pass overlap on one row.
 
 None of the cold two-stream runs (same layout, no motion in y) and none of the 2D runs (8 × 8 supercells) shows it. The observables use E only, and the analysis uses the density at t = 0 only, so no number in this report is affected.
 
-A particle skipped in the push, if the same frame traversal could skip one there, would leave no trace in Gauss's law: it would neither move nor deposit. That is not tested here (open items). The glitch is being reduced to a minimal setup for an `upstream` issue.
+The current deposition is unaffected: it computes its stride from the margins and uses atomics (`fields/currentDeposition/Deposit.hpp:79`). #241 does not cover a push and a deposit skipped together for one particle, which would leave no trace in Gauss's law; nothing points to it, and it is not tested here (open items).
 
 ### Two-stream: the codes agree to about 10⁻⁶
 
@@ -213,13 +213,13 @@ Not verified by the review, and still open: Smilei's side of the initial-momentu
 - The generated setups compiled and ran first time in the runner's image; PIConGPU's own `chargeConservation` and the analysis's Gauss check confirm the initial field.
 - The oblique ensemble entry was committed (`d61a812`) before any run of the case in this package, and T-256 checks that WP-019's four entries are unchanged.
 - The ParticleMesh two-stream investigation is post hoc: it reran WP-012's ParticleMesh case with the start-up kick scaled (0, 1, 2, −1), from scripts outside the repository, with no repository file changed; its baseline reproduced WP-012's stored series exactly. The proposal of an option is #226.
-- Not verified: whether the frame traversal behind the charge-density glitch can also skip particles in the push (a skipped push leaves no Gauss trace); the 2D seed-mean kinetic energy sits about 2.5 standard errors from the quadrature prediction; the cell-centred-weight explanation of ParticleMesh's remaining 2 × 10⁻⁴ in U.
+- Not verified: whether a particle can be skipped in the push and the deposit together (#241 covers only the `FieldTmp` race; a skipped push leaves no Gauss trace); the 2D seed-mean kinetic energy sits about 2.5 standard errors from the quadrature prediction; the cell-centred-weight explanation of ParticleMesh's remaining 2 × 10⁻⁴ in U.
 
 ## Known limitations and open items
 
 - **Seeds.** Four seeds per code in 2D and eight in 1D leave the Landau differences unresolved (0.3 and 1.5 combined errors). The jackknife over four seeds samples the variation of the fit's stop poorly (WP-012 review, F1).
 - **Initial conditions are not identical across the codes**, by design of each code: the in-cell lattice (whole cell against 97.5 %), the thermal momenta (non-relativistic Maxwellian in momentum against Smilei's classical energy with relativistic |p|, O(T) = 2.5 × 10⁻³), Smilei's constant post-Poisson field, and ParticleMesh's half-step kick (#226). The cold two-stream case shows that the in-cell lattice does not matter at 10⁻⁶ between Smilei and PIConGPU; being cold, it says nothing about the thermal momenta.
-- **The charge-density glitch** of PIConGPU in the thermal quasi-1D layout (Results, checks): reduced to an `upstream` issue separately; whether the push can skip particles the same way is untested.
+- **The charge-density glitch** of PIConGPU in the thermal quasi-1D layout (Results, checks): a race in `FieldTmp`'s deposit, reported as #241; a push and a deposit skipped together for one particle is untested.
 - **PIConGPU's kinetic-energy column** is p²/2m below γ = 1.005; the reader forms the exact kinetic energy from the total-energy column (README, "PIConGPU specifics").
 - **Throughput** is not compared (non-goal); the quasi-1D runs are I/O- and occupancy-bound in PIConGPU.
 - **Precision of PIConGPU's scalars**: the per-component field energies are printed with 6 significant digits, which sets the 1.6 × 10⁻⁶ offset of the oblique `energy_ratio` from the Yee value; the totals have 16.
