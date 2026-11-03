@@ -5,7 +5,9 @@
 # each g: every group's γ, jackknife error and maxima used; the standard deviation of γ over the
 # groups (the spread of a g-seed ensemble, measured), next to the mean jackknife error (its
 # estimate); and the group-by-group difference between the two runs, with its standard deviation
-# over the groups. Group 1 of g = 4 holds the first four seeds of the case.
+# over the groups. Group 1 of g = 4 holds the first four seeds of the case. Also, for all seeds,
+# γ fitted on the first k maxima of each run's ensemble fit (k = 3 to all of them), with the
+# jackknife on the same samples, and the two runs' difference over the windows they share.
 #
 #   julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>
 #
@@ -47,6 +49,26 @@ function group_fits(t, coeffs, g; fit_start, floor_factor, minimum_maxima)
     return out
 end
 
+"""
+    first_maxima_fits(t, coeffs, used) -> Vector
+
+The ensemble γ of all seeds fitted on the first k of the maxima `used` (those the full
+ensemble's rule took), k = 3 to length(used), each with its jackknife over seeds on the same
+sample indices: the rate over a fixed window instead of the rule's stop point. With k = all of
+them γ is the rule's; the jackknife is not, because the rule's leave-one-out fits choose their
+own maxima, and this one keeps them fixed.
+"""
+function first_maxima_fits(t, coeffs, used)
+    M = length(coeffs)
+    U = ensemble_energy(coeffs)
+    map(3:length(used)) do k
+        u = used[1:k]
+        loo = [fit_at_peaks(t, ensemble_energy(coeffs[setdiff(1:M, j)]), u).gamma for j in 1:M]
+        Dict{String,Any}("maxima" => k, "t_last" => t[u[end]], "gamma" => fit_at_peaks(t, U, u).gamma,
+            "jackknife_stderr" => sqrt((M - 1) / M * sum(abs2, loo .- mean(loo))))
+    end
+end
+
 vals(v) = Float64[x for x in v if x !== nothing]
 sdornothing(v) = (x = vals(v); length(x) >= 2 ? std(x) : nothing)
 
@@ -78,6 +100,19 @@ function subensembles(a, b, out)
             "difference_b_minus_a" => d, "sd_difference" => sdornothing(d),
             "mean_difference" => isempty(vals(d)) ? nothing : mean(vals(d)))
     end
+    # the full ensembles over a common window: the first k maxima of the shorter of the two fits
+    ea = ensemble_damping(ta, ca; fit_start = rules.fit_start, floor_factor = rules.floor_factor)
+    eb = ensemble_damping(tb, cb; fit_start = rules.fit_start, floor_factor = rules.floor_factor)
+    wa, wb = first_maxima_fits(ta, ca, ea.used), first_maxima_fits(tb, cb, eb.used)
+    common = Dict{String,Any}[]
+    for (x, y) in zip(wa, wb)
+        ta[ea.used[x["maxima"]]] ≈ tb[eb.used[y["maxima"]]] || break   # the same maxima in both runs
+        push!(common, Dict{String,Any}("maxima" => x["maxima"], "t_last" => x["t_last"],
+            "difference_b_minus_a" => y["gamma"] - x["gamma"],
+            "combined_jackknife" => hypot(x["jackknife_stderr"], y["jackknife_stderr"])))
+    end
+    res["first_maxima"] = Dict{String,Any}(names[1] => wa, names[2] => wb, "common" => common,
+        "note" => "post hoc: all seeds, fitted on the first k maxima of each run's own ensemble fit; common lists the k at which both runs' k-th maxima are the same dump")
     mkpath(out)
     fig = Figure(size = (950, 500))
     ax = Axis(fig[1, 1]; xscale = log2, xticks = sizes, xlabel = "seeds per ensemble", ylabel = "ensemble γ [ω_p]",

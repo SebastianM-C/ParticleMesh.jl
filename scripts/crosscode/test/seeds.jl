@@ -128,6 +128,12 @@ using Random: Xoshiro
             e = rule(cs)
             @test abs(e.gamma - γ) < 3 * e.jackknife.stderr
         end
+        # the window of all the maxima the rule took is the rule's own fit
+        fm = r["first_maxima"]["a"]
+        @test fm[end]["gamma"] ≈ rule(ca).gamma rtol = 1e-12
+        @test first(fm)["maxima"] == 3
+        @test all(c -> c["difference_b_minus_a"] == r["first_maxima"]["b"][c["maxima"] - 2]["gamma"] - fm[c["maxima"] - 2]["gamma"],
+                  r["first_maxima"]["common"])
         @test isfile(joinpath(root, "out", "subensembles.png")) && isfile(joinpath(root, "out", "subensembles.json"))
     end
 end
