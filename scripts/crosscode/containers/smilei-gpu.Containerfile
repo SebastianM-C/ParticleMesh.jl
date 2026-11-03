@@ -98,21 +98,35 @@ RUN jobs=$(( $(nproc) < 16 ? $(nproc) : 16 )) \
  && echo "${SMILEI_TAG} ${SMILEI_COMMIT} gpu" > /opt/smilei/VERSION
 
 # The run-time environment: the SDK's compilers, MPI and CUDA libraries, HDF5; Smilei selects
-# its GPU from SLURM_LOCALID and exits without it (src/Smilei.cpp). Single-rank runs as the
-# caller's uid without capabilities: shared-memory transport only, no CMA single-copy (needs
-# ptrace), no hcoll.
+# its GPU from SLURM_LOCALID and exits without it (src/Smilei.cpp). The SDK's default MPI
+# (comm_libs/mpi) is HPC-X's Open MPI, which looks for its help files, components and runtime
+# under NVIDIA's build prefix (/proj/nv/...) unless OPAL_PREFIX names where it is installed; the
+# first GPU run failed in MPI_Init that way. /opt/nvhpc-mpi is a link to that prefix, made below.
+# Single-rank runs as the caller's uid without capabilities: shared-memory transport only, no
+# CMA single-copy (needs ptrace), no hcoll.
 ENV SMILEI_TAG=${SMILEI_TAG} \
     SMILEI_COMMIT=${SMILEI_COMMIT} \
     PM_SM=${PM_SM} \
     PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/compilers/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/bin:${PATH} \
     LD_LIBRARY_PATH=/opt/hdf5/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/compilers/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/math_libs/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/cuda/lib64 \
     SLURM_LOCALID=0 \
+    OPAL_PREFIX=/opt/nvhpc-mpi \
     PYTHONPATH=/opt/smilei/src \
     OMPI_MCA_rmaps_base_oversubscribe=1 \
     OMPI_MCA_pml=ob1 \
     OMPI_MCA_btl=self,vader \
     OMPI_MCA_btl_vader_single_copy_mechanism=none \
     OMPI_MCA_coll_hcoll_enable=0
+
+# The MPI prefix: the Open MPI tree of the SDK's mpicc (comm_libs/mpi/bin/mpicc resolves into
+# it), linked as /opt/nvhpc-mpi; then a singleton MPI start with MPI_THREAD_MULTIPLE, as Smilei
+# makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables).
+COPY smilei-gpu/mpi-probe.c /opt/smilei-gpu/mpi-probe.c
+RUN ln -s "$(dirname "$(dirname "$(readlink -f /opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/bin/mpicc)")")" /opt/nvhpc-mpi \
+ && ls -l /opt/nvhpc-mpi && test -f /opt/nvhpc-mpi/share/openmpi/help-mpi-runtime.txt \
+ && mpicc -o /tmp/mpi-probe /opt/smilei-gpu/mpi-probe.c \
+ && OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 /tmp/mpi-probe \
+ && rm -f /tmp/mpi-probe
 
 # Every shared library resolves except the driver's (libcuda, libnvidia-*), which the runner
 # binds in at run time; then the toolchain record for the run manifests.
