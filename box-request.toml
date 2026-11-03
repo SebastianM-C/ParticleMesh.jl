@@ -1,0 +1,11 @@
+# CPU box request 7 of 8 of WP-032: ParticleMesh's oblique Landau seeds 20285031, 20286031, 20287031, 20288031
+timeout = 14400
+category = "validation"
+batch = "wp032-pm-landau"
+batch_total = 8
+branch = "claude/epic-cerf-3g9o79"
+outputs = ["scripts/runs/wp032-pm-landau-r7"]
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/em2d/landau_ensemble.jl", "run", "scripts/runs/wp032-pm-landau-r7", "20285031", "20286031", "20287031", "20288031"]
