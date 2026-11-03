@@ -240,14 +240,15 @@ function summarize_scan(dir)
 end
 
 """
-    ivp_series(case, key, t) -> Vector{Float64}
+    ivp_series(case, key, t; momenta_at = :t0) -> Vector{Float64}
 
 The exact linear cold-fluid value of the series `key` fits (`observable_series`) at the times
 `t`, from `cold_ivp(case)`: the box energy of the observed field (energy observables) or the
-squared mode amplitude (`mode_projection` and the 1D `mode`), in the units of the run.
+squared mode amplitude (`mode_projection` and the 1D `mode`), in the units of the run;
+`momenta_at` is `cold_ivp`'s.
 """
-function ivp_series(case, key, t)
-    p = cold_ivp(case)
+function ivp_series(case, key, t; momenta_at = :t0)
+    p = cold_ivp(case; momenta_at)
     a = ivp_solution(p.M, p.y0, t)[p.index, :]
     energy = key != "mode" && (get(case, "schema", 1) == 1 || case["observables"][key]["signal"] == "scalar_sum")
     return energy ? p.energy_scale .* abs2.(a) : abs2.(a)
@@ -272,20 +273,21 @@ function local_rate(t, U; half_width = 1.0)
 end
 
 """
-    point_fits(case, key, t, U; window) -> NamedTuple
+    point_fits(case, key, t, U; window, momenta_at = :t0) -> NamedTuple
 
 For the series `key` (t, U) of a run: the pre-registered fit (`growth_from_window` with the
 observable's window), and the same least-squares fit on the exact linear solution at the same
 sample indices (`gamma_ivp`), the rate a run without discretization error and without
 nonlinearity would report; the ratio U/U_ivp at the first and last sample of the window.
+`momenta_at` selects the start of the linear solution (`cold_ivp`).
 """
-function point_fits(case, key, t, U; window)
+function point_fits(case, key, t, U; window, momenta_at = :t0)
     r = growth_from_window(t, U; window)
     isfinite(r.gamma) || return (; r, gamma = NaN, gamma_ivp = NaN, idx = 1:0, ratio = (NaN, NaN))
     i1 = findfirst(==(first(r.t_fit)), t)
     i2 = findfirst(==(last(r.t_fit)), t)
     idx = i1:i2
-    Uivp = ivp_series(case, key, t[idx])
+    Uivp = ivp_series(case, key, t[idx]; momenta_at)
     f = linear_fit(t[idx], log.(Uivp))
     return (; r, gamma = r.gamma, gamma_ivp = f.slope / 2, idx, ratio = (U[i1] / Uivp[1], U[i2] / Uivp[end]))
 end

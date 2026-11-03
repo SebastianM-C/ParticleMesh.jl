@@ -145,16 +145,18 @@ runs and test particles at N = 2; the 1D step always deposits the current and re
 struct NoCurrent end
 
 """
-    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov(),
-               absorber = nothing)
+    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
+               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
-solver and the current. `workgroupsize` is passed to every engine launch (it selects the launch
-shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at N = 1 and
-N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses any other.
-`absorber` realizes an open boundary of the problem: an [`AbsorbingLayer`](@ref) at N = 2 when
-the problem's axis 2 is `:open` (required then, refused otherwise), `nothing` for a periodic box.
+solver, the current and its filter. `workgroupsize` is passed to every engine launch (it selects
+the launch shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
+N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
+any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
+before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
+problem: an [`AbsorbingLayer`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
+then, refused otherwise), `nothing` for a periodic box.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     shape::S
@@ -163,12 +165,13 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     solver::F
     workgroupsize::W
     current::C
+    filter::BinomialFilter
     absorber::A
 end
 
 EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov(),
-           absorber = nothing) =
-    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, absorber)
+           filter::BinomialFilter = BinomialFilter(0), absorber = nothing) =
+    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber)
 
 """
     EMParams(dt, kmode)
@@ -313,17 +316,20 @@ end
     numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing) -> EMNumerics
 
 The numerics a case file asks for (either schema): its `shape_order` (1 or 2); the deposition
-must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`) and `filter_passes`
-zero (the binomial filter is deferred to the 2D LWFA module); with an open boundary in
-`grid.boundaries`, the table `[numerics.absorbing_layer]` gives the layer's `cells`, `strength`
-and optional `order` ([`AbsorbingLayer`](@ref), WP-027), which a periodic case must not have. The
-mode, the pusher and the launch shape are not in the case.
+must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filter_passes`
+(default 0), a non-negative integer, is the pass count of the [`BinomialFilter`](@ref) (A2), and
+anything else is an `ArgumentError`. With an open boundary in `grid.boundaries`, the table
+`[numerics.absorbing_layer]` gives the layer's `cells`, `strength` and optional `order`
+([`AbsorbingLayer`](@ref), WP-027), which a periodic case must not have. The mode, the pusher
+and the launch shape are not in the case.
 """
 function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
     num = case["numerics"]
     getnum(num, "current_deposition", "esirkepov") == "esirkepov" ||
         throw(ArgumentError("current_deposition must be \"esirkepov\""))
-    iszero(getnum(num, "filter_passes", 0)) || throw(ArgumentError("the binomial filter is not implemented"))
+    passes = getnum(num, "filter_passes", 0)
+    passes isa Integer && !(passes isa Bool) && passes >= 0 ||
+        throw(ArgumentError("filter_passes must be a non-negative integer, got $(repr(passes))"))
     shape = Int(getnum(num, "shape_order", 2)) == 1 ? Linear : Quadratic
     bounds = getnum(case["grid"], "boundaries", "periodic")
     open_axis = any(==("open"), bounds isa AbstractVector ? bounds : [bounds])
@@ -336,5 +342,6 @@ function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Bor
     else
         haskey(num, "absorbing_layer") && throw(ArgumentError("[numerics.absorbing_layer] needs an open boundary"))
     end
-    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), absorber)
+    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes),
+                      absorber)
 end

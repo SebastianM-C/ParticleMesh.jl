@@ -55,7 +55,7 @@ end
 "The output files of a run whose hashes go into the manifest."
 function output_files(dir)
     code_of(dir) == "smilei" &&
-        return filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt"]))
+        return filter(isfile, joinpath.(dir, ["scalars.txt", "Fields0.h5", "smilei.log", "container.txt", "versions.toml"]))
     own = filter(f -> endswith(f, ".dat") || f == "picongpu.log", readdir(dir))
     return filter(isfile, vcat(joinpath.(dir, own), joinpath(dir, "openPMD", "simData.h5"),
         joinpath.(dir, ["container.txt", "versions.toml", "build.log"])))
@@ -76,7 +76,12 @@ end
 "The per-run observable of a case (a seeded case also has the ensemble one)."
 run_observable(case) = only((k, o) for (k, o) in case["observables"] if o["method"] != "ensemble_peak_envelope")
 
-"CPU model, thread count and CPU count from the run's container.txt; \"unknown\" where the run did not record them."
+"""
+The hardware of a Smilei run from its container.txt: CPU model, thread and CPU count, the patch
+layout, and for a run of the smilei-gpu image (`# build: gpu`) the build, the fastmath choice,
+the GPU and driver, and the GPU's utilization, memory in use and compute processes before and
+after the run as nvidia-smi saw them inside the container; "unknown" where not recorded.
+"""
 function hardware(dir)
     code_of(dir) == "picongpu" && return picongpu_hardware(dir)
     f = joinpath(dir, "container.txt")
@@ -98,7 +103,41 @@ function hardware(dir)
         h["cpu"] = "unknown"
         h["cpu_source"] = "not recorded by the run"
     end
+    h["build"] = smilei_build(dir)
+    for (key, prefix) in (("patches", "# patches:"), ("fastmath", "# fastmath:"), ("mpi", "# mpi:"), ("gpu", "# gpu:"),
+                          ("gpu_before", "# gpu before:"), ("gpu_processes_before", "# gpu processes before:"),
+                          ("gpu_after", "# gpu after:"))
+        k = findfirst(l -> startswith(l, prefix), lines)
+        k === nothing || (h[key] = strip(lines[k][length(prefix)+1:end]))
+    end
     return h
+end
+
+"The build of a Smilei run, \"gpu\" or \"cpu\", from the `# build:` line of its container.txt (runs before WP-030 have none: CPU)."
+function smilei_build(dir)
+    f = joinpath(dir, "container.txt")
+    isfile(f) || return "cpu"
+    for l in eachline(f)
+        startswith(l, "# build:") && return strip(l[length("# build:")+1:end])
+    end
+    return "cpu"
+end
+
+"""
+    smilei_time_loop(dir) -> seconds or nothing
+
+Smilei's own time of the time loop, the `Time_in_time_loop` line of smilei.log
+(Tools/Timers.cpp: the loop after initialization, without the Python setup, the particle load
+and the initial Poisson solve). Nothing when the log does not have it.
+"""
+function smilei_time_loop(dir)
+    f = joinpath(dir, "smilei.log")
+    isfile(f) || return nothing
+    for l in eachline(f)
+        m = match(r"Time_in_time_loop\s+([0-9.eE+-]+)", l)
+        m === nothing || return parse(Float64, m[1])
+    end
+    return nothing
 end
 
 """
@@ -270,6 +309,20 @@ function record_mode_fit!(result, rk; min_points)
 end
 
 """
+    run_seeds(dir, case) -> Vector{Int}
+
+The seeds a seeded run ran: its manifest's `seeds` (a sub-ensemble of the first n, WP-030, lists
+fewer than the case), else the case's list.
+"""
+function run_seeds(dir, case)
+    f = joinpath(dir, "manifest.toml")
+    m = isfile(f) ? TOML.parsefile(f) : Dict{String,Any}()
+    seeds = collect(Int, haskey(m, "seeds") ? m["seeds"] : case["numerics"]["seeds"])
+    issubset(seeds, case["numerics"]["seeds"]) || error("$dir: the manifest's seeds are not the case's")
+    return seeds
+end
+
+"""
     analyze_seeded(dir; log) -> result
 
 A seeded run of either code: `analyze` of every seed-<seed>/ subdirectory (its own plots,
@@ -283,7 +336,7 @@ Schema 2: the coefficient the ensemble observable's `signal` names (`mode_projec
 function analyze_seeded(dir; log = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
     two = get(case, "schema", 1) == 2
-    seeds = collect(Int, case["numerics"]["seeds"])
+    seeds = run_seeds(dir, case)
     img = image_from_header(log, joinpath(dir, "image.txt"))
     ekey, eobs = ensemble_observable(case)
     coeffs = Vector{ComplexF64}[]
@@ -319,6 +372,7 @@ function analyze_seeded(dir; log = nothing)
             outputs[relpath(f, dir)] = "sha256:" * file_hash(f)
         end
     end
+    merge!(outputs, top_outputs(dir))
     hw = [hardware(joinpath(dir, "seed-$s")) for s in seeds]
     walls = [wall_seconds(joinpath(dir, "seed-$s")) for s in seeds]
     nsteps = round(Int, case["time"]["t_end"] / case["time"]["dt"])
@@ -328,6 +382,7 @@ function analyze_seeded(dir; log = nothing)
     extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
         "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps, "hardware" => first(hw))
     code == "picongpu" && (extra["compile_seconds"] = compile_seconds(dir); extra["compile_seconds_per_job"] = compile_seconds_per_job(dir))
+    code == "smilei" && merge!(extra, smilei_seed_timing(dir, seeds))
     r = write_ensemble(dir, case, t, coeffs, seeds; code, per_run, extra)
     # the complex mode coefficient of every seed, so that sub-ensembles and later comparisons
     # need no dumps (which are not committed): seed-coefficients.json
@@ -395,6 +450,27 @@ function smilei_steps(dir)
     end
     return nothing
 end
+
+"""
+    smilei_performance!(performance, dir, mobile_particle_steps) -> performance
+
+Adds a Smilei run's own time-loop time (`smilei_time_loop`), the time per mobile particle-step
+from it, and the build (`smilei_build`) to its performance record.
+"""
+function smilei_performance!(performance, dir, mobile_particle_steps)
+    loop = smilei_time_loop(dir)
+    performance["time_loop_seconds"] = something(loop, "not recorded")
+    loop === nothing || (performance["ns_per_mobile_particle_step_time_loop"] = 1e9 * loop / mobile_particle_steps)
+    performance["build"] = smilei_build(dir)
+    return performance
+end
+
+"The time-loop seconds of every seed of a seeded Smilei run, for its ensemble record."
+smilei_seed_timing(dir, seeds) =
+    Dict{String,Any}("time_loop_seconds_per_seed" => [something(smilei_time_loop(joinpath(dir, "seed-$s")), "not recorded") for s in seeds])
+
+"The hashes of a seeded run's top-level outputs: the toolchain record of a GPU run (`versions.toml`)."
+top_outputs(dir) = Dict{String,Any}(f => "sha256:" * file_hash(joinpath(dir, f)) for f in ("versions.toml",) if isfile(joinpath(dir, f)))
 
 """
     run_size(case; steps) -> Dict
@@ -610,10 +686,12 @@ function analyze_2d(dir, case; log = nothing, image = nothing)
     wall = wall_seconds(dir)
     performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
     wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
+    code_of(dir) == "smilei" && smilei_performance!(performance, dir, size_["mobile_particle_steps"])
     code_of(dir) == "picongpu" && (performance["compile_seconds"] = something(compile_seconds(dir), "not recorded"))
     code_of(dir) == "picongpu" && (checks["dumps"] = picongpu_dump_checks(dir))
     result = Dict{String,Any}("case" => name, "code" => code_of(dir), "observables" => results,
         "performance" => performance, "checks" => checks)
+    code_of(dir) == "smilei" && (result["build"] = smilei_build(dir))
     open(io -> JSON.print(io, result, 2), joinpath(dir, "observables.json"), "w")
     outputs = output_files(dir)
     m = isfile(joinpath(dir, "manifest.toml")) ? read_manifest(dir) : Dict{String,Any}()

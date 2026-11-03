@@ -1,0 +1,57 @@
+# WP-031: is the common −1.4 % to −1.5 % of two-stream.toml's growth rate below theory (Smilei,
+# PIConGPU and ParticleMesh alike) discretization error? Points derived from the case by
+# scripts/crosscode/convergence.jl (`derive_case`); fixed before the runs. The case is cold with
+# regular positions, so one run per point (the point `seed1` checks that the seed does not enter).
+name = "wp031-two-stream-offset"
+case = "two-stream"
+timeout = 7200
+
+# Δx at the case's Courant number 0.95 (Δt ∝ Δx): 64 to 1024 cells
+[[points]]
+name = "n0064"
+refine = 0.5
+[[points]]
+name = "n0128"
+[[points]]
+name = "n0256"
+refine = 2
+[[points]]
+name = "n0512"
+refine = 4
+[[points]]
+name = "n1024"
+refine = 8
+
+# Δt at 128 cells: Courant number 0.95/2, 0.95/4, 0.95/8
+[[points]]
+name = "n0128-dt2"
+dt_divisor = 2
+[[points]]
+name = "n0128-dt4"
+dt_divisor = 4
+[[points]]
+name = "n0128-dt8"
+dt_divisor = 8
+
+# fine in both: 512 cells at Courant number 0.95/4
+[[points]]
+name = "n0512-dt4"
+refine = 4
+dt_divisor = 4
+
+# the perturbation amplitude ×1/10 and ×10 at 128 cells: the window then starts after more or
+# fewer e-foldings, which moves the transient part of the offset and not the nonlinear part
+[[points]]
+name = "n0128-a0.1"
+amplitude_factor = 0.1
+[[points]]
+name = "n0128-a10"
+amplitude_factor = 10
+
+# a tenth of the particles per cell (100 per beam) and another seed, at 128 cells
+[[points]]
+name = "n0128-ppc0.1"
+ppc_factor = 0.1
+[[points]]
+name = "n0128-seed1"
+seed = 1

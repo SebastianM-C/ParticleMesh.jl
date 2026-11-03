@@ -21,7 +21,10 @@
       "Bash(gh issue delete:*)",
       "Bash(gh issue transfer:*)",
       "Bash(gh api:*)",
-      "mcp__github__merge_pull_request"
+      "mcp__github__merge_pull_request",
+      "Bash(git worktree prune:*)",
+      "Bash(git worktree repair:*)",
+      "Bash(git gc:*)"
     ]
   }
 }

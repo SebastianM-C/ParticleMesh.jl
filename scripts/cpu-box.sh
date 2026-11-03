@@ -18,22 +18,35 @@
 #                                        # benchmark, test or smoke (else "unspecified")
 #   outputs = ["scripts/runs/<dir>"]     # directories whose files come back (under scripts/runs/)
 #   [[steps]]
-#   kind = "smilei"                      # Smilei's CPU image, built from the commit's recipe
-#   dir = "scripts/runs/<dir>"           # holds run.sh, as for the GPU runner
+#   kind = "smilei"                      # Smilei's CPU image; the request's recipe must equal main's
+#   dir = "scripts/runs/<dir>"           # (at one of its last 300 commits); holds run.sh
 #   [[steps]]
-#   kind = "julia"                       # julia +1.13 <args> in the checkout, no network
+#   kind = "julia"                       # julia <args> in the checkout, offline, 16 threads
 #   args = ["--project=scripts", "scripts/crosscode/analyze.jl", "scripts/runs/<dir>"]
 #
-# Steps run in order and stop at the first failure; the projects named by --project= are
-# instantiated first. The box polls every minute and runs one request at a time, oldest first;
-# it holds no credentials, and a relay brings the result back as one commit on runs/<tag> within
-# about a minute of the end. Files over 20 MB do not come back (box-status.toml lists them under
-# dumps_over_20MB; the owner keeps them 30 days), so analyse large dumps in a julia step. Nothing
-# comes back if a file fails the leak scan of CI. Run branches are never merged and stay, as the
-# record of the run that a report can cite.
+# A test suite is a julia step in the workspace: args = ["--project=lib/ParticleMeshCore", "-e",
+# "using Pkg; Pkg.test()"] (or --project=. for the umbrella); its output is in box-log.txt and its
+# exit code in box-status.toml, and outputs may be empty.
+#
+# Nothing is installed per request. The box keeps main's scripts/ and workspace environments warm
+# (instantiated from main, never from a request); a request whose manifests differ from main's
+# runs against them offline, and a package main does not have fails to load. Steps run in order
+# and stop at the first failure. The box polls every minute and runs one request at a time,
+# oldest first; it holds no credentials, and a relay brings the result back as one commit on
+# runs/<tag> about a minute after the end. Files over 20 MB do not come back (box-status.toml
+# lists them under dumps_over_20MB; the owner keeps them 30 days), so analyse large dumps in a
+# julia step. Nothing comes back if a file fails the leak scan of CI. Run branches are never
+# merged and stay, as the record of the run that a report can cite. The box is a spot instance:
+# a request lost to an eviction runs again on the next box.
+#
+# Hands-off batches: give every request of a long campaign the same three fields,
+#   batch = "<name>"   batch_total = <number of requests>   branch = "<your pushed branch>"
+# and put a CONTINUE.md at the root of that branch saying what to do with the results. When all
+# batch_total results are back, a fresh cloud session checks out the branch, fetches the results
+# and follows CONTINUE.md, so the submitting session can end once the batch is submitted.
 set -euo pipefail
 set -f
-LEAK='(ssh:/''/|BEGIN [A-Z ]*PRIVATE KEY|([0-9]{1,3}\.){3}[0-9]{1,3})'
+LEAK='(ssh:/''/|BEGIN [A-Z ]*PRIVATE KEY|\b([0-9]{1,3}\.){3}[0-9]{1,3}\b)'
 die() { echo "cpu-box: $*" >&2; exit 64; }
 [ $# -ge 2 ] || die "usage: cpu-box.sh submit|status|fetch <tag> [request.toml]"
 cmd="$1" tag="$2"

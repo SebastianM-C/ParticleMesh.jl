@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -45,6 +45,15 @@ else
             @info "T-381 CPU–CUDA 2D" name rate
             get!(MEASURED, "T-381 CPU-CUDA relative rate", Dict{String,Float64}())[name] = rate
             @test isfinite(rate)
+        end
+    end
+
+    @testset "T-446 the binomial filter on CUDA passes T-440 to T-442 with the CPU's tolerances, and the filtered Reference step is bitwise across reruns and launch shapes [A2, A4, A7, WP-029]" begin
+        rerun_module_on(GPU, (("T-440", body_T440), ("T-441", body_T441), ("T-442", body_T442)))
+        first = filter_digests(; be = GPU)
+        @test filter_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test filter_digests(; workgroupsize = wgs, be = GPU) == first
         end
     end
 

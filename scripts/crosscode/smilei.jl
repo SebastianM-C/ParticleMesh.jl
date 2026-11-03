@@ -1,16 +1,26 @@
 # Smilei namelist generator for the cases in scripts/crosscode/cases/ (Smilei v5.1): schema 1
 # (1D, `1Dcartesian`) and schema 2 (2D periodic, `2Dcartesian`).
 #
-#   julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare <case> [tag]
+#   julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare <case> [tag] [--budget <s>] [--gpu] [--no-fastmath] [--patches <px>x<py>] [--load-check] [--first-seeds <n>]
 #
-# writes scripts/runs/<tag>/ with smilei.py (the namelist), case.toml (a copy of the case),
+# writes scripts/runs/<tag>/ with namelist.py (the namelist), case.toml (a copy of the case),
 # run.sh (what the container executes) and manifest.toml. A case with a `seeds` list gets one
 # subdirectory seed-<seed>/ per seed, each with its namelist and a copy of the case, and one
 # run.sh that runs them in turn. The default tag is "smilei-<case>-<first 8 hex of the case hash>".
+# The input is not called smilei.py because Smilei writes its expanded namelist to smilei.py in
+# the working directory (#256).
+#
+# --gpu (schema 2 only, WP-030) prepares a run of the smilei-gpu image: `gpu_computing = True`,
+# one patch by default (Smilei's GPU guideline, Understand/GPU_offloading.rst), the binary with
+# the guide's fastmath flags unless --no-fastmath. --patches sets the patch layout of either
+# build. --load-check prepares a one-step run of the case's first seed that dumps the t = 0 load
+# of a corner of the box (DiagTrackParticles) and the fields at t = 0, to compare two builds'
+# loads (scripts/crosscode/loadcheck.jl); its tag is "<code>-loadcheck-<case>-<layout>-<hash>".
 
 module SmileiDeck
 
 using TOML
+using SHA: sha256
 
 include(joinpath(@__DIR__, "manifest.jl"))
 using .RunManifest
@@ -150,7 +160,12 @@ case_seeds(case) = collect(Int, get(() -> [case["numerics"]["random_seed"]], cas
 The unit conversion from a case in the units of A1 to Smilei's normalized units: schema 1 by
 `smilei_parameters_1d`, schema 2 by `smilei_parameters_2d`.
 """
-smilei_parameters(case) = case["schema"] == 2 ? smilei_parameters_2d(case) : smilei_parameters_1d(case)
+function smilei_parameters(case; gpu = false, patches = nothing)
+    case["schema"] == 2 && return smilei_parameters_2d(case; gpu, patches)
+    (gpu || patches !== nothing) &&
+        error("GPU runs and patch layouts are generated for schema-2 (2D) cases only (Smilei's GPU port covers 2D and 3D Cartesian)")
+    return smilei_parameters_1d(case)
+end
 
 """
     smilei_parameters_1d(case) -> NamedTuple
@@ -245,7 +260,22 @@ function patches_2d(cells; min_cells = 8, max_patches = 16)
 end
 
 """
-    smilei_parameters_2d(case) -> NamedTuple
+    check_patches(p, cells) -> p
+
+A patch layout Smilei accepts at interpolation order 2 (Params.cpp): per axis a power of 2 that
+divides the cells, with more than 2·oversize + 1 = 5 cells per patch.
+"""
+function check_patches(p, cells)
+    length(p) == length(cells) || error("patches $p: one count per axis")
+    for (n, c) in zip(p, cells)
+        n >= 1 && ispow2(n) && c % n == 0 && c ÷ n > 5 ||
+            error("patches $p for cells $cells: each must be a power of 2 dividing its axis with more than 5 cells per patch")
+    end
+    return p
+end
+
+"""
+    smilei_parameters_2d(case; gpu = false, patches = nothing) -> NamedTuple
 
 The unit conversion of a schema-2 case (2D periodic, `2Dcartesian`), with the same units and
 rules as `smilei_parameters_1d`, per axis:
@@ -257,9 +287,13 @@ rules as `smilei_parameters_1d`, per axis:
   (x, y) (Smilei's `cosine` profile is separable and cannot express an oblique mode);
   particles per cell per axis become `regular_number` with `particles_per_cell` their
   product; the drift [v_x, v_y, v_z] becomes `mean_velocity`;
-- patches per axis by `patches_2d`, one thread per patch (`threads`).
+- patches per axis by `patches_2d`, one thread per patch (`threads`);
+- `gpu = true` (the smilei-gpu image, WP-030): `gpu_computing = True`, one MPI rank without
+  OpenMP (`make config="gpu_nvidia"` implies `noopenmp`), so `threads = 1`, and one patch
+  unless `patches` says otherwise (Smilei's guideline: one patch per GPU);
+- `patches = (px, py)` overrides the layout of either build, checked as `patches_2d`'s rule.
 """
-function smilei_parameters_2d(case)
+function smilei_parameters_2d(case; gpu = false, patches = nothing)
     g, t, num = case["grid"], case["time"], case["numerics"]
     L = Tuple(Float64.(g["length"]))
     N = Tuple(Int.(g["cells"]))
@@ -271,7 +305,7 @@ function smilei_parameters_2d(case)
     get(num, "filter_passes", 0) == 0 || error("current filtering is not generated yet")
     get(num, "precision", "Float64") == "Float64" || error("Smilei runs in double precision")
     dt < 1 / sqrt(sum(abs2, 1 ./ dx)) || @warn "dt violates the CFL condition of Smilei's 2D Yee solver"
-    patches = patches_2d(N)
+    patches = patches === nothing ? (gpu ? (1, 1) : patches_2d(N)) : check_patches(Tuple(Int.(patches)), N)
     species = map(case["species"]) do s
         n = Float64(s["density"])
         m = Float64(s["mass"])
@@ -301,7 +335,7 @@ function smilei_parameters_2d(case)
     return (; geometry = "2Dcartesian", interpolation_order = order,
               cell_length = dx, number_of_cells = N, grid_length = N .* dx,
               timestep = dt, number_of_timesteps = steps, simulation_time = steps * dt,
-              number_of_patches = patches, threads = prod(patches),
+              number_of_patches = patches, threads = gpu ? 1 : prod(patches), gpu_computing = gpu,
               random_seed = first(case_seeds(case)),
               species,
               scalars_every = Int(d["scalars_every"]), fields_every = Int(d["fields_every"]),
@@ -313,14 +347,19 @@ pyfloat(x::Real) = (isfinite(x) || error("non-finite value in namelist"); string
 pyfloat(x::Integer) = string(x)
 
 """
-    namelist(case; seed = first(case_seeds(case))) -> String
+    namelist(case; seed = first(case_seeds(case)), gpu = false, patches = nothing, load_check = false) -> String
 
 A complete Smilei namelist for the case, from `smilei_parameters`: `1Dcartesian` for schema 1,
 `2Dcartesian` for schema 2, with `random_seed = seed`. The seed is the only line that differs
-between the namelists of one case (T-181).
+between the namelists of one case (T-181). Schema 2 also takes the GPU build and a patch layout
+(`smilei_parameters_2d`) and `load_check` (`load_check_blocks`).
 """
-namelist(case; seed = first(case_seeds(case))) =
-    case["schema"] == 2 ? namelist_2d(case; seed) : namelist_1d(case; seed)
+function namelist(case; seed = first(case_seeds(case)), gpu = false, patches = nothing, load_check = false)
+    case["schema"] == 2 && return namelist_2d(case; seed, gpu, patches, load_check)
+    (gpu || patches !== nothing || load_check) &&
+        error("GPU runs, patch layouts and load checks are generated for schema-2 (2D) cases only")
+    return namelist_1d(case; seed)
+end
 
 function namelist_1d(case; seed = first(case_seeds(case)))
     p = merge(smilei_parameters_1d(case), (; random_seed = Int(seed)))
@@ -406,8 +445,48 @@ function profile_def(s)
     """
 end
 
-function namelist_2d(case; seed = first(case_seeds(case)))
-    p = merge(smilei_parameters_2d(case), (; random_seed = Int(seed)))
+"""
+    load_check_steps
+
+The steps of a load-check run: one, so that the run stops right after its t = 0 diagnostics.
+"""
+const load_check_steps = 1
+
+"""
+    load_check_blocks(p) -> String
+
+The diagnostics a load-check namelist adds (WP-030): every mobile species' particles in the
+lower-left eighth of the box per axis (1/64 of them; x < L_x/8 and y < L_y/8, whole patches of
+any layout up to 8 per axis) at t = 0 only, with positions, momenta and weights
+(`TrackParticlesDisordered_<species>.h5`). With the case's scalars and the fields dumped at
+t = 0, `scripts/crosscode/loadcheck.jl` compares two builds' loads particle by particle.
+"""
+function load_check_blocks(p)
+    io = IOBuffer()
+    xl, yl = p.grid_length ./ 8
+    println(io, """
+
+    def pm_load_check_corner(particles):
+        return (particles.x < $(pyfloat(xl))) * (particles.y < $(pyfloat(yl)))
+    """)
+    for s in p.species
+        s.time_frozen > 0 && continue
+        println(io, """
+        DiagTrackParticles(
+            species = "$(s.name)",
+            every = $(10 * (load_check_steps + 1)),
+            filter = pm_load_check_corner,
+            attributes = ["x", "y", "px", "py", "pz", "w"],
+        )
+        """)
+    end
+    return String(take!(io))
+end
+
+function namelist_2d(case; seed = first(case_seeds(case)), gpu = false, patches = nothing, load_check = false)
+    p = merge(smilei_parameters_2d(case; gpu, patches), (; random_seed = Int(seed)))
+    load_check && (p = merge(p, (; number_of_timesteps = load_check_steps, fields_every = 10 * (load_check_steps + 1),
+                                   scalars_every = 1)))
     io = IOBuffer()
     println(io, "# Smilei namelist generated by scripts/crosscode/smilei.jl from case \"", case["name"], "\".")
     println(io, "# Do not edit; regenerate from the case file. Units: Smilei normalized, reference frequency = ω₀ (A1).")
@@ -427,7 +506,7 @@ function namelist_2d(case; seed = first(case_seeds(case)))
         EM_boundary_conditions = [["periodic"], ["periodic"]],
         solve_poisson = True,
         random_seed = $(p.random_seed),
-        print_every = $(max(1, p.number_of_timesteps ÷ 20)),
+        print_every = $(max(1, p.number_of_timesteps ÷ 20)),$(p.gpu_computing ? "\n    gpu_computing = True," : "")
     )
     """)
     for s in p.species
@@ -461,33 +540,77 @@ function namelist_2d(case; seed = first(case_seeds(case)))
         fields = [$(join(repr.(p.fields), ", "))],
         datatype = "double",
     )""")
+    load_check && print(io, load_check_blocks(p))
     return String(take!(io))
 end
 
 """
-The script the container runs (runner: `bash /run-dir/run.sh`; `run-smilei.sh` mounts the same
-paths). Smilei writes its output into the working directory; the log goes to smilei.log.
+    run_header(p; binary, gpu, indent) -> String
+
+The lines a run writes to its container.txt before Smilei starts: the binary, the image's
+version, threads and CPU, the patch layout; a GPU run also the build, the GPU and driver, and
+the GPU's utilization, memory in use and compute processes as nvidia-smi sees them inside the
+container just before the start (so a timing says whether the GPU was otherwise idle).
 """
-function run_script(p; seeds = nothing, budget = nothing)
+function run_header(p; binary, gpu)
+    nvq(q) = "\$(nvidia-smi --query-$q --format=csv,noheader 2>/dev/null | paste -sd ';' - || echo unknown)"
+    lines = ["echo \"# build: $(gpu ? "gpu" : "cpu")\"",
+             "echo \"# smilei binary: \$(command -v $binary)\"",
+             "echo \"# smilei version: \$(cat /opt/smilei/VERSION 2>/dev/null || echo unknown)\"",
+             "echo \"# threads: \$OMP_NUM_THREADS, cpus: \$(nproc)\"",
+             "echo \"# cpu model: \$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')\"",
+             "echo \"# patches: $(join(p.number_of_patches, "x"))\""]
+    gpu && append!(lines, ["echo \"# fastmath: $(binary == "smilei" ? "yes" : "no")\"",
+                           "echo \"# mpi: \$(grep -h '^export ' \"\$mpi_env\" | sed 's/^export //' | paste -sd ' ' -)\"",
+                           "echo \"# gpu: $(nvq("gpu=name,driver_version"))\"",
+                           "echo \"# gpu before: $(nvq("gpu=utilization.gpu,memory.used"))\"",
+                           "echo \"# gpu processes before: $(nvq("compute-apps=pid,process_name,used_memory"))\""])
+    return join(lines, "\n")
+end
+
+"""
+The lines of a GPU run.sh that set up MPI: the image's /opt/smilei/mpi_env.sh, the messaging
+layer and transports its build verified with a singleton MPI start (smilei-gpu.Containerfile),
+or the file `PM_MPI_ENV` names.
+"""
+mpi_env_lines() = "mpi_env=\"\${PM_MPI_ENV:-/opt/smilei/mpi_env.sh}\"\n. \"\$mpi_env\""
+
+"The line a GPU run appends to container.txt after Smilei ends (empty for a CPU run)."
+gpu_after(gpu) = gpu ? "echo \"# gpu after: \$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader 2>/dev/null | paste -sd ';' - || echo unknown)\" >> container.txt" : ""
+
+indent(text, n) = join((isempty(l) ? l : " "^n * l for l in split(text, '\n')), '\n')
+
+"""
+    run_script(p; seeds = nothing, budget = nothing, gpu = false, fastmath = true) -> String
+
+The script the container runs (runner: `bash /run-dir/run.sh`; `run-smilei.sh` mounts the same
+paths). Smilei writes its output into the working directory; the log goes to smilei.log. A GPU
+run (the smilei-gpu image) runs `smilei`, built with the guide's fastmath flags, or
+`smilei-nofastmath`, with one MPI rank and no OpenMP, and writes the image's toolchain
+(`pm-versions`) to versions.toml in the top directory. `seeds` and `budget` as in
+`seeded_run_script`.
+"""
+function run_script(p; seeds = nothing, budget = nothing, gpu = false, fastmath = true)
     threads = hasproperty(p, :threads) ? p.threads : p.number_of_patches
-    seeds === nothing || return seeded_run_script(threads, seeds; budget)
+    binary = gpu && !fastmath ? "smilei-nofastmath" : "smilei"
+    seeds === nothing || return seeded_run_script(p, threads, seeds; budget, binary, gpu)
     return """
     #!/usr/bin/env bash
-    # Generated by scripts/crosscode/smilei.jl. Runs inside the Smilei container with the run
+    # Generated by scripts/crosscode/smilei.jl. Runs inside the Smilei $(gpu ? "GPU " : "")container with the run
     # directory at /run-dir (PM_RUN_DIR) and the worktree read-only at /worktree.
     set -euo pipefail
     cd "\${PM_RUN_DIR:-/run-dir}"
     export OMP_NUM_THREADS=$threads
     export OMP_SCHEDULE=dynamic
+    $(gpu ? mpi_env_lines() : "")
+    $(gpu ? "pm-versions > versions.toml" : "")
     {
-      echo "# smilei binary: \$(command -v smilei)"
-      echo "# smilei version: \$(cat /opt/smilei/VERSION 2>/dev/null || echo unknown)"
-      echo "# threads: \$OMP_NUM_THREADS, cpus: \$(nproc)"
-      echo "# cpu model: \$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+    $(indent(run_header(p; binary, gpu), 2))
     } > container.txt
     echo "# start: \$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" >> container.txt
-    smilei smilei.py > smilei.log 2>&1
+    $binary namelist.py > smilei.log 2>&1
     echo "# end: \$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" >> container.txt
+    $(gpu_after(gpu))
     """
 end
 
@@ -497,11 +620,11 @@ A seed whose container.txt already has its `# end:` line is skipped, so running 
 again continues it. With `budget` (seconds), the script starts no new seed once the job has
 run that long, and says which seeds remain; the next job on the directory runs them.
 """
-function seeded_run_script(threads, seeds; budget = nothing)
+function seeded_run_script(p, threads, seeds; budget = nothing, binary = "smilei", gpu = false)
     list = join(string.(seeds), " ")
     return """
     #!/usr/bin/env bash
-    # Generated by scripts/crosscode/smilei.jl. Runs inside the Smilei container with the run
+    # Generated by scripts/crosscode/smilei.jl. Runs inside the Smilei $(gpu ? "GPU " : "")container with the run
     # directory at /run-dir (PM_RUN_DIR) and the worktree read-only at /worktree; one Smilei run
     # per seed, in turn, each in its seed-<seed>/ subdirectory. Seeds that finished in an earlier
     # job are skipped$(budget === nothing ? "" : "; no new seed starts after $budget s of this job").
@@ -509,6 +632,8 @@ function seeded_run_script(threads, seeds; budget = nothing)
     top="\${PM_RUN_DIR:-/run-dir}"
     export OMP_NUM_THREADS=$threads
     export OMP_SCHEDULE=dynamic
+    $(gpu ? mpi_env_lines() : "")
+    $(gpu ? "pm-versions > \"\$top/versions.toml\"" : "")
     job_start=\$(date +%s)
     budget=$(something(budget, ""))
     remaining=""
@@ -519,18 +644,35 @@ function seeded_run_script(threads, seeds; budget = nothing)
         remaining="\$remaining \$seed"; continue
       fi
       {
-        echo "# smilei binary: \$(command -v smilei)"
-        echo "# smilei version: \$(cat /opt/smilei/VERSION 2>/dev/null || echo unknown)"
-        echo "# threads: \$OMP_NUM_THREADS, cpus: \$(nproc)"
-        echo "# cpu model: \$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+    $(indent(run_header(p; binary, gpu), 4))
         echo "# seed: \$seed"
       } > container.txt
       echo "# start: \$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" >> container.txt
-      smilei smilei.py > smilei.log 2>&1
+      $binary namelist.py > smilei.log 2>&1
       echo "# end: \$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" >> container.txt
+      $(gpu_after(gpu))
     done
     if [ -n "\$remaining" ]; then echo "# seeds remaining after the budget:\$remaining"; else echo "# all seeds done"; fi
     """
+end
+
+"""
+    recipe_tag_hash(family) -> String
+
+The first 16 hex of SHA-256 over the recipe and the files in `<family>/` in sorted path order,
+the tag rule of runs outside the factory (scripts/crosscode/containers/README.md).
+"""
+function recipe_tag_hash(family)
+    cdir = joinpath(CROSSCODE, "containers")
+    files = ["$family.Containerfile"]
+    fdir = joinpath(cdir, family)
+    if isdir(fdir)
+        for (root, _, fs) in walkdir(fdir), f in fs
+            push!(files, relpath(joinpath(root, f), cdir))
+        end
+    end
+    sort!(files)
+    return bytes2hex(sha256(reduce(vcat, read.(joinpath.(cdir, files)))))[1:16]
 end
 
 """
@@ -556,44 +698,70 @@ function cli_options(args, flags)
 end
 
 """
-    prepare_run(case_name; tag, budget) -> dir
+    prepare_run(case_name; tag, budget, gpu = false, fastmath = true, patches = nothing, load_check = false) -> dir
 
 Write the run directory under scripts/runs/<tag>/ and its manifest; for a case with a `seeds`
 list, one subdirectory seed-<seed>/ per seed with its namelist and a copy of the case, and a
 run.sh that skips finished seeds and, with `budget` (seconds), starts no seed after that long.
+
+`gpu` prepares a run of the smilei-gpu image (schema 2), `fastmath = false` its binary without
+the guide's fastmath flags, `patches = (px, py)` a patch layout other than the default of the
+build. `load_check` prepares the one-step run of the case's first seed that dumps the t = 0
+load (`load_check_blocks`), as a single run. The default tag names the build, the layout when
+it is not the CPU default, and the fastmath choice of a GPU run:
+smilei[-gpu][-loadcheck]-<case>[-p<px>x<py>][-nofastmath][-s<n>]-<first 8 hex of the case hash>.
+`first_seeds = n` runs only the first n seeds of a seeded case (a paired sub-ensemble; the
+manifest's `seeds` lists them, and the analysis takes the seeds from there).
 """
-function prepare_run(name; tag = nothing, runs = joinpath(SCRIPTS, "runs"), budget = nothing)
+function prepare_run(name; tag = nothing, runs = joinpath(SCRIPTS, "runs"), budget = nothing, gpu = false, fastmath = true,
+                     patches = nothing, load_check = false, first_seeds = nothing)
     case = load_case(name)
+    gpu || fastmath || error("fastmath = false selects the GPU image's binary without fastmath; it needs gpu = true")
+    p = smilei_parameters(case; gpu, patches)
     h = file_hash(case["_path"])
-    tag = something(tag, "smilei-$(case["name"])-$(h[1:8])")
+    layout = join(p.number_of_patches, "x")
+    family = gpu ? "smilei-gpu" : "smilei"
+    variant = (gpu || patches !== nothing || load_check ? "-p$layout" : "") * (fastmath ? "" : "-nofastmath") *
+              (first_seeds === nothing ? "" : "-s$first_seeds")
+    tag = something(tag, "$family$(load_check ? "-loadcheck" : "")-$(case["name"])$variant-$(h[1:8])")
     dir = joinpath(runs, tag)
     mkpath(dir)
     cp(case["_path"], joinpath(dir, "case.toml"); force = true)
-    seeded = haskey(case["numerics"], "seeds")
-    seeds = case_seeds(case)
+    seeded = haskey(case["numerics"], "seeds") && !load_check
+    seeds = load_check ? [first(case_seeds(case))] : case_seeds(case)
+    if first_seeds !== nothing
+        seeded && 1 <= first_seeds <= length(seeds) || error("first_seeds = $first_seeds: a seeded case has 1 to $(length(seeds)) seeds")
+        seeds = seeds[1:first_seeds]
+    end
     if seeded
         for s in seeds
             sd = joinpath(dir, "seed-$s")
             mkpath(sd)
             cp(case["_path"], joinpath(sd, "case.toml"); force = true)
-            write(joinpath(sd, "smilei.py"), namelist(case; seed = s))
+            write(joinpath(sd, "namelist.py"), namelist(case; seed = s, gpu, patches))
         end
-        inputs = ["case.toml"; ["seed-$s/smilei.py" for s in seeds]; "run.sh"]
+        inputs = ["case.toml"; ["seed-$s/namelist.py" for s in seeds]; "run.sh"]
     else
-        write(joinpath(dir, "smilei.py"), namelist(case))
-        inputs = ["case.toml", "smilei.py", "run.sh"]
+        write(joinpath(dir, "namelist.py"), namelist(case; seed = only(seeds), gpu, patches, load_check))
+        inputs = ["case.toml", "namelist.py", "run.sh"]
     end
-    write(joinpath(dir, "run.sh"), run_script(smilei_parameters(case); seeds = seeded ? seeds : nothing, budget))
+    write(joinpath(dir, "run.sh"), run_script(p; seeds = seeded ? seeds : nothing, budget, gpu, fastmath))
     chmod(joinpath(dir, "run.sh"), 0o755)
+    recipe = joinpath(CROSSCODE, "containers", "$family.Containerfile")
     write_manifest(dir; root = ROOT, inputs,
         extra = Dict{String,Any}("seeds" => seeds,
             "run" => tag, "code" => "smilei", "case" => case["name"],
+            "build" => gpu ? "gpu" : "cpu", "patches" => [p.number_of_patches...],
+            "seed_subset" => first_seeds === nothing ? "all of the case's seeds" : "the first $first_seeds of the case's $(length(case_seeds(case))) seeds",
+            "fastmath" => gpu ? fastmath : "not applicable (CPU build)", "load_check" => load_check,
             "case_source" => relpath(case["_path"], ROOT),
             "generator" => "scripts/crosscode/smilei.jl",
             "generator_hash" => "sha256:" * file_hash(@__FILE__),
             "image" => Dict{String,Any}(
-                "recipe" => "scripts/crosscode/containers/smilei.Containerfile",
-                "recipe_hash" => "sha256:" * file_hash(joinpath(CROSSCODE, "containers", "smilei.Containerfile")),
+                "family" => family,
+                "recipe" => relpath(recipe, ROOT),
+                "recipe_hash" => "sha256:" * file_hash(recipe),
+                "outside_factory_tag" => "particlemesh-$family:" * recipe_tag_hash(family),
                 "id" => "pending: written by the analyze step from the runner log")))
     return dir
 end
@@ -603,15 +771,20 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     using .SmileiDeck
     cmd = get(ARGS, 1, "")
-    rest, opts = cli_options(ARGS[2:end], ("--budget",))
+    args = collect(ARGS[2:end])
+    flag(f) = (i = findfirst(==(f), args); i === nothing ? false : (deleteat!(args, i); true))
+    gpu, nofast, load_check = flag("--gpu"), flag("--no-fastmath"), flag("--load-check")
+    rest, opts = cli_options(args, ("--budget", "--patches", "--first-seeds"))
+    first_seeds = haskey(opts, "--first-seeds") ? parse(Int, opts["--first-seeds"]) : nothing
     budget = haskey(opts, "--budget") ? parse(Int, opts["--budget"]) : nothing
+    patches = haskey(opts, "--patches") ? Tuple(parse.(Int, split(opts["--patches"], "x"))) : nothing
     if cmd == "prepare" && length(rest) >= 1
-        dir = prepare_run(rest[1]; tag = get(rest, 2, nothing), budget)
+        dir = prepare_run(rest[1]; tag = get(rest, 2, nothing), budget, gpu, fastmath = !nofast, patches, load_check, first_seeds)
         println(dir)
     elseif cmd == "namelist" && length(rest) >= 1
-        print(namelist(load_case(rest[1])))
+        print(namelist(load_case(rest[1]); gpu, patches, load_check))
     else
-        println(stderr, "usage: smilei.jl prepare <case> [tag] [--budget <seconds>] | namelist <case>")
+        println(stderr, "usage: smilei.jl prepare <case> [tag] [--budget <seconds>] [--gpu] [--no-fastmath] [--patches <px>x<py>] [--load-check] [--first-seeds <n>] | namelist <case> [--gpu] [--patches <px>x<py>] [--load-check]")
         exit(2)
     end
 end
