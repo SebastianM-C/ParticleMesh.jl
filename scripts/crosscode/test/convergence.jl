@@ -416,7 +416,17 @@ end
     for (_, v) in cmp["points"]
         @test v["relative_difference_same_samples"] == 0 && v["ratio_window_start"] == 1 && v["ratio_window_end"] == 1
     end
-    sd2 = joinpath(mktempdir(), "summary")
+    # the summary directories are recorded as the repository names them, never as absolute paths:
+    # relative to the repository inside it, the directory's name outside it
+    @test cmp["reference"] == "summary" && cmp["other"] == "summary"
+    mktempdir(Convergence.ROOT) do inside
+        sdi = joinpath(inside, "summary")
+        cp(sd, sdi)
+        c = R.compare_codes(abspath(sdi), sd, joinpath(inside, "cmp"))
+        @test c["reference"] == relpath(sdi, Convergence.ROOT) && c["other"] == "summary"
+        @test !any(isabspath, (c["reference"], c["other"]))
+    end
+    sd2 =joinpath(mktempdir(), "summary")
     synthetic_scan(sd2, base, pts; δ∞, a, b)
     δc = 1e-4
     for (name, _) in pts
