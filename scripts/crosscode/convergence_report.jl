@@ -118,6 +118,7 @@ Evaluate every point of a summary directory and write results.json, the figures 
 manifest.toml into `out`.
 """
 function report(sumdir, out; box_status = nothing)
+    c0 = git_commit(ROOT)      # before this step rewrites its own (tracked) outputs
     mkpath(out)
     scan = TOML.parsefile(joinpath(sumdir, "scan.toml"))
     names = sort([splitext(f)[1] for f in readdir(sumdir) if endswith(f, ".json") && f != "results.json"])
@@ -167,7 +168,9 @@ function report(sumdir, out; box_status = nothing)
         extra["box"] = Dict{String,Any}(k => b[k] for k in ("branch", "request_commit", "started", "finished", "ok", "hardware", "image") if haskey(b, k))
     end
     # recorded relative to `out` (no absolute path of the machine enters the manifest)
-    write_manifest(out; inputs = [relpath(abspath(f), abspath(out)) for f in inputs], root = ROOT, extra)
+    extra["commit"] = c0.commit
+    extra["dirty"] = coalesce(c0.dirty, "unknown")
+    write_manifest(out; inputs = [relpath(abspath(f), abspath(out)) for f in inputs], extra)
     return res
 end
 
