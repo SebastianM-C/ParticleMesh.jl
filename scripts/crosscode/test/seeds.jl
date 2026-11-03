@@ -92,6 +92,8 @@ end
 end
 
 include(joinpath(CC, "subensembles.jl"))
+@isdefined(Theory) || include(joinpath(CC, "theory.jl"))
+using .Theory: landau_root, landau_rate_relativistic, thermal_load
 using JSON
 using Random: Xoshiro
 
@@ -164,4 +166,33 @@ end
     @test w[end]["gamma"] == e.gamma
     @test w[end]["jackknife_stderr"] ≈ e.jackknife.stderr rtol = 1e-12
     @test e.jackknife.stderr > 1e-4                    # not the trivial 0 = 0
+end
+
+@testset "T-394 Landau damping with a relativistic push: the non-relativistic limit, the loads, the T scaling [A5, A7, WP-025]" begin
+    T, kλ = 0.0025, 0.5
+    k = kλ / sqrt(T)
+    root = landau_root(kλ)
+    nr = landau_rate_relativistic(k, T; relativistic = false)
+    @test abs(nr.gamma + imag(root)) < 1e-4          # the time-domain solution finds the dispersion root
+    @test abs(nr.omega - real(root)) < 1e-3
+    # the loads: normalized, and their mean kinetic energy ⟨γ − 1⟩ (3/2 T exactly for the
+    # classical energy; the series 3T/2 (1 − 5T/4 + 35T²/8) for the Maxwellian in momentum)
+    ps = range(1e-9, 14 * sqrt(T); length = 200_001)
+    # (for the Maxwellian in velocity, ⟨γ − 1⟩ = ⟨v²/2 + 3v⁴/8 + 5v⁶/16⟩ = 3T/2 (1 + 15T/4 + 175T²/8))
+    for (kind, ke) in ((:momentum_maxwellian, 1.5T * (1 - 1.25T + 4.375T^2)), (:classical_energy, 1.5T),
+                       (:velocity_maxwellian, 1.5T * (1 + 3.75T + 21.875T^2)))
+        f = thermal_load(kind, T)
+        w = 4π .* ps .^ 2 .* f.(ps) .* step(ps)
+        @test sum(w) ≈ 1 rtol = 1e-6
+        @test sum(w .* (sqrt.(1 .+ ps .^ 2) .- 1)) ≈ ke rtol = 1e-5
+    end
+    pc = landau_rate_relativistic(k, T; load = :momentum_maxwellian)
+    sm = landau_rate_relativistic(k, T; load = :classical_energy)
+    pm = landau_rate_relativistic(k, T; load = :velocity_maxwellian)
+    @test pc.gamma < sm.gamma < pm.gamma < nr.gamma   # slower resonant electrons, less damping
+    # a relativistic correction: the deficit scales with T at fixed kλ_D (here within 15 %)
+    T4 = T / 4
+    k4 = kλ / sqrt(T4)
+    d(T_, k_) = landau_rate_relativistic(k_, T_; relativistic = false).gamma - landau_rate_relativistic(k_, T_).gamma
+    @test d(T, k) / d(T4, k4) ≈ 4 rtol = 0.15
 end

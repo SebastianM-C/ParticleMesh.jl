@@ -40,6 +40,26 @@
 # so the 2D rate at |k| equals the 1D rate at the same |k|, v₀ and ω_p (T-273 checks it). The
 # relation is derived here and is unverified against the literature. It is the continuum
 # relation: the Yee grid changes k to its discrete form, which the case files do not correct.
+#
+# Landau damping with a relativistic push (WP-025, post hoc). Smilei and PIConGPU move the
+# particles with v = p/γ, so at T = 2.5e-3 mₑc² the resonant electrons (v ≈ ω/k ≈ 3 v_th) are
+# slower than their momenta say, and the rate differs from `landau_root`'s by a few per cent,
+# by an amount that depends on how the thermal momenta are loaded. `landau_rate_relativistic`
+# solves the initial-value problem of one Fourier mode in time instead of continuing a
+# dispersion relation: electrons (q = −1, m = 1, n = 1, ω_p = 1), immobile ions, an isotropic
+# load f₀(|p|) with ∫ f₀ d³p = 1, and a density perturbation of the load's shape at t = 0.
+# Linearizing ∂ₜf + v ∂_z f − E ∂_{p_z} f = 0 with ik Ê = −∫ f̂ d³p gives, for Ê = (iα/k) e,
+#
+#     e(t) = N(t) + (1/k) ∫₀ᵗ S(t − s) e(s) ds,
+#     N(t) = ∫ f₀ cos(k v_z t) d³p,   S(τ) = ∫ f₀'(p) (p_z/p) sin(k v_z τ) d³p,   v = p/γ,
+#
+# with the angular integrals in closed form (μ = cos θ): ∫ cos(aμ) dμ = 2 sin a / a and
+# ∫ μ sin(aμ) dμ = 2 (sin a − a cos a)/a². For the non-relativistic Maxwellian, S(τ) =
+# −kτ exp(−k²Tτ²/2) and the asymptotic rate is `landau_root`'s (T-394). The rate is fitted on
+# the maxima of e(t)² over a late window, where the higher roots have decayed. A second
+# implementation, independent of this one (the physics breaker of WP-025, with a numerical
+# angular quadrature), gave the same rates to 1e-5; neither is checked against the literature.
+# The grid (TSC form factor, Yee differences) is not included.
 
 module Theory
 
@@ -47,6 +67,7 @@ using SpecialFunctions: erfcx
 
 export plasma_Z, landau_root, two_stream_cold_growth
 export mode_wavevector, weibel_cold_growth_2d, weibel_dispersion_2d, yee_energy_ratio
+export thermal_load, landau_rate_relativistic
 
 """
     plasma_Z(ζ)
@@ -150,5 +171,79 @@ on the Yee grid: the difference operators give Ex ∝ (2/Δx) sin(k_xΔx/2) and 
 (k_x/k_y)² as the cells shrink.
 """
 yee_energy_ratio(kvec, h) = (sin(kvec[1] * h[1] / 2) / h[1])^2 / (sin(kvec[2] * h[2] / 2) / h[2])^2
+
+"""
+    thermal_load(kind, T) -> f₀
+
+The isotropic momentum distribution f₀(|p|) of a thermal load at temperature T (mₑc²),
+normalized to ∫ f₀ d³p = 1: `:momentum_maxwellian`, each component of p normal with variance
+T (PIConGPU's `unary::Temperature`, and the non-relativistic Maxwellian when pushed with
+v = p); `:classical_energy`, the kinetic energy E drawn from the classical Maxwell–Boltzmann
+energy distribution 2√(E/π) T^(-3/2) e^(-E/T) and |p| = √((1 + E)² − 1), isotropic
+(Smilei's `maxwell-juettner` below T = 0.1, scripts/crosscode/README.md);
+`:velocity_maxwellian`, each component of v normal with variance T and u = γv (ParticleMesh's
+electromagnetic module in 3V, `problem.jl`), so f₀(p) = f_v(p/γ)/γ⁵ (d³p = γ⁵ d³v).
+"""
+function thermal_load(kind, T)
+    kind === :momentum_maxwellian && return p -> exp(-p^2 / (2T)) / (2π * T)^1.5
+    kind === :classical_energy && return function (p)
+        γ = sqrt(1 + p^2)
+        E = γ - 1
+        return 2 / sqrt(π) * T^-1.5 * sqrt(E) * exp(-E / T) * (p / γ) / (4π * p^2)
+    end
+    kind === :velocity_maxwellian && return function (p)
+        γ = sqrt(1 + p^2)
+        return exp(-(p / γ)^2 / (2T)) / (2π * T)^1.5 / γ^5
+    end
+    error("thermal_load: unknown kind $kind")
+end
+
+"""
+    landau_rate_relativistic(k, T; load = :momentum_maxwellian, relativistic = true,
+                             window = (8.0, 22.0), tmax = 25.0, h = 0.0025, np = 3000, pmax)
+        -> (; gamma, omega, maxima, t, e)
+
+Damping rate and frequency (ω_p units) of the field amplitude of one Fourier mode k (ω_p/c
+units, c = 1) of the linearized Vlasov–Poisson system with the push v = p/γ (`relativistic =
+true`) or v = p, for the load `thermal_load(load, T)`: the Volterra equation in the header,
+by the trapezoid rule with step h on [0, tmax] and a midpoint rule in |p| with np points up to
+pmax (default 14√T, where the load is below 1e-40 of its peak). γ is −½ the slope of a
+least-squares line through log e(t)² at its maxima in `window`; ω is π over their mean
+spacing, so it is quantized by h (about 3e-4 at the default). Converged to about 3e-5 in γ
+at the defaults for k = 10, T = 2.5e-3 (h halved and np doubled).
+"""
+function landau_rate_relativistic(k, T; load = :momentum_maxwellian, relativistic = true,
+                                  window = (8.0, 22.0), tmax = 25.0, h = 0.0025, np = 3000,
+                                  pmax = 14 * sqrt(T))
+    f = thermal_load(load, T)
+    dp = pmax / np
+    ps = [(i - 0.5) * dp for i in 1:np]
+    w = [2π * p^2 * dp for p in ps]
+    fp = f.(ps)
+    dfp = [(f(p + 1e-6 * pmax) - f(p - 1e-6 * pmax)) / (2e-6 * pmax) for p in ps]
+    vel = relativistic ? ps ./ sqrt.(1 .+ ps .^ 2) : ps
+    ts = collect(0:h:tmax)
+    sinc2(a) = abs(a) < 1e-6 ? 2 - a^2 / 3 : 2 * sin(a) / a
+    j1(a) = abs(a) < 1e-4 ? 2a / 3 : 2 * (sin(a) - a * cos(a)) / a^2
+    N = [sum(w[i] * fp[i] * sinc2(k * vel[i] * t) for i in 1:np) for t in ts]
+    S = [sum(w[i] * dfp[i] * j1(k * vel[i] * t) for i in 1:np) for t in ts]
+    n = length(ts)
+    e = zeros(n)
+    e[1] = N[1]
+    for m in 2:n            # trapezoid; the end term vanishes because S(0) = 0
+        acc = S[m] * e[1] / 2
+        for j in 2:m-1
+            acc += S[m - j + 1] * e[j]
+        end
+        e[m] = N[m] + h / k * acc
+    end
+    U = e .^ 2
+    idx = [i for i in 2:n-1 if U[i-1] < U[i] >= U[i+1] && window[1] <= ts[i] <= window[2]]
+    length(idx) >= 3 || error("landau_rate_relativistic: fewer than three maxima in the window")
+    x, y = ts[idx], log.(U[idx])
+    xm, ym = sum(x) / length(x), sum(y) / length(y)
+    slope = sum((x .- xm) .* (y .- ym)) / sum((x .- xm) .^ 2)
+    return (; gamma = -slope / 2, omega = π * (length(x) - 1) / (x[end] - x[1]), maxima = length(x), t = ts, e)
+end
 
 end
