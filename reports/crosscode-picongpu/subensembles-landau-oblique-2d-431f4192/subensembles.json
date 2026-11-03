@@ -1,0 +1,774 @@
+{
+  "first_maxima": {
+    "common": [
+      {
+        "beyond_rule": [
+          false,
+          false
+        ],
+        "combined_jackknife": 0.003825468528667752,
+        "difference_b_minus_a": 0.0025148183720302975,
+        "maxima": 3,
+        "t_last": 9.201912381193639
+      },
+      {
+        "beyond_rule": [
+          false,
+          false
+        ],
+        "combined_jackknife": 0.004536756767206933,
+        "difference_b_minus_a": 0.004608816196604276,
+        "maxima": 4,
+        "t_last": 11.443403858663885
+      },
+      {
+        "beyond_rule": [
+          false,
+          false
+        ],
+        "combined_jackknife": 0.004888164396640717,
+        "difference_b_minus_a": -0.0008247919706791118,
+        "maxima": 5,
+        "t_last": 13.68489533613413
+      },
+      {
+        "beyond_rule": [
+          true,
+          false
+        ],
+        "combined_jackknife": 0.004503325693278368,
+        "difference_b_minus_a": -0.0043339543357347465,
+        "maxima": 6,
+        "t_last": 15.926386813604376
+      }
+    ],
+    "note": "post hoc: all seeds, fitted on the first k maxima after fit_start, k = 3 to the longer of the two rule fits; common lists the k at which both runs' k-th maxima are the same dump, beyond_rule whether k exceeds each run's own fit",
+    "picongpu-landau-oblique-2d-fp64-431f4192": [
+      {
+        "gamma": 0.14766377420292914,
+        "jackknife_stderr": 0.0026545809505155457,
+        "maxima": 3,
+        "t_last": 9.201912381193639
+      },
+      {
+        "gamma": 0.1513011096705098,
+        "jackknife_stderr": 0.0031752046174821718,
+        "maxima": 4,
+        "t_last": 11.443403858663885
+      },
+      {
+        "gamma": 0.14962112102244893,
+        "jackknife_stderr": 0.0034786817161183534,
+        "maxima": 5,
+        "t_last": 13.68489533613413
+      },
+      {
+        "gamma": 0.1457709130781287,
+        "jackknife_stderr": 0.003269471733178186,
+        "maxima": 6,
+        "t_last": 15.926386813604376
+      }
+    ],
+    "rule_maxima": [
+      5,
+      6
+    ],
+    "smilei-landau-oblique-2d-431f4192": [
+      {
+        "gamma": 0.14514895583089885,
+        "jackknife_stderr": 0.002754525265991837,
+        "maxima": 3,
+        "t_last": 9.201912381193639
+      },
+      {
+        "gamma": 0.14669229347390553,
+        "jackknife_stderr": 0.0032404070117683977,
+        "maxima": 4,
+        "t_last": 11.443403858663885
+      },
+      {
+        "gamma": 0.15044591299312804,
+        "jackknife_stderr": 0.003434082801350279,
+        "maxima": 5,
+        "t_last": 13.68489533613413
+      },
+      {
+        "gamma": 0.15010486741386345,
+        "jackknife_stderr": 0.0030968527387801184,
+        "maxima": 6,
+        "t_last": 15.926386813604376
+      }
+    ]
+  },
+  "fit_rules": {
+    "fit_start": 3.0,
+    "floor_factor": 10.0,
+    "minimum_maxima": 3
+  },
+  "g16": {
+    "difference_b_minus_a": [
+      -0.009212762944607239,
+      0.0012973841628915739
+    ],
+    "groups": 2,
+    "mean_difference": -0.0039576893908578326,
+    "picongpu-landau-oblique-2d-fp64-431f4192": {
+      "fits": [
+        {
+          "fit_end": 15.892309323005495,
+          "gamma": 0.1447523367074637,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "jackknife_stderr": 0.009036007001526717,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 15.933595220729547,
+          "gamma": 0.14671172225135706,
+          "group": 2,
+          "indices": [
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.004602304589028373,
+          "maxima_used": 6
+        }
+      ],
+      "mean_gamma": 0.14573202947941039,
+      "mean_jackknife_stderr": 0.006819155795277545,
+      "sd_gamma": 0.001385494805045883
+    },
+    "sd_difference": 0.007431796290980589,
+    "smilei-landau-oblique-2d-431f4192": {
+      "fits": [
+        {
+          "fit_end": 13.693689886188963,
+          "gamma": 0.15396509965207095,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "jackknife_stderr": 0.003907580388911245,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 15.904485795799932,
+          "gamma": 0.1454143380884655,
+          "group": 2,
+          "indices": [
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.009365250392255138,
+          "maxima_used": 6
+        }
+      ],
+      "mean_gamma": 0.14968971887026822,
+      "mean_jackknife_stderr": 0.006636415390583192,
+      "sd_gamma": 0.006046301485934705
+    }
+  },
+  "g32": {
+    "difference_b_minus_a": [
+      -0.004674999914999339
+    ],
+    "groups": 1,
+    "mean_difference": -0.004674999914999339,
+    "picongpu-landau-oblique-2d-fp64-431f4192": {
+      "fits": [
+        {
+          "fit_end": 15.912507324856426,
+          "gamma": 0.1457709130781287,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.003269471733178186,
+          "maxima_used": 6
+        }
+      ],
+      "mean_gamma": 0.1457709130781287,
+      "mean_jackknife_stderr": 0.003269471733178186,
+      "sd_gamma": null
+    },
+    "sd_difference": null,
+    "smilei-landau-oblique-2d-431f4192": {
+      "fits": [
+        {
+          "fit_end": 13.693679298212105,
+          "gamma": 0.15044591299312804,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.0032851784874100027,
+          "maxima_used": 5
+        }
+      ],
+      "mean_gamma": 0.15044591299312804,
+      "mean_jackknife_stderr": 0.0032851784874100027,
+      "sd_gamma": null
+    }
+  },
+  "g4": {
+    "difference_b_minus_a": [
+      -0.016507419809303148,
+      0.0004818873870277296,
+      -0.010672849547808116,
+      -0.021490278916388855,
+      0.002598797195260072,
+      -0.002046150625917592,
+      0.008821679648669617,
+      0.02092866870459012
+    ],
+    "groups": 8,
+    "mean_difference": -0.0022357082454837716,
+    "picongpu-landau-oblique-2d-fp64-431f4192": {
+      "fits": [
+        {
+          "fit_end": 18.137257448643346,
+          "gamma": 0.1404706295629348,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "jackknife_stderr": 0.014090306247102346,
+          "maxima_used": 7
+        },
+        {
+          "fit_end": 15.83060058910187,
+          "gamma": 0.16228262343285355,
+          "group": 2,
+          "indices": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "jackknife_stderr": 0.011276127974550455,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 15.978793944396687,
+          "gamma": 0.1303987346988387,
+          "group": 3,
+          "indices": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "jackknife_stderr": 0.00510857275653561,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 15.855611310179146,
+          "gamma": 0.1343142447003456,
+          "group": 4,
+          "indices": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "jackknife_stderr": 0.008492733367219974,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 18.18879226643717,
+          "gamma": 0.12935516338609007,
+          "group": 5,
+          "indices": [
+            17,
+            18,
+            19,
+            20
+          ],
+          "jackknife_stderr": 0.011043394369991522,
+          "maxima_used": 7
+        },
+        {
+          "fit_end": 13.745441668099236,
+          "gamma": 0.14694319928651212,
+          "group": 6,
+          "indices": [
+            21,
+            22,
+            23,
+            24
+          ],
+          "jackknife_stderr": 0.0067942211907665,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 15.863299342907203,
+          "gamma": 0.1495126182631115,
+          "group": 7,
+          "indices": [
+            25,
+            26,
+            27,
+            28
+          ],
+          "jackknife_stderr": 0.011424096999552961,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 13.686705925421558,
+          "gamma": 0.16075252351786656,
+          "group": 8,
+          "indices": [
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.0076119827063042675,
+          "maxima_used": 5
+        }
+      ],
+      "mean_gamma": 0.1442537171060691,
+      "mean_jackknife_stderr": 0.009480179451502955,
+      "sd_gamma": 0.012868420569347947
+    },
+    "sd_difference": 0.01381124533297605,
+    "smilei-landau-oblique-2d-431f4192": {
+      "fits": [
+        {
+          "fit_end": 13.697519264857252,
+          "gamma": 0.15697804937223794,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "jackknife_stderr": 0.006001821536177725,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 13.631521536346504,
+          "gamma": 0.16180073604582582,
+          "group": 2,
+          "indices": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "jackknife_stderr": 0.004923301448272255,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 13.717974111666248,
+          "gamma": 0.14107158424664681,
+          "group": 3,
+          "indices": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "jackknife_stderr": 0.004387595058765375,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 13.731116607292778,
+          "gamma": 0.15580452361673444,
+          "group": 4,
+          "indices": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "jackknife_stderr": 0.009613028341716888,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 18.163347056630716,
+          "gamma": 0.12675636619083,
+          "group": 5,
+          "indices": [
+            17,
+            18,
+            19,
+            20
+          ],
+          "jackknife_stderr": 0.017019366002808487,
+          "maxima_used": 7
+        },
+        {
+          "fit_end": 13.720515679650216,
+          "gamma": 0.1489893499124297,
+          "group": 6,
+          "indices": [
+            21,
+            22,
+            23,
+            24
+          ],
+          "jackknife_stderr": 0.01898887535643775,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 18.26106076252945,
+          "gamma": 0.14069093861444187,
+          "group": 7,
+          "indices": [
+            25,
+            26,
+            27,
+            28
+          ],
+          "jackknife_stderr": 0.013069005097330172,
+          "maxima_used": 7
+        },
+        {
+          "fit_end": 18.12875212459632,
+          "gamma": 0.13982385481327644,
+          "group": 8,
+          "indices": [
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.006462834212945452,
+          "maxima_used": 7
+        }
+      ],
+      "mean_gamma": 0.14648942535155288,
+      "mean_jackknife_stderr": 0.010058228381806764,
+      "sd_gamma": 0.011552779830250519
+    }
+  },
+  "g8": {
+    "difference_b_minus_a": [
+      -0.012687607359822967,
+      -0.015145057788779559,
+      -0.004732175557652429,
+      0.01489707866043935
+    ],
+    "groups": 4,
+    "mean_difference": -0.004416940511453901,
+    "picongpu-landau-oblique-2d-fp64-431f4192": {
+      "fits": [
+        {
+          "fit_end": 18.073880007450647,
+          "gamma": 0.14715611314555938,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "jackknife_stderr": 0.006280009140413989,
+          "maxima_used": 7
+        },
+        {
+          "fit_end": 15.910808216440484,
+          "gamma": 0.13307689825291863,
+          "group": 2,
+          "indices": [
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "jackknife_stderr": 0.004773640858722124,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 15.971079622800175,
+          "gamma": 0.13841943893199957,
+          "group": 3,
+          "indices": [
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24
+          ],
+          "jackknife_stderr": 0.00519987799732874,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 15.888416061722717,
+          "gamma": 0.15537491760157246,
+          "group": 4,
+          "indices": [
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.006606838941570761,
+          "maxima_used": 6
+        }
+      ],
+      "mean_gamma": 0.1435068419830125,
+      "mean_jackknife_stderr": 0.005715091734508904,
+      "sd_gamma": 0.009812131860135081
+    },
+    "sd_difference": 0.013621394203474869,
+    "smilei-landau-oblique-2d-431f4192": {
+      "fits": [
+        {
+          "fit_end": 13.660211689685601,
+          "gamma": 0.15984372050538234,
+          "group": 1,
+          "indices": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "jackknife_stderr": 0.004161655377783736,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 13.724092920056078,
+          "gamma": 0.1482219560416982,
+          "group": 2,
+          "indices": [
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "jackknife_stderr": 0.006066430047897671,
+          "maxima_used": 5
+        },
+        {
+          "fit_end": 15.89805477227644,
+          "gamma": 0.143151614489652,
+          "group": 3,
+          "indices": [
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24
+          ],
+          "jackknife_stderr": 0.009211455709401472,
+          "maxima_used": 6
+        },
+        {
+          "fit_end": 18.19831489968171,
+          "gamma": 0.1404778389411331,
+          "group": 4,
+          "indices": [
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "jackknife_stderr": 0.009572857335237262,
+          "maxima_used": 7
+        }
+      ],
+      "mean_gamma": 0.1479237824944664,
+      "mean_jackknife_stderr": 0.0072530996175800356,
+      "sd_gamma": 0.008571065521352395
+    }
+  },
+  "note": "post hoc: disjoint consecutive groups of the case's seeds; a check of the jackknife, not an observable",
+  "plot": "ensemble γ of each disjoint group of g seeds, both runs, against g",
+  "runs": [
+    "smilei-landau-oblique-2d-431f4192",
+    "picongpu-landau-oblique-2d-fp64-431f4192"
+  ],
+  "seeds": [
+    20261031,
+    20262031,
+    20263031,
+    20264031,
+    20265031,
+    20266031,
+    20267031,
+    20268031,
+    20269031,
+    20270031,
+    20271031,
+    20272031,
+    20273031,
+    20274031,
+    20275031,
+    20276031,
+    20277031,
+    20278031,
+    20279031,
+    20280031,
+    20281031,
+    20282031,
+    20283031,
+    20284031,
+    20285031,
+    20286031,
+    20287031,
+    20288031,
+    20289031,
+    20290031,
+    20291031,
+    20292031
+  ],
+  "theory": 0.15335946690960509
+}

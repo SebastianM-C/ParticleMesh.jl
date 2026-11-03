@@ -1,0 +1,14 @@
+commit = "4893d494ab751f8cd50f4b67240296d250cc9b8e"
+dirty = false
+julia = "1.13.3"
+kind = "post-hoc check"
+runs = ["smilei-landau-oblique-2d-431f4192", "picongpu-landau-oblique-2d-fp64-431f4192"]
+updated = "2026-11-03T09:59:09.671Z"
+work_package = "WP-025"
+
+[inputs]
+"picongpu-landau-oblique-2d-fp64-431f4192/seed-coefficients.json" = "sha256:ff8cc38f5b93a074febf0c1d3c3bac4f58ac4862167e274862d36860a6f1e321"
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+"scripts/crosscode/subensembles.jl" = "sha256:ded6ed60410132d710bb72134d108276ec986972ba9f873e51c0a015b0c54c26"
+"smilei-landau-oblique-2d-431f4192/seed-coefficients.json" = "sha256:ad7f413b5212205dd50f5830cdb386d56101cec562e0fbc756ceeb1e729efc38"
