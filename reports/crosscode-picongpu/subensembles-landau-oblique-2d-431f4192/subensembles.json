@@ -736,6 +736,7 @@
     "bootstrap_difference_sd": 0.004708108545197366,
     "note": "post hoc: the bootstrap resamples each run's seeds independently, so the difference's sd is the root sum of squares",
     "picongpu-landau-oblique-2d-fp64-431f4192": {
+      "bootstrap_failed_fits": 0,
       "bootstrap_gamma_mean": 0.1453706289894486,
       "bootstrap_gamma_sd": 0.0035043704700994265,
       "bootstrap_gammas": [
@@ -1066,6 +1067,7 @@
       "valid_splits": 300
     },
     "smilei-landau-oblique-2d-431f4192": {
+      "bootstrap_failed_fits": 0,
       "bootstrap_gamma_mean": 0.15014759236797373,
       "bootstrap_gamma_sd": 0.003144149118864368,
       "bootstrap_gammas": [

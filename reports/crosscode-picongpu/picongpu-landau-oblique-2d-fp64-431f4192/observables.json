@@ -3,6 +3,10 @@
   "case": "landau-oblique-2d",
   "code": "picongpu",
   "compile_seconds": 102.661,
+  "compile_seconds_per_job": [
+    102.661,
+    67.22
+  ],
   "ensemble_floor": 3.530280690415377e-10,
   "fit_energies": [
     1.3130611401603565e-7,
