@@ -1,4 +1,4 @@
-# T-417: the time of the loaded momenta in `initialize!`. With `momenta_at = :t0` (the default)
+# T-420: the time of the loaded momenta in `initialize!`. With `momenta_at = :t0` (the default)
 # the loaded momenta are u⁰ and are kicked back half a step in E⁰; with `:t_minus_half` they are
 # taken as u⁻¹ᐟ², the convention of Smilei and PIConGPU, and kept as loaded. Everything else the
 # two starts share bit for bit in Reference mode (Fast's atomic charge makes E⁰ differ in its last
@@ -31,7 +31,7 @@ end
 
 momenta_bits(st) = [bits(a) for s in st.species for a in s.u]
 
-function body_T417(be)
+function body_T420(be)
     for name in ("landau", "two-stream"), T in TYPES
         amplitude = T === D3 ? seeded(T, name == "landau" ? 0.01 : 0.001) : nothing
         kw = (; mode = Reference(), ppc = 16, t_end = 1, amplitude, be)
@@ -63,6 +63,6 @@ function body_T417(be)
     @test_throws ArgumentError initialize!(EMState(prob2, EMNumerics(); backend = be), prob2; momenta_at = :t_half)
 end
 
-@testset "T-417 initialize! takes the loaded momenta at t = 0 (kicked back half a step) or at −Δt/2 (kept), at N = 1 and 2 [A2, A4, A8, WP-017]" begin
-    body_T417(CPU())
+@testset "T-420 initialize! takes the loaded momenta at t = 0 (kicked back half a step) or at −Δt/2 (kept), at N = 1 and 2 [A2, A4, A8, WP-017]" begin
+    body_T420(CPU())
 end
