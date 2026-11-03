@@ -20,10 +20,12 @@
 #   args = ["--project=scripts", "scripts/crosscode/analyze.jl", "scripts/runs/<dir>"]
 #
 # Steps run in order and stop at the first failure; the projects named by --project= are
-# instantiated first. Files over 20 MB stay on the box (box-status.toml lists them), so analyse
-# large dumps in a julia step. The result is one commit on runs/<tag>; nothing comes back if it
-# fails the leak scan of CI. The box polls every minute and runs one request at a time, oldest
-# first. A run branch is never merged: delete it after fetching (git push origin --delete runs/<tag>).
+# instantiated first. The box polls every minute and runs one request at a time, oldest first;
+# it holds no credentials, and a relay brings the result back as one commit on runs/<tag> within
+# about a minute of the end. Files over 20 MB do not come back (box-status.toml lists them under
+# dumps_over_20MB; the owner keeps them 30 days), so analyse large dumps in a julia step. Nothing
+# comes back if a file fails the leak scan of CI. Run branches are never merged and stay, as the
+# record of the run that a report can cite.
 set -euo pipefail
 die() { echo "cpu-box: $*" >&2; exit 64; }
 [ $# -ge 2 ] || die "usage: cpu-box.sh submit|status|fetch <tag> [request.toml]"
