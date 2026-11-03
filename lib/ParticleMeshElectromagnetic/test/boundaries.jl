@@ -1,4 +1,4 @@
-# WP-027: the open transverse boundary, T-430 to T-437. The fields leave through the absorbing
+# WP-027: the open transverse boundary, T-450 to T-457. The fields leave through the absorbing
 # layer (`AbsorbingLayer`, the outer rows of the box along y), the particles that cross the box
 # edge are retired through the alive mask. The reflection runs are the vacuum slab packets of
 # boundaries_cases.jl, compared with the discrete theory of the same scheme (`layer_rt`); the
@@ -14,7 +14,7 @@ energy fraction X is known to eps·√k·(2√X + eps·√k).
 """
 slab_scale(T, k, X) = base_eps(T) * sqrt(k) * (2 * sqrt(X) + base_eps(T) * sqrt(k))
 
-# --- T-430 ----------------------------------------------------------------------------------
+# --- T-450 ----------------------------------------------------------------------------------
 
 # The reflection R and the transmission through the slab of both layers, Tr, of a slab packet at
 # the carrier angle θ, against the discrete theory, over the thickness (8, 16, 32 cells at a fixed
@@ -30,7 +30,7 @@ t430_run(cells, θ, pol) = get!(T430_RUNS, (cells, θ, pol)) do
     (; run = slab_run(Float64, geo, pol), pred = slab_prediction(geo, pol), geo)
 end
 
-@testset "T-430 the absorbing layer's reflection and transmission against the scheme's discrete theory, over thickness and angle [A2, A7, WP-027]" begin
+@testset "T-450 the absorbing layer's reflection and transmission against the scheme's discrete theory, over thickness and angle [A2, A7, WP-027]" begin
     for θ in (0.0, 0.8), pol in (:TE, :TM)
         geo = slab_geometry(; theta = θ, strength = 0.0)
         for (ky, _) in slab_modes(geo)[1:7:end]
@@ -56,9 +56,9 @@ end
     # after the sub-step only falls by 2²)
     rn(ncy) = (geo = slab_geometry(; theta = 0.0, cells = ncy, strength = 2.0, ncx = 2ncy, ncy); abs2(first(layer_rt(geo, :TE, geo.ky0))))
     r16, r32, r64 = rn(16), rn(32), rn(64)
-    @info "T-430 normal-incidence |r|² against Δ" r16 r32 r64
+    @info "T-450 normal-incidence |r|² against Δ" r16 r32 r64
     @test r16 / r32 > 10 && r32 / r64 > 10
-    C = emC("T-430")
+    C = emC("T-450")
     worst = 0.0
     Rs = Dict{Any,Float64}()
     for (cells, θ) in ((8, 0.4), (16, 0.4), (32, 0.4), (16, 0.0), (16, 0.8), (8, 0.0), (8, 0.8)), pol in (:TE, :TM)
@@ -66,13 +66,13 @@ end
         k = round(Int, geo.tmeas / geo.dt)
         eR = abs(run.R - pred.R) / slab_scale(Float64, k, pred.R)
         eT = abs(run.Tr - pred.Tr) / slab_scale(Float64, k, pred.Tr)
-        @info "T-430" cells θ pol R = run.R R_theory = pred.R Tr = run.Tr Tr_theory = pred.Tr ratio_R = eR ratio_T = eT
+        @info "T-450" cells θ pol R = run.R R_theory = pred.R Tr = run.Tr Tr_theory = pred.Tr ratio_R = eR ratio_T = eT
         worst = max(worst, eR, eT)
         Rs[(cells, θ, pol)] = run.R
         @test pred.R > 0                         # the layer reflects something measurable
         @test eR <= C && eT <= C
     end
-    record!("T-430", Float64, worst)
+    record!("T-450", Float64, worst)
     for pol in (:TE, :TM)
         @test Rs[(8, 0.4, pol)] > Rs[(16, 0.4, pol)] > Rs[(32, 0.4, pol)]
         @test Rs[(16, 0.0, pol)] < 1e-7          # an unmatched layer (E or B alone, or at other rates) reflects far more
@@ -82,7 +82,7 @@ end
     end
 end
 
-# --- T-431 ----------------------------------------------------------------------------------
+# --- T-451 ----------------------------------------------------------------------------------
 
 # Gauss's law with particles leaving: the layer leaves the curl updates untouched and damps E
 # around them, so the E step changes D⁻·E only through the factors e^{−σΔt/2}, not at a node whose four
@@ -129,8 +129,8 @@ end
 
 alive_total(st) = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species)
 
-@testset "T-431 Gauss's law and ∇·B to roundoff off the absorbing layer with particles leaving, all three types, both modes [A2, A7, A8, WP-027]" begin
-    C, CB = emC("T-431"), emC("T-431", "C_divB")
+@testset "T-451 Gauss's law and ∇·B to roundoff off the absorbing layer with particles leaving, all three types, both modes [A2, A7, A8, WP-027]" begin
+    C, CB = emC("T-451"), emC("T-451", "C_divB")
     for T in TYPES, mode in (Reference(), Fast())
         prob, ab = open_plasma_2d(T; amplitude = seeded(T, 1 / 10))
         st = open_state(prob, ab; mode)
@@ -150,17 +150,17 @@ alive_total(st) = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), s
             worst_layer = max(worst_layer, Float64(r.layer / (base_eps(T) * r.scale * sqrt(k + 1))))
         end
         left = n0 - alive_total(st)
-        @info "T-431" T mode worst worstB worst_layer left of = n0
+        @info "T-451" T mode worst worstB worst_layer left of = n0
         @test left > 50                                   # particles left through the edges
         @test worst_layer > 1e4                           # the layer is not charge conserving
-        record!("T-431 $(nameof(typeof(mode)))", T, worst)
-        record!("T-431 divB $(nameof(typeof(mode)))", T, worstB)
+        record!("T-451 $(nameof(typeof(mode)))", T, worst)
+        record!("T-451 divB $(nameof(typeof(mode)))", T, worstB)
         @test worst <= C
         @test worstB <= CB
     end
 end
 
-# --- T-432 ----------------------------------------------------------------------------------
+# --- T-452 ----------------------------------------------------------------------------------
 
 # The retirement: exactly the particles whose cell along y jumped across the seam in this step
 # are marked free, the particles that crossed the periodic x seam stay, the alive charge falls by
@@ -169,7 +169,7 @@ end
 # deposit), while the field update after it differs (the layer damps); the kinetic energy at
 # n + ½ counts only the particles still in the box. Fast mode in Float64,
 # which does not permute the slots, so a slot is the same particle before and after the step.
-@testset "T-432 particles that cross the open edge are retired after their current is deposited, the x seam keeps them [A2, WP-027]" begin
+@testset "T-452 particles that cross the open edge are retired after their current is deposited, the x seam keeps them [A2, WP-027]" begin
     prob, ab = open_plasma_2d(Float64)
     st = open_state(prob, ab; mode = Fast())
     p = params(prob)
@@ -195,7 +195,7 @@ end
         end
         @test sum(Array(st.K)) ≈ Kh rtol = 1e-12
     end
-    @info "T-432" retired crossed_x
+    @info "T-452" retired crossed_x
     @test retired > 50 && crossed_x > 50
     # the first step's current: the open box's against the periodic box's, Reference mode
     for T in TYPES
@@ -210,7 +210,7 @@ end
     end
 end
 
-# --- T-433 ----------------------------------------------------------------------------------
+# --- T-453 ----------------------------------------------------------------------------------
 
 # With zero strength the layer multiplies by exactly one: a vacuum slab packet in an open box is
 # the periodic box's bit for bit, through the seam; and with no layer the 7-argument solve is the
@@ -218,7 +218,7 @@ end
 # nonzero layer damps only its own rows: its factors are exactly one
 # on the rows outside it, exp(−σ·τ) of the closed-form profile on its rows, and the guard rows
 # carry their interior images' factors.
-@testset "T-433 a zero-strength layer is the periodic step bit for bit, and the factors sit on the layer rows [A2, A4, A8, WP-027]" begin
+@testset "T-453 a zero-strength layer is the periodic step bit for bit, and the factors sit on the layer rows [A2, A4, A8, WP-027]" begin
     for T in TYPES
         geo = slab_geometry(; theta = 0.0, cells = 8, strength = 0.0)
         prob, num = slab_problem(T, geo)
@@ -279,9 +279,9 @@ end
     end
 end
 
-# --- T-434 ----------------------------------------------------------------------------------
+# --- T-454 ----------------------------------------------------------------------------------
 
-@testset "T-434 the open-boundary step is bitwise across reruns, launch shapes and 1 and 4 threads in Reference mode [A4, WP-027]" begin
+@testset "T-454 the open-boundary step is bitwise across reruns, launch shapes and 1 and 4 threads in Reference mode [A4, WP-027]" begin
     ref = open_step_digests()
     @test ref == open_step_digests()
     for wgs in (32, 256)
@@ -298,15 +298,15 @@ end
     end
 end
 
-# --- T-435 ----------------------------------------------------------------------------------
+# --- T-455 ----------------------------------------------------------------------------------
 
 # The element-type matrix on one reflection run (8 cells, θ = 0.8, R ≈ 2 %, large enough for
 # Float32's roundoff): each type within C·slab_scale of the discrete theory. The dual's initial
 # fields carry a partial equal to the value in the first direction (the derivative with respect
 # to the packet's amplitude) and zero in the others; the vacuum step is linear and applies the
 # same operations to the value and each partial, so the partials stay the values bit for bit.
-@testset "T-435 the reflection in Float32, Float64 and Dual, and the dual's partials linear [A7, A8, WP-027]" begin
-    C = emC("T-435")
+@testset "T-455 the reflection in Float32, Float64 and Dual, and the dual's partials linear [A7, A8, WP-027]" begin
+    C = emC("T-455")
     geo = slab_geometry(; theta = 0.8, cells = 8, strength = 4.0)
     pred = slab_prediction(geo, :TE)
     k = round(Int, geo.tmeas / geo.dt)
@@ -327,8 +327,8 @@ end
         run!(st, params(prob), prob.nsteps)
         R, Tr = slab_energy(st, rows.upper) / W0, slab_energy(st, rows.lower) / W0
         e = max(abs(R - pred.R) / slab_scale(T, k, pred.R), abs(Tr - pred.Tr) / slab_scale(T, k, pred.Tr))
-        @info "T-435" T R R_theory = pred.R Tr Tr_theory = pred.Tr ratio = e
-        record!("T-435", T, e)
+        @info "T-455" T R R_theory = pred.R Tr Tr_theory = pred.Tr ratio = e
+        record!("T-455", T, e)
         @test e <= C
         if T === D3
             for c in keys(st.fields)
@@ -339,9 +339,9 @@ end
     end
 end
 
-# --- T-436 ----------------------------------------------------------------------------------
+# --- T-456 ----------------------------------------------------------------------------------
 
-@testset "T-436 input checks and the case file's open boundary and layer [A1, A10, WP-027]" begin
+@testset "T-456 input checks and the case file's open boundary and layer [A1, A10, WP-027]" begin
     @test_throws ArgumentError AbsorbingLayer(; cells = 0, strength = 1)
     @test_throws ArgumentError AbsorbingLayer(; cells = 4, strength = -1)
     @test_throws ArgumentError AbsorbingLayer(; cells = 4, strength = Inf)
@@ -390,7 +390,7 @@ end
     @test_throws ArgumentError problem_from_case(one_d, Float64)
 end
 
-# --- T-437 ----------------------------------------------------------------------------------
+# --- T-457 ----------------------------------------------------------------------------------
 
 function step_bytes_open(mode; ppc, cells)
     prob, ab = open_plasma_2d(Float64; ppc, cells, nsteps = 4)
@@ -401,12 +401,12 @@ function step_bytes_open(mode; ppc, cells)
     return @allocated step!(st, p, 3)
 end
 
-@testset "T-437 allocation per open-boundary step does not grow with particle count or grid size [A7, WP-027]" begin
+@testset "T-457 allocation per open-boundary step does not grow with particle count or grid size [A7, WP-027]" begin
     for mode in (Reference(), Fast())
         small = step_bytes_open(mode; ppc = (2, 2), cells = (16, 16))
         more_particles = step_bytes_open(mode; ppc = (8, 8), cells = (16, 16))
         larger_grid = step_bytes_open(mode; ppc = (2, 2), cells = (64, 48))
-        @info "T-437 bytes per open-boundary step" mode small more_particles larger_grid threads = Threads.nthreads()
+        @info "T-457 bytes per open-boundary step" mode small more_particles larger_grid threads = Threads.nthreads()
         # at more than one thread the Reference sort allocates per particle (#82, as T-220); CI runs one thread
         if Threads.nthreads() == 1 || mode isa Fast
             @test more_particles <= small

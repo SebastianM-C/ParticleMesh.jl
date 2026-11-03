@@ -2,7 +2,7 @@
 
 ## 1. Which absorbing layer "simple absorbing layer" means
 
-A2 asks for "a simple absorbing layer first, PML later". **Assumption:** the matched lossy layer, applied by symmetric (Strang) operator splitting. A conductivity σ(y) damps E and B alike: before and after each Yee sub-step of length τ, every component it updates is multiplied by exp(−σ·τ/2) at its own row. With the same σ for E and B, the continuum medium has the impedance of vacuum, so a wave at normal incidence enters it without reflection. At oblique incidence it does reflect, and that reflection grows with the angle (T-430, `reports/wp-027-open-boundaries.md`). The splitting leaves the curl kernels and the antenna untouched. It is unconditionally stable, since each factor is at most one.
+A2 asks for "a simple absorbing layer first, PML later". **Assumption:** the matched lossy layer, applied by symmetric (Strang) operator splitting. A conductivity σ(y) damps E and B alike: before and after each Yee sub-step of length τ, every component it updates is multiplied by exp(−σ·τ/2) at its own row. With the same σ for E and B, the continuum medium has the impedance of vacuum, so a wave at normal incidence enters it without reflection. At oblique incidence it does reflect, and that reflection grows with the angle (T-450, `reports/wp-027-open-boundaries.md`). The splitting leaves the curl kernels and the antenna untouched. It is unconditionally stable, since each factor is at most one.
 
 Alternatives not taken:
 
@@ -15,7 +15,7 @@ Alternatives not taken:
 
 Smilei puts its PML cells outside the simulation box (documentation, not checked in its source). **Assumption:** the layer is the outer `cells` rows of the box on each side along y. The engine's grid then stays a `PeriodicGrid{2}`, the loader fills the whole box as before, and the two layers meet at the periodic seam as one absorbing slab. Consequences:
 
-- The plasma is loaded in the layer too. Its particles there see damped fields, and Gauss's law does not hold in the layer (T-431 measures how far from it the layer is).
+- The plasma is loaded in the layer too. Its particles there see damped fields, and Gauss's law does not hold in the layer (T-451 measures how far from it the layer is).
 - A case that wants the plasma clear of the layer must say so in its density profile. That is the LWFA case's business, together with WP-028's profile.
 
 ## 3. The parameters

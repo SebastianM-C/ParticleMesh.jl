@@ -1,4 +1,4 @@
-# Subprocess worker of T-218, T-355, T-363, T-434 and T-443: short Reference runs of the three
+# Subprocess worker of T-218, T-355, T-363, T-454 and T-443: short Reference runs of the three
 # cases, of the 2D plasma (em2d_cases.jl), of the filtered runs (filter_cases.jl) and of the 2D
 # plasma with an open axis (boundaries_cases.jl) for every element type, printing one bitwise
 # state digest per run. Run once per suite at 1 and 4 threads (`worker_output`).

@@ -247,7 +247,7 @@ the step). With an open axis 2 the particles that crossed the box edge are retir
 current of their last move is deposited, and the absorbing layer damps the fields around each
 sub-step (WP-027). With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
 after every step (T-360), off the antenna columns with lasers (T-406), and off the layer rows
-with an open boundary (T-431); with passes its filtered form does (T-441). `k` must lie within
+with an open boundary (T-451); with passes its filtered form does (T-441). `k` must lie within
 the allocated steps, `params.kmode` must be the state's diagnostic mode and `params.dt` the
 problem's time step, for which the antennas and the layer were made (an `ArgumentError`
 otherwise).

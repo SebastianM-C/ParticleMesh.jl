@@ -305,7 +305,7 @@ end
 """
     open_step_digests(; workgroupsize = nothing, be = CPU()) -> Vector{(T, digest)}
 
-T-434: a Reference run of [`open_plasma_2d`](@ref) (20 steps, particles retired at both edges,
+T-454: a Reference run of [`open_plasma_2d`](@ref) (20 steps, particles retired at both edges,
 the layer damping) per element type, one digest of every particle array, field and history each.
 """
 function open_step_digests(; workgroupsize = nothing, be = CPU())

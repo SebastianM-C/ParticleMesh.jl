@@ -1,4 +1,4 @@
-# The open transverse boundary (WP-027, the measurements behind T-430 and T-431).
+# The open transverse boundary (WP-027, the measurements behind T-450 and T-451).
 #
 # 1. Reflection against angle and thickness (layer_reflection.png): the energy fraction R that a
 #    vacuum slab packet (one k_x, a Gaussian envelope along y, built from the scheme's upward
@@ -10,7 +10,7 @@
 #    3/cos θ wavelengths wide, so its spread in angle is the same at every θ.
 # 2. Strength (layer_strength.png): at 16 cells and θ = 0.4, R and the transmission Tr through
 #    both layers and the seam against the strength, measured and predicted.
-# 3. Gauss's law (layer_gauss.png): the plasma of T-431 (two species leaving through both edges)
+# 3. Gauss's law (layer_gauss.png): the plasma of T-451 (two species leaving through both edges)
 #    over 200 steps, Float64, Reference: the Gauss residual on the rows off the layer and on the
 #    layer rows, and the number of particles alive.
 #   julia +1.13 --project=scripts scripts/em2d/absorbing_layer.jl
