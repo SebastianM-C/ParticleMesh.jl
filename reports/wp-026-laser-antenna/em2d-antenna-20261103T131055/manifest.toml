@@ -1,0 +1,52 @@
+backend = "KernelAbstractions CPU"
+commit = "40b2c30ce9c20c8beabf30d3e47b30b2908eff3a"
+cpu = "Intel(R) Xeon(R) Processor @ 2.80GHz"
+dirty = false
+julia = "1.13.3"
+run_id = "em2d-antenna-20261103T131055"
+threads = 4
+updated = "2026-11-03T13:10:56.171Z"
+work_package = "WP-026"
+
+[inputs]
+"Manifest.toml" = "sha256:5944c96e8fd2e27dfa9a1f91680dfe7ba8dea6426f42f299ddc66191993128f3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:dce4248ecf9e4b68777ed754b9fd7f95f368b4ce5b98b89cb617d1376151575a"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:dd7cad3107b66eac383943886407fb4927539f8efb5cbb403430bcf03450b335"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:7c49eb619e0b61308472b2fa5320491d7ea3aaf482e30123d825a6c02b36c825"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:d88103b9d6cdc49fe388041814eb707ca98cb8205d868a2194213f342a1a5f53"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:e006a42a3893d136840db4865852c58fac6523e9f5489b348fe1b296aa0be797"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:9d1b55f5090d9d7acc98ca82058f6930ee3d79810d47636ffc34831d3a3b3e3c"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"lib/ParticleMeshElectromagnetic/test/antenna_cases.jl" = "sha256:569f9ffc12e4436b4ebb652dac9d33aaf7a4b497c0e8c394e5ca52499c183f2a"
+"scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
+"scripts/em2d/antenna.jl" = "sha256:78a16ac47cabcdf79819a0890901463045f495b997b4d1f2e49feffeb402bc9c"
+"scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
+
+[parameters]
+antenna_x = 10
+box = [300, "120 or 200"]
+courant = 0.95
+duration = 8
+focus = 28
+probes = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64]
+resolutions = [12, 16, 24, 32]
+type = "Float64"
+waists = [6.0, 12.0]

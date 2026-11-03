@@ -50,21 +50,24 @@ A1 units (time 1/ω₀, length c/ω₀, density n_c, velocity c, fields mₑcω�
 and number of `cells` (a number at N = 1, one per axis at N = 2), the time step `dt` and the
 number of steps `nsteps`, the mobile `species` (a tuple of [`SpeciesDescription`](@ref);
 immobile species of uniform density are the neutralizing background and carry no particles,
-A2), the `seed` of the velocity draws, the diagnostic `kmode` and the uniform background fields
+A2), the `seed` of the velocity draws, the diagnostic `kmode`, the uniform background fields
 `E0` and `B0` (three components each, zero by default), which [`initialize!`](@ref) adds to the
 fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
-not differentiable parameters, A3: the addition tests them for zero on the host). At N = 1
+not differentiable parameters, A3: the addition tests them for zero on the host), and the
+`lasers`, a tuple of [`GaussianLaser`](@ref) descriptions launched by antenna planes during
+the steps (N = 2 only, empty by default; their parameters may be differentiable, A3). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
 
-    EMProblem(name, length, cells, dt, nsteps, species, seed, kmode; E0 = zeros, B0 = zeros)
+    EMProblem(name, length, cells, dt, nsteps, species, seed, kmode; E0 = zeros, B0 = zeros, lasers = ())
 
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
-of each at N = 2), that the cells and the particles per cell are positive and, at N = 2, that
-`kmode` is not the zero mode (an `ArgumentError` otherwise).
+of each at N = 2), that the cells and the particles per cell are positive, at N = 2 that
+`kmode` is not the zero mode, and that lasers are given only at N = 2 (an `ArgumentError`
+otherwise).
 """
-struct EMProblem{N,T,S<:Tuple,L,C,K}
+struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple}
     name::String
     length::L
     cells::C
@@ -75,10 +78,11 @@ struct EMProblem{N,T,S<:Tuple,L,C,K}
     kmode::K
     E0::NTuple{3,T}
     B0::NTuple{3,T}
+    lasers::LZ
 end
 
 function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, seed::Integer, kmode;
-                   E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3)) where {T}
+                   E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = ()) where {T}
     N = cells isa Integer ? 1 : length(cells)
     N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
     M = N == 1 ? Int : NTuple{2,Int}
@@ -96,11 +100,14 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
             throw(ArgumentError("species $(d.name): mode $(d.mode) and ppc $(d.ppc) must be $(N == 1 ? "integers" : "two integers each") for N = $N"))
         all(>(0), d.ppc) || throw(ArgumentError("species $(d.name): ppc = $(d.ppc) must be positive"))
     end
+    isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
+    all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode
-    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k)}(String(name), L, c, dt, Int(nsteps), species,
-                                                                         Int(seed), k, T.(Tuple(E0)), T.(Tuple(B0)))
+    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers)}(String(name), L, c, dt, Int(nsteps),
+                                                                                         species, Int(seed), k, T.(Tuple(E0)),
+                                                                                         T.(Tuple(B0)), lasers)
 end
 
 Base.eltype(::EMProblem{N,T}) where {N,T} = T

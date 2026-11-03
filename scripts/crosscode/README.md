@@ -12,11 +12,15 @@ julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --load-check [--gpu] [--patches 4x4]     # one step, the t = 0 load
 julia +1.13 --project=scripts scripts/crosscode/loadcheck.jl <load-check run a> <load-check run b> <out dir>                 # same particles?
 julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes, two precisions or two builds on one case
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-430 to T-436
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-410 to T-416, T-430 to T-436
 julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>   # seeds per code for a two-code comparison
 julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>   # the ensemble rule on disjoint groups of seeds, both runs
 julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
 julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run> <smilei run>
+julia +1.13 --project=scripts scripts/crosscode/convergence.jl prepare scripts/crosscode/scans/<scan>.toml   # a resolution scan: derived cases, Smilei runs, the CPU box request
+julia +1.13 --project=scripts scripts/crosscode/convergence.jl report <summary dir> <out dir> [box-status.toml]
+julia +1.13 --project=scripts scripts/crosscode/convergence.jl compare <reference summary> <other summary> <out dir>
+julia +1.13 --project=scripts -t 16 scripts/crosscode/convergence_pm.jl <summary dir> <out dir> <point>...   # ParticleMesh on 1D scan points
 ```
 
 A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory, with every seed's complex mode coefficient in `seed-coefficients.json` (the dumps are not committed). The `run.sh` of a seeded run skips the seeds that finished in an earlier job (Smilei: the seed's `container.txt` has its `# end:` line; PIConGPU: the top `container.txt`, appended to by every job, has the seed's end line), so a long ensemble runs as several jobs on one directory. With `--budget <s>` it starts no new seed once the job has run that long and prints the seeds that remain (T-391); a job then lasts the budget plus one seed.
@@ -28,7 +32,11 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | File | Role |
 |---|---|
 | `cases/<case>.toml` | The case in the units of A1, with its observables and their linear-theory values |
-| `theory.jl` | Dispersion relations the theory values come from, with the 2D Weibel relation derived in its header (T-160, T-273); Landau damping with the relativistic push for a given thermal load, by the linearized initial-value problem in time (T-394, post hoc for WP-025) |
+| `theory.jl` | Dispersion relations the theory values come from, with the 2D Weibel relation derived in its header (T-160, T-273); Landau damping with the relativistic push for a given thermal load, by the linearized initial-value problem in time (T-394, post hoc for WP-025); `cold_ivp`, the exact linear solution of a cold case's initial state, two-stream and Weibel (T-410, T-411, WP-031) |
+| `convergence.jl` | WP-031's resolution scans of the cold cases: `derive_case` (a case with named changes of cells, Δt, amplitude, particles per cell, seed; T-412), `prepare_scan` (the Smilei runs and the CPU box request), `summarize_scan` (the series per point, run on the box; T-414, T-415), `point_fits` (the pre-registered fit and the same fit on the linear solution over the same samples; T-413) |
+| `convergence_report.jl` | The report of a scan: residuals from the linear solution, the Δx and Δt families, observed orders and Richardson limits, window sensitivity, figures; `compare_codes` for two codes on the same points (T-416) |
+| `convergence_pm.jl` | ParticleMesh on the points of a 1D scan, in the summary format |
+| `scans/<scan>.toml` | WP-031's scan points, fixed before the runs |
 | `smilei.jl` | `load_case` and `case_view` (both schemas), `smilei_parameters` (the unit conversion, T-010, T-271), `namelist`, `prepare_run`; the GPU build, patch layouts and the load check (T-431 to T-433). The input is `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` in the working directory (#256); run directories before WP-030 have `smilei.py`, overwritten by that dump |
 | `loadcheck.jl` | Two load-check runs compared particle by particle (matched by position), with their first scalars and t = 0 fields (T-434) |
 | `picongpu.jl` | `picongpu_parameters` (the conversion to PIConGPU's SI input, T-250), `param_files`, `background_field` (the initial field, T-255), `run_arguments`, `run_script`, `prepare_run`; schema-1 cases as quasi-1D runs (T-254) |

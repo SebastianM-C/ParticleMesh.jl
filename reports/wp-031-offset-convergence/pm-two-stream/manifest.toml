@@ -1,0 +1,30 @@
+commit = "12547f2ccf49249a37579a31f0fae7e442dff84d"
+dirty = false
+key = "growth_rate"
+points = ["n0128", "n0128-dt2", "n0128-dt4", "n0128-dt8"]
+report = "scripts/crosscode/convergence.jl compare"
+updated = "2026-11-03T16:19:15.705Z"
+
+[inputs]
+"../two-stream/summary/cases/n0128-dt2.toml" = "sha256:e8e159f9bda73b41f84fb4430249dc7b3b86228abb66ed17a6f70fe742b26aba"
+"../two-stream/summary/cases/n0128-dt4.toml" = "sha256:7b2914d8ded1f6e19423d460037b7761860d89d61467acdd2bc52b9eb1b6b5ab"
+"../two-stream/summary/cases/n0128-dt8.toml" = "sha256:867f579dc2c2294bc5b6ab291fd873f1597051fc7336c0f0b89609ae8df6d7b2"
+"../two-stream/summary/cases/n0128.toml" = "sha256:d2f24543c0dd9d370b86e759da717b40ec554eadbf8cac1f89732162b9134970"
+"../two-stream/summary/n0128-dt2.json" = "sha256:9a471aaa0a9c3f82b3af1fad6a9ab874f3821e90977b65e0386e7ee514ba3648"
+"../two-stream/summary/n0128-dt4.json" = "sha256:5ee1ad14dd62fdb69a35be0958989c9e2ac8bf678094b3d6cbc868b49587a064"
+"../two-stream/summary/n0128-dt8.json" = "sha256:7b0ab46f7cb239dc45fb5206fff233c626dc7885ff4ca86f0b92b71880181849"
+"../two-stream/summary/n0128.json" = "sha256:04ebb911e21a2125505a8cf334d9e41fc2b7cf1bcedf2e41bfb4f2f8c344b87a"
+"summary/cases/n0128-dt2.toml" = "sha256:e8e159f9bda73b41f84fb4430249dc7b3b86228abb66ed17a6f70fe742b26aba"
+"summary/cases/n0128-dt4.toml" = "sha256:7b2914d8ded1f6e19423d460037b7761860d89d61467acdd2bc52b9eb1b6b5ab"
+"summary/cases/n0128-dt8.toml" = "sha256:867f579dc2c2294bc5b6ab291fd873f1597051fc7336c0f0b89609ae8df6d7b2"
+"summary/cases/n0128.toml" = "sha256:d2f24543c0dd9d370b86e759da717b40ec554eadbf8cac1f89732162b9134970"
+"summary/n0128-dt2.json" = "sha256:7a31ce174cdc1120f25f363423ea95d6d2af33ab13e838aacb31bdd758572a72"
+"summary/n0128-dt4.json" = "sha256:af82746cfc62f678ababc860831dad7534f9f8a3e9d08e1e892e00cf13f0ca6d"
+"summary/n0128-dt8.json" = "sha256:df05a579e0573c0205e386115ccc4a693ff9d0a64cfb55a256bf3b8b555d30e5"
+"summary/n0128.json" = "sha256:7e897d07ada66fb67d64ff515cd22c1a94c507efcdb91af18654de7cbd839da2"
+
+[report_inputs]
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/convergence.jl" = "sha256:9ef9c3188407872cd8a95d10fcfde0c32d11982383196cb8a35b0ca43cf60637"
+"scripts/crosscode/convergence_report.jl" = "sha256:25e3356eb292d04fdefdc703bb90b3b43bc380aecf47c7ef00e62a1a9eb69fc0"
+"scripts/crosscode/theory.jl" = "sha256:1b1471479822c6e2c63c3648cb7e501b856de49e5f1ab59a23ccc07259adeee3"

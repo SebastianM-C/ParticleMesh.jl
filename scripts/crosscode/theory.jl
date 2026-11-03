@@ -60,6 +60,30 @@
 # implementation, independent of this one (the physics breaker of WP-025, with a numerical
 # angular quadrature), gave the same rates to 1e-5; neither is checked against the literature.
 # The grid (TSC form factor, Yee differences) is not included.
+#
+# The cold-beam initial-value problem (WP-031). The growth rates above are the growing root
+# alone; a run starts from a density perturbation, which excites every root, and the
+# pre-registered window fit samples the sum. `cold_ivp` writes the linearized cold-fluid
+# equations of one Fourier mode e^{ik·r} as dy/dt = M y and solves them exactly, y(t) =
+# exp(M t) y(0), so the same fit applied to y(t) gives the rate a run without discretization
+# error would report. Beams s with charge q_s, mass m_s, density n_s, velocity v_s and
+# γ_s = (1 − v_s²)^(-1/2), immobile ions; the amplitudes are complex.
+#
+#   Two-stream (k ∥ v, 1D), y = (δn_s, δv_s for each beam, E):
+#     ∂ₜδnₛ = −ik vₛ δnₛ − ik nₛ δvₛ,   ∂ₜδvₛ = −ik vₛ δvₛ + qₛ E/(mₛ γₛ³),
+#     ∂ₜE = −Σₛ qₛ (vₛ δnₛ + nₛ δvₛ)            (Ampère with ∇×B = 0)
+#   Weibel (k ⊥ v, v along z, the frame (k̂, ê, ẑ) of the 2D Weibel derivation above),
+#   y = (δnₛ, δv_k,ₛ, δv_z,ₛ for each beam, E_k, E_z, B_e):
+#     ∂ₜδnₛ = −ik nₛ δv_k,ₛ,   ∂ₜδv_k,ₛ = qₛ (E_k − vₛ B_e)/(mₛ γₛ),   ∂ₜδv_z,ₛ = qₛ E_z/(mₛ γₛ³),
+#     ∂ₜE_k = −Σₛ qₛ nₛ δv_k,ₛ,   ∂ₜE_z = ik B_e − Σₛ qₛ (vₛ δnₛ + nₛ δv_z,ₛ),   ∂ₜB_e = ik E_z.
+#
+# Gauss's law, ik E(_k) = Σₛ qₛ δnₛ, is a conserved combination of both systems (its time
+# derivative vanishes identically), so a state that satisfies it at t = 0 keeps it (T-411).
+# The initial state of a case is its density perturbation, δnₛ = αₛ nₛ, with the velocities
+# unperturbed, B = 0 and the longitudinal E from Gauss's law: the state Smilei and ParticleMesh
+# load, up to the time at which each code takes the loaded momenta (#226) and the grid's
+# sampling of the profile, both of which vanish as Δt and Δx go to zero. The eigenvalues of M
+# are −iω at the roots of the dispersion relations above, and zero for the static modes.
 
 module Theory
 
@@ -68,6 +92,9 @@ using SpecialFunctions: erfcx
 export plasma_Z, landau_root, two_stream_cold_growth
 export mode_wavevector, weibel_cold_growth_2d, weibel_dispersion_2d, yee_energy_ratio
 export thermal_load, landau_rate_relativistic
+export two_stream_ivp_matrix, weibel_ivp_matrix, ivp_solution, cold_ivp, gauss_residual
+
+using LinearAlgebra: LinearAlgebra   # a stdlib, loaded through @stdlib on the default LOAD_PATH (no project entry)
 
 """
     plasma_Z(ζ)
@@ -247,6 +274,136 @@ function landau_rate_relativistic(k, T; load = :momentum_maxwellian, relativisti
     xm, ym = sum(x) / length(x), sum(y) / length(y)
     slope = sum((x .- xm) .* (y .- ym)) / sum((x .- xm) .^ 2)
     return (; gamma = -slope / 2, omega = π * (length(x) - 1) / (x[end] - x[1]), maxima = length(x), t = ts, e)
+end
+
+"""
+    two_stream_ivp_matrix(k, beams) -> Matrix{ComplexF64}
+
+The matrix M of the linearized cold-fluid two-stream system of the file header (k ∥ v), for
+`beams`, a list of named tuples (; q, m, n, v); the state is (δn₁, δv₁, δn₂, δv₂, …, E).
+"""
+function two_stream_ivp_matrix(k, beams)
+    nb = length(beams)
+    iE = 2nb + 1
+    M = zeros(ComplexF64, iE, iE)
+    for (j, b) in enumerate(beams)
+        n, v = 2j - 1, 2j
+        γ = 1 / sqrt(1 - b.v^2)
+        M[n, n] = -im * k * b.v
+        M[n, v] = -im * k * b.n
+        M[v, v] = -im * k * b.v
+        M[v, iE] = b.q / (b.m * γ^3)
+        M[iE, n] = -b.q * b.v
+        M[iE, v] = -b.q * b.n
+    end
+    return M
+end
+
+"""
+    weibel_ivp_matrix(k, beams) -> Matrix{ComplexF64}
+
+The matrix M of the linearized cold-fluid Weibel system of the file header (k ⊥ v, the beams
+along z), for `beams` (; q, m, n, v), v the z velocity; the state is (δn₁, δv_k,₁, δv_z,₁, …,
+E_k, E_z, B_e).
+"""
+function weibel_ivp_matrix(k, beams)
+    nb = length(beams)
+    iEk, iEz, iB = 3nb + 1, 3nb + 2, 3nb + 3
+    M = zeros(ComplexF64, iB, iB)
+    for (j, b) in enumerate(beams)
+        n, vk, vz = 3j - 2, 3j - 1, 3j
+        γ = 1 / sqrt(1 - b.v^2)
+        M[n, vk] = -im * k * b.n
+        M[vk, iEk] = b.q / (b.m * γ)
+        M[vk, iB] = -b.q * b.v / (b.m * γ)
+        M[vz, iEz] = b.q / (b.m * γ^3)
+        M[iEk, vk] = -b.q * b.n
+        M[iEz, n] = -b.q * b.v
+        M[iEz, vz] = -b.q * b.n
+    end
+    M[iEz, iB] = im * k
+    M[iB, iEz] = im * k
+    return M
+end
+
+"""
+    ivp_solution(M, y0, t) -> Matrix{ComplexF64}
+
+The exact solution exp(M tᵢ) y0 of dy/dt = M y at each time of `t`, one column per time (the
+matrix exponential, so a defective eigenvalue, such as the repeated static zero modes, needs no
+special care).
+"""
+ivp_solution(M, y0, t) = reduce(hcat, [exp(M * ti) * y0 for ti in t])
+
+"""
+    gauss_residual(sol, k, beams; kind) -> Vector
+
+|ik E − Σₛ qₛ δnₛ| at each column of a solution (E the longitudinal field: E for `:two_stream`,
+E_k for `:weibel`), relative to max |Σₛ qₛ δnₛ| over beams of the solution; zero for every t
+when it is zero at t = 0 (file header).
+"""
+function gauss_residual(sol, k, beams; kind)
+    nb = length(beams)
+    per, iE = kind === :two_stream ? (2, 2nb + 1) : (3, 3nb + 1)
+    charge = [sum(b.q * sol[per * (j - 1) + 1, c] for (j, b) in enumerate(beams)) for c in axes(sol, 2)]
+    scale = maximum(c -> maximum(abs(b.q * sol[per * (j - 1) + 1, c]) for (j, b) in enumerate(beams)), axes(sol, 2))
+    return abs.(im * k .* sol[iE, :] .- charge) ./ scale
+end
+
+"""
+    cold_ivp(case) -> (; kind, k, beams, M, y0, index, energy_scale)
+
+The cold-beam initial-value problem of a cross-code case file (`two-stream`, schema 1, k along
+the drift; `weibel-2d`, schema 2, the drift along z and k in the plane): the mobile perturbed
+species are the beams (q, m, n, v = the drift along the instability's axis), the immobile ones
+the neutralizing background. `y0` is the state of the file header (δnₛ = αₛ nₛ, velocities
+unperturbed, B = 0, the longitudinal E from Gauss's law), `index` the entry of the observed
+field (E for two-stream, B_e for Weibel), and `energy_scale` the factor that turns |y[index]|²
+into the box energy of that field, L/4 in 1D and L_x L_y/4 in 2D (a field Re(A e^{ik·r}) has
+∫ ½|f|² dV = |A|² V/4). Refuses a thermal species and a drift off the axis it assumes.
+"""
+function cold_ivp(case)
+    two = get(case, "schema", 1) == 2
+    g = case["grid"]
+    beams = NamedTuple{(:q, :m, :n, :v, :alpha),NTuple{5,Float64}}[]
+    for s in case["species"]
+        s["velocity"] == "cold" || error("cold_ivp: species $(s["name"]) is not cold")
+        s["mobile"] || continue
+        pert = get(s, "perturbation", nothing)
+        if two
+            d = Float64.(s["drift"])
+            d[1] == 0 && d[2] == 0 || error("cold_ivp: species $(s["name"]): the Weibel case drifts along z only")
+            v = d[3]
+        else
+            v = Float64(s["drift"])
+        end
+        push!(beams, (; q = Float64(s["charge"]), m = Float64(s["mass"]), n = Float64(s["density"]),
+                       v, alpha = pert === nothing ? 0.0 : Float64(pert["amplitude"])))
+    end
+    length(beams) >= 1 || error("cold_ivp: no mobile species")
+    if two
+        k = mode_wavevector(case["wavevector"]["mode"], g["length"]).k
+        M = weibel_ivp_matrix(k, beams)
+        nb = length(beams)
+        y0 = zeros(ComplexF64, 3nb + 3)
+        for (j, b) in enumerate(beams)
+            y0[3j - 2] = b.alpha * b.n
+        end
+        y0[3nb + 1] = sum(b.q * b.alpha * b.n for b in beams) / (im * k)
+        return (; kind = :weibel, k, beams, M, y0, index = 3nb + 3, energy_scale = prod(Float64.(g["length"])) / 4)
+    else
+        modes = unique(Int(s["perturbation"]["mode"]) for s in case["species"] if haskey(s, "perturbation"))
+        L = Float64(g["length"])
+        k = 2π * only(modes) / L
+        M = two_stream_ivp_matrix(k, beams)
+        nb = length(beams)
+        y0 = zeros(ComplexF64, 2nb + 1)
+        for (j, b) in enumerate(beams)
+            y0[2j - 1] = b.alpha * b.n
+        end
+        y0[2nb + 1] = sum(b.q * b.alpha * b.n for b in beams) / (im * k)
+        return (; kind = :two_stream, k, beams, M, y0, index = 2nb + 1, energy_scale = L / 4)
+    end
 end
 
 end

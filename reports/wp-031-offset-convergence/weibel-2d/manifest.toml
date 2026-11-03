@@ -1,0 +1,69 @@
+commit = "2215eee1916eb2da8a13333eca8dc34701a0f9e3"
+dirty = false
+report = "scripts/crosscode/convergence.jl report"
+updated = "2026-11-03T15:59:35.744Z"
+
+[box]
+branch = "runs/wp031-weibel-2d-2"
+finished = "2026-11-03T15:51:39Z"
+ok = true
+request_commit = "a1d02151de5fa6e4800c90fa19578021480b941b"
+started = "2026-11-03T15:01:29Z"
+
+    [box.hardware]
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+
+    [box.image]
+    id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"
+    name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+
+[inputs]
+"summary/box-status.toml" = "sha256:a91a129d6e77968f89193b9f451f6048bcb1f4bf0545fea8adfc2befd91cfbfa"
+"summary/cases/n064.toml" = "sha256:1208940607c7fc9dd923201d6167cef54151f8b4fcebfcb86d7ff097bc5dd7f6"
+"summary/cases/n128-a0.1.toml" = "sha256:6eb9ff4939d4ee18a829daca695e0533936930880e030b66cbd93bc31550434c"
+"summary/cases/n128-a10.toml" = "sha256:843b8a0998eb127d9e3237022cb1e267e075d0cfb46770b9a9ef9987722128b9"
+"summary/cases/n128-dt2.toml" = "sha256:e44f5a325a80b4be1349e7b72fd0dc7502a6ba747511f1a54a60a8a4071bd923"
+"summary/cases/n128-dt4.toml" = "sha256:f081cab3f92ea6edf8efe001561bbab351eab2497b7755c151b38784344fff24"
+"summary/cases/n128-dt8.toml" = "sha256:ca28bc404f1d7a0ec8876f482eb1ad5a7ccd99cd17d249809c514eb09218b1b1"
+"summary/cases/n128-ppc0.5.toml" = "sha256:a5ccecfb613147704fad7a0efd66daa6d1241436ab3a8f3f38767c2688386324"
+"summary/cases/n128-ppc2.toml" = "sha256:4aa05f2a37698e26a35fd987b1cafd615c4f2b04ba7a2b8a0590dc564bfdd089"
+"summary/cases/n128-seed1.toml" = "sha256:21e0cdbc48ba3cadb5dfd7e4efe9e7c7bbb5140c3658566f8e25d19fc3772b28"
+"summary/cases/n128.toml" = "sha256:1d94e7966e546b7d2ce58e58366529f2472c41b7b83efc643eebc3878243b014"
+"summary/cases/n256-dt2.toml" = "sha256:e19158753bd864772bf0ce2ad21ad5e1e47719f1f0b53ee65382df95c4e994c4"
+"summary/cases/n256.toml" = "sha256:47b08b2e66b6b52a06478b24041891a38420a39fb5159071b50229fee02f6fa7"
+"summary/cases/n512.toml" = "sha256:39afc7d0c071d2343c6740e9c32fcd09921389431471c2010482333ddc54e426"
+"summary/manifest.toml" = "sha256:5f3328e454b58a22b4f2b45e4352ac69b958db740ee698a350b63dbd88acad75"
+"summary/n064-manifest.toml" = "sha256:05cbc3cece36a9cb1604b2be95d843ad0a905b9b60a315df2a918e144f34b9d6"
+"summary/n064.json" = "sha256:db69f4c6cdb9032f80f68380e1206c864e45b6a7c29fde6aaafe170659fe6f8c"
+"summary/n128-a0.1-manifest.toml" = "sha256:600d68d04950573d0532cf6ff4bd5b244bbcac170491533cc324ef2d08ec0937"
+"summary/n128-a0.1.json" = "sha256:7c38007c81b1fddc1a49ad3189ed53dd2917ac7ff30707b703ca43d797af6acc"
+"summary/n128-a10-manifest.toml" = "sha256:7c61ee32d858746cad5591b13b90b7569dc820cd1b64db446d0b930822b21bf3"
+"summary/n128-a10.json" = "sha256:a7d4ac52d0e8d7703119d92f45edc411e22a1efb3861b18b1852b21e08f68208"
+"summary/n128-dt2-manifest.toml" = "sha256:4c558bc8f0c55b37f7186433ea40f6e57b46684a54b68843e8331f233febdffd"
+"summary/n128-dt2.json" = "sha256:5a1d0228b97574650069515f35fcf164acd58dc080c0672510ee8a2ac992cae7"
+"summary/n128-dt4-manifest.toml" = "sha256:abfe57ecfb9ab2c4ecc9af08370f113bb9ccf5f81776aadd29bdf30ce3c229d3"
+"summary/n128-dt4.json" = "sha256:9b819c4983461f67537d1f1ffbf6c7edc4c958f447a054b55b2df26f424ec435"
+"summary/n128-dt8-manifest.toml" = "sha256:1038e4ef685176dc8b73b9e53e3365d25b1462728e46a11930859c978e887de9"
+"summary/n128-dt8.json" = "sha256:870dca673367c0611882518fd2a70e3d4b785d8947525e72b6cc655e2414c8e7"
+"summary/n128-manifest.toml" = "sha256:e057413ceaf2e08e6d2e34c1a81e4ce3144c8130a16ee28807762768f9109f71"
+"summary/n128-ppc0.5-manifest.toml" = "sha256:80137d9d538f851d86b35f969bb8c9cd0e055087b7bc363060398548d7e0d6dd"
+"summary/n128-ppc0.5.json" = "sha256:13ff1571495c813530991e64acbf1d966ac670729d0e74f0e50b7afa96b73c68"
+"summary/n128-ppc2-manifest.toml" = "sha256:9ce81214ca794ae115469f76ed91bb98db3153df0a61202747b884daecf21616"
+"summary/n128-ppc2.json" = "sha256:acfb41786b18416838e338cf8268c226c19bad789449f6a30a5b05159041c296"
+"summary/n128-seed1-manifest.toml" = "sha256:4ac0f4843374d893d97294cf190824f0f3ccfa2cc459127424899fc89b7e5ec7"
+"summary/n128-seed1.json" = "sha256:19901a4062c3be09dcf0319493e8a28d6e95847b060190695c7c04c6f31d10ea"
+"summary/n128.json" = "sha256:1a07de0c667a74dc67d2b01e690414f761c985668565ed371aad345bedc52a05"
+"summary/n256-dt2-manifest.toml" = "sha256:6de0e6812923338806583e513ab10cb02808762b0d5e56102d1715a716e9eb27"
+"summary/n256-dt2.json" = "sha256:e51acc29e384f23bc76e4b04844a736005635bdba677f9f2f22e3e838a75aae9"
+"summary/n256-manifest.toml" = "sha256:c88a7ad144a7297858eee03a35650dba004bd4c91df1ddd0f9ecdef8d3456486"
+"summary/n256.json" = "sha256:6e3ca2b65a1c6d68b8ed76341ed60caabce74ab24bc3f38beb1c5f1a8af39218"
+"summary/n512-manifest.toml" = "sha256:737361c58656868ed3ca3d509a5238c9c6069e43be88b4826630c4ead0c091f2"
+"summary/n512.json" = "sha256:25ca0e41b140c296689f8917a630e29bde10878c426b1470047eddba6cdcaf0a"
+"summary/scan.toml" = "sha256:e3cf811a7491ac1b097e0460c256f90a1a1fce7d75430793db33df4001453768"
+
+[report_inputs]
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/convergence.jl" = "sha256:9ef9c3188407872cd8a95d10fcfde0c32d11982383196cb8a35b0ca43cf60637"
+"scripts/crosscode/convergence_report.jl" = "sha256:80a3140507c6d9546703c36704bb1983f810d1204dc21ae284a0dddc43862eab"
+"scripts/crosscode/theory.jl" = "sha256:1b1471479822c6e2c63c3648cb7e501b856de49e5f1ab59a23ccc07259adeee3"
