@@ -1,0 +1,55 @@
+backend = "KernelAbstractions CPU"
+commit = "d5d9203abfddaa87423362952ae707b742c4e9ef"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = false
+julia = "1.13.3"
+run_id = "em2d-absorbing-layer-20261103T210731"
+threads = 4
+updated = "2026-11-03T21:07:31.226Z"
+work_package = "WP-027"
+
+[inputs]
+"Manifest.toml" = "sha256:5944c96e8fd2e27dfa9a1f91680dfe7ba8dea6426f42f299ddc66191993128f3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:dce4248ecf9e4b68777ed754b9fd7f95f368b4ce5b98b89cb617d1376151575a"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:de27c4089624accc3c84733267c322108bec2374d00940abed2ec7b82d13b757"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:68dbc7529ce970ce10fefa16885de016c562687964c7da74d190c54b5374a35b"
+"lib/ParticleMeshElectromagnetic/src/boundaries.jl" = "sha256:fd3d833efc6059182b6a88311f7d28c300e6757d5f5c615e0b964c4b7b89a2b0"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:c31f7cee98c6d43fd33df2cbc18f56a3e93138bca7d4a461e32028e7d81427c3"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:de09ed7ee84c9df422cd86a0e6b3555e458a99dd4c6b2412cf9decbbb58b2306"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:c1724f2d1fab04b6a6840650c76b5650849b056df2c94defa980599c6f95bdcb"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"lib/ParticleMeshElectromagnetic/test/boundaries_cases.jl" = "sha256:5136d5c86d5e8fc5a1399d71d148d105524f1c410651f67721ed05f9ca61df74"
+"scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
+"scripts/em2d/absorbing_layer.jl" = "sha256:244081735733b3bfe78c7f3eb839e0f6c86aa88e8bca3d1514e1f52fe14e90a5"
+"scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
+
+[parameters]
+angles = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.1, 1.2]
+courant = 0.95
+margin = 8
+ncx = 16
+ncy = 8
+order = 2
+strength_times_cells = 32.0
+strengths = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
+thickness = [8, 16, 32]
+type = "Float64"
+width_wavelengths = "3/cos θ"

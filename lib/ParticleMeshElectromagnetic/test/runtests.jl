@@ -10,6 +10,7 @@ include("yee_nd_cases.jl")     # WP-022: grids, random fields and digests of yee
 include("em2d_cases.jl")       # WP-024: the 2D problems and digests of em2d.jl and the determinism worker
 include("antenna_cases.jl")    # WP-026: the antenna's runs and their analysis
 include("filter_cases.jl")     # WP-029: the filtered runs of filter.jl and the determinism worker
+include("boundaries_cases.jl") # WP-027: the open boundary's runs and the layer's discrete theory
 
 @testset "ParticleMeshElectromagnetic" begin
     try
@@ -29,6 +30,7 @@ include("filter_cases.jl")     # WP-029: the filtered runs of filter.jl and the 
         include("em2d_step.jl")     # WP-023: T-360 to T-369, after em2d.jl (its helpers) and determinism.jl (T-363's worker runs)
         include("antenna.jl")       # WP-026: T-400 to T-409
         include("filter.jl")        # WP-029: T-440 to T-445, after em2d.jl and em2d_step.jl (their helpers)
+        include("boundaries.jl")    # WP-027: T-450 to T-457, after em2d_step.jl (its helpers) and determinism.jl (T-454's worker runs)
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET

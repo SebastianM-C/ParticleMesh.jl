@@ -2,7 +2,8 @@
     ParticleMeshElectromagnetic
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
-`N = 1` and `N = 2` periodic (1D3V and 2D3V), with the current a choice of the numerics
+`N = 1` and `N = 2` (1D3V and 2D3V; periodic, and at `N = 2` with an open transverse axis
+through an absorbing layer, WP-027), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields at `N = 2`). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
@@ -47,6 +48,7 @@ export histories, field_energy, kinetic_energy_history, total_energy_history, mo
 export state_partition, remake_reload, harness_state
 export GaussianLaser, Antenna, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
+export AbsorbingLayer, LayerFactors
 
 include("layout.jl")
 include("yee.jl")
@@ -57,6 +59,7 @@ include("problem.jl")
 include("step.jl")
 include("step2d.jl")
 include("antenna.jl")
+include("boundaries.jl")
 include("diagnostics.jl")
 include("harness.jl")
 
