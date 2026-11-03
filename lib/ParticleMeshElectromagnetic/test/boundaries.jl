@@ -75,6 +75,7 @@ end
     record!("T-430", Float64, worst)
     for pol in (:TE, :TM)
         @test Rs[(8, 0.4, pol)] > Rs[(16, 0.4, pol)] > Rs[(32, 0.4, pol)]
+        @test Rs[(16, 0.0, pol)] < 1e-7          # an unmatched layer (E or B alone, or at other rates) reflects far more
         for cells in (8, 16)
             @test Rs[(cells, 0.0, pol)] < Rs[(cells, 0.4, pol)] < Rs[(cells, 0.8, pol)]
         end
@@ -84,7 +85,7 @@ end
 # --- T-431 ----------------------------------------------------------------------------------
 
 # Gauss's law with particles leaving: the layer leaves the curl updates untouched and damps E
-# after them, so the E step changes D⁻·E by D⁻·((e^{−σΔt} − 1)E), zero at a node whose four
+# around them, so the E step changes D⁻·E only through the factors e^{−σΔt/2}, not at a node whose four
 # E faces carry σ = 0: the node rows j₀ = cells + 1 … n₂ − cells − 1 (interior row indices from
 # 0). A retired particle sits within a cell of the box edge, so its charge, which leaves ρ while
 # its field stays, is inside the layer too (cells ≥ the guard width ≥ the shape's reach). On the
@@ -165,7 +166,8 @@ end
 # are marked free, the particles that crossed the periodic x seam stay, the alive charge falls by
 # the retired particles' charge, and the current of the last move is deposited before the
 # retirement: the first step's J is the periodic box's bit for bit (the same fields, push and
-# deposit), while the field update after it differs (the layer damps). Fast mode in Float64,
+# deposit), while the field update after it differs (the layer damps); the kinetic energy at
+# n + ½ counts only the particles still in the box. Fast mode in Float64,
 # which does not permute the slots, so a slot is the same particle before and after the step.
 @testset "T-432 particles that cross the open edge are retired after their current is deposited, the x seam keeps them [A2, WP-027]" begin
     prob, ab = open_plasma_2d(Float64)
@@ -186,6 +188,12 @@ end
             retired += count(wrap_y)
             crossed_x += count(wrap_x .& .!wrap_y)
         end
+        # the kinetic energy at n + ½ is that of the particles still in the box (retired first)
+        Kh = sum(st.species) do s
+            alive, w, u = Array(s.status) .== ParticleMeshCore.ALIVE, Array(s.w), map(Array, s.u)
+            sum(i -> (u² = u[1][i]^2 + u[2][i]^2 + u[3][i]^2; s.m * w[i] * u² / (sqrt(1 + u²) + 1)), findall(alive); init = 0.0)
+        end
+        @test sum(Array(st.K)) ≈ Kh rtol = 1e-12
     end
     @info "T-432" retired crossed_x
     @test retired > 50 && crossed_x > 50
@@ -206,7 +214,8 @@ end
 
 # With zero strength the layer multiplies by exactly one: a vacuum slab packet in an open box is
 # the periodic box's bit for bit, through the seam; and with no layer the 7-argument solve is the
-# antennas' solve bit for bit. A nonzero layer damps only its own rows: its factors are exactly one
+# antennas' solve bit for bit; with a layer, every guard is its interior image after the solve. A
+# nonzero layer damps only its own rows: its factors are exactly one
 # on the rows outside it, exp(−σ·τ) of the closed-form profile on its rows, and the guard rows
 # carry their interior images' factors.
 @testset "T-433 a zero-strength layer is the periodic step bit for bit, and the factors sit on the layer rows [A2, A4, A8, WP-027]" begin
@@ -227,6 +236,16 @@ end
         @test all(c -> bits(Array(getfield(so.fields, c))) == bits(Array(getfield(sp.fields, c))), keys(so.fields))
         # the whole packet crossed the seam: it is back in the lower half of the interior
         @test slab_energy(so, rows.lower) / W0 > 0.99
+        # with a layer every guard is its interior image after the solve (the damping visits the
+        # guard rows and columns with their images' factors): filling the guards again changes no bit
+        sl = EMState(prob, EMNumerics(; current = NoCurrent(), absorber = AbsorbingLayer(; cells = 8, strength = 3.0)))
+        initialize!(sl, prob)
+        slab_init!(sl, geo, :TE)
+        foreach(a -> a .= T.(randn(Xoshiro(7), size(a))), values(sl.fields))
+        foreach(a -> fill_guards!(a, sl.grid), values(sl.fields))
+        solve_fields!(Yee(), sl.fields, sl.grid, prob.dt, (), zero(T), sl.aux.layer)
+        refilled = map(a -> fill_guards!(copy(a), sl.grid), sl.fields)
+        @test all(c -> bits(Array(getfield(sl.fields, c))) == bits(Array(getfield(refilled, c))), keys(sl.fields))
         # no layer: the 7-argument solve is the 6-argument one
         f1 = map(copy, sp.fields)
         f2 = map(copy, sp.fields)
