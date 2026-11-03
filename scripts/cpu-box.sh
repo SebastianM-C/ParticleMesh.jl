@@ -4,13 +4,18 @@
 #   scripts/cpu-box.sh submit <tag> <request.toml>   push branch runs/<tag>: HEAD, the request as
 #                                                    box-request.toml, and the run directories it names
 #   scripts/cpu-box.sh status <tag>                  print the result's box-status.toml; exit 1 while pending
-#   scripts/cpu-box.sh fetch <tag>                   put the result's files into this worktree's scripts/runs/,
-#                                                    with box-status.toml and box-log.txt in scripts/runs/box-<tag>/
+#   scripts/cpu-box.sh fetch <tag>                   put the result into scripts/runs/box-<tag>/ (the run
+#                                                    directories, box-status.toml, box-log.txt); never
+#                                                    overwrites a local run
 #
-# Run from the root of your worktree. The worktree is not touched by submit (a temporary index
-# builds the commit). The request:
+# Run from the root of your worktree, with HEAD pushed. The worktree is not touched by submit (a
+# temporary index builds the commit). The request's directories must exist, be named exactly
+# (scripts/runs/<name>, no wildcards), and hold no file over 20 MB and nothing that fails CI's leak
+# scan: the request branch is public and permanent. The request:
 #
 #   timeout = 7200                       # seconds per step, at most 43200
+#   category = "validation"              # for the cost ledger: physics, validation, crosscode,
+#                                        # benchmark, test or smoke (else "unspecified")
 #   outputs = ["scripts/runs/<dir>"]     # directories whose files come back (under scripts/runs/)
 #   [[steps]]
 #   kind = "smilei"                      # Smilei's CPU image, built from the commit's recipe
@@ -27,6 +32,8 @@
 # comes back if a file fails the leak scan of CI. Run branches are never merged and stay, as the
 # record of the run that a report can cite.
 set -euo pipefail
+set -f
+LEAK='(ssh://|BEGIN [A-Z ]*PRIVATE KEY|([0-9]{1,3}\.){3}[0-9]{1,3})'
 die() { echo "cpu-box: $*" >&2; exit 64; }
 [ $# -ge 2 ] || die "usage: cpu-box.sh submit|status|fetch <tag> [request.toml]"
 cmd="$1" tag="$2"
@@ -41,16 +48,26 @@ import sys, tomllib
 r = tomllib.load(open(sys.argv[1], "rb"))
 d = set(r.get("outputs", [])) | {s["dir"] for s in r.get("steps", []) if s.get("kind") == "smilei"}
 for x in sorted(d):
-    if not x.startswith("scripts/runs/") or ".." in x:
-        sys.exit(f"cpu-box: not under scripts/runs/: {x}")
+    import re
+    if not re.fullmatch(r"scripts/runs/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*", x) or ".." in x.split("/"):
+        sys.exit(f"cpu-box: name a directory exactly, scripts/runs/<name>: {x!r}")
     print(x)
 EOF
 )"
+    git cat-file -e HEAD:box-status.toml 2>/dev/null && die "HEAD is a box result commit; submit from your own branch"
+    [ -n "$(git branch -r --contains HEAD 2>/dev/null)" ] || die "HEAD is not on any pushed branch; push it first"
+    while IFS= read -r d; do
+      [ -n "$d" ] || continue
+      [ -d "$d" ] || die "no directory $d"
+      big="$(find "$d" -type f -size +20M)"; [ -z "$big" ] || die "files over 20 MB in the request: $big"
+      ! grep -rIlE "$LEAK" -- "$d" "$req" >/dev/null || die "leak-scan pattern in: $(grep -rIlE "$LEAK" -- "$d" "$req" | tr '\n' ' ')"
+    done <<< "$dirs"
     idx="$(mktemp)"; trap 'rm -f "$idx"' EXIT
     GIT_INDEX_FILE="$idx" git read-tree HEAD
-    for d in $dirs; do
-      [ -d "$d" ] && GIT_INDEX_FILE="$idx" git add -f -- "$d"
-    done
+    while IFS= read -r d; do
+      [ -n "$d" ] || continue
+      GIT_INDEX_FILE="$idx" git add -f -- "$d"
+    done <<< "$dirs"
     blob="$(git hash-object -w "$req")"
     GIT_INDEX_FILE="$idx" git update-index --add --cacheinfo "100644,$blob,box-request.toml"
     tree="$(GIT_INDEX_FILE="$idx" git write-tree)"
@@ -65,13 +82,15 @@ EOF
   fetch)
     git fetch -q origin "refs/heads/runs/$tag" || die "no branch runs/$tag"
     git cat-file -e FETCH_HEAD:box-status.toml 2>/dev/null || die "no result on runs/$tag yet"
+    dest="scripts/runs/box-$tag"
+    [ ! -e "$dest" ] || die "$dest exists already; move it away to fetch again"
+    mkdir -p "$dest"
     if git cat-file -e FETCH_HEAD:scripts/runs 2>/dev/null; then
-      git archive FETCH_HEAD scripts/runs | tar -x
+      git archive FETCH_HEAD scripts/runs | tar -x -C "$dest" --strip-components=2
     fi
-    mkdir -p "scripts/runs/box-$tag"
-    git show FETCH_HEAD:box-status.toml > "scripts/runs/box-$tag/box-status.toml"
-    git show FETCH_HEAD:box-log.txt > "scripts/runs/box-$tag/box-log.txt"
-    cat "scripts/runs/box-$tag/box-status.toml"
+    git show FETCH_HEAD:box-status.toml > "$dest/box-status.toml"
+    git show FETCH_HEAD:box-log.txt > "$dest/box-log.txt" 2>/dev/null || rm -f "$dest/box-log.txt"
+    cat "$dest/box-status.toml"
     ;;
   *) die "unknown command $cmd (submit, status, fetch)" ;;
 esac
