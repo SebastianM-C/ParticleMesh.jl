@@ -1,0 +1,32 @@
+branch = "runs/box-test-2"
+request_commit = "1756433a3f014a3e6ea266789833ad8c793dfcea"
+started = "2026-11-03T12:44:10Z"
+outputs = ["scripts/runs/smilei-two-stream-736a428f"]
+finished = "2026-11-03T12:44:35Z"
+ok = true
+files_returned = 20
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "instantiate"
+project = "scripts"
+exit = 0
+seconds = 4
+
+[[steps]]
+kind = "smilei"
+exit = 0
+seconds = 8
+
+[[steps]]
+kind = "julia"
+exit = 0
+seconds = 12
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "7e2b08d0ef041fb2a12152b49b7fbcc521a94d981fc7e369ca8d34d2e5a5b3f4"

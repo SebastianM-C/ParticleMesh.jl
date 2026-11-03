@@ -7,10 +7,29 @@ generator = "scripts/crosscode/smilei.jl"
 generator_hash = "sha256:c552eaad24eb1cf4809c6656ff7f1c3a1692c6de7e60de0fc968a86625af9fc4"
 run = "smilei-two-stream-736a428f"
 seeds = [20261031]
-updated = "2026-11-03T10:55:33.612Z"
+updated = "2026-11-03T12:44:34.146Z"
+
+[analysis]
+commit = "unknown"
+dirty = "unknown"
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:023bc2de02b96d8d31f43d504198656ad5a22babf4c284442b27b18d3901c3a1"
+    "scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:282b9cc0283445a3cc7d82e78fc4a5e8f73657d41b036178d3119af911291e19"
+    "scripts/crosscode/manifest.jl" = "sha256:8162c4b21bd3927e3ba60fd7224d24ec1519ad039f63b02aa8ad17686e96291b"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpu_source = "run"
+cpus = 16
+threads = 16
 
 [image]
-id = "pending: written by the analyze step from the runner log"
+id = "unknown"
+name = "unknown"
 recipe = "scripts/crosscode/containers/smilei.Containerfile"
 recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
 
@@ -18,3 +37,28 @@ recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafd
 "case.toml" = "sha256:736a428fe67b795543c2c1380a73c94a115d4ec803fb81d59b0089293814a817"
 "run.sh" = "sha256:2d26c00b98a73042a6d6e6752bc8b383890caf8b3c4631bf4fcc007b8f999843"
 "smilei.py" = "sha256:01d07c824a3bb0b1d4d046062a50e8a61d78b9866e78354117796b3936438afe"
+
+[observables]
+case = "two-stream"
+code = "smilei"
+fit_points = 164
+fit_range = [13.7985612, 18.7636064]
+measured = 0.3456117386682293
+measured_from_mode = 0.3369875726459599
+measured_from_mode_points = 20
+measured_from_mode_stderr = 0.0025211218789735856
+measured_stderr = 0.0009017230174078563
+observable = "growth_rate"
+relative_difference = -0.015002548018342506
+theory = 0.35087576924479724
+theory_nonrelativistic = 0.3535533905932736
+
+    [observables.saturation]
+    U = 0.0019114015889
+    t = 24.9470676
+
+[outputs]
+"Fields0.h5" = "sha256:ddc3f04194e7895d89f77f8f0a6b9080ca1b9ce07504d6a7c94e93adfc9d9e71"
+"container.txt" = "sha256:0a3c618b56b33f6102f0e0130ad0ecd519a09614d7a59339cc841ecd7310e157"
+"scalars.txt" = "sha256:297fb4fb81a4e41b05561502cff01ffcf7bf6cc577d27ea8948760c56b6d11cf"
+"smilei.log" = "sha256:74e5c6feee4ef2975b38dc0384d5f7fde24d82711b8cf9fc09ebb9a9d4cd1fde"
