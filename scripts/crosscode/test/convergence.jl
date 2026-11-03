@@ -387,7 +387,7 @@ end
     base = load_case("two-stream")
     θ = base["observables"]["growth_rate"]["theory"]
     pts = ["n0064" => (; refine = 1 // 2), "n0128" => (;), "n0256" => (; refine = 2), "n0128-dt2" => (; dt_divisor = 2),
-           "n0128-a10" => (; amplitude_factor = 10)]
+           "n0128-dt4" => (; dt_divisor = 4), "n0128-a10" => (; amplitude_factor = 10)]
     δ∞, a, b = -0.004, 2.0, 30.0
     sd = joinpath(mktempdir(), "summary")
     synthetic_scan(sd, base, pts; δ∞, a, b)
@@ -409,7 +409,14 @@ end
     @test d["observed_order_residual"][1] ≈ 2 rtol = 1e-5
     @test d["richardson_order"] == 2
     @test d["richardson_residual"] ≈ δ∞ rtol = 1e-6
-    @test res["convergence"]["dt[refine=1//1]_growth_rate"]["points"] == ["n0128", "n0128-dt2"]
+    @test res["convergence"]["dt[refine=1//1]_growth_rate"]["points"] == ["n0128", "n0128-dt2", "n0128-dt4"]
+    # the limit over all plain points (#281) recovers δ∞ of δ∞ + a Δx² + b Δt² exactly, the
+    # amplitude point left out; the model without Δt² misses it, and the spread says so
+    L = res["limit"]["growth_rate"]
+    @test L["model"] == "dx2+dt+dt2" && sort(L["points"]) == ["n0064", "n0128", "n0128-dt2", "n0128-dt4", "n0256"]
+    @test L["r_inf"] ≈ δ∞ rtol = 1e-7
+    @test L["fits"]["dx2+dt+dt2"]["max_abs_misfit"] < 1e-10
+    @test abs(L["fits"]["dx2+dt"]["r_inf"] - δ∞) > 1e-7 && L["r_inf_spread"] >= abs(L["fits"]["dx2+dt"]["r_inf"] - δ∞)
     @test all(isfile, joinpath.(out, ["results.json", "manifest.toml", "offset-vs-resolution.png", "local-rate.png", "ratio-to-linear.png"]))
     # compare_codes: the same summary against itself, and against a copy grown by e^{2δt}
     cmp = R.compare_codes(sd, sd, joinpath(dirname(sd), "cmp1"))
@@ -475,9 +482,11 @@ end
     @test m["points"] == ["tiny"] && m["mode"] == "Reference" && m["precision"] == "Float64"
     @test !any(isabspath, keys(m["inputs"]))
     rec = JSON.parsefile(joinpath(out, "tiny.json"))
-    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has
+    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has, plus the
+    # time of the loaded momenta (#282), in the record and in the manifest
     @test sort(collect(keys(rec))) == sort(["point", "case", "derived", "code", "dt", "cells", "steps", "wall_seconds",
-                                            "threads", "cpu", "energy", "series"])
+                                            "threads", "cpu", "energy", "series", "momenta_at"])
+    @test rec["momenta_at"] == m["momenta_at"] == string(PMScan.MOMENTA_AT) == "t_minus_half"
     @test rec["point"] == "tiny" && rec["code"] == "particlemesh" && rec["case"] == case["name"] && rec["derived"] == case["derived"]
     @test sort(collect(keys(rec["series"]))) == ["growth_rate", "mode"]
     dt = case["time"]["dt"]
