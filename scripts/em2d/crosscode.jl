@@ -17,14 +17,19 @@ using Statistics: mean, median, std
 
 const CROSSCODE = joinpath(REPO, "scripts", "crosscode")
 """
-The committed reference runs this script compares with: WP-019's single Smilei runs and WP-017's
-four-seed Landau ensembles of Smilei and PIConGPU (FP64). The two reference ensembles differ by
-1.5 combined errors (reports/crosscode-picongpu/), so their numbers are recorded, not thresholds.
+The committed reference runs this script compares with: WP-019's single Smilei runs and, for the
+seeded Landau case, the reference ensembles of Smilei and PIConGPU (FP64) on the same case file,
+chosen by the first 8 hex of its SHA-256: WP-017's four seeds (`bc8fd6af`) or WP-025's 32
+(`431f4192`). The reference ensembles' difference is recorded, not a threshold (A7).
 """
 const SMILEI = Dict("landau-oblique-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-landau-oblique-2d-c8709f77"),
-                                            ensembles = ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-bc8fd6af"),
-                                                         "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-bc8fd6af"))),
-                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = ()))
+                                            ensembles = Dict(h => ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-$h"),
+                                                                   "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-$h"))
+                                                             for h in ("bc8fd6af", "431f4192"))),
+                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = Dict()))
+
+"The reference ensembles of a run's case file (`case.toml` in the run directory), by its hash; none for an unknown file."
+reference_ensembles(name, pmdir) = get(SMILEI[name].ensembles, RunManifest.file_hash(joinpath(pmdir, "case.toml"))[1:8], ())
 
 "The seeds of a case: its `seeds` list, or its single `random_seed`."
 case_seeds(case) = haskey(case["numerics"], "seeds") ? Int.(case["numerics"]["seeds"]) : [Int(case["numerics"]["random_seed"])]
@@ -273,7 +278,7 @@ fmt(x; d = 4) = x === nothing ? "none" : string(round(x; sigdigits = d))
 
 The ParticleMesh run against the committed reference runs of its case: every per-run observable
 against WP-019's single Smilei run (seed 20261031) and, for the seeded Landau case, against each
-reference ensemble of WP-017 (Smilei and PIConGPU FP64, same case file and seeds): the per-seed
+reference ensemble of the same case file and seeds (`reference_ensembles`): the per-seed
 observables (difference of the seed means in combined errors of the means) and the ensembles
 (`compare_ensembles`, in units of the reference's seed spread and of the combined jackknife
 error), with an overlay of the three ensembles. Writes `dir/compare/`. Measurements, not
@@ -303,7 +308,9 @@ function compare(pmdir)
                              (b - a) / hypot(s["measured_stderr"], o["measured_stderr"]))
     end
     side["single_run_seed_$(first_seed)"] = single
-    if seeded && !isempty(ref.ensembles)
+    ensembles = reference_ensembles(name, pmdir)
+    seeded && haskey(SMILEI[name].ensembles, "bc8fd6af") && isempty(ensembles) && error("compare: no reference ensembles for the case file of $pmdir")
+    if seeded && !isempty(ensembles)
         seeds = case_seeds(case)
         series(d) = JSON.parsefile(joinpath(d, "ensemble-series.json"))
         pm = series(pmdir)
@@ -312,9 +319,9 @@ function compare(pmdir)
         st(v) = length(ok(v)) >= 2 ? (mean(ok(v)), std(ok(v)), length(ok(v))) : nothing
         fig = Figure(size = (900, 550))
         ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|⟨k̂·Ê⟩|² of mode $(case["wavevector"]["mode"]), seed mean",
-                  title = "$name: four-seed ensembles of three codes")
+                  title = "$name: $(length(seeds))-seed ensembles of three codes")
         overlay = Dict{String,Any}("plot" => "ensemble |⟨k̂·Ê⟩|² of each code versus time, log scale", "theory" => B.result["theory"])
-        for (code, dir) in ref.ensembles
+        for (code, dir) in ensembles
             per = Dict{String,Any}()
             for k in ("damping_rate_mode", "energy_ratio_mode")
                 sv = [JSON.parsefile(joinpath(dir, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]

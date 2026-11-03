@@ -953,3 +953,4 @@ end
 include(joinpath(@__DIR__, "picongpu.jl"))
 include(joinpath(@__DIR__, "seeds.jl"))
 include(joinpath(@__DIR__, "convergence.jl"))
+include(joinpath(@__DIR__, "pm_ensemble.jl"))
