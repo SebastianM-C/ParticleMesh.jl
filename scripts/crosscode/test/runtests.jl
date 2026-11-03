@@ -180,6 +180,45 @@ end
     @test isfile(joinpath(CC, "containers", "picongpu", "pm-versions.sh"))
 end
 
+@testset "T-400 the smilei-gpu recipe is pinned and builds the CPU image's Smilei [A6, WP-030]" begin
+    recipe = read(joinpath(CC, "containers", "smilei-gpu.Containerfile"), String)
+    cpu = read(joinpath(CC, "containers", "smilei.Containerfile"), String)
+    froms = [l for l in split(recipe, '\n') if startswith(strip(l), "FROM")]
+    @test length(froms) == 1 && occursin(r"@sha256:[0-9a-f]{64}\b", only(froms))
+    # every source fetched by git is cloned at a tag and checked against a full commit id
+    for name in ("SMILEI", "HDF5")
+        tag = match(Regex("ARG $(name)_TAG=(\\S+)"), recipe)
+        commit = match(Regex("ARG $(name)_COMMIT=(\\S+)"), recipe)
+        @test tag !== nothing && commit !== nothing && occursin(r"^[0-9a-f]{40}$", commit.captures[1])
+        @test occursin("--branch \"\${$(name)_TAG}\"", recipe)
+        @test occursin("rev-parse HEAD)\" = \"\${$(name)_COMMIT}\"", recipe)
+    end
+    @test count("git clone", recipe) == 2
+    @test !occursin(r"\b(master|main|develop)\b", recipe)
+    # the same Smilei release and commit as the CPU reference image
+    for key in ("SMILEI_TAG", "SMILEI_COMMIT")
+        @test match(Regex("ARG $key=(\\S+)"), recipe).captures == match(Regex("ARG $key=(\\S+)"), cpu).captures
+    end
+    # the SDK release is fixed by package version and checked against the installed compilers
+    series = match(r"ARG NVHPC_SERIES=(\d+)-(\d+)\n", recipe)
+    release = match(r"ARG NVHPC_RELEASE=(\d+)\.(\d+)\n", recipe)
+    @test series !== nothing && release !== nothing && series.captures == release.captures
+    @test occursin("\"nvhpc-\${NVHPC_SERIES}=\${NVHPC_RELEASE}\"", recipe)
+    @test occursin("grep -q \"nvc++ \${NVHPC_RELEASE}\"", recipe)
+    @test occursin("grep -q \"release \${CUDA_RELEASE}\"", recipe)
+    # the guide's build configuration, both fastmath variants, the RTX 4080 SUPER's arch
+    @test occursin("config=\"gpu_nvidia\"", recipe)
+    @test occursin(r"for variant in fastmath nofastmath", recipe)
+    @test match(r"ARG PM_SM=(\d+)", recipe).captures[1] == "89"
+    env = read(joinpath(CC, "containers", "smilei-gpu", "nvidia_env.sh"), String)
+    @test occursin("-gpu=\${PM_GPU_CC}\${PM_FASTMATH}", env)
+    @test occursin("-arch=sm_\${PM_SM:?}", env)
+    @test !occursin("ccnative", replace(env, r"#[^\n]*" => ""))
+    for f in ("nvidia_env.sh", "acc-probe.cpp", "pm-versions.sh")
+        @test occursin("COPY smilei-gpu/$f ", recipe)
+    end
+end
+
 @testset "T-160 linear-theory values of the 1D cases [A5, WP-003]" begin
     landau = load_case("landau")
     obs = landau["observables"]["damping_rate"]
