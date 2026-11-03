@@ -6,10 +6,11 @@
 module Ensemble
 
 using Statistics: mean, median, std
+using JSON
 using ..Observables: damping_from_peaks, linear_fit, refine_peak, mode_coefficient
 
 export mode_coefficient, ensemble_energy, ensemble_damping, fit_at_peaks, aggregate_seeds,
-       SeedRefused, seed_scatter
+       SeedRefused, seed_scatter, write_seed_coefficients, seed_coefficients
 
 """
     ensemble_energy(coeffs) -> Vector
@@ -114,6 +115,27 @@ function seed_scatter(coeffs, window)
     m = reduce(+, coeffs) ./ M
     v = [sum(abs2(c[i] - m[i]) for c in coeffs) / (M * (M - 1)) for i in window]
     return (; noise_of_mean = mean(v), noise_per_seed = M * mean(v))
+end
+
+"""
+    write_seed_coefficients(dir, t, seeds, coeffs; observable)
+
+`dir/seed-coefficients.json`: the time grid, the seeds and every seed's complex mode
+coefficient (real and imaginary parts), so that ensembles and sub-ensembles can be recomputed
+without the dumps. `seed_coefficients` reads it back exactly (JSON keeps Float64 digits).
+"""
+function write_seed_coefficients(dir, t, seeds, coeffs; observable)
+    length(seeds) == length(coeffs) || error("write_seed_coefficients: one coefficient vector per seed")
+    all(c -> length(c) == length(t), coeffs) || error("write_seed_coefficients: coefficients off the time grid")
+    open(io -> JSON.print(io, Dict("observable" => observable, "t" => t, "seeds" => seeds,
+        "re" => [real.(c) for c in coeffs], "im" => [imag.(c) for c in coeffs])), joinpath(dir, "seed-coefficients.json"), "w")
+end
+
+"The time grid, seeds and complex mode coefficients of `dir/seed-coefficients.json` (`write_seed_coefficients`)."
+function seed_coefficients(dir)
+    s = JSON.parsefile(joinpath(dir, "seed-coefficients.json"))
+    c = [complex.(Float64.(re), Float64.(im)) for (re, im) in zip(s["re"], s["im"])]
+    return Float64.(s["t"]), collect(Int, s["seeds"]), c
 end
 
 end

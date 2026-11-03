@@ -274,7 +274,8 @@ end
 
 A seeded run of either code: `analyze` of every seed-<seed>/ subdirectory (its own plots,
 observables and manifest), then the ensemble observable of the complex mode coefficients over
-the seeds, written to the top directory with its plots, and the manifest of the run updated.
+the seeds, written to the top directory with its plots and the seeds' coefficients
+(`seed-coefficients.json`), and the manifest of the run updated.
 Schema 1: the coefficient of Ex at the perturbation's mode, the per-run fits on Uelm_Ex.
 Schema 2: the coefficient the ensemble observable's `signal` names (`mode_projection` of its
 `fields`), the per-run fits on the scalar sum of the case's `damping_rate_energy` columns.
@@ -326,8 +327,11 @@ function analyze_seeded(dir; log = nothing)
     code = code_of(joinpath(dir, "seed-$(first(seeds))"))
     extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
         "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps, "hardware" => first(hw))
-    code == "picongpu" && (extra["compile_seconds"] = compile_seconds(dir))
+    code == "picongpu" && (extra["compile_seconds"] = compile_seconds(dir); extra["compile_seconds_per_job"] = compile_seconds_per_job(dir))
     r = write_ensemble(dir, case, t, coeffs, seeds; code, per_run, extra)
+    # the complex mode coefficient of every seed, so that sub-ensembles and later comparisons
+    # need no dumps (which are not committed): seed-coefficients.json
+    write_seed_coefficients(dir, t, seeds, coeffs; observable = ekey)
     m = read_manifest(dir)
     image = merge(get(m, "image", Dict{String,Any}()), Dict{String,Any}("id" => img.id, "name" => img.name))
     write_manifest(dir; extra = Dict{String,Any}("outputs" => outputs, "image" => image, "hardware" => first(hw),
@@ -356,19 +360,11 @@ end
 "The top run directory of a PIConGPU run (the one holding run.sh), from it or a seed directory."
 picongpu_top(dir) = isfile(joinpath(dir, "run.sh")) ? dir : dirname(abspath(dir))
 
-"Seconds between two `# <what> start:`/`end:` lines of a container.txt, or nothing."
-function stamp_interval(f, start_prefix, end_prefix)
-    isfile(f) || return nothing
-    stamp(prefix) = for l in eachline(f)
-        startswith(l, prefix) && return DateTime(strip(l[length(prefix)+1:end])[1:23])
-    end
-    t0, t1 = stamp(start_prefix), stamp(end_prefix)
-    (t0 === nothing || t1 === nothing) && return nothing
-    return (t1 - t0) / Millisecond(1000)
-end
-
-"The compile time of a PIConGPU run's setup in seconds, from container.txt."
+"The compile time of a PIConGPU run's setup in seconds, from container.txt: the first job's."
 compile_seconds(dir) = stamp_interval(joinpath(picongpu_top(dir), "container.txt"), "# compile start:", "# compile end:")
+
+"The compile time of every job of a PIConGPU run (a run done in several jobs compiles in each), in seconds."
+compile_seconds_per_job(dir) = stamp_intervals(joinpath(picongpu_top(dir), "container.txt"), "# compile start:", "# compile end:")
 
 """
 Wall time in seconds of a run: Smilei's between the `# start:` and `# end:` lines of the run's

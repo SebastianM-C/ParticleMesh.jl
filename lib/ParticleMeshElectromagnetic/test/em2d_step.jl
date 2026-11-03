@@ -400,10 +400,6 @@ end
     delete!(neither["numerics"], "random_seed")
     @test_throws ArgumentError problem_from_case(both, Float64)
     @test_throws ArgumentError problem_from_case(neither, Float64)
-    # a schema-2 thermal species without its spread is refused, not loaded cold (#259)
-    nospread = deepcopy(load_case("landau-oblique-2d"))
-    delete!(nospread["species"][1], "thermal_velocity")
-    @test_throws ArgumentError problem_from_case(nospread, Float64)
     # schema 2: every per-axis entry, the drift in three components, the isotropic thermal spread
     lo = load_case("landau-oblique-2d")
     p = problem_from_case(lo, Float64)
@@ -429,6 +425,10 @@ end
     @test a1.ppc == (3, 2) && a1.drift == (0.1, -0.2, 0.3) && a1.mode == (2, -1) && a1.amplitude == 0.01
     @test problem_from_case(asym, Float64; ppc = (5, 4), cells = (9, 7)).species[2].ppc == (5, 4)
     @test numerics_from_case(lo).current isa Esirkepov
+    # a thermal species without its spread is refused, not loaded cold
+    nospread = deepcopy(lo)
+    delete!(nospread["species"][1], "thermal_velocity")
+    @test_throws ArgumentError problem_from_case(nospread, Float64)
     # the current: Esirkepov() at N = 1 and 2 (the default), NoCurrent() at N = 2 only
     @test EMNumerics().current isa Esirkepov
     @test EMState(plasma_step_2d(Float64), EMNumerics()) isa EMState{2}

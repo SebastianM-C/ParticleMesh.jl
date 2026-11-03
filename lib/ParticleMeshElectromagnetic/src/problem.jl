@@ -275,7 +275,7 @@ function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude
         a = amplitude === nothing || iszero(a0) ? T(a0) : T(sign(a0)) * T(amplitude)
         cold = getnum(s, "velocity", "cold") == "cold"
         cold || haskey(s, "thermal_velocity") ||
-            throw(ArgumentError("species $(s["name"]): velocity = \"$(s["velocity"])\" needs a thermal_velocity"))
+            throw(ArgumentError("species $(s["name"]): a thermal schema-2 species needs a thermal_velocity"))
         vth = cold ? zero(T) : T(s["thermal_velocity"])
         v = getnum(s, "drift", [0.0, 0.0, 0.0])
         length(v) == 3 || throw(ArgumentError("species $(s["name"]): a schema-2 drift has three components, got $v"))

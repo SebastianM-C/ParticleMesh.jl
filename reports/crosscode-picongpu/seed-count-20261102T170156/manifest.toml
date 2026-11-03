@@ -1,0 +1,18 @@
+arguments = ["-0.0165", "4", "reports/crosscode-picongpu/smilei-landau-oblique-2d-bc8fd6af", "reports/crosscode-picongpu/picongpu-landau-oblique-2d-fp64-bc8fd6af"]
+commit = "5707406697996de7454885e67ceb23ed1c8f09fb"
+dirty = false
+julia = "1.13.3"
+kind = "design calculation"
+runs = ["smilei-landau-oblique-2d-bc8fd6af", "picongpu-landau-oblique-2d-fp64-bc8fd6af"]
+updated = "2026-11-02T17:02:05.971Z"
+work_package = "WP-025"
+
+[inputs]
+"picongpu-landau-oblique-2d-fp64-bc8fd6af/ensemble-series.json" = "sha256:d8f00201acb34a2bf651d2ca28945bd4e5de7cb3adfaf4b9f9990b6b34aaa2e1"
+"picongpu-landau-oblique-2d-fp64-bc8fd6af/observables.json" = "sha256:1ea97ae1b41427ef6302157116dd519e8b9ea278a5975738a3f388ee669d6a49"
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/ensemble.jl" = "sha256:d73394ad8e7f7db5e7336151b13d01f23dd891a23ee49957be5402dcb177d9a6"
+"scripts/crosscode/ensemble_bias.jl" = "sha256:123bf26efa2bbd322d353732470874a005f24594aebebffc2fa3e63406bba3bc"
+"scripts/crosscode/seed_count.jl" = "sha256:b7de02b3aca31b66c3690d3be298f50a2d2fc893fb2dcafc45ed2221381dff31"
+"smilei-landau-oblique-2d-bc8fd6af/ensemble-series.json" = "sha256:9c1fb5b58f2d044d51bd1303a8ed6d42616a130ab832374b418a6033fec0dfba"
+"smilei-landau-oblique-2d-bc8fd6af/observables.json" = "sha256:9db3311013d728719a5fd8d56bdfb958d3459998bd92028aa739974ae44df6e0"
