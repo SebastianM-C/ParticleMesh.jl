@@ -1,0 +1,230 @@
+                    _            _
+  ___           _  | |        _  \ \   Version : 5.1-HEAD
+ / __|  _ __   (_) | |  ___  (_)  | |   
+ \__ \ | '  \   _  | | / -_)  _   | |
+ |___/ |_|_|_| |_| |_| \___| |_|  | |  
+                                 /_/    
+ 
+ 
+
+ Reading the simulation parameters
+ -------------------------------------------------------------------------------
+ HDF5 version 1.10.10
+ Python version 3.12.3
+	 Parsing pyinit.py
+	 Parsing 5.1-HEAD
+	 Parsing pyprofiles.py
+	 Parsing smilei.py
+	 Parsing pycontrol.py
+	 Check for function preprocess()
+	 python preprocess function does not exist
+	 Calling python _smilei_check
+	 Calling python _prepare_checkpoint_dir
+	 Calling python _keep_python_running() :
+[1;36mCAREFUL: Patches distribution: hilbertian
+[0m
+	 Smilei will run on CPU devices
+[;33m
+[WARNING](0) src/Params/Params.cpp:1170 (compute) simulation_time has been redefined from 40.000300 to 39.963434 to match timestep.[0m
+ 
+
+ Geometry: 2Dcartesian
+ -------------------------------------------------------------------------------
+	 Interpolation order : 2
+	 Maxwell solver : Yee
+	 simulation duration = 39.963434,   total number of iterations = 542
+	 timestep = 0.073733 = 0.950000 x CFL,   time resolution = 13.562398
+	 Grid length: 7.02481, 7.02481
+	 Cell length: 0.109763, 0.109763, 0
+	 Number of cells: 64, 64
+	 Spatial resolution: 9.11056, 9.11056
+ 
+
+ Electromagnetic boundary conditions
+ -------------------------------------------------------------------------------
+	 xmin periodic
+	 xmax periodic
+	 ymin periodic
+	 ymax periodic
+ 
+
+ Vectorization: 
+ -------------------------------------------------------------------------------
+	 Mode: off
+	 Calling python writeInfo
+ 
+
+ Initializing MPI
+ -------------------------------------------------------------------------------
+	 applied topology for periodic BCs in x-direction
+	 applied topology for periodic BCs in y-direction
+	 MPI_THREAD_MULTIPLE enabled
+	 Number of MPI processes: 1
+	 Number of threads per MPI process : 16
+	 OpenMP task parallelization not activated
+ 
+	 Number of patches: 4 x 4
+	 Number of cells in one patch: 16 x 16
+	 Dynamic load balancing: never
+ 
+
+ Initializing the restart environment
+ -------------------------------------------------------------------------------
+ 
+ 
+ 
+
+ Initializing species
+ -------------------------------------------------------------------------------
+	 
+	 Creating Species #0: beam_plus
+		 > Pusher: boris
+		 > Boundary conditions: periodic periodic periodic periodic
+		 > Density profile: 2D user-defined function (uses numpy)
+	 
+	 Creating Species #1: beam_minus
+		 > Pusher: boris
+		 > Boundary conditions: periodic periodic periodic periodic
+		 > Density profile: 2D user-defined function (uses numpy)
+	 
+	 Creating Species #2: ion
+		 > Pusher: boris
+		 > Species frozen until time: 79.926867
+		 > Boundary conditions: periodic periodic periodic periodic
+		 > Density profile: 2D built-in profile `constant` (value: 1.000000)
+ 
+
+ Initializing Patches
+ -------------------------------------------------------------------------------
+	 First patch created
+		 Approximately 10% of patches created
+		 Approximately 20% of patches created
+		 Approximately 30% of patches created
+		 Approximately 40% of patches created
+		 Approximately 50% of patches created
+		 Approximately 60% of patches created
+		 Approximately 70% of patches created
+		 Approximately 80% of patches created
+		 Approximately 90% of patches created
+	 All patches created
+ 
+
+ Creating Diagnostics, antennas, and external fields
+ -------------------------------------------------------------------------------
+	 Diagnostic Fields #0  :
+		 Bx By 
+ 
+
+ Finalize MPI environment
+ -------------------------------------------------------------------------------
+	 Done creating diagnostics, antennas, and external fields
+ 
+
+ Minimum memory consumption (does not include all temporary buffers)
+ -------------------------------------------------------------------------------
+              Particles: Master 25 MB;   Max 25 MB;   Global 0.0246 GB
+                 Fields: Master 0 MB;   Max 0 MB;   Global 0.000683 GB
+            scalars.txt: Master 0 MB;   Max 0 MB;   Global 0 GB
+             Fields0.h5: Master 0 MB;   Max 0 MB;   Global 0 GB
+ 
+
+ Initial fields setup
+ -------------------------------------------------------------------------------
+	 Solving Poisson at time t = 0
+ 
+
+ Initializing E field through Poisson solver
+ -------------------------------------------------------------------------------
+	 Poisson solver converged at iteration: 0, relative err is ctrl = 0.000000 x 1e-14
+	 Poisson equation solved. Maximum err = 0.000000 at i= -1
+ Time in Poisson : 0.000169
+	 Applying external fields at time t = 0
+	 Applying prescribed fields at time t = 0
+	 Applying antennas at time t = 0
+ 
+
+ Open files & initialize diagnostics
+ -------------------------------------------------------------------------------
+ 
+
+ Running diags at time t = 0
+ -------------------------------------------------------------------------------
+ 
+
+ Species creation summary
+ -------------------------------------------------------------------------------
+		 Species 0 (beam_plus) created with 262144 particles
+		 Species 1 (beam_minus) created with 262144 particles
+		 Species 2 (ion) created with 4096 particles
+ 
+
+ Expected disk usage (approximate)
+ -------------------------------------------------------------------------------
+	 WARNING: disk usage by non-uniform particles maybe strongly underestimated,
+	    especially when particles are created at runtime (ionization, pair generation, etc.)
+	 
+	 Expected disk usage for diagnostics:
+		 File Fields0.h5: 9.37 M
+		 File scalars.txt: 477.69 K
+	 Total disk usage for diagnostics: 9.83 M
+	 
+ 
+
+ Keeping or closing the python runtime environment
+ -------------------------------------------------------------------------------
+	 Checking for cleanup() function:
+	 python cleanup function does not exist
+	 Closing Python
+ 
+
+ Time-Loop started: number of time-steps n_time = 542
+ -------------------------------------------------------------------------------
+[1;36mCAREFUL: The following `push time` assumes a global number of 16 cores (hyperthreading is unknown)
+[0m
+  timestep       sim time   cpu time [s]   (    diff [s] )   push time [ns]
+    27/542     2.0277e+00     2.3884e-01   (  2.3884e-01 )             267 
+    54/542     4.0185e+00     4.6317e-01   (  2.2433e-01 )             251 
+    81/542     6.0093e+00     6.9066e-01   (  2.2749e-01 )             255 
+   108/542     8.0001e+00     9.0375e-01   (  2.1309e-01 )             238 
+   135/542     9.9909e+00     1.1114e+00   (  2.0760e-01 )             232 
+   162/542     1.1982e+01     1.3317e+00   (  2.2039e-01 )             247 
+   189/542     1.3972e+01     1.5498e+00   (  2.1807e-01 )             244 
+   216/542     1.5963e+01     1.7682e+00   (  2.1835e-01 )             244 
+   243/542     1.7954e+01     1.9810e+00   (  2.1286e-01 )             238 
+   270/542     1.9945e+01     2.2270e+00   (  2.4595e-01 )             275 
+   297/542     2.1936e+01     2.6685e+00   (  4.4151e-01 )             495 
+   324/542     2.3926e+01     2.8947e+00   (  2.2626e-01 )             253 
+   351/542     2.5917e+01     3.1107e+00   (  2.1597e-01 )             242 
+   378/542     2.7908e+01     3.3310e+00   (  2.2026e-01 )             247 
+   405/542     2.9899e+01     3.5574e+00   (  2.2644e-01 )             253 
+   432/542     3.1890e+01     3.7846e+00   (  2.2722e-01 )             254 
+   459/542     3.3880e+01     4.0065e+00   (  2.2190e-01 )             248 
+   486/542     3.5871e+01     4.2342e+00   (  2.2771e-01 )             255 
+   513/542     3.7862e+01     4.4702e+00   (  2.3597e-01 )             264 
+   540/542     3.9853e+01     4.7009e+00   (  2.3074e-01 )             258 
+ 
+
+ End time loop, time dual = 4.0000e+01
+ -------------------------------------------------------------------------------
+ 
+
+ Time profiling : (print time > 0.001%)
+ -------------------------------------------------------------------------------
+ Time_in_time_loop	4.7147e+00	9.9569e+01% coverage
+ 	           Particles	3.359500e+00	7.1e+01%
+ 	             Maxwell	5.012245e-03	    <1%
+ 	         Diagnostics	1.212464e+00	2.6e+01%
+ 	      Sync Particles	8.741776e-02	1.9e+00%
+ 	         Sync Fields	3.016592e-03	    <1%
+ 	      Sync Densities	8.910891e-03	    <1%
+ 
+	 Printed times are averaged per MPI process
+ 		 See advanced metrics in profil.txt
+ 
+	Diagnostics profile :
+ 		         scalars.txt	1.7e-01
+ 		          Fields0.h5	1.0e+00
+ 
+
+ END
+ -------------------------------------------------------------------------------

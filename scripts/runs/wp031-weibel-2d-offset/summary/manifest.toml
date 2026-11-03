@@ -1,0 +1,13 @@
+missing = []
+summarize_commit = "unknown"
+summarize_dirty = "unknown"
+summarized = ["n064", "n128", "n128-a0.1", "n128-a10", "n128-dt2", "n128-dt4", "n128-dt8", "n128-ppc0.5", "n128-ppc2", "n128-seed1", "n256", "n256-dt2", "n512"]
+updated = "2026-11-03T15:51:39.082Z"
+
+[inputs]
+
+[summarize_inputs]
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/convergence.jl" = "sha256:d440db0695a5f7bf019c9deb356a03464226f2cbb92074559960ee6477f52aa1"
+"scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+"scripts/crosscode/smilei.jl" = "sha256:cc07d0b854cbb92a2d53d4ac297b21576450b42a64be3726c2445a433616b24d"

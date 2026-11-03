@@ -1,0 +1,30 @@
+## step 0 (smilei): exit 0 after 5s
+
+## step 1 (smilei): exit 0 after 31s
+
+## step 2 (smilei): exit 0 after 221s
+
+## step 3 (smilei): exit 0 after 1720s
+
+## step 4 (smilei): exit 0 after 57s
+
+## step 5 (smilei): exit 0 after 109s
+
+## step 6 (smilei): exit 0 after 211s
+
+## step 7 (smilei): exit 0 after 428s
+
+## step 8 (smilei): exit 0 after 29s
+
+## step 9 (smilei): exit 0 after 30s
+
+## step 10 (smilei): exit 0 after 8s
+
+## step 11 (smilei): exit 0 after 115s
+
+## step 12 (smilei): exit 0 after 30s
+
+## step 13 (julia): exit 0 after 15s
+summarized 13 points: n064, n128, n128-a0.1, n128-a10, n128-dt2, n128-dt4, n128-dt8, n128-ppc0.5, n128-ppc2, n128-seed1, n256, n256-dt2, n512
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp031-weibel-2d-2
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp031-weibel-2d-2
