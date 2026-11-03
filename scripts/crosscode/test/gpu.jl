@@ -57,7 +57,7 @@ using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
     @test occursin("OPAL_PREFIX=/opt/nvhpc-mpi", recipe) && occursin("ln -s \"\$prefix\" /opt/nvhpc-mpi", recipe)
     @test occursin("test -f \"\$prefix/share/openmpi/help-mpi-runtime.txt\"", recipe)
     @test occursin("MPI_THREAD_MULTIPLE", read(joinpath(CC, "containers", "smilei-gpu", "mpi-probe.c"), String))
-    @test occursin("/tmp/mpi-probe \\", recipe)
+    @test occursin("timeout 120 /tmp/mpi-probe", recipe) && occursin("OMPI_MCA_ess_singleton_isolated=1", recipe)
     for f in ("nvidia_env.sh", "acc-probe.cpp", "pm-versions.sh", "mpi-probe.c")
         @test occursin("COPY smilei-gpu/$f ", recipe)
     end

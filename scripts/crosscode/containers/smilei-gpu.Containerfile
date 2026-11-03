@@ -116,13 +116,17 @@ ENV SMILEI_TAG=${SMILEI_TAG} \
     OMPI_MCA_pml=ob1 \
     OMPI_MCA_btl=self,vader \
     OMPI_MCA_btl_vader_single_copy_mechanism=none \
-    OMPI_MCA_coll_hcoll_enable=0
+    OMPI_MCA_coll_hcoll_enable=0 \
+    OMPI_MCA_ess_singleton_isolated=1 \
+    OMPI_MCA_osc=^ucx \
+    OMPI_MCA_mtl=^ofi
 
 # The MPI prefix: the Open MPI tree that the SDK's mpicc links against (its first library
 # directory, whose parent holds share/openmpi; comm_libs/hpcx/bin/mpicc itself sits in a
 # wrapper directory, not in that tree), linked as /opt/nvhpc-mpi. The step prints what it
 # found before checking it. Then a singleton MPI start with MPI_THREAD_MULTIPLE, as Smilei
-# makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables).
+# makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables), with a
+# time limit: a hang ends the build with the startup logged.
 COPY smilei-gpu/mpi-probe.c /opt/smilei-gpu/mpi-probe.c
 RUN NV=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE} \
  && echo "mpicc: $(command -v mpicc) -> $(readlink -f "$(command -v mpicc)") ($(file -b "$(readlink -f "$(command -v mpicc)")"))" \
@@ -134,7 +138,12 @@ RUN NV=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE} \
  && test -f "$prefix/share/openmpi/help-mpi-runtime.txt" \
  && ln -s "$prefix" /opt/nvhpc-mpi \
  && mpicc -o /tmp/mpi-probe /opt/smilei-gpu/mpi-probe.c \
- && OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 /tmp/mpi-probe \
+ && export OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
+ && if ! timeout 120 /tmp/mpi-probe; then \
+      echo "mpi-probe failed or hung for 120 s; again with the startup logged:"; \
+      timeout 60 env OMPI_MCA_ess_base_verbose=10 OMPI_MCA_pml_base_verbose=10 OMPI_MCA_btl_base_verbose=10 /tmp/mpi-probe; \
+      exit 1; \
+    fi \
  && rm -f /tmp/mpi-probe
 
 # Every shared library resolves except the driver's (libcuda, libnvidia-*), which the runner
