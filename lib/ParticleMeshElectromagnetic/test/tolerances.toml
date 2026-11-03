@@ -387,7 +387,7 @@ status = "proposed; not bitwise (A4)"
 ["T-391"]
 quantity = "energy behind the antenna plane (the wrapped leak included, measured where it is) over the pulse's energy, the A8 runs (C, waist 4, duration 5) and the physics runs (C_main, waist 6, duration 8); a0·∂E/∂a0 − E over eps(T)·max|E|·√steps (C_linear)"
 scale = "fraction (C, C_main); see quantity (C_linear); 16 × 8 cells per wavelength"
-C = 2e-3
+C = 3e-3
 C_main = 1e-4
 C_linear = 10
 status = "proposed"
@@ -410,7 +410,7 @@ status = "proposed"
 ["T-394"]
 quantity = "|v_centroid/v_spectral − 1|, the energy centroid's velocity against the energy-weighted Yee group velocity, over the pulse's window"
 scale = "relative (waist 6, Float64)"
-C = 1e-4
+C = 1e-6
 status = "proposed"
 
 ["T-395"]

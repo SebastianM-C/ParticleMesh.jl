@@ -26,6 +26,8 @@ end
 const ANTENNA_POLS = (0.0, π / 2, 0.6)
 "The order (k_y/k)⁴ of the antenna's B against E for a beam of waist w0 (ω₀ = 1)."
 k4(w0) = inv(Float64(w0))^4
+"The cell size along x of a run."
+a_dx(r) = cellsize(r.st.grid)[1]
 "The scale of T-392: the relative L² error (3/16)·√105/w0⁴ of the antenna's B (see T-392)."
 angular_scale(w0) = 3 / 16 * sqrt(105) * k4(w0)
 
@@ -263,10 +265,10 @@ end
         rel = abs(c[2] / vs[end] - 1)
         record!("T-394", Float64, rel / C)
         @test rel <= C
-        @test abs(vs[1] / vs[end] - 1) <= C / 10         # the spectrum does not change in vacuum
-        @test maximum(abs.(M * c - X)) <= C * 100      # a straight line, to C·(the box) in position
+        @test abs(vs[1] / vs[end] - 1) <= C                # the spectrum does not change in vacuum
+        @test maximum(abs.(M * c - X)) <= 1e-3 * a_dx(r)   # a straight line, to a thousandth of a cell
         vg1 = yee_axis(cellsize(grid)[1], r.prob.dt).vg
-        @test abs(c[2] / vg1 - 1) > 50 * C
+        @test abs(c[2] / vg1 - 1) > 1e4 * C
     end
 end
 
