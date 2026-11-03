@@ -1,0 +1,20 @@
+case = "weibel-2d-n128-seed1"
+case_source = "scripts/runs/wp031-weibel-2d-offset/summary/cases/n128-seed1.toml"
+code = "smilei"
+commit = "a157c625841500b4e2af6b57e48491a9d95cd498"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:cc07d0b854cbb92a2d53d4ac297b21576450b42a64be3726c2445a433616b24d"
+run = "n128-seed1"
+seeds = [1]
+updated = "2026-11-03T13:00:19.615Z"
+
+[image]
+id = "pending: written by the analyze step from the runner log"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:21e0cdbc48ba3cadb5dfd7e4efe9e7c7bbb5140c3658566f8e25d19fc3772b28"
+"run.sh" = "sha256:2d26c00b98a73042a6d6e6752bc8b383890caf8b3c4631bf4fcc007b8f999843"
+"smilei.py" = "sha256:6bca8f99cef5f500ebe1cb120fed15740607f0852811a5bf6cf5cc8b80106e63"

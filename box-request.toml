@@ -1,0 +1,59 @@
+# CPU box request of the WP-031 scan wp031-weibel-2d-offset (scripts/crosscode/convergence.jl prepare)
+timeout = 14400
+outputs = ["scripts/runs/wp031-weibel-2d-offset/summary"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n064"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n256"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n512"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-dt2"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-dt4"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-dt8"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n256-dt2"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-a0.1"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-a10"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-ppc0.5"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-ppc2"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-weibel-2d-offset/n128-seed1"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/crosscode/convergence.jl", "summarize", "scripts/runs/wp031-weibel-2d-offset"]
