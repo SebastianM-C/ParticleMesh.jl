@@ -1,4 +1,4 @@
-# The laser antenna in vacuum (WP-026, the measurements behind T-391 to T-395): a Gaussian beam
+# The laser antenna in vacuum (WP-026, the measurements behind T-401 to T-405): a Gaussian beam
 # launched through the module's 2D step, read on probe columns from the antenna plane to two
 # Rayleigh lengths past the focus.
 #

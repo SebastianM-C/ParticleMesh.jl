@@ -351,7 +351,7 @@ columns `cols`, which hold the pulse), the weight of a mode
 (k_x, k_y) the sum of its squared moduli, its frequency from the exact discrete relation and
 `v_x = |sin(k_xΔx)|/Δx / (sin(ωΔt)/Δt)`, the x derivative of the relation (a pulse travelling
 along +x, each pair of conjugate modes one wave). The energy centroid of a pulse that has left its
-source moves at this velocity (T-394).
+source moves at this velocity (T-404).
 """
 function spectral_group_velocity(f, grid, dt; cols = 1:ncells(grid)[1])
     g, n = guards(grid), ncells(grid)

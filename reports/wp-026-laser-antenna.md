@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Work package | WP-026 (goals A2, A3, A4, A7, A8) |
-| Commits | the antenna, its tests and the question file `2db3741`; the backward leak measured where it is, T-393 against the Yee prediction and T-395's flux bound `59aabd5`; T-394 tightened `c0df457`; the mutation survivors closed `40b2c30`; this report in WP-026's pull request |
+| Commits | the antenna, its tests and the question file `2db3741`; the backward leak measured where it is, T-403 against the Yee prediction and T-405's flux bound `59aabd5`; T-404 tightened `c0df457`; the mutation survivors closed `40b2c30`; this report in WP-026's pull request, where the merge with main moved the test ids from T-390–T-399 (taken by WP-025) to T-400–T-409 with no other change, so the run's manifest hashes the files before that renaming |
 | Runs | `em2d-antenna-20261103T131055` (commit `40b2c30`, `dirty = false`) |
 | Input hashes | SHA-256 of every input file in the run's manifest: `wp-026-laser-antenna/em2d-antenna-20261103T131055/manifest.toml` |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.80GHz (the model string the CPU reports), 4 vCPUs of a shared cloud VM; 4 threads |
@@ -52,7 +52,7 @@ The angular error is the relative L² difference of the whole transverse profile
 
 - The measured beam is the scheme's own propagation of the incident field to the antenna's order. The angular error falls by 14.7 between waist 6 and 12, close to the factor 16 of the (k_y/k)⁴ term (questions §4).
 - The paraxial beam is a worse model of the scheme than the scheme is of its input. Its error falls by 16 (radius) and 10.6 (Gouy) between the two waists, the 1/w0² of the non-paraxial terms. At waist 6 those terms widen the beam by 4 % two Rayleigh lengths out.
-- The waist the scheme keeps is the prescribed one: the minimum radius is 6.00 near x = 28. In the figure, the Gouy phase of keff and that of k = 1 separate at waist 12. T-392 tells them apart through the angular spectrum, where the continuum's dispersion fails by far more than the antenna's error.
+- The waist the scheme keeps is the prescribed one: the minimum radius is 6.00 near x = 28. In the figure, the Gouy phase of keff and that of k = 1 separate at waist 12. T-402 tells them apart through the angular spectrum, where the continuum's dispersion fails by far more than the antenna's error.
 
 ## 3. Energy and group velocity against resolution
 
@@ -66,7 +66,7 @@ The angular error is the relative L² difference of the whole transverse profile
 | 32 × 16 | 2.74e-5 | 2.94e-5 | −8.27e-3 | 6.40e-6 | −7.6e-8 | 1.66e-2 | 1.35e-3 |
 
 - **Energy.** What the antenna puts past its plane is the discrete flux of its incident field, to 2.8·10⁻⁵ at every resolution. That is about the energy that leaks behind the plane (3·10⁻⁵): what the plane fails to launch forward goes backward. Neither number falls with Δx. They are set by the pulse's band around ω₀, at which alone the antenna is exact (questions §5), not by the grid.
-- **Flux.** `laser_energy` is the continuum flux. The discrete flux converges to it at second order, −5.8 % at 12 cells and −0.83 % at 32 (T-395 holds it to 0.25·(Δt² + Δx²)).
+- **Flux.** `laser_energy` is the continuum flux. The discrete flux converges to it at second order, −5.8 % at 12 cells and −0.83 % at 32 (T-405 holds it to 0.25·(Δt² + Δx²)).
 - **The cos·cos factor.** Dividing by cos(Δt/2)·cos(kΔx/2), the staggered time and space averages of a plane wave, leaves 10⁻⁴ to 6·10⁻⁶. This is observed, not derived for the beam, and no test asserts it: a breaker showed that a relation fitted to one configuration does not hold across them.
 - **Group velocity.** The energy centroid moves at the energy-weighted Yee group velocity of the pulse's modes to 7·10⁻⁸ relative at every resolution.
 - **The on-axis value is not the beam's velocity.** The plane-wave value along the axis differs from it by 1.5 % at 16 cells. That difference does not vanish with Δx: the beam's modes travel at an angle. As an estimate (not asserted), ⟨k_y²⟩/2 = 1/(2w0²) = 0.014 at waist 6, near the 0.0166 measured at 32 cells, where the remaining Yee dispersion is about the 1.35·10⁻³ of the axis.
@@ -77,27 +77,27 @@ Measured on the CPU backend. Every value is a proposal in `lib/ParticleMeshElect
 
 | test | quantity | measured | proposed C |
 |---|---|---|---|
-| T-391 | energy behind the plane, A8 runs (waist 4, duration 5) | 1.51e-3, 1.51e-3, 1.51e-3 | 3e-3 |
-| T-391 | the same, physics runs (waist 6, duration 8) | 2.99e-5 | 1e-4 |
-| T-391 | linearity in a0 through the dual | 0 | 10 |
-| T-392 | angular error, Ey and Ez, over (3/16)√105/w0⁴ | 1.16, 0.714 | 1.5 |
-| T-392 | plane wave, over eps(T)·√steps | 0.529, 0.754, 0.529 | 2 |
-| T-393 | radius and Gouy phase against the angular spectrum | 1.32 | 2 |
-| T-393 | radius against the paraxial beam, over 3/w0² | 0.547 | 1 |
-| T-393 | Gouy phase against the paraxial beam, over 1/w0² | 0.609 | 1 |
-| T-393 | beam centroid from the laser's axis, over Δy | 9.2e-6 | 1e-4 |
-| T-394 | \|v_centroid/v_spectral − 1\| | 6.9e-8 | 1e-6 |
-| T-395 | \|W/Φ − 1\| over 1/w0⁴ | 0.0362 | 0.2 |
-| T-395 | \|Φ/laser_energy − 1\| over Δt² + Δx² | 0.124 | 0.25 |
-| T-396 | Gauss and ∇·B off and on the plane's columns | 0.201, 0.158, 0.173 | 1 |
-| T-397 | AD against the finite-difference floor, focus and chirp | 0.112, 0.113 | 1 |
-| T-399 | axis off the middle against the centred run shifted, over eps(T)·√steps | 1.30, 1.04 | 4 |
+| T-401 | energy behind the plane, A8 runs (waist 4, duration 5) | 1.51e-3, 1.51e-3, 1.51e-3 | 3e-3 |
+| T-401 | the same, physics runs (waist 6, duration 8) | 2.99e-5 | 1e-4 |
+| T-401 | linearity in a0 through the dual | 0 | 10 |
+| T-402 | angular error, Ey and Ez, over (3/16)√105/w0⁴ | 1.16, 0.714 | 1.5 |
+| T-402 | plane wave, over eps(T)·√steps | 0.529, 0.754, 0.529 | 2 |
+| T-403 | radius and Gouy phase against the angular spectrum | 1.32 | 2 |
+| T-403 | radius against the paraxial beam, over 3/w0² | 0.547 | 1 |
+| T-403 | Gouy phase against the paraxial beam, over 1/w0² | 0.609 | 1 |
+| T-403 | beam centroid from the laser's axis, over Δy | 9.2e-6 | 1e-4 |
+| T-404 | \|v_centroid/v_spectral − 1\| | 6.9e-8 | 1e-6 |
+| T-405 | \|W/Φ − 1\| over 1/w0⁴ | 0.0362 | 0.2 |
+| T-405 | \|Φ/laser_energy − 1\| over Δt² + Δx² | 0.124 | 0.25 |
+| T-406 | Gauss and ∇·B off and on the plane's columns | 0.201, 0.158, 0.173 | 1 |
+| T-407 | AD against the finite-difference floor, focus and chirp | 0.112, 0.113 | 1 |
+| T-409 | axis off the middle against the centred run shifted, over eps(T)·√steps | 1.30, 1.04 | 4 |
 
-T-390 is exact to its quadrature (absolute 10⁻¹²) and T-398 checks input errors, so neither has a measured ratio. The whole antenna suite takes 3 min 18 s on 4 threads.
+T-400 is exact to its quadrature (absolute 10⁻¹²) and T-408 checks input errors, so neither has a measured ratio. The whole antenna suite takes 3 min 18 s on 4 threads.
 
 ## 5. Mutations
 
-A mutation breaker planted 54 mutations of `antenna.jl`, `step2d.jl` and `problem.jl`, one per run of T-390 to T-398. 49 were caught. They covered:
+A mutation breaker planted 54 mutations of `antenna.jl`, `step2d.jl` and `problem.jl`, one per run of T-400 to T-408. 49 were caught. They covered:
 
 - every stagger, sign, coefficient, sub-step time and column of the corrections;
 - the half-cell delay and the B correction;
@@ -108,12 +108,12 @@ The survivors all involve the transverse row geometry or the plane's bound. Each
 
 | mutation (`antenna.jl`) | caught by now |
 |---|---|
-| R02: the Node rows (Ez, By) evaluated half a row off | T-393 axis centroid, 0.50 Δy against 10⁻⁴ (pol π/2 and 0.6) |
-| M42: every row one row off | T-393 axis centroid, 1.0 Δy (four assertions), and the Gouy check as before |
-| M24: the nearest-image wrap removed | T-399, up to 6·10¹⁴ of its bound (all six runs) |
-| M43: the box height one row short | T-399, up to 2·10¹⁴ of its bound (all six runs) |
-| M44: the guard rows no longer the bits of their interior images | T-399's bitwise guard check (17 assertions) |
-| M37: the lower bound g + 1 in place of g + 2 | T-398, column 4 refused |
+| R02: the Node rows (Ez, By) evaluated half a row off | T-403 axis centroid, 0.50 Δy against 10⁻⁴ (pol π/2 and 0.6) |
+| M42: every row one row off | T-403 axis centroid, 1.0 Δy (four assertions), and the Gouy check as before |
+| M24: the nearest-image wrap removed | T-409, up to 6·10¹⁴ of its bound (all six runs) |
+| M43: the box height one row short | T-409, up to 2·10¹⁴ of its bound (all six runs) |
+| M44: the guard rows no longer the bits of their interior images | T-409's bitwise guard check (17 assertions) |
+| M37: the lower bound g + 1 in place of g + 2 | T-408, column 4 refused |
 
 Before these tests, every reference (the incident DTFT, the flux, the surface charges) called the same `antenna_dy` as the kernels, and every run put the axis in the middle of the box. So R02 and M42 were self-consistent, and the wrap never acted.
 
