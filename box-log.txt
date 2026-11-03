@@ -1,0 +1,37 @@
+## instantiate scripts: exit 0
+Precompiling packages...
+   1.1 s  ✓ ParticleMeshCore
+   0.6 s  ✓ ParticleMesh
+   1.1 s  ✓ ParticleMeshElectromagnetic
+  3 dependencies successfully precompiled in 3 seconds. 388 already precompiled.
+
+## step 0 (smilei): exit 0 after 4s
+
+## step 1 (smilei): exit 0 after 7s
+
+## step 2 (smilei): exit 0 after 40s
+
+## step 3 (smilei): exit 0 after 121s
+
+## step 4 (smilei): exit 0 after 480s
+
+## step 5 (smilei): exit 0 after 13s
+
+## step 6 (smilei): exit 0 after 24s
+
+## step 7 (smilei): exit 0 after 46s
+
+## step 8 (smilei): exit 0 after 461s
+
+## step 9 (smilei): exit 0 after 10s
+
+## step 10 (smilei): exit 0 after 13s
+
+## step 11 (smilei): exit 0 after 4s
+
+## step 12 (smilei): exit 0 after 10s
+
+## step 13 (julia): exit 0 after 8s
+summarized 13 points: n0064, n0128, n0128-a0.1, n0128-a10, n0128-dt2, n0128-dt4, n0128-dt8, n0128-ppc0.1, n0128-seed1, n0256, n0512, n0512-dt4, n1024
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp031-two-stream-1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp031-two-stream-1
