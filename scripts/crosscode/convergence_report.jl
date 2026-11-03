@@ -267,7 +267,9 @@ function compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate")
     c0 = git_commit(ROOT)      # before this step rewrites its own (tracked) outputs
     mkpath(out)
     names = sort([splitext(f)[1] for f in readdir(other_sumdir) if endswith(f, ".json") && isfile(joinpath(ref_sumdir, f))])
-    res = Dict{String,Any}("reference" => ref_sumdir, "other" => other_sumdir, "key" => key, "points" => Dict{String,Any}())
+    # the summary directories as the repository names them: an absolute path would put a machine path into a committed output
+    recorded(d) = (r = relpath(abspath(d), ROOT); startswith(r, "..") ? basename(abspath(d)) : r)
+    res = Dict{String,Any}("reference" => recorded(ref_sumdir), "other" => recorded(other_sumdir), "key" => key, "points" => Dict{String,Any}())
     fig = Figure(size = (900, 500))
     ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "U_other / U_reference", title = "$key: the two codes at the same Δt")
     side = Dict{String,Any}("plot" => "ratio of the fitted series of the two codes at the same output times, to the reference run's saturation")
