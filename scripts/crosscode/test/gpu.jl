@@ -54,7 +54,8 @@ using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
     @test !occursin("ccnative", replace(env, r"#[^\n]*" => ""))
     # the SDK's HPC-X Open MPI is not relocated: OPAL_PREFIX names its tree, and the build starts
     # MPI once as Smilei does (thread level multiple), so a broken MPI stops the build
-    @test occursin("OPAL_PREFIX=/opt/nvhpc-mpi", recipe) && occursin("ln -s ", recipe) && occursin(" /opt/nvhpc-mpi \\", recipe)
+    @test occursin("OPAL_PREFIX=/opt/nvhpc-mpi", recipe) && occursin("ln -s \"\$prefix\" /opt/nvhpc-mpi", recipe)
+    @test occursin("test -f \"\$prefix/share/openmpi/help-mpi-runtime.txt\"", recipe)
     @test occursin("MPI_THREAD_MULTIPLE", read(joinpath(CC, "containers", "smilei-gpu", "mpi-probe.c"), String))
     @test occursin("/tmp/mpi-probe \\", recipe)
     for f in ("nvidia_env.sh", "acc-probe.cpp", "pm-versions.sh", "mpi-probe.c")

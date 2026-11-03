@@ -118,12 +118,21 @@ ENV SMILEI_TAG=${SMILEI_TAG} \
     OMPI_MCA_btl_vader_single_copy_mechanism=none \
     OMPI_MCA_coll_hcoll_enable=0
 
-# The MPI prefix: the Open MPI tree of the SDK's mpicc (comm_libs/mpi/bin/mpicc resolves into
-# it), linked as /opt/nvhpc-mpi; then a singleton MPI start with MPI_THREAD_MULTIPLE, as Smilei
+# The MPI prefix: the Open MPI tree that the SDK's mpicc links against (its first library
+# directory, whose parent holds share/openmpi; comm_libs/hpcx/bin/mpicc itself sits in a
+# wrapper directory, not in that tree), linked as /opt/nvhpc-mpi. The step prints what it
+# found before checking it. Then a singleton MPI start with MPI_THREAD_MULTIPLE, as Smilei
 # makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables).
 COPY smilei-gpu/mpi-probe.c /opt/smilei-gpu/mpi-probe.c
-RUN ln -s "$(dirname "$(dirname "$(readlink -f /opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/bin/mpicc)")")" /opt/nvhpc-mpi \
- && ls -l /opt/nvhpc-mpi && test -f /opt/nvhpc-mpi/share/openmpi/help-mpi-runtime.txt \
+RUN NV=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE} \
+ && echo "mpicc: $(command -v mpicc) -> $(readlink -f "$(command -v mpicc)") ($(file -b "$(readlink -f "$(command -v mpicc)")"))" \
+ && echo "mpicc --showme: $(env -u OPAL_PREFIX mpicc --showme 2>&1)" \
+ && ls -l "$NV/comm_libs" \
+ && find "$NV/comm_libs" -name help-mpi-runtime.txt \
+ && libdir=$(env -u OPAL_PREFIX mpicc --showme:libdirs | tr ' ' '\n' | sed '/^$/d' | head -1) \
+ && prefix=$(readlink -f "$libdir/..") && echo "MPI prefix: $prefix" \
+ && test -f "$prefix/share/openmpi/help-mpi-runtime.txt" \
+ && ln -s "$prefix" /opt/nvhpc-mpi \
  && mpicc -o /tmp/mpi-probe /opt/smilei-gpu/mpi-probe.c \
  && OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 /tmp/mpi-probe \
  && rm -f /tmp/mpi-probe
