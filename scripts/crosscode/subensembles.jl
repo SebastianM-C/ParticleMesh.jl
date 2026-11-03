@@ -24,12 +24,6 @@ using CairoMakie, JSON, TOML
 using Statistics: mean, std, median, quantile
 using Random: Xoshiro, randperm
 
-"The time grid, seeds and complex mode coefficients a run's analysis wrote."
-function seed_coefficients(dir)
-    s = JSON.parsefile(joinpath(dir, "seed-coefficients.json"))
-    c = [complex.(Float64.(re), Float64.(im)) for (re, im) in zip(s["re"], s["im"])]
-    return Float64.(s["t"]), collect(Int, s["seeds"]), c
-end
 
 """
     group_fits(t, coeffs, g; fit_start, floor_factor, minimum_maxima) -> Vector
@@ -78,8 +72,10 @@ end
 How far one split into consecutive groups can be read (post hoc). Over `R` random splits of
 the seeds into groups of `g`: the ratio of the measured spread of the group γ to their mean
 jackknife error, and the mean group γ minus the all-seed γ. Over `R` bootstrap resamples of
-the seeds (with replacement): the all-seed rule's γ and the number of maxima it takes. And the
-maxima each leave-one-out fit of the all-seed rule takes, which the jackknife samples.
+the seeds (with replacement): the all-seed rule's γ and the number of maxima it takes, with
+the failed fits counted. And the maxima each leave-one-out fit of the all-seed rule takes, which
+the jackknife samples. A split in which a group's jackknife is not finite is left out of the
+split statistics and counted (`valid_splits`).
 """
 function resampling(t, coeffs, rules; R = 300, g = 4, rng)
     M = length(coeffs)
@@ -105,7 +101,7 @@ function resampling(t, coeffs, rules; R = 300, g = 4, rng)
     return Dict{String,Any}("random_splits" => R, "group_size" => g, "valid_splits" => length(ratio),
         "spread_over_mean_jackknife_q05_median_q95" => q(ratio),
         "mean_group_gamma_minus_all_q05_median_q95" => q(shift),
-        "bootstrap_samples" => R, "bootstrap_gamma_sd" => std(bγ), "bootstrap_gamma_mean" => mean(bγ),
+        "bootstrap_samples" => R, "bootstrap_failed_fits" => R - length(bγ), "bootstrap_gamma_sd" => std(bγ), "bootstrap_gamma_mean" => mean(bγ),
         "bootstrap_gammas" => bγ, "bootstrap_maxima_used" => count_of(nmax),
         "jackknife_maxima_used" => count_of(loo), "rule_maxima" => length(full.used),
         "gamma" => full.gamma, "jackknife_stderr" => full.jackknife.stderr)

@@ -1,7 +1,7 @@
 # PIConGPU deck generator for the cases in scripts/crosscode/cases/ (PIConGPU 0.8.0, the image
 # of containers/picongpu.Containerfile): schema 1 (1D) as a quasi-1D 2D run, schema 2 (2D periodic).
 #
-#   julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare <case> [tag] [--precision Float32]
+#   julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare <case> [tag] [--precision Float32] [--budget <s>]
 #
 # writes scripts/runs/<tag>/ with params/*.param (the setup, copied over PIConGPU's `Empty`
 # example inside the container), case.toml, units.toml (the SI units of the run, which the reader
@@ -612,7 +612,8 @@ copied over it, `pic-build`), then run each seed (or the single run) in its dire
 PIC_SEED set, timing compile and runs separately in container.txt. A seed whose end line is in
 container.txt already is skipped (the file is appended to, one header and compile per job), so
 running the directory again continues it; with `budget` (seconds), no new seed starts once the
-job has run that long, and the script says which seeds remain.
+job's runs (counted from the end of its compile) have taken that long, and the script says
+which seeds remain.
 """
 function run_script(p; budget = nothing)
     dirs = p.seeded ? ["seed-$s" for s in p.seeds] : ["."]
@@ -626,7 +627,6 @@ function run_script(p; budget = nothing)
     set -euo pipefail
     top="\${PM_RUN_DIR:-/run-dir}"
     cd "\$top"
-    job_start=\$(date +%s)
     budget=$(something(budget, ""))
     pending=""
     for entry in $list; do
@@ -647,6 +647,7 @@ function run_script(p; budget = nothing)
     cp params/*.param setup/include/picongpu/param/
     (cd setup && pic-build -j 16) >> build.log 2>&1 || { tail -n 60 build.log; exit 1; }
     echo "# compile end: $stamp" >> container.txt
+    job_start=\$(date +%s)     # the budget counts the runs, not the compile, so every job starts a seed
     remaining=""
     for entry in \$pending; do
       d=\${entry%%:*}; seed=\${entry##*:}
@@ -730,13 +731,9 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     using .PIConGPUDeck
     cmd = get(ARGS, 1, "")
-    rest = ARGS[2:end]
-    i = findfirst(==("--precision"), rest)
-    prec = i === nothing ? nothing : rest[i+1]
-    i === nothing || deleteat!(rest, i:i+1)
-    j = findfirst(==("--budget"), rest)
-    budget = j === nothing ? nothing : parse(Int, rest[j+1])
-    j === nothing || deleteat!(rest, j:j+1)
+    rest, opts = PIConGPUDeck.SmileiDeck.cli_options(ARGS[2:end], ("--precision", "--budget"))
+    prec = get(opts, "--precision", nothing)
+    budget = haskey(opts, "--budget") ? parse(Int, opts["--budget"]) : nothing
     if cmd == "prepare" && length(rest) >= 1
         println(prepare_run(rest[1]; tag = get(rest, 2, nothing), precision = prec, budget))
     elseif cmd == "params" && length(rest) >= 1

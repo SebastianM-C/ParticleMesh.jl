@@ -2,11 +2,13 @@
 
 module RunManifest
 
+import Dates
+
 using SHA: sha256
 using TOML
 using Dates: now, UTC
 
-export file_hash, write_manifest, read_manifest, git_commit, image_from_header
+export file_hash, write_manifest, read_manifest, git_commit, image_from_header, stamp_interval, stamp_intervals
 
 file_hash(path) = bytes2hex(open(sha256, path))
 
@@ -79,6 +81,32 @@ function image_from_header(files...)
         end
     end
     return (; name = "unknown", id = "unknown")
+end
+
+"""
+Seconds between a `# <what> start:` line and the first `end:` line after it in a
+container.txt, from the last start line before that end (a run that was killed and run again
+in a later job, which appends to the file, starts more than once), or nothing.
+"""
+function stamp_interval(f, start_prefix, end_prefix)
+    intervals = stamp_intervals(f, start_prefix, end_prefix)
+    return isempty(intervals) ? nothing : first(intervals)
+end
+
+"Every start-to-end interval of `stamp_interval` in a container.txt, in order (one per job for the compile)."
+function stamp_intervals(f, start_prefix, end_prefix)
+    isfile(f) || return Float64[]
+    stamp(l, prefix) = Dates.DateTime(strip(l[length(prefix)+1:end])[1:23])
+    out, t0 = Float64[], nothing
+    for l in eachline(f)
+        if startswith(l, start_prefix)
+            t0 = stamp(l, start_prefix)
+        elseif startswith(l, end_prefix) && t0 !== nothing
+            push!(out, (stamp(l, end_prefix) - t0) / Dates.Millisecond(1000))
+            t0 = nothing
+        end
+    end
+    return out
 end
 
 end

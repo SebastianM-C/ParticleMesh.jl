@@ -89,9 +89,53 @@ end
         end
         @test count(l -> startswith(l, "# compile start:"), lines) == 2   # appended, not overwritten
     end
+    # a killed seed (a start line, no end) runs again; a finished one after it does not; the
+    # budget lists every seed it did not start, in order, and only those
+    for code in (:smilei, :picongpu)
+        mktempdir() do dir
+            five = [11, 22, 33, 44, 55]
+            bin = mkpath(joinpath(dir, "bin"))
+            for s in five
+                mkpath(joinpath(dir, "seed-$s"))
+            end
+            if code === :smilei
+                fake_command(bin, "smilei", "echo \"\$(basename \"\$PWD\")\" >> \"\$PM_RUN_DIR/calls.txt\"; sleep 3")
+                write(joinpath(dir, "seed-11", "container.txt"), "# start: x\n")
+                write(joinpath(dir, "seed-44", "container.txt"), "# start: x\n# end: y\n")
+                write(joinpath(dir, "run.sh"), SmileiDeck.run_script(SmileiDeck.smilei_parameters(load_case("landau-oblique-2d")); seeds = five, budget = 2))
+                env = ()
+            else
+                fake_command(bin, "pm-versions", "echo 'fake = true'")
+                fake_command(bin, "pic-create", "mkdir -p \"\$2/include/picongpu/param\"")
+                fake_command(bin, "pic-build", "mkdir -p bin")
+                fake_command(bin, "mpiexec", "echo \"seed-\$PIC_SEED\" >> \"\$PM_RUN_DIR/calls.txt\"; sleep 3")
+                mkpath(joinpath(dir, "params")); write(joinpath(dir, "params", "x.param"), "")
+                write(joinpath(dir, "container.txt"), "# run seed-11 seed 11 start: x\n# run seed-44 seed 44 start: x\n# run seed-44 seed 44 end: y\n")
+                p = merge(PIConGPUDeck.picongpu_parameters(load_case("landau-oblique-2d")), (; seeds = five))
+                write(joinpath(dir, "run.sh"), PIConGPUDeck.run_script(p; budget = 2))
+                env = ("PIC_EXAMPLES" => dir, "PICONGPU_TAG" => "t", "PICONGPU_COMMIT" => "c", "PIC_BACKEND" => "b")
+            end
+            out = runjob(dir, bin, env...)
+            @test readlines(joinpath(dir, "calls.txt")) == ["seed-11"]
+            @test occursin("# seeds remaining after the budget: 22 33 55\n", out)
+        end
+    end
+    # prepare_run passes the budget into run.sh in both codes, and leaves it empty without one
+    mktempdir() do runs
+        for (prep, name) in ((SmileiDeck.prepare_run, "s"), (PIConGPUDeck.prepare_run, "p"))
+            @test occursin("\nbudget=5400\n", read(joinpath(prep("landau-oblique-2d"; tag = name * "1", runs, budget = 5400), "run.sh"), String))
+            @test occursin("\nbudget=\n", read(joinpath(prep("landau-oblique-2d"; tag = name * "2", runs), "run.sh"), String))
+        end
+    end
+    # the command line: flags anywhere, positional arguments in order
+    @test SmileiDeck.cli_options(["case", "--budget", "60", "tag"], ("--budget",)) == (["case", "tag"], Dict("--budget" => "60"))
+    @test SmileiDeck.cli_options(["--precision", "Float32", "case", "--budget", "7"], ("--precision", "--budget")) ==
+          (["case"], Dict("--precision" => "Float32", "--budget" => "7"))
+    @test_throws ErrorException SmileiDeck.cli_options(["case", "--budget"], ("--budget",))
 end
 
 include(joinpath(CC, "subensembles.jl"))
+include(joinpath(CC, "landau_relativistic.jl"))
 @isdefined(Theory) || include(joinpath(CC, "theory.jl"))
 using .Theory: landau_root, landau_rate_relativistic, thermal_load
 using JSON
@@ -195,4 +239,81 @@ end
     k4 = kλ / sqrt(T4)
     d(T_, k_) = landau_rate_relativistic(k_, T_; relativistic = false).gamma - landau_rate_relativistic(k_, T_).gamma
     @test d(T, k) / d(T4, k4) ≈ 4 rtol = 0.15
+end
+
+@testset "T-395 the committed 32-seed records are what their code computes from the committed coefficients [A4, A7, WP-025]" begin
+    R = joinpath(REPORTS, "crosscode-picongpu")
+    runs = [joinpath(R, "smilei-landau-oblique-2d-431f4192"), joinpath(R, "picongpu-landau-oblique-2d-fp64-431f4192")]
+    c = load_case("landau-oblique-2d")
+    o = c["observables"]["damping_rate_mode_ensemble"]
+    for r in runs
+        t, s, cs = seed_coefficients(r)
+        @test s == case_seeds(c)                       # the case's seeds, in its order
+        e = ensemble_damping(t, cs; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
+        ob = JSON.parsefile(joinpath(r, "observables.json"))
+        @test e.gamma == ob["measured"] && e.jackknife.stderr == ob["measured_stderr"] && length(e.used) == ob["maxima_used"]
+    end
+    mktempdir() do out
+        # the sub-ensembles and the theory comparison regenerate bit for bit
+        r = subensembles(runs..., joinpath(out, "sub"))
+        @test JSON.parsefile(joinpath(out, "sub", "subensembles.json")) ==
+              JSON.parsefile(joinpath(R, "subensembles-landau-oblique-2d-431f4192", "subensembles.json"))
+        compare_theory(runs, joinpath(out, "th"))
+        @test JSON.parsefile(joinpath(out, "th", "landau-relativistic.json")) ==
+              JSON.parsefile(joinpath(R, "landau-relativistic-431f4192", "landau-relativistic.json"))
+        # the guards: other seeds, another case
+        mkpath(joinpath(out, "b2"))
+        cp(joinpath(runs[2], "case.toml"), joinpath(out, "b2", "case.toml"))
+        t, s, cs = seed_coefficients(runs[2])
+        write_seed_coefficients(joinpath(out, "b2"), t, reverse(s), cs; observable = "x")
+        @test_throws ErrorException subensembles(runs[1], joinpath(out, "b2"), joinpath(out, "x"))
+        write(joinpath(out, "b2", "case.toml"), replace(read(joinpath(runs[2], "case.toml"), String), "floor_factor = 10.0" => "floor_factor = 11.0"; count = 1))
+        write_seed_coefficients(joinpath(out, "b2"), t, s, cs; observable = "x")
+        @test_throws ErrorException subensembles(runs[1], joinpath(out, "b2"), joinpath(out, "x"))
+        # the coefficients round-trip exactly, real and imaginary parts in place
+        w = [complex.(randn(Xoshiro(395), 5), randn(Xoshiro(396), 5)) for _ in 1:3]
+        write_seed_coefficients(out, collect(0.0:4.0), [1, 2, 3], w; observable = "x")
+        @test seed_coefficients(out) == (collect(0.0:4.0), [1, 2, 3], w)
+        # wall times from an appended container.txt: a killed start is superseded by the next one
+        f = joinpath(out, "container.txt")
+        write(f, """
+            # compile start: 2026-11-02T10:00:00.000Z
+            # compile end: 2026-11-02T10:01:40.000Z
+            # run seed-1 seed 1 start: 2026-11-02T10:01:40.000Z
+            # compile start: 2026-11-02T11:00:00.000Z
+            # compile end: 2026-11-02T11:01:00.000Z
+            # run seed-1 seed 1 start: 2026-11-02T11:01:00.000Z
+            # run seed-1 seed 1 end: 2026-11-02T11:06:30.000Z
+            """)
+        @test stamp_interval(f, "# run seed-1 seed 1 start:", "# run seed-1 seed 1 end:") == 330.0
+        @test stamp_intervals(f, "# compile start:", "# compile end:") == [100.0, 60.0]
+    end
+end
+
+include(joinpath(CC, "seed_count.jl"))
+include(joinpath(CC, "ensemble_report.jl"))
+using .EnsembleReport: EnsembleReport
+
+@testset "T-396 the seed-count design and the plot labels [A7, WP-025]" begin
+    four = joinpath(REPORTS, "crosscode-picongpu", "smilei-landau-oblique-2d-bc8fd6af")
+    # calibrate's M: the per-seed noise is the run's whatever M is; M = the run's own is the default
+    a, b = calibrate(four; R = 40, M = 16), calibrate(four; R = 40)
+    @test a["noise_per_seed"] == b["noise_per_seed"] && a["M"] == 16 && b["M"] == 4
+    @test calibrate(four; R = 40, M = 4)["gammas"] == b["gammas"]
+    @test 0.3 < a["sd_gamma"] / b["sd_gamma"] < 0.75   # about 1/2 for four times the seeds
+    # difference_spread: root sum of squares per M, the jackknife scaled as √(M₀/M)
+    mktempdir() do d
+        ra, rb = mkpath(joinpath(d, "a")), mkpath(joinpath(d, "b"))
+        for (r, jk) in ((ra, 0.006), (rb, 0.008))
+            open(io -> JSON.print(io, Dict("measured_stderr" => jk, "M" => 4)), joinpath(r, "observables.json"), "w")
+        end
+        res = [Dict{String,Any}("run" => n, "M" => M, "sd_gamma" => sd / sqrt(M)) for (n, sd) in (("a", 3.0), ("b", 4.0)) for M in (4, 16)]
+        ds = difference_spread(res, [ra, rb], [4, 16])
+        @test ds["sd_difference_synthetic"] ≈ [2.5, 1.25]
+        @test ds["sd_difference_measured_jackknife_scaled"] ≈ [0.01, 0.005]
+        @test_throws ErrorException difference_spread(res, [ra, ra], [4, 16])
+    end
+    # the 2D ensemble's label names its projection; 1D keeps Ex
+    @test EnsembleReport.signal_label(load_case("landau-oblique-2d")) == ("Ê", "(E·k̂) of mode [2, 1]")
+    @test EnsembleReport.signal_label(load_case("landau")) == ("Ê₁", "Ex")
 end

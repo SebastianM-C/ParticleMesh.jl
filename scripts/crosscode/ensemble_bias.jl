@@ -15,9 +15,9 @@
 # T-180), stationary in time, with no early non-modal transient in the signal; not the PIC noise
 # itself. Each run gets its own random numbers.
 
-include(joinpath(@__DIR__, "analysis.jl"))
-include(joinpath(@__DIR__, "ensemble.jl"))
-include(joinpath(@__DIR__, "manifest.jl"))
+@isdefined(Observables) || include(joinpath(@__DIR__, "analysis.jl"))
+@isdefined(Ensemble) || include(joinpath(@__DIR__, "ensemble.jl"))
+@isdefined(RunManifest) || include(joinpath(@__DIR__, "manifest.jl"))
 using .Observables, .Ensemble, .RunManifest
 using CairoMakie, JSON, TOML
 using Random: Xoshiro, rand, randn

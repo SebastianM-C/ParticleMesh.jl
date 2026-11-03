@@ -10,10 +10,10 @@
 #
 # Writes <out dir>/landau-relativistic.png, its sidecar landau-relativistic.json, and manifest.toml.
 
-include(joinpath(@__DIR__, "analysis.jl"))
-include(joinpath(@__DIR__, "ensemble.jl"))
-include(joinpath(@__DIR__, "manifest.jl"))
-include(joinpath(@__DIR__, "theory.jl"))
+@isdefined(Observables) || include(joinpath(@__DIR__, "analysis.jl"))
+@isdefined(Ensemble) || include(joinpath(@__DIR__, "ensemble.jl"))
+@isdefined(RunManifest) || include(joinpath(@__DIR__, "manifest.jl"))
+@isdefined(Theory) || include(joinpath(@__DIR__, "theory.jl"))
 using .Observables, .Ensemble, .RunManifest, .Theory
 using CairoMakie, JSON, TOML
 
@@ -46,9 +46,7 @@ function compare_theory(runs, out)
         m = TOML.parsefile(joinpath(dir, "manifest.toml"))
         code = get(m, "code", "smilei")
         ob = JSON.parsefile(joinpath(dir, "observables.json"))
-        s = JSON.parsefile(joinpath(dir, "seed-coefficients.json"))
-        t = Float64.(s["t"])
-        c = [complex.(Float64.(re), Float64.(im)) for (re, im) in zip(s["re"], s["im"])]
+        t, _, c = seed_coefficients(dir)
         U = ensemble_energy(c)
         th = landau_rate_relativistic(k, T; load = LOADS[code])
         e = interp.(Ref(th), t)
@@ -68,8 +66,7 @@ function compare_theory(runs, out)
         lines!(ax, t[p], U[p]; color = col, label = "$code, 32 seeds, γ = $(round(γ; sigdigits = 4))")
         lines!(ax, t, Uth; color = col, linestyle = :dash, label = "linear theory, $(LOADS[code]), relativistic push: γ = $(round(th.gamma; sigdigits = 4))")
     end
-    s1 = JSON.parsefile(joinpath(first(runs), "seed-coefficients.json"))
-    U0 = abs2(sum(complex(x[1], y[1]) for (x, y) in zip(s1["re"], s1["im"])) / length(s1["re"]))
+    U0 = ensemble_energy(seed_coefficients(first(runs))[3])[1]
     lines!(ax, nr.t, U0 .* nr.e .^ 2; color = :black, linestyle = :dot, label = "non-relativistic: γ = $(round(nr.gamma; sigdigits = 4))")
     ylims!(ax, 1e-10, 2e-6)
     axislegend(ax; position = :rt)

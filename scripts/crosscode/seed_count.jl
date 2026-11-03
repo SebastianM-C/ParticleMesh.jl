@@ -5,11 +5,13 @@
 # of the fitted γ over the realizations is the rule's spread at M. The spread of the difference
 # of two codes at M seeds each is the root sum of squares of the two runs' spreads (the
 # larger of the two amplitude models per run, the conservative choice). Next to it, the
-# measured jackknife errors scaled as 1/√M from the run's own seed count. The seed count chosen
-# is the smallest M at which the given difference is `separation` spreads of the difference by
-# both estimates: the two hypotheses (no code difference, a difference of that size) are then
-# `separation` spreads apart, and the midpoint rule misclassifies either with probability
-# Φ(-separation/2).
+# measured jackknife errors scaled as 1/√M from the run's own seed count. For each estimate
+# separately, the sidecar gives the smallest listed M at which the given difference is
+# `separation` spreads of the difference (nothing when no listed M reaches it): the two
+# hypotheses (no code difference, a difference of that size) are then `separation` spreads
+# apart, and the midpoint rule misclassifies either with probability Φ(-separation/2). The
+# choice of M is left to the caller; WP-025 took 32, which meets 4 spreads by the measured
+# estimate and 2.9 by the synthetic one.
 #
 #   julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>
 #
@@ -46,6 +48,7 @@ function difference_spread(res, runs, counts)
     sd(run, M) = maximum(x["sd_gamma"] for x in res if x["run"] == name(run) && x["M"] == M)
     jk(run) = (o = JSON.parsefile(joinpath(run, "observables.json")); (o["measured_stderr"], o["M"]))
     a, b = runs
+    name(a) == name(b) && error("difference_spread: the two runs have the same directory name")
     (ja, Ma), (jb, Mb) = jk(a), jk(b)
     return Dict{String,Any}(
         "M" => counts,

@@ -15,7 +15,7 @@ using TOML
 include(joinpath(@__DIR__, "manifest.jl"))
 using .RunManifest
 
-export load_case, case_view, case_seeds, smilei_parameters, namelist, prepare_run
+export load_case, case_view, case_seeds, smilei_parameters, namelist, prepare_run, cli_options
 
 const CROSSCODE = @__DIR__
 const SCRIPTS = dirname(CROSSCODE)
@@ -534,6 +534,28 @@ function seeded_run_script(threads, seeds; budget = nothing)
 end
 
 """
+    cli_options(args, flags) -> (positional, options)
+
+Split command-line arguments into the positional ones, in order, and the value of each flag in
+`flags` (`--name value`, anywhere in the list); a flag without a value is an error.
+"""
+function cli_options(args, flags)
+    pos, opts = String[], Dict{String,String}()
+    i = 1
+    while i <= length(args)
+        if args[i] in flags
+            i < length(args) || error("$(args[i]) needs a value")
+            opts[args[i]] = args[i+1]
+            i += 2
+        else
+            push!(pos, args[i])
+            i += 1
+        end
+    end
+    return pos, opts
+end
+
+"""
     prepare_run(case_name; tag, budget) -> dir
 
 Write the run directory under scripts/runs/<tag>/ and its manifest; for a case with a `seeds`
@@ -581,10 +603,8 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     using .SmileiDeck
     cmd = get(ARGS, 1, "")
-    rest = ARGS[2:end]
-    i = findfirst(==("--budget"), rest)
-    budget = i === nothing ? nothing : parse(Int, rest[i+1])
-    i === nothing || deleteat!(rest, i:i+1)
+    rest, opts = cli_options(ARGS[2:end], ("--budget",))
+    budget = haskey(opts, "--budget") ? parse(Int, opts["--budget"]) : nothing
     if cmd == "prepare" && length(rest) >= 1
         dir = prepare_run(rest[1]; tag = get(rest, 2, nothing), budget)
         println(dir)
