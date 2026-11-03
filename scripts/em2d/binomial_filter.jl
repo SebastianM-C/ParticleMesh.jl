@@ -12,8 +12,8 @@
 # 3. rates: with the current filtered, ∂ₜE = ∇×B − FJ, so the plasma response of the mode m is
 #    multiplied by H_p(m): a linear theory with ω_p² replaced by H_p·ω_p². Weibel (cold, no seed
 #    noise) at T-365's test size (64 × 64 cells, 4 × 4 per beam per cell) with p = 0, 4, 8, 16:
-#    γ against weibel_cold_growth_2d(k, v₀; ωp2 = H_p); Landau (the same runs as 2.): γ and ω
-#    against √H·landau_root(kλ_D/√H), recorded with the single-seed caveat of T-364.
+#    γ against weibel_cold_growth_2d(k, v₀; ωp2 = H_p); Landau (the size of 2., p = 0, 2, 4): γ and
+#    ω of the seed mean of the complex mode amplitude over 8 seeds against √H·landau_root(kλ_D/√H).
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: RHO_STAGGER_2D
@@ -93,11 +93,11 @@ function gauss_parts(st)
 end
 
 "A 2D case at test size with `passes` filter passes (the case file's `filter_passes`), Float64, Reference."
-function case_run(name, passes; ppc, cells, amplitude = nothing, t_end = nothing, gauss = false)
+function case_run(name, passes; ppc, cells, amplitude = nothing, t_end = nothing, gauss = false, seed = nothing)
     case = load_case(name)
     case["numerics"]["filter_passes"] = passes
     n0 = Tuple(case["grid"]["cells"])
-    prob = problem_from_case(case, Float64; ppc, cells, dt = case["time"]["dt"] * minimum(n0 ./ cells), amplitude, t_end)
+    prob = problem_from_case(case, Float64; ppc, cells, dt = case["time"]["dt"] * minimum(n0 ./ cells), amplitude, t_end, seed)
     st = EMState(prob, numerics_from_case(case))
     initialize!(st, prob)
     p = params(prob)
@@ -129,6 +129,15 @@ function case_run(name, passes; ppc, cells, amplitude = nothing, t_end = nothing
     return (; st, prob, case, h = histories(st), ts = (0:(prob.nsteps - 1)) .* prob.dt, series, spectrum)
 end
 
+"Seeds of the Landau ensemble (the first of the case's list)."
+const LANDAU_SEEDS = 8
+
+"NaN (a fit with fewer than three maxima) as `nothing`, for the JSON sidecars."
+clean(x::AbstractFloat) = isnan(x) ? nothing : x
+clean(x::AbstractDict) = Dict(k => clean(v) for (k, v) in x)
+clean(x::AbstractVector) = map(clean, x)
+clean(x) = x
+
 "H_p of the case's diagnostic mode on the test grid."
 mode_transfer(prob, passes) = transfer(CartesianIndex(ntuple(d -> mod(prob.kmode[d], prob.cells[d]) + 1, 2)), prob.cells, passes)
 
@@ -138,7 +147,7 @@ function binomial_filter_run()
                                   joinpath(EM_TEST, "theory.jl"), joinpath(REPO, "scripts", "crosscode", "theory.jl"),
                                   joinpath(REPO, "scripts", "crosscode", "analysis.jl")],
                   params = Dict{String,Any}("type" => "Float64", "mode" => "Reference",
-                                            "landau" => "32 × 32 cells, 16 × 16 per cell, amplitude 0.05, t_end 18, passes 0, 1, 2",
+                                            "landau" => "32 × 32 cells, 16 × 16 per cell, amplitude 0.05, t_end 18; Gauss: passes 0, 1, 2, the default seed; rates: passes 0, 2, 4, the first $LANDAU_SEEDS seeds",
                                             "weibel" => "64 × 64 cells, 4 × 4 per beam per cell, passes 0, 4, 8, 16"))
     sidecar = Dict{String,Any}("cpu" => Sys.cpu_info()[1].model, "threads" => Threads.nthreads())
     tr, fig = measure_transfer()
@@ -148,36 +157,50 @@ function binomial_filter_run()
     # Landau: Gauss's law and the rate
     landau = Dict{String,Any}()
     fig = Figure(size = (1100, 440))
-    ax1 = Axis(fig[1, 1]; yscale = log10, xlabel = "t (1/ω₀)", ylabel = "max|D⁻·E − (ρ − ρ̄)| / max|ρ − ρ̄|",
+    ax1 = Axis(fig[1, 1]; xlabel = "t (1/ω₀)", ylabel = "max|D⁻·E − (ρ − ρ̄)| / max|ρ − ρ̄|",
                title = "Landau 2D, 32 × 32: plain Gauss residual")
     ax2 = Axis(fig[1, 2]; xlabel = "1 − H_p(m), closed form", ylabel = "|(r − r⁰)^| / |(ρ − ρ⁰)^|",
                title = "per Fourier mode m at t = 18")
     for (i, p) in enumerate((0, 1, 2))
         r = case_run("landau-oblique-2d", p; ppc = (16, 16), cells = (32, 32), amplitude = 1 / 20, t_end = 18, gauss = true)
-        o = r.case["observables"]["damping_rate_mode"]
-        e = r.case["species"][1]
-        U = abs2.(complex.(r.h.El_re, r.h.El_im))
-        f = damping_from_peaks(r.ts, U; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
-        H = mode_transfer(r.prob, p)
-        kλ = r.case["wavevector"]["magnitude"] * e["thermal_velocity"] / sqrt(e["density"])
-        ω = sqrt(H) * landau_root(kλ / sqrt(H))
-        landau["p=$p"] = Dict("H_mode" => H, "gamma" => f.gamma, "omega" => f.omega, "gamma_theory" => -imag(ω),
-                              "omega_theory" => real(ω), "peaks" => length(f.t_fit), "series" => r.series,
-                              "invariant_max" => maximum(r.series["invariant"]), "plain_max" => maximum(r.series["plain"]),
-                              "spectrum_max_abs_dev" => r.spectrum["max_abs_dev"])
-        println("landau p = $p: H = ", round(H, digits = 4), " γ = ", round(f.gamma, digits = 4), " (theory ", round(-imag(ω), digits = 4),
-                ") ω = ", round(f.omega, digits = 4), " (theory ", round(real(ω), digits = 4), "), plain residual ≤ ",
-                round(maximum(r.series["plain"]), sigdigits = 3), ", invariant ≤ ", round(maximum(r.series["invariant"]), sigdigits = 3),
-                " eps·scale, spectrum deviation ", round(r.spectrum["max_abs_dev"], sigdigits = 3))
+        landau["gauss p=$p"] = Dict("series" => r.series, "invariant_max" => maximum(r.series["invariant"]),
+                                    "plain_max" => maximum(r.series["plain"]), "spectrum_max_abs_dev" => r.spectrum["max_abs_dev"])
+        println("landau gauss p = $p: plain residual ≤ ", round(maximum(r.series["plain"]), sigdigits = 3), ", invariant ≤ ",
+                round(maximum(r.series["invariant"]), sigdigits = 3), " eps·scale, spectrum deviation ",
+                round(r.spectrum["max_abs_dev"], sigdigits = 3))
         p == 0 && continue
         lines!(ax1, r.series["t"], r.series["plain"]; color = Cycled(i), label = "p = $p")
         scatter!(ax2, r.spectrum["one_minus_H"], r.spectrum["ratio"]; color = Cycled(i), markersize = 4, label = "p = $p")
+    end
+    # the rate: the seed mean of the complex mode amplitude over the case's first LANDAU_SEEDS seeds,
+    # fitted by the case's rule (as its damping_rate_mode_ensemble observable)
+    case = load_case("landau-oblique-2d")
+    seeds = Int.(case["numerics"]["seeds"][1:LANDAU_SEEDS])
+    for p in (0, 2, 4)
+        local r
+        A = nothing
+        for seed in seeds
+            r = case_run("landau-oblique-2d", p; ppc = (16, 16), cells = (32, 32), amplitude = 1 / 20, t_end = 18, seed)
+            a = complex.(r.h.El_re, r.h.El_im)
+            A = A === nothing ? a : A .+ a
+        end
+        o = case["observables"]["damping_rate_mode"]
+        e = case["species"][1]
+        f = damping_from_peaks(r.ts, abs2.(A ./ length(seeds)); fit_start = o["fit_start"], floor_factor = o["floor_factor"])
+        H = mode_transfer(r.prob, p)
+        kλ = case["wavevector"]["magnitude"] * e["thermal_velocity"] / sqrt(e["density"])
+        ω = sqrt(H) * landau_root(kλ / sqrt(H))
+        landau["rate p=$p"] = Dict("H_mode" => H, "gamma" => f.gamma, "omega" => f.omega, "gamma_theory" => -imag(ω),
+                                   "omega_theory" => real(ω), "peaks" => length(f.t_fit), "seeds" => seeds)
+        println("landau rate p = $p ($(length(seeds)) seeds): H = ", round(H, digits = 4), " γ = ", round(f.gamma, digits = 4),
+                " (theory ", round(-imag(ω), digits = 4), ") ω = ", round(f.omega, digits = 4), " (theory ", round(real(ω), digits = 4),
+                "), maxima ", length(f.t_fit))
     end
     lines!(ax2, [0, 1], [0, 1]; color = :gray, linestyle = :dash, label = "1 − H_p")
     axislegend(ax1; position = :rb)
     axislegend(ax2; position = :lt)
     sidecar["landau"] = landau
-    println("wrote ", save_plot(dir, "gauss", fig, Dict("landau" => landau)))
+    println("wrote ", save_plot(dir, "gauss", fig, clean(Dict("landau" => landau))))
 
     # Weibel: the rate against the filtered cold theory
     weibel = Dict{String,Any}()
@@ -201,14 +224,14 @@ function binomial_filter_run()
     sidecar["weibel"] = weibel
     fig = Figure(size = (640, 440))
     ax = Axis(fig[1, 1]; xlabel = "H_p of mode (2, 1)", ylabel = "γ / ω₀", title = "Weibel 2D, 64 × 64: γ with p filter passes")
-    Hs = range(0.85, 1.0; length = 50)
+    Hs = range(0.8, 1.0; length = 50)
     k = load_case("weibel-2d")["wavevector"]["magnitude"]
     lines!(ax, collect(Hs), [weibel_cold_growth_2d(k, 0.3; ωp2 = h) for h in Hs]; color = :gray, label = "cold theory, ω_p² → H·ω_p²")
     ps = sort(collect(keys(weibel)); by = s -> parse(Int, s[3:end]))
     scatter!(ax, [weibel[s]["H_mode"] for s in ps], [weibel[s]["gamma"] for s in ps]; label = "measured, p = 0, 4, 8, 16")
     axislegend(ax; position = :lt)
-    println("wrote ", save_plot(dir, "weibel_rate", fig, Dict("weibel" => weibel)))
-    open(io -> JSON.print(io, sidecar, 2), joinpath(dir, "summary.json"), "w")
+    println("wrote ", save_plot(dir, "weibel_rate", fig, clean(Dict("weibel" => weibel))))
+    open(io -> JSON.print(io, clean(sidecar), 2), joinpath(dir, "summary.json"), "w")
     return dir
 end
 
