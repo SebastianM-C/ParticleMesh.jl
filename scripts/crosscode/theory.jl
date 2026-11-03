@@ -84,6 +84,10 @@
 # load, up to the time at which each code takes the loaded momenta (#226) and the grid's
 # sampling of the profile, both of which vanish as Δt and Δx go to zero. The eigenvalues of M
 # are −iω at the roots of the dispersion relations above, and zero for the static modes.
+# Smilei and PIConGPU, and ParticleMesh with `initialize!(...; momenta_at = :t_minus_half)`,
+# take the loaded momenta as those at −Δt/2 (#226, #282); to first order in Δt their state at
+# t = 0 has the velocities of half a kick in E⁰, which `cold_ivp(case; momenta_at =
+# :t_minus_half)` adds (WP-031: it removes the first-order Δt term of the residual).
 
 module Theory
 
@@ -351,7 +355,7 @@ function gauss_residual(sol, k, beams; kind)
 end
 
 """
-    cold_ivp(case) -> (; kind, k, beams, M, y0, index, energy_scale)
+    cold_ivp(case; momenta_at = :t0) -> (; kind, k, beams, M, y0, index, energy_scale)
 
 The cold-beam initial-value problem of a cross-code case file (`two-stream`, schema 1, k along
 the drift; `weibel-2d`, schema 2, the drift along z and k in the plane): the mobile perturbed
@@ -361,8 +365,13 @@ unperturbed, B = 0, the longitudinal E from Gauss's law), `index` the entry of t
 field (E for two-stream, B_e for Weibel), and `energy_scale` the factor that turns |y[index]|²
 into the box energy of that field, L/4 in 1D and L_x L_y/4 in 2D (a field Re(A e^{ik·r}) has
 ∫ ½|f|² dV = |A|² V/4). Refuses a thermal species and a drift off the axis it assumes.
+`momenta_at = :t_minus_half` adds to the velocities of `y0` half a kick of the case's Δt in the
+initial fields, qₛ E Δt/(2 mₛ γₛ³) along the drift (and qₛ E_k Δt/(2 mₛ γₛ) across it in 2D): the
+state at t = 0 of a load whose momenta are taken at −Δt/2, to first order in Δt.
 """
-function cold_ivp(case)
+function cold_ivp(case; momenta_at::Symbol = :t0)
+    momenta_at in (:t0, :t_minus_half) || throw(ArgumentError("momenta_at must be :t0 or :t_minus_half, got :$momenta_at"))
+    h = momenta_at === :t_minus_half ? Float64(case["time"]["dt"]) / 2 : 0.0
     two = get(case, "schema", 1) == 2
     g = case["grid"]
     beams = NamedTuple{(:q, :m, :n, :v, :alpha),NTuple{5,Float64}}[]
@@ -390,6 +399,9 @@ function cold_ivp(case)
             y0[3j - 2] = b.alpha * b.n
         end
         y0[3nb + 1] = sum(b.q * b.alpha * b.n for b in beams) / (im * k)
+        for (j, b) in enumerate(beams)        # half a kick in E_k (E_z = 0 and B = 0 at t = 0)
+            y0[3j - 1] += b.q * y0[3nb + 1] * h / (b.m / sqrt(1 - b.v^2))
+        end
         return (; kind = :weibel, k, beams, M, y0, index = 3nb + 3, energy_scale = prod(Float64.(g["length"])) / 4)
     else
         modes = unique(Int(s["perturbation"]["mode"]) for s in case["species"] if haskey(s, "perturbation"))
@@ -402,6 +414,9 @@ function cold_ivp(case)
             y0[2j - 1] = b.alpha * b.n
         end
         y0[2nb + 1] = sum(b.q * b.alpha * b.n for b in beams) / (im * k)
+        for (j, b) in enumerate(beams)        # half a kick in E
+            y0[2j] += b.q * y0[2nb + 1] * h / (b.m * (1 - b.v^2)^(-1.5))
+        end
         return (; kind = :two_stream, k, beams, M, y0, index = 2nb + 1, energy_scale = L / 4)
     end
 end

@@ -106,6 +106,32 @@ end
     x = (0:N-1) .* (L / N)
     @test sum(abs2, real.(A .* cis.(2π / L .* x))) * (L / N) / 2 ≈ abs2(A) * L / 4 rtol = 1e-13
     @test_throws ErrorException cold_ivp(load_case("landau"))
+    # the −Δt/2 load (#282): two-stream, half a kick qE⁰Δt/(2mγ³) on each beam's velocity and
+    # nothing else; symmetric Weibel, no field at t = 0 and so no change; an unknown start refused
+    tsh = cold_ivp(tsc; momenta_at = :t_minus_half)
+    γb = 1 / sqrt(1 - 0.1^2)
+    kick = -1 * ts.y0[ts.index] * tsc["time"]["dt"] / (2 * γb^3)
+    @test tsh.y0[[2, 4]] ≈ [kick, kick] rtol = 1e-14
+    @test tsh.y0[[1, 3, 5]] == ts.y0[[1, 3, 5]] && tsh.M == ts.M
+    @test cold_ivp(wc; momenta_at = :t_minus_half).y0 == wb.y0
+    pah = cold_ivp(asym; momenta_at = :t_minus_half)
+    @test pah.y0[2] ≈ -pa.y0[7] * wc["time"]["dt"] / (2 * (1 / sqrt(1 - 0.09))) rtol = 1e-14
+    @test pah.y0[5] ≈ -pa.y0[7] * wc["time"]["dt"] / (2 * (1 / sqrt(1 - 0.09))) rtol = 1e-14
+    @test pah.y0[[3, 6]] == [0, 0] && pah.y0[[1, 4, 7, 8, 9]] == pa.y0[[1, 4, 7, 8, 9]]
+    # every beam's own charge, mass and γ: beams that differ in all three
+    ts2 = deepcopy(tsc)
+    merge!(ts2["species"][2], Dict("charge" => -2.0, "mass" => 3.0, "drift" => 0.2))
+    p2, p2h = cold_ivp(ts2), cold_ivp(ts2; momenta_at = :t_minus_half)
+    E0 = p2.y0[p2.index]
+    @test p2h.y0[2] ≈ -1 * E0 * tsc["time"]["dt"] / (2 * 1 * (1 - 0.1^2)^-1.5) rtol = 1e-14
+    @test p2h.y0[4] ≈ -2 * E0 * tsc["time"]["dt"] / (2 * 3 * (1 - 0.2^2)^-1.5) rtol = 1e-14
+    w2 = deepcopy(asym)
+    merge!(w2["species"][2], Dict("charge" => -2.0, "mass" => 3.0, "drift" => [0.0, 0.0, -0.2]))
+    q2, q2h = cold_ivp(w2), cold_ivp(w2; momenta_at = :t_minus_half)
+    Ek = q2.y0[7]
+    @test q2h.y0[2] ≈ -1 * Ek * wc["time"]["dt"] / (2 * 1 / sqrt(1 - 0.09)) rtol = 1e-14
+    @test q2h.y0[5] ≈ -2 * Ek * wc["time"]["dt"] / (2 * 3 / sqrt(1 - 0.04)) rtol = 1e-14
+    @test_throws ArgumentError cold_ivp(tsc; momenta_at = :t1)
 end
 
 @testset "T-412 a scan point changes only what it names [A5, WP-031]" begin
@@ -386,8 +412,8 @@ end
     # Δx residuals (Δt ∝ Δx along the family, so both terms are of order Δx²) converge at order 2 to δ∞
     base = load_case("two-stream")
     θ = base["observables"]["growth_rate"]["theory"]
-    pts = ["n0064" => (; refine = 1 // 2), "n0128" => (;), "n0256" => (; refine = 2), "n0128-dt2" => (; dt_divisor = 2),
-           "n0128-a10" => (; amplitude_factor = 10)]
+    pts = ["n0064" => (; refine = 1 // 2), "n0128" => (;), "n0256" => (; refine = 2), "n0512" => (; refine = 4),
+           "n0128-dt2" => (; dt_divisor = 2), "n0128-dt4" => (; dt_divisor = 4), "n0128-a10" => (; amplitude_factor = 10)]
     δ∞, a, b = -0.004, 2.0, 30.0
     sd = joinpath(mktempdir(), "summary")
     synthetic_scan(sd, base, pts; δ∞, a, b)
@@ -405,12 +431,64 @@ end
         @test e["offset_ivp"] ≈ f.gamma_ivp / θ - 1 rtol = 1e-12
     end
     d = res["convergence"]["dx_growth_rate"]
-    @test d["points"] == ["n0064", "n0128", "n0256"]
+    @test d["points"] == ["n0064", "n0128", "n0256", "n0512"]
     @test d["observed_order_residual"][1] ≈ 2 rtol = 1e-5
     @test d["richardson_order"] == 2
     @test d["richardson_residual"] ≈ δ∞ rtol = 1e-6
-    @test res["convergence"]["dt[refine=1//1]_growth_rate"]["points"] == ["n0128", "n0128-dt2"]
+    @test res["convergence"]["dt[refine=1//1]_growth_rate"]["points"] == ["n0128", "n0128-dt2", "n0128-dt4"]
+    # the limit over all plain points (#281) recovers δ∞ of δ∞ + a Δx² + b Δt² exactly, the
+    # amplitude point left out; the model without Δt² misses it, and the spread says so
+    L = res["limit"]["growth_rate"]
+    @test L["model"] == "dx2+dt+dt2" && sort(L["points"]) == ["n0064", "n0128", "n0128-dt2", "n0128-dt4", "n0256", "n0512"]
+    # every point refitted over the samples common to all their windows (one count for all)
+    @test L["samples"] >= 3 && L["common_window"][1] <= L["common_window"][2]
+    want = map(L["points"]) do name
+        c = TOML.parsefile(joinpath(sd, "cases", name * ".toml"))
+        δ∞ + a * (c["grid"]["length"] / c["grid"]["cells"])^2 + b * c["time"]["dt"]^2
+    end
+    @test L["residual_common"] ≈ want rtol = 1e-7
+    @test L["r_inf"] ≈ δ∞ rtol = 1e-7
+    @test L["fits"]["dx2+dt+dt2"]["max_abs_misfit"] < 1e-10
+    @test abs(L["fits"]["dx2+dt"]["r_inf"] - δ∞) > 1e-7 && L["r_inf_spread"] >= abs(L["fits"]["dx2+dt"]["r_inf"] - L["r_inf"])
+    # the residual against the −Δt/2 start is recorded per point and is the fit against cold_ivp's
+    # :t_minus_half solution over the same samples
+    for (name, _) in pts
+        c = TOML.parsefile(joinpath(sd, "cases", name * ".toml"))
+        rec = JSON.parsefile(joinpath(sd, name * ".json"))
+        t, U = Float64.(rec["series"]["growth_rate"]["t"]), Float64.(rec["series"]["growth_rate"]["U"])
+        fh = point_fits(c, "growth_rate", t, U; window = Tuple(c["observables"]["growth_rate"]["window"]), momenta_at = :t_minus_half)
+        e = res["points"][name]["observables"]["growth_rate"]
+        @test e["residual_minus_half_start"] ≈ (fh.gamma - fh.gamma_ivp) / θ rtol = 1e-12
+        @test e["residual_minus_half_start"] != e["residual"]
+        @test e["gamma_ivp_minus_half_start"] == fh.gamma_ivp
+    end
+    # the limit fit itself: the coefficients of δ∞ + aΔx² + bΔt² in the model r∞ + aΔx² + bΔt + cΔt²,
+    # every variant fitted (six plain points), the misfit of the model without Δt², the spread as
+    # defined, and the −Δt/2 limit fitted to its own residuals
+    @test L["fits"]["dx2+dt+dt2"]["coefficients"] ≈ [δ∞, a, 0, b] atol = 1e-9
+    @test sort(collect(keys(L["fits"]))) == sort(["dx2+dt+dt2", "dx2+dt", "dx2+dt+dt2, without the coarsest", "dx2+dt, without the coarsest"])
+    @test L["fits"]["dx2+dt, without the coarsest"]["points"] == 5 && L["fits"]["dx2+dt+dt2"]["points"] == 6
+    @test L["fits"]["dx2+dt"]["max_abs_misfit"] > 1e-6
+    @test L["r_inf_spread"] == maximum(abs(f["r_inf"] - L["r_inf"]) for f in values(L["fits"]))
+    pl = [TOML.parsefile(joinpath(sd, "cases", n * ".toml")) for n in L["points"]]
+    dxs = [c["grid"]["length"] / c["grid"]["cells"] for c in pl]
+    dts = [c["time"]["dt"] for c in pl]
+    @test L["minus_half_start"]["r_inf"] == R.limit_fit(dxs, dts, Float64.(L["residual_common_minus_half_start"]))["r_inf"]
+    @test L["minus_half_start"]["r_inf"] != L["r_inf"]
+    # independently of limit_fit: least squares without the coarsest point by hand
+    keep = dxs .< maximum(dxs)
+    A = [ones(count(keep)) dxs[keep] .^ 2 dts[keep]]
+    @test L["fits"]["dx2+dt, without the coarsest"]["r_inf"] ≈ (A \ Float64.(L["residual_common"])[keep])[1] rtol = 1e-12
     @test all(isfile, joinpath.(out, ["results.json", "manifest.toml", "offset-vs-resolution.png", "local-rate.png", "ratio-to-linear.png"]))
+    # a plain point without a fit (here a flat series, which never enters the window) leaves the
+    # observable out of the limit rather than fitting the others
+    sdx = joinpath(mktempdir(), "summary")
+    cp(sd, sdx)
+    rec = JSON.parsefile(joinpath(sdx, "n0128-dt4.json"))
+    rec["series"]["growth_rate"]["U"] = fill(1.0, length(rec["series"]["growth_rate"]["U"]))
+    open(io -> JSON.print(io, rec), joinpath(sdx, "n0128-dt4.json"), "w")
+    resx = R.report(sdx, joinpath(dirname(sdx), "out"))
+    @test haskey(resx["points"]["n0128-dt4"]["observables"]["growth_rate"], "flag") && !haskey(resx["limit"], "growth_rate")
     # compare_codes: the same summary against itself, and against a copy grown by e^{2δt}
     cmp = R.compare_codes(sd, sd, joinpath(dirname(sd), "cmp1"))
     for (_, v) in cmp["points"]
@@ -475,9 +553,11 @@ end
     @test m["points"] == ["tiny"] && m["mode"] == "Reference" && m["precision"] == "Float64"
     @test !any(isabspath, keys(m["inputs"]))
     rec = JSON.parsefile(joinpath(out, "tiny.json"))
-    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has
-    @test sort(collect(keys(rec))) == sort(["point", "case", "derived", "code", "momenta_at", "dt", "cells", "steps", "wall_seconds",
-                                            "threads", "cpu", "energy", "series"])
+    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has, plus the
+    # time of the loaded momenta (#282), in the record and in the manifest
+    @test sort(collect(keys(rec))) == sort(["point", "case", "derived", "code", "dt", "cells", "steps", "wall_seconds",
+                                            "threads", "cpu", "energy", "series", "momenta_at"])
+    @test rec["momenta_at"] == m["momenta_at"] == string(PMScan.MOMENTA_AT) == "t_minus_half"
     @test rec["point"] == "tiny" && rec["code"] == "particlemesh" && rec["case"] == case["name"] && rec["derived"] == case["derived"]
     @test sort(collect(keys(rec["series"]))) == ["growth_rate", "mode"]
     dt = case["time"]["dt"]

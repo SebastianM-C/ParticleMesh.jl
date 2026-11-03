@@ -62,6 +62,11 @@ function evaluate(pt, key)
         "fit_points" => length(f.idx), "fit_range" => [t[first(f.idx)], t[last(f.idx)]],
         "saturation" => Dict("t" => f.r.t_max, "U" => f.r.U_max),
         "ratio_to_ivp_window_start" => f.ratio[1], "ratio_to_ivp_window_end" => f.ratio[2]))
+    # the same against the linear solution of a load whose momenta are taken at −Δt/2 (Smilei's
+    # start, and ParticleMesh's with momenta_at = :t_minus_half)
+    fh = point_fits(pt.case, key, t, U; window = w, momenta_at = :t_minus_half)
+    out["gamma_ivp_minus_half_start"] = fh.gamma_ivp
+    out["residual_minus_half_start"] = (f.gamma - fh.gamma_ivp) / θ
     out["window_sensitivity_post_hoc"] = map(window_variants(w...)) do wv
         g = point_fits(pt.case, key, t, U; window = wv)
         Dict{String,Any}("window" => collect(wv), "gamma" => isfinite(g.gamma) ? g.gamma : nothing,
@@ -102,6 +107,37 @@ The order log(|e_i − e_{i+1}| / |e_{i+1} − e_{i+2}|)/log(h_i/h_{i+1}) of thr
 of a series e(h) with a constant refinement ratio: the exponent p of e = e∞ + a hᵖ.
 """
 observed_order(h, e) = [log(abs(e[i] - e[i+1]) / abs(e[i+1] - e[i+2])) / log(h[i] / h[i+1]) for i in 1:length(e)-2]
+
+"""
+    limit_fit(dx, dt, r) -> Dict
+
+The limit of a residual r(Δx, Δt) over every point of a scan at the case's amplitude, particles
+per cell and seed (the Δx family and the Δt families together, #281): least squares of
+r = r∞ + a Δx² + b Δt + c Δt² (`model = "dx2+dt+dt2"`, the primary value; the Δt term is the
+time of the loaded momenta, first order, and the Δt² term the leapfrog's), and the same without
+the Δt² term and without the coarsest Δx, each recorded; `r_inf_spread` is the largest distance
+of the four limits from the primary one, the systematic uncertainty of the limit.
+"""
+function limit_fit(dx, dt, r)
+    out = Dict{String,Any}()
+    keep = dx .< maximum(dx)
+    variants = (("dx2+dt+dt2", trues(length(r)), true), ("dx2+dt", trues(length(r)), false),
+                ("dx2+dt+dt2, without the coarsest", keep, true), ("dx2+dt, without the coarsest", keep, false))
+    fits = Dict{String,Any}()
+    for (name, sel, quad) in variants
+        A = quad ? [ones(count(sel)) dx[sel] .^ 2 dt[sel] dt[sel] .^ 2] : [ones(count(sel)) dx[sel] .^ 2 dt[sel]]
+        size(A, 1) > size(A, 2) || continue
+        c = A \ r[sel]
+        fits[name] = Dict{String,Any}("r_inf" => c[1], "coefficients" => c, "points" => count(sel),
+            "max_abs_misfit" => maximum(abs, r[sel] .- A * c))
+    end
+    haskey(fits, "dx2+dt+dt2") || return out
+    out["model"] = "dx2+dt+dt2"
+    out["r_inf"] = fits["dx2+dt+dt2"]["r_inf"]
+    out["r_inf_spread"] = maximum(abs(f["r_inf"] - out["r_inf"]) for f in values(fits))
+    out["fits"] = fits
+    return out
+end
 
 "Richardson extrapolation of the last two points of e(h) for order p."
 richardson(h, e, p) = e[end] + (e[end] - e[end-1]) / ((h[end-1] / h[end])^p - 1)
@@ -156,6 +192,35 @@ function report(sumdir, out; box_status = nothing)
         conv["$(which)_$(k)"] = d
     end
     res["convergence"] = conv
+    # the limit over all the points at once (#281: the Δx family carries the first-order Δt term),
+    # every point refitted over the samples common to all their windows: the window rule takes one
+    # sample more or less from point to point, which moves a residual by more than the Δx and Δt
+    # terms the fit separates (the physics breaker of the records PR)
+    pl = [p for p in pts if plain(p)]
+    lim = Dict{String,Any}()
+    for k in keys_
+        ev = [res["points"][p.name]["observables"][k] for p in pl]
+        all(e -> haskey(e, "residual"), ev) || continue
+        t1 = maximum(e["fit_range"][1] for e in ev)
+        t2 = minimum(e["fit_range"][2] for e in ev)
+        θ = theory_of(first(pl).case, k)
+        r0, rh, n = Float64[], Float64[], Int[]
+        for p in pl
+            t, U = series_of(p.rec, k)
+            idx = findall(x -> t1 - 1e-9 <= x <= t2 + 1e-9, t)
+            γ = linear_fit(t[idx], log.(U[idx])).slope / 2
+            γ0 = linear_fit(t[idx], log.(ivp_series(p.case, k, t[idx]))).slope / 2
+            γh = linear_fit(t[idx], log.(ivp_series(p.case, k, t[idx]; momenta_at = :t_minus_half))).slope / 2
+            push!(r0, (γ - γ0) / θ); push!(rh, (γ - γh) / θ); push!(n, length(idx))
+        end
+        allequal(n) || error("report: the common window of $k holds different sample counts across points ($n)")
+        f = limit_fit([p.dx for p in pl], [p.dt for p in pl], r0)
+        isempty(f) && continue
+        fh = limit_fit([p.dx for p in pl], [p.dt for p in pl], rh)
+        lim[k] = merge(f, Dict{String,Any}("points" => [p.name for p in pl], "common_window" => [t1, t2], "samples" => first(n),
+            "residual_common" => r0, "residual_common_minus_half_start" => rh, "minus_half_start" => fh))
+    end
+    res["limit"] = lim
     open(io -> JSON.print(io, res, 2), joinpath(out, "results.json"), "w")
     plots(out, pts, res, keys_)
     inputs = [joinpath(sumdir, f) for f in readdir(sumdir) if endswith(f, ".json") || endswith(f, ".toml")]
