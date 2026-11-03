@@ -448,3 +448,27 @@ scale = "eps(T)·√(steps + 1)"
 C = 4
 measured = { Float32 = 1.30, Float64 = 1.04 }
 status = "proposed"
+
+# WP-027: the open transverse boundary. Measured on the CPU backend (Julia 1.13.3, 4 threads).
+["T-430"]
+quantity = "absorbing layer, vacuum slab packet: |R − R_theory| and |Tr − Tr_theory| against the discrete frequency-domain theory of the layer (layer_rt), Float64; 8, 16, 32 cells at θ = 0.4, and 0, 0.8 rad at 8 and 16 cells, TE and TM"
+scale = "eps(T)·√steps·(2√X + eps(T)·√steps) for the energy fraction X (the fields' roundoff relative to the incident amplitude)"
+C = 4
+measured = { Float64 = 1.26 }
+status = "proposed"
+
+["T-431"]
+quantity = "Gauss's law residual on the node rows off the absorbing layer (C), ∇·B on the cell centres off it (C_divB), particles leaving through both edges, both modes"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1); (Σ 2/Δ_d)·max(|Bx|, |By|)·√k"
+C = 1
+C_divB = 1
+measured = { Float32 = 0.394, Float64 = 0.378, "Dual{Float32,3}" = 0.198 }
+measured_divB = { Float32 = 0.403, Float64 = 0.306, "Dual{Float32,3}" = 0.291 }
+status = "proposed"
+
+["T-435"]
+quantity = "the reflection of T-430 at 8 cells, θ = 0.8, strength 4, TE, in each element type against the discrete theory"
+scale = "as T-430"
+C = 4
+measured = { Float32 = 0.0239, Float64 = 0.95, "Dual{Float32,3}" = 0.0239 }
+status = "proposed"
