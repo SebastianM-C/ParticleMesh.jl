@@ -1,5 +1,6 @@
 # ParticleMesh on the points of a 1D scan of scripts/crosscode/convergence.jl (WP-031, #226):
-# the electromagnetic module (Reference mode, Float64, the settings of scripts/em1d/crosscode.jl)
+# the electromagnetic module (Reference mode, Float64, the settings of scripts/em1d/crosscode.jl,
+# its start `MOMENTA_AT` included, recorded in each point and in the manifest)
 # runs the derived case of each named point and writes <out>/<point>.json in the format of
 # `summarize_scan`, so that `convergence.jl report` evaluates it and `compare_codes` sets it
 # against the Smilei point of the same case.
@@ -20,7 +21,7 @@ function run_points(sumdir, out, points)
         sim = simulate(case)
         iE = 1:case["diagnostics"]["scalars_every"]:length(sim.total)    # the total energy at the scalar cadence
         rec = Dict{String,Any}("point" => p, "case" => case["name"], "derived" => case["derived"], "code" => "particlemesh",
-            "dt" => sim.dt, "cells" => case["grid"]["cells"], "steps" => sim.nsteps, "wall_seconds" => sim.wall,
+            "momenta_at" => string(MOMENTA_AT), "dt" => sim.dt, "cells" => case["grid"]["cells"], "steps" => sim.nsteps, "wall_seconds" => sim.wall,
             "threads" => string(Threads.nthreads()), "cpu" => Sys.cpu_info()[1].model,
             "energy" => Dict("t" => (iE .- 1) .* sim.dt, "Utot" => sim.total[iE]),
             "series" => Dict(
@@ -33,7 +34,7 @@ function run_points(sumdir, out, points)
     inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(@__FILE__, nothing))
     write_manifest(out; root = REPO,
         extra = Dict{String,Any}("inputs" => inputs, "points" => collect(points), "threads" => Threads.nthreads(),
-            "cpu" => Sys.cpu_info()[1].model, "mode" => "Reference", "precision" => "Float64"))
+            "cpu" => Sys.cpu_info()[1].model, "mode" => "Reference", "precision" => "Float64", "momenta_at" => string(MOMENTA_AT)))
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
