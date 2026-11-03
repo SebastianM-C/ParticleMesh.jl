@@ -94,7 +94,7 @@ export mode_wavevector, weibel_cold_growth_2d, weibel_dispersion_2d, yee_energy_
 export thermal_load, landau_rate_relativistic
 export two_stream_ivp_matrix, weibel_ivp_matrix, ivp_solution, cold_ivp, gauss_residual
 
-using LinearAlgebra: LinearAlgebra
+using LinearAlgebra: LinearAlgebra   # a stdlib, loaded through @stdlib on the default LOAD_PATH (no project entry)
 
 """
     plasma_Z(ζ)
