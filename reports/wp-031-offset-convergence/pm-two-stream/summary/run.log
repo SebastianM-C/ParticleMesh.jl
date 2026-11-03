@@ -1,0 +1,8 @@
+n0128: 5253 steps in 59.9 s
+n0128-dt2: 10505 steps in 118.2 s
+n0128-dt4: 21011 steps in 236.4 s
+n0128-dt8: 42022 steps in 475.6 s
+
+real	15m1.156s
+user	68m1.809s
+sys	1m12.630s

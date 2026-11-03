@@ -1,0 +1,123 @@
+branch = "runs/wp031-two-stream-1"
+request_commit = "d30d2dfecc8223fba43e2ad87c5051013c089ad6"
+started = "2026-11-03T12:57:03Z"
+category = "unspecified"
+outputs = ["scripts/runs/wp031-two-stream-offset/summary", "scripts/runs/wp031-two-stream-offset/n0064", "scripts/runs/wp031-two-stream-offset/n0128", "scripts/runs/wp031-two-stream-offset/n0256", "scripts/runs/wp031-two-stream-offset/n0512", "scripts/runs/wp031-two-stream-offset/n1024", "scripts/runs/wp031-two-stream-offset/n0128-dt2", "scripts/runs/wp031-two-stream-offset/n0128-dt4", "scripts/runs/wp031-two-stream-offset/n0128-dt8", "scripts/runs/wp031-two-stream-offset/n0512-dt4", "scripts/runs/wp031-two-stream-offset/n0128-a0.1", "scripts/runs/wp031-two-stream-offset/n0128-a10", "scripts/runs/wp031-two-stream-offset/n0128-ppc0.1", "scripts/runs/wp031-two-stream-offset/n0128-seed1"]
+finished = "2026-11-03T13:17:48Z"
+ok = true
+files_returned = 185
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "instantiate"
+class = "setup"
+project = "scripts"
+start = "2026-11-03T12:57:03Z"
+exit = 0
+seconds = 4
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T12:57:08Z"
+exit = 0
+seconds = 4
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T12:57:11Z"
+exit = 0
+seconds = 7
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T12:57:18Z"
+exit = 0
+seconds = 40
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T12:57:58Z"
+exit = 0
+seconds = 121
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T12:59:59Z"
+exit = 0
+seconds = 480
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:07:59Z"
+exit = 0
+seconds = 13
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:08:12Z"
+exit = 0
+seconds = 24
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:08:36Z"
+exit = 0
+seconds = 46
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:09:22Z"
+exit = 0
+seconds = 461
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:17:03Z"
+exit = 0
+seconds = 10
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:17:13Z"
+exit = 0
+seconds = 13
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:17:26Z"
+exit = 0
+seconds = 4
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T13:17:30Z"
+exit = 0
+seconds = 10
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-03T13:17:40Z"
+exit = 0
+seconds = 8
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "7e2b08d0ef041fb2a12152b49b7fbcc521a94d981fc7e369ca8d34d2e5a5b3f4"
