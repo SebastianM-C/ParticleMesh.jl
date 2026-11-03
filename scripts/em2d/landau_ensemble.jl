@@ -110,6 +110,31 @@ function box_status(rdir)
 end
 
 """
+    request_record(rdir, manifest) -> Dict
+
+One request of a merged ensemble: its directory, seeds, host and box status, and its commit. On
+the box git cannot read the checkout, so the run's manifest records `commit = "unknown"`; then
+the commit is the box status's `request_commit` (`commit_source = "box-status.toml"`), and
+`code_commit` is that commit's parent (the request commit adds only the request file and the run
+directories it names) when this checkout has it.
+"""
+function request_record(rdir, m)
+    st = box_status(rdir)
+    r = Dict{String,Any}("directory" => relpath(normpath(rdir), REPO), "seeds" => m["seeds"], "host" => m["host"],
+                         "box_status" => something(st, "none"), "commit" => m["commit"], "commit_source" => "run manifest")
+    if m["commit"] == "unknown" && st !== nothing && haskey(st, "request_commit")
+        r["commit"], r["commit_source"] = st["request_commit"], "box-status.toml"
+        parent = try
+            readchomp(`git -C $REPO rev-parse $(st["request_commit"])^`)
+        catch
+            "unknown"
+        end
+        r["code_commit"] = parent
+    end
+    return r
+end
+
+"""
     merge_requests(out, rdirs; case_file = the case file of landau-oblique-2d) -> result
 
 Merge the request directories `rdirs` (each written by `run_seeds`) into the ensemble directory
@@ -171,8 +196,7 @@ function merge_requests(out, rdirs; case_file = joinpath(CASES, "$CASE_NAME.toml
             "particles_per_seed" => first(particles), "steps" => first(steps),
             "particle_steps_per_seed" => first(particles) * first(steps), "threads" => unique(threads), "cpu" => unique(cpus)))
     write_seed_coefficients(out, tC, seeds, coeffs; observable = r["observable"])
-    requests = [Dict{String,Any}("directory" => relpath(normpath(rd), REPO), "seeds" => m["seeds"], "host" => m["host"],
-                    "commit" => m["commit"], "box_status" => something(box_status(rd), "none")) for (rd, m) in zip(rdirs, manifests)]
+    requests = [request_record(rd, m) for (rd, m) in zip(rdirs, manifests)]
     outputs = Dict{String,Any}()
     for (root, _, fs) in walkdir(out), f in fs
         f == "manifest.toml" && continue
