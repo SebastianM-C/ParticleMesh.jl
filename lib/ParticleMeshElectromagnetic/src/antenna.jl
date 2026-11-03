@@ -15,8 +15,8 @@
 # column ia and that of B at the cell column ia − 1 are those of the incident field's missing
 # normal components (Ex_inc, Bx_inc), transient, back to zero when the pulse has passed up to
 # the pulse's zero-frequency content; everywhere else Gauss's law and ∇·B = 0 hold as without
-# the antenna (T-384). The scattered region receives what the incident field fails to satisfy
-# of the discrete Maxwell equations, the leakage measured in T-380.
+# the antenna (T-396). The scattered region receives what the incident field fails to satisfy
+# of the discrete Maxwell equations, the leakage measured in T-391.
 
 """
     GaussianLaser(; a0, waist, duration, delay, focus, position, center, chirp = 0, polarization = 0, phase = 0)

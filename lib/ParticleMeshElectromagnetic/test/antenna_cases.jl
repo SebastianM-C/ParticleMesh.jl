@@ -7,22 +7,24 @@ using ParticleMeshElectromagnetic: Antenna, antenna_dy, yee_b_half!
 
 """
     antenna_problem(T; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10, focus = 28,
-                    polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95//100) -> EMProblem{2}
+                    polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95//100, phase = 0,
+                    center = nothing) -> EMProblem{2}
 
 A box of `length` (c/ω₀) with `ncx` cells per laser wavelength 2π along x and `ncy` along y,
 Δt at `courant` of the Yee limit, `round(tend/Δt)` steps, and one [`GaussianLaser`](@ref) whose
 envelope peaks at the antenna plane at t = 6·duration (below Float64 roundoff at t = 0), its axis
-at the box's middle. Every laser parameter may be a dual (A3).
+at the box's middle, or at `center` rows of Δy above y = 0 when given. Every laser parameter may
+be a dual (A3).
 """
 function antenna_problem(::Type{T}; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10,
                          focus = 28, polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95 // 100,
-                         phase = 0) where {T}
+                         phase = 0, center = nothing) where {T}
     h = (2π / ncx, 2π / ncy)
     n = (round(Int, length[1] / h[1]), round(Int, length[2] / h[2]))
     L = (T(n[1] * h[1]), T(n[2] * h[2]))
     dt = T(courant) / sqrt(1 / (L[1] / n[1])^2 + 1 / (L[2] / n[2])^2)
     laser = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = 6 * T(duration), focus = T(focus),
-                          position = Float64(position), center = Float64(value_of(L[2])) / 2, chirp = T(chirp),
+                          position = Float64(position), center = isnothing(center) ? Float64(value_of(L[2])) / 2 : center * Float64(value_of(h[2])), chirp = T(chirp),
                           polarization = T(polarization), phase = T(phase))
     return EMProblem("antenna", L, n, dt, round(Int, tend / value_of(dt)), species, 1, (1, 0); lasers = (laser,))
 end
@@ -152,12 +154,13 @@ function angular_error(r; component = :Ey)
 end
 
 """
-    beam_profile(r; component = :Ey) -> Vector of (; x, w, phase)
+    beam_profile(r; component = :Ey) -> Vector of (; x, w, y, phase)
 
-On each probe column the 1/e field radius `w = 2·√⟨(y − ȳ)²⟩` of the intensity |Â(x, y)|² of the
-ω = 1 transform, and its phase on the axis row (Ey rows sit at (j − ½)Δy, Ez rows at (j − 1)Δy;
-the axis at the middle of the box is a Node row) with the carrier `k·(x − x_a)` of
-[`yee_axis`](@ref) removed.
+On each probe column the centroid `y = ȳ` (from the laser's axis), and the 1/e field radius
+`w = 2·√⟨(y − ȳ)²⟩`, of the intensity |Â(x, y)|² of the ω = 1 transform, and its phase on the
+row nearest the axis with the carrier `k·(x − x_a)` of [`yee_axis`](@ref) removed. The row
+coordinates are those of the staggering, independent of the antenna's code: Ey rows at
+(j − ½)Δy, Ez rows at (j − 1)Δy. The axis must lie in the middle of the box (no wrap).
 """
 function beam_profile(r; component = :Ey)
     a = run_antenna(r)
@@ -176,7 +179,7 @@ function beam_profile(r; component = :Ey)
         ȳ = sum(y .* I) / sum(I)
         w = 2 * sqrt(sum((y .- ȳ) .^ 2 .* I) / sum(I))
         j0 = argmin(abs.(y))
-        push!(out, (; x, w, phase = angle(A[j0] * cis(-yk.k * (x - xa)))))
+        push!(out, (; x, w, y = ȳ, phase = angle(A[j0] * cis(-yk.k * (x - xa)))))
     end
     return out
 end
@@ -348,7 +351,7 @@ columns `cols`, which hold the pulse), the weight of a mode
 (k_x, k_y) the sum of its squared moduli, its frequency from the exact discrete relation and
 `v_x = |sin(k_xΔx)|/Δx / (sin(ωΔt)/Δt)`, the x derivative of the relation (a pulse travelling
 along +x, each pair of conjugate modes one wave). The energy centroid of a pulse that has left its
-source moves at this velocity (T-393).
+source moves at this velocity (T-394).
 """
 function spectral_group_velocity(f, grid, dt; cols = 1:ncells(grid)[1])
     g, n = guards(grid), ncells(grid)

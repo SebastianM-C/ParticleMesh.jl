@@ -400,11 +400,12 @@ C_plane = 2
 status = "proposed"
 
 ["T-393"]
-quantity = "radius and Gouy phase against the Yee angular-spectrum prediction (C_angular); |w/w_paraxial − 1| (C_waist) and |Gouy − Gouy_paraxial| in radians (C_gouy) against the scheme's paraxial beam"
-scale = "(3/16)·√105/w0⁴ (C_angular); 3/w0², the non-paraxial widening (C_waist); 1/w0² (C_gouy); waist 6, Float64"
+quantity = "radius and Gouy phase against the Yee angular-spectrum prediction (C_angular); |w/w_paraxial − 1| (C_waist) and |Gouy − Gouy_paraxial| in radians (C_gouy) against the scheme's paraxial beam; the centroid of |Â|² from the laser's axis (C_axis)"
+scale = "(3/16)·√105/w0⁴ (C_angular); 3/w0², the non-paraxial widening (C_waist); 1/w0² (C_gouy); Δy (C_axis); waist 6, Float64"
 C_angular = 2
 C_waist = 1
 C_gouy = 1
+C_axis = 1e-4
 status = "proposed"
 
 ["T-394"]
@@ -430,4 +431,10 @@ status = "proposed"
 quantity = "AD against the finite-difference floor of the ω₀ intensity on the axis of a probe, in focus and chirp"
 scale = "rel/floor_rel at the minimising step (A7)"
 C = 1
+status = "proposed"
+
+["T-399"]
+quantity = "the run with the beam's axis m rows off the middle against the centred run shifted by m rows, max over the E and B components relative to the component's max"
+scale = "eps(T)·√(steps + 1)"
+C = 4
 status = "proposed"

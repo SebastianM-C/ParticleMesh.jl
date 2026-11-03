@@ -1,4 +1,4 @@
-# WP-026: the laser antenna, T-390 to T-398. The physics runs (T-391 to T-395) launch a Gaussian
+# WP-026: the laser antenna, T-390 to T-399. The physics runs (T-391 to T-395) launch a Gaussian
 # beam of waist 6 c/ω₀ (about one wavelength, so that the effects of focusing are large against
 # their tolerances) in vacuum, Float64, 16 cells per wavelength along x and 8 along y, and read it
 # on probe columns from the antenna plane to two Rayleigh lengths past the focus.
@@ -236,6 +236,13 @@ end
         @test worst_a <= Ca * angular_scale(6)
         @test worst_w <= Cw * 3 / 36
         @test worst_g <= Cg / 36
+        # the beam's axis is the laser's, on every probe and for each component, in the row
+        # coordinates of the staggering (Ey at (j − ½)Δy, Ez at (j − 1)Δy), not the antenna's
+        for c in (pol == 0 ? (:Ey,) : pol == π / 2 ? (:Ez,) : (:Ey, :Ez))
+            ya = maximum(b -> abs(b.y), beam_profile(r; component = c)) / Float64(cellsize(r.st.grid)[2])
+            record!("T-393 axis", Float64, ya)
+            @test ya <= emC("T-393", "C_axis")
+        end
         # the probes resolve the beam: the waist near the focus and the Gouy phase over two Rayleigh lengths
         @test minimum(b -> b.w, bp) ≈ 6 rtol = 1e-2
         @test abs(rem2pi(bp[end].phase - φ0, RoundNearest)) > 0.9
@@ -433,10 +440,45 @@ end
     l(x) = GaussianLaser(; a0 = 1, waist = 3, duration = 3, delay = 18, focus = 5, position = x, center = 4)
     grid = PeriodicGrid((40, 16), (0.5, 0.5), 3)
     @test_throws ArgumentError Antenna(l(1.0), grid, 0.3)        # column 3: within the guards' reach of the seam
+    @test_throws ArgumentError Antenna(l(1.5), grid, 0.3)        # column 4 = g + 1: its B column g would be a stale guard image
     @test_throws ArgumentError Antenna(l(18.6), grid, 0.3)       # column 38 > 40 − 3
     @test Antenna(l(2.0), grid, 0.3).ia == 5
     @test Antenna(l(18.0), grid, 0.3).ia == 37
     sp1 = (SpeciesDescription{Float64}(:e, -1.0, 1.0, 1.0, 0.0, 1, 2, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1),)
     @test_throws ArgumentError EMProblem("x", 6.0, 12, 0.1, 4, sp1, 1, 1.0; lasers = (l(2.0),))
     @test_throws ArgumentError EMProblem("x", (6.0, 6.0), (12, 12), 0.1, 4, (), 1, (1, 0); lasers = (1.0,))
+end
+
+# --- T-399 ----------------------------------------------------------------------------------
+
+# The beam's axis may sit anywhere along the periodic y: a run with the axis m rows above the
+# box's middle (up to three rows from the seam, and across it) is the centred run shifted by m
+# rows, to roundoff, in every component. The guard rows take the bits of their interior images.
+@testset "T-399 the antenna's beam is periodic in y: its axis may sit at the seam [A2, A8, WP-026]" begin
+    C = emC("T-399")
+    kw = (; length = (24, 16), waist = 3, duration = 3, position = 5, focus = 10, polarization = 6 // 10, tend = 30)
+    for T in (Float32, Float64)
+        p0 = antenna_problem(T; kw...)
+        n2 = p0.cells[2]
+        r0 = antenna_run(p0)
+        g, n = guards(r0.st.grid), ncells(r0.st.grid)
+        I1, I2 = (g + 1):(g + n[1]), (g + 1):(g + n[2])
+        for m in (7, n2 ÷ 2 + 1, n2 - 3)
+            r1 = antenna_run(antenna_problem(T; kw..., center = n2 / 2 + m))
+            worst = 0.0
+            for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
+                A = Array(getfield(r0.st.fields, c))[I1, I2]
+                B = Array(getfield(r1.st.fields, c))[I1, I2]
+                worst = max(worst, maximum(abs.(circshift(A, (0, m)) .- B)) / maximum(abs.(A)))
+            end
+            worst /= base_eps(T) * sqrt(p0.nsteps + 1)
+            record!("T-399", T, worst)
+            @test worst <= C
+            a = only(r1.st.aux.antennas)
+            for s in (zero(T), one(T) / 2)
+                @test all(antenna_dy(a, Int32(j), s) === antenna_dy(a, Int32(j + n2), s) for j in 1:g)
+                @test all(antenna_dy(a, Int32(j), s) === antenna_dy(a, Int32(j - n2), s) for j in (n2 + g + 1):(n2 + 2g))
+            end
+        end
+    end
 end
