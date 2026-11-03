@@ -217,7 +217,7 @@ function summarize_scan(dir)
             "dt" => case["time"]["dt"], "cells" => case["grid"]["cells"],
             "steps" => round(Int, case["time"]["t_end"] / case["time"]["dt"]),
             "wall_seconds" => stamp_interval(joinpath(rd, "container.txt"), "# start:", "# end:"),
-            "threads" => container_line(joinpath(rd, "container.txt"), "threads"),
+            "threads" => (l = container_line(joinpath(rd, "container.txt"), "threads"); l === nothing ? nothing : strip(first(split(l, ',')))),
             "cpu" => container_line(joinpath(rd, "container.txt"), "cpu model"),
             "smilei" => container_line(joinpath(rd, "container.txt"), "smilei version"),
             "energy" => Dict("t" => sc.time, "Utot" => sc.columns["Utot"]),
@@ -272,9 +272,9 @@ function local_rate(t, U; half_width = 1.0)
 end
 
 """
-    point_fits(case, s; window) -> NamedTuple
+    point_fits(case, key, t, U; window) -> NamedTuple
 
-For one series (t, U) of a run: the pre-registered fit (`growth_from_window` with the
+For the series `key` (t, U) of a run: the pre-registered fit (`growth_from_window` with the
 observable's window), and the same least-squares fit on the exact linear solution at the same
 sample indices (`gamma_ivp`), the rate a run without discretization error and without
 nonlinearity would report; the ratio U/U_ivp at the first and last sample of the window.

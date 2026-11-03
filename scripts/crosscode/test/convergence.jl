@@ -56,6 +56,19 @@ end
         scale = maximum(abs(b.q * s2[per * (j - 1) + 1, c]) for (j, b) in enumerate(p.beams), c in axes(s2, 2))
         @test maximum(abs, viol .- viol[1]) < 1e-13 * scale
         @test abs(viol[1]) > 1e-4
+        @test gauss_residual(s2, p.k, p.beams; kind = p.kind) ≈ abs.(viol) ./ scale rtol = 1e-12
+        # the growing root of the case's system is the case's registered theory value (two beams, the ions immobile)
+        c = load_case(name)
+        θ = first(o["theory"] for (_, o) in c["observables"] if o["method"] == "exponential_window")
+        @test maximum(real, eigvals(p.M)) ≈ θ rtol = 1e-12
+        @test length(p.beams) == 2
+        # the time origin: y(0) = y0, and y(t) equals the eigen-expansion Σ cⱼ e^{λⱼ t} vⱼ
+        @test ivp_solution(p.M, p.y0, [0.0])[:, 1] == p.y0
+        F0 = eigen(p.M)
+        cj = F0.vectors \ p.y0
+        for ti in (3.7, 21.0)
+            @test ivp_solution(p.M, p.y0, [ti])[:, 1] ≈ F0.vectors * (cj .* exp.(F0.values .* ti)) rtol = 1e-8
+        end
         # on the growing eigenvector the field grows at exactly the root
         F = eigen(p.M)
         j = argmax(real.(F.values))
@@ -73,6 +86,20 @@ end
     @test all(iszero, wb.y0[7:9])
     @test wb.k ≈ 2 rtol = 1e-14
     @test wb.beams[1].v == 0.3 && wb.beams[2].v == -0.3
+    @test wb.index == 9 && wb.energy_scale == prod(load_case("weibel-2d")["grid"]["length"]) / 4
+    # ivp_series in the units of the runs: the box energy of the observed field, or |amplitude|²
+    tsc = load_case("two-stream")
+    L = tsc["grid"]["length"]
+    @test ivp_series(tsc, "growth_rate", [0.0]) ≈ [L / 4 * (1e-3 / ts.k)^2] rtol = 1e-13
+    @test ivp_series(tsc, "mode", [0.0]) ≈ [(1e-3 / ts.k)^2] rtol = 1e-13
+    wc = load_case("weibel-2d")
+    @test ivp_series(wc, "growth_rate_energy", [5.0]) ./ ivp_series(wc, "growth_rate_mode", [5.0]) ≈ [wb.energy_scale] rtol = 1e-13
+    # an asymmetric Weibel load has net charge: E_k(0) from Gauss's law, kept along the solution
+    asym = deepcopy(wc)
+    asym["species"][2]["perturbation"]["amplitude"] = -0.0004
+    pa = cold_ivp(asym)
+    @test abs(pa.y0[7]) > 0
+    @test maximum(gauss_residual(ivp_solution(pa.M, pa.y0, 0:1.0:30), pa.k, pa.beams; kind = :weibel)) < 1e-13
     # the energy of a field Re(A e^{ik·r}) over the box is |A|² V/4: check on the Smilei grid sum
     L, N = 1.3, 64
     A = 0.7 - 0.2im
@@ -102,6 +129,10 @@ end
     @test [s["particles_per_cell"] for s in d["species"]] == [100, 100, 1]     # the immobile ions keep theirs
     @test d["numerics"]["random_seed"] == 7 && d["diagnostics"]["fields"] == ["Ex"]
     @test d["derived"]["from_sha256"] == bytes2hex(open(sha256, ts["_path"]))
+    rich = derive_case(ts; name = "r", refine = 1 // 2, dt_divisor = 4, amplitude_factor = 0.1, ppc_factor = 1 // 10, seed = 7)
+    @test rich["derived"] == Dict{String,Any}("from" => "two-stream", "from_sha256" => d["derived"]["from_sha256"],
+        "refine" => "1//2", "dt_divisor" => "4//1", "amplitude_factor" => 0.1, "ppc_factor" => "1//10",
+        "seed" => 7, "fields" => "case")
     clean(c) = (c = deepcopy(c); foreach(k -> delete!(c, k), ("name", "description", "_path", "derived")); c)
     a, b = clean(ts), clean(d)
     for s in vcat(a["species"], b["species"])
@@ -135,6 +166,28 @@ end
     @test req["steps"][end]["args"][3] == "summarize"
     @test length(req["outputs"]) == 1 && endswith(only(req["outputs"]), "/summary")
     @test isfile(joinpath(dir, pts[1]["name"], "smilei.py")) && isfile(joinpath(dir, "summary", "scan.toml"))
+    # both scan files: every point's prepared case is derive_case of its keys, its name says its
+    # cells and its Courant number (nNNN = cells per axis, dtN = the case's 0.95 / N), and the
+    # request keeps the scan's timeout
+    for scanfile in ("two-stream-offset.toml", "weibel-2d-offset.toml")
+        sp = joinpath(CC, "scans", scanfile)
+        sc = TOML.parsefile(sp)
+        base = load_case(sc["case"])
+        dir = prepare_scan(sp; runs = mktempdir())
+        @test TOML.parsefile(joinpath(dir, "box-request.toml"))["timeout"] == sc["timeout"]
+        for p in sc["points"]
+            c = TOML.parsefile(joinpath(dir, "summary", "cases", p["name"] * ".toml"))
+            want = derive_case(base; Convergence.point_kwargs(p)...)
+            delete!(want, "_path")
+            @test c == want
+            m = match(r"^n0*(\d+)", p["name"])
+            @test first(vcat(c["grid"]["cells"])) == parse(Int, m[1])
+            dtm = match(r"-dt(\d+)", p["name"])
+            dx = first(vcat(c["grid"]["length"])) / first(vcat(c["grid"]["cells"]))
+            courant = sc["case"] == "weibel-2d" ? c["time"]["dt"] * sqrt(2) / dx : c["time"]["dt"] / dx
+            @test courant ≈ 0.95 / (dtm === nothing ? 1 : parse(Int, dtm[1])) rtol = 2e-4
+        end
+    end
 end
 
 # A series that follows the exact linear solution up to t_sat and then turns over, so that the
@@ -162,6 +215,7 @@ end
             @test abs(f.gamma - f.gamma_ivp) < 1e-12 * θ
             @test abs(f.gamma / θ - 1) > 1e-3
             @test f.ratio[1] ≈ c rtol = 1e-12
+            @test f.ratio[2] ≈ c rtol = 1e-12
         end
         # a growth e^{2δt} on top: the residual is δ exactly, at any sample offset of the window
         δ = -0.004θ
@@ -175,6 +229,10 @@ end
     tc, g = local_rate(t, exp.(0.6 .* t))
     @test all(x -> isapprox(x, 0.3; rtol = 1e-12), g)
     @test first(tc) ≈ 1.0 && last(tc) ≈ 9.0
+    U0 = exp.(0.6 .* t)
+    U0[501] = 0                                 # t = 5: every stencil holding it is skipped
+    tz, gz = local_rate(t, U0)
+    @test all(x -> abs(x - 5) > 1.0 - 1e-9, tz) && length(tz) == length(tc) - 201
 end
 
 @testset "T-404 summarize reads a finished Smilei run into the scan summary [A5, WP-031]" begin
@@ -214,12 +272,15 @@ end
             a["gridSpacing"] = [L / N]; a["gridGlobalOffset"] = [0.0]; a["position"] = [0.5]
         end
     end
-    write(joinpath(rd, "container.txt"), "# threads: 2, cpus: 2\n# cpu model: Test CPU\n# start: 2026-11-03T10:00:00.000Z\n# end: 2026-11-03T10:00:07.500Z\n")
+    write(joinpath(rd, "container.txt"), "# smilei version: v5.1 test\n# threads: 2, cpus: 2\n# cpu model: Test CPU\n# start: 2026-11-03T10:00:00.000Z\n# end: 2026-11-03T10:00:07.500Z\n")
     done = summarize_scan(dir)
     @test done == ["tiny"]
     @test strip(read(joinpath(dir, "summary", "missing.txt"), String)) == "notrun"
     rec = JSON.parsefile(joinpath(dir, "summary", "tiny.json"))
-    @test rec["wall_seconds"] == 7.5 && rec["cpu"] == "Test CPU" && rec["threads"] == "2, cpus: 2"
+    @test rec["wall_seconds"] == 7.5 && rec["cpu"] == "Test CPU" && rec["threads"] == "2" && rec["smilei"] == "v5.1 test"
+    @test Float64.(rec["energy"]["Utot"]) == [1.5 + 1e-9i for i in 1:3]
+    @test rec["dt"] == case["time"]["dt"] && rec["steps"] == round(Int, case["time"]["t_end"] / case["time"]["dt"])
+    @test sort(collect(keys(rec["outputs"]))) == ["Fields0.h5", "container.txt", "scalars.txt"]
     @test Float64.(rec["series"]["growth_rate"]["U"]) == U
     c = complex.(Float64.(rec["series"]["mode"]["c_re"]), Float64.(rec["series"]["mode"]["c_im"]))
     @test c ≈ A rtol = 1e-12
@@ -274,6 +335,99 @@ end
     rec = JSON.parsefile(joinpath(dir, "summary", "tiny.json"))
     s = rec["series"]["growth_rate_mode"]
     @test complex.(Float64.(s["c_re"]), Float64.(s["c_im"])) ≈ A rtol = 1e-10
+    @test Float64.(s["U"]) ≈ abs2.(A) rtol = 1e-10
     @test Float64.(rec["series"]["growth_rate_energy"]["U"]) ≈ [4e-9, 7e-9] rtol = 1e-10
     @test sort(collect(keys(rec["series"]))) == ["growth_rate_energy", "growth_rate_mode"]
+end
+
+# The cases and summaries of a synthetic scan in `dir`: each point's series is the linear solution
+# times e^{2δ t} up to the saturation (synthetic_run), with δ = δ∞ + a Δx² + b Δt², so that the
+# residual, its order and its limit are known.
+function synthetic_scan(dir, base, points; δ∞, a, b, tsat = 24.9)
+    mkpath(joinpath(dir, "cases"))
+    write(joinpath(dir, "scan.toml"), "name = \"synthetic\"\ncase = \"two-stream\"\n")
+    θ = base["observables"]["growth_rate"]["theory"]
+    for (name, kw) in points
+        c = derive_case(base; name, kw...)
+        open(io -> TOML.print(io, c; sorted = true), joinpath(dir, "cases", name * ".toml"), "w")
+        dt, dx = c["time"]["dt"], c["grid"]["length"] / c["grid"]["cells"]
+        t = collect((0:c["diagnostics"]["scalars_every"]:round(Int, 40 / dt)) .* dt)
+        δ = (δ∞ + a * dx^2 + b * dt^2) * θ
+        U = synthetic_run(c, "growth_rate", t; tsat, distort = s -> exp(2δ * s))
+        rec = Dict("point" => name, "derived" => c["derived"], "wall_seconds" => 1.0, "threads" => "1", "cpu" => "test",
+            "steps" => 1, "energy" => Dict("t" => t, "Utot" => fill(1.0, length(t))),
+            "series" => Dict("growth_rate" => Dict("t" => t, "U" => U, "c_re" => nothing, "c_im" => nothing)))
+        open(io -> JSON.print(io, rec), joinpath(dir, name * ".json"), "w")
+    end
+end
+
+@testset "T-406 the report's residuals, families, orders and code comparison [A7, WP-031]" begin
+    R = ConvergenceReport
+    # order and Richardson limit of e = 1 + 3h²
+    h = [1.0, 0.5, 0.25]
+    @test R.observed_order(h, 1 .+ 3 .* h .^ 2) ≈ [2.0] rtol = 1e-12
+    @test R.richardson(h, 1 .+ 3 .* h .^ 2, 2) ≈ 1 rtol = 1e-12
+    # the families of both scans, from their prepared cases
+    for (scanfile, want) in (
+            ("two-stream-offset.toml", ["dx" => ["n0064", "n0128", "n0256", "n0512", "n1024"],
+                "dt[refine=1//1]" => ["n0128", "n0128-dt2", "n0128-dt4", "n0128-dt8"], "dt[refine=4//1]" => ["n0512", "n0512-dt4"]]),
+            ("weibel-2d-offset.toml", ["dx" => ["n064", "n128", "n256", "n512"],
+                "dt[refine=1//1]" => ["n256", "n256-dt2"], "dt[refine=1//2]" => ["n128", "n128-dt2", "n128-dt4", "n128-dt8"]]))
+        dir = prepare_scan(joinpath(CC, "scans", scanfile); runs = mktempdir())
+        pts = map(readdir(joinpath(dir, "summary", "cases"))) do f
+            c = TOML.parsefile(joinpath(dir, "summary", "cases", f))
+            (; name = splitext(f)[1], derived = c["derived"], dt = c["time"]["dt"],
+               dx = first(vcat(c["grid"]["length"])) / first(vcat(c["grid"]["cells"])))
+        end
+        got = [first(f) => [p.name for p in last(f)] for f in R.families(pts)]
+        @test sort(got; by = first) == sort(want; by = first)
+    end
+    # report on a synthetic scan: the residual of every point is its δ/θ, the offset γ/θ − 1, the
+    # Δx residuals (Δt ∝ Δx along the family, so both terms are of order Δx²) converge at order 2 to δ∞
+    base = load_case("two-stream")
+    θ = base["observables"]["growth_rate"]["theory"]
+    pts = ["n0064" => (; refine = 1 // 2), "n0128" => (;), "n0256" => (; refine = 2), "n0128-dt2" => (; dt_divisor = 2),
+           "n0128-a10" => (; amplitude_factor = 10)]
+    δ∞, a, b = -0.004, 2.0, 30.0
+    sd = joinpath(mktempdir(), "summary")
+    synthetic_scan(sd, base, pts; δ∞, a, b)
+    out = joinpath(dirname(sd), "out")
+    res = R.report(sd, out)
+    for (name, _) in pts
+        c = TOML.parsefile(joinpath(sd, "cases", name * ".toml"))
+        dt, dx = c["time"]["dt"], c["grid"]["length"] / c["grid"]["cells"]
+        e = res["points"][name]["observables"]["growth_rate"]
+        @test e["residual"] ≈ δ∞ + a * dx^2 + b * dt^2 rtol = 1e-7
+        rec = JSON.parsefile(joinpath(sd, name * ".json"))
+        t, U = Float64.(rec["series"]["growth_rate"]["t"]), Float64.(rec["series"]["growth_rate"]["U"])
+        f = point_fits(c, "growth_rate", t, U; window = Tuple(c["observables"]["growth_rate"]["window"]))
+        @test e["offset"] ≈ f.gamma / θ - 1 rtol = 1e-12
+        @test e["offset_ivp"] ≈ f.gamma_ivp / θ - 1 rtol = 1e-12
+    end
+    d = res["convergence"]["dx_growth_rate"]
+    @test d["points"] == ["n0064", "n0128", "n0256"]
+    @test d["observed_order_residual"][1] ≈ 2 rtol = 1e-5
+    @test d["richardson_residual_order2"] ≈ δ∞ rtol = 1e-6
+    @test res["convergence"]["dt[refine=1//1]_growth_rate"]["points"] == ["n0128", "n0128-dt2"]
+    @test all(isfile, joinpath.(out, ["results.json", "manifest.toml", "offset-vs-resolution.png", "local-rate.png", "ratio-to-linear.png"]))
+    # compare_codes: the same summary against itself, and against a copy grown by e^{2δt}
+    cmp = R.compare_codes(sd, sd, joinpath(dirname(sd), "cmp1"))
+    for (_, v) in cmp["points"]
+        @test v["relative_difference_same_samples"] == 0 && v["ratio_window_start"] == 1 && v["ratio_window_end"] == 1
+    end
+    sd2 = joinpath(mktempdir(), "summary")
+    synthetic_scan(sd2, base, pts; δ∞, a, b)
+    δc = 1e-4
+    for (name, _) in pts
+        rec = JSON.parsefile(joinpath(sd2, name * ".json"))
+        s = rec["series"]["growth_rate"]
+        t = Float64.(s["t"])
+        s["U"] = Float64.(s["U"]) .* exp.(2δc .* t)
+        open(io -> JSON.print(io, rec), joinpath(sd2, name * ".json"), "w")
+    end
+    cmp = R.compare_codes(sd, sd2, joinpath(dirname(sd2), "cmp2"))
+    for (_, v) in cmp["points"]
+        @test v["relative_difference_same_samples"] ≈ δc / v["gamma_reference"] rtol = 1e-8
+        @test v["ratio_t0"] == 1
+    end
 end

@@ -73,13 +73,27 @@ function evaluate(pt, key)
     return out
 end
 
-"Points of a family: the Δx series (`dx`, Courant number of the case), the Δt series at the base cells (`dt`)."
-function family(pts, which)
-    plain(p) = p.derived["amplitude_factor"] == 1 && p.derived["ppc_factor"] == "1//1" && p.derived["seed"] == "case"
-    which === :dx && return sort([p for p in pts if plain(p) && p.derived["dt_divisor"] == "1//1"]; by = p -> -p.dx)
-    which === :dt && return sort([p for p in pts if plain(p) && p.derived["refine"] == "1//1"]; by = p -> -p.dt)
-    error("family: $which")
+plain(p) = p.derived["amplitude_factor"] == 1 && p.derived["ppc_factor"] == "1//1" && p.derived["seed"] == "case"
+
+"""
+    families(pts) -> Vector{Pair{String,Vector}}
+
+The convergence families of a scan's points, among those with the case's amplitude, particles
+per cell and seed: `"dx"`, the points at the case's Courant number (`dt_divisor` 1), coarse to
+fine; and for every `refine` that has points with `dt_divisor` ≠ 1, `"dt[refine=<r>]"`, the
+points of that refine, Δt large to small (the Δt series at fixed Δx).
+"""
+function families(pts)
+    pl = [p for p in pts if plain(p)]
+    out = Pair{String,Vector}["dx" => sort([p for p in pl if p.derived["dt_divisor"] == "1//1"]; by = p -> -p.dx)]
+    for r in sort(unique(p.derived["refine"] for p in pl if p.derived["dt_divisor"] != "1//1"))
+        push!(out, "dt[refine=$r]" => sort([p for p in pl if p.derived["refine"] == r]; by = p -> -p.dt))
+    end
+    return out
 end
+
+"The family of `families(pts)` named `name`."
+family(pts, name) = last(only(f for f in families(pts) if first(f) == name))
 
 """
     observed_order(h, e) -> Vector
@@ -119,12 +133,11 @@ function report(sumdir, out; box_status = nothing)
     end
     # convergence of the residual and of the offset along the Δx and Δt families
     conv = Dict{String,Any}()
-    for which in (:dx, :dt), k in keys_
-        fam = family(pts, which)
+    for (which, fam) in families(pts), k in keys_
         length(fam) >= 2 || continue
         ev = [res["points"][p.name]["observables"][k] for p in fam]
         any(e -> !haskey(e, "residual"), ev) && continue
-        h = which === :dx ? [p.dx for p in fam] : [p.dt for p in fam]
+        h = which == "dx" ? [p.dx for p in fam] : [p.dt for p in fam]
         r = [e["residual"] for e in ev]
         o = [e["offset"] for e in ev]
         d = Dict{String,Any}("points" => [p.name for p in fam], "h" => h, "residual" => r, "offset" => o,
@@ -163,14 +176,16 @@ function plots(out, pts, res, keys_)
         ylabel = "γ/θ − 1", title = "$(case["derived"]["from"]): $primary, offset from theory")
     ax2 = Axis(fig[1, 2]; xscale = log10, yscale = log10, xlabel = "Δx or 20 Δt", ylabel = "|γ − γ_ivp| / θ",
         title = "measured − linear solution, same window")
-    side = Dict{String,Any}("plot" => "offset of the pre-registered fit from theory (left) and its residual from the same fit on the exact linear solution (right), against Δx at the case's Courant number and against 20 Δt at the base cells", "theory" => θ)
-    for (which, col, sc) in ((:dx, :black, 1.0), (:dt, :red, 20.0)), k in keys_
+    side = Dict{String,Any}("plot" => "offset of the pre-registered fit from theory (left) and its residual from the same fit on the exact linear solution (right), against Δx at the case's Courant number and against 20 Δt at fixed cells (one series per refine)", "theory" => θ)
+    colors = [:black, :red, :blue, :green]
+    for (i, (which, _)) in enumerate(families(pts)), k in keys_
         key = "$(which)_$(k)"
         haskey(res["convergence"], key) || continue
         d = res["convergence"][key]
+        col, sc = colors[mod1(i, 4)], which == "dx" ? 1.0 : 20.0
         h = sc .* d["h"]
         ls = k == primary ? :solid : :dash
-        lab = "$(k), $(which === :dx ? "Δx" : "Δt")"
+        lab = "$(k), $(which == "dx" ? "Δx" : "Δt, " * which[4:end-1])"
         scatterlines!(ax1, h, d["offset"]; color = col, linestyle = ls, label = lab * " measured")
         lines!(ax1, h, d["offset_ivp"]; color = col, linestyle = :dot, label = lab * " linear solution")
         r = abs.(d["residual"])
@@ -184,7 +199,7 @@ function plots(out, pts, res, keys_)
     save_fig(out, "offset-vs-resolution", fig, side)
 
     # 2. local rate against time: the coarsest and finest Δx points and the linear solution
-    fam = family(pts, :dx)
+    fam = family(pts, "dx")
     fig = Figure(size = (900, 500))
     ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "local rate / θ − 1", title = "$primary: local growth rate (log U fitted over ±1/ω₀)")
     side = Dict{String,Any}("plot" => "local growth rate of the amplitude relative to theory against time, runs and the exact linear solution; the pre-registered window shaded")
@@ -258,6 +273,7 @@ function compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate")
         fb = linear_fit(tb[i1:i2], log.(Ub[i1:i2]))
         own = evaluate(b, key)
         isat = findfirst(==(fa.t_max), ta)
+        length(Ub) >= isat || error("compare_codes: $p: the other run ends before the reference's saturation")
         r = Ub[1:isat] ./ Ua[1:isat]
         res["points"][p] = Dict{String,Any}("dt" => a.dt, "dx" => a.dx, "gamma_reference" => fa.gamma,
             "gamma_other_same_samples" => fb.slope / 2,
