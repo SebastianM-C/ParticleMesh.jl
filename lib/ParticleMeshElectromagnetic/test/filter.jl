@@ -12,19 +12,23 @@ using ParticleMeshElectromagnetic: RHO_STAGGER_2D, FIELD_LAYOUT_2D
 rand_T(rng, ::Type{T}) where {T<:AbstractFloat} = T(2rand(rng) - 1)
 rand_T(rng, ::Type{Dual{Nothing,V,N}}) where {V,N} = Dual{Nothing}(V(2rand(rng) - 1), ntuple(_ -> V(2rand(rng) - 1), N)...)
 
-"The value and each partial of an array of `T`, as Float64 arrays."
-component_arrays(A::AbstractArray{<:AbstractFloat}) = [Float64.(A)]
-component_arrays(A::AbstractArray{<:Dual}) = [Float64.(map(x -> components(x)[c], A)) for c in 1:length(components(first(A)))]
+"The value and each partial of an array of `T`, as BigFloat arrays (exact conversions)."
+component_arrays(A::AbstractArray{<:AbstractFloat}) = [BigFloat.(A)]
+component_arrays(A::AbstractArray{<:Dual}) = [BigFloat.(map(x -> components(x)[c], A)) for c in 1:length(components(first(A)))]
 
-"The normalized DFT of a real array in one or two dimensions, Â[m] = Σ_j A[j]·exp(−2πi m·j/n)/Π n."
-function dft(A::AbstractArray{Float64,N}) where {N}
-    W(n) = [cispi(-2 * (k - 1) * (j - 1) / n) for k in 1:n, j in 1:n]
+"""
+The normalized DFT of a real array in one or two dimensions, Â[m] = Σ_j A[j]·exp(−2πi m·j/n)/Π n,
+in BigFloat, so that its own rounding stays far below eps(Float64) at any test size (in Float64
+it reached 1.4 of T-440's scale at n = 33, measured by the WP-029 physics breaker).
+"""
+function dft(A::AbstractArray{BigFloat,N}) where {N}
+    W(n) = [cispi(-2 * big((k - 1) * (j - 1)) / n) for k in 1:n, j in 1:n]
     N == 1 && return W(length(A)) * A ./ length(A)
     return W(size(A, 1)) * A * transpose(W(size(A, 2))) ./ length(A)
 end
 
 "The closed form H_p of the DFT index `m` (1-based) on `n` cells: Π_d cos^{2p}(π(m_d − 1)/n_d)."
-transfer_closed(m::CartesianIndex, n, p) = prod(d -> cospi((m[d] - 1) / n[d])^(2p), 1:length(n))
+transfer_closed(m::CartesianIndex, n, p) = prod(d -> cospi(big(m[d] - 1) / n[d])^(2p), 1:length(n))
 
 "A field of `grid` with the interior `A` and every guard set to `junk`, and a scratch field filled with `junk2`."
 function guarded(grid, A::AbstractArray{T}, junk, junk2) where {T}
@@ -64,7 +68,7 @@ function body_T440(be)
         for (ci, co) in zip(component_arrays(A), component_arrays(Bout))
             Âi, Âo = dft(ci), dft(co)
             err = maximum(m -> abs(Âo[m] - transfer_closed(m, n, p) * Âi[m]), CartesianIndices(Âi))
-            worst = max(worst, err / (base_eps(T) * maximum(abs, ci) * p * N))
+            worst = max(worst, Float64(err / (base_eps(T) * maximum(abs, ci) * p * N)))
         end
         # the guards hold the periodic images on return
         ref = copy(out)
@@ -232,7 +236,9 @@ end
 # unfiltered ones (all three components, after the fold), and since the first B half step is the
 # same, its E must differ by −Δt times the filtered minus the unfiltered current (the filtered
 # current is the one the mesh solve takes). The guards of J hold their periodic images. 1D: the
-# beams of T-361 (currents in all three components); 2D: the plasma of T-360.
+# beams of T-361 (currents in all three components); 2D: the plasma of T-360. Reference is
+# deterministic, so both states see the same unfiltered current (J matches the host filter bit
+# for bit); in Fast mode the atomics make the two states differ by T-362's roundoff.
 function body_T442(be)
     C = emC("T-442")
     for T in TYPES, mode in (Reference(), Fast()), N in (1, 2)
@@ -260,10 +266,18 @@ function body_T442(be)
             fill_guards!(ref, grid)
             @test same_bits(ref, full)
         end
+        # Fast: the two states deposit (ρ for the initial field, then J) with atomics in different
+        # association orders at more than one thread and on CUDA, so they agree only as the two
+        # modes do (A4 rule 3): T-362's scale √(prod ppc) and constant
+        if mode isa Fast
+            f = sqrt(prod(prob.species[1].ppc))
+            worstJ, worstE = worstJ / f, worstE / f
+        end
+        CJ = mode isa Fast ? emC("T-362") : C
         record!("T-442 J $(N)D $(nameof(typeof(mode)))", T, worstJ, be)
         record!("T-442 E $(N)D $(nameof(typeof(mode)))", T, worstE, be)
-        @test worstJ <= C
-        @test worstE <= C
+        @test worstJ <= CJ
+        @test worstE <= CJ
     end
 end
 

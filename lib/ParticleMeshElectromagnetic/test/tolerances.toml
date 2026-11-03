@@ -452,9 +452,9 @@ status = "proposed"
 # WP-029: the binomial current filter
 ["T-440"]
 quantity = "binomial! on a random field (value and partials), 1D 16 cells and 2D 12 × 10, 1, 2, 3, 5 passes: every DFT coefficient of the output against H_p(m) = Π_d cos^{2p}(π m_d/n_d) times the input's; one mode on each 2D stagger against H_p times the mode"
-scale = "p·N·max|input| (normalized DFT)"
+scale = "p·N·max|input| (normalized DFT, computed in BigFloat)"
 C = 2
-measured = { Float32 = 0.0466, Float64 = 0.182, "Dual{Float32,3}" = 0.0572, staggers = { Float32 = 0.539, Float64 = 0.531, "Dual{Float32,3}" = 0.539 } }
+measured = { Float32 = 0.0466, Float64 = 0.0157, "Dual{Float32,3}" = 0.0572, staggers = { Float32 = 0.539, Float64 = 0.547, "Dual{Float32,3}" = 0.539 } }
 status = "proposed"
 
 ["T-441"]
@@ -467,8 +467,8 @@ status = "proposed"
 
 ["T-442"]
 quantity = "one step with two passes against one without, from the same state: |J_filtered − F_host(J)| per component (C), |(E₁ − E₀) + Δt(J₁ − J₀)| (C)"
-scale = "p·N·max|J| for J; max|E| + Δt·max|J| for E"
+scale = "p·N·max|J| for J; max|E| + Δt·max|J| for E; in Fast mode both times √(prod ppc), against T-362's C (the two states' atomic depositions differ in association order)"
 C = 2
-measured = { J = 0.0, E = { Float32 = 0.61, Float64 = 0.609, "Dual{Float32,3}" = 0.604 } }
+measured = { J = 0.0, E = { Float32 = 0.61, Float64 = 0.609, "Dual{Float32,3}" = 0.604 }, Fast_8_threads_and_CUDA = { J = 5.17, E = 6.69 } }
 note = "J is bitwise the host reference (the kernel and binomial_host share the association order (l + r) + 2c); the tolerance admits another order"
 status = "proposed"
