@@ -24,63 +24,54 @@ const RESOLUTIONS = (12, 16, 24, 32)
 
 function beam_rows(w0)
     Ly = w0 == 6 ? 120 : 200
-    prob = antenna_problem(Float64; waist = w0, length = (180, Ly))
+    prob = antenna_problem(Float64; waist = w0, length = (300, Ly))
     r = antenna_run(prob; probes = PROBES)
     a = run_antenna(r)
     ang = angular_error(r)
     bp = beam_profile(r)
-    # the angular-spectrum prediction's own radius and phase, from the incident transform
-    h = a.dx
-    S = dft(incident_dtft(r).Ey)
-    ky = ky_modes(length(S), h[2])
-    y = ((1:Int(a.n2)) .- 0.5) .* h[2] .- a.laser.center
-    yk = yee_axis(h[1], prob.dt)
-    j0 = argmin(abs.(y))
+    ap = angular_profile(r)
     rows = []
-    for (q, b) in enumerate(bp)
-        pred = idft(S .* [cis(yee_kx(1.0, k, h[1], h[2], prob.dt) * (b.x - a.xa)) for k in ky])
-        I = abs2.(pred)
-        ȳ = sum(y .* I) / sum(I)
-        wp = 2 * sqrt(sum((y .- ȳ) .^ 2 .* I) / sum(I))
+    for (q, (b, p)) in enumerate(zip(bp, ap))
         par = paraxial_beam(r, b.x)
         # the continuum's paraxial beam: q(x) = q_a + (x − x_a), focus and Rayleigh length as prescribed
         zR = w0^2 / 2
         qa = complex(a.xa - a.laser.focus, -zR)
         qc = qa + (b.x - a.xa)
-        push!(rows, Dict("x" => b.x, "w" => b.w, "phase" => b.phase, "w_angular" => wp,
-                         "phase_angular" => angle(pred[j0] * cis(-yk.k * (b.x - a.xa))), "w_paraxial" => par.w,
-                         "gouy_paraxial" => par.gouy, "w_continuum" => w0 * abs(qc) / zR, "gouy_continuum" => angle(sqrt(qa / qc)),
-                         "angular_error" => ang[q].err))
+        push!(rows, Dict("x" => b.x, "w" => b.w, "phase" => b.phase, "w_angular" => p.w, "phase_angular" => p.phase,
+                         "w_paraxial" => par.w, "gouy_paraxial" => par.gouy, "w_continuum" => w0 * abs(qc) / zR,
+                         "gouy_continuum" => angle(sqrt(qa / qc)), "angular_error" => ang[q].err))
     end
     φ0, φ0a = rows[1]["phase"], rows[1]["phase_angular"]
     for r in rows
         r["gouy"] = rem2pi(r["phase"] - φ0, RoundNearest)
         r["gouy_angular"] = rem2pi(r["phase_angular"] - φ0a, RoundNearest)
     end
-    return Dict("waist" => w0, "focus" => Float64(a.laser.focus), "antenna_x" => Float64(a.xa), "keff" => yee_axis(h[1], prob.dt).keff,
-                "cells" => collect(ncells(r.st.grid)), "dt" => prob.dt, "rows" => rows)
+    return Dict("waist" => w0, "focus" => Float64(a.laser.focus), "antenna_x" => Float64(a.xa),
+                "keff" => yee_axis(a.dx[1], prob.dt).keff, "cells" => collect(ncells(r.st.grid)), "dt" => prob.dt, "rows" => rows)
 end
 
+# At t ≤ 140 the pulse lies within x ≤ 160 and the backward leak, wrapped round the 300-long
+# periodic box, beyond x = 170 (as in the tests' main runs).
 function resolution_row(ncx)
     prob = antenna_problem(Float64; ncx, ncy = ncx ÷ 2)
     dt = prob.dt
-    r = antenna_run(prob; snaps = round(Int, 100 / dt):round(Int, 4 / dt):round(Int, 155 / dt))
+    r = antenna_run(prob; snaps = round(Int, 100 / dt):round(Int, 4 / dt):round(Int, 140 / dt))
     a = run_antenna(r)
     grid = r.st.grid
-    n = ncells(grid)
-    W = conserved_energy(r.st, dt; cols = a.ia:n[1])
+    fwd, back = forward_window(r, 160)
+    f = r.shots[end].f
+    W = conserved_energy(f, grid, dt; cols = fwd)
     Φ = incident_flux(r)
     yk = yee_axis(a.dx[1], dt)
-    back = plain_energy(map(Array, r.st.fields), grid; cols = 1:(a.ia - 2))
     ts = [s.t for s in r.shots]
-    X = [energy_centroid(s.f, grid) for s in r.shots]
+    X = [energy_centroid(s.f, grid; cols = fwd) for s in r.shots]
     M = [ones(length(ts)) ts]
     c = M \ X
-    vs = spectral_group_velocity(r.shots[end].f, grid, dt)
-    return Dict("ncx" => ncx, "dx" => a.dx[1], "dy" => a.dx[2], "dt" => dt, "cells" => collect(n), "W_over_flux" => W / Φ - 1,
+    vs = spectral_group_velocity(f, grid, dt; cols = fwd)
+    return Dict("ncx" => ncx, "dx" => a.dx[1], "dy" => a.dx[2], "dt" => dt, "cells" => collect(ncells(grid)), "W_over_flux" => W / Φ - 1,
                 "flux_over_laser_energy" => Φ / laser_energy(a.laser) - 1,
                 "flux_over_laser_energy_staggered" => Φ / (laser_energy(a.laser) * cos(dt / 2) * cos(yk.k * a.dx[1] / 2)) - 1,
-                "back_fraction" => back / W, "v_centroid" => c[2], "v_spectral" => vs, "v_axis" => yk.vg,
+                "back_fraction" => plain_energy(f, grid; cols = back) / W, "v_centroid" => c[2], "v_spectral" => vs, "v_axis" => yk.vg,
                 "centroid_fit_residual" => maximum(abs.(M * c - X)))
 end
 
@@ -89,7 +80,7 @@ function antenna_report()
                   extra_inputs = [joinpath(EM_TEST, "antenna_cases.jl")],
                   params = Dict{String,Any}("probes" => collect(PROBES), "waists" => collect(WAISTS),
                                             "resolutions" => collect(RESOLUTIONS), "type" => "Float64", "duration" => 8,
-                                            "antenna_x" => 10, "focus" => 28, "courant" => 0.95))
+                                            "antenna_x" => 10, "focus" => 28, "courant" => 0.95, "box" => [300, "120 or 200"]))
     beams = [beam_rows(w0) for w0 in WAISTS]
     fig = Figure(size = (980, 640))
     for (col, b) in enumerate(beams)

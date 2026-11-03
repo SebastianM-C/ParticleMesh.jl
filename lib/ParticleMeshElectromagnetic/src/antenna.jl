@@ -45,6 +45,11 @@ primal node (`position` is not differentiable). The energy the pulse carries thr
 
 The pulse should start in vacuum: the envelope at t = 0 is exp(−delay²/duration²), so a delay of
 about six durations starts it below Float64 roundoff.
+
+The antenna is exact at the carrier frequency only: its B (the k_y² term and the half-cell delay)
+is that of ω₀ = 1, so a plane wave at ω₀ is launched exactly and the rest of the band, about
+1/duration wide and wider with chirp, leaks behind the plane and deviates from its prescribed
+profile in proportion. It is meant for narrow-band pulses (`questions/wp-026-antenna.md` §5).
 """
 struct GaussianLaser{T,P}
     a0::T
@@ -72,7 +77,8 @@ end
 
 The energy per unit length in z that the antenna's incident field carries through its plane,
 ∫∫ (E × B)_x dy dt = (π/4)·a0²·waist·duration·(1 + cos(2θ)/(2·waist²)), θ the polarization, up
-to terms of order exp(−duration²/2). The transverse integral of |u|² is waist·√(π/2) at every
+to terms of order exp(−duration²/(2(1 + chirp²·duration⁴))), the overlap of the envelope's
+spectrum with twice the carrier frequency. The transverse integral of |u|² is waist·√(π/2) at every
 ξ, the envelope's ∫ exp(−2s²/duration²)·cos²φ ds is duration·√(π/2)/2, and the magnetic field of
 [`laser_field`](@ref) adds ±∫|∂u/∂y|²/2 dy, a fraction ⟨k_y²⟩/2 = 1/(2·waist²) of it, with the
 sign of the polarization: a focused beam polarized in the plane carries more energy than its

@@ -227,7 +227,7 @@ the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the gu
 `NoCurrent()` J stays zero); the kinetic energy at n + 1/2; the mesh solve (Yee: B half step, E
 full step with J, B half step), with the antennas' total-field/scattered-field corrections
 between the sub-steps (time `(k − 1)·Δt` at the start of the step). With `Esirkepov()`, Gauss's
-law then holds to roundoff after every step (T-360), off the antenna columns with lasers (T-394). `k` must lie within the allocated steps and
+law then holds to roundoff after every step (T-360), off the antenna columns with lasers (T-396). `k` must lie within the allocated steps and
 `params.kmode` must be the state's diagnostic mode (an `ArgumentError` otherwise).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer)

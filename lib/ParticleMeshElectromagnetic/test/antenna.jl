@@ -1,4 +1,4 @@
-# WP-026: the laser antenna, T-390 to T-398. The physics runs (T-392 to T-395) launch a Gaussian
+# WP-026: the laser antenna, T-390 to T-398. The physics runs (T-391 to T-395) launch a Gaussian
 # beam of waist 6 c/ω₀ (about one wavelength, so that the effects of focusing are large against
 # their tolerances) in vacuum, Float64, 16 cells per wavelength along x and 8 along y, and read it
 # on probe columns from the antenna plane to two Rayleigh lengths past the focus.
@@ -8,17 +8,26 @@ using ParticleMeshElectromagnetic: Antenna, laser_field, antenna_dy, RHO_STAGGER
 
 const ANTENNA_PROBES = (10, 20, 28, 40, 50, 64)
 
-"The main vacuum run of T-392 to T-395 for a polarization, with snapshots between t = 100 and 155 (computed once per polarization)."
+"""
+The main vacuum run of T-391 to T-395 for a polarization (computed once per polarization): the
+plane at x = 10 of a box 300 long, the pulse launched by t = 96, snapshots every 4 from t = 100 to
+140. At t ≤ 140 the pulse lies within x ≤ 160 and the backward leak, wrapped round the periodic box,
+beyond x = 170, so the window of columns from the plane to x = 160 holds the pulse and its
+complement the leak (`forward_window`).
+"""
 const ANTENNA_RUNS = Dict{Float64,Any}()
 function antenna_main(pol)
     get!(ANTENNA_RUNS, pol) do
         prob = antenna_problem(Float64; polarization = pol)
-        antenna_run(prob; probes = ANTENNA_PROBES, snaps = round(Int, 100 / prob.dt):20:round(Int, 155 / prob.dt))
+        r = antenna_run(prob; probes = ANTENNA_PROBES, snaps = round(Int, 100 / prob.dt):round(Int, 4 / prob.dt):round(Int, 140 / prob.dt))
+        (; r..., window = forward_window(r, 160))
     end
 end
 const ANTENNA_POLS = (0.0, π / 2, 0.6)
-"The order (k_y/k)⁴ of the antenna's B against E for a beam of waist w0 (ω₀ = 1): the scale of T-392 and T-395."
+"The order (k_y/k)⁴ of the antenna's B against E for a beam of waist w0 (ω₀ = 1)."
 k4(w0) = inv(Float64(w0))^4
+"The scale of T-392: the relative L² error (3/16)·√105/w0⁴ of the antenna's B (see T-392)."
+angular_scale(w0) = 3 / 16 * sqrt(105) * k4(w0)
 
 # --- T-390 ----------------------------------------------------------------------------------
 
@@ -81,8 +90,13 @@ end
 # --- T-391 ----------------------------------------------------------------------------------
 
 # One way: behind the plane only what the incident field fails to satisfy of the discrete
-# equations arrives, a measured fraction of the pulse energy, and no antenna is the plain step bit
-# for bit. Small runs in the A8 matrix with the laser's a0, focus and chirp seeded as the three
+# equations leaves, a measured fraction of the pulse energy, and no antenna is the plain step bit
+# for bit. The leak is measured where it is: in a periodic box it wraps round and comes back from
+# the far side, so each run is long enough that at the time of the measurement the pulse and the
+# wrapped leak lie in separate columns (forward_window). The antenna is exact at ω₀ only (T-392's
+# plane wave): the leak comes from the rest of the pulse's band (about 1/duration wide) and from
+# the beam's modes near grazing incidence, where B/E = 1/cos α leaves its expansion. Small runs in
+# the A8 matrix (waist 4, duration 5) with the laser's a0, focus and chirp seeded as the three
 # partials of the dual: the fields are linear in a0, so a0·∂E/∂a0 = E to roundoff.
 @testset "T-391 the antenna launches one way, is linear in a0, and without antennas the step is the plain step bit for bit [A2, A3, A8, WP-026]" begin
     C, Cl = emC("T-391"), emC("T-391", "C_linear")
@@ -91,13 +105,12 @@ end
         a0 = D ? mkdual(1, 1, 0, 0) : one(T)
         focus = D ? mkdual(14, 0, 1, 0) : T(14)
         chirp = D ? mkdual(1 // 100, 0, 0, 1) : T(1 // 100)
-        prob = antenna_problem(T; length = (70, 50), waist = 4, duration = 5, position = 8, focus, chirp, a0, tend = 66)
+        # at t = 66 the pulse lies within x ≤ 74, the wrapped leak beyond x = 8 + 150 − 66 = 92
+        prob = antenna_problem(T; length = (150, 50), waist = 4, duration = 5, position = 8, focus, chirp, a0, tend = 66)
         r = antenna_run(prob)
-        a = run_antenna(r)
-        n = ncells(r.st.grid)
-        W = conserved_energy(r.st, prob.dt; cols = a.ia:n[1])
-        back = plain_energy(map(Array, r.st.fields), r.st.grid; cols = 1:(a.ia - 2))
-        frac = Float64(value_of(back / W))
+        fwd, back = forward_window(r, 80)
+        f = map(Array, r.st.fields)
+        frac = Float64(value_of(plain_energy(f, r.st.grid; cols = back) / conserved_energy(f, r.st.grid, prob.dt; cols = fwd)))
         record!("T-391", T, frac / C)
         @test frac <= C
         if D
@@ -116,15 +129,12 @@ end
             @test any(x -> !iszero(ForwardDiff.partials(x)[3]), Array(r.st.fields.Ey))
         end
     end
-    # The physics runs' beam (waist 6) leaks far less: the leak comes from the beam's modes near
-    # grazing incidence, where B/E = 1/cos α leaves its expansion, and the light cone's edge
-    # k_y = 1 lies 6 of the spectrum's widths 1/w0 out instead of 4.
+    # The physics runs' beam (waist 6, duration 8) leaks less, at t = 140.
     Cm = emC("T-391", "C_main")
     for pol in ANTENNA_POLS
         r = antenna_main(pol)
-        a = run_antenna(r)
-        n = ncells(r.st.grid)
-        frac = plain_energy(map(Array, r.st.fields), r.st.grid; cols = 1:(a.ia - 2)) / conserved_energy(r.st, r.prob.dt; cols = a.ia:n[1])
+        f = r.shots[end].f
+        frac = plain_energy(f, r.st.grid; cols = r.window[2]) / conserved_energy(f, r.st.grid, r.prob.dt; cols = r.window[1])
         record!("T-391 main", Float64, frac / Cm)
         @test frac <= Cm
     end
@@ -152,19 +162,21 @@ end
 # The ω₀ = 1 component of the launched beam on every probe column equals the Yee angular-spectrum
 # propagation of the incident field's ω₀ component at the plane (yee_kx, evanescent modes
 # included), so the antenna launches a free beam of the scheme and nothing else reaches the
-# probes. The one approximation is the antenna's B: E ∓ ½∂²E/∂y² is the expansion of the plane-wave
-# ratio 1/cos α (cos α) to order k_y²; its next term, (3/8)·k_y⁴ (1/8 for the other polarization),
-# halved in the forward wave, gives a relative L² error of (3/16)·√⟨k_y⁸⟩ = (3/16)·√105/w0⁴ for the
-# Gaussian spectrum of 1/e field radius w0 in k (⟨k_y²⟩ = 1/w0²), the scale of the test.
+# probes. The one approximation at ω₀ is the antenna's B: E ∓ ½∂²E/∂y² is the expansion of the
+# plane-wave ratio 1/cos α (cos α) to order k_y²; its next term, (3/8)·k_y⁴ (1/8 for the other
+# polarization), halved in the forward wave, gives a relative L² error of (3/16)·√⟨k_y⁸⟩ =
+# (3/16)·√105/w0⁴ for the Gaussian spectrum of 1/e field radius w0 in k (⟨k_y²⟩ = 1/w0²), the scale
+# of the test at this waist. At waists of 24 and more a floor of order Δ²/w0² takes over
+# (questions/wp-026-antenna.md §4). The run must last until the pulse's slow components have
+# passed the far probe (its transform is over the whole run).
 @testset "T-392 the launched beam is the Yee angular-spectrum propagation of the incident field, to the antenna's order (k_y/k)⁴ [A2, A7, WP-026]" begin
     C = emC("T-392")
     for pol in ANTENNA_POLS
         r = antenna_main(pol)
-        scale = 3 / 16 * sqrt(105) * k4(6)
         for comp in (pol == π / 2 ? (:Ez,) : pol == 0 ? (:Ey,) : (:Ey, :Ez))
             errs = [x.err for x in angular_error(r; component = comp)]
-            record!("T-392 $(comp)", Float64, maximum(errs) / scale)
-            @test maximum(errs) <= C * scale
+            record!("T-392 $(comp)", Float64, maximum(errs) / angular_scale(6))
+            @test maximum(errs) <= C * angular_scale(6)
         end
     end
     # A plane wave (a waist far beyond the box, which then holds the one mode k_y = 0): the
@@ -187,35 +199,43 @@ end
     ky = ky_modes(length(S), a.dx[2])
     x = (r.ip[end] - 1) * a.dx[1]
     cont = idft(S .* [cis(sqrt(complex(1 - k^2)) * (x - a.xa)) for k in ky])
-    @test sqrt(sum(abs2, r.A[end].Ey .- cont) / sum(abs2, cont)) > 20 * C * 3 / 16 * sqrt(105) * k4(6)
+    @test sqrt(sum(abs2, r.A[end].Ey .- cont) / sum(abs2, cont)) > 20 * C * angular_scale(6)
 end
 
 # --- T-393 ----------------------------------------------------------------------------------
 
-# Waist and Gouy phase against the paraxial Gaussian beam of the scheme (paraxial_beam): the
-# antenna's profile is a beam of q_a = (x_a − x_f) − i·z_R at ω₀ = 1, which the scheme diffracts with
-# keff = sin(kΔx)/Δx (focus at x_a + keff·(x_f − x_a), Rayleigh length keff·z_R, the waist kept).
-# The width is the second moment of |Â|², which the non-paraxial terms widen by a fraction of
-# order ⟨k_y⁴⟩/⟨k_y²⟩ = 3/w0², hence the scale 1/w0² for both quantities.
-@testset "T-393 the launched beam keeps the waist and the 2D Gouy phase of the scheme's paraxial Gaussian beam [A2, A7, WP-026]" begin
-    Cw, Cg = emC("T-393", "C_waist"), emC("T-393", "C_gouy")
+# Waist and Gouy phase. What the scheme predicts is the beam of T-392's angular-spectrum
+# propagation (angular_profile): its 1/e radius (the second moment of |Â|²) and its phase on the
+# axis, against which the measured ones are held to T-392's scale. The closed form is a sanity
+# check: the paraxial Gaussian beam of the scheme (paraxial_beam: the antenna's profile is a beam
+# of q_a = (x_a − x_f) − i·z_R at ω₀ = 1, which the scheme diffracts with keff = sin(kΔx)/Δx). The
+# non-paraxial terms widen the second moment by a fraction up to about ⟨k_y⁴⟩/⟨k_y²⟩ = 3/w0² (5.9 %
+# at waist 6 two Rayleigh lengths out, partly offset by the transverse dispersion at coarse Δy), so
+# the waist is held to 3/w0² and the Gouy phase to 1/w0²; at waist 6 that does not tell keff from
+# the continuum's k = 1, which T-392 does.
+@testset "T-393 the launched beam keeps the waist and the 2D Gouy phase the scheme predicts [A2, A7, WP-026]" begin
+    Ca, Cw, Cg = emC("T-393", "C_angular"), emC("T-393", "C_waist"), emC("T-393", "C_gouy")
     for pol in ANTENNA_POLS
         r = antenna_main(pol)
         comp = pol == π / 2 ? :Ez : :Ey
         bp = beam_profile(r; component = comp)
-        φ0 = bp[1].phase
-        worst_w = worst_g = 0.0
-        for b in bp
+        ap = angular_profile(r; component = comp)
+        φ0, φ0a = bp[1].phase, ap[1].phase
+        worst_a = worst_w = worst_g = 0.0
+        for (b, p) in zip(bp, ap)
             pb = paraxial_beam(r, b.x)
+            worst_a = max(worst_a, abs(b.w / p.w - 1), abs(rem2pi((b.phase - φ0) - (p.phase - φ0a), RoundNearest)))
             worst_w = max(worst_w, abs(b.w / pb.w - 1))
             worst_g = max(worst_g, abs(rem2pi(b.phase - φ0 - pb.gouy, RoundNearest)))
         end
-        record!("T-393 waist", Float64, worst_w * 36)
+        record!("T-393 angular", Float64, worst_a / angular_scale(6))
+        record!("T-393 waist", Float64, worst_w / (3 / 36))
         record!("T-393 gouy", Float64, worst_g * 36)
-        @test worst_w <= Cw / 36
+        @test worst_a <= Ca * angular_scale(6)
+        @test worst_w <= Cw * 3 / 36
         @test worst_g <= Cg / 36
         # the probes resolve the beam: the waist near the focus and the Gouy phase over two Rayleigh lengths
-        @test minimum(b -> b.w, bp) ≈ 6 rtol = Cw / 36
+        @test minimum(b -> b.w, bp) ≈ 6 rtol = 1e-2
         @test abs(rem2pi(bp[end].phase - φ0, RoundNearest)) > 0.9
     end
 end
@@ -225,18 +245,21 @@ end
 # The group velocity: once the pulse has left the antenna, the centroid of its energy moves at the
 # energy-weighted mean of the scheme's group velocity v_x = ∂ω/∂k_x over the pulse's modes
 # (spectral_group_velocity of a snapshot, the exact discrete relation), measured by a straight-line
-# fit over twelve snapshots. The on-axis plane-wave value cos(kΔx/2)/cos(Δt/2) misses the beam's
-# spread of directions, about 1/(2w0²) = 1.4 %, which the test resolves.
+# fit over the eleven snapshots from t = 100 to 140, both over the pulse's window. The on-axis
+# plane-wave value cos(kΔx/2)/cos(Δt/2) misses the beam's spread of directions, about 1/(2w0²) =
+# 1.4 %, which the test resolves.
 @testset "T-394 the pulse's energy travels at the Yee group velocity of its modes [A2, A7, WP-026]" begin
     C = emC("T-394")
     for pol in ANTENNA_POLS
         r = antenna_main(pol)
         grid = r.st.grid
+        cols = r.window[1]
+        @test length(r.shots) == 11
         ts = [s.t for s in r.shots]
-        X = [energy_centroid(s.f, grid) for s in r.shots]
+        X = [energy_centroid(s.f, grid; cols) for s in r.shots]
         M = [ones(length(ts)) ts]
         c = M \ X
-        vs = [spectral_group_velocity(s.f, grid, r.prob.dt) for s in r.shots[[1, end]]]
+        vs = [spectral_group_velocity(s.f, grid, r.prob.dt; cols) for s in r.shots[[1, end]]]
         rel = abs(c[2] / vs[end] - 1)
         record!("T-394", Float64, rel / C)
         @test rel <= C
@@ -249,24 +272,24 @@ end
 
 # --- T-395 ----------------------------------------------------------------------------------
 
-# The energy the pulse carries (the scheme's conserved energy of T-323, over the columns from the
-# antenna plane on, once the pulse has left it) equals the discrete Poynting flux of the incident
-# field through the plane (incident_flux), up to the antenna's order (k_y/k)⁴; and that flux is
-# laser_energy (the continuum's ∫∫ E·B) times cos(Δt/2)·cos(kΔx/2), the staggered product of E at
-# integer times on the plane and B at half times half a cell behind, up to the pulse's bandwidth.
+# The energy the pulse carries (the scheme's conserved energy of T-323 over the pulse's window at
+# t = 140, once it has left the antenna) equals the discrete Poynting flux of the incident field
+# through the plane (incident_flux), up to the antenna's order (k_y/k)⁴. That flux tends to
+# laser_energy (the continuum's ∫∫ E·B) at second order in the cells and the step: the staggered
+# product of E at integer times on the plane and B at half times half a cell behind is about
+# laser_energy·cos(Δt/2)·cos(kΔx/2), with further terms of the same order from the band and the
+# beam's diffraction over the half cell (scripts/em2d/antenna.jl measures the convergence).
 @testset "T-395 the energy the pulse carries matches the Poynting flux through the antenna [A2, A7, WP-026]" begin
     C, Cf = emC("T-395"), emC("T-395", "C_flux")
     for pol in ANTENNA_POLS
         r = antenna_main(pol)
         a = run_antenna(r)
-        n = ncells(r.st.grid)
-        W = conserved_energy(r.st, r.prob.dt; cols = a.ia:n[1])
+        W = conserved_energy(r.shots[end].f, r.st.grid, r.prob.dt; cols = r.window[1])
         Φ = incident_flux(r)
         rel = abs(W / Φ - 1)
         record!("T-395", Float64, rel / k4(6))
         @test rel <= C * k4(6)
-        yk = yee_axis(a.dx[1], r.prob.dt)
-        relf = abs(Φ / (laser_energy(a.laser) * cos(r.prob.dt / 2) * cos(yk.k * a.dx[1] / 2)) - 1)
+        relf = abs(Φ / laser_energy(a.laser) - 1) / (r.prob.dt^2 + a.dx[1]^2)
         record!("T-395 flux", Float64, relf / Cf)
         @test relf <= Cf
     end

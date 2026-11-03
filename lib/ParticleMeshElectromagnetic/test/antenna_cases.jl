@@ -6,7 +6,7 @@
 using ParticleMeshElectromagnetic: Antenna, antenna_dy, yee_b_half!
 
 """
-    antenna_problem(T; ncx = 16, ncy = 8, length = (180, 120), waist = 6, duration = 8, position = 10, focus = 28,
+    antenna_problem(T; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10, focus = 28,
                     polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95//100) -> EMProblem{2}
 
 A box of `length` (c/ω₀) with `ncx` cells per laser wavelength 2π along x and `ncy` along y,
@@ -14,7 +14,7 @@ A box of `length` (c/ω₀) with `ncx` cells per laser wavelength 2π along x an
 envelope peaks at the antenna plane at t = 6·duration (below Float64 roundoff at t = 0), its axis
 at the box's middle. Every laser parameter may be a dual (A3).
 """
-function antenna_problem(::Type{T}; ncx = 16, ncy = 8, length = (180, 120), waist = 6, duration = 8, position = 10,
+function antenna_problem(::Type{T}; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10,
                          focus = 28, polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95 // 100,
                          phase = 0) where {T}
     h = (2π / ncx, 2π / ncy)
@@ -182,6 +182,37 @@ function beam_profile(r; component = :Ey)
 end
 
 """
+    angular_profile(r; component = :Ey) -> Vector of (; x, w, phase)
+
+What [`beam_profile`](@ref) measures, computed instead from the Yee angular-spectrum propagation
+of the incident field's ω = 1 transform ([`angular_error`](@ref)'s prediction): the beam a
+perfect antenna launches into the scheme, non-paraxial terms and the scheme's dispersion
+included.
+"""
+function angular_profile(r; component = :Ey)
+    a = run_antenna(r)
+    h = Float64.(value_of.(a.dx))
+    dt = Float64(value_of(r.prob.dt))
+    yk = yee_axis(h[1], dt)
+    xa = Float64(value_of(a.xa))
+    inc = map(v -> value_of.(real.(v)) .+ im .* value_of.(imag.(v)), incident_dtft(r))
+    S = dft(getfield(inc, component))
+    ky = ky_modes(length(S), h[2])
+    s = component === :Ey ? 0.5 : 0.0
+    y = ((1:Int(a.n2)) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
+    j0 = argmin(abs.(y))
+    out = []
+    for i in r.ip
+        x = (i - 1) * h[1]
+        A = idft(S .* [cis(yee_kx(1.0, k, h[1], h[2], dt) * (x - xa)) for k in ky])
+        I = abs2.(A)
+        ȳ = sum(y .* I) / sum(I)
+        push!(out, (; x, w = 2 * sqrt(sum((y .- ȳ) .^ 2 .* I) / sum(I)), phase = angle(A[j0] * cis(-yk.k * (x - xa)))))
+    end
+    return out
+end
+
+"""
     paraxial_beam(r, x) -> (; w, gouy)
 
 The paraxial Gaussian beam of the Yee scheme at x: the antenna launches the profile of a beam
@@ -207,29 +238,45 @@ end
 eb(f) = (f.Ex, f.Ey, f.Ez, f.Bx, f.By, f.Bz)
 
 """
-    conserved_energy(st, dt; cols) -> W
+    conserved_energy(f, grid, dt; cols) -> W
 
 The energy the Yee scheme keeps in vacuum (T-323), ½·Σ(Eⁿ)² + ½·Σ Bⁿ⁻¹ᐟ²·Bⁿ⁺¹ᐟ² times ΔxΔy, over
-the interior columns `cols` (E and B of the same index) of the state's fields at an integer
-time; Bⁿ±¹ᐟ² from Bⁿ by half steps of ∓Δt/2 with the curl of Eⁿ ([`yee_b_half!`](@ref) on
-copies), so `cols` must not hold the B column behind an antenna plane, whose correction this
-leaves out.
+the interior columns `cols` (E and B of the same index) of the fields `f` at an integer time (a
+state's fields or a snapshot); Bⁿ±¹ᐟ² from Bⁿ by half steps of ∓Δt/2 with the curl of Eⁿ
+([`yee_b_half!`](@ref) on copies), so `cols` must not hold the B column behind an antenna plane
+while the antenna still injects.
 """
-function conserved_energy(st, dt; cols)
-    (; grid, fields) = st
+function conserved_energy(f, grid, dt; cols)
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
-    fp, fm = map(copy, fields), map(copy, fields)
+    fp, fm = map(copy, f), map(copy, f)
     yee_b_half!(fp, grid, dt / 2)
     yee_b_half!(fm, grid, -dt / 2)
     I1, I2 = g .+ cols, (g + 1):(g + n[2])
-    W = zero(eltype(st.ρ))
-    for c in (fields.Ex, fields.Ey, fields.Ez)
+    W = zero(eltype(f.Ex))
+    for c in (f.Ex, f.Ey, f.Ez)
         W += sum(abs2, Array(c)[I1, I2])
     end
     for k in (:Bx, :By, :Bz)
         W += sum(Array(getfield(fp, k))[I1, I2] .* Array(getfield(fm, k))[I1, I2])
     end
     return W * h[1] * h[2] / 2
+end
+
+"""
+    forward_window(r, xmax) -> (fwd, back)
+
+The interior columns from the antenna plane up to x = `xmax`, where the forward pulse is, and
+the others (behind the plane, and past `xmax`), where the backward leak is once it has wrapped
+round the periodic box. A run separates the two when, at the time of the measurement t, the
+pulse lies within `xmax` and the wrapped leak, emitted from the plane at most a time t earlier
+and travelling at c, lies beyond it: L − t > xmax − x_a.
+"""
+function forward_window(r, xmax)
+    a = run_antenna(r)
+    n1 = ncells(r.st.grid)[1]
+    i2 = round(Int, xmax / value_of(a.dx[1])) + 1
+    fwd = Int(a.ia):i2
+    return fwd, setdiff(1:n1, fwd)
 end
 
 "The energy ½Σ(E² + B²)ΔxΔy of the integer-time fields `f` (host arrays) over the interior columns `cols`."
@@ -269,12 +316,13 @@ function incident_flux(r)
 end
 
 """
-    energy_centroid(f, grid) -> X
+    energy_centroid(f, grid; cols = all) -> X
 
-The centroid along x of the energy density of the integer-time fields `f` (host arrays), each
-component at its own stagger (`Node()` columns at (i − 1)Δx, `Center()` at (i − ½)Δx).
+The centroid along x of the energy density of the integer-time fields `f` (host arrays) over the
+interior columns `cols`, each component at its own stagger (`Node()` columns at (i − 1)Δx,
+`Center()` at (i − ½)Δx).
 """
-function energy_centroid(f, grid)
+function energy_centroid(f, grid; cols = 1:ncells(grid)[1])
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
     I2 = (g + 1):(g + n[2])
     L = field_layout(Val(2))
@@ -282,7 +330,7 @@ function energy_centroid(f, grid)
     for key in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
         c = getfield(f, key)
         s = getfield(L, key)[1] isa Center ? 0.5 : 0.0
-        for i in 1:n[1]
+        for i in cols
             e = Float64(value_of(sum(abs2, view(c, g + i, I2))))
             num += (i - 1 + s) * Float64(value_of(h[1])) * e
             den += e
@@ -292,16 +340,17 @@ function energy_centroid(f, grid)
 end
 
 """
-    spectral_group_velocity(f, grid, dt) -> v
+    spectral_group_velocity(f, grid, dt; cols = all) -> v
 
 The group velocity along x of the Yee scheme averaged over the modes of the fields `f` with
-their energy as the weight: the 2D DFT of the interior of each component, the weight of a mode
+their energy as the weight: the 2D DFT of the interior of each component (zero outside the
+columns `cols`, which hold the pulse), the weight of a mode
 (k_x, k_y) the sum of its squared moduli, its frequency from the exact discrete relation and
 `v_x = |sin(k_xΔx)|/Δx / (sin(ωΔt)/Δt)`, the x derivative of the relation (a pulse travelling
 along +x, each pair of conjugate modes one wave). The energy centroid of a pulse that has left its
 source moves at this velocity (T-393).
 """
-function spectral_group_velocity(f, grid, dt)
+function spectral_group_velocity(f, grid, dt; cols = 1:ncells(grid)[1])
     g, n = guards(grid), ncells(grid)
     h = Float64.(value_of.(cellsize(grid)))
     dt = Float64(value_of(dt))
@@ -309,8 +358,9 @@ function spectral_group_velocity(f, grid, dt)
     Fx = [cis(-2π * (p - 1) * (i - 1) / n[1]) for p in 1:n[1], i in 1:n[1]]
     Fy = [cis(-2π * (j - 1) * (q - 1) / n[2]) for j in 1:n[2], q in 1:n[2]]
     W = zeros(n[1], n[2])
+    mask = [i in cols for i in 1:n[1]]
     for c in eb(f)
-        W .+= abs2.(Fx * Float64.(value_of.(c[I1, I2])) * Fy)
+        W .+= abs2.(Fx * (mask .* Float64.(value_of.(c[I1, I2]))) * Fy)
     end
     kx, ky = ky_modes(n[1], h[1]), ky_modes(n[2], h[2])
     num, den = 0.0, 0.0
