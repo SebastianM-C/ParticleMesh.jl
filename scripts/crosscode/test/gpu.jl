@@ -283,7 +283,7 @@ end
     perm = randperm(rng, n)
     shuffled = Dict(k => v[perm] for (k, v) in t)
     r = compare_tracks(t, shuffled)
-    @test r["identical"] && r["same_positions"] && r["particles"] == [n, n]
+    @test r["identical"] && r["same_positions"] && r["positions_match"] && r["particles"] == [n, n]
     @test all(r[k]["differing"] == 0 && r[k]["max_abs_difference"] == 0 for k in ("px", "py", "pz", "w"))
     # one ulp in one momentum is seen, and only there
     bumped = deepcopy(shuffled)
@@ -297,9 +297,19 @@ end
     # another count, or other positions, is not identical
     fewer = Dict(k => v[1:end-1] for (k, v) in t)
     @test !compare_tracks(t, fewer)["identical"]
+    # one ulp in a position (the GPU build's host code rounds so): matched, reported, not identical
+    nudged = deepcopy(t)
+    nudged["x"][5] = nextfloat(nudged["x"][5])
+    r = compare_tracks(t, nudged)
+    @test r["positions_match"] && !r["same_positions"] && !r["identical"]
+    @test r["positions"]["x"]["differing"] == 1 && r["positions"]["x"]["max_ulps"] == 1 && r["positions"]["y"]["differing"] == 0
+    @test r["px"]["differing"] == 0
+    # a shift below half the lattice spacing (0.01 in x) still matches, one above it does not
     moved = merge(t, Dict("x" => t["x"] .+ 1e-3))
     r = compare_tracks(t, moved)
-    @test !r["same_positions"] && r["max_abs_position_difference"] ≈ 1e-3
+    @test !r["same_positions"] && r["positions_match"] && r["max_abs_position_difference"] ≈ 1e-3
+    @test r["match_tolerance"] ≈ 0.005
+    @test !compare_tracks(t, merge(t, Dict("x" => t["x"] .+ 0.006)))["positions_match"]
     @test_throws ErrorException compare_tracks(merge(t, Dict("x" => fill(0.5, n), "y" => fill(0.5, n))), t)
     # the reader returns what was written; compare_loads on two run directories
     a, b, c = mktempdir(), mktempdir(), mktempdir()

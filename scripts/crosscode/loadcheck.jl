@@ -41,12 +41,18 @@ function read_track(file; iteration = 0)
     end
 end
 
-"The permutation that orders particles by (x, y), with a check that no two share a position."
-function position_order(t)
-    p = sortperm(collect(zip(t["x"], t["y"])))
-    xs, ys = t["x"][p], t["y"][p]
-    any(i -> xs[i] == xs[i+1] && ys[i] == ys[i+1], 1:length(p)-1) &&
-        error("two particles share a position; matching by position needs a regular load")
+"""
+    position_order(t, sx, sy) -> permutation
+
+The permutation that orders particles by their lattice index (round(x/sx), round(y/sy)), with
+a check that no two share one; positions that differ by rounding keep their index, so two
+loads of one lattice come out in the same order.
+"""
+function position_order(t, sx, sy)
+    keys_ = collect(zip(round.(Int, t["x"] ./ sx), round.(Int, t["y"] ./ sy)))
+    p = sortperm(keys_)
+    any(i -> keys_[p[i]] == keys_[p[i+1]], 1:length(p)-1) &&
+        error("two particles share a lattice point; matching by position needs a regular load")
     return p
 end
 
@@ -54,22 +60,34 @@ end
     compare_tracks(a, b) -> Dict
 
 Particle-by-particle comparison of two loads read by `read_track`, matched by position (a
-`regular` load puts every particle of a cell at its own lattice point): the counts, whether the
-positions are the same set exactly, and per momentum component and weight the number of
-particles that differ, the largest absolute difference and the largest relative to max |p|.
+`regular` load puts every particle of a cell at its own lattice point; both loads are put in
+the order of their lattice index on a's spacing, `position_order`). The positions match
+when every pair is closer than half the smallest distinct spacing of a's x or y coordinates; then their largest difference (absolute and in ulps) and
+the number that differ at all are reported, and per momentum component and weight the number
+of particles that differ, the largest absolute difference and the largest relative to max |p|.
+`identical` means bit for bit in every attribute.
 """
 function compare_tracks(a, b)
     r = Dict{String,Any}("particles" => [length(a["x"]), length(b["x"])])
-    length(a["x"]) == length(b["x"]) || (r["same_positions"] = false; r["identical"] = false; return r)
-    pa, pb = position_order(a), position_order(b)
-    same = a["x"][pa] == b["x"][pb] && a["y"][pa] == b["y"][pb]
-    r["same_positions"] = same
-    if !same
-        r["max_abs_position_difference"] = max(maximum(abs, a["x"][pa] .- b["x"][pb]), maximum(abs, a["y"][pa] .- b["y"][pb]))
-        r["identical"] = false
-        return r
+    length(a["x"]) == length(b["x"]) || (r["positions_match"] = false; r["identical"] = false; return r)
+    ulps(u, v) = abs(reinterpret(Int64, u) - reinterpret(Int64, v))
+    spacing(v) = (w = unique(sort(v)); length(w) > 1 ? minimum(diff(w)) : 1.0)
+    sx, sy = spacing(a["x"]), spacing(a["y"])
+    tol = min(sx, sy) / 2
+    pa, pb = position_order(a, sx, sy), position_order(b, sx, sy)
+    pos = Dict{String,Any}()
+    for k in ("x", "y")
+        u, v = a[k][pa], b[k][pb]
+        pos[k] = Dict{String,Any}("differing" => count(u .!== v), "max_abs_difference" => maximum(abs.(u .- v)),
+                                  "max_ulps" => maximum(ulps.(u, v)))
     end
-    identical = true
+    r["positions"] = pos
+    r["max_abs_position_difference"] = max(pos["x"]["max_abs_difference"], pos["y"]["max_abs_difference"])
+    r["same_positions"] = pos["x"]["differing"] == 0 && pos["y"]["differing"] == 0
+    r["positions_match"] = r["max_abs_position_difference"] < tol
+    r["match_tolerance"] = tol
+    r["positions_match"] || (r["identical"] = false; return r)
+    identical = r["same_positions"]
     for k in ("px", "py", "pz", "w")
         u, v = a[k][pa], b[k][pb]
         d = abs.(u .- v)
@@ -133,6 +151,7 @@ function compare_loads(a, b, out)
         r["species"][sp] = compare_tracks(read_track(joinpath(a, f)), read_track(joinpath(b, f)))
     end
     r["identical"] = all(v -> v["identical"], values(r["species"]))
+    r["positions_match"] = all(v -> v["positions_match"], values(r["species"]))
     r["scalars_first_output"] = compare_first_scalars(a, b)
     r["fields_t0"] = compare_first_fields(a, b)
     r["note"] = "particles of the lower-left eighth of the box per axis at t = 0, matched by position; a measurement"
