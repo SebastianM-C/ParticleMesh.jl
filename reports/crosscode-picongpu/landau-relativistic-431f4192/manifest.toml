@@ -1,9 +1,9 @@
-commit = "e42917a820b240750e7b1d9e3b72a0f2378fe866"
+commit = "131006508b14498adb98f254c34b0a319b8c3cb4"
 dirty = false
 julia = "1.13.3"
 kind = "post-hoc theory comparison"
 runs = ["smilei-landau-oblique-2d-431f4192", "picongpu-landau-oblique-2d-fp64-431f4192"]
-updated = "2026-11-03T11:02:52.970Z"
+updated = "2026-11-03T11:28:13.756Z"
 work_package = "WP-025"
 
 [inputs]
@@ -11,6 +11,6 @@ work_package = "WP-025"
 "picongpu-landau-oblique-2d-fp64-431f4192/seed-coefficients.json" = "sha256:ff8cc38f5b93a074febf0c1d3c3bac4f58ac4862167e274862d36860a6f1e321"
 "scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
 "scripts/crosscode/landau_relativistic.jl" = "sha256:e1c21f99c445a03b2dd0fc160be61ef38be7bdd278233fecfd19c9b2f48ec939"
-"scripts/crosscode/theory.jl" = "sha256:d65079bf5a40b7aac53e179c4ecd2af51f5a1a9da66ed05cc85f55bf6fb2d8be"
+"scripts/crosscode/theory.jl" = "sha256:a16e3fd9c4d33cd5c60ef8034ec1fa39af50b2177dbab2f481fe4eac79511575"
 "smilei-landau-oblique-2d-431f4192/observables.json" = "sha256:22ae953201bfc17370e3fd94b31964ef1126f0f91bd30736ad931c184a76809d"
 "smilei-landau-oblique-2d-431f4192/seed-coefficients.json" = "sha256:ad7f413b5212205dd50f5830cdb386d56101cec562e0fbc756ceeb1e729efc38"
