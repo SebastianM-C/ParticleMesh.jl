@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| Work package | WP-017 (goals A1, A5, A6, A7) |
-| Runs | PIConGPU: `picongpu-landau-fp64-295ddf42`, `picongpu-landau-fp32-295ddf42` (8 seeds each; FP32 analyzed after the review), `picongpu-two-stream-fp64-736a428f`, `picongpu-two-stream-fp32-736a428f`, `picongpu-two-stream-256-fp64-56d5d9ae`, `picongpu-two-stream-256-fp32-56d5d9ae`, `picongpu-landau-oblique-2d-fp64-bc8fd6af` (4 seeds); Smilei: `smilei-landau-oblique-2d-bc8fd6af` (4 seeds). The Smilei 1D runs compared against are WP-012's (`reports/crosscode-smilei-1d/stage-1b/`) on the same case files |
-| Commits of the inputs | Every run prepared at `917f460f2050ec1a8efa5c59a2d71c2ae7cd9d1b` (clean tree, in each `manifest.toml`); the analyses are recorded in each manifest's `[analysis]` table. The oblique ensemble observable and its seeds were registered in `d61a812`, before it and before any run of the case in this package. These ids are on the branch `wp-017-runs-provenance`, the history before the PR was rebased onto `main`; the PR's commits carry the same content under new ids |
-| Case hashes (SHA-256, first 8 hex) | `landau.toml` `295ddf42`, `two-stream.toml` `736a428f`, `two-stream-256.toml` `56d5d9ae` (the files WP-012's Smilei runs used), `landau-oblique-2d.toml` `bc8fd6af` (WP-019's file with the seeds and the ensemble entry added); full hashes in each manifest under `inputs` |
+| Work package | WP-017 (goals A1, A5, A6, A7); the 32-seed oblique ensembles WP-025 (A5, A7) |
+| Runs | PIConGPU: `picongpu-landau-fp64-295ddf42`, `picongpu-landau-fp32-295ddf42` (8 seeds each; FP32 analyzed after the review), `picongpu-two-stream-fp64-736a428f`, `picongpu-two-stream-fp32-736a428f`, `picongpu-two-stream-256-fp64-56d5d9ae`, `picongpu-two-stream-256-fp32-56d5d9ae`, `picongpu-landau-oblique-2d-fp64-bc8fd6af` (4 seeds), `picongpu-landau-oblique-2d-fp64-431f4192` (32 seeds, WP-025); Smilei: `smilei-landau-oblique-2d-bc8fd6af` (4 seeds), `smilei-landau-oblique-2d-431f4192` (32 seeds, WP-025); WP-025's design and post-hoc checks `seed-count-20261102T170156`, `subensembles-landau-oblique-2d-431f4192`. The Smilei 1D runs compared against are WP-012's (`reports/crosscode-smilei-1d/stage-1b/`) on the same case files |
+| Commits of the inputs | Every run prepared at `917f460f2050ec1a8efa5c59a2d71c2ae7cd9d1b` (clean tree, in each `manifest.toml`); the analyses are recorded in each manifest's `[analysis]` table. The oblique ensemble observable and its seeds were registered in `d61a812`, before it and before any run of the case in this package. These ids are on the branch `wp-017-runs-provenance`, the history before the PR was rebased onto `main`; the PR's commits carry the same content under new ids. WP-025's runs were prepared at `5707406` and analyzed at `9dd7b5d` (clean trees), its 28 seeds registered in `ada4769` before any of their runs; these ids are on the branch `worktree-WP-025-oblique-landau-seeds`, before the squash merge |
+| Case hashes (SHA-256, first 8 hex) | `landau.toml` `295ddf42`, `two-stream.toml` `736a428f`, `two-stream-256.toml` `56d5d9ae` (the files WP-012's Smilei runs used), `landau-oblique-2d.toml` `bc8fd6af` (WP-019's file with the seeds and the ensemble entry added) and `431f4192` (the same with 32 seeds, WP-025); full hashes in each manifest under `inputs` |
 | PIConGPU | 0.8.0, commit `6bb3470ee16dd5a3a93f24c85b111be3b8440d22`, CUDA backend for `sm_89`; image `localhost/particlemesh-picongpu:a743cbb40f17cdae`, id `1b4f3d0fb3c291e2d861732bda21463920167f39227c21b7947c37a9238ff50b` (toolchain as `pm-versions` printed it in each run's `versions.toml`, whose hash is in the manifest: nvcc 12.5.82, gcc 13.3.0, CMake 3.28.3, OpenMPI 4.1.6, openPMD-api 0.15.2, HDF5 1.10.10, Boost 1.83 from Ubuntu's package; the file is not committed, because the Debian revision of the Boost version trips the repository's IP-address scan) |
 | Smilei | v5.1, commit `438d43d8ab727d02dd8f4402c50393343e871b99`, CPU build; image `localhost/particlemesh-smilei:e4f0148b8952fc87`, id `7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c` |
-| Hardware | PIConGPU: NVIDIA GeForce RTX 4080 SUPER (driver 595.104.02), one device, one MPI rank. Smilei: Intel Core i9-14900K, 16 OpenMP threads (one per patch), one MPI rank |
+| Hardware | PIConGPU: NVIDIA GeForce RTX 4080 SUPER (driver 595.104.02; WP-025's runs 595.112.07), one device, one MPI rank. Smilei: Intel Core i9-14900K, 16 OpenMP threads (one per patch), one MPI rank |
 | Generator, reader, analysis | `scripts/crosscode/picongpu.jl`, `read.jl` (`PIConGPURead`), `analyze.jl`, `compare.jl` at the commits above; the analysis commit of each run is in its manifest's `[analysis]` table |
 | Review | numerics-reviewer (`.claude/agents/numerics-reviewer.md`), fresh subagent, claude-opus-5-5, 2026-11-01; findings `review.md` (one blocking, three major, eight minor), answered in "Review" |
 
@@ -163,13 +163,70 @@ The pre-registered ensemble observable `damping_rate_mode_ensemble` (added befor
 
 Smilei's seed 20261031 reproduces WP-019's single run (`damping_rate_mode` 0.16093 in both).
 
-The ensembles differ by 1.5 combined errors. They straddle the theory, Smilei's 0.6 errors above it and PIConGPU's 1.35 errors below. Each ensemble's fit stops at a different maximum (5 against 7), the variation the jackknife over four seeds samples poorly (WP-012's review, F1). The single-run rule averaged over the same seeds agrees to 0.3 errors. With four seeds per code this is a 1.5σ difference, and nothing here shows it to be a code difference; more seeds would decide it.
+The ensembles differ by 1.5 combined errors. They straddle the theory, Smilei's 0.6 errors above it and PIConGPU's 1.35 errors below. Each ensemble's fit stops at a different maximum (5 against 7), the variation the jackknife over four seeds samples poorly (WP-012's review, F1). The single-run rule averaged over the same seeds agrees to 0.3 errors. With four seeds per code this is a 1.5σ difference; the 32-seed ensembles below show it to be noise.
 
 PIConGPU's `energy_ratio` is the background field, not a measurement of PIConGPU: the generator put the discrete Poisson field there. `energy_ratio_mode` is a ratio of noisy mode energies at the fit maxima, and its two codes differ by 2.3 errors of the means: PIConGPU is 1.6 errors above the Yee value and Smilei 1.9 below.
 
 ![Oblique ensembles, Smilei and PIConGPU](compare/landau-oblique-2d-smilei-vs-picongpu-fp64/landau-oblique-2d-ensemble-energy.png)
 ![PIConGPU oblique ensemble](picongpu-landau-oblique-2d-fp64-bc8fd6af/plots/ensemble-energy.png)
 ![Smilei oblique ensemble](smilei-landau-oblique-2d-bc8fd6af/plots/ensemble-energy.png)
+
+### Oblique Landau damping in 2D over 32 seeds (WP-025)
+
+The four-seed difference above, 1.46 combined jackknife errors, left open whether the codes differ. WP-025 ran the case over 32 seeds per code, the 28 new seeds registered in the case file (`ada4769`) before any run of them. The case is otherwise unchanged; T-390 checks that against WP-017's copy. The new hash `431f4192` puts the runs into new directories, and the four-seed runs above stay as they are. WP-017's four seeds are the first four of the 32 and were rerun: their dumps are not committed, and the ensemble needs each seed's complex mode coefficient.
+
+**Seed count.** It was chosen from the four-seed runs before the new runs (`seed-count-20261102T170156/`, `scripts/crosscode/seed_count.jl`). For the synthetic estimate, ensembles at each run's measured per-seed noise, 400 per seed count and amplitude model, went through the pre-registered rule (the model of `ensemble_bias.jl`). For the measured estimate, the jackknife errors were scaled as 1/√M. At M = 32 per code the spread of the two-code difference is 0.0058 (synthetic) and 0.0040 (measured), so a real difference of WP-017's 0.0165 would stand 2.9 or 4.1 of them from zero. A 4-spread separation by both estimates would have needed about 56 seeds per code, about 14 h of runner time; 32 was the compromise. The measured jackknife errors at 32 seeds, 0.0033 in both codes, fall inside the synthetic prediction of 0.0030 to 0.0042.
+
+**Runs.** `smilei-landau-oblique-2d-431f4192` and `picongpu-landau-oblique-2d-fp64-431f4192` were prepared at `5707406` (clean tree) and analyzed at `9dd7b5d`. The images are those of the four-seed runs. The PIConGPU driver was 595.112.07 (WP-017: 595.104.02). The work ran as six runner jobs on the two directories: the generated `run.sh` skips finished seeds and starts none after a 5400 s budget (T-391). Per seed, Smilei took 550 s to 563 s on 16 threads and PIConGPU 314 s to 329 s, plus a compile of 103 s and 67 s in its two jobs. Committed per run: the top directory complete, with `seed-coefficients.json` (each seed's complex coefficient of E·k̂, from which every ensemble number below can be recomputed), and per seed the observables, manifest, sidecars and PIConGPU's energy files. Only the first seed keeps its PNGs: the standard plots of all 64 seeds would add 54 MB.
+
+**Reruns of WP-017's seeds.** Smilei reproduces every committed per-seed observable of the four seeds bit for bit, and its first four seeds reproduce WP-017's ensemble γ (0.15697805). PIConGPU's reruns are not bitwise, which its atomic current deposit allows. `energy_ratio` (t = 0) is identical. The single-seed `damping_rate_mode` moves by 3.5 × 10⁻⁶ to 0.010, within the per-seed spread of 0.021, and `energy_ratio_mode` by up to 0.05. The four-seed ensemble γ from the reruns is 0.14047, against WP-017's 0.14045.
+
+**Checks**, every seed: Gauss's law at t = 0 relative to the loaded perturbation, 1.1 × 10⁻¹² in PIConGPU (6.5 × 10⁻¹⁰ in Smilei). PIConGPU's dumps hold ≤ 1.8 × 10⁻¹⁴ absolute over the run, with no dump flagged. The largest relative change of the total energy is 2.4 × 10⁻⁷ to 2.9 × 10⁻⁷ in PIConGPU and 1.3 × 10⁻⁶ to 1.4 × 10⁻⁶ in Smilei. The initial kinetic energy against (3/2) n T L², seed mean ± standard error, is −0.0013 % ± 0.0032 % in Smilei and −0.321 % ± 0.004 % in PIConGPU. For PIConGPU's non-relativistic Maxwellian in momentum the series −(5/4)T + (35/8)T² gives −0.310 %. That leaves 2.7 standard errors unexplained (four seeds: −0.34 %, "not followed up" above; still not followed up).
+
+| | Smilei | PIConGPU FP64 | PIConGPU − Smilei |
+|---|---|---|---|
+| ensemble γ ± jackknife (theory 0.15336) | **0.1504 ± 0.0033** (−1.9 %, −0.9 errors) | **0.1458 ± 0.0033** (−4.9 %, −2.3 errors) | **−0.0047**: 1.01 combined jackknife errors, 0.25 seed spreads of either code |
+| fit's own standard error | 0.0022 | 0.0025 | |
+| maxima used, fit range | 5, t = 4.76 to 13.69 | 6, t = 4.76 to 15.91 | |
+| ω_r from the maxima (theory 1.41566) | 1.4066 | 1.4090 | |
+| ensemble floor; floor / (ln 2 × noise of the mean) | 4.7 × 10⁻¹⁰; 51 | 3.5 × 10⁻¹⁰; 42 | |
+| per-seed γ at the ensemble's maxima, mean ± std | 0.1499 ± 0.0189 | 0.1450 ± 0.0191 | |
+| `damping_rate_mode` per seed (single-run rule), mean ± std over 32 | 0.1454 ± 0.0183 | 0.1465 ± 0.0212 | +0.0011: 0.23 combined errors of the means |
+| `damping_rate_energy` | none in any seed, as pre-registered | none in any seed | |
+| `energy_ratio_mode`, mean ± std over 32 (Yee 3.99759) | 4.033 ± 0.138 (+1.4 errors of the mean) | 3.980 ± 0.168 (−0.6) | −0.052: 1.4 combined errors of the means |
+
+**The floor no longer falls with M.** At 32 seeds the last 20 % of the run, where the rule takes its floor, holds residual signal (floor / (ln 2 × noise of the mean) is 42 to 51, against 2.9 to 5.5 at four seeds). The floor barely moved from the four-seed runs (4.3 and 3.2 × 10⁻¹⁰). More seeds therefore lower the noise at the maxima used (signal-to-noise ratio ≥ 350 at the last one) but do not lengthen the fit. The synthetic ensembles include this, since they put the signal through the same rule.
+
+**Sub-ensembles** (`subensembles-landau-oblique-2d-431f4192/`, post hoc): the rule on disjoint groups of consecutive seeds, group 1 being WP-017's four.
+
+| seeds per ensemble | groups | Smilei: sd of γ / mean jackknife / mean γ | PIConGPU: sd / mean jackknife / mean γ | sd of the group-by-group difference |
+|---|---|---|---|---|
+| 4 | 8 | 0.0116 / 0.0101 / 0.1465 | 0.0129 / 0.0095 / 0.1443 | 0.0138 |
+| 8 | 4 | 0.0086 / 0.0073 / 0.1479 | 0.0098 / 0.0057 / 0.1435 | 0.0136 |
+| 16 | 2 | 0.0060 / 0.0066 / 0.1497 | 0.0014 / 0.0068 / 0.1457 | 0.0074 |
+
+At four seeds the jackknife underestimates the measured spread by 1.15 (Smilei) and 1.36 (PIConGPU), from eight groups each. The four-seed difference scatters with sd 0.0138 over the eight group pairs, against 0.0155 from the synthetic ensembles. WP-017's −0.0165 is 1.2 of those. The groups' γ goes with where their fit stops: the four-seed groups whose fit takes seven maxima give 0.127 to 0.141 in Smilei. The mean four-seed γ (0.1465, 0.1443) lies below the 32-seed value in both codes, so the rule's result depends on the seed count. A comparison with it is made at equal M.
+
+**A common window** (the same file, post hoc): all 32 seeds fitted on the first k maxima after t = 3, the same dumps in both codes, with the jackknife on fixed samples:
+
+| maxima k (last at t) | Smilei | PIConGPU | PIConGPU − Smilei |
+|---|---|---|---|
+| 3 (9.20) | 0.1452 ± 0.0028 | 0.1477 ± 0.0027 | +0.0025 (0.66 combined errors) |
+| 4 (11.44) | 0.1467 ± 0.0032 | 0.1513 ± 0.0032 | +0.0046 (1.02) |
+| 5 (13.68) | **0.1505 ± 0.0034** (Smilei's rule) | 0.1496 ± 0.0035 | −0.0008 (0.17) |
+| 6 (15.93) | 0.1501 ± 0.0031 | **0.1458 ± 0.0033** (PIConGPU's rule) | −0.0043 (0.96) |
+
+Smilei's rule stops at five maxima because its sixth, 4.693 × 10⁻⁹, lies 0.04 % below 10 × its floor (4.695 × 10⁻⁹). Taking it would not change Smilei's γ (0.1501 against 0.1504). PIConGPU's sixth maximum, 5.27 × 10⁻⁹, lies 12 % above Smilei's, which is about one standard deviation of the noise in |⟨E·k̂⟩|² there. The difference changes sign with the window and stays within about one combined error at every k.
+
+**Decision.** The four-seed difference was noise. At 32 seeds per code the ensemble γ of the two codes differ by −0.0047 ± 0.0046 under the pre-registered rule, and by −0.0043 to +0.0046 over common windows of three to six maxima, each within 1.02 combined errors. A real difference of the four-seed size, 0.0165, would lie 2.5 combined errors from the rule's value. The 95 % interval of a code difference under the rule is −0.014 to +0.004. Smilei and PIConGPU do not differ at this resolution, and A7's 2D spread for this case is the statistical error of the ensembles. The proposal (`questions/wp-017-a7-thresholds.md`, P2) now rests on the 32-seed errors.
+
+**Against theory.** Both 32-seed ensembles lie below linear theory, Smilei by 0.9 and PIConGPU by 2.3 jackknife errors. Their mean, 0.1481 ± 0.0023, is 2.3 errors below; over the common windows of five and six maxima, 1.4 and 2.4 below (post hoc). The rule's own bias on synthetic ensembles at 32 seeds is at most 3 × 10⁻⁴ (`seed-count.json`, calibrations at M = 32). The synthetic signal is a pure damped mode, though, and the deficit is not explained here: the relativistic correction of Smilei's load and any non-modal content after t = 3 are not computed. This is the 2D side of #167, where both codes' 1D Landau ensembles also lie below theory.
+
+![Oblique ensembles over 32 seeds, Smilei and PIConGPU](compare/landau-oblique-2d-431f4192-smilei-vs-picongpu-fp64/landau-oblique-2d-ensemble-energy.png)
+![Sub-ensembles of 4, 8, 16 and 32 seeds](subensembles-landau-oblique-2d-431f4192/subensembles.png)
+![Seed count: spread of the difference against M, from the four-seed runs](seed-count-20261102T170156/seed-count.png)
+![Smilei, 32 seeds](smilei-landau-oblique-2d-431f4192/plots/ensemble-energy.png)
+![PIConGPU, 32 seeds](picongpu-landau-oblique-2d-fp64-431f4192/plots/ensemble-energy.png)
 
 ### Compile and run times
 
@@ -212,12 +269,14 @@ Not verified by the review, and still open: Smilei's side of the initial-momentu
 - The reader's layout assumptions (meshes under `fields/`, F[y][x], spacing in axisLabels order, position x first) were checked on a run's file.
 - The generated setups compiled and ran first time in the runner's image; PIConGPU's own `chargeConservation` and the analysis's Gauss check confirm the initial field.
 - The oblique ensemble entry was committed (`d61a812`) before any run of the case in this package, and T-256 checks that WP-019's four entries are unchanged.
+- T-390 (the 32-seed case is WP-017's apart from the seed list), T-391 (the generated run scripts skip finished seeds and stop at their budget, with fake codes on PATH) and T-392 (sub-ensembles and the common window on synthetic seeds) pass on the CPU. WP-025's 28 seeds were committed (`ada4769`) before any of their runs, and the observable is WP-017's, unchanged.
 - The ParticleMesh two-stream investigation is post hoc: it reran WP-012's ParticleMesh case with the start-up kick scaled (0, 1, 2, −1), from scripts outside the repository, with no repository file changed; its baseline reproduced WP-012's stored series exactly. The proposal of an option is #226.
 - Not verified: whether a particle can be skipped in the push and the deposit together (#241 covers only the `FieldTmp` race; a skipped push leaves no Gauss trace); the 2D seed-mean kinetic energy sits about 2.5 standard errors from the quadrature prediction; the cell-centred-weight explanation of ParticleMesh's remaining 2 × 10⁻⁴ in U.
 
 ## Known limitations and open items
 
-- **Seeds.** Four seeds per code in 2D and eight in 1D leave the Landau differences unresolved (0.3 and 1.5 combined errors). The jackknife over four seeds samples the variation of the fit's stop poorly (WP-012 review, F1).
+- **Seeds.** Eight seeds per code in 1D leave the Landau difference unresolved (0.3 combined errors). In 2D, 32 seeds per code resolve the difference to ±0.0046 and find none (1.0 combined errors). At four seeds the jackknife underestimates the measured spread of the ensemble γ by 1.15 to 1.36, and the rule's result depends on the seed count (WP-025's sub-ensembles).
+- **PIConGPU's 2D initial kinetic energy** is 0.011 % (2.7 standard errors over 32 seeds) further below (3/2) n T than the non-relativistic-Maxwellian series predicts. Not followed up.
 - **Initial conditions are not identical across the codes**, by design of each code: the in-cell lattice (whole cell against 97.5 %), the thermal momenta (non-relativistic Maxwellian in momentum against Smilei's classical energy with relativistic |p|, O(T) = 2.5 × 10⁻³), Smilei's constant post-Poisson field, and ParticleMesh's half-step kick (#226). The cold two-stream case shows that the in-cell lattice does not matter at 10⁻⁶ between Smilei and PIConGPU; being cold, it says nothing about the thermal momenta.
 - **The charge-density glitch** of PIConGPU in the thermal quasi-1D layout (Results, checks): a race in `FieldTmp`'s deposit, reported as #241; a push and a deposit skipped together for one particle is untested.
 - **PIConGPU's kinetic-energy column** is p²/2m below γ = 1.005; the reader forms the exact kinetic energy from the total-energy column (README, "PIConGPU specifics").
