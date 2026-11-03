@@ -10,10 +10,12 @@ end
 
 @testset "T-430 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
     mktempdir() do tmp
-        # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell
+        # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell, with a
+        # 10 % perturbation so that the ensemble fit finds its maxima above the noise of 16384 electrons
         src = TOML.parsefile(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
         seeds = Int.(src["numerics"]["seeds"][1:4])
         src["numerics"]["seeds"] = seeds
+        src["species"][1]["perturbation"]["amplitude"] = 0.1
         case_file = joinpath(tmp, "case.toml")
         open(io -> TOML.print(io, src; sorted = true), case_file, "w")
         sz = (; ppc = (4, 4), cells = (32, 32))
@@ -32,6 +34,7 @@ end
         per_run = [PMEns.damping_from_peaks(x.tU, x.WEx .+ x.WEy; fit_start = ro["fit_start"], floor_factor = ro["floor_factor"]) for x in sims]
         direct = PMEns.EnsembleReport.ensemble_result(case, sims[1].tC, [x.El for x in sims], seeds; per_run)[1]
         @test r["seeds"] == seeds
+        @test r["measured"] isa Float64 && r["measured_stderr"] isa Float64 && r["maxima_used"] >= 3
         for k in ("measured", "measured_stderr", "measured_frequency", "maxima_used", "ensemble_floor", "jackknife_gammas")
             @test isequal(r[k], direct[k])
         end
