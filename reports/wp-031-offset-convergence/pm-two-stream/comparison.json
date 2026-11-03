@@ -15,12 +15,14 @@
         ],
         "gamma": 0.34590386641828186,
         "gamma_ivp": 0.34760489030684594,
+        "gamma_ivp_minus_half_start": 0.3476541955583539,
         "gamma_stderr": 0.0008968825803296151,
         "offset": -0.014169980552423467,
         "offset_ivp": -0.009322042798769914,
         "ratio_to_ivp_window_end": 0.9778936785069395,
         "ratio_to_ivp_window_start": 0.997005041069148,
         "residual": -0.004847937753653538,
+        "residual_minus_half_start": -0.0049884582906347666,
         "saturation": {
           "U": 0.0019112126975822149,
           "t": 24.977528
@@ -106,12 +108,14 @@
         ],
         "gamma": 0.3459030588767794,
         "gamma_ivp": 0.34760489030684594,
+        "gamma_ivp_minus_half_start": 0.3476296079250174,
         "gamma_stderr": 0.0008968973227377161,
         "offset": -0.014172282055044061,
         "offset_ivp": -0.009322042798769914,
         "ratio_to_ivp_window_end": 0.9778633099025738,
         "ratio_to_ivp_window_start": 0.9969806823524265,
         "residual": -0.004850239256274205,
+        "residual_minus_half_start": -0.00492068475390622,
         "saturation": {
           "U": 0.0019112087751207245,
           "t": 24.977528
@@ -197,12 +201,14 @@
         ],
         "gamma": 0.3459028569911566,
         "gamma_ivp": 0.34760489030684594,
+        "gamma_ivp_minus_half_start": 0.347617265428388,
         "gamma_stderr": 0.0008969010083290708,
         "offset": -0.01417285743140384,
         "offset_ivp": -0.009322042798769914,
         "ratio_to_ivp_window_end": 0.9778557179079349,
         "ratio_to_ivp_window_start": 0.9969745927720821,
         "residual": -0.004850814632633949,
+        "residual_minus_half_start": -0.00488608387213914,
         "saturation": {
           "U": 0.0019112077941504401,
           "t": 24.977528
@@ -288,12 +294,14 @@
         ],
         "gamma": 0.3459028065197357,
         "gamma_ivp": 0.34760489030684594,
+        "gamma_ivp_minus_half_start": 0.3476110819538122,
         "gamma_stderr": 0.0008969019297261399,
         "offset": -0.014173001275537,
         "offset_ivp": -0.009322042798769914,
         "ratio_to_ivp_window_end": 0.9778538199192017,
         "ratio_to_ivp_window_start": 0.9969730703833194,
         "residual": -0.004850958476767114,
+        "residual_minus_half_start": -0.004868604742223329,
         "saturation": {
           "U": 0.0019112075486010871,
           "t": 24.977528
