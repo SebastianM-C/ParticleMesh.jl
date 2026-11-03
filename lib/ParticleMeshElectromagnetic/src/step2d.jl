@@ -200,7 +200,8 @@ current!(::NoCurrent, st::EMState{2}, p::EMParams) = st
 
 # Sort where the deposition mode needs it (the old positions in the extras follow the
 # particles), zero Jx, Jy, Jz, add every species' Esirkepov current from its old and new
-# positions (`q·w·u_z/γ` for Jz) and fold the guards.
+# positions (`q·w·u_z/γ` for Jz), fold the guards and apply the numerics' binomial filter
+# (through the scratch field ρ, which only initialize! reads otherwise).
 function current!(::Esirkepov, st::EMState{2}, p::EMParams)
     (; numerics, grid, fields) = st
     T = eltype(st.ρ)
@@ -218,6 +219,7 @@ function current!(::Esirkepov, st::EMState{2}, p::EMParams)
     fold_guards!(fields.Jx, grid; workgroupsize = wgs)
     fold_guards!(fields.Jy, grid; workgroupsize = wgs)
     fold_guards!(fields.Jz, grid; workgroupsize = wgs)
+    filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs)
     return st
 end
 
@@ -228,11 +230,13 @@ Step `k` at N = 2, the order of the 1D step: the diagnostics of Eⁿ, Bⁿ and o
 energy at n − 1/2 (parallel reductions in a fixed order); per species, store the old position,
 push the momentum in Eⁿ, Bⁿ gathered at xⁿ on each component's stagger and move the particle
 along both axes; the current of the numerics' choice (for [`Esirkepov`](@ref)`()`: sort where
-the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the guards; for
-`NoCurrent()` J stays zero); the kinetic energy at n + 1/2; the mesh solve (Yee: B half step, E
-full step with J, B half step), with the antennas' total-field/scattered-field corrections
-between the sub-steps (time `(k − 1)·Δt` at the start of the step). With `Esirkepov()`, Gauss's
-law then holds to roundoff after every step (T-360), off the antenna columns with lasers (T-406). `k` must lie within the allocated steps and
+the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the guards, then the
+numerics' [`BinomialFilter`](@ref); for `NoCurrent()` J stays zero); the kinetic energy at
+n + 1/2; the mesh solve (Yee: B half step, E full step with J, B half step), with the antennas'
+total-field/scattered-field corrections between the sub-steps (time `(k − 1)·Δt` at the start of
+the step). With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff after
+every step (T-360), off the antenna columns with lasers (T-406); with passes its filtered form
+does (T-441). `k` must lie within the allocated steps and
 `params.kmode` must be the state's diagnostic mode (an `ArgumentError` otherwise).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer)
