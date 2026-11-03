@@ -382,3 +382,51 @@ scale = "k·max|Float32 value| per component"
 C = 8
 measured = { "Dual{Float32,3}" = 1.49 }
 status = "proposed; not bitwise (A4)"
+
+# WP-026: the laser antenna (measure, then propose; values filled from the first runs)
+["T-391"]
+quantity = "energy behind the antenna plane over the pulse's energy, the A8 runs (C, waist 4) and the physics runs (C_main, waist 6); a0·∂E/∂a0 − E over eps(T)·max|E|·√steps (C_linear)"
+scale = "fraction (C, C_main); see quantity (C_linear); 16 × 8 cells per wavelength"
+C = 1e-3
+C_main = 2e-6
+C_linear = 10
+status = "proposed"
+
+["T-392"]
+quantity = "relative L² difference of the ω₀ transform on the probe columns from the Yee angular-spectrum propagation of the incident field"
+scale = "(3/16)·√105/w0⁴, the antenna's order (k_y/k)⁴ (waist 6, Float64) for C; eps(T)·√steps for the plane wave (C_plane)"
+C = 1.5
+C_plane = 2
+status = "proposed"
+
+["T-393"]
+quantity = "|w/w_paraxial − 1| (C_waist) and |Gouy − Gouy_paraxial| in radians (C_gouy), the scheme's paraxial beam"
+scale = "1/w0² (waist 6, Float64)"
+C_waist = 2
+C_gouy = 1
+status = "proposed"
+
+["T-394"]
+quantity = "|v_centroid/v_spectral − 1|, the energy centroid's velocity against the energy-weighted Yee group velocity"
+scale = "relative (waist 6, Float64)"
+C = 1e-4
+status = "proposed"
+
+["T-395"]
+quantity = "|W/Φ − 1|, the conserved energy past the plane against the discrete Poynting flux of the incident field (C); |Φ/(laser_energy·cos(Δt/2)·cos(kΔx/2)) − 1| (C_flux)"
+scale = "1/w0⁴ (C); relative (C_flux) (waist 6, Float64)"
+C = 0.2
+C_flux = 2e-4
+status = "proposed"
+
+["T-396"]
+quantity = "Gauss residual and ∇·B off the antenna's columns, and on them minus the accumulated surface charges"
+scale = "eps(T)·√(k+1)·((n₁ + n₂)·max|ρ| + (Σ 2/Δ_d)·max|E|) for Gauss, eps(T)·√(k+1)·(Σ 2/Δ_d)·max|B| for ∇·B"
+C = 1
+status = "proposed"
+
+["T-397"]
+quantity = "AD against the finite-difference floor of the ω₀ intensity on the axis of a probe, in focus and chirp"
+scale = "rel/floor_rel at the minimising step (A7)"
+C = 1
+status = "proposed"

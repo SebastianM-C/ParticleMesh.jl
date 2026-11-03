@@ -400,6 +400,10 @@ end
     delete!(neither["numerics"], "random_seed")
     @test_throws ArgumentError problem_from_case(both, Float64)
     @test_throws ArgumentError problem_from_case(neither, Float64)
+    # a schema-2 thermal species without its spread is refused, not loaded cold (#259)
+    nospread = deepcopy(load_case("landau-oblique-2d"))
+    delete!(nospread["species"][1], "thermal_velocity")
+    @test_throws ArgumentError problem_from_case(nospread, Float64)
     # schema 2: every per-axis entry, the drift in three components, the isotropic thermal spread
     lo = load_case("landau-oblique-2d")
     p = problem_from_case(lo, Float64)

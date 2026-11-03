@@ -95,7 +95,8 @@ the push stores), the workspaces, the fields of [`field_layout`](@ref)`(Val(2))`
 kinetic-energy chunks `K` (one entry per [`KINETIC_CHUNK`](@ref) slots of each species), the
 histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
 diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
-axis (written once) and the diagnostics' per-row partial sums.
+axis (written once), the diagnostics' per-row partial sums and the [`Antenna`](@ref)s of the
+problem's lasers, placed on the grid.
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
@@ -126,7 +127,8 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     knorm = sqrt(k[1] * k[1] + k[2] * k[2])
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            kmode = problem.kmode, khat = (k[1] / knorm, k[2] / knorm), tables = tables,
-           partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]))
+           partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]),
+           antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers))
     return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), hist, aux)
 end
@@ -223,8 +225,9 @@ push the momentum in Eⁿ, Bⁿ gathered at xⁿ on each component's stagger and
 along both axes; the current of the numerics' choice (for [`Esirkepov`](@ref)`()`: sort where
 the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the guards; for
 `NoCurrent()` J stays zero); the kinetic energy at n + 1/2; the mesh solve (Yee: B half step, E
-full step with J, B half step). With `Esirkepov()`, Gauss's law then holds to roundoff after
-every step (T-360). `k` must lie within the allocated steps and
+full step with J, B half step), with the antennas' total-field/scattered-field corrections
+between the sub-steps (time `(k − 1)·Δt` at the start of the step). With `Esirkepov()`, Gauss's
+law then holds to roundoff after every step (T-360), off the antenna columns with lasers (T-394). `k` must lie within the allocated steps and
 `params.kmode` must be the state's diagnostic mode (an `ArgumentError` otherwise).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer)
@@ -242,6 +245,6 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
     end
     current!(numerics.current, st, p)
     kinetic!(st)
-    solve_fields!(numerics.solver, fields, grid, p.dt; workgroupsize = wgs)
+    solve_fields!(numerics.solver, fields, grid, p.dt, st.aux.antennas, (k - 1) * p.dt; workgroupsize = wgs)
     return st
 end
