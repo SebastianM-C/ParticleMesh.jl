@@ -299,7 +299,7 @@ end
         record!("T-405", Float64, rel / k4(6))
         @test rel <= C * k4(6)
         relf = abs(Φ / laser_energy(a.laser) - 1) / (r.prob.dt^2 + a.dx[1]^2)
-        record!("T-405 flux", Float64, relf / Cf)
+        record!("T-405 flux", Float64, relf)
         @test relf <= Cf
     end
 end
