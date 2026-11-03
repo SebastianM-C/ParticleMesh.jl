@@ -1,0 +1,20 @@
+# CPU box request 1 of 8 of WP-032: ParticleMesh's oblique Landau seeds 20261031, 20262031, 20263031, 20264031
+timeout = 14400
+category = "validation"
+batch = "wp032-pm-landau"
+batch_total = 8
+branch = "claude/epic-cerf-3g9o79"
+outputs = ["scripts/runs/wp032-pm-landau-r1", "scripts/runs/wp032-smilei-timing"]
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/em2d/landau_ensemble.jl", "run", "scripts/runs/wp032-pm-landau-r1", "20261031", "20262031", "20263031", "20264031"]
+
+# then Smilei's seed 20261031 on the idle box, timed (run.sh with a 1 s budget runs only the first seed), then analysed here
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp032-smilei-timing"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "include(\"scripts/crosscode/analyze.jl\"); analyze(\"scripts/runs/wp032-smilei-timing/seed-20261031\")"]
