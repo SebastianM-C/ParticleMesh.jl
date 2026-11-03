@@ -110,7 +110,7 @@ function antenna_report()
     for r in res
         println(r)
     end
-    fig2 = Figure(size = (980, 560))
+    fig2 = Figure(size = (980, 500))
     dx = [r["dx"] for r in res]
     ax = Axis(fig2[1, 1]; xscale = log10, yscale = log10, xlabel = "Δx (c/ω₀), Δy = 2Δx",
               ylabel = "relative difference", title = "energy (waist 6)")
@@ -118,13 +118,13 @@ function antenna_report()
     scatterlines!(ax, dx, [abs(r["flux_over_laser_energy_staggered"]) for r in res]; label = "|Φ/(laser_energy·cos·cos) − 1|")
     scatterlines!(ax, dx, [abs(r["W_over_flux"]) for r in res]; label = "|W/Φ − 1|")
     scatterlines!(ax, dx, [r["back_fraction"] for r in res]; label = "energy behind / W")
-    Legend(fig2[2, 1], ax; framevisible = false)
+    Legend(fig2[2, 1], ax; framevisible = false, tellwidth = false, nbanks = 2)
     ax2 = Axis(fig2[1, 2]; xscale = log10, yscale = log10, xlabel = "Δx (c/ω₀), Δy = 2Δx",
                ylabel = "1 − v (c)", title = "group velocity (waist 6)")
     scatterlines!(ax2, dx, [1 - r["v_centroid"] for r in res]; label = "energy centroid")
     scatterlines!(ax2, dx, [1 - r["v_spectral"] for r in res]; label = "Yee, energy-weighted over the modes")
     scatterlines!(ax2, dx, [1 - r["v_axis"] for r in res]; label = "Yee, on the axis (plane wave)")
-    Legend(fig2[2, 2], ax2; framevisible = false)
+    Legend(fig2[2, 2], ax2; framevisible = false, tellwidth = false)
     p2 = save_plot(dir, "antenna_resolution", fig2, Dict("rows" => res, "cpu" => cpu_model(), "threads" => Threads.nthreads()))
     println("wrote ", p2)
     return beams, res
