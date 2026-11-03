@@ -6,6 +6,7 @@
 #   julia +1.13 --project=scripts -t 16 scripts/em2d/landau_ensemble.jl run <dir> <seed>... [--ppc a,b --cells a,b]
 #   julia +1.13 --project=scripts scripts/em2d/landau_ensemble.jl merge <out dir> <request dir>...
 #   julia +1.13 --project=scripts scripts/em2d/landau_ensemble.jl checks <ensemble dir> <smilei seed dir> <out dir>
+#   julia +1.13 --project=scripts scripts/em2d/landau_ensemble.jl figure <ensemble dir> <out dir>
 #
 # `run` writes seed-<seed>/ of each named seed (one of the case's seeds) into the fixed directory
 # <dir> (a box request names its outputs exactly), with the series, the observables, the standard
@@ -17,7 +18,7 @@
 # ensemble plots (write_ensemble), and a manifest naming each request. `checks` records the
 # post-hoc checks: the reruns of WP-023's four seeds against its committed observables and mode
 # series, the box's Smilei seed against WP-025's run of it, and the ns per particle-step of both
-# codes on the box.
+# codes on the box. `figure` draws the three codes' per-seed and ensemble rates.
 include(joinpath(@__DIR__, "crosscode.jl"))
 
 const CASE_NAME = "landau-oblique-2d"
@@ -242,6 +243,38 @@ function checks(ens, smilei_seed, out)
     return side
 end
 
+"""
+    summary_figure(ens, out) -> sidecar
+
+`out/three-codes-rates.png` with its sidecar: per code (ParticleMesh's ensemble `ens`, WP-025's
+Smilei and PIConGPU FP64 runs of the same case file), each seed's γ at its ensemble's maxima
+(points), the ensemble γ with its jackknife error (bar) and the theory value (line).
+"""
+function summary_figure(ens, out)
+    mkpath(out)
+    runs = ["particlemesh" => ens; collect(reference_ensembles(CASE_NAME, ens))]
+    fig = Figure(size = (800, 500))
+    ax = Axis(fig[1, 1]; xticks = (1:length(runs), first.(runs)), ylabel = "γ [ω_p]",
+              title = "landau-oblique-2d: γ per seed at the ensemble's maxima, and the ensemble γ ± jackknife")
+    side = Dict{String,Any}("plot" => "per-seed γ at the ensemble's maxima (points) and ensemble γ ± jackknife (bars) per code, theory line")
+    theory = nothing
+    for (i, (code, dir)) in enumerate(runs)
+        r = JSON.parsefile(joinpath(dir, "observables.json"))
+        theory = r["theory"]
+        g = Float64[x for x in r["per_seed_at_ensemble_peaks"]["gammas"] if x !== nothing]
+        scatter!(ax, i .+ 0.25 .* (range(-1, 1; length = length(g))), g; color = (:gray, 0.6), markersize = 6)
+        errorbars!(ax, [i], [r["measured"]], [r["measured_stderr"]]; color = :black, whiskerwidth = 12, linewidth = 2)
+        scatter!(ax, [i], [r["measured"]]; color = :red, markersize = 12)
+        side[code] = Dict("run" => relpath(normpath(dir), REPO), "measured" => r["measured"], "measured_stderr" => r["measured_stderr"],
+                          "M" => r["M"], "maxima_used" => r["maxima_used"], "per_seed_at_ensemble_peaks" => g)
+    end
+    hlines!(ax, [theory]; color = :blue, linestyle = :dash, label = "theory γ = $(round(theory; sigdigits = 5))")
+    axislegend(ax; position = :rb)
+    side["theory"] = theory
+    save_plot(out, "three-codes-rates", fig, side)
+    return side
+end
+
 function cli_flags(args)
     pos, opts = String[], Dict{String,String}()
     i = 1
@@ -266,9 +299,11 @@ if abspath(PROGRAM_FILE) == @__FILE__()
         run_seeds(abspath(pos[2]), joinpath(CASES, "$CASE_NAME.toml"), parse.(Int, pos[3:end]); ppc, cells)
     elseif cmd == "merge"
         merge_requests(abspath(pos[2]), abspath.(pos[3:end]))
+    elseif cmd == "figure"
+        summary_figure(abspath(pos[2]), abspath(pos[3]))
     elseif cmd == "checks"
         checks(abspath(pos[2]), abspath(pos[3]), abspath(pos[4]))
     else
-        error("usage: run <dir> <seed>... [--ppc a,b --cells a,b] | merge <out dir> <request dir>... | checks <ensemble dir> <smilei seed dir> <out dir>")
+        error("usage: run <dir> <seed>... [--ppc a,b --cells a,b] | merge <out dir> <request dir>... | checks <ensemble dir> <smilei seed dir> <out dir> | figure <ensemble dir> <out dir>")
     end
 end
