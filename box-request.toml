@@ -1,0 +1,9 @@
+category = "test"
+timeout = 3600
+outputs = ["scripts/runs/smilei-two-stream-736a428f"]
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/smilei-two-stream-736a428f"
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/crosscode/analyze.jl", "scripts/runs/smilei-two-stream-736a428f"]
