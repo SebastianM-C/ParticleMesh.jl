@@ -475,9 +475,11 @@ end
     @test m["points"] == ["tiny"] && m["mode"] == "Reference" && m["precision"] == "Float64"
     @test !any(isabspath, keys(m["inputs"]))
     rec = JSON.parsefile(joinpath(out, "tiny.json"))
-    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has
+    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has, plus the
+    # time of the loaded momenta (`momenta_at`, #282)
     @test sort(collect(keys(rec))) == sort(["point", "case", "derived", "code", "dt", "cells", "steps", "wall_seconds",
-                                            "threads", "cpu", "energy", "series"])
+                                            "threads", "cpu", "energy", "series", "momenta_at"])
+    @test rec["momenta_at"] == string(PMScan.MOMENTA_AT)
     @test rec["point"] == "tiny" && rec["code"] == "particlemesh" && rec["case"] == case["name"] && rec["derived"] == case["derived"]
     @test sort(collect(keys(rec["series"]))) == ["growth_rate", "mode"]
     dt = case["time"]["dt"]
