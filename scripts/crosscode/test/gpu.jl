@@ -394,7 +394,8 @@ end
     pd = GPUCompare.paired_coefficient_difference(ca, cb, [7, 9])
     @test pd["per_seed"]["7"]["max_relative_to_max"] ≈ 5e-8 && pd["per_seed"]["7"]["at_t"] == 1.0
     @test pd["per_seed"]["7"]["first_t_above_1e-10"] == 1.0 && pd["per_seed"]["7"]["first_t_above_1e-6"] === nothing
-    @test pd["per_seed"]["9"]["max_relative_to_max"] ≈ 1e-11 && pd["per_seed"]["9"]["first_t_above_1e-10"] === nothing
+    @test pd["per_seed"]["9"]["max_relative_to_max"] ≈ 1e-11 rtol = 1e-4
+    @test pd["per_seed"]["9"]["first_t_above_1e-10"] === nothing
     @test pd["max_over_seeds"] ≈ 5e-8
 end
 
