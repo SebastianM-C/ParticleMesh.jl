@@ -441,3 +441,53 @@ end
     open(io -> JSON.print(io, rec), joinpath(sd2, "n0128.json"), "w")
     @test_throws "ends before the reference's saturation" R.compare_codes(sd, sd2, joinpath(dirname(sd2), "cmp3"))
 end
+
+# The ParticleMesh scan driver (convergence_pm.jl), in a module of its own like PMCross in runtests.jl.
+module PMScan
+include(joinpath(dirname(@__DIR__), "convergence_pm.jl"))
+end
+
+@testset "T-417 the ParticleMesh scan driver writes the record format of summarize_scan [A5, WP-031]" begin
+    # a tiny point: 32 cells, 10 particles per cell, a scalar cadence of 2 steps, 1/ω₀ of time
+    base = load_case("two-stream")
+    case = derive_case(base; name = "tiny", refine = 1 // 4, dt_divisor = 2, ppc_factor = 1 // 100)
+    case["time"]["t_end"] = 1.0
+    @test case["diagnostics"]["scalars_every"] == 2 && case["diagnostics"]["fields_every"] == 16
+    root = mktempdir()
+    sumdir = joinpath(root, "summary")
+    mkpath(joinpath(sumdir, "cases"))
+    open(io -> TOML.print(io, case; sorted = true), joinpath(sumdir, "cases", "tiny.toml"), "w")
+    write(joinpath(sumdir, "scan.toml"), "name = \"tiny-scan\"\ncase = \"two-stream\"\n")
+    out = joinpath(root, "pm")
+    PMScan.run_points(sumdir, out, ["tiny"])
+    @test isfile(joinpath(out, "scan.toml")) && isfile(joinpath(out, "cases", "tiny.toml")) && isfile(joinpath(out, "manifest.toml"))
+    m = TOML.parsefile(joinpath(out, "manifest.toml"))
+    @test m["points"] == ["tiny"] && m["mode"] == "Reference" && m["precision"] == "Float64"
+    @test !any(isabspath, keys(m["inputs"]))
+    rec = JSON.parsefile(joinpath(out, "tiny.json"))
+    # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has
+    @test sort(collect(keys(rec))) == sort(["point", "case", "derived", "code", "dt", "cells", "steps", "wall_seconds",
+                                            "threads", "cpu", "energy", "series"])
+    @test rec["point"] == "tiny" && rec["code"] == "particlemesh" && rec["case"] == case["name"] && rec["derived"] == case["derived"]
+    @test sort(collect(keys(rec["series"]))) == ["growth_rate", "mode"]
+    dt = case["time"]["dt"]
+    @test rec["dt"] == dt && rec["cells"] == 32 && rec["steps"] == round(Int, 1.0 / dt)
+    # the run again, directly: the driver's series are the run's, at the cadences of the case (the
+    # Reference mode is bitwise reproducible, A4), so an offset of the energy cadence or a |c| in place of |c|² shows
+    sim = PMScan.simulate(case)
+    @test sim.nsteps == rec["steps"]
+    every = case["diagnostics"]["scalars_every"]
+    iE = 1:every:length(sim.total)
+    en = rec["energy"]
+    @test Float64.(en["t"]) == (iE .- 1) .* dt && Float64.(en["Utot"]) == sim.total[iE]
+    @test length(en["t"]) == cld(sim.nsteps, every)
+    @test en["t"][2] - en["t"][1] ≈ every * dt rtol = 1e-12
+    @test sim.total[1] != sim.total[2]                     # the cadence offset is visible in the energy
+    g = rec["series"]["growth_rate"]
+    @test Float64.(g["t"]) == sim.tU && Float64.(g["U"]) == sim.U && g["c_re"] === nothing && g["c_im"] === nothing
+    md = rec["series"]["mode"]
+    c = complex.(Float64.(md["c_re"]), Float64.(md["c_im"]))
+    @test c == sim.C && Float64.(md["t"]) == sim.tC
+    @test Float64.(md["U"]) == abs2.(sim.C) && any(>(0), md["U"])
+    @test rec["wall_seconds"] > 0 && rec["threads"] == string(Threads.nthreads())
+end
