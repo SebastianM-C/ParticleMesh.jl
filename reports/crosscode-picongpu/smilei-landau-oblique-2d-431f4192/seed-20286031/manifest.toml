@@ -1,0 +1,88 @@
+updated = "2026-11-03T11:01:04.186Z"
+
+[analysis]
+commit = "e42917a820b240750e7b1d9e3b72a0f2378fe866"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:1b61a14fd210efc9cf78a6c597d9f24ba6b0a5948499a9718d86d961ba474130"
+    "scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:d7b7b1cd3456732bd08dd20fc3a1a64de16111d25f85c488424a09c300cd076f"
+    "scripts/crosscode/manifest.jl" = "sha256:af54e978c5fb31a7d3ca128c3543d34ec7d55cce9372cb0e464b5d80e0942eca"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[checks]
+gauss_residual_t0_relative = 6.507615507653712e-10
+rho_max_deviation_t0 = 0.00998017283915162
+rho_mean_t0 = -2.9638077224144034e-16
+rho_mode_amplitude_t0 = 0.00998018974812877
+sensitivity_energy_ratio_t0_without_box_mean = 3.9975909124103444
+
+[hardware]
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 16
+threads = 16
+
+[image]
+id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+
+[inputs]
+
+[observables.damping_rate_energy]
+fit_points = 0
+method = "peak_envelope"
+noise_floor = 3.97863360125e-8
+signal = "scalar_sum"
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+
+[observables.damping_rate_mode]
+fit_points = 5
+fit_range = [4.759925709419231, 13.701940563638905]
+measured = 0.14625763305103676
+measured_frequency = 1.405317573189804
+measured_stderr = 0.001878006185137866
+method = "peak_envelope"
+noise_floor = 9.668527425346371e-10
+relative_difference = -0.046308415135235016
+signal = "mode_projection"
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+
+[observables.energy_ratio]
+measured = 3.986286510278891
+method = "first_output"
+relative_difference = -0.0028278036395268545
+signal = "scalar_ratio"
+t = 0.0
+theory = 3.9975909124103444
+theory_continuum = 4.0
+
+[observables.energy_ratio_mode]
+measured = 4.003089622147833
+method = "median_over_fit"
+points = 5
+relative_difference = 0.0013755058628980917
+signal = "mode_ratio"
+theory = 3.9975909124103444
+theory_continuum = 4.0
+
+[outputs]
+"Fields0.h5" = "sha256:ba8ff15a014f36e282aa2bb815de144ed2d485901bd186c85d4d20f38e803b19"
+"container.txt" = "sha256:dd0b4eec881d16d8d46758295410533ad6ac90ece8a987369d10bb9d703a12c1"
+"scalars.txt" = "sha256:37f14d279095a5d6c2d4dc9fbd6c21863a08af7e0afe43dd99c6932f052750f8"
+"smilei.log" = "sha256:12ad916bc343c4a74091a27c73fb7eb064543151d3193881d61b8c4ded953ea1"
+
+[performance]
+cells = 16384
+mobile_particle_steps = 56891539456
+mobile_particles = 16777216
+ns_per_mobile_particle_step = 9.733064095202677
+particle_steps = 56947097600
+particles = 16793600
+steps = 3391
+steps_source = "smilei.log (n_time)"
+wall_seconds = 553.729

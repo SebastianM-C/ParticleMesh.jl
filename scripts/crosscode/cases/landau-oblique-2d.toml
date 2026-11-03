@@ -32,13 +32,19 @@ shape_order = 2
 current_deposition = "esirkepov"
 filter_passes = 0
 precision = "Float64"
-# One run per seed (WP-017), fixed before any run of WP-017. The first is WP-019's single-run seed.
-# Four seeds: one seed's projected mode already carries about the noise of the 1D reference run
-# (1.68e7 electrons against 2.56e7), so four put the ensemble at 6.7e7 electrons, above the 1D
-# Landau ensemble's 2.56e7; the count is set by the budget (Smilei about 12 min of CPU per seed,
-# WP-019's run), not by a measured per-seed spread. Smilei seeds patch p with random_seed + p and
+# One run per seed. The first is WP-019's single-run seed; the first four are WP-017's, the other
+# 28 WP-025's, each registered before any run of it. The count comes from the measured four-seed
+# spreads: at 32 seeds per code the spread of the two-code difference of the ensemble γ is 0.0058
+# (synthetic ensembles at the four-seed runs' measured noise) or 0.0040 (their jackknife errors
+# scaled as 1/√M), so WP-017's four-seed difference of 0.0165 would stand 2.9 to 4.1 of them
+# from zero (scripts/crosscode/seed_count.jl). Smilei seeds patch p with random_seed + p and
 # runs 16 patches here, so the seeds are 1000 apart; PIConGPU takes each as PIC_SEED.
-seeds = [20261031, 20262031, 20263031, 20264031]
+seeds = [
+         20261031, 20262031, 20263031, 20264031, 20265031, 20266031, 20267031, 20268031,
+         20269031, 20270031, 20271031, 20272031, 20273031, 20274031, 20275031, 20276031,
+         20277031, 20278031, 20279031, 20280031, 20281031, 20282031, 20283031, 20284031,
+         20285031, 20286031, 20287031, 20288031, 20289031, 20290031, 20291031, 20292031,
+]
 
 [[species]]
 name = "electron"

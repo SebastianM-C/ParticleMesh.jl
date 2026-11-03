@@ -93,7 +93,7 @@ python_parses(text) = (f = tempname() * ".py"; write(f, text);
     # schema 1 has no GPU path (Smilei's GPU port covers 2D and 3D Cartesian)
     @test_throws ErrorException namelist(load_case("landau"); gpu = true)
     @test_throws ErrorException smilei_parameters(load_case("landau"); patches = (2,))
-    @test_throws ErrorException prepare_run("landau-oblique-2d"; runs = mktempdir(), fastmath = false)
+    @test_throws ErrorException SmileiDeck.prepare_run("landau-oblique-2d"; runs = mktempdir(), fastmath = false)
 end
 
 # Stand-ins for the image's programs: `smilei` (and `smilei-nofastmath`) record their call and
@@ -133,7 +133,7 @@ run_sh(dir, stub) = run(setenv(`bash $(joinpath(dir, "run.sh"))`, "PATH" => stub
     dirs = Dict{Any,String}()
     for (gpu, fastmath, bin, layout) in ((true, true, "smilei", "1x1"), (true, false, "smilei-nofastmath", "1x1"),
                                          (false, true, "smilei", "4x4"))
-        dir = prepare_run("landau-oblique-2d"; runs, gpu, fastmath)
+        dir = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu, fastmath)
         dirs[(gpu, fastmath)] = dir
         m = TOML.parsefile(joinpath(dir, "manifest.toml"))
         @test m["build"] == (gpu ? "gpu" : "cpu") && m["patches"] == parse.(Int, split(layout, "x"))
@@ -215,7 +215,7 @@ end
     for (gpu, layout, tag) in ((true, nothing, "smilei-gpu-loadcheck-landau-oblique-2d-p1x1-$h"),
                                (true, (4, 4), "smilei-gpu-loadcheck-landau-oblique-2d-p4x4-$h"),
                                (false, nothing, "smilei-loadcheck-landau-oblique-2d-p4x4-$h"))
-        dir = prepare_run("landau-oblique-2d"; runs, gpu, patches = layout, load_check = true)
+        dir = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu, patches = layout, load_check = true)
         @test basename(dir) == tag
         @test !isdir(joinpath(dir, "seed-$(first(case_seeds(c)))"))   # one run, the first seed
         m = TOML.parsefile(joinpath(dir, "manifest.toml"))
@@ -245,12 +245,12 @@ function write_loadcheck_run(dir, t; rho_shift = 0.0, ukin = 0.5, build = "cpu")
     write(joinpath(dir, "scalars.txt"), "# 1 time\n# 2 Utot\n# 3 Ukin\n#\n# time Utot Ukin\n0.0 1.0 $ukin\n0.1 1.0 0.4\n")
     h5open(joinpath(dir, "Fields0.h5"), "w") do f
         g = create_group(f, "data/0000000000")
-        attributes(g)["time"] = 0.0
-        attributes(g)["dt"] = 0.1
+        HDF5.attributes(g)["time"] = 0.0
+        HDF5.attributes(g)["dt"] = 0.1
         for (name, stag) in (("Ex", [0.5, 0.0]), ("Rho", [0.0, 0.0]))
             v = [sin(i + 2j) + (name == "Rho" ? rho_shift : 0.0) for i in 0:4, j in 0:3]
             g[name] = permutedims(v)
-            a = attributes(g[name])
+            a = HDF5.attributes(g[name])
             a["gridSpacing"] = [0.25, 0.5]; a["gridGlobalOffset"] = [0.0, 0.0]; a["position"] = stag
             a["axisLabels"] = ["x", "y"]; a["dataOrder"] = "C"
         end
@@ -309,16 +309,16 @@ end
 
 @testset "T-405 GPU runs carry their own label; paired seeds only with one layout [A5, A7, WP-030]" begin
     runs = mktempdir()
-    cpu = prepare_run("landau-oblique-2d"; runs)
-    g11 = prepare_run("landau-oblique-2d"; runs, gpu = true)
-    g11n = prepare_run("landau-oblique-2d"; runs, gpu = true, fastmath = false)
-    g44 = prepare_run("landau-oblique-2d"; runs, gpu = true, patches = (4, 4))
+    cpu = SmileiDeck.prepare_run("landau-oblique-2d"; runs)
+    g11 = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true)
+    g11n = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, fastmath = false)
+    g44 = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, patches = (4, 4))
     @test GPUCompare.run_label(cpu) == "smilei-fp64"
     @test GPUCompare.run_label(g11) == "smilei-gpu-p1x1-fp64"
     @test GPUCompare.run_label(g11n) == "smilei-gpu-p1x1-nofastmath-fp64"
     @test GPUCompare.run_label(g44) == "smilei-gpu-p4x4-fp64"
-    @test GPUCompare.run_label(prepare_run("landau-oblique-2d"; runs, patches = (4, 4))) == "smilei-fp64"   # the default layout
-    @test GPUCompare.run_label(prepare_run("landau-oblique-2d"; runs, patches = (8, 2))) == "smilei-p8x2-fp64"
+    @test GPUCompare.run_label(SmileiDeck.prepare_run("landau-oblique-2d"; runs, patches = (4, 4))) == "smilei-fp64"   # the default layout
+    @test GPUCompare.run_label(SmileiDeck.prepare_run("landau-oblique-2d"; runs, patches = (8, 2))) == "smilei-p8x2-fp64"
     @test GPUCompare.paired_loads(cpu, g44) && GPUCompare.paired_loads(g11, g11n)
     @test !GPUCompare.paired_loads(cpu, g11) && !GPUCompare.paired_loads(g44, g11)
     # a CPU run prepared before WP-030 has no layout in its manifest: the generator's rule (4 × 4)

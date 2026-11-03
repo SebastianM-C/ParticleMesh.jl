@@ -106,6 +106,17 @@ function scatter_record(coeffs, t, late, e, obs)
         "snr_at_maxima_used" => snr)
 end
 
+"""
+The name of the ensemble's mode coefficient for plot labels: Ê₁ of Ex in 1D; in 2D the
+projection the ensemble observable's `signal` names, e.g. (E·k̂) of mode [2, 1].
+"""
+function signal_label(case)
+    get(case, "schema", 1) == 2 || return ("Ê₁", "Ex")
+    _, o = ensemble_observable(case)
+    v = o["signal"] == "mode_projection" ? (o["component"] == "parallel" ? "E·k̂" : "E·(ẑ×k̂)") : o["signal"]
+    return ("Ê", "($v) of mode $(case["wavevector"]["mode"])")
+end
+
 function save_plot(dir, name, fig, sidecar)
     save(joinpath(dir, name * ".png"), fig; px_per_unit = 2)
     open(io -> JSON.print(io, sidecar, 2), joinpath(dir, name * ".json"), "w")
@@ -128,7 +139,8 @@ function write_ensemble(dir, case, t, coeffs, seeds; code, per_run = nothing, ex
     mkpath(plots)
     name = case["name"]
     fig = Figure(size = (900, 550))
-    ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|Ê₁|² of Ex",
+    sym, of = signal_label(case)
+    ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|$sym|² of $of",
         title = "$name, $code: ensemble of $(e.M) seeds")
     for (i, c) in enumerate(coeffs)
         u = abs2.(c)
@@ -136,7 +148,7 @@ function write_ensemble(dir, case, t, coeffs, seeds; code, per_run = nothing, ex
         lines!(ax, t[p], u[p]; color = (:gray, 0.4), linewidth = 0.8, label = i == 1 ? "single seeds" : nothing)
     end
     p = e.U .> 0
-    lines!(ax, t[p], e.U[p]; color = :black, linewidth = 2, label = "|⟨Ê₁⟩|², seed mean")
+    lines!(ax, t[p], e.U[p]; color = :black, linewidth = 2, label = "|⟨$sym⟩|², seed mean")
     if e.fit !== nothing
         scatter!(ax, e.t_fit, e.U_fit; color = :red, markersize = 8, label = "maxima used ($(length(e.t_fit)))")
         lines!(ax, e.t_fit, exp.(e.fit.intercept .+ e.fit.slope .* e.t_fit); color = :red,
@@ -149,7 +161,7 @@ function write_ensemble(dir, case, t, coeffs, seeds; code, per_run = nothing, ex
         linestyle = :dot, label = "floor_factor × floor")
     ylims!(ax, max(1e-4 * e.floor, minimum(e.U[p])), 3 * maximum(e.U))
     axislegend(ax; position = :rt)
-    save_plot(plots, "ensemble-energy", fig, merge(Dict("plot" => "|⟨Ê₁⟩|² of the seed mean and |Ê₁|² of each seed versus time, log scale"), r))
+    save_plot(plots, "ensemble-energy", fig, merge(Dict("plot" => "|⟨$sym⟩|² of the seed mean and |$sym|² of each seed ($of) versus time, log scale"), r))
 
     ps = r["per_seed_at_ensemble_peaks"]
     fig = Figure(size = (800, 450))
@@ -183,7 +195,8 @@ function compare_ensembles(out, case, a, b)
     mkpath(out)
     name = case["name"]
     fig = Figure(size = (900, 500))
-    ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|⟨Ê₁⟩|² of Ex", title = "$name: seed ensembles")
+    sym, of = signal_label(case)
+    ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|⟨$sym⟩|² of $of", title = "$name: seed ensembles")
     for (x, style) in ((a, :solid), (b, :dash))
         p = x.U .> 0
         lines!(ax, x.t[p], x.U[p]; linestyle = style, label = "$(x.code), γ = $(x.result["measured"] === nothing ? "none" : round(x.result["measured"]; sigdigits = 4))")

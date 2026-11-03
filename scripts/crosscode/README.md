@@ -1,23 +1,25 @@
 # Cross-code reference runs
 
-Reference numbers from other codes on the cases of the A5 benchmark set, matched to ParticleMesh's inputs through one case file per case. Stage 1 (WP-003): Smilei on the two 1D electrostatic cases; stage 1b (WP-012): Landau over a seed ensemble in both codes, two-stream as a resolution pair (`two-stream.toml`, `two-stream-256.toml`). The 2D case core (WP-019): case schema 2 and Smilei on two 2D periodic cases with linear theory, `landau-oblique-2d` and `weibel-2d`. Stage 2a (WP-017): PIConGPU on the 1D set as quasi-1D 2D runs in FP64 and FP32, and the oblique Landau case over four seeds in both codes. WP-030: Smilei's GPU build (`smilei-gpu` image) on the 2D cases, against the CPU build, which stays the reference.
+Reference numbers from other codes on the cases of the A5 benchmark set, matched to ParticleMesh's inputs through one case file per case. Stage 1 (WP-003): Smilei on the two 1D electrostatic cases; stage 1b (WP-012): Landau over a seed ensemble in both codes, two-stream as a resolution pair (`two-stream.toml`, `two-stream-256.toml`). The 2D case core (WP-019): case schema 2 and Smilei on two 2D periodic cases with linear theory, `landau-oblique-2d` and `weibel-2d`. Stage 2a (WP-017): PIConGPU on the 1D set as quasi-1D 2D runs in FP64 and FP32, and the oblique Landau case over four seeds in both codes; WP-025 extends that case to 32 seeds in both codes. WP-030: Smilei's GPU build (`smilei-gpu` image) on the 2D cases, against the CPU build, which stays the reference.
 
 ```
-julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau      # writes scripts/runs/smilei-landau-<hash>/
+julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau [tag] [--budget <s>]   # writes scripts/runs/smilei-landau-<hash>/
 scripts/crosscode/run-smilei.sh scripts/runs/smilei-landau-<hash>              # outside the factory (podman)
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-landau-<hash> [runner log]
-julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare landau [tag] [--precision Float32]   # writes scripts/runs/picongpu-landau-fp64-<hash>/
+julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare landau [tag] [--precision Float32] [--budget <s>]   # writes scripts/runs/picongpu-landau-fp64-<hash>/
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/picongpu-landau-fp64-<hash> [runner log]
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --gpu [--no-fastmath] [--patches 4x4]   # smilei-gpu-landau-oblique-2d-p1x1-<hash>/
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --load-check [--gpu] [--patches 4x4]     # one step, the t = 0 load
 julia +1.13 --project=scripts scripts/crosscode/loadcheck.jl <load-check run a> <load-check run b> <out dir>                 # same particles?
 julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes, two precisions or two builds on one case
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-400 to T-405
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-400 to T-405
+julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>   # seeds per code for a two-code comparison
+julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>   # the ensemble rule on disjoint groups of seeds, both runs
 julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
 julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run> <smilei run>
 ```
 
-A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory.
+A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory, with every seed's complex mode coefficient in `seed-coefficients.json` (the dumps are not committed). The `run.sh` of a seeded run skips the seeds that finished in an earlier job (Smilei: the seed's `container.txt` has its `# end:` line; PIConGPU: the top `container.txt`, appended to by every job, has the seed's end line), so a long ensemble runs as several jobs on one directory. With `--budget <s>` it starts no new seed once the job has run that long and prints the seeds that remain (T-391); a job then lasts the budget plus one seed.
 
 Inside the factory the run goes through the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`; `command: smilei-gpu scripts/runs/<tag>` for a `--gpu` run, which always gets the GPU; `command: picongpu scripts/runs/<tag>`, which always gets the GPU), which executes the same `run.sh` in the same container with the same mounts. A PIConGPU `run.sh` compiles the setup once (`pic-create` of the `Empty` example, the generated `params/*.param` copied over its defaults, `pic-build`), then runs each seed with `PIC_SEED`; `container.txt` times the compile and every run separately.
 
@@ -26,7 +28,7 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | File | Role |
 |---|---|
 | `cases/<case>.toml` | The case in the units of A1, with its observables and their linear-theory values |
-| `theory.jl` | Dispersion relations the theory values come from, with the 2D Weibel relation derived in its header (T-160, T-273) |
+| `theory.jl` | Dispersion relations the theory values come from, with the 2D Weibel relation derived in its header (T-160, T-273); Landau damping with the relativistic push for a given thermal load, by the linearized initial-value problem in time (T-394, post hoc for WP-025) |
 | `smilei.jl` | `load_case` and `case_view` (both schemas), `smilei_parameters` (the unit conversion, T-010, T-271), `namelist`, `prepare_run`; the GPU build, patch layouts and the load check (T-401 to T-403). The input is `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` in the working directory (#256); run directories before WP-030 have `smilei.py`, overwritten by that dump |
 | `loadcheck.jl` | Two load-check runs compared particle by particle (matched by position), with their first scalars and t = 0 fields (T-404) |
 | `picongpu.jl` | `picongpu_parameters` (the conversion to PIConGPU's SI input, T-250), `param_files`, `background_field` (the initial field, T-255), `run_arguments`, `run_script`, `prepare_run`; schema-1 cases as quasi-1D runs (T-254) |
@@ -40,6 +42,9 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | `ensemble.jl` | The ensemble fit with the jackknife over seeds, per-seed fits at the ensemble's maxima, `aggregate_seeds`, the seeds' scatter (T-180, T-183, T-187) |
 | `ensemble_report.jl` | The ensemble observable of either code, its plots, sidecars and `observables.json`; the two-code overlay |
 | `ensemble_bias.jl` | Post hoc: the bias of the ensemble rule on synthetic ensembles at a run's measured noise |
+| `landau_relativistic.jl` | Post hoc: two seeded Landau runs against linear theory with each code's load and the relativistic push |
+| `subensembles.jl` | Post hoc: the ensemble rule on disjoint consecutive groups of 4, 8, 16 and all seeds of two runs, from their `seed-coefficients.json`: the measured spread of a g-seed ensemble against its jackknife estimate, and the group-by-group two-run difference (T-392) |
+| `seed_count.jl` | Design: the spread of the ensemble γ and of a two-code difference against the seed count, from synthetic ensembles at two runs' measured noise and from their jackknife errors scaled as 1/√M |
 | `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases; Smilei's own time-loop time and the GPU of a GPU run (T-402) |
 | `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the runner's log (T-184) |
 
