@@ -10,15 +10,59 @@
 # error. A measurement, not a threshold (A7).
 
 include(joinpath(@__DIR__, "analyze.jl"))
+include(joinpath(@__DIR__, "smilei.jl"))
 using Statistics: mean, std
 
 const REPO = dirname(dirname(@__DIR__))
 
-"The label of a run: code and precision, from its manifest."
+"""
+The label of a run: code and precision, from its manifest; a run of the smilei-gpu image (WP-030)
+also names its patch layout and, without the guide's fastmath flags, `nofastmath`.
+"""
 function run_label(dir)
     m = read_manifest(dir)
     code = get(m, "code", "smilei")
-    return code == "picongpu" ? "picongpu-" * lowercase(replace(get(m, "precision", "Float32"), "Float" => "fp")) : code * "-fp64"
+    code == "picongpu" && return "picongpu-" * lowercase(replace(get(m, "precision", "Float32"), "Float" => "fp"))
+    get(m, "build", "cpu") == "gpu" || return code * "-fp64"
+    return "smilei-gpu-p" * join(m["patches"], "x") * (m["fastmath"] == true ? "" : "-nofastmath") * "-fp64"
+end
+
+"""
+    paired_loads(a, b) -> Bool
+
+Whether two Smilei runs of one seed load the same particles: the same seeds and the same patch
+layout (Smilei seeds patch p with random_seed + p, Patch.cpp, and creates the particles on the
+host in either build). An assumption from the source; the load check (loadcheck.jl) measures it.
+A CPU run prepared before WP-030 has no `patches` in its manifest; its layout is the generator's
+rule then and now, `patches_2d` of the case's cells.
+"""
+function paired_loads(a, b)
+    ma, mb = read_manifest(a), read_manifest(b)
+    get(ma, "code", "smilei") == "smilei" && get(mb, "code", "smilei") == "smilei" || return false
+    function patches(m, d)
+        haskey(m, "patches") && return collect(Int, m["patches"])
+        case = run_case(d)
+        get(case, "schema", 1) == 2 || return nothing
+        return collect(SmileiDeck.patches_2d(Tuple(Int.(case["grid"]["cells"]))))
+    end
+    pa, pb = patches(ma, a), patches(mb, b)
+    return pa !== nothing && pa == pb && ma["seeds"] == mb["seeds"]
+end
+
+"""
+Per-seed differences b_s − a_s of one per-run observable over the seeds both runs measured: mean,
+standard deviation and standard error of the mean of the differences, and the mean in units of
+a's seed spread. Meaningful as a paired comparison only when the loads are the same.
+"""
+function paired_stats(va, vb, sa)
+    d = [y - x for (x, y) in zip(va, vb) if x !== nothing && y !== nothing]
+    n = length(d)
+    n == 0 && return Dict{String,Any}("n" => 0)
+    m = mean(d)
+    sd = n >= 2 ? std(d) : nothing
+    return Dict{String,Any}("n" => n, "differences" => d, "mean" => m, "std" => sd,
+        "stderr_of_mean" => sd === nothing ? nothing : sd / sqrt(n),
+        "max_abs" => maximum(abs, d), "mean_in_units_of_reference_seed_spread" => ratio(m, sa))
 end
 
 "The per-run observables of one (seed) directory as name => value (nothing when not measured)."
@@ -52,7 +96,8 @@ same directory name exists (the raw run under scripts/runs/ is not committed), e
 """
 function recorded_path(dir)
     name = basename(abspath(dir))
-    for r in (joinpath(REPO, "reports", "crosscode-picongpu", name), joinpath(REPO, "reports", "crosscode-smilei-1d", "stage-1b", name))
+    for r in (joinpath(REPO, "reports", "crosscode-picongpu", name), joinpath(REPO, "reports", "crosscode-smilei-1d", "stage-1b", name),
+              joinpath(REPO, "reports", "crosscode-smilei-gpu", name))
         isdir(r) && return relpath(r, REPO)
     end
     return relpath(abspath(dir), REPO)
@@ -95,6 +140,16 @@ function compare_runs(a, b, out)
                     ratio(d, sqrt(A["std"]^2 / A["n"] + B["std"]^2 / B["n"])))
         end
         result["per_run_over_seeds"] = per
+        paired = paired_loads(a, b)
+        result["paired_loads"] = paired
+        if paired
+            result["paired_per_seed"] = Dict{String,Any}(k => paired_stats([v[k] for v in va], [v[k] for v in vb], per[k][la]["std"])
+                                                         for k in keys(per))
+            pk = JSON.parsefile(joinpath(a, "observables.json"))["per_seed_at_ensemble_peaks"]
+            qk = JSON.parsefile(joinpath(b, "observables.json"))["per_seed_at_ensemble_peaks"]
+            haskey(pk, "gammas") && haskey(qk, "gammas") &&
+                (result["paired_per_seed"]["per_seed_at_ensemble_peaks"] = paired_stats(pk["gammas"], qk["gammas"], get(pk, "std", nothing)))
+        end
     else
         oa, ob = JSON.parsefile(joinpath(a, "observables.json")), JSON.parsefile(joinpath(b, "observables.json"))
         flat(o) = get(case, "schema", 1) == 2 ? o["observables"] :
