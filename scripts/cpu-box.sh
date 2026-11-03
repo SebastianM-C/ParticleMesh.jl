@@ -14,6 +14,8 @@
 # scan: the request branch is public and permanent. The request:
 #
 #   timeout = 7200                       # seconds per step, at most 43200
+#   category = "validation"              # for the cost ledger: physics, validation, crosscode,
+#                                        # benchmark, test or smoke (else "unspecified")
 #   outputs = ["scripts/runs/<dir>"]     # directories whose files come back (under scripts/runs/)
 #   [[steps]]
 #   kind = "smilei"                      # Smilei's CPU image, built from the commit's recipe
@@ -55,6 +57,7 @@ EOF
     git cat-file -e HEAD:box-status.toml 2>/dev/null && die "HEAD is a box result commit; submit from your own branch"
     [ -n "$(git branch -r --contains HEAD 2>/dev/null)" ] || die "HEAD is not on any pushed branch; push it first"
     while IFS= read -r d; do
+      [ -n "$d" ] || continue
       [ -d "$d" ] || die "no directory $d"
       big="$(find "$d" -type f -size +20M)"; [ -z "$big" ] || die "files over 20 MB in the request: $big"
       ! grep -rIlE "$LEAK" -- "$d" "$req" >/dev/null || die "leak-scan pattern in: $(grep -rIlE "$LEAK" -- "$d" "$req" | tr '\n' ' ')"
@@ -62,6 +65,7 @@ EOF
     idx="$(mktemp)"; trap 'rm -f "$idx"' EXIT
     GIT_INDEX_FILE="$idx" git read-tree HEAD
     while IFS= read -r d; do
+      [ -n "$d" ] || continue
       GIT_INDEX_FILE="$idx" git add -f -- "$d"
     done <<< "$dirs"
     blob="$(git hash-object -w "$req")"
