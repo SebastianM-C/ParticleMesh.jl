@@ -22,8 +22,9 @@ if isempty(VERSION.prerelease)
         for (label, st, p) in states
             step!(st, p, 1)
             r = JET.report_opt(step!, (typeof(st), typeof(p), Int); target_modules = targets)
-            @test isempty(JET.get_reports(r))
-            isempty(JET.get_reports(r)) || (println(label); show(stdout, MIME"text/plain"(), r))
+            reports = JET.get_reports(r)
+            isempty(reports) || (println(label); show(stdout, MIME"text/plain"(), r))
+            @test isempty(reports)
         end
     end
 else
