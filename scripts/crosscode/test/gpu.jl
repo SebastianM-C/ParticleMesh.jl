@@ -313,6 +313,8 @@ end
     @test GPUCompare.run_label(g11) == "smilei-gpu-p1x1-fp64"
     @test GPUCompare.run_label(g11n) == "smilei-gpu-p1x1-nofastmath-fp64"
     @test GPUCompare.run_label(g44) == "smilei-gpu-p4x4-fp64"
+    @test GPUCompare.run_label(prepare_run("landau-oblique-2d"; runs, patches = (4, 4))) == "smilei-fp64"   # the default layout
+    @test GPUCompare.run_label(prepare_run("landau-oblique-2d"; runs, patches = (8, 2))) == "smilei-p8x2-fp64"
     @test GPUCompare.paired_loads(cpu, g44) && GPUCompare.paired_loads(g11, g11n)
     @test !GPUCompare.paired_loads(cpu, g11) && !GPUCompare.paired_loads(g44, g11)
     # a CPU run prepared before WP-030 has no layout in its manifest: the generator's rule (4 × 4)

@@ -17,13 +17,19 @@ const REPO = dirname(dirname(@__DIR__))
 
 """
 The label of a run: code and precision, from its manifest; a run of the smilei-gpu image (WP-030)
-also names its patch layout and, without the guide's fastmath flags, `nofastmath`.
+also names its patch layout and, without the guide's fastmath flags, `nofastmath`; a CPU run names
+its layout when it is not the generator's default.
 """
 function run_label(dir)
     m = read_manifest(dir)
     code = get(m, "code", "smilei")
     code == "picongpu" && return "picongpu-" * lowercase(replace(get(m, "precision", "Float32"), "Float" => "fp"))
-    get(m, "build", "cpu") == "gpu" || return code * "-fp64"
+    if get(m, "build", "cpu") != "gpu"
+        haskey(m, "patches") || return code * "-fp64"
+        case = run_case(dir)
+        default = get(case, "schema", 1) == 2 ? collect(SmileiDeck.patches_2d(Tuple(Int.(case["grid"]["cells"])))) : nothing
+        return collect(Int, m["patches"]) == default ? code * "-fp64" : code * "-p" * join(m["patches"], "x") * "-fp64"
+    end
     return "smilei-gpu-p" * join(m["patches"], "x") * (m["fastmath"] == true ? "" : "-nofastmath") * "-fp64"
 end
 
@@ -111,6 +117,7 @@ function compare_runs(a, b, out)
     caseb = run_case(b)
     delete!(copy(case), "_path") == delete!(copy(caseb), "_path") || error("the runs are of different cases")
     la, lb = run_label(a), run_label(b)
+    la == lb && ((la, lb) = (la * " (a)", lb * " (b)"))
     seeded = haskey(case["numerics"], "seeds")
     result = Dict{String,Any}("case" => case["name"], "reference" => la, "other" => lb,
         "runs" => Dict(la => recorded_path(a), lb => recorded_path(b)),
