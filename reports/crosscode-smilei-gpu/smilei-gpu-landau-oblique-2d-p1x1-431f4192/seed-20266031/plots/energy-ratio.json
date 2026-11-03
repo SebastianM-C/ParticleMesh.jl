@@ -1,0 +1,25 @@
+{
+  "energy_ratio": {
+    "first": 3.9975921972810196,
+    "measured": 3.9975921972810196,
+    "median": 1.0710694883891185,
+    "method": "first_output",
+    "relative_difference": 3.2141124575805746e-7,
+    "signal": "scalar_ratio",
+    "t": 0.0,
+    "theory": 3.9975909124103444,
+    "theory_continuum": 4.0
+  },
+  "energy_ratio_mode": {
+    "first": 3.997590912410346,
+    "measured": 3.962741707132033,
+    "median": 3.9992369531684786,
+    "method": "median_over_fit",
+    "points": 5,
+    "relative_difference": -0.008717551655954421,
+    "signal": "mode_ratio",
+    "theory": 3.9975909124103444,
+    "theory_continuum": 4.0
+  },
+  "plot": "ratio of the Ex and Ey field energies (scalars) and of the mode coefficients, versus time"
+}

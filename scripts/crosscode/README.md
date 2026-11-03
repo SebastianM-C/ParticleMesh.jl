@@ -1,6 +1,6 @@
 # Cross-code reference runs
 
-Reference numbers from other codes on the cases of the A5 benchmark set, matched to ParticleMesh's inputs through one case file per case. Stage 1 (WP-003): Smilei on the two 1D electrostatic cases; stage 1b (WP-012): Landau over a seed ensemble in both codes, two-stream as a resolution pair (`two-stream.toml`, `two-stream-256.toml`). The 2D case core (WP-019): case schema 2 and Smilei on two 2D periodic cases with linear theory, `landau-oblique-2d` and `weibel-2d`. Stage 2a (WP-017): PIConGPU on the 1D set as quasi-1D 2D runs in FP64 and FP32, and the oblique Landau case over four seeds in both codes; WP-025 extends that case to 32 seeds in both codes.
+Reference numbers from other codes on the cases of the A5 benchmark set, matched to ParticleMesh's inputs through one case file per case. Stage 1 (WP-003): Smilei on the two 1D electrostatic cases; stage 1b (WP-012): Landau over a seed ensemble in both codes, two-stream as a resolution pair (`two-stream.toml`, `two-stream-256.toml`). The 2D case core (WP-019): case schema 2 and Smilei on two 2D periodic cases with linear theory, `landau-oblique-2d` and `weibel-2d`. Stage 2a (WP-017): PIConGPU on the 1D set as quasi-1D 2D runs in FP64 and FP32, and the oblique Landau case over four seeds in both codes; WP-025 extends that case to 32 seeds in both codes. WP-030: Smilei's GPU build (`smilei-gpu` image) on the 2D cases, against the CPU build, which stays the reference.
 
 ```
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau [tag] [--budget <s>]   # writes scripts/runs/smilei-landau-<hash>/
@@ -8,8 +8,11 @@ scripts/crosscode/run-smilei.sh scripts/runs/smilei-landau-<hash>              #
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-landau-<hash> [runner log]
 julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare landau [tag] [--precision Float32] [--budget <s>]   # writes scripts/runs/picongpu-landau-fp64-<hash>/
 julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/picongpu-landau-fp64-<hash> [runner log]
-julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes or two precisions on one case
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-410 to T-416
+julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --gpu [--no-fastmath] [--patches 4x4]   # smilei-gpu-landau-oblique-2d-p1x1-<hash>/
+julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --load-check [--gpu] [--patches 4x4]     # one step, the t = 0 load
+julia +1.13 --project=scripts scripts/crosscode/loadcheck.jl <load-check run a> <load-check run b> <out dir>                 # same particles?
+julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes, two precisions or two builds on one case
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-410 to T-416, T-430 to T-436
 julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>   # seeds per code for a two-code comparison
 julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>   # the ensemble rule on disjoint groups of seeds, both runs
 julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
@@ -22,7 +25,7 @@ julia +1.13 --project=scripts -t 16 scripts/crosscode/convergence_pm.jl <summary
 
 A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory, with every seed's complex mode coefficient in `seed-coefficients.json` (the dumps are not committed). The `run.sh` of a seeded run skips the seeds that finished in an earlier job (Smilei: the seed's `container.txt` has its `# end:` line; PIConGPU: the top `container.txt`, appended to by every job, has the seed's end line), so a long ensemble runs as several jobs on one directory. With `--budget <s>` it starts no new seed once the job has run that long and prints the seeds that remain (T-391); a job then lasts the budget plus one seed.
 
-Inside the factory the run goes through the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`; `command: picongpu scripts/runs/<tag>`, which always gets the GPU), which executes the same `run.sh` in the same container with the same mounts. A PIConGPU `run.sh` compiles the setup once (`pic-create` of the `Empty` example, the generated `params/*.param` copied over its defaults, `pic-build`), then runs each seed with `PIC_SEED`; `container.txt` times the compile and every run separately.
+Inside the factory the run goes through the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`; `command: smilei-gpu scripts/runs/<tag>` for a `--gpu` run, which always gets the GPU; `command: picongpu scripts/runs/<tag>`, which always gets the GPU), which executes the same `run.sh` in the same container with the same mounts. A PIConGPU `run.sh` compiles the setup once (`pic-create` of the `Empty` example, the generated `params/*.param` copied over its defaults, `pic-build`), then runs each seed with `PIC_SEED`; `container.txt` times the compile and every run separately.
 
 ## Files
 
@@ -34,11 +37,13 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | `convergence_report.jl` | The report of a scan: residuals from the linear solution, the Δx and Δt families, observed orders and Richardson limits, window sensitivity, figures; `compare_codes` for two codes on the same points (T-416) |
 | `convergence_pm.jl` | ParticleMesh on the points of a 1D scan, in the summary format |
 | `scans/<scan>.toml` | WP-031's scan points, fixed before the runs |
-| `smilei.jl` | `load_case` and `case_view` (both schemas), `smilei_parameters` (the unit conversion, T-010, T-271), `namelist`, `prepare_run` |
+| `smilei.jl` | `load_case` and `case_view` (both schemas), `smilei_parameters` (the unit conversion, T-010, T-271), `namelist`, `prepare_run`; the GPU build, patch layouts and the load check (T-431 to T-433). The input is `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` in the working directory (#256); run directories before WP-030 have `smilei.py`, overwritten by that dump |
+| `loadcheck.jl` | Two load-check runs compared particle by particle (matched by position), with their first scalars and t = 0 fields (T-434) |
 | `picongpu.jl` | `picongpu_parameters` (the conversion to PIConGPU's SI input, T-250), `param_files`, `background_field` (the initial field, T-255), `run_arguments`, `run_script`, `prepare_run`; schema-1 cases as quasi-1D runs (T-254) |
-| `compare.jl` | Two runs of one case (two codes, or one code in two precisions): the difference of each observable in units of the seed spreads and standard errors, and the overlay plot |
+| `compare.jl` | Two runs of one case (two codes, one code in two precisions, or Smilei's two builds): the difference of each observable in units of the seed spreads and standard errors, and the overlay plot; for two Smilei runs with the same seeds and patch layout (the same loads, `paired_loads`) also the per-seed differences (T-435) |
 | `test/namelist-hashes.toml` | Hashes of the schema-1 namelists, recorded before schema 2 (T-270) |
 | `containers/smilei.Containerfile` | The Smilei image (T-013); build and tag convention in `containers/README.md` |
+| `containers/smilei-gpu.Containerfile` | The Smilei GPU image (T-430), with `smilei-gpu/` (the guide's environment file, the cc89 probe, `pm-versions`) |
 | `run-smilei.sh` | Plain `podman run` of a prepared run directory, for runs outside the factory |
 | `read.jl` | Readers for `scalars.txt` and `Fields<n>.h5`, 1D and 2D (T-012, T-275); PIConGPU's openPMD and energy files, with the y-average of the quasi-1D runs (T-252) |
 | `analysis.jl` | Rate fits, mode amplitudes, the complex mode coefficient (1D, and 2D with the projection on k) (T-161, T-274); `checked_fit` refuses a fit on too few points (T-186) |
@@ -48,7 +53,7 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | `landau_relativistic.jl` | Post hoc: two seeded Landau runs against linear theory with each code's load and the relativistic push |
 | `subensembles.jl` | Post hoc: the ensemble rule on disjoint consecutive groups of 4, 8, 16 and all seeds of two runs, from their `seed-coefficients.json`: the measured spread of a g-seed ensemble against its jackknife estimate, and the group-by-group two-run difference (T-392) |
 | `seed_count.jl` | Design: the spread of the ensemble γ and of a two-code difference against the seed count, from synthetic ensembles at two runs' measured noise and from their jackknife errors scaled as 1/√M |
-| `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases |
+| `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases; Smilei's own time-loop time and the GPU of a GPU run (T-432) |
 | `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the runner's log (T-184) |
 
 ## Case schema, version 1
@@ -108,6 +113,19 @@ In 2D (`2Dcartesian`, schema 2), from the same source (`src/Profiles/Profile.cpp
 - `EM_boundary_conditions` and each species' `boundary_conditions` take one list per axis, `[["periodic"], ["periodic"]]`.
 - `scalars.txt` holds per-component field energies `Uelm_Ex`, `Uelm_Ey`, `Uelm_Ez`, `Uelm_Bx_m`, `Uelm_By_m`, `Uelm_Bz_m`, with Smilei's `_m` copies of B. They are not exactly ½ ΔxΔy Σ F² over the distinct points of a dump: at t = 0 of `landau-oblique-2d` (4 patches per axis) both Uelm_Ex and Uelm_Ey exceed that sum by 131/128, as if three extra columns were counted (measured, not traced in the source). Ratios of the scalars are unaffected; absolute field energies compared with another code are not. The electrostatic energy is `Uelm_Ex + Uelm_Ey`, the in-plane magnetic energy `Uelm_Bx_m + Uelm_By_m`.
 - `DiagFields` can dump `Bx` or `Bx_m` (and likewise for y, z); the two differ by half a time step, and Smilei writes the openPMD `timeOffset` ½Δt for the `_m` names and 0 otherwise (`DiagnosticFields.cpp`). Which of them sits at the integer step was not traced further in the source. The cases dump `Bx`, `By`; a constant time offset does not change a rate fit.
+
+## Smilei's GPU build (WP-030)
+
+From the v5.1 source (`makefile`, `src/Smilei.cpp`, `src/Params/Params.cpp`, `src/Patch/Patch.cpp`, `src/Particles/ParticleCreator.cpp`, `src/Projector/Projector2D2OrderGPU.cpp`, `doc/Sphinx/Use/install_linux_GPU.rst`, `doc/Sphinx/Understand/GPU_offloading.rst`):
+
+- `make config="gpu_nvidia"` compiles with OpenACC and adds `noopenmp`: one MPI rank per GPU, no threads. A GPU binary refuses `gpu_computing = False` and a CPU binary refuses `True` (Params.cpp), so the namelist carries the line only for the GPU image.
+- The rank picks its GPU from `SLURM_LOCALID` and exits without it (Smilei.cpp); the image sets it to 0.
+- Patches: the guideline is one patch per GPU (GPU_offloading.rst), which `--gpu` uses by default; `--patches` sets any layout the CPU rule accepts.
+- Particles are created on the host by the same `ParticleCreator` in both builds, each patch from its own xorshift32 stream seeded `random_seed + patch index` (Patch.cpp). So a seed's load depends on the patch layout: with the CPU's layout the GPU build should load the same particles, with one patch it loads others. The load check measures this rather than assuming it.
+- After t = 0 the GPU build's dumped `Rho` lacks every frozen species' charge (#288): in `weibel-2d`, GPU Rho = CPU Rho − n_ion to 8.5 × 10⁻¹² from the second dump on, while at t = 0 the two agree to 4 × 10⁻¹⁴. The likely mechanism, read from the source: frozen species are deposited on the host on diagnostic steps (`Species.cpp`), and the device's density, which holds only the mobile deposit, is then copied over the host arrays (`VectorPatch.cpp`). The analysis uses Rho only at t = 0 (the loading and Gauss checks), and the dynamics do not use it, so no observable is affected. A GPU run's later Rho dumps are not the charge density when a species is frozen.
+- The GPU build's field extrema in `scalars.txt` (`ExMax`, `ExMin`, `*Cell`, ... for every field) are wrong: each patch's extrema stay at its first cell's value, refreshed only on DiagFields steps, while the energy columns agree with the CPU build to all printed digits (WP-030, #289). Use the energies and the dumps (E, B), not the extrema.
+- The patch layout changes Smilei's constant post-Poisson offset (above, #157): the t = 0 ratio Uelm_Ex/Uelm_Ey of `landau-oblique-2d` is 3.986287 with 4 × 4 patches and 3.997592 with one patch, in both builds, against the Yee value 3.9975909 without an offset. So `energy_ratio` differs between a one-patch GPU run and a 4 × 4 CPU run by the layout, not by the build.
+- The guide's compile flags put `fastmath` in nvc++'s `-gpu=` (the OpenACC kernels); the nvcc-compiled `.cu` kernels (the 2D current deposition, `Projector2D2OrderGPUKernelCUDAHIP.cu`, which the OpenACC build calls through `currentDepositionKernel2DOnDevice`) get no fast-math flag. That deposition adds with `atomicAdd`, so its summation order, and with it the rounding, can change from run to run. The image holds both binaries, `smilei` (the guide's flags) and `smilei-nofastmath`.
 
 ## Reader schemas
 

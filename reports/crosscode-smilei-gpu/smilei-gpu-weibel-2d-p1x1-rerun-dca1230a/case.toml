@@ -1,0 +1,100 @@
+# Cold symmetric Weibel (filamentation) instability, 2D periodic, beams along z, k oblique in the plane,
+# immobile ions.
+# Units (A1): time 1/ω₀, length c/ω₀, velocity c, density n_c, field mₑcω₀/e. Total electron density 1 n_c,
+# so ω_p = ω₀.
+# Two cold electron beams of 0.5 n_c each at ±0.3 c along the collapsed axis z, seeded by opposite density
+# perturbations along the mode [2, 1] (the net density stays uniform; the net current q·n₀·v₀·α·cos(k·r)
+# along z seeds B in the plane, perpendicular to k), |k| = 2 ω_p/c at 26.57° to x. The parameters of
+# weibel.toml rotated about k: k along x becomes k along k̂, the beams along y become beams along z. This
+# exercises J_z and both in-plane components of the current.
+# Sizes: 256 × 256 cells (Δx = Δy = 0.02744 c/ω₀, 57 cells per wavelength along k), 8 × 8 particles per cell
+# per beam (8.39e6 electrons), 1 ion per cell, 2170 steps: 1.82e10 particle-steps.
+# Schema: scripts/crosscode/README.md, version 2. A proposal.
+
+schema = 2
+name = "weibel-2d"
+description = "Cold symmetric Weibel instability, beams at ±0.3 c along z, |k| = 2 ω_p/c along mode [2, 1], immobile ions"
+
+[grid]
+length = [7.024814731040727, 7.024814731040727]     # π√5 = 2π√5/|k| per axis, mode [2, 1] has |k| = 2 ω₀/c
+cells = [256, 256]
+boundaries = ["periodic", "periodic"]
+
+[time]
+dt = 0.01843331807130136          # 0.95 / √(1/Δx² + 1/Δy²)
+t_end = 40.0                      # 2170 steps
+
+[wavevector]
+mode = [2, 1]
+magnitude = 2.0                   # |k| in ω₀/c = ω_p/c
+angle = 0.4636476090008061        # atan(1/2) in rad
+
+[numerics]
+shape_order = 2
+current_deposition = "esirkepov"
+filter_passes = 0
+precision = "Float64"
+random_seed = 20261031
+
+[[species]]
+name = "beam_plus"
+charge = -1.0
+mass = 1.0
+density = 0.5
+particles_per_cell = [8, 8]
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = [0.0, 0.0, 0.3]           # [v_x, v_y, v_z] in c
+mobile = true
+perturbation = { amplitude = 0.001, mode = [2, 1] }
+
+[[species]]
+name = "beam_minus"
+charge = -1.0
+mass = 1.0
+density = 0.5
+particles_per_cell = [8, 8]
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = [0.0, 0.0, -0.3]
+mobile = true
+perturbation = { amplitude = -0.001, mode = [2, 1] }   # opposite to beam_plus: the net density stays uniform
+
+[[species]]
+name = "ion"
+charge = 1.0
+mass = 1836.0
+density = 1.0
+particles_per_cell = [1, 1]
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = [0.0, 0.0, 0.0]
+mobile = false
+
+[diagnostics]
+scalars_every = 4
+fields_every = 16                 # 0.295 ω₀⁻¹, six outputs per e-folding of the energy
+fields = ["Bx", "By", "Rho"]
+
+# Pre-registered before any run. Rates are those of the field amplitude, γ/ω_p; the energies go as e^{2γt}.
+
+[observables.growth_rate_mode]    # the primary observable
+signal = "mode_projection"        # B·ê, ê = ẑ × k̂ = (−k̂_y, k̂_x), of the mode [2, 1] from the field dumps (B·k̂ vanishes by ∇·B = 0)
+fields = ["Bx", "By"]
+component = "perpendicular"
+method = "exponential_window"     # least-squares fit of log |B·ê|² over the window; slope = 2γ
+window = [1.0e-4, 1.0e-2]         # between these fractions of the value at saturation (the first local maximum reaching 10 % of the global one)
+theory = 0.26372546821123183      # γ / ω_p, cold fluid with γ₀ and γ₀³, equal to weibel.toml's
+formula = "X² − A X − B = 0, X = ω², A = k² + ω_p²/γ₀³, B = ω_p² v₀² k²/γ₀ for k ⊥ v₀ in the plane; γ = √(−X₋), X₋ = (A − √(A² + 4B))/2; derived in the header of scripts/crosscode/theory.jl (weibel_cold_growth_2d, T-273), unverified against the literature"
+
+[observables.growth_rate_energy]
+signal = "scalar_sum"             # the in-plane magnetic energy Uelm_Bx_m + Uelm_By_m from scalars.txt
+columns = ["Uelm_Bx_m", "Uelm_By_m"]
+method = "exponential_window"
+window = [1.0e-4, 1.0e-2]
+theory = 0.26372546821123183
+formula = "as growth_rate_mode"
+expectation = "the sum includes every in-plane mode; modes at larger |k| grow faster (γ → ω_p v₀/√γ₀ = 0.296 as |k| → ∞) from the loading noise, so the energy fit can sit above the theory value at |k| = 2 if they catch up before saturation"

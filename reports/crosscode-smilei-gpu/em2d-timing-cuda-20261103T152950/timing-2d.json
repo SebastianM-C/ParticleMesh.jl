@@ -1,0 +1,142 @@
+{
+  "cudacore": "6.5.0",
+  "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+  "rows": [
+    {
+      "case": "landau-oblique-2d",
+      "cells": [
+        128,
+        128
+      ],
+      "mobile_particles": 16777216,
+      "mode": "Reference()",
+      "ns_per_mobile_particle_step": 6.983678430318833,
+      "seconds": [
+        5.823578789,
+        5.858334075,
+        5.866497306
+      ],
+      "steps": 50,
+      "type": "Float64"
+    },
+    {
+      "case": "landau-oblique-2d",
+      "cells": [
+        128,
+        128
+      ],
+      "mobile_particles": 16777216,
+      "mode": "Fast()",
+      "ns_per_mobile_particle_step": 7.024424345493316,
+      "seconds": [
+        6.828116641,
+        5.892514226,
+        5.777872732
+      ],
+      "steps": 50,
+      "type": "Float64"
+    },
+    {
+      "case": "landau-oblique-2d",
+      "cells": [
+        128,
+        128
+      ],
+      "mobile_particles": 16777216,
+      "mode": "Reference()",
+      "ns_per_mobile_particle_step": 2.4789062941074373,
+      "seconds": [
+        2.0794574,
+        2.079457317,
+        2.078287241
+      ],
+      "steps": 50,
+      "type": "Float32"
+    },
+    {
+      "case": "landau-oblique-2d",
+      "cells": [
+        128,
+        128
+      ],
+      "mobile_particles": 16777216,
+      "mode": "Fast()",
+      "ns_per_mobile_particle_step": 5.476990399360657,
+      "seconds": [
+        5.296665867,
+        4.594432548,
+        4.51130692
+      ],
+      "steps": 50,
+      "type": "Float32"
+    },
+    {
+      "case": "weibel-2d",
+      "cells": [
+        256,
+        256
+      ],
+      "mobile_particles": 8388608,
+      "mode": "Reference()",
+      "ns_per_mobile_particle_step": 6.418265058994293,
+      "seconds": [
+        2.689494691,
+        2.692015481,
+        2.693652758
+      ],
+      "steps": 50,
+      "type": "Float64"
+    },
+    {
+      "case": "weibel-2d",
+      "cells": [
+        256,
+        256
+      ],
+      "mobile_particles": 8388608,
+      "mode": "Fast()",
+      "ns_per_mobile_particle_step": 7.500709943771363,
+      "seconds": [
+        3.146025772,
+        3.147380209,
+        3.145847875
+      ],
+      "steps": 50,
+      "type": "Float64"
+    },
+    {
+      "case": "weibel-2d",
+      "cells": [
+        256,
+        256
+      ],
+      "mobile_particles": 8388608,
+      "mode": "Reference()",
+      "ns_per_mobile_particle_step": 2.163290572166443,
+      "seconds": [
+        0.911539791,
+        0.90734983,
+        0.906545817
+      ],
+      "steps": 50,
+      "type": "Float32"
+    },
+    {
+      "case": "weibel-2d",
+      "cells": [
+        256,
+        256
+      ],
+      "mobile_particles": 8388608,
+      "mode": "Fast()",
+      "ns_per_mobile_particle_step": 7.196505444049835,
+      "seconds": [
+        3.018433157,
+        3.020304449,
+        3.017894577
+      ],
+      "steps": 50,
+      "type": "Float32"
+    }
+  ]
+}
