@@ -309,6 +309,20 @@ function record_mode_fit!(result, rk; min_points)
 end
 
 """
+    run_seeds(dir, case) -> Vector{Int}
+
+The seeds a seeded run ran: its manifest's `seeds` (a sub-ensemble of the first n, WP-030, lists
+fewer than the case), else the case's list.
+"""
+function run_seeds(dir, case)
+    f = joinpath(dir, "manifest.toml")
+    m = isfile(f) ? TOML.parsefile(f) : Dict{String,Any}()
+    seeds = collect(Int, haskey(m, "seeds") ? m["seeds"] : case["numerics"]["seeds"])
+    issubset(seeds, case["numerics"]["seeds"]) || error("$dir: the manifest's seeds are not the case's")
+    return seeds
+end
+
+"""
     analyze_seeded(dir; log) -> result
 
 A seeded run of either code: `analyze` of every seed-<seed>/ subdirectory (its own plots,
@@ -322,7 +336,7 @@ Schema 2: the coefficient the ensemble observable's `signal` names (`mode_projec
 function analyze_seeded(dir; log = nothing)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
     two = get(case, "schema", 1) == 2
-    seeds = collect(Int, case["numerics"]["seeds"])
+    seeds = run_seeds(dir, case)
     img = image_from_header(log, joinpath(dir, "image.txt"))
     ekey, eobs = ensemble_observable(case)
     coeffs = Vector{ComplexF64}[]

@@ -354,12 +354,26 @@ end
     open(io -> TOML.print(io, m), joinpath(old, "manifest.toml"), "w")
     @test GPUCompare.run_label(old) == "smilei-fp64"
     @test GPUCompare.paired_loads(old, g44) && !GPUCompare.paired_loads(old, g11)
-    # other seeds are not paired
+    # a sub-ensemble of the first n seeds: its manifest lists them, the analysis takes them from
+    # there, and it pairs with a full run of the same layout over the seeds both ran
+    case = load_case("landau-oblique-2d")
+    sub = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, patches = (4, 4), first_seeds = 4)
+    @test endswith(basename(sub), "-p4x4-s4-" * bytes2hex(open(sha256, case["_path"]))[1:8])
+    @test TOML.parsefile(joinpath(sub, "manifest.toml"))["seeds"] == case_seeds(case)[1:4]
+    @test sort(filter(startswith("seed-"), readdir(sub))) == sort(["seed-$x" for x in case_seeds(case)[1:4]])
+    @test occursin("for seed in $(join(case_seeds(case)[1:4], ' ')); do", read(joinpath(sub, "run.sh"), String))
+    @test GPUCompare.run_seeds(sub, TOML.parsefile(joinpath(sub, "case.toml"))) == case_seeds(case)[1:4]
+    @test GPUCompare.run_seeds(cpu, TOML.parsefile(joinpath(cpu, "case.toml"))) == case_seeds(case)
+    @test GPUCompare.paired_loads(cpu, sub) && !GPUCompare.paired_loads(g11, sub)
+    @test_throws ErrorException SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, first_seeds = 33)
+    @test_throws ErrorException SmileiDeck.prepare_run("weibel-2d"; runs, gpu = true, first_seeds = 1)   # not seeded
+    # seeds the case does not have are refused, and runs that share no seed are not paired
     m2 = TOML.parsefile(joinpath(g44, "manifest.toml"))
-    m2["seeds"] = reverse(m2["seeds"])
+    m2["seeds"] = [12345]
     other = joinpath(runs, "other-seeds"); cp(g44, other)
     open(io -> TOML.print(io, m2), joinpath(other, "manifest.toml"), "w")
     @test !GPUCompare.paired_loads(cpu, other)
+    @test_throws ErrorException GPUCompare.run_seeds(other, TOML.parsefile(joinpath(other, "case.toml")))
     # the paired statistics: differences b − a over the seeds both measured
     st = GPUCompare.paired_stats([1.0, 2.0, 3.0, nothing], [1.5, 2.5, 2.0, 4.0], 2.0)
     @test st["n"] == 3 && st["differences"] == [0.5, 0.5, -1.0]

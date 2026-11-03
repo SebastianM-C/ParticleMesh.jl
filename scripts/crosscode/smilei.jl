@@ -1,7 +1,7 @@
 # Smilei namelist generator for the cases in scripts/crosscode/cases/ (Smilei v5.1): schema 1
 # (1D, `1Dcartesian`) and schema 2 (2D periodic, `2Dcartesian`).
 #
-#   julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare <case> [tag] [--gpu] [--no-fastmath] [--patches <px>x<py>] [--load-check]
+#   julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare <case> [tag] [--budget <s>] [--gpu] [--no-fastmath] [--patches <px>x<py>] [--load-check] [--first-seeds <n>]
 #
 # writes scripts/runs/<tag>/ with namelist.py (the namelist), case.toml (a copy of the case),
 # run.sh (what the container executes) and manifest.toml. A case with a `seeds` list gets one
@@ -709,23 +709,30 @@ the guide's fastmath flags, `patches = (px, py)` a patch layout other than the d
 build. `load_check` prepares the one-step run of the case's first seed that dumps the t = 0
 load (`load_check_blocks`), as a single run. The default tag names the build, the layout when
 it is not the CPU default, and the fastmath choice of a GPU run:
-smilei[-gpu][-loadcheck]-<case>[-p<px>x<py>][-nofastmath]-<first 8 hex of the case hash>.
+smilei[-gpu][-loadcheck]-<case>[-p<px>x<py>][-nofastmath][-s<n>]-<first 8 hex of the case hash>.
+`first_seeds = n` runs only the first n seeds of a seeded case (a paired sub-ensemble; the
+manifest's `seeds` lists them, and the analysis takes the seeds from there).
 """
 function prepare_run(name; tag = nothing, runs = joinpath(SCRIPTS, "runs"), budget = nothing, gpu = false, fastmath = true,
-                     patches = nothing, load_check = false)
+                     patches = nothing, load_check = false, first_seeds = nothing)
     case = load_case(name)
     gpu || fastmath || error("fastmath = false selects the GPU image's binary without fastmath; it needs gpu = true")
     p = smilei_parameters(case; gpu, patches)
     h = file_hash(case["_path"])
     layout = join(p.number_of_patches, "x")
     family = gpu ? "smilei-gpu" : "smilei"
-    variant = (gpu || patches !== nothing || load_check ? "-p$layout" : "") * (fastmath ? "" : "-nofastmath")
+    variant = (gpu || patches !== nothing || load_check ? "-p$layout" : "") * (fastmath ? "" : "-nofastmath") *
+              (first_seeds === nothing ? "" : "-s$first_seeds")
     tag = something(tag, "$family$(load_check ? "-loadcheck" : "")-$(case["name"])$variant-$(h[1:8])")
     dir = joinpath(runs, tag)
     mkpath(dir)
     cp(case["_path"], joinpath(dir, "case.toml"); force = true)
     seeded = haskey(case["numerics"], "seeds") && !load_check
     seeds = load_check ? [first(case_seeds(case))] : case_seeds(case)
+    if first_seeds !== nothing
+        seeded && 1 <= first_seeds <= length(seeds) || error("first_seeds = $first_seeds: a seeded case has 1 to $(length(seeds)) seeds")
+        seeds = seeds[1:first_seeds]
+    end
     if seeded
         for s in seeds
             sd = joinpath(dir, "seed-$s")
@@ -745,6 +752,7 @@ function prepare_run(name; tag = nothing, runs = joinpath(SCRIPTS, "runs"), budg
         extra = Dict{String,Any}("seeds" => seeds,
             "run" => tag, "code" => "smilei", "case" => case["name"],
             "build" => gpu ? "gpu" : "cpu", "patches" => [p.number_of_patches...],
+            "seed_subset" => first_seeds === nothing ? "all of the case's seeds" : "the first $first_seeds of the case's $(length(case_seeds(case))) seeds",
             "fastmath" => gpu ? fastmath : "not applicable (CPU build)", "load_check" => load_check,
             "case_source" => relpath(case["_path"], ROOT),
             "generator" => "scripts/crosscode/smilei.jl",
@@ -766,16 +774,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
     args = collect(ARGS[2:end])
     flag(f) = (i = findfirst(==(f), args); i === nothing ? false : (deleteat!(args, i); true))
     gpu, nofast, load_check = flag("--gpu"), flag("--no-fastmath"), flag("--load-check")
-    rest, opts = cli_options(args, ("--budget", "--patches"))
+    rest, opts = cli_options(args, ("--budget", "--patches", "--first-seeds"))
+    first_seeds = haskey(opts, "--first-seeds") ? parse(Int, opts["--first-seeds"]) : nothing
     budget = haskey(opts, "--budget") ? parse(Int, opts["--budget"]) : nothing
     patches = haskey(opts, "--patches") ? Tuple(parse.(Int, split(opts["--patches"], "x"))) : nothing
     if cmd == "prepare" && length(rest) >= 1
-        dir = prepare_run(rest[1]; tag = get(rest, 2, nothing), budget, gpu, fastmath = !nofast, patches, load_check)
+        dir = prepare_run(rest[1]; tag = get(rest, 2, nothing), budget, gpu, fastmath = !nofast, patches, load_check, first_seeds)
         println(dir)
     elseif cmd == "namelist" && length(rest) >= 1
         print(namelist(load_case(rest[1]); gpu, patches, load_check))
     else
-        println(stderr, "usage: smilei.jl prepare <case> [tag] [--budget <seconds>] [--gpu] [--no-fastmath] [--patches <px>x<py>] [--load-check] | namelist <case> [--gpu] [--patches <px>x<py>] [--load-check]")
+        println(stderr, "usage: smilei.jl prepare <case> [tag] [--budget <seconds>] [--gpu] [--no-fastmath] [--patches <px>x<py>] [--load-check] [--first-seeds <n>] | namelist <case> [--gpu] [--patches <px>x<py>] [--load-check]")
         exit(2)
     end
 end
