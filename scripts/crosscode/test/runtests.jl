@@ -954,3 +954,33 @@ include(joinpath(@__DIR__, "picongpu.jl"))
 include(joinpath(@__DIR__, "seeds.jl"))
 include(joinpath(@__DIR__, "convergence.jl"))
 include(joinpath(@__DIR__, "gpu.jl"))
+
+@testset "T-460 a run manifest names its commit without git: the runner's PM_COMMIT, and says so [A6]" begin
+    # A sandbox or container that mounts the worktree but not the repository's .git (the CPU box
+    # and the GPU runner before #179's fix) left `commit = "unknown"` in manifests unnoticed.
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    mktempdir() do d                                   # not a git repository
+        withenv("PM_COMMIT" => nothing) do
+            c = RunManifest.git_commit(d)
+            @test (c.commit, c.commit_source) == ("unknown", "none")
+            @test c.dirty === missing
+        end
+        withenv("PM_COMMIT" => "not-a-commit") do
+            @test RunManifest.git_commit(d).commit == "unknown"
+        end
+        withenv("PM_COMMIT" => sha) do
+            c = RunManifest.git_commit(d)
+            @test (c.commit, c.commit_source) == (sha, "PM_COMMIT")
+            @test c.dirty === missing
+            RunManifest.write_manifest(d; root = d)
+            m = RunManifest.read_manifest(d)
+            @test m["commit"] == sha && m["commit_source"] == "PM_COMMIT" && !haskey(m, "dirty")
+        end
+    end
+    root = dirname(dirname(dirname(@__DIR__)))           # this checkout: git sees it
+    withenv("PM_COMMIT" => sha) do
+        c = RunManifest.git_commit(root)
+        @test c.commit_source == "git"
+        @test c.commit != sha && occursin(r"^[0-9a-f]{40}$", c.commit)
+    end
+end

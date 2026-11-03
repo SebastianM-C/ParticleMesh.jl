@@ -13,24 +13,28 @@ export file_hash, write_manifest, read_manifest, git_commit, image_from_header, 
 file_hash(path) = bytes2hex(open(sha256, path))
 
 """
-    git_commit(root) -> (; commit, dirty)
+    git_commit(root) -> (; commit, dirty, commit_source)
 
 The commit of the checkout at `root` and whether tracked files differ from it. Read through
-`git` when it is available; `"unknown"` otherwise (a run inside the container sees the worktree
-read-only and may have no git).
+`git` when it can see the repository (`commit_source = "git"`). Otherwise, as in a sandbox or
+container that mounts the worktree without the repository's `.git`, from the environment
+variable `PM_COMMIT` that the runner sets to the commit it checked out (`"PM_COMMIT"`, and
+`dirty` is then `missing`); `"unknown"` (`"none"`) when neither is available.
 """
 function git_commit(root)
-    commit = try
-        readchomp(`git -C $root rev-parse HEAD`)
+    commit, commit_source = try
+        (readchomp(pipeline(`git -C $root rev-parse HEAD`; stderr = devnull)), "git")
     catch
-        "unknown"
+        c = get(ENV, "PM_COMMIT", "")
+        occursin(r"^[0-9a-f]{40}$", c) ? (c, "PM_COMMIT") : ("unknown", "none")
     end
+    commit_source == "git" || return (; commit, dirty = missing, commit_source)
     dirty = try
         !isempty(readchomp(`git -C $root status --porcelain --untracked-files=no`))
     catch
         missing
     end
-    return (; commit, dirty)
+    return (; commit, dirty, commit_source)
 end
 
 """
@@ -48,6 +52,7 @@ function write_manifest(dir; inputs = String[], extra = Dict{String,Any}(), root
         c = git_commit(root)
         m["commit"] = c.commit
         c.dirty === missing || (m["dirty"] = c.dirty)
+        c.commit_source == "git" ? delete!(m, "commit_source") : (m["commit_source"] = c.commit_source)
     end
     hashes = get(m, "inputs", Dict{String,Any}())
     for p in inputs
