@@ -108,7 +108,7 @@ ENV SMILEI_TAG=${SMILEI_TAG} \
     SMILEI_COMMIT=${SMILEI_COMMIT} \
     PM_SM=${PM_SM} \
     PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/compilers/bin:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/bin:${PATH} \
-    LD_LIBRARY_PATH=/opt/hdf5/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/compilers/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/math_libs/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/cuda/lib64 \
+    LD_LIBRARY_PATH=/opt/hdf5/lib:/opt/nvhpc-mpi/lib:/opt/nvhpc-ucx/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/comm_libs/mpi/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/compilers/lib:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/math_libs/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/cuda/lib64 \
     SLURM_LOCALID=0 \
     OPAL_PREFIX=/opt/nvhpc-mpi \
     PYTHONPATH=/opt/smilei/src \
@@ -121,7 +121,10 @@ ENV SMILEI_TAG=${SMILEI_TAG} \
 
 # The MPI prefix: the Open MPI tree that the SDK's mpicc links against (its first library
 # directory, whose parent holds share/openmpi; comm_libs/hpcx/bin/mpicc itself sits in a
-# wrapper directory, not in that tree), linked as /opt/nvhpc-mpi. The step prints what it
+# wrapper directory, not in that tree), linked as /opt/nvhpc-mpi, and HPC-X's UCX next to it as
+# /opt/nvhpc-ucx. Both lib directories are on LD_LIBRARY_PATH: the fifth build's components
+# could not load their own helpers (libmca_common_cuda.so.40, libmca_common_ucx.so.40) from the
+# wrapper directory's lib. The step prints what each pml and the vader btl still cannot find. The step prints what it
 # found before checking it. Then a singleton MPI start with MPI_THREAD_MULTIPLE, as Smilei
 # makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables), each
 # try under a time limit and with the components' load errors shown: first UCX (HPC-X's own
@@ -139,6 +142,10 @@ RUN NV=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE} \
  && prefix=$(readlink -f "$libdir/..") && echo "MPI prefix: $prefix" \
  && test -f "$prefix/share/openmpi/help-mpi-runtime.txt" \
  && ln -s "$prefix" /opt/nvhpc-mpi \
+ && test -d "$prefix/../ucx/lib" && ln -s "$(readlink -f "$prefix/../ucx")" /opt/nvhpc-ucx && ls -l /opt/nvhpc-ucx \
+ && for c in mca_pml_ucx mca_pml_ob1 mca_btl_vader; do \
+      echo "$c: $(ldd /opt/nvhpc-mpi/lib/openmpi/$c.so 2>&1 | grep 'not found' | paste -sd ';' - || true)"; \
+    done \
  && mpicc -o /tmp/mpi-probe /opt/smilei-gpu/mpi-probe.c \
  && export OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
  && for cfg in "OMPI_MCA_pml=ucx UCX_TLS=self,sm" "OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader" "OMPI_MCA_pml=ob1 OMPI_MCA_btl=self"; do \

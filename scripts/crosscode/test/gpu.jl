@@ -56,6 +56,7 @@ using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
     # MPI once as Smilei does (thread level multiple), so a broken MPI stops the build
     @test occursin("OPAL_PREFIX=/opt/nvhpc-mpi", recipe) && occursin("ln -s \"\$prefix\" /opt/nvhpc-mpi", recipe)
     @test occursin("test -f \"\$prefix/share/openmpi/help-mpi-runtime.txt\"", recipe)
+    @test occursin("LD_LIBRARY_PATH=/opt/hdf5/lib:/opt/nvhpc-mpi/lib:/opt/nvhpc-ucx/lib:", recipe)
     @test occursin("MPI_THREAD_MULTIPLE", read(joinpath(CC, "containers", "smilei-gpu", "mpi-probe.c"), String))
     @test occursin("timeout 120 env \$cfg", recipe) && occursin("OMPI_MCA_ess_singleton_isolated=1", recipe)
     @test occursin("> /opt/smilei/mpi_env.sh", recipe) && occursin("test -s /opt/smilei/mpi_env.sh", recipe)
