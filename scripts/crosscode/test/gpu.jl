@@ -138,7 +138,7 @@ function run_sh(dir, stub)
     run(setenv(`bash $(joinpath(dir, "run.sh"))`, "PATH" => stub * ":" * ENV["PATH"], "PM_RUN_DIR" => dir, "PM_MPI_ENV" => mpi))
 end
 
-@testset "T-402 run.sh keeps the generated namelist, records the build and the GPU, and resumes [A5, F3, WP-030, #256]" begin
+@testset "T-402 run.sh keeps the generated namelist, records the build and the GPU, and resumes [A5, WP-030]" begin
     stub, calls = stub_bin()
     runs = mktempdir()
     case = load_case("landau-oblique-2d")
