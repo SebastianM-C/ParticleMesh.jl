@@ -399,10 +399,8 @@ function cold_ivp(case; momenta_at::Symbol = :t0)
             y0[3j - 2] = b.alpha * b.n
         end
         y0[3nb + 1] = sum(b.q * b.alpha * b.n for b in beams) / (im * k)
-        for (j, b) in enumerate(beams)        # half a kick in E_k, E_z (B = 0 at t = 0)
-            γ = 1 / sqrt(1 - b.v^2)
-            y0[3j - 1] += b.q * y0[3nb + 1] * h / (b.m * γ)
-            y0[3j] += b.q * y0[3nb + 2] * h / (b.m * γ^3)
+        for (j, b) in enumerate(beams)        # half a kick in E_k (E_z = 0 and B = 0 at t = 0)
+            y0[3j - 1] += b.q * y0[3nb + 1] * h / (b.m / sqrt(1 - b.v^2))
         end
         return (; kind = :weibel, k, beams, M, y0, index = 3nb + 3, energy_scale = prod(Float64.(g["length"])) / 4)
     else

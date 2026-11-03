@@ -192,16 +192,33 @@ function report(sumdir, out; box_status = nothing)
         conv["$(which)_$(k)"] = d
     end
     res["convergence"] = conv
-    # the limit over all the points at once (#281: the Δx family carries the first-order Δt term)
+    # the limit over all the points at once (#281: the Δx family carries the first-order Δt term),
+    # every point refitted over the samples common to all their windows: the window rule takes one
+    # sample more or less from point to point, which moves a residual by more than the Δx and Δt
+    # terms the fit separates (the physics breaker of the records PR)
     pl = [p for p in pts if plain(p)]
     lim = Dict{String,Any}()
     for k in keys_
         ev = [res["points"][p.name]["observables"][k] for p in pl]
         all(e -> haskey(e, "residual"), ev) || continue
-        f = limit_fit([p.dx for p in pl], [p.dt for p in pl], [e["residual"] for e in ev])
+        t1 = maximum(e["fit_range"][1] for e in ev)
+        t2 = minimum(e["fit_range"][2] for e in ev)
+        θ = theory_of(first(pl).case, k)
+        r0, rh, n = Float64[], Float64[], Int[]
+        for p in pl
+            t, U = series_of(p.rec, k)
+            idx = findall(x -> t1 - 1e-9 <= x <= t2 + 1e-9, t)
+            γ = linear_fit(t[idx], log.(U[idx])).slope / 2
+            γ0 = linear_fit(t[idx], log.(ivp_series(p.case, k, t[idx]))).slope / 2
+            γh = linear_fit(t[idx], log.(ivp_series(p.case, k, t[idx]; momenta_at = :t_minus_half))).slope / 2
+            push!(r0, (γ - γ0) / θ); push!(rh, (γ - γh) / θ); push!(n, length(idx))
+        end
+        allequal(n) || error("report: the common window of $k holds different sample counts across points ($n)")
+        f = limit_fit([p.dx for p in pl], [p.dt for p in pl], r0)
         isempty(f) && continue
-        fh = limit_fit([p.dx for p in pl], [p.dt for p in pl], [e["residual_minus_half_start"] for e in ev])
-        lim[k] = merge(f, Dict{String,Any}("points" => [p.name for p in pl], "minus_half_start" => fh))
+        fh = limit_fit([p.dx for p in pl], [p.dt for p in pl], rh)
+        lim[k] = merge(f, Dict{String,Any}("points" => [p.name for p in pl], "common_window" => [t1, t2], "samples" => first(n),
+            "residual_common" => r0, "residual_common_minus_half_start" => rh, "minus_half_start" => fh))
     end
     res["limit"] = lim
     open(io -> JSON.print(io, res, 2), joinpath(out, "results.json"), "w")
