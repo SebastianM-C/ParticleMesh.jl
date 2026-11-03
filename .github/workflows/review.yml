@@ -89,11 +89,12 @@ jobs:
     name: Review (${{ matrix.lens }})
     needs: lenses
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     permissions:
       contents: read
       pull-requests: read
       issues: read
+      actions: read
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +117,35 @@ jobs:
             echo "::warning::no $LENS-reviewer brief on $BASE yet; using this PR's copy"
             cp ".claude/agents/$LENS-reviewer.md" "$RUNNER_TEMP/brief.md"
           fi
+      - name: Wait for CI on this commit and summarize it
+        # The lens decides with the CI result in hand (up to an hour of waiting): a pass rests on a test
+        # result, never on reading alone (the lens briefs).
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          id=""; status=""
+          for i in $(seq 1 60); do
+            id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI.yml --commit "$HEAD" --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
+            if [ -n "$id" ]; then
+              status=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json status -q .status 2>/dev/null || true)
+              [ "$status" = completed ] && break
+            fi
+            sleep 60
+          done
+          {
+            echo "# CI on ${HEAD:0:7}"
+            if [ -z "$id" ]; then
+              echo "No CI run was found for this commit."
+            elif [ "$status" != completed ]; then
+              echo "CI run $id had not finished after an hour (status: $status); its tests are unverified."
+            else
+              gh run view "$id" --repo "$GITHUB_REPOSITORY" --json conclusion,jobs \
+                -q '"Run conclusion: \(.conclusion)\n" + ([.jobs[] | "- \(.name): \(.conclusion // .status)"] | join("\n"))'
+              echo "The \`Julia pre\` job is allowed to fail (CLAUDE.md, A6); every other failed job is a failing test."
+            fi
+          } > "$RUNNER_TEMP/ci.md"
+          cat "$RUNNER_TEMP/ci.md"
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1.13'
@@ -134,7 +164,10 @@ jobs:
             You are the ${{ matrix.lens }} reviewer of this repository. Your brief is the file
             ${{ runner.temp }}/brief.md and the contract every change must respect is
             ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
-            this PR comes from the PR itself). The PR head is checked
+            this PR comes from the PR itself). The CI result for this commit is in
+            ${{ runner.temp }}/ci.md: a failed job other than `Julia pre` is a failing test, and
+            unfinished or missing CI means the tests are unverified unless you complete a run yourself.
+            The PR head is checked
             out in the working directory. Read the brief and the contract, then `gh pr view` and
             `gh pr diff` for the change and its description, read the files it touches, and run what the
             brief asks for (Julia 1.13 is installed; the CPU tests are
