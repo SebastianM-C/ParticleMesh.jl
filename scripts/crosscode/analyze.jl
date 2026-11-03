@@ -372,18 +372,17 @@ function analyze_seeded(dir; log = nothing)
             outputs[relpath(f, dir)] = "sha256:" * file_hash(f)
         end
     end
-    isfile(joinpath(dir, "versions.toml")) && (outputs["versions.toml"] = "sha256:" * file_hash(joinpath(dir, "versions.toml")))
+    merge!(outputs, top_outputs(dir))
     hw = [hardware(joinpath(dir, "seed-$s")) for s in seeds]
     walls = [wall_seconds(joinpath(dir, "seed-$s")) for s in seeds]
     nsteps = round(Int, case["time"]["t_end"] / case["time"]["dt"])
     cells = prod(case["grid"]["cells"])
     particles = cells * sum(prod(s["particles_per_cell"]) for s in case["species"] if s["mobile"])
     code = code_of(joinpath(dir, "seed-$(first(seeds))"))
-    loops = code == "smilei" ? [smilei_time_loop(joinpath(dir, "seed-$s")) for s in seeds] : nothing
     extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "particles_per_seed" => particles,
         "steps" => nsteps, "particle_steps_per_seed" => particles * nsteps, "hardware" => first(hw))
     code == "picongpu" && (extra["compile_seconds"] = compile_seconds(dir); extra["compile_seconds_per_job"] = compile_seconds_per_job(dir))
-    loops === nothing || (extra["time_loop_seconds_per_seed"] = [something(x, "not recorded") for x in loops])
+    code == "smilei" && merge!(extra, smilei_seed_timing(dir, seeds))
     r = write_ensemble(dir, case, t, coeffs, seeds; code, per_run, extra)
     # the complex mode coefficient of every seed, so that sub-ensembles and later comparisons
     # need no dumps (which are not committed): seed-coefficients.json
@@ -451,6 +450,27 @@ function smilei_steps(dir)
     end
     return nothing
 end
+
+"""
+    smilei_performance!(performance, dir, mobile_particle_steps) -> performance
+
+Adds a Smilei run's own time-loop time (`smilei_time_loop`), the time per mobile particle-step
+from it, and the build (`smilei_build`) to its performance record.
+"""
+function smilei_performance!(performance, dir, mobile_particle_steps)
+    loop = smilei_time_loop(dir)
+    performance["time_loop_seconds"] = something(loop, "not recorded")
+    loop === nothing || (performance["ns_per_mobile_particle_step_time_loop"] = 1e9 * loop / mobile_particle_steps)
+    performance["build"] = smilei_build(dir)
+    return performance
+end
+
+"The time-loop seconds of every seed of a seeded Smilei run, for its ensemble record."
+smilei_seed_timing(dir, seeds) =
+    Dict{String,Any}("time_loop_seconds_per_seed" => [something(smilei_time_loop(joinpath(dir, "seed-$s")), "not recorded") for s in seeds])
+
+"The hashes of a seeded run's top-level outputs: the toolchain record of a GPU run (`versions.toml`)."
+top_outputs(dir) = Dict{String,Any}(f => "sha256:" * file_hash(joinpath(dir, f)) for f in ("versions.toml",) if isfile(joinpath(dir, f)))
 
 """
     run_size(case; steps) -> Dict
@@ -666,12 +686,7 @@ function analyze_2d(dir, case; log = nothing, image = nothing)
     wall = wall_seconds(dir)
     performance = merge(size_, Dict{String,Any}("wall_seconds" => wall === nothing ? "not recorded" : wall))
     wall === nothing || (performance["ns_per_mobile_particle_step"] = 1e9 * wall / size_["mobile_particle_steps"])
-    if code_of(dir) == "smilei"
-        loop = smilei_time_loop(dir)
-        performance["time_loop_seconds"] = something(loop, "not recorded")
-        loop === nothing || (performance["ns_per_mobile_particle_step_time_loop"] = 1e9 * loop / size_["mobile_particle_steps"])
-        performance["build"] = smilei_build(dir)
-    end
+    code_of(dir) == "smilei" && smilei_performance!(performance, dir, size_["mobile_particle_steps"])
     code_of(dir) == "picongpu" && (performance["compile_seconds"] = something(compile_seconds(dir), "not recorded"))
     code_of(dir) == "picongpu" && (checks["dumps"] = picongpu_dump_checks(dir))
     result = Dict{String,Any}("case" => name, "code" => code_of(dir), "observables" => results,

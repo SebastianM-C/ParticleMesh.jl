@@ -61,6 +61,15 @@ using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
     @test occursin("timeout 120 env \$cfg", recipe) && occursin("OMPI_MCA_ess_singleton_isolated=1", recipe)
     @test occursin("> /opt/smilei/mpi_env.sh", recipe) && occursin("test -s /opt/smilei/mpi_env.sh", recipe)
     @test !occursin("OMPI_MCA_pml=", split(recipe, "RUN NV=")[1])   # the pml is the probe's, not a fixed ENV
+    # the variants get the right flags and names, the probe prefers cc89, the MPI prefix is the
+    # library directory's parent, the probe and the ldd check stop the build
+    @test occursin("PM_FASTMATH=\$([ \$variant = fastmath ] && echo ,fastmath || true)", recipe)
+    @test occursin("name=\$([ \$variant = fastmath ] && echo smilei || echo smilei-nofastmath)", recipe)
+    @test occursin("for cc in cc89 cc86; do", recipe)
+    @test occursin("prefix=\$(readlink -f \"\$libdir/..\")", recipe)
+    @test occursin("OMPI_MCA_mca_base_component_show_load_errors=1 /tmp/mpi-probe; then", recipe)
+    @test occursin("return (size == 1 && provided == MPI_THREAD_MULTIPLE) ? 0 : 1;", read(joinpath(CC, "containers", "smilei-gpu", "mpi-probe.c"), String))
+    @test occursin("if [ -n \"\$missing\" ]; then echo \"\$b: \$missing\"; exit 1; fi;", recipe)
     for f in ("nvidia_env.sh", "acc-probe.cpp", "pm-versions.sh", "mpi-probe.c")
         @test occursin("COPY smilei-gpu/$f ", recipe)
     end
@@ -99,6 +108,14 @@ python_parses(text) = (f = tempname() * ".py"; write(f, text);
     @test_throws ErrorException smilei_parameters(c; patches = (3, 1))
     @test_throws ErrorException smilei_parameters(c; patches = (32, 1))   # 4 cells per patch
     @test_throws ErrorException smilei_parameters(c; patches = (4,))
+    # the rule at its edges, on cell counts where they show: 96 cells in 16 patches have 6 cells
+    # each (accepted), 80 cells in 16 have 5 (refused), 96 in 3 or 6 are not powers of 2
+    @test SmileiDeck.check_patches((16, 1), (96, 96)) == (16, 1)
+    @test_throws ErrorException SmileiDeck.check_patches((16, 1), (80, 80))
+    @test_throws ErrorException SmileiDeck.check_patches((3, 1), (96, 96))
+    @test_throws ErrorException SmileiDeck.check_patches((6, 1), (96, 96))
+    # a GPU run is one rank without threads whatever its layout
+    @test smilei_parameters(c; gpu = true, patches = (4, 4)).threads == 1
     # schema 1 has no GPU path (Smilei's GPU port covers 2D and 3D Cartesian)
     @test_throws ErrorException namelist(load_case("landau"); gpu = true)
     @test_throws ErrorException smilei_parameters(load_case("landau"); patches = (2,))
@@ -117,6 +134,7 @@ function stub_bin()
         echo "\$(basename "\$0") \$* \$(pwd)" >> $calls
         printf '# GENERAL DEFINITIONS FOR SMILEI\\n' > smilei.py
         printf 'Time_in_time_loop\\t12.5\\t99%% coverage\\n'
+        echo "pml=\${OMPI_MCA_pml:-unset}"
         """)
     end
     write(joinpath(stub, "nvidia-smi"), """
@@ -168,14 +186,24 @@ end
                 @test h["fastmath"] == (fastmath ? "yes" : "no")
                 @test occursin("# mpi: OMPI_MCA_pml=ucx UCX_TLS=self,sm\n", ct)   # the image's verified MPI setting
                 @test h["mpi"] == "OMPI_MCA_pml=ucx UCX_TLS=self,sm"
+                @test occursin("pml=ucx", read(joinpath(sd, "smilei.log"), String))   # the image's MPI setting reached Smilei
                 @test h["gpu_before"] == "0 %, 1 MiB" && h["gpu_after"] == "0 %, 1 MiB" && h["gpu_processes_before"] == ""
             else
                 @test !haskey(h, "gpu") && !haskey(h, "fastmath")
             end
             @test GPUCompare.smilei_build(sd) == (gpu ? "gpu" : "cpu")
             @test GPUCompare.smilei_time_loop(sd) == 12.5
+            gpu || @test occursin("pml=unset", read(joinpath(sd, "smilei.log"), String))
         end
         @test isfile(joinpath(dir, "versions.toml")) == gpu
+        # the toolchain record is hashed with the outputs; the seeds' time loops and the build go
+        # into the records the analysis writes
+        @test haskey(GPUCompare.top_outputs(dir), "versions.toml") == gpu
+        @test GPUCompare.smilei_seed_timing(dir, seeds)["time_loop_seconds_per_seed"] == fill(12.5, length(seeds))
+        sd1 = joinpath(dir, "seed-$(first(seeds))")
+        perf = GPUCompare.smilei_performance!(Dict{String,Any}(), sd1, 10^9)
+        @test perf["time_loop_seconds"] == 12.5 && perf["ns_per_mobile_particle_step_time_loop"] == 12.5 &&
+              perf["build"] == (gpu ? "gpu" : "cpu")
         made = readlines(calls)
         @test count(l -> startswith(l, "$bin namelist.py ") && occursin(dir, l), made) == length(seeds)
     end
@@ -218,6 +246,7 @@ end
             tracked = [m[1] for m in eachmatch(r"DiagTrackParticles\(\s*species = \"([^\"]+)\"", lc)]
             @test tracked == mobile
             @test count("filter = pm_load_check_corner", lc) == length(mobile)
+            @test occursin(r"\n    return \(particles\.x < [0-9.e-]+\) \* \(particles\.y < [0-9.e-]+\)\n", lc)
             corner = parse.(Float64, [m[1] for m in eachmatch(r"particles\.[xy] < ([0-9.e-]+)", lc)])
             @test corner == collect(p.grid_length ./ 8)
             @test count("attributes = [\"x\", \"y\", \"px\", \"py\", \"pz\", \"w\"]", lc) == length(mobile)
@@ -291,6 +320,21 @@ end
     r = compare_tracks(t, bumped)
     @test !r["identical"] && r["py"]["differing"] == 1 && r["px"]["differing"] == 0 && r["pz"]["differing"] == 0
     @test r["py"]["max_abs_difference"] == eps(shuffled["py"][17])
+    @test r["py"]["max_relative_to_max_abs"] == eps(shuffled["py"][17]) / maximum(abs, t["py"])
+    # one ulp in one weight is seen too
+    wb = deepcopy(shuffled)
+    wb["w"][3] = nextfloat(wb["w"][3])
+    r = compare_tracks(t, wb)
+    @test !r["identical"] && r["w"]["differing"] == 1
+    # an exactly representable lattice, (k + ½)/64, on which rounding x/spacing would split points
+    ex = Dict("x" => [(i + 0.5) / 64 for i in 0:15 for j in 0:15], "y" => [(j + 0.5) / 64 for i in 0:15 for j in 0:15])
+    for k in ("px", "py", "pz"); ex[k] = randn(rng, 256); end
+    ex["w"] = fill(1.0, 256)
+    @test compare_tracks(ex, ex)["identical"]
+    exb = deepcopy(ex); exb["x"] = nextfloat.(exb["x"]); exb["y"] = prevfloat.(exb["y"])
+    pr = randperm(rng, 256)
+    r = compare_tracks(ex, Dict(k => v[pr] for (k, v) in exb))
+    @test r["positions_match"] && r["positions"]["x"]["max_ulps"] == 1 && r["px"]["differing"] == 0
     # a dropped component of the momentum (pz read as py) is seen in every particle that differs
     swapped = merge(shuffled, Dict("pz" => shuffled["py"]))
     @test compare_tracks(t, swapped)["pz"]["differing"] == n
@@ -330,6 +374,13 @@ end
     @test r["fields_t0"]["Rho"]["max_abs_difference"] ≈ 1e-12 rtol = 1e-3
     @test r["fields_t0"]["Ex"]["bitwise_equal"]
     @test r["scalars_first_output"]["Ukin"]["difference"] == eps(0.5)
+    # two species: the run is identical only when every species is
+    d2a, d2b = mktempdir(), mktempdir()
+    write_loadcheck_run(d2a, t); write_loadcheck_run(d2b, t)
+    write_track(joinpath(d2a, "TrackParticlesDisordered_beam.h5"), t; species = "beam")
+    write_track(joinpath(d2b, "TrackParticlesDisordered_beam.h5"), bumped; species = "beam")
+    r = compare_loads(d2a, d2b, out)
+    @test r["species"]["electron"]["identical"] && !r["species"]["beam"]["identical"] && !r["identical"]
 end
 
 @testset "T-405 GPU runs carry their own label; paired seeds only with one layout [A5, A7, WP-030]" begin
@@ -366,6 +417,9 @@ end
     @test GPUCompare.run_seeds(cpu, TOML.parsefile(joinpath(cpu, "case.toml"))) == case_seeds(case)
     @test GPUCompare.paired_loads(cpu, sub) && !GPUCompare.paired_loads(g11, sub)
     @test_throws ErrorException SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, first_seeds = 33)
+    @test_throws ErrorException SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, first_seeds = 0)
+    all32 = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, first_seeds = 32)
+    @test TOML.parsefile(joinpath(all32, "manifest.toml"))["seeds"] == case_seeds(case)
     @test_throws ErrorException SmileiDeck.prepare_run("weibel-2d"; runs, gpu = true, first_seeds = 1)   # not seeded
     # seeds the case does not have are refused, and runs that share no seed are not paired
     m2 = TOML.parsefile(joinpath(g44, "manifest.toml"))
@@ -380,6 +434,16 @@ end
     @test st["mean"] == 0.0 && st["std"] ≈ sqrt(0.75) && st["stderr_of_mean"] ≈ 0.5
     @test st["max_abs"] == 1.0 && st["mean_in_units_of_reference_seed_spread"] == 0.0
     @test GPUCompare.paired_stats([nothing], [1.0], 1.0)["n"] == 0
+    st = GPUCompare.paired_stats([1.0, 2.0], [1.5, 2.5], 2.0)
+    @test st["mean"] == 0.5 && st["mean_in_units_of_reference_seed_spread"] == 0.25
+    # pairing over the common seeds, whatever their order and whichever run has more
+    seeds_, xa, xb = GPUCompare.paired_values([5, 7, 9, 11], [50, 70, 90, 110], [9, 5], [91, 51])
+    @test seeds_ == [5, 9] && xa == [50, 90] && xb == [51, 91]
+    # the drift of a series against the reference
+    sd = GPUCompare.series_drift([0.0, 1.0, 2.0, 3.0], [1.0, 2.0, 4.0, 8.0], [1.0, 2.0 + 2e-8, 4.0, 8.0 + 8e-5])
+    @test sd["max_abs_difference_relative_to_max"] ≈ 1e-5 && sd["at_t"] == 3.0
+    @test sd["max_relative_difference"] ≈ 1e-5 && sd["first_t_relative_above_1e-10"] == 1.0
+    @test sd["first_t_relative_above_1e-6"] == 3.0 && sd["first_t_relative_above_1e-2"] === nothing
     # the paired drift of the mode coefficients, from both runs' seed-coefficients.json
     ca, cb = mktempdir(), mktempdir()
     t = collect(0.0:0.5:2.0)

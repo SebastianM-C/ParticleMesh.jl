@@ -8,7 +8,7 @@
 | Case hashes (SHA-256, first 8 hex) | `landau-oblique-2d.toml` `431f4192` (WP-025's 32 seeds), `weibel-2d.toml` `dca1230a` (WP-019's) |
 | Smilei GPU | v5.1, commit `438d43d8ab727d02dd8f4402c50393343e871b99` (the CPU image's), `make config="gpu_nvidia"` (OpenACC); image `localhost/particlemesh-smilei-gpu:369b4134f81b8901`, id `4c5e373b2057c24c24d151a71f1215b24b9bf699981f58d5897b6b49b5465f7d`, from `scripts/crosscode/containers/smilei-gpu.Containerfile` at `af6be19`. Toolchain (`pm-versions`, each run's `versions.toml`): NVIDIA HPC SDK 23.11 (nvc++ `-gpu=cc89,cuda12.3`), nvcc 12.3.52 (`-arch=sm_89`), GCC 11.4.0, HPC-X 2.16's Open MPI 4.1.5rc2 (`OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader`, chosen by the build's probe), HDF5 1.14.2, Python 3.10.12, numpy 1.21.5 |
 | Smilei CPU | the same commit, image `localhost/particlemesh-smilei:e4f0148b8952fc87`, id `7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c` (unchanged since WP-003) |
-| Hardware | GPU runs: NVIDIA GeForce RTX 4080 SUPER, driver 595.112.07 (CUDA 13.2), one MPI rank, one patch unless named; the card also drives the machine's display (2.5 to 2.7 GB in use and 3 to 10 % utilization before every run, `container.txt`). CPU runs: Intel Core i9-14900K, 16 OpenMP threads |
+| Hardware | GPU runs: NVIDIA GeForce RTX 4080 SUPER, driver 595.112.07 (CUDA 13.2), one MPI rank, one patch unless named; the card also drives the machine's display: before the first seed of each job, nvidia-smi inside the container saw 1 to 10 % utilization and 2.46 to 4.12 GB in use by processes outside the container (`container.txt`). CPU runs: Intel Core i9-14900K, 16 OpenMP threads |
 | Review | none yet: the numbers below have not had the independent review CLAUDE.md asks for before they leave the repository |
 
 This report records measurements and sets no tolerance (A7). Each run directory keeps its `manifest.toml` (inputs, outputs and their SHA-256), `namelist.py`, `run.sh`, `container.txt`, `smilei.log`, `versions.toml` (GPU), `observables.json` and the standard plots with their JSON sidecars; seeded runs the same per seed under `seed-<seed>/` and `seed-coefficients.json` at the top. Dumps and `scalars.txt` are not committed.
@@ -44,13 +44,13 @@ Five builds were needed. Each failure is in the commit history of the recipe, an
 | GPU 1 × 1 | GPU 1 × 1 without fastmath | identical | identical | identical | bitwise equal | identical |
 | CPU 4 × 4 | CPU 1 × 1 | identical | 245 760 differ, up to 1.4 × max \|p\| | identical | Ey 3.5 × 10⁻² | Ukin −3.4 × 10⁻⁴, Uelm_Ey −2.8 × 10⁻³ |
 
-At the same patch layout, the two builds draw the same particles from the same random streams. The differences are roundoff: nvc++'s host code rounds differently from g++. A different layout gives other particles in either build, because Smilei seeds patch p with `random_seed + p` (Patch.cpp). Only 16 384 particles of one column of 16 cells agree, where the two layouts' streams coincide. The fastmath flag does not touch the load. So a one-patch GPU ensemble is an independent draw against the CPU's 4 × 4 ensemble and is compared as an ensemble. A 4 × 4 GPU run is the CPU's run of the same seed up to roundoff, and is compared seed by seed.
+At the same patch layout, the two builds draw the same particles from the same random streams. The differences are roundoff: nvc++'s host code rounds differently from g++. The corner lies in patch 0 for every layout up to 8 per axis. The physics breaker widened the sample to 262 144 more particles spread over every patch (layouts 1 × 1, 2 × 2, 4 × 4, 8 × 8 and 2 × 8, two seeds). No particle was redrawn in any patch, and |p| differed in 27 % of particles by at most 1.7 × 10⁻¹² relative (0.11 % above 16 eps). Positions differed by 1 ulp in up to 14 % of particles (8 × 8). The t = 0 fields differed by 1.7 × 10⁻¹² to 7.6 × 10⁻¹¹ relative. A different layout gives other particles in either build, because Smilei seeds patch p with `random_seed + p` (Patch.cpp). Only 16 384 particles of one column of 16 cells agree, where the two layouts' streams coincide. The fastmath flag does not touch the load. So a one-patch GPU ensemble is an independent draw against the CPU's 4 × 4 ensemble and is compared as an ensemble. A 4 × 4 GPU run is the CPU's run of the same seed up to roundoff, and is compared seed by seed.
 
-The layout also changes Smilei's constant post-Poisson field (#157, now with a comment from this package). The t = 0 ratio Uelm_Ex/Uelm_Ey is 3.986287 with 4 × 4 patches and 3.997592 with one, in both builds, against 3.9975909 for the Yee grid without an offset. With one patch, the offset is absent to the scalars' 10 digits.
+The layout also changes Smilei's constant post-Poisson field (#157, now with a comment from this package). The t = 0 ratio Uelm_Ex/Uelm_Ey is 3.986287 with 4 × 4 patches and 3.997592 with one, in both builds, against 3.9975909 for the Yee grid without an offset. The physics breaker measured 3.986287 also with 2 × 2 and 8 × 8, and 4.039543 with 2 × 8. With one patch, the offset is absent to the scalars' 10 digits. Ukin at t = 0 also moves by −3.4 × 10⁻⁴ relative with the layout, because the draws change.
 
 ### Weibel (`weibel-2d`, one seed)
 
-The case is cold and quiet-loaded: positions on the lattice, and momenta p = γv exactly. The random seed enters nowhere that matters, so the case has no seed spread. The reference spreads are instead the fits' standard errors and the difference between two runs.
+The case is cold and quiet-loaded: positions on the lattice, and momenta p = γv exactly. The random seed enters nowhere that matters, so the case has no seed spread. The physics breaker reran it on the CPU with `random_seed = 777`: every energy column matches through t = 40 to the printed digits, and only Ubal (1.8 × 10⁻⁶ relative, about 10⁻¹⁵ absolute) and the location columns of near-zero fields change. The reference spreads are instead the fits' standard errors and the difference between two runs.
 
 | Run | γ, field energy (theory 0.263725) | γ, mode | ns per mobile particle-step (time loop) |
 |---|---|---|---|
@@ -97,6 +97,10 @@ The total energy changes by at most 1.33 × 10⁻⁶ over the run in both builds
 
 In `weibel-2d`, the GPU build's `Rho` dumps agree with the CPU's at t = 0 to 4 × 10⁻¹⁴. From the second dump (iteration 16) on, they equal the CPU's minus the frozen ions' charge density (1 per cell) to 8.5 × 10⁻¹², so their box sum is −65 536, one per cell. A plain Smilei namelist reproduces it (#288, `upstream`): 32 × 32 cells, a frozen ion species, 20 steps. There the GPU's Rho_ion is exactly 0 after t = 0. With the ions mobile, or without them, both builds agree to 3 × 10⁻¹⁵. The likely mechanism, read from the v5.1 source and not tested in a patched build: on diagnostic steps Smilei deposits frozen species on the host (`Species.cpp`), then copies the device's density over the host arrays (`VectorPatch.cpp`), and the device holds only the mobile deposit. The projector's "Does not compute Rho !" comment is in the mobile-species path, which deposits correctly here. The dynamics do not use the dumped density: frozen ions carry no current, and the growth rates agree as above. The analysis uses Rho only at t = 0. No observable here is affected, but a GPU run's later Rho dumps miss every frozen species.
 
+### Field extrema in the GPU build's scalars
+
+The physics breaker found that the GPU build's extrema columns of `scalars.txt` are wrong after t = 0: `ExMax`, `ExMin`, `Bx_mMax`, `JzMax`, `RhoMax` and the rest, with their `*Cell` locations. Each `*Max` equals its `*Min`. In Weibel at t = 19.91, ExMax = ExMin = 1.36 × 10⁻⁵ where the CPU has ±3.2 × 10⁻⁴, and Bx_mMax = Bx_mMin = −5.5 × 10⁻⁵ where the CPU has ±5.0 × 10⁻³. At the first output after t = 0 they are 0, where the CPU has ±8.8 × 10⁻¹⁴. The same run's field dump has max Bx 5.27 × 10⁻³ at t = 20.06, as on the CPU, and the energy columns (`Uelm_*`, `Ukin`, `Utot`) agree with the CPU to all printed digits. No observable or check here uses the extrema. @@MINMAX@@
+
 ## Time per particle-step on the RTX 4080 SUPER
 
 ns per mobile particle-step (`throughput/throughput.json` and `throughput/plots/throughput.png`, `scripts/crosscode/throughput.jl`). For Smilei it is the median and range over seeds of its own time loop (`Time_in_time_loop`, without the Python set-up, the load and the Poisson solve) and of the container's wall time. PIConGPU: the wall time per seed (WP-025's runs, the same card and driver). ParticleMesh: `scripts/em2d/timing.jl cuda`, the module's step with its per-step diagnostics, median of 3 × 50 steps after 5 warm-up steps, the case's default seed.
@@ -119,7 +123,7 @@ ns per mobile particle-step (`throughput/throughput.json` and `throughput/plots/
 
 ![Time per mobile particle-step](throughput/plots/throughput.png)
 
-**What else ran.** The GPU runs one job at a time under the runner's lock, so no other compute job shared the card. It drives the machine's display: 2.5 to 2.7 GB in use, and 3 to 10 % utilization before the first seed of a job (each run's `container.txt`; the ~99 % before later seeds is the previous seed's own load in nvidia-smi's sampling window). The host was not idle during the Landau ensemble:
+**What else ran.** The GPU runs one job at a time under the runner's lock, so no other compute job shared the card. It drives the machine's display. Before the first seed of a job, nvidia-smi saw 1 to 10 % utilization and 2.46 to 4.12 GB in use, by processes outside the container: none of ours, which had exited (each run's `container.txt`). The 26 to 99 % before later seeds is the previous seed's own load in nvidia-smi's sampling window. The host was not idle during the Landau ensemble:
 
 - the CPU test matrix ran from 15:38 to 15:54 UTC;
 - WP-030's breakers ran their tests and CPU Smilei jobs from 16:15 on (CPU jobs 16:20 to 16:46 and 16:59 to 17:02).
@@ -132,6 +136,7 @@ The ensemble's time loop shows no slowdown from that load. Seed 20261031, on an 
 - It is 1.55 times faster than PIConGPU FP64 on the same card, on the same Landau case with the same output cadence (wall, 5.61 against 3.62).
 - ParticleMesh's Float64 step takes 1.9 to 2.0 times Smilei GPU's time loop on Landau (6.98 and 7.02 against 3.58), and 1.3 to 1.5 times on Weibel (6.42 and 7.50 against 4.96).
 - At 4 × 4 patches the GPU build takes about twice as long on Landau (7.08 against 3.62) and three times as long on Weibel (15.31 against 5.01).
+- The physics breaker's scaled-down Landau case (8 × 8 electrons per cell, 4 seeds) ran at 4.0 to 6.1 ns per mobile particle-step at one patch and 24.7 to 49.4 ns at 4 × 4 on the GPU, against 10.7 to 10.9 ns on the CPU at 4 × 4. With fewer particles per cell, the GPU's time per particle-step depends more on the layout and scatters more from seed to seed. Every number above needs its case size and layout next to it.
 - fastmath makes no difference within the run-to-run scatter (Weibel 5.12 and 5.06 without and with it, against 4.96 for the first run).
 - ParticleMesh's Float32 Reference step (2.48 ns on Landau) is faster than every FP64 code here. It is not a matched comparison (A5 asks for the same precision).
 
@@ -152,7 +157,7 @@ The ensemble's time loop shows no slowdown from that load. Seed 20261031, on an 
 ## Known limitations and open items
 
 - The GPU build is not bitwise reproducible run to run (atomic adds), as A4 expects of a fast mode. Smilei has no deterministic GPU deposition.
-- The GPU build's `Rho` dumps after t = 0 lack frozen species (above, #288).
+- The GPU build's `Rho` dumps after t = 0 lack frozen species (above, #288), and its scalar extrema columns are wrong after t = 0 (above).
 - One patch is both the guideline and the fastest layout here. A layout other than the CPU's changes Smilei's post-Poisson offset (#157), so `energy_ratio` comparisons between builds need the same layout.
 - No review yet (header).
 

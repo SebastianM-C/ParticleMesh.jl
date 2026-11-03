@@ -42,14 +42,30 @@ function read_track(file; iteration = 0)
 end
 
 """
-    position_order(t, sx, sy) -> permutation
+    nearest_index(values, v) -> Int
 
-The permutation that orders particles by their lattice index (round(x/sx), round(y/sy)), with
-a check that no two share one; positions that differ by rounding keep their index, so two
-loads of one lattice come out in the same order.
+The index of the entry of the sorted vector `values` nearest to `v`.
 """
-function position_order(t, sx, sy)
-    keys_ = collect(zip(round.(Int, t["x"] ./ sx), round.(Int, t["y"] ./ sy)))
+function nearest_index(values, v)
+    i = searchsortedfirst(values, v)
+    i == 1 && return 1
+    i > length(values) && return length(values)
+    return v - values[i-1] <= values[i] - v ? i - 1 : i
+end
+
+"""
+    position_order(t, ux, uy) -> permutation
+
+The permutation that orders particles by their lattice point: the indices of the nearest of
+the reference coordinates `ux`, `uy` (the sorted distinct x and y of the reference load), with
+a check that no two particles share one. The reference coordinates lie at least one lattice
+spacing apart, so positions that differ by rounding map to the same point, and two loads of
+one lattice come out in the same order. (An index from x/spacing would not do: Smilei's
+regular load is not one uniform lattice, x/spacing can lie arbitrarily close to an integer,
+and round or floor would split such a point.)
+"""
+function position_order(t, ux, uy)
+    keys_ = [(nearest_index(ux, x), nearest_index(uy, y)) for (x, y) in zip(t["x"], t["y"])]
     p = sortperm(keys_)
     any(i -> keys_[p[i]] == keys_[p[i+1]], 1:length(p)-1) &&
         error("two particles share a lattice point; matching by position needs a regular load")
@@ -61,7 +77,7 @@ end
 
 Particle-by-particle comparison of two loads read by `read_track`, matched by position (a
 `regular` load puts every particle of a cell at its own lattice point; both loads are put in
-the order of their lattice index on a's spacing, `position_order`). The positions match
+the order of their lattice points, `position_order`). The positions match
 when every pair is closer than half the smallest distinct spacing of a's x or y coordinates; then their largest difference (absolute and in ulps) and
 the number that differ at all are reported, and per momentum component and weight the number
 of particles that differ, the largest absolute difference and the largest relative to max |p|.
@@ -71,10 +87,21 @@ function compare_tracks(a, b)
     r = Dict{String,Any}("particles" => [length(a["x"]), length(b["x"])])
     length(a["x"]) == length(b["x"]) || (r["positions_match"] = false; r["identical"] = false; return r)
     ulps(u, v) = abs(reinterpret(Int64, u) - reinterpret(Int64, v))
-    spacing(v) = (w = unique(sort(v)); length(w) > 1 ? minimum(diff(w)) : 1.0)
-    sx, sy = spacing(a["x"]), spacing(a["y"])
-    tol = min(sx, sy) / 2
-    pa, pb = position_order(a, sx, sy), position_order(b, sx, sy)
+    ux, uy = unique(sort(a["x"])), unique(sort(a["y"]))
+    spacing(w) = length(w) > 1 ? minimum(diff(w)) : 1.0
+    tol = min(spacing(ux), spacing(uy)) / 2
+    pa = position_order(a, ux, uy)     # a duplicate in the reference load is an error: not a regular load
+    pb = try
+        position_order(b, ux, uy)
+    catch e
+        e isa ErrorException || rethrow()
+        nothing                        # b's particles do not map one to one onto a's lattice points
+    end
+    if pb === nothing
+        r["positions_match"] = false; r["same_positions"] = false; r["identical"] = false
+        r["note"] = "b's particles do not map one to one onto a's lattice points"
+        return r
+    end
     pos = Dict{String,Any}()
     for k in ("x", "y")
         u, v = a[k][pa], b[k][pb]

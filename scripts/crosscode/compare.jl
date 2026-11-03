@@ -135,17 +135,40 @@ function series_difference(a, b, case)
         ta, ua = observable_series(o, sa, fa, mode, lengths)
         tb, ub = observable_series(o, sb, fb, mode, lengths)
         ta == tb || error("$k: the two runs' series have different times")
-        d = abs.(ub .- ua)
-        rel = d ./ abs.(ua)
-        first_above(x) = (i = findfirst(r -> r > x, rel); i === nothing ? nothing : ta[i])
-        i = argmax(d)
-        out[k] = Dict{String,Any}("signal" => o["signal"], "points" => length(ta),
-            "max_abs_difference_relative_to_max" => d[i] / maximum(abs, ua), "at_t" => ta[i],
-            "first_t_relative_above_1e-10" => first_above(1e-10), "first_t_relative_above_1e-6" => first_above(1e-6),
-            "first_t_relative_above_1e-2" => first_above(1e-2),
-            "max_relative_difference" => maximum(rel[isfinite.(rel)]))
+        out[k] = merge(Dict{String,Any}("signal" => o["signal"]), series_drift(ta, ua, ub))
     end
     return out
+end
+
+"""
+    series_drift(t, ua, ub) -> Dict
+
+How far a series `ub` drifts from the reference `ua` on the times `t`: the largest |ub − ua|
+relative to max |ua| and its time, the largest pointwise |ub − ua|/|ua| (where finite), and the
+first times that exceeds 10⁻¹⁰, 10⁻⁶ and 10⁻².
+"""
+function series_drift(t, ua, ub)
+    d = abs.(ub .- ua)
+    rel = d ./ abs.(ua)
+    first_above(x) = (i = findfirst(r -> r > x, rel); i === nothing ? nothing : t[i])
+    i = argmax(d)
+    return Dict{String,Any}("points" => length(t),
+        "max_abs_difference_relative_to_max" => d[i] / maximum(abs, ua), "at_t" => t[i],
+        "first_t_relative_above_1e-10" => first_above(1e-10), "first_t_relative_above_1e-6" => first_above(1e-6),
+        "first_t_relative_above_1e-2" => first_above(1e-2),
+        "max_relative_difference" => maximum(rel[isfinite.(rel)]; init = 0.0))
+end
+
+"""
+    paired_values(seeds_a, va, seeds_b, vb) -> (seeds, xa, xb)
+
+The values of two seeded runs aligned seed by seed over the seeds both ran, in a's order:
+`va[i]` belongs to `seeds_a[i]`, `vb[j]` to `seeds_b[j]`.
+"""
+function paired_values(seeds_a, va, seeds_b, vb)
+    common = [x for x in seeds_a if x in seeds_b]
+    ia, ib = [findfirst(==(x), seeds_a) for x in common], [findfirst(==(x), seeds_b) for x in common]
+    return common, va[ia], vb[ib]
 end
 
 """
@@ -186,7 +209,7 @@ function compare_runs(a, b, out)
         "note" => "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)")
     if seeded
         seeds_a, seeds_b = run_seeds(a, case), run_seeds(b, case)
-        common = [x for x in seeds_a if x in seeds_b]
+        common = first(paired_values(seeds_a, seeds_a, seeds_b, seeds_b))
         result["seeds"] = Dict(la => seeds_a, lb => seeds_b, "common" => common)
         series(d) = (s = JSON.parsefile(joinpath(d, "ensemble-series.json")); (Float64.(s["t"]), Float64.(s["U"])))
         ra, rb = JSON.parsefile(joinpath(a, "observables.json")), JSON.parsefile(joinpath(b, "observables.json"))
@@ -215,8 +238,8 @@ function compare_runs(a, b, out)
         result["paired_loads"] = paired
         if paired
             # over the seeds both ran, seed by seed
-            ia, ib = [findfirst(==(x), seeds_a) for x in common], [findfirst(==(x), seeds_b) for x in common]
-            result["paired_per_seed"] = Dict{String,Any}(k => paired_stats([va[i][k] for i in ia], [vb[i][k] for i in ib], per[k][la]["std"])
+            _, pa_, pb_ = paired_values(seeds_a, va, seeds_b, vb)
+            result["paired_per_seed"] = Dict{String,Any}(k => paired_stats([v[k] for v in pa_], [v[k] for v in pb_], per[k][la]["std"])
                                                          for k in keys(per))
             # each seed's γ at its ensemble's maxima: paired only when both ensembles are of the same seeds
             pk = JSON.parsefile(joinpath(a, "observables.json"))["per_seed_at_ensemble_peaks"]
