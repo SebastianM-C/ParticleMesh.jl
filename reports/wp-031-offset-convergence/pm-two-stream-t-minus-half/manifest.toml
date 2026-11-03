@@ -1,9 +1,9 @@
-commit = "b8c1810cd02466401b09e5936d745eaf054e1e16"
+commit = "b05a2c728a6b7b7ba15babe52da4b54a1f44f571"
 dirty = false
 key = "growth_rate"
 points = ["n0128", "n0128-dt2", "n0128-dt4", "n0128-dt8"]
 report = "scripts/crosscode/convergence.jl compare"
-updated = "2026-11-03T19:05:15.878Z"
+updated = "2026-11-03T19:48:58.956Z"
 
 [inputs]
 "../two-stream/summary/cases/n0128-dt2.toml" = "sha256:e8e159f9bda73b41f84fb4430249dc7b3b86228abb66ed17a6f70fe742b26aba"
@@ -26,5 +26,5 @@ updated = "2026-11-03T19:05:15.878Z"
 [report_inputs]
 "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
 "scripts/crosscode/convergence.jl" = "sha256:000d451dc72788d6c053356221269165aebeb645d59458ac2459a7509dc4f805"
-"scripts/crosscode/convergence_report.jl" = "sha256:e6680f80d1a2de8bb24b4aa3b8343a4994e85403f2085cbb4f0ff98cc0c4fa76"
-"scripts/crosscode/theory.jl" = "sha256:c3cf60653abce1c9ef216cb6c0f89a9d238df0110a7d390c96f0f1e5c8ee9f12"
+"scripts/crosscode/convergence_report.jl" = "sha256:24e3ead78eaaed8bac0e00e0f5cd64e921f0048bc8332b382280a3fbb73ec62e"
+"scripts/crosscode/theory.jl" = "sha256:b4b6b427b870ac8323f55bc0dc64ec9664c77ba6d76ddce91affccba96d21b08"
