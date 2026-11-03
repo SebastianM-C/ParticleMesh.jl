@@ -17,7 +17,7 @@
 # same fit on the exact linear cold-fluid solution at the same sample times (theory.jl,
 # `cold_ivp`), and writes results.json, the figures with their JSON sidecars and a manifest.
 #
-# A point changes the case in named ways only (T-402): `refine` multiplies the cells per axis
+# A point changes the case in named ways only (T-412): `refine` multiplies the cells per axis
 # and divides Δt by the same factor (the Courant number is kept); `dt_divisor` divides Δt
 # further; the output cadence in steps is multiplied by both, so the output times stay those
 # of the case; `amplitude_factor` scales every perturbation amplitude, `ppc_factor` the

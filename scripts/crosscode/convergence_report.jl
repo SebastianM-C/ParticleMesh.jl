@@ -176,7 +176,7 @@ function plots(out, pts, res, keys_)
     case = first(pts).case
     θ = theory_of(case, primary)
     # 1. offset and residual against Δx and Δt
-    fig = Figure(size = (1000, 450))
+    fig = Figure(size = (1100, 700))
     ax1 = Axis(fig[1, 1]; xscale = log10, xlabel = "Δx [c/ω₀] (Courant number kept) or 20 Δt [1/ω₀] (Δx kept)",
         ylabel = "γ/θ − 1", title = "$(case["derived"]["from"]): $primary, offset from theory")
     ax2 = Axis(fig[1, 2]; xscale = log10, yscale = log10, xlabel = "Δx or 20 Δt", ylabel = "|γ − γ_ivp| / θ",
@@ -197,9 +197,9 @@ function plots(out, pts, res, keys_)
         scatterlines!(ax2, h, max.(r, 1e-7); color = col, linestyle = ls, label = lab)
         side[key] = d
     end
-    if length(side) > 2      # at least one family plotted
-        axislegend(ax1; position = :lb, labelsize = 9)
-        axislegend(ax2; position = :rb, labelsize = 9)
+    if length(side) > 2      # at least one family plotted; the legends below the axes, off the data
+        Legend(fig[2, 1], ax1; labelsize = 9, nbanks = 2, tellwidth = false)
+        Legend(fig[2, 2], ax2; labelsize = 9, nbanks = 2, tellwidth = false)
     end
     save_fig(out, "offset-vs-resolution", fig, side)
 

@@ -78,7 +78,7 @@
 #     ∂ₜE_k = −Σₛ qₛ nₛ δv_k,ₛ,   ∂ₜE_z = ik B_e − Σₛ qₛ (vₛ δnₛ + nₛ δv_z,ₛ),   ∂ₜB_e = ik E_z.
 #
 # Gauss's law, ik E(_k) = Σₛ qₛ δnₛ, is a conserved combination of both systems (its time
-# derivative vanishes identically), so a state that satisfies it at t = 0 keeps it (T-401).
+# derivative vanishes identically), so a state that satisfies it at t = 0 keeps it (T-411).
 # The initial state of a case is its density perturbation, δnₛ = αₛ nₛ, with the velocities
 # unperturbed, B = 0 and the longitudinal E from Gauss's law: the state Smilei and ParticleMesh
 # load, up to the time at which each code takes the loaded momenta (#226) and the grid's

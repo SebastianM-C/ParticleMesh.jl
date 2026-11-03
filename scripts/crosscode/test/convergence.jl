@@ -6,7 +6,7 @@ using .Convergence
 using LinearAlgebra: eigen, eigvals
 using JSON
 
-@testset "T-400 the linear cold-beam systems have the dispersion roots as eigenvalues [A5, WP-031]" begin
+@testset "T-410 the linear cold-beam systems have the dispersion roots as eigenvalues [A5, WP-031]" begin
     # Parameters away from the cases', so that nothing is tuned to them; two beams of unequal
     # density for the two-stream system (the case is symmetric).
     for (k, v0) in ((6.1237243569579, 0.1), (1.5, 0.2), (3.0, 0.45))
@@ -40,7 +40,7 @@ using JSON
     @test count(l -> real(l) > 1e-6, λ) == 1
 end
 
-@testset "T-401 the exact linear solution keeps Gauss's law and grows at the root [A5, WP-031]" begin
+@testset "T-411 the exact linear solution keeps Gauss's law and grows at the root [A5, WP-031]" begin
     for name in ("two-stream", "weibel-2d")
         p = cold_ivp(load_case(name))
         t = collect(0:0.25:40)
@@ -108,7 +108,7 @@ end
     @test_throws ErrorException cold_ivp(load_case("landau"))
 end
 
-@testset "T-402 a scan point changes only what it names [A5, WP-031]" begin
+@testset "T-412 a scan point changes only what it names [A5, WP-031]" begin
     ts = load_case("two-stream")
     # refine 2 of the 128-cell case is the committed 256-cell case of WP-012, namelist for namelist
     d2 = derive_case(ts; name = "n0256", refine = 2)
@@ -199,7 +199,7 @@ function synthetic_run(case, key, t; tsat, distort = t -> 1.0)
     return U
 end
 
-@testset "T-403 the residual from the linear solution is exact on synthetic runs [A7, WP-031]" begin
+@testset "T-413 the residual from the linear solution is exact on synthetic runs [A7, WP-031]" begin
     for (name, key, tsat) in (("two-stream", "growth_rate", 24.9), ("weibel-2d", "growth_rate_mode", 32.1),
                               ("weibel-2d", "growth_rate_energy", 32.1))
         case = load_case(name)
@@ -235,7 +235,7 @@ end
     @test all(x -> abs(x - 5) > 1.0 - 1e-9, tz) && length(tz) == length(tc) - 201
 end
 
-@testset "T-404 summarize reads a finished Smilei run into the scan summary [A5, WP-031]" begin
+@testset "T-414 summarize reads a finished Smilei run into the scan summary [A5, WP-031]" begin
     # one finished 1D point in Smilei's layout (as T-012 writes it) and one that did not run
     root = mktempdir()
     dir = joinpath(root, "scan")
@@ -289,7 +289,7 @@ end
     @test isfile(joinpath(dir, "summary", "tiny-manifest.toml"))
 end
 
-@testset "T-405 summarize projects the 2D dumps on B·ê of the case's mode [A5, WP-031]" begin
+@testset "T-415 summarize projects the 2D dumps on B·ê of the case's mode [A5, WP-031]" begin
     # one finished 2D point: B = Re(A e^{ik·r}) ê with ê = ẑ × k̂, Bx and By on their Yee points
     # (dual along y and x, Smilei's first dual point at −Δ/2, T-275), dumped in C order
     root = mktempdir()
@@ -361,7 +361,7 @@ function synthetic_scan(dir, base, points; δ∞, a, b, tsat = 24.9)
     end
 end
 
-@testset "T-406 the report's residuals, families, orders and code comparison [A7, WP-031]" begin
+@testset "T-416 the report's residuals, families, orders and code comparison [A7, WP-031]" begin
     R = ConvergenceReport
     # order and Richardson limit of e = 1 + 3h²
     h = [1.0, 0.5, 0.25]
