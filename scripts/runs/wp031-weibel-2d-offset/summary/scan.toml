@@ -1,0 +1,78 @@
+# WP-031: is the common −1.1 % of weibel-2d.toml's growth rate below the cold-fluid theory
+# (Smilei and ParticleMesh alike, reports/wp-023-em-step-2d.md) discretization error? Points
+# derived from the case by scripts/crosscode/convergence.jl (`derive_case`); fixed before the
+# runs. The case is cold with regular positions, so one run per point (the point `seed1` checks
+# that the seed does not enter). Every point dumps Bx and By only (the case also dumps Rho,
+# which no rate observable reads), to keep the 512 × 512 dumps small.
+name = "wp031-weibel-2d-offset"
+case = "weibel-2d"
+timeout = 14400
+
+# Δx at the case's Courant number 0.95 (Δt ∝ Δx): 64² to 512² cells
+[[points]]
+name = "n064"
+refine = 0.25
+fields = ["Bx", "By"]
+[[points]]
+name = "n128"
+refine = 0.5
+fields = ["Bx", "By"]
+[[points]]
+name = "n256"
+fields = ["Bx", "By"]
+[[points]]
+name = "n512"
+refine = 2
+fields = ["Bx", "By"]
+
+# Δt at 128² cells: Courant number 0.95/2, 0.95/4, 0.95/8
+[[points]]
+name = "n128-dt2"
+refine = 0.5
+dt_divisor = 2
+fields = ["Bx", "By"]
+[[points]]
+name = "n128-dt4"
+refine = 0.5
+dt_divisor = 4
+fields = ["Bx", "By"]
+[[points]]
+name = "n128-dt8"
+refine = 0.5
+dt_divisor = 8
+fields = ["Bx", "By"]
+
+# the case's cells at half the Courant number
+[[points]]
+name = "n256-dt2"
+dt_divisor = 2
+fields = ["Bx", "By"]
+
+# the perturbation amplitude ×1/10 and ×10 at 128² cells
+[[points]]
+name = "n128-a0.1"
+refine = 0.5
+amplitude_factor = 0.1
+fields = ["Bx", "By"]
+[[points]]
+name = "n128-a10"
+refine = 0.5
+amplitude_factor = 10
+fields = ["Bx", "By"]
+
+# half and twice the particles per cell per axis (4 × 4 and 16 × 16 per beam), another seed, at 128²
+[[points]]
+name = "n128-ppc0.5"
+refine = 0.5
+ppc_factor = 0.5
+fields = ["Bx", "By"]
+[[points]]
+name = "n128-ppc2"
+refine = 0.5
+ppc_factor = 2
+fields = ["Bx", "By"]
+[[points]]
+name = "n128-seed1"
+refine = 0.5
+seed = 1
+fields = ["Bx", "By"]
