@@ -44,6 +44,7 @@ export EMState, initialize!, step!, run!, params
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export state_partition, remake_reload, harness_state
+export GaussianLaser, Antenna, laser_energy, laser_field
 
 include("layout.jl")
 include("yee.jl")
@@ -52,6 +53,7 @@ include("test_particles.jl")
 include("problem.jl")
 include("step.jl")
 include("step2d.jl")
+include("antenna.jl")
 include("diagnostics.jl")
 include("harness.jl")
 

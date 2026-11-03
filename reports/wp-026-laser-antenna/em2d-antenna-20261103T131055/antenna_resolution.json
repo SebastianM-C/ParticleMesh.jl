@@ -1,0 +1,78 @@
+{
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "rows": [
+    {
+      "W_over_flux": 2.8453757800361856e-5,
+      "back_fraction": 3.050186388227485e-5,
+      "cells": [
+        573,
+        115
+      ],
+      "centroid_fit_residual": 3.187222148426372e-7,
+      "dt": 0.4449049329659126,
+      "dx": 0.5235987755982988,
+      "dy": 1.0471975511965976,
+      "flux_over_laser_energy": -0.05798563065264617,
+      "flux_over_laser_energy_staggered": 0.00011252309737552757,
+      "ncx": 12,
+      "v_axis": 0.9901007530566395,
+      "v_centroid": 0.9754798589713296,
+      "v_spectral": 0.9754799228321644
+    },
+    {
+      "W_over_flux": 2.7906599838090074e-5,
+      "back_fraction": 2.987875162295099e-5,
+      "cells": [
+        764,
+        153
+      ],
+      "centroid_fit_residual": 2.0435344083580276e-7,
+      "dt": 0.3336786997244345,
+      "dx": 0.39269908169872414,
+      "dy": 0.7853981633974483,
+      "flux_over_laser_energy": -0.03285966065830981,
+      "flux_over_laser_energy_staggered": 4.37578461502941e-5,
+      "ncx": 16,
+      "v_axis": 0.9945250898826538,
+      "v_centroid": 0.9795514564177176,
+      "v_spectral": 0.9795515236287007
+    },
+    {
+      "W_over_flux": 2.755466400605755e-5,
+      "back_fraction": 2.9486152929866086e-5,
+      "cells": [
+        1146,
+        229
+      ],
+      "centroid_fit_residual": 9.482614871103578e-8,
+      "dt": 0.2224524664829563,
+      "dx": 0.2617993877991494,
+      "dy": 0.5235987755982988,
+      "flux_over_laser_energy": -0.014681872402039775,
+      "flux_over_laser_energy_staggered": 1.3444989613642377e-5,
+      "ncx": 24,
+      "v_axis": 0.9975956000421736,
+      "v_centroid": 0.9823799049295413,
+      "v_spectral": 0.9823799793762882
+    },
+    {
+      "W_over_flux": 2.7437079171077627e-5,
+      "back_fraction": 2.9358201774361192e-5,
+      "cells": [
+        1528,
+        306
+      ],
+      "centroid_fit_residual": 1.481615470311226e-7,
+      "dt": 0.16683934986221724,
+      "dx": 0.19634954084936207,
+      "dy": 0.39269908169872414,
+      "flux_over_laser_energy": -0.008273883752280442,
+      "flux_over_laser_energy_staggered": 6.402233040381233e-6,
+      "ncx": 32,
+      "v_axis": 0.9986531314086733,
+      "v_centroid": 0.9833546170174843,
+      "v_spectral": 0.9833546913068332
+    }
+  ],
+  "threads": 4
+}
