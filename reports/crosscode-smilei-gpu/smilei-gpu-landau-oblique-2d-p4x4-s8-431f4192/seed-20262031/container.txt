@@ -1,0 +1,15 @@
+# build: gpu
+# smilei binary: /usr/local/bin/smilei
+# smilei version: v5.1 438d43d8ab727d02dd8f4402c50393343e871b99 gpu
+# threads: 1, cpus: 1
+# cpu model: Intel(R) Core(TM) i9-14900K
+# patches: 4x4
+# fastmath: yes
+# mpi: OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
+# gpu: NVIDIA GeForce RTX 4080 SUPER, 595.112.07
+# gpu before: 88 %, 3010 MiB
+# gpu processes before: 
+# seed: 20262031
+# start: 2026-11-03T17:55:02.107408545Z
+# end: 2026-11-03T18:01:49.917127524Z
+# gpu after: 87 %, 2946 MiB

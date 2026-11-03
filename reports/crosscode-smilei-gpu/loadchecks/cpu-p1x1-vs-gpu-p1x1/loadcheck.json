@@ -1,0 +1,572 @@
+{
+  "a": {
+    "build": "cpu",
+    "fastmath": "not applicable (CPU build)",
+    "load_check": true,
+    "patches": [
+      1,
+      1
+    ],
+    "run": "smilei-loadcheck-landau-oblique-2d-p1x1-431f4192"
+  },
+  "b": {
+    "build": "gpu",
+    "fastmath": true,
+    "load_check": true,
+    "patches": [
+      1,
+      1
+    ],
+    "run": "smilei-gpu-loadcheck-landau-oblique-2d-p1x1-431f4192"
+  },
+  "fields_t0": {
+    "Ex": {
+      "bitwise_equal": false,
+      "max_abs": 0.000894530626412993,
+      "max_abs_difference": 1.5204851266936714e-15,
+      "relative": 1.6997574837551548e-12
+    },
+    "Ey": {
+      "bitwise_equal": false,
+      "max_abs": 0.0004472924030978625,
+      "max_abs_difference": 1.314974604899044e-15,
+      "relative": 2.939854546582457e-12
+    },
+    "Rho": {
+      "bitwise_equal": false,
+      "max_abs": 0.009980172839155374,
+      "max_abs_difference": 1.6514567491299204e-15,
+      "relative": 1.6547376240326554e-13
+    }
+  },
+  "identical": false,
+  "note": "particles of the lower-left eighth of the box per axis at t = 0, matched by position; a measurement",
+  "positions_match": true,
+  "scalars_first_output": {
+    "Bx_mMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bx_mMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bx_mMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bx_mMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Dens_electron": {
+      "a": 1.9739208802,
+      "b": 1.9739208802,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Dens_ion": {
+      "a": 1.9739208802,
+      "b": 1.9739208802,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "ExMax": {
+      "a": 0.00089453062641,
+      "b": 4.3796949911e-5,
+      "difference": -0.0008507336764989999,
+      "relative": -0.9510391834354858
+    },
+    "ExMaxCell": {
+      "a": 12448.0,
+      "b": 1.0,
+      "difference": -12447.0,
+      "relative": -0.9999196658097687
+    },
+    "ExMin": {
+      "a": -0.00089127889967,
+      "b": 4.3796949911e-5,
+      "difference": 0.000935075849581,
+      "relative": 1.0491394443728177
+    },
+    "ExMinCell": {
+      "a": 160.0,
+      "b": 1.0,
+      "difference": -159.0,
+      "relative": -0.99375
+    },
+    "EyMax": {
+      "a": 0.0004472924031,
+      "b": 1.095781096e-5,
+      "difference": -0.00043633459214,
+      "relative": -0.9755019068420212
+    },
+    "EyMaxCell": {
+      "a": 6903.0,
+      "b": 1.0,
+      "difference": -6902.0,
+      "relative": -0.9998551354483558
+    },
+    "EyMin": {
+      "a": -0.00044565270938,
+      "b": 1.095781096e-5,
+      "difference": 0.00045661052034,
+      "relative": 1.0245882291958792
+    },
+    "EyMinCell": {
+      "a": 4193.0,
+      "b": 1.0,
+      "difference": -4192.0,
+      "relative": -0.9997615072740281
+    },
+    "EzMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "EzMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "EzMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "EzMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "JxMax": {
+      "a": 0.0036098447522,
+      "b": 0.00061477909041,
+      "difference": -0.00299506566179,
+      "relative": -0.8296937589808187
+    },
+    "JxMaxCell": {
+      "a": 4520.0,
+      "b": 1.0,
+      "difference": -4519.0,
+      "relative": -0.9997787610619469
+    },
+    "JxMin": {
+      "a": -0.0034514970455,
+      "b": 0.00061477909041,
+      "difference": 0.00406627613591,
+      "relative": 1.178119547056121
+    },
+    "JxMinCell": {
+      "a": 15005.0,
+      "b": 1.0,
+      "difference": -15004.0,
+      "relative": -0.9999333555481507
+    },
+    "JyMax": {
+      "a": 0.0035814560071,
+      "b": 0.00042274374596,
+      "difference": -0.00315871226114,
+      "relative": -0.8819631610378744
+    },
+    "JyMaxCell": {
+      "a": 9038.0,
+      "b": 1.0,
+      "difference": -9037.0,
+      "relative": -0.999889356052224
+    },
+    "JyMin": {
+      "a": -0.0041838485073,
+      "b": 0.00042274374596,
+      "difference": 0.00460659225326,
+      "relative": 1.1010418386856968
+    },
+    "JyMinCell": {
+      "a": 10960.0,
+      "b": 1.0,
+      "difference": -10959.0,
+      "relative": -0.9999087591240876
+    },
+    "JzMax": {
+      "a": 0.0036318843956,
+      "b": 0.00075530683625,
+      "difference": -0.00287657755935,
+      "relative": -0.7920344498946473
+    },
+    "JzMaxCell": {
+      "a": 2138.0,
+      "b": 1.0,
+      "difference": -2137.0,
+      "relative": -0.999532273152479
+    },
+    "JzMin": {
+      "a": -0.0031774142768,
+      "b": 0.00075530683625,
+      "difference": 0.00393272111305,
+      "relative": 1.2377111608533073
+    },
+    "JzMinCell": {
+      "a": 931.0,
+      "b": 1.0,
+      "difference": -930.0,
+      "relative": -0.9989258861439313
+    },
+    "Ntot_electron": {
+      "a": 1.6777216e7,
+      "b": 1.6777216e7,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ntot_ion": {
+      "a": 16384.0,
+      "b": 16384.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXmax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXmaxInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXmin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXminInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYmax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYmaxInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYmin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYminInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "RhoMax": {
+      "a": 0.0099801728392,
+      "b": -0.0099801728392,
+      "difference": -0.0199603456784,
+      "relative": -2.0
+    },
+    "RhoMaxCell": {
+      "a": 6241.0,
+      "b": 1.0,
+      "difference": -6240.0,
+      "relative": -0.9998397692677455
+    },
+    "RhoMin": {
+      "a": -0.0099801728392,
+      "b": -0.0099801728392,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "RhoMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ubal": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ubal_norm": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm": {
+      "a": 5.0339428648e-7,
+      "b": 5.0339428648e-7,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Bx_m": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_By_m": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Bz_m": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Ex": {
+      "a": 4.0266692286e-7,
+      "b": 4.0266692286e-7,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Ey": {
+      "a": 1.0072736362e-7,
+      "b": 1.0072736362e-7,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Ez": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_bnd": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_inj_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_out_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uexp": {
+      "a": 0.007401401837,
+      "b": 0.007401401837,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin": {
+      "a": 0.0074008984427,
+      "b": 0.0074008984427,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_bnd": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_electron": {
+      "a": 0.0074008984427,
+      "b": 0.0074008984427,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_inj_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_ion": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_new": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_out_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "UmBWpairs": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Urad": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Urad_electron": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Urad_ion": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Utot": {
+      "a": 0.007401401837,
+      "b": 0.007401401837,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Zavg_electron": {
+      "a": -1.0,
+      "b": -1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Zavg_ion": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "time": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    }
+  },
+  "species": {
+    "electron": {
+      "identical": false,
+      "match_tolerance": 0.00016721665924718243,
+      "max_abs_position_difference": 1.3877787807814457e-17,
+      "particles": [
+        262144,
+        262144
+      ],
+      "positions": {
+        "x": {
+          "differing": 12800,
+          "max_abs_difference": 1.3877787807814457e-17,
+          "max_ulps": 1
+        },
+        "y": {
+          "differing": 12800,
+          "max_abs_difference": 1.3877787807814457e-17,
+          "max_ulps": 1
+        }
+      },
+      "positions_match": true,
+      "px": {
+        "differing": 116083,
+        "max_abs_difference": 6.5329686105286555e-15,
+        "max_relative_to_max_abs": 2.3878721605053795e-14
+      },
+      "py": {
+        "differing": 106767,
+        "max_abs_difference": 5.676015213396113e-15,
+        "max_relative_to_max_abs": 2.4445272984542162e-14
+      },
+      "pz": {
+        "differing": 112280,
+        "max_abs_difference": 6.782768791069316e-15,
+        "max_relative_to_max_abs": 2.850761175834234e-14
+      },
+      "same_positions": false,
+      "w": {
+        "differing": 0,
+        "max_abs_difference": 0.0,
+        "max_relative_to_max_abs": 0.0
+      }
+    }
+  }
+}

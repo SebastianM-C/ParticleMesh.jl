@@ -191,7 +191,7 @@ end
     @test [basename(s["dir"]) for s in req["steps"][1:end-1]] == [p["name"] for p in pts]
     @test req["steps"][end]["args"][3] == "summarize"
     @test length(req["outputs"]) == 1 && endswith(only(req["outputs"]), "/summary")
-    @test isfile(joinpath(dir, pts[1]["name"], "smilei.py")) && isfile(joinpath(dir, "summary", "scan.toml"))
+    @test isfile(joinpath(dir, pts[1]["name"], "namelist.py")) && isfile(joinpath(dir, "summary", "scan.toml"))
     # both scan files: every point's prepared case is derive_case of its keys, its name says its
     # cells and its Courant number (nNNN = cells per axis, dtN = the case's 0.95 / N), and the
     # request keeps the scan's timeout
