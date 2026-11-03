@@ -5,13 +5,13 @@
 # bits between two loads), so there the `:t_minus_half` state followed by the same kick and the
 # kinetic deposit is the default state, bit for bit. The same holds at N = 2.
 
-"The half step back of `initialize!` applied to the momenta of `st`, then the kinetic energy at the kicked momenta."
+"The half step back of `initialize!` (the same launch) applied to the momenta of `st`, then the kinetic energy at the kicked momenta."
 function kick_back!(st::EMState, prob::EMProblem)
     (; numerics, grid) = st
     g = Int32(guards(grid))
     for s in st.species
-        kick_kernel!(get_backend(s))(s, st.fields, numerics.pusher, numerics.shape, g, -s.q / s.m * prob.dt / 4;
-                                     ndrange = capacity(s))
+        ParticleMeshCore.launcher(kick_kernel!, get_backend(s), numerics.workgroupsize)(
+            s, st.fields, numerics.pusher, numerics.shape, g, -s.q / s.m * prob.dt / 4; ndrange = capacity(s))
     end
     ParticleMeshElectromagnetic.kinetic!(st)
     return st
@@ -22,8 +22,8 @@ function kick_back_2d!(st::EMState{2}, prob::EMProblem{2})
     (; numerics, grid) = st
     g = Int32(guards(grid))
     for s in st.species
-        ParticleMeshElectromagnetic.kick_2d_kernel!(get_backend(s))(s, st.fields, numerics.pusher, numerics.shape, g,
-                                                                    -s.q / s.m * prob.dt / 4; ndrange = capacity(s))
+        ParticleMeshCore.launcher(ParticleMeshElectromagnetic.kick_2d_kernel!, get_backend(s), numerics.workgroupsize)(
+            s, st.fields, numerics.pusher, numerics.shape, g, -s.q / s.m * prob.dt / 4; ndrange = capacity(s))
     end
     ParticleMeshElectromagnetic.kinetic!(st)
     return st
