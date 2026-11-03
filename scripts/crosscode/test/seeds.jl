@@ -130,7 +130,10 @@ using Random: Xoshiro
         end
         # the window of all the maxima the rule took is the rule's own fit
         fm = r["first_maxima"]["a"]
-        @test fm[end]["gamma"] ≈ rule(ca).gamma rtol = 1e-12
+        na = length(rule(ca).used)
+        @test r["first_maxima"]["rule_maxima"] == [na, length(rule(cb).used)]
+        @test only(x for x in fm if x["maxima"] == na)["gamma"] ≈ rule(ca).gamma rtol = 1e-12
+        @test length(fm) == max(na, length(rule(cb).used)) - 2
         @test first(fm)["maxima"] == 3
         @test all(c -> c["difference_b_minus_a"] == r["first_maxima"]["b"][c["maxima"] - 2]["gamma"] - fm[c["maxima"] - 2]["gamma"],
                   r["first_maxima"]["common"])

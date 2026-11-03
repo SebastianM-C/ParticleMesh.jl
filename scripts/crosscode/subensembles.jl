@@ -6,8 +6,8 @@
 # groups (the spread of a g-seed ensemble, measured), next to the mean jackknife error (its
 # estimate); and the group-by-group difference between the two runs, with its standard deviation
 # over the groups. Group 1 of g = 4 holds the first four seeds of the case. Also, for all seeds,
-# γ fitted on the first k maxima of each run's ensemble fit (k = 3 to all of them), with the
-# jackknife on the same samples, and the two runs' difference over the windows they share.
+# γ fitted on the first k maxima after fit_start (k = 3 to the longer of the two runs' rule fits),
+# with the jackknife on the same samples, and the two runs' difference over the windows they share.
 #
 #   julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>
 #
@@ -52,10 +52,10 @@ end
 """
     first_maxima_fits(t, coeffs, used) -> Vector
 
-The ensemble γ of all seeds fitted on the first k of the maxima `used` (those the full
-ensemble's rule took), k = 3 to length(used), each with its jackknife over seeds on the same
-sample indices: the rate over a fixed window instead of the rule's stop point. With k = all of
-them γ is the rule's; the jackknife is not, because the rule's leave-one-out fits choose their
+The ensemble γ of all seeds fitted on the first k of the maxima `used` (the full ensemble's
+first maxima after fit_start), k = 3 to length(used), each with its jackknife over seeds on the same
+sample indices: the rate over a fixed window instead of the rule's stop point. With k = the
+number the rule took, γ is the rule's; the jackknife is not, because the rule's leave-one-out fits choose their
 own maxima, and this one keeps them fixed.
 """
 function first_maxima_fits(t, coeffs, used)
@@ -103,16 +103,24 @@ function subensembles(a, b, out)
     # the full ensembles over a common window: the first k maxima of the shorter of the two fits
     ea = ensemble_damping(ta, ca; fit_start = rules.fit_start, floor_factor = rules.floor_factor)
     eb = ensemble_damping(tb, cb; fit_start = rules.fit_start, floor_factor = rules.floor_factor)
-    wa, wb = first_maxima_fits(ta, ca, ea.used), first_maxima_fits(tb, cb, eb.used)
+    # each run's maxima after fit_start, as many as the longer of the two fits took (beyond its
+    # own fit a run's further maxima are taken in order, whatever the floor)
+    K = max(length(ea.used), length(eb.used))
+    pk(t, c) = (U = ensemble_energy(c); [i for i in local_maxima(U) if t[i] >= rules.fit_start][1:K])
+    pa, pb = pk(ta, ca), pk(tb, cb)
+    pa[1:length(ea.used)] == ea.used && pb[1:length(eb.used)] == eb.used || error("the rule's maxima are not the first maxima")
+    wa, wb = first_maxima_fits(ta, ca, pa), first_maxima_fits(tb, cb, pb)
     common = Dict{String,Any}[]
     for (x, y) in zip(wa, wb)
-        ta[ea.used[x["maxima"]]] ≈ tb[eb.used[y["maxima"]]] || break   # the same maxima in both runs
+        ta[pa[x["maxima"]]] ≈ tb[pb[y["maxima"]]] || break   # the same maxima in both runs
         push!(common, Dict{String,Any}("maxima" => x["maxima"], "t_last" => x["t_last"],
             "difference_b_minus_a" => y["gamma"] - x["gamma"],
-            "combined_jackknife" => hypot(x["jackknife_stderr"], y["jackknife_stderr"])))
+            "combined_jackknife" => hypot(x["jackknife_stderr"], y["jackknife_stderr"]),
+            "beyond_rule" => [x["maxima"] > length(ea.used), y["maxima"] > length(eb.used)]))
     end
     res["first_maxima"] = Dict{String,Any}(names[1] => wa, names[2] => wb, "common" => common,
-        "note" => "post hoc: all seeds, fitted on the first k maxima of each run's own ensemble fit; common lists the k at which both runs' k-th maxima are the same dump")
+        "rule_maxima" => [length(ea.used), length(eb.used)],
+        "note" => "post hoc: all seeds, fitted on the first k maxima after fit_start, k = 3 to the longer of the two rule fits; common lists the k at which both runs' k-th maxima are the same dump, beyond_rule whether k exceeds each run's own fit")
     mkpath(out)
     fig = Figure(size = (950, 500))
     ax = Axis(fig[1, 1]; xscale = log2, xticks = sizes, xlabel = "seeds per ensemble", ylabel = "ensemble γ [ω_p]",
