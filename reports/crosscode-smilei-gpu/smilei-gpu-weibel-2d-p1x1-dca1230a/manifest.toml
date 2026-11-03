@@ -1,0 +1,108 @@
+build = "gpu"
+case = "weibel-2d"
+case_source = "scripts/crosscode/cases/weibel-2d.toml"
+code = "smilei"
+commit = "b69aca3fd7200402edfa55e097b1f60acecb3383"
+dirty = false
+fastmath = true
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:268ba650af84c6b38973db2bd7a4f599edf89d217d013752f6c653b17aa172b7"
+load_check = false
+patches = [1, 1]
+run = "smilei-gpu-weibel-2d-p1x1-dca1230a"
+seeds = [20261031]
+updated = "2026-11-03T15:20:17.546Z"
+
+[analysis]
+commit = "b69aca3fd7200402edfa55e097b1f60acecb3383"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:a5d35e4c69bba5eb218fdc18d30f0b6bf20453230d99b99f76d178517e2f6177"
+    "scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:d7b7b1cd3456732bd08dd20fc3a1a64de16111d25f85c488424a09c300cd076f"
+    "scripts/crosscode/manifest.jl" = "sha256:af54e978c5fb31a7d3ca128c3543d34ec7d55cce9372cb0e464b5d80e0942eca"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[checks]
+divB_max_relative = 2.152623128006308e-13
+rho_max_deviation_t0 = 5.1295123142788577e-14
+rho_mean_t0 = 2.585563298877693e-17
+rho_mode_amplitude_t0 = 1.345221219059102e-16
+
+[hardware]
+build = "gpu"
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 1
+fastmath = "yes"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.112.07"
+gpu_after = "97 %, 2719 MiB"
+gpu_before = "10 %, 2719 MiB"
+gpu_processes_before = ""
+mpi = "OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader"
+patches = "1x1"
+threads = 1
+
+[image]
+family = "smilei-gpu"
+id = "4c5e373b2057c24c24d151a71f1215b24b9bf699981f58d5897b6b49b5465f7d"
+name = "localhost/particlemesh-smilei-gpu:369b4134f81b8901"
+outside_factory_tag = "particlemesh-smilei-gpu:5942672dd98eef65"
+recipe = "scripts/crosscode/containers/smilei-gpu.Containerfile"
+recipe_hash = "sha256:75cde81ae8726aefaf5ace87e8effe7b2585ff0d40d051e049e3a9f83716260a"
+
+[inputs]
+"case.toml" = "sha256:dca1230abbd9f8f61b1e550e0d799b3024c1e4a37abb2df7b8126c6b72bd7a76"
+"namelist.py" = "sha256:ccbe17d811c0ebd83cafeef7f2445bf6b264ab077fdf36c0343b9b35bb9f4266"
+"run.sh" = "sha256:c5a533bdac879240920a22eff41549246490d9b3a94e51b4835660aecea903c4"
+
+[observables.growth_rate_energy]
+fit_points = 121
+fit_range = [12.313456472, 21.161449146]
+measured = 0.2610729389046595
+measured_stderr = 0.0009126520702121924
+method = "exponential_window"
+relative_difference = -0.010057918655197097
+signal = "scalar_sum"
+theory = 0.26372546821123183
+
+    [observables.growth_rate_energy.saturation]
+    t = 32.000240172
+    value = 0.320264051853
+
+[observables.growth_rate_mode]
+fit_points = 30
+fit_range = [12.387189743914515, 20.940249328998345]
+measured = 0.2608661059501838
+measured_stderr = 0.001910019346159349
+method = "exponential_window"
+relative_difference = -0.010842192376952508
+signal = "mode_projection"
+theory = 0.26372546821123183
+
+    [observables.growth_rate_mode.saturation]
+    t = 32.147706716349575
+    value = 0.025056461701862657
+
+[outputs]
+"Fields0.h5" = "sha256:0e0367f74fcacd4f977e7342c371198011cbe7131feec4277f81d464fa2e6804"
+"container.txt" = "sha256:f3d76ae8e64bc1f678fb8395a94a1d7e6c15926f55a5901cd4b6f1df54db5510"
+"scalars.txt" = "sha256:46aaafb4d468ae095d5d692a7bad9c11df1074bb7c64fcc95a06abf69ea478a6"
+"smilei.log" = "sha256:826245a31190336f2330e1e74a33afc13e1157c1e2eee3e478bd539a35c4d829"
+"versions.toml" = "sha256:41ccb051d717a637363c2d154ed191cc023873573be5ba6c9b3fb4067d310599"
+
+[performance]
+build = "gpu"
+cells = 65536
+mobile_particle_steps = 18203279360
+mobile_particles = 8388608
+ns_per_mobile_particle_step = 5.012887963501539
+ns_per_mobile_particle_step_time_loop = 4.955535660141624
+particle_steps = 18345492480
+particles = 8454144
+steps = 2170
+steps_source = "smilei.log (n_time)"
+time_loop_seconds = 90.207
+wall_seconds = 91.251

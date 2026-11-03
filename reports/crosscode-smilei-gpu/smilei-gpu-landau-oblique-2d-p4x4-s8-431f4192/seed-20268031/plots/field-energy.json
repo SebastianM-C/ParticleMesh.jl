@@ -1,0 +1,19 @@
+{
+  "damping_rate_energy": {
+    "final": 4.2445518749999996e-8,
+    "fit_points": 0,
+    "fit_range": null,
+    "initial": 5.036799639e-7,
+    "max": 5.0440159121e-7,
+    "measured": null,
+    "measured_frequency": null,
+    "measured_stderr": null,
+    "method": "peak_envelope",
+    "noise_floor": 4.0097407583000005e-8,
+    "relative_difference": null,
+    "signal": "scalar_sum",
+    "theory": 0.15335946690960509,
+    "theory_frequency": 1.4156618886045358
+  },
+  "plot": "field energy (sum of Uelm_Ex + Uelm_Ey) versus time, log scale"
+}
