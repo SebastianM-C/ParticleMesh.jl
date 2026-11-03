@@ -1,0 +1,43 @@
+branch = "runs/wp032-pm-r1"
+request_commit = "897654b68fefd7a56a74aba08e9d9f201e2e2dbe"
+started = "2026-11-03T20:07:45Z"
+category = "validation"
+outputs = ["scripts/runs/wp032-pm-landau-r1", "scripts/runs/wp032-smilei-timing"]
+finished = "2026-11-03T22:02:45Z"
+ok = true
+files_returned = 127
+dumps_over_20MB = ["scripts/runs/wp032-smilei-timing/seed-20261031/Fields0.h5"]
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-03T20:07:45Z"
+exit = 0
+seconds = 6158
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T21:50:23Z"
+exit = 0
+seconds = 725
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-03T22:02:28Z"
+exit = 0
+seconds = 17
+
+[batch]
+name = "wp032-pm-landau"
+total = 8
+branch = "claude/epic-cerf-3g9o79"
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"

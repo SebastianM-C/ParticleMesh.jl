@@ -1,0 +1,22 @@
+## step 0 (julia): exit 0 after 6158s
+seed 20261031: 1535.7 s, 26.99 ns per particle-step, damping_rate_mode = 0.1601867678073345; Gauss 1.5658551090479533e-14
+seed 20262031: 1531.9 s, 26.93 ns per particle-step, damping_rate_mode = 0.14593066061570797; Gauss 1.4766557601539154e-14
+seed 20263031: 1531.0 s, 26.91 ns per particle-step, damping_rate_mode = 0.12714871385812213; Gauss 1.592891922582467e-14
+seed 20264031: 1526.2 s, 26.83 ns per particle-step, damping_rate_mode = 0.14719470150792016; Gauss 1.454498627364334e-14
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+
+## step 1 (smilei): exit 0 after 725s
+# seeds remaining after the budget: 20262031 20263031 20264031 20265031 20266031 20267031 20268031 20269031 20270031 20271031 20272031 20273031 20274031 20275031 20276031 20277031 20278031 20279031 20280031 20281031 20282031 20283031 20284031 20285031 20286031 20287031 20288031 20289031 20290031 20291031 20292031
+
+## step 2 (julia): exit 0 after 17s
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
+fatal: not a git repository: /home/pm/repo/.git/worktrees/wp032-pm-r1
