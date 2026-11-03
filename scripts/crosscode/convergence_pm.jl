@@ -29,8 +29,10 @@ function run_points(sumdir, out, points)
         open(io -> JSON.print(io, rec), joinpath(out, p * ".json"), "w")
         println(p, ": ", sim.nsteps, " steps in ", round(sim.wall; digits = 1), " s")
     end
-    write_manifest(out; inputs = input_files(@__FILE__, nothing), root = REPO,
-        extra = Dict{String,Any}("points" => collect(points), "threads" => Threads.nthreads(),
+    # inputs relative to the repository, as scripts/em1d/common.jl records them
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(@__FILE__, nothing))
+    write_manifest(out; root = REPO,
+        extra = Dict{String,Any}("inputs" => inputs, "points" => collect(points), "threads" => Threads.nthreads(),
             "cpu" => Sys.cpu_info()[1].model, "mode" => "Reference", "precision" => "Float64"))
 end
 

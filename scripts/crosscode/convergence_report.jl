@@ -148,7 +148,8 @@ function report(sumdir, out; box_status = nothing)
         b = TOML.parsefile(box_status)
         extra["box"] = Dict{String,Any}(k => b[k] for k in ("branch", "request_commit", "started", "finished", "ok", "hardware", "image") if haskey(b, k))
     end
-    write_manifest(out; inputs, root = ROOT, extra)
+    # recorded relative to `out` (no absolute path of the machine enters the manifest)
+    write_manifest(out; inputs = [relpath(abspath(f), abspath(out)) for f in inputs], root = ROOT, extra)
     return res
 end
 
