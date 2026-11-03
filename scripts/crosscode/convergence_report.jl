@@ -9,7 +9,7 @@ module ConvergenceReport
 using TOML
 using JSON
 using CairoMakie
-using Statistics: mean
+using Statistics: mean, median
 using ..Convergence
 using ..Convergence: Observables, Theory, SmileiDeck, write_manifest, file_hash, git_commit, ROOT
 using .Observables: growth_from_window, linear_fit
@@ -145,7 +145,12 @@ function report(sumdir, out; box_status = nothing)
         if length(fam) >= 3
             p = observed_order(h, r)
             d["observed_order_residual"] = p
-            d["richardson_residual_order2"] = richardson(h, r, 2)
+            # the limit at the median observed order, rounded to an integer of at least 1 (the Δt
+            # families converge at first order, the time of the loaded momenta; Δx at second; the
+            # finest triple can read high where the differences approach the fit's resolution)
+            q = max(1, round(Int, median(p)))
+            d["richardson_order"] = q
+            d["richardson_residual"] = richardson(h, r, q)
         end
         conv["$(which)_$(k)"] = d
     end

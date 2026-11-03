@@ -34,7 +34,8 @@
       -0.004767164257737516,
       -0.004779445571768089
     ],
-    "richardson_residual_order2": -0.004783539343111613
+    "richardson_order": 1,
+    "richardson_residual": -0.0047917268857986615
   },
   "dt[refine=1//1]_mode": {
     "h": [
@@ -71,7 +72,8 @@
       -0.0032189496167873634,
       -0.003235008766503939
     ],
-    "richardson_residual_order2": -0.003240361816409464
+    "richardson_order": 1,
+    "richardson_residual": -0.0032510679162205147
   },
   "dt[refine=4//1]_growth_rate": {
     "h": [
@@ -158,7 +160,8 @@
       -0.004465749679976573,
       -0.004462956588199347
     ],
-    "richardson_residual_order2": -0.004462025557606939
+    "richardson_order": 2,
+    "richardson_residual": -0.004462025557606939
   },
   "dx_mode": {
     "h": [
@@ -201,7 +204,8 @@
       -0.0029710846076760485,
       -0.0029747759125728834
     ],
-    "richardson_residual_order2": -0.002976006347538495
+    "richardson_order": 2,
+    "richardson_residual": -0.002976006347538495
   },
   "plot": "offset of the pre-registered fit from theory (left) and its residual from the same fit on the exact linear solution (right), against Δx at the case's Courant number and against 20 Δt at fixed cells (one series per refine)",
   "theory": 0.35087576924479724

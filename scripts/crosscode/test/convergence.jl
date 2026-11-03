@@ -407,7 +407,8 @@ end
     d = res["convergence"]["dx_growth_rate"]
     @test d["points"] == ["n0064", "n0128", "n0256"]
     @test d["observed_order_residual"][1] ≈ 2 rtol = 1e-5
-    @test d["richardson_residual_order2"] ≈ δ∞ rtol = 1e-6
+    @test d["richardson_order"] == 2
+    @test d["richardson_residual"] ≈ δ∞ rtol = 1e-6
     @test res["convergence"]["dt[refine=1//1]_growth_rate"]["points"] == ["n0128", "n0128-dt2"]
     @test all(isfile, joinpath.(out, ["results.json", "manifest.toml", "offset-vs-resolution.png", "local-rate.png", "ratio-to-linear.png"]))
     # compare_codes: the same summary against itself, and against a copy grown by e^{2δt}
