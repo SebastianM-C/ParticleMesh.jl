@@ -1,0 +1,74 @@
+{
+  "T": 0.0025000000000000005,
+  "difference_minus_theory_difference": -0.0031309979579923763,
+  "difference_minus_theory_difference_in_stderr": -0.6755336919870332,
+  "k": 10.0,
+  "nonrelativistic_time_domain": {
+    "gamma": 0.15336480980668304,
+    "omega": 1.4157695599773743
+  },
+  "note": "post hoc: linear theory with the relativistic push and each code's load (theory.jl, landau_rate_relativistic); the grid is not included",
+  "particlemesh_velocity_maxwellian": {
+    "gamma": 0.15254647134404334,
+    "omega": 1.4110005181180296
+  },
+  "picongpu": {
+    "load": "momentum_maxwellian",
+    "measured": 0.1457709130781287,
+    "measured_frequency": 1.4089965764197265,
+    "measured_stderr": 0.003269471733178186,
+    "minus_preregistered": -0.007588553831476386,
+    "minus_preregistered_in_stderr": -2.321033625851143,
+    "minus_theory": -0.0004879852949120078,
+    "minus_theory_in_stderr": -0.14925508912035992,
+    "ratio_to_nonrelativistic_at_maxima_used": [
+      1.0488645748791556,
+      1.0666162903804342,
+      1.1001896578725539,
+      1.067860470346166,
+      1.1430454874692704,
+      1.2937961602486976
+    ],
+    "ratio_to_theory_at_maxima_used": [
+      1.0071157189493987,
+      0.9946295213842397,
+      0.9945132379362709,
+      0.9344890121093984,
+      0.9671236210901982,
+      1.0570160605959067
+    ],
+    "run": "picongpu-landau-oblique-2d-fp64-431f4192",
+    "theory_gamma": 0.1462588983730407,
+    "theory_omega": 1.409734195014491
+  },
+  "plot": "|⟨E·k̂⟩|² of both 32-seed ensembles with the linear-theory curves of their loads (relativistic push) and the non-relativistic one, all from |⟨E·k̂⟩(0)|²",
+  "smilei": {
+    "load": "classical_energy",
+    "measured": 0.15044591299312804,
+    "measured_frequency": 1.4065590525499918,
+    "measured_stderr": 0.0032851784874100027,
+    "minus_preregistered": -0.0029135539164770463,
+    "minus_preregistered_in_stderr": -0.8868784230880736,
+    "minus_theory": 0.0026430126630803685,
+    "minus_theory_in_stderr": 0.8045263516759753,
+    "ratio_to_nonrelativistic_at_maxima_used": [
+      1.0381996039507484,
+      1.0796371479566933,
+      1.1111430349462443,
+      1.125402122454059,
+      1.077949098460536
+    ],
+    "ratio_to_theory_at_maxima_used": [
+      1.0055483023080047,
+      1.0224034511763547,
+      1.027086533372744,
+      1.0141084877541013,
+      0.9457454336170376
+    ],
+    "run": "smilei-landau-oblique-2d-431f4192",
+    "theory_gamma": 0.14780290033004767,
+    "theory_omega": 1.4100505626525104
+  },
+  "theory_frequency_preregistered": 1.4156618886045358,
+  "theory_preregistered": 0.15335946690960509
+}
