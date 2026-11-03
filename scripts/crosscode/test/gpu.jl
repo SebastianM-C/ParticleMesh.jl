@@ -380,6 +380,22 @@ end
     @test st["mean"] == 0.0 && st["std"] ≈ sqrt(0.75) && st["stderr_of_mean"] ≈ 0.5
     @test st["max_abs"] == 1.0 && st["mean_in_units_of_reference_seed_spread"] == 0.0
     @test GPUCompare.paired_stats([nothing], [1.0], 1.0)["n"] == 0
+    # the paired drift of the mode coefficients, from both runs' seed-coefficients.json
+    ca, cb = mktempdir(), mktempdir()
+    t = collect(0.0:0.5:2.0)
+    c1 = [1.0 + 0im, 2.0 + 0im, 0.5im, -1.0 + 0im, 0.25 + 0im]
+    c2 = [2.0 + 0im, 4.0 + 0im, 1.0im, -2.0 + 0im, 0.5 + 0im]
+    wr(d, cs) = open(io -> JSON.print(io, Dict("t" => t, "seeds" => [7, 9], "re" => [real.(c) for c in cs], "im" => [imag.(c) for c in cs])),
+                     joinpath(d, "seed-coefficients.json"), "w")
+    wr(ca, [c1, c2])
+    d1 = copy(c1); d1[3] += 1e-7im     # 1e-7 / max|c1| = 5e-8 at t = 1.0
+    d2 = copy(c2); d2[5] += 4e-11      # 4e-11 / 4 = 1e-11 at t = 2.0, below 1e-10
+    wr(cb, [d1, d2])
+    pd = GPUCompare.paired_coefficient_difference(ca, cb, [7, 9])
+    @test pd["per_seed"]["7"]["max_relative_to_max"] ≈ 5e-8 && pd["per_seed"]["7"]["at_t"] == 1.0
+    @test pd["per_seed"]["7"]["first_t_above_1e-10"] == 1.0 && pd["per_seed"]["7"]["first_t_above_1e-6"] === nothing
+    @test pd["per_seed"]["9"]["max_relative_to_max"] ≈ 1e-11 && pd["per_seed"]["9"]["first_t_above_1e-10"] === nothing
+    @test pd["max_over_seeds"] ≈ 5e-8
 end
 
 module GPUThroughput

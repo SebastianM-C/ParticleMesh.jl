@@ -148,6 +148,31 @@ function series_difference(a, b, case)
     return out
 end
 
+"""
+    paired_coefficient_difference(a, b, seeds) -> Dict
+
+For two seeded runs with `seed-coefficients.json` (the complex mode coefficient of every seed
+on the field cadence) and the same loads: per common seed, the largest |c_b − c_a| over the
+run relative to max |c_a|, the time it happens at, and the first times the relative difference
+exceeds 10⁻¹⁰ and 10⁻⁶; and the largest of them over the seeds. How far two builds' paired
+runs drift apart, which the rate fits summarize.
+"""
+function paired_coefficient_difference(a, b, seeds)
+    read_c(d) = (j = JSON.parsefile(joinpath(d, "seed-coefficients.json"));
+                 (Dict(Int(s) => complex.(Float64.(j["re"][i]), Float64.(j["im"][i])) for (i, s) in enumerate(j["seeds"])), Float64.(j["t"])))
+    (ca, ta), (cb, tb) = read_c(a), read_c(b)
+    ta == tb || error("the runs' coefficients are on different times")
+    per = Dict{String,Any}()
+    for s in seeds
+        d = abs.(cb[s] .- ca[s]) ./ maximum(abs, ca[s])
+        first_above(x) = (i = findfirst(>(x), d); i === nothing ? nothing : ta[i])
+        per[string(s)] = Dict{String,Any}("max_relative_to_max" => maximum(d), "at_t" => ta[argmax(d)],
+            "first_t_above_1e-10" => first_above(1e-10), "first_t_above_1e-6" => first_above(1e-6))
+    end
+    return Dict{String,Any}("per_seed" => per, "max_over_seeds" => maximum(v["max_relative_to_max"] for v in values(per)),
+        "note" => "relative to each seed's max |c| of the reference run, over the whole run")
+end
+
 function compare_runs(a, b, out)
     mkpath(out)
     case = run_case(a)
@@ -196,6 +221,8 @@ function compare_runs(a, b, out)
             # each seed's γ at its ensemble's maxima: paired only when both ensembles are of the same seeds
             pk = JSON.parsefile(joinpath(a, "observables.json"))["per_seed_at_ensemble_peaks"]
             qk = JSON.parsefile(joinpath(b, "observables.json"))["per_seed_at_ensemble_peaks"]
+            all(d -> isfile(joinpath(d, "seed-coefficients.json")), (a, b)) &&
+                (result["paired_coefficient_difference"] = paired_coefficient_difference(a, b, common))
             seeds_a == seeds_b && haskey(pk, "gammas") && haskey(qk, "gammas") &&
                 (result["paired_per_seed"]["per_seed_at_ensemble_peaks"] = paired_stats(pk["gammas"], qk["gammas"], get(pk, "std", nothing)))
         end
