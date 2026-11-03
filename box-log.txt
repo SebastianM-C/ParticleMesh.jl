@@ -1,0 +1,1 @@
+## refused or failed: scripts/Project.toml and scripts/Manifest.toml match no commit of main's last 300; get the dependency change merged first

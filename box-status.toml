@@ -1,0 +1,14 @@
+branch = "runs/wp031-weibel-2d-1"
+request_commit = "5cd5fbbead98d4784c07aeb43456f60b2cb1326b"
+started = "2026-11-03T14:13:36Z"
+steps = []
+category = "unspecified"
+error = "scripts/Project.toml and scripts/Manifest.toml match no commit of main's last 300; get the dependency change merged first"
+finished = "2026-11-03T14:13:36Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
