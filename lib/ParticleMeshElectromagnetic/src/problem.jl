@@ -134,13 +134,16 @@ runs and test particles at N = 2; the 1D step always deposits the current and re
 struct NoCurrent end
 
 """
-    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov())
+    EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
+               current = Esirkepov(), filter = BinomialFilter(0))
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
-solver and the current. `workgroupsize` is passed to every engine launch (it selects the launch
-shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at N = 1 and
-N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses any other.
+solver, the current and its filter. `workgroupsize` is passed to every engine launch (it selects
+the launch shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
+N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
+any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
+before the mesh solve, with no passes by default.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
     shape::S
@@ -149,10 +152,12 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
     solver::F
     workgroupsize::W
     current::C
+    filter::BinomialFilter
 end
 
-EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov()) =
-    EMNumerics(shape, mode, pusher, solver, workgroupsize, current)
+EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov(),
+           filter::BinomialFilter = BinomialFilter(0)) =
+    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter)
 
 """
     EMParams(dt, kmode)
@@ -292,15 +297,18 @@ end
     numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing) -> EMNumerics
 
 The numerics a case file asks for (either schema): its `shape_order` (1 or 2); the deposition
-must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`) and `filter_passes`
-zero (the binomial filter is deferred to the 2D LWFA module). The mode, the pusher and the
-launch shape are not in the case.
+must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filter_passes`
+(default 0), a non-negative integer, is the pass count of the [`BinomialFilter`](@ref) (A2), and
+anything else is an `ArgumentError`. The mode, the pusher and the launch shape are not in the
+case.
 """
 function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
     num = case["numerics"]
     getnum(num, "current_deposition", "esirkepov") == "esirkepov" ||
         throw(ArgumentError("current_deposition must be \"esirkepov\""))
-    iszero(getnum(num, "filter_passes", 0)) || throw(ArgumentError("the binomial filter is not implemented"))
+    passes = getnum(num, "filter_passes", 0)
+    passes isa Integer && !(passes isa Bool) && passes >= 0 ||
+        throw(ArgumentError("filter_passes must be a non-negative integer, got $(repr(passes))"))
     shape = Int(getnum(num, "shape_order", 2)) == 1 ? Linear : Quadratic
-    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov())
+    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes))
 end

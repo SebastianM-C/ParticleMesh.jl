@@ -81,7 +81,8 @@ end
 
 Everything a step reads and writes, allocated once: the numerics, the grid (`PeriodicGrid{N}`),
 the species and their workspaces (tuples), the fields of [`field_layout`](@ref)`(Val(N))` (with
-guards), the scratch field `ρ` (the charge for the initial field), the kinetic energy buffer `K`,
+guards), the scratch field `ρ` (the charge for the initial field, then the scratch of the
+current filter), the kinetic energy buffer `K`,
 the diagnostic histories, one entry per step (see [`histories`](@ref)), and `aux`, what only
 one dimension needs (empty at N = 1; at N = 2 the spectral workspace and potential of the
 initial solve, the diagnostics' phase tables and partial sums, see [`EMState`](@ref)'s 2D
@@ -227,13 +228,14 @@ Step `k` (from t = (k−1)Δt to kΔt), the module's step order:
    at xⁿ (the pusher of the numerics) and move the particle, xⁿ⁺¹ = xⁿ + Δt·uₓ/γ;
 3. sort by cell where the deposition mode needs it (the extras follow the particles);
 4. zero Jx, Jy, Jz and add every species' current with the engine's `deposit_flux!` (Esirkepov
-   for Jx from the old and new positions, `q·w·u_{y,z}/γ` for Jy and Jz), then fold the guards;
+   for Jx from the old and new positions, `q·w·u_{y,z}/γ` for Jy and Jz), fold the guards, then
+   apply the numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`);
 5. deposit the kinetic energy density at n + 1/2 (for the next step's diagnostics);
 6. the mesh solve of the numerics (Yee: B half step, E full step with J, B half step).
 
 `k` must lie within the `nsteps` the state was allocated for (an `ArgumentError` otherwise: the
 diagnostics write entry `k`). Gauss's law then holds to roundoff after every step, from
-continuity (T-212). A function of the
+continuity (T-212); with filter passes its filtered form does (T-441). A function of the
 state and the parameters only, every buffer in the state, no host-side branch on device data
 (§0.4).
 """
@@ -267,6 +269,7 @@ function step!(st::EMState{1}, p::EMParams, k::Integer)
     fold_guards!(fields.Jx, grid; workgroupsize = wgs)
     fold_guards!(fields.Jy, grid; workgroupsize = wgs)
     fold_guards!(fields.Jz, grid; workgroupsize = wgs)
+    filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs)
     kinetic!(st)
     solve_fields!(numerics.solver, fields, grid, p.dt; workgroupsize = wgs)
     return st
