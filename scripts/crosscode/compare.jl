@@ -144,13 +144,14 @@ end
     series_drift(t, ua, ub) -> Dict
 
 How far a series `ub` drifts from the reference `ua` on the times `t`: the largest |ub − ua|
-relative to max |ua| and its time, the largest pointwise |ub − ua|/|ua| (where finite), and the
-first times that exceeds 10⁻¹⁰, 10⁻⁶ and 10⁻².
+relative to max |ua| and its time, the largest pointwise |ub − ua|/|ua| and the first times that
+exceeds 10⁻¹⁰, 10⁻⁶ and 10⁻², both over the points where that ratio is finite (a point where ua
+is exactly 0 gives Inf or NaN and is left out).
 """
 function series_drift(t, ua, ub)
     d = abs.(ub .- ua)
     rel = d ./ abs.(ua)
-    first_above(x) = (i = findfirst(r -> r > x, rel); i === nothing ? nothing : t[i])
+    first_above(x) = (i = findfirst(r -> isfinite(r) && r > x, rel); i === nothing ? nothing : t[i])
     i = argmax(d)
     return Dict{String,Any}("points" => length(t),
         "max_abs_difference_relative_to_max" => d[i] / maximum(abs, ua), "at_t" => t[i],
