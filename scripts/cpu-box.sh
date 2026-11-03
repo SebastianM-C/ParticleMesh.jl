@@ -3,7 +3,8 @@
 #
 #   scripts/cpu-box.sh submit <tag> <request.toml>   push branch runs/<tag>: HEAD, the request as
 #                                                    box-request.toml, and the run directories it names
-#   scripts/cpu-box.sh status <tag>                  print the result's box-status.toml; exit 1 while pending
+#   scripts/cpu-box.sh status <tag>                  print the result's box-status.toml; while pending, the
+#                                                    box's progress on it (branch box-status), and exit 1
 #   scripts/cpu-box.sh fetch <tag>                   put the result into scripts/runs/box-<tag>/ (the run
 #                                                    directories, box-status.toml, box-log.txt); never
 #                                                    overwrites a local run
@@ -90,7 +91,26 @@ EOF
     ;;
   status)
     git fetch -q origin "refs/heads/runs/$tag" || die "no branch runs/$tag"
-    git show FETCH_HEAD:box-status.toml 2>/dev/null || { echo "pending"; exit 1; }
+    git show FETCH_HEAD:box-status.toml 2>/dev/null && exit 0
+    echo "pending"
+    if git fetch -q origin refs/heads/box-status 2>/dev/null; then
+      git show FETCH_HEAD:status.json | python3 -c '
+import json, sys
+st, tag = json.load(sys.stdin), sys.argv[1]
+c, q, k = st.get("current") or {}, st.get("queue") or [], st.get("keeper") or {}
+print(f"box: {st.get('"'"'state'"'"')} (status of {st.get('"'"'updated'"'"', '"'"'?'"'"')}; keeper {k.get('"'"'mode'"'"', '"'"'?'"'"')}, box {k.get('"'"'box'"'"')})")
+if c.get("tag") == tag:
+    print(f"running: step {c.get('"'"'step'"'"')}/{c.get('"'"'steps'"'"')} ({c.get('"'"'step_kind'"'"')}), {c.get('"'"'elapsed_s'"'"', 0) // 60} min in, "
+          f"{c.get('"'"'seed_dirs_with_observables'"'"', 0)} seed dirs with observables, {c.get('"'"'output_files'"'"', 0)} output files")
+    for l in st.get("log_tail", [])[-5:]:
+        print("  | " + l)
+elif tag in q:
+    print(f"queued: position {q.index(tag) + 1} of {len(q)}" + (f", after {c.get('"'"'tag'"'"')} (running)" if c else ""))
+else:
+    print("not seen by the box yet (it polls every minute; a parked box boots within about 10 minutes)")
+' "$tag" || true
+    fi
+    exit 1
     ;;
   fetch)
     git fetch -q origin "refs/heads/runs/$tag" || die "no branch runs/$tag"
