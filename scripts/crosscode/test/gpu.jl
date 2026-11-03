@@ -381,3 +381,46 @@ end
     @test st["max_abs"] == 1.0 && st["mean_in_units_of_reference_seed_spread"] == 0.0
     @test GPUCompare.paired_stats([nothing], [1.0], 1.0)["n"] == 0
 end
+
+module GPUThroughput
+include(joinpath(Main.CC, "throughput.jl"))
+end
+
+@testset "T-406 time per mobile particle-step from the run records [A5, WP-030]" begin
+    stub, _ = stub_bin()
+    runs = mktempdir()
+    case = load_case("landau-oblique-2d")
+    # the mobile particle-steps by hand: 128 × 128 cells × 32 × 32 electrons, round(25/0.0073733) steps
+    steps = round(Int, case["time"]["t_end"] / case["time"]["dt"])
+    ps = 128 * 128 * 32 * 32 * steps
+    sub = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true, first_seeds = 3)
+    run_sh(sub, stub)
+    # the stub's time loop is 12.5 s; give the seeds known wall times
+    walls = [100.0, 150.0, 120.0]
+    for (s, w) in zip(case_seeds(case)[1:3], walls)
+        f = joinpath(sub, "seed-$s", "container.txt")
+        lines = filter(l -> !startswith(l, "# start:") && !startswith(l, "# end:"), readlines(f))
+        write(f, join(lines, "\n") * "\n# start: 2026-11-03T10:00:00.000000000Z\n# end: 2026-11-03T10:" *
+                 lpad(string(Int(w) ÷ 60), 2, '0') * ":" * lpad(string(Int(w) % 60), 2, '0') * ".000000000Z\n")
+    end
+    r = GPUThroughput.run_throughput(sub)
+    @test r["mobile_particle_steps_per_run"] == ps
+    @test r["wall_ns_per_mobile_particle_step"]["median"] ≈ 1e9 * 120 / ps
+    @test r["wall_ns_per_mobile_particle_step"]["min"] ≈ 1e9 * 100 / ps && r["wall_ns_per_mobile_particle_step"]["max"] ≈ 1e9 * 150 / ps
+    @test r["wall_ns_per_mobile_particle_step"]["n"] == 3
+    @test r["time_loop_ns_per_mobile_particle_step"]["median"] ≈ 1e9 * 12.5 / ps
+    @test r["build"] == "gpu"
+    @test r["code"] == "smilei"
+    @test r["hardware"]["gpu"] == "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
+    # Smilei's own step count, when its log has it, sets the particle-steps
+    for s in case_seeds(case)[1:3]
+        open(joinpath(sub, "seed-$s", "smilei.log"), "a") do io
+            println(io, " Time-Loop started: number of time-steps n_time = 3390")
+        end
+    end
+    @test GPUThroughput.run_throughput(sub)["mobile_particle_steps_per_run"] == 128 * 128 * 32 * 32 * 3390
+    # a run without its wall time is refused
+    f = joinpath(sub, "seed-$(case_seeds(case)[2])", "container.txt")
+    write(f, replace(read(f, String), r"# end: [^\n]*\n" => ""))
+    @test_throws ErrorException GPUThroughput.run_throughput(sub)
+end
