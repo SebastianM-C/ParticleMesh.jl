@@ -8,6 +8,8 @@
 # over the groups. Group 1 of g = 4 holds the first four seeds of the case. Also, for all seeds,
 # γ fitted on the first k maxima after fit_start (k = 3 to the longer of the two runs' rule fits),
 # with the jackknife on the same samples, and the two runs' difference over the windows they share.
+# And, to read a single split: random splits into groups of four, a bootstrap of each run's
+# seeds, and the stop points of the jackknife's leave-one-out fits.
 #
 #   julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>
 #
@@ -19,7 +21,8 @@
 @isdefined(RunManifest) || include(joinpath(@__DIR__, "manifest.jl"))
 using .Observables, .Ensemble, .RunManifest
 using CairoMakie, JSON, TOML
-using Statistics: mean, std
+using Statistics: mean, std, median, quantile
+using Random: Xoshiro, randperm
 
 "The time grid, seeds and complex mode coefficients a run's analysis wrote."
 function seed_coefficients(dir)
@@ -67,6 +70,45 @@ function first_maxima_fits(t, coeffs, used)
         Dict{String,Any}("maxima" => k, "t_last" => t[u[end]], "gamma" => fit_at_peaks(t, U, u).gamma,
             "jackknife_stderr" => sqrt((M - 1) / M * sum(abs2, loo .- mean(loo))))
     end
+end
+
+"""
+    resampling(t, coeffs, rules; R = 300, g = 4, rng) -> Dict
+
+How far one split into consecutive groups can be read (post hoc). Over `R` random splits of
+the seeds into groups of `g`: the ratio of the measured spread of the group γ to their mean
+jackknife error, and the mean group γ minus the all-seed γ. Over `R` bootstrap resamples of
+the seeds (with replacement): the all-seed rule's γ and the number of maxima it takes. And the
+maxima each leave-one-out fit of the all-seed rule takes, which the jackknife samples.
+"""
+function resampling(t, coeffs, rules; R = 300, g = 4, rng)
+    M = length(coeffs)
+    rule(cs) = ensemble_damping(t, cs; fit_start = rules.fit_start, floor_factor = rules.floor_factor)
+    full = rule(coeffs)
+    ratio, shift = Float64[], Float64[]
+    for _ in 1:R
+        p = randperm(rng, M)
+        es = [rule(coeffs[p[(k - 1) * g + 1:k * g]]) for k in 1:(M ÷ g)]
+        γ = [e.gamma for e in es]
+        jk = [e.jackknife.stderr for e in es]
+        all(isfinite, γ) && all(isfinite, jk) || continue
+        push!(ratio, std(γ) / mean(jk))
+        push!(shift, mean(γ) - full.gamma)
+    end
+    boot = [rule(coeffs[rand(rng, 1:M, M)]) for _ in 1:R]
+    bγ = [e.gamma for e in boot if isfinite(e.gamma)]
+    nmax = [length(e.used) for e in boot]
+    loo = [length(damping_from_peaks(t, ensemble_energy(coeffs[setdiff(1:M, j)]); fit_start = rules.fit_start,
+                                     floor_factor = rules.floor_factor).used) for j in 1:M]
+    q(v) = [quantile(v, 0.05), median(v), quantile(v, 0.95)]
+    count_of(v) = Dict(string(k) => count(==(k), v) for k in sort(unique(v)))
+    return Dict{String,Any}("random_splits" => R, "group_size" => g, "valid_splits" => length(ratio),
+        "spread_over_mean_jackknife_q05_median_q95" => q(ratio),
+        "mean_group_gamma_minus_all_q05_median_q95" => q(shift),
+        "bootstrap_samples" => R, "bootstrap_gamma_sd" => std(bγ), "bootstrap_gamma_mean" => mean(bγ),
+        "bootstrap_gammas" => bγ, "bootstrap_maxima_used" => count_of(nmax),
+        "jackknife_maxima_used" => count_of(loo), "rule_maxima" => length(full.used),
+        "gamma" => full.gamma, "jackknife_stderr" => full.jackknife.stderr)
 end
 
 vals(v) = Float64[x for x in v if x !== nothing]
@@ -118,6 +160,12 @@ function subensembles(a, b, out)
             "combined_jackknife" => hypot(x["jackknife_stderr"], y["jackknife_stderr"]),
             "beyond_rule" => [x["maxima"] > length(ea.used), y["maxima"] > length(eb.used)]))
     end
+    # random splits, bootstrap and the jackknife's stop points (independent streams per run)
+    ra = resampling(ta, ca, rules; rng = Xoshiro(20261103))
+    rb = resampling(tb, cb, rules; rng = Xoshiro(20261104))
+    res["resampling"] = Dict{String,Any}(names[1] => ra, names[2] => rb,
+        "bootstrap_difference_sd" => hypot(ra["bootstrap_gamma_sd"], rb["bootstrap_gamma_sd"]),
+        "note" => "post hoc: the bootstrap resamples each run's seeds independently, so the difference's sd is the root sum of squares")
     res["first_maxima"] = Dict{String,Any}(names[1] => wa, names[2] => wb, "common" => common,
         "rule_maxima" => [length(ea.used), length(eb.used)],
         "note" => "post hoc: all seeds, fitted on the first k maxima after fit_start, k = 3 to the longer of the two rule fits; common lists the k at which both runs' k-th maxima are the same dump, beyond_rule whether k exceeds each run's own fit")

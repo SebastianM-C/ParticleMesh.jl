@@ -137,6 +137,31 @@ using Random: Xoshiro
         @test first(fm)["maxima"] == 3
         @test all(c -> c["difference_b_minus_a"] == r["first_maxima"]["b"][c["maxima"] - 2]["gamma"] - fm[c["maxima"] - 2]["gamma"],
                   r["first_maxima"]["common"])
+        # the group mean of the jackknife errors is the mean over the groups
+        g4 = r["g4"]["a"]
+        @test g4["mean_jackknife_stderr"] ≈ mean(f["jackknife_stderr"] for f in g4["fits"]) rtol = 1e-14
+        # resampling: every bootstrap sample and every leave-one-out fit counted once
+        rs = r["resampling"]["a"]
+        @test sum(values(rs["bootstrap_maxima_used"])) == rs["bootstrap_samples"]
+        @test sum(values(rs["jackknife_maxima_used"])) == 8
+        @test rs["valid_splits"] == rs["random_splits"] && rs["gamma"] == rule(ca).gamma
+        @test r["resampling"]["bootstrap_difference_sd"] ≈ hypot(rs["bootstrap_gamma_sd"], r["resampling"]["b"]["bootstrap_gamma_sd"])
         @test isfile(joinpath(root, "out", "subensembles.png")) && isfile(joinpath(root, "out", "subensembles.json"))
     end
+end
+
+@testset "T-393 the fixed-window jackknife is the rule's when every leave-one-out fit takes the same maxima [A7, WP-025]" begin
+    c = load_case("landau-oblique-2d")
+    dt = c["time"]["dt"] * c["diagnostics"]["fields_every"]
+    t = collect(0:dt:c["time"]["t_end"])
+    # noise-free seeds that differ in their rate: one stop for every subset, a non-zero jackknife
+    cs = [complex.(3e-4 .* exp.(-(0.15 + 0.002 * (j - 4.5)) .* t) .* cos.(1.4 .* t)) for j in 1:8]
+    e = ensemble_damping(t, cs; fit_start = 3.0, floor_factor = 10.0)
+    loo = [damping_from_peaks(t, ensemble_energy(cs[setdiff(1:8, j)]); fit_start = 3.0, floor_factor = 10.0).used for j in 1:8]
+    @test all(==(e.used), loo)                         # the condition: one stop for all leave-one-out fits
+    w = first_maxima_fits(t, cs, e.used)
+    @test w[end]["maxima"] == length(e.used)
+    @test w[end]["gamma"] == e.gamma
+    @test w[end]["jackknife_stderr"] ≈ e.jackknife.stderr rtol = 1e-12
+    @test e.jackknife.stderr > 1e-4                    # not the trivial 0 = 0
 end
