@@ -1,7 +1,7 @@
-commit = "5564a965f9e620644d10d99a9a75b5f586003a39"
+commit = "bff23828695faf4371db35742048fcc8737044dc"
 dirty = true
 report = "scripts/crosscode/convergence.jl report"
-updated = "2026-11-03T15:53:38.422Z"
+updated = "2026-11-03T15:59:13.903Z"
 
 [box]
 branch = "runs/wp031-weibel-2d-2"
@@ -64,6 +64,6 @@ started = "2026-11-03T15:01:29Z"
 
 [report_inputs]
 "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
-"scripts/crosscode/convergence.jl" = "sha256:5682ce8c409c52dab663836eeac781c1cfee55464000d5015b5c1f4b6898c31a"
-"scripts/crosscode/convergence_report.jl" = "sha256:694ba7ba06b63f7c5300009045b116c591fdb04d492a8da5bf0558391e9d5f73"
-"scripts/crosscode/theory.jl" = "sha256:5e89e3e59e192505d5fac9788ad68ee9ba062fbcd8ac1bf1bc4b91c82bcffc1c"
+"scripts/crosscode/convergence.jl" = "sha256:9ef9c3188407872cd8a95d10fcfde0c32d11982383196cb8a35b0ca43cf60637"
+"scripts/crosscode/convergence_report.jl" = "sha256:80a3140507c6d9546703c36704bb1983f810d1204dc21ae284a0dddc43862eab"
+"scripts/crosscode/theory.jl" = "sha256:1b1471479822c6e2c63c3648cb7e501b856de49e5f1ab59a23ccc07259adeee3"
