@@ -175,31 +175,29 @@ end
 
 # --- the discrete theory ---------------------------------------------------------------------
 
-"The layer's σ at height y (the kernel's formula, in Float64)."
-function sigma_at(geo, y)
-    ly = geo.ny * geo.dy
-    y = mod(y, ly)
-    return layer_sigma(Float64(geo.strength), geo.order, min(y, ly - y), geo.cells * geo.dy)
-end
+"The layer's σ at the half row `p` (height p·Δy/2, any integer: wrapped into the box), the kernel's profile in Float64."
+sigma_at(geo, p::Integer) = layer_sigma(Float64(geo.strength), geo.order, mod(p, 2 * geo.ny), geo.ny, geo.cells)
 
 """
     layer_rt(geo, pol, ky) -> (r, t)
 
 The reflection and transmission amplitudes of the absorbing slab (the top layer, the seam and the
 bottom layer) for the scheme's mode (k_x, k_y) at its Yee ω, from the time-harmonic step: with
-every field ∝ e^{i k_x x}·λⁿ, λ = e^{−iωΔt}, the x-differences become iκ_x and each sub-step's
-damping a factor d = e^{−στ} at the component's row. Eliminating the components without a
+every field ∝ e^{i k_x x}·λⁿ, λ = e^{−iωΔt}, the x-differences become iκ_x, and a sub-step of
+length τ with its symmetric damping becomes X′ = a·X + b·U(X) at the component's row, a = e^{−στ},
+b = e^{−στ/2}, U the undamped update's increment. Eliminating the components without a
 y-difference leaves a three-point recurrence along y, for Ez on the Node() rows (TE) or for the
 half-step Bz on the Center() rows (TM):
 
-    TE: (λ/d_E − 1 − Δt·iκ_x·γ_j)·Ez_j + (Δt/Δy²)·(β_{j+½}(Ez_{j+1} − Ez_j) − β_{j−½}(Ez_j − Ez_{j−1})) = 0
-        β = −d_B h(1 + d_B)/(1 − d_B²/λ) on Center() rows, γ = d_B·h·iκ_x(1 + d_B)/(1 − d_B²/λ) on Node() rows
-    TM: (1 − d_B²/λ)·u_j + d_B h(1 + d_B)·(iκ_x η_j u_j − (ε_{j+1}(u_{j+1} − u_j) − ε_j(u_j − u_{j−1}))/Δy²) = 0
-        u = Bz^{n+½}, ε = d_E Δt/(λ − d_E) on Node() rows, η = −d_E Δt iκ_x/(λ − d_E) on Center() rows
+    TE: ((λ − a_E)/b_E − Δt·iκ_x·γ_j)·Ez_j + (Δt/Δy²)·(β_{j+½}(Ez_{j+1} − Ez_j) − β_{j−½}(Ez_j − Ez_{j−1})) = 0
+        β = −b_B h(1 + a_B)/(1 − a_B²/λ) on Center() rows, γ = b_B·h·iκ_x(1 + a_B)/(1 − a_B²/λ) on Node() rows
+    TM: (1 − a_B²/λ)·u_j + b_B h(1 + a_B)·(iκ_x η_j u_j − (ε_{j+1}(u_{j+1} − u_j) − ε_j(u_j − u_{j−1}))/Δy²) = 0
+        u = Bz^{n+½}, ε = b_E Δt/(λ − a_E) on Node() rows, η = −b_E Δt iκ_x/(λ − a_E) on Center() rows
 
-(h = Δt/2). Outgoing above the slab (the upward root μ₊ of the vacuum recurrence), iterated down
-through the slab, and split below it into μ₊ʲ (incident) and μ₋ʲ (reflected). Independent of the
-kernels: it shares only the profile formula `layer_sigma`.
+(h = Δt/2; B's sub-steps have τ = h, E's τ = Δt). Outgoing above the slab (the upward root μ₊ of
+the vacuum recurrence), iterated down through the slab, and split below it into μ₊ʲ (incident)
+and μ₋ʲ (reflected). Independent of the kernels: it shares only the profile `layer_sigma`, which
+it evaluates at integer half rows as the kernel does.
 """
 function layer_rt(geo, pol, ky)
     dt, dy = geo.dt, geo.dy
@@ -208,29 +206,30 @@ function layer_rt(geo, pol, ky)
     λ = cis(-ω * dt)
     κx = 2 * sin(geo.kx * geo.dx / 2) / geo.dx
     ia = im * κx
-    dfac(y, τ) = exp(-sigma_at(geo, y) * τ)
+    # (a, b) = (e^{−στ}, e^{−στ/2}) at the half row p
+    ab(p, τ) = (σ = sigma_at(geo, p); (exp(-σ * τ), exp(-σ * τ / 2)))
     # the unwrapped rows through the slab: from 3 rows below the top layer to 3 rows above the bottom
-    # one; row j sits at Node() height j·Δy (TE) or Center() height (j + ½)·Δy (TM), j0 = first row.
+    # one; row j sits at the half row 2j (Node(), TE) or 2j + 1 (Center(), TM), j0 = first row.
     j0 = geo.ny - geo.cells - 3
     j1 = geo.ny + geo.cells + 3
     if pol === :TE
-        β(yc) = (d = dfac(yc, h); -d * h * (1 + d) / (1 - d^2 / λ))
-        γ(yn) = (d = dfac(yn, h); d * h * ia * (1 + d) / (1 - d^2 / λ))
+        β(pc) = ((a, b) = ab(pc, h); -b * h * (1 + a) / (1 - a^2 / λ))
+        γ(pn) = ((a, b) = ab(pn, h); b * h * ia * (1 + a) / (1 - a^2 / λ))
         coefs = j -> begin
-            yn = j * dy
-            bp, bm = β(yn + dy / 2), β(yn - dy / 2)
-            cp, cm = dt / dy^2 * bp, dt / dy^2 * bm
-            (cp, λ / dfac(yn, dt) - 1 - dt * ia * γ(yn) - cp - cm, cm)
+            pn = 2j
+            cp, cm = dt / dy^2 * β(pn + 1), dt / dy^2 * β(pn - 1)
+            aE, bE = ab(pn, dt)
+            (cp, (λ - aE) / bE - dt * ia * γ(pn) - cp - cm, cm)
         end
     else
-        ε(yn) = (d = dfac(yn, dt); d * dt / (λ - d))
-        η(yc) = (d = dfac(yc, dt); -d * dt * ia / (λ - d))
+        ε(pn) = ((a, b) = ab(pn, dt); b * dt / (λ - a))
+        η(pc) = ((a, b) = ab(pc, dt); -b * dt * ia / (λ - a))
         coefs = j -> begin
-            yc = (j + 0.5) * dy
-            d = dfac(yc, h)
-            a = d * h * (1 + d)
-            ep, em = ε(yc + dy / 2), ε(yc - dy / 2)
-            (-a * ep / dy^2, (1 - d^2 / λ) + a * (ia * η(yc) + ep / dy^2 + em / dy^2), -a * em / dy^2)
+            pc = 2j + 1
+            aB, bB = ab(pc, h)
+            c = bB * h * (1 + aB)
+            ep, em = ε(pc + 1), ε(pc - 1)
+            (-c * ep / dy^2, (1 - aB^2 / λ) + c * (ia * η(pc) + ep / dy^2 + em / dy^2), -c * em / dy^2)
         end
     end
     # the vacuum roots of c₊μ² + c₀μ + c₋ = 0, the upward one with arg μ > 0

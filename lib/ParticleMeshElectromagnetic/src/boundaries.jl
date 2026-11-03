@@ -10,12 +10,15 @@
 # conductivity is σ(y) = strength·(depth/thickness)^order, with depth the distance into the layer
 # from its inner edge (thickness = cells·Δy, so σ = strength at the box edge and 0 at the inner
 # edge), the same σ for E and for B (the matched lossy medium, whose impedance is that of vacuum,
-# so a continuum wave at normal incidence enters it without reflection). It is applied by
-# operator splitting: after each Yee sub-step of length τ (Δt/2 for each B half step, Δt for the
-# E step), every component is multiplied by exp(−σ·τ) at its own stagger along y. The interior
-# update is untouched, so Gauss's law and ∇·B hold there as without the layer; in the layer
-# D⁻·E changes by D⁻·((e^{−σΔt} − 1)E), so Gauss's law is broken there, which is what absorbing
-# the field of charges that left means.
+# so a continuum wave at normal incidence enters it without reflection). The depth is computed
+# in integer half rows, so a row exactly at the inner edge has depth zero in every element type.
+# It is applied by symmetric (Strang) operator splitting: each Yee sub-step of length τ (Δt/2 for
+# each B half step, Δt for the E step) is preceded and followed by a multiplication of the
+# components it updates by exp(−σ·τ/2) at their own stagger along y, so the layer is second order
+# in Δt (a damping only after the sub-step is first order: its reflection falls as Δ, not Δ²).
+# The interior update is untouched, so Gauss's law and ∇·B hold there as without the layer; in the
+# layer D⁻·E changes by D⁻·((e^{−σΔt/2} − 1)·…), so Gauss's law is broken there, which is what
+# absorbing the field of charges that left means.
 
 """
     AbsorbingLayer(; cells, strength, order = 2)
@@ -41,38 +44,38 @@ end
 AbsorbingLayer(; cells, strength, order = 2) = AbsorbingLayer(cells, strength, order)
 
 """
-    layer_sigma(layer, e, thickness) -> σ
+    layer_sigma(strength, order, p, n2, cells) -> σ
 
-The conductivity of `layer` at the distance `e` from the nearest box edge along the open axis, for
-a layer of `thickness` (= cells·Δy): `strength·((thickness − e)/thickness)^order` inside the layer,
-zero outside, in the element type of `e`. A device function.
+The conductivity of a layer of `cells` rows at the half row `p` (the height p·Δy/2 above y = 0,
+`p` even on Node() rows and odd on Center() rows) of a box of `n2` rows:
+`strength·(d/(2·cells))^order` with `d = 2·cells − min(p, 2·n2 − p)` the depth into the layer in
+half rows, zero where `d ≤ 0` (outside the layer, and exactly at its inner edge for every `order`
+and element type, since `d` is an integer), in the element type of `strength`. A device function.
 """
-@inline function layer_sigma(strength::T, order::Int, e::T, thickness::T) where {T}
-    depth = (thickness - e) / thickness
-    return ifelse(depth > zero(T), strength * depth^order, zero(T))
+@inline function layer_sigma(strength::T, order::Int, p::Integer, n2::Integer, cells::Integer) where {T}
+    d = 2 * cells - min(p, 2 * n2 - p)
+    return ifelse(d > 0, strength * (T(d) / T(2 * cells))^order, zero(T))
 end
 
-# The damping factor exp(−σ·τ) per array row j (guards included) for a field whose rows sit at
-# (j₀ + s)·Δy, j₀ the interior row j aliases; written once by the state.
-@kernel function layer_factor_kernel!(fac, strength, order::Int, s, τ, dy, n2::Int32, g::Int32, cells::Int32)
+# The damping factor exp(−σ·τ) per array row j (guards included) for a field whose rows sit at the
+# half rows 2j₀ + sh (sh = 0 for Node(), 1 for Center()), j₀ the interior row j aliases; written
+# once by the state.
+@kernel function layer_factor_kernel!(fac, strength, order::Int, sh::Int32, τ, n2::Int32, g::Int32, cells::Int32)
     j = Int32(@index(Global, Linear))
-    T = eltype(fac)
     j0 = mod(j - g - Int32(1), n2)
-    y = (T(j0) + s) * dy
-    ly = T(n2) * dy
-    e = min(y, ly - y)
-    σ = layer_sigma(strength, order, e, T(cells) * dy)
+    σ = layer_sigma(strength, order, Int32(2) * j0 + sh, n2, cells)
     @inbounds fac[j] = exp(-σ * τ)
 end
 
 """
     LayerFactors
 
-The absorbing layer placed on a grid by the state: the damping factors exp(−σ·τ) per array row
-along axis 2 (guards included), for the rows at `Node()` and at `Center()` along y and for the
-sub-step lengths τ = Δt/2 (`half`) and Δt (`full`); the number of layer rows `cells`, the guard
-width and the interior rows, which fix the rows the damping visits. `dt` is the time step the
-factors were made for.
+The absorbing layer placed on a grid by the state: the damping factors exp(−σ·τ/2) per array row
+along axis 2 (guards included), applied before and after a sub-step of length τ, for the rows at
+`Node()` and at `Center()` along y and for τ = Δt/2 (`half`, the B half steps: factors
+exp(−σΔt/4)) and τ = Δt (`full`, the E step: exp(−σΔt/2)); the number of layer rows `cells`,
+the guard width and the interior rows, which fix the rows the damping visits. `dt` is the time
+step the factors were made for.
 """
 struct LayerFactors{V,T}
     node_half::V
@@ -99,9 +102,9 @@ function LayerFactors(l::AbsorbingLayer, grid::PeriodicGrid{2}, dt::T; backend, 
     2 * l.cells < n[2] ||
         throw(ArgumentError("two absorbing layers of $(l.cells) cells leave no interior rows of the $(n[2]) cells along axis 2"))
     fac = ntuple(_ -> KernelAbstractions.allocate(backend, T, n[2] + 2g), 4)
-    for (f, s, τ) in zip(fac, (zero(T), one(T) / 2, zero(T), one(T) / 2), (dt / 2, dt / 2, dt, dt))
-        launcher(layer_factor_kernel!, backend, workgroupsize)(f, T(l.strength), l.order, s, τ, T(h[2]), Int32(n[2]),
-                                                             Int32(g), Int32(l.cells); ndrange = length(f))
+    for (f, sh, τ) in zip(fac, Int32.((0, 1, 0, 1)), (dt / 4, dt / 4, dt / 2, dt / 2))
+        launcher(layer_factor_kernel!, backend, workgroupsize)(f, T(l.strength), l.order, sh, τ, Int32(n[2]), Int32(g),
+                                                             Int32(l.cells); ndrange = length(f))
     end
     return LayerFactors(fac..., l.cells, g, n, dt)
 end
@@ -122,9 +125,9 @@ function absorb_rows!(a, fac, L::LayerFactors, wgs)
     return a
 end
 
-# The layer's step after each Yee sub-step: B after a half step, E after the full step, each
-# component with the factor of its own stagger along y (field_layout(Val(2))): Ex, Ez, By on Node()
-# rows, Ey, Bx, Bz on Center() rows. With no layer nothing is done.
+# The layer's half damping before and after each Yee sub-step: B around a half step, E around the
+# full step, each component with the factor of its own stagger along y (field_layout(Val(2))): Ex,
+# Ez, By on Node() rows, Ey, Bx, Bz on Center() rows. With no layer nothing is done.
 absorb_b!(::Nothing, f, wgs) = nothing
 absorb_e!(::Nothing, f, wgs) = nothing
 function absorb_b!(L::LayerFactors, f, wgs)
@@ -144,20 +147,24 @@ end
     solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, layer; workgroupsize = nothing)
 
 The Yee step with the antennas' corrections ([`solve_fields!`](@ref) with antennas) and the
-absorbing layer (a [`LayerFactors`](@ref), or `nothing`): after each sub-step and its antenna
-correction, the components it changed are multiplied by exp(−σ·τ) in the layer rows, τ the
-sub-step's length. With `layer = nothing` it is the step with antennas, bit for bit. The damping
-writes the guard rows with their interior images' factors, so every guard stays filled.
+absorbing layer (a [`LayerFactors`](@ref), or `nothing`): before each sub-step and after it and
+its antenna correction, the components it updates are multiplied by exp(−σ·τ/2) in the layer
+rows, τ the sub-step's length (symmetric splitting, second order in Δt). With `layer = nothing` it
+is the step with antennas, bit for bit. The damping writes the guard rows with their interior
+images' factors, so every guard stays filled.
 """
 function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, layer; workgroupsize = nothing)
     T = eltype(f.Ex)
     h = T(dt) / 2
+    absorb_b!(layer, f, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
     antenna_b!(antennas, f, h, t, workgroupsize)
     absorb_b!(layer, f, workgroupsize)
+    absorb_e!(layer, f, workgroupsize)
     yee_e!(f, grid, dt; workgroupsize)
     antenna_e!(antennas, f, dt, t + h, workgroupsize)
     absorb_e!(layer, f, workgroupsize)
+    absorb_b!(layer, f, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
     antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
     absorb_b!(layer, f, workgroupsize)

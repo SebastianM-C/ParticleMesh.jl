@@ -2,13 +2,14 @@
 
 ## 1. Which absorbing layer "simple absorbing layer" means
 
-A2 asks for "a simple absorbing layer first, PML later". **Assumption:** the matched lossy layer, applied by operator splitting. A conductivity σ(y) damps E and B alike: after each Yee sub-step of length τ, every component is multiplied by exp(−σ·τ) at its own row. With the same σ for E and B, the continuum medium has the impedance of vacuum, so a wave at normal incidence enters it without reflection. At oblique incidence it does reflect, and that reflection grows with the angle (T-430, `reports/wp-027-open-boundaries.md`). The splitting leaves the curl kernels and the antenna untouched. It is unconditionally stable, since each factor is at most one.
+A2 asks for "a simple absorbing layer first, PML later". **Assumption:** the matched lossy layer, applied by symmetric (Strang) operator splitting. A conductivity σ(y) damps E and B alike: before and after each Yee sub-step of length τ, every component it updates is multiplied by exp(−σ·τ/2) at its own row. With the same σ for E and B, the continuum medium has the impedance of vacuum, so a wave at normal incidence enters it without reflection. At oblique incidence it does reflect, and that reflection grows with the angle (T-430, `reports/wp-027-open-boundaries.md`). The splitting leaves the curl kernels and the antenna untouched. It is unconditionally stable, since each factor is at most one.
 
 Alternatives not taken:
 
-- The semi-implicit lossy Yee update, (1 − σΔt/2)/(1 + σΔt/2), inside the curl kernels. It agrees with the splitting to second order in σΔt.
+- Damping only after each sub-step, exp(−σ·τ). It is first order in Δt (measured by a breaker): its normal-incidence reflection |r|² falls as Δ², and it absorbs up to 100 times more than the nominal attenuation at 8 cells per wavelength. The symmetric splitting falls as Δ⁴, and its transmission through the layer converges to the continuum's.
+- The semi-implicit lossy Yee update, (1 − σΔt/2)/(1 + σΔt/2), inside the curl kernels. It is also second order, at the cost of touching the curl kernels.
 - Damping E only. That is not matched, and so reflects at normal incidence too.
-- PIConGPU's exponential damping absorber. From its documentation, not checked in its source: it multiplies the fields in its absorber cells by a factor per step. That is close to this layer with σ constant in time, but its grading and its constants are not verified here.
+- PIConGPU's exponential damping absorber. From its documentation, not checked in its source: it multiplies the fields in its absorber cells by a factor per step. Its grading and its constants are not verified here.
 
 ## 2. Where the layer lives
 
@@ -23,7 +24,7 @@ The package asks for the thickness and the strength as case parameters. **Assump
 
 - `cells`: the thickness, in cells along y.
 - `strength`: σ at the box edge, a rate in units of ω₀ (A1).
-- `order`: the grading σ = strength·(depth/thickness)^order, 2 by default.
+- `order`: the grading σ = strength·(depth/thickness)^order, 2 by default. The depth is counted in integer half rows, so the row at the inner edge has σ = 0 exactly, at every order (at order 0 a depth computed in floating point let roundoff decide whether that row was damped).
 
 They form the numerics' `AbsorbingLayer`. A case file gives them as `[numerics.absorbing_layer]`, next to `grid.boundaries = ["periodic", "open"]`. They are numerics, not differentiable parameters (A3).
 

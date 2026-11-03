@@ -41,6 +41,23 @@ end
             @test abs(cis(ky * nrows * geo.dy) - t / abs(t)) < 1e-9
         end
     end
+    # TE and TM are the same 1D problem at normal incidence, for every grading order: the same |r|
+    # (r itself differs by the phase of the field it is read on, Ez on Node() rows or Bz on Center()
+    # rows); an inexact edge row would break it at order 0
+    for order in (0, 1, 2)
+        geo = slab_geometry(; theta = 0.0, cells = 8, strength = 4.0, order)
+        for (ky, _) in slab_modes(geo)[1:7:end]
+            rTE, rTM = abs(first(layer_rt(geo, :TE, ky))), abs(first(layer_rt(geo, :TM, ky)))
+            @test abs(rTE - rTM) <= 1e-10 * rTE
+        end
+    end
+    # the symmetric splitting is second order: at a fixed physical layer (one wavelength thick,
+    # strength 2) the normal-incidence reflection |r|² falls by about 2⁴ per halving of Δ (a damping
+    # after the sub-step only falls by 2²)
+    rn(ncy) = (geo = slab_geometry(; theta = 0.0, cells = ncy, strength = 2.0, ncx = 2ncy, ncy); abs2(first(layer_rt(geo, :TE, geo.ky0))))
+    r16, r32, r64 = rn(16), rn(32), rn(64)
+    @info "T-430 normal-incidence |r|² against Δ" r16 r32 r64
+    @test r16 / r32 > 10 && r32 / r64 > 10
     C = emC("T-430")
     worst = 0.0
     Rs = Dict{Any,Float64}()
@@ -218,28 +235,29 @@ end
         @test all(c -> bits(Array(getfield(f1, c))) == bits(Array(getfield(f2, c))), keys(f1))
     end
     # the factors of a layer of 4 cells on 16 rows with 3 guards: Node() rows j₀ = 0…3 and 13…15
-    # damped, j₀ = 4 … 12 exactly one; Center() rows j₀ = 0…3 and 12…15 damped; e^{−σΔt} with
-    # σ = strength·(depth/thickness)², and the guards their interior images
-    prob, ab = open_plasma_2d(Float64; layer = 4, strength = 1)
-    st = open_state(prob, ab)
-    L = st.aux.layer
-    g, n2, dy = guards(st.grid), ncells(st.grid)[2], cellsize(st.grid)[2]
-    @test g == 3
-    th = 4dy
-    for (fac, s, τ) in ((L.node_full, 0.0, prob.dt), (L.center_full, 0.5, prob.dt), (L.node_half, 0.0, prob.dt / 2),
-                        (L.center_half, 0.5, prob.dt / 2))
-        f = Array(fac)
-        for j in eachindex(f)
-            j0 = mod(j - g - 1, n2)
-            y = (j0 + s) * dy
-            e = min(y, n2 * dy - y)
-            σ = e < th ? 1.0 * ((th - e) / th)^2 : 0.0
-            @test f[j] ≈ exp(-σ * τ) rtol = 1e-14
-            @test (f[j] == 1) == (σ == 0)
+    # damped, j₀ = 4 … 12 exactly one; Center() rows j₀ = 0…3 and 12…15 damped; e^{−σ·τ/2} around a
+    # sub-step of τ = Δt (E) or Δt/2 (B), with σ = strength·(depth/thickness)², and the guards their
+    # interior images
+    for order in (2, 0)
+        prob, ab = open_plasma_2d(Float64; layer = 4, strength = 1, order)
+        st = open_state(prob, ab)
+        L = st.aux.layer
+        g, n2 = guards(st.grid), ncells(st.grid)[2]
+        @test g == 3
+        for (fac, s, τ) in ((L.node_full, 0, prob.dt), (L.center_full, 1, prob.dt), (L.node_half, 0, prob.dt / 2),
+                            (L.center_half, 1, prob.dt / 2))
+            f = Array(fac)
+            for j in eachindex(f)
+                j0 = mod(j - g - 1, n2)
+                e = min(2j0 + s, 2n2 - 2j0 - s)            # half rows to the nearest edge
+                σ = e < 8 ? 1.0 * ((8 - e) / 8)^order : 0.0
+                @test f[j] ≈ exp(-σ * τ / 2) rtol = 1e-14
+                @test (f[j] == 1) == (σ == 0)
+            end
         end
+        @test count(<(1), Array(L.node_full)[(g + 1):(g + n2)]) == 7
+        @test count(<(1), Array(L.center_full)[(g + 1):(g + n2)]) == 8
     end
-    @test count(<(1), Array(L.node_full)[(g + 1):(g + n2)]) == 7
-    @test count(<(1), Array(L.center_full)[(g + 1):(g + n2)]) == 8
 end
 
 # --- T-434 ----------------------------------------------------------------------------------
