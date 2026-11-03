@@ -4,6 +4,7 @@
 #   julia +1.13 --project=scripts scripts/crosscode/convergence.jl prepare <scan.toml>
 #   julia +1.13 --project=scripts scripts/crosscode/convergence.jl summarize scripts/runs/<scan>
 #   julia +1.13 --project=scripts scripts/crosscode/convergence.jl report <summary dir> <out dir> [box-status.toml]
+#   julia +1.13 --project=scripts scripts/crosscode/convergence.jl compare <reference summary> <other summary> <out dir>
 #
 # `prepare` reads a scan file (scripts/crosscode/scans/*.toml: a case and a list of points) and
 # writes, under scripts/runs/<scan>/, one derived case file per point (summary/cases/<point>.toml,
@@ -302,8 +303,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
         println("summarized ", length(done), " points: ", join(done, ", "))
     elseif cmd == "report" && length(ARGS) in (3, 4)
         ConvergenceReport.report(ARGS[2], ARGS[3]; box_status = get(ARGS, 4, nothing))
+    elseif cmd == "compare" && length(ARGS) == 4
+        ConvergenceReport.compare_codes(ARGS[2], ARGS[3], ARGS[4])
     else
-        println(stderr, "usage: convergence.jl prepare <scan.toml> | summarize <scan dir> | report <summary dir> <out dir> [box-status.toml]")
+        println(stderr, "usage: convergence.jl prepare <scan.toml> | summarize <scan dir> | report <summary dir> <out dir> [box-status.toml] | compare <reference summary> <other summary> <out dir>")
         exit(2)
     end
 end

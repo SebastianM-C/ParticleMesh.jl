@@ -18,11 +18,11 @@ function run_points(sumdir, out, points)
         cp(src, joinpath(out, "cases", p * ".toml"); force = true)
         case = TOML.parsefile(src)
         sim = simulate(case)
-        nE = length(sim.total)
+        iE = 1:case["diagnostics"]["scalars_every"]:length(sim.total)    # the total energy at the scalar cadence
         rec = Dict{String,Any}("point" => p, "case" => case["name"], "derived" => case["derived"], "code" => "particlemesh",
             "dt" => sim.dt, "cells" => case["grid"]["cells"], "steps" => sim.nsteps, "wall_seconds" => sim.wall,
             "threads" => string(Threads.nthreads()), "cpu" => Sys.cpu_info()[1].model,
-            "energy" => Dict("t" => collect(0:nE-1) .* sim.dt, "Utot" => sim.total),
+            "energy" => Dict("t" => (iE .- 1) .* sim.dt, "Utot" => sim.total[iE]),
             "series" => Dict(
                 "growth_rate" => Dict{String,Any}("t" => sim.tU, "U" => sim.U, "c_re" => nothing, "c_im" => nothing),
                 "mode" => Dict{String,Any}("t" => sim.tC, "U" => abs2.(sim.C), "c_re" => real.(sim.C), "c_im" => imag.(sim.C))))

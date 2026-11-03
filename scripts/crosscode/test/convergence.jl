@@ -194,11 +194,11 @@ end
     h5open(joinpath(rd, "Fields0.h5"), "w") do f
         for (n, it) in enumerate((0, 64))
             g = create_group(f, "data/" * lpad(string(it), 10, '0'))
-            attributes(g)["time"] = it * case["time"]["dt"]
-            attributes(g)["dt"] = case["time"]["dt"]
+            HDF5.attributes(g)["time"] = it * case["time"]["dt"]
+            HDF5.attributes(g)["dt"] = case["time"]["dt"]
             v = [real(A[n] * cis(2π * j / N)) for j in 0:N]       # N + 1 points, the last repeats the first
             g["Ex"] = v
-            a = attributes(g["Ex"])
+            a = HDF5.attributes(g["Ex"])
             a["gridSpacing"] = [L / N]; a["gridGlobalOffset"] = [0.0]; a["position"] = [0.5]
         end
     end
@@ -240,11 +240,11 @@ end
     h5open(joinpath(rd, "Fields0.h5"), "w") do f
         for (n, it) in enumerate((0, 16))
             g = create_group(f, "data/" * lpad(string(it), 10, '0'))
-            attributes(g)["time"] = it * case["time"]["dt"]
-            attributes(g)["dt"] = case["time"]["dt"]
+            HDF5.attributes(g)["time"] = it * case["time"]["dt"]
+            HDF5.attributes(g)["dt"] = case["time"]["dt"]
             for (name, comp, st) in (("Bx", ê[1], [0.0, 0.5]), ("By", ê[2], [0.5, 0.0]))
                 g[name] = permutedims(field(n, comp, st[1] == 0.5, st[2] == 0.5))
-                a = attributes(g[name])
+                a = HDF5.attributes(g[name])
                 a["gridSpacing"] = collect(Δ); a["gridGlobalOffset"] = [0.0, 0.0]; a["position"] = st
                 a["axisLabels"] = ["x", "y"]; a["dataOrder"] = "C"
             end

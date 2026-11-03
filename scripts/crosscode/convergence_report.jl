@@ -231,4 +231,47 @@ function plots(out, pts, res, keys_)
     save_fig(out, "ratio-to-linear", fig, side)
 end
 
+"""
+    compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate") -> Dict
+
+Two codes on the same scan points (#226: ParticleMesh against Smilei at each Δt): for every point
+in both summaries, the other code's fit over the reference run's window samples (the same
+times), its difference from the reference γ, and U_other/U_ref at the window's ends and at
+every sample to saturation; `comparison.json` and `code-ratio.png` (with its sidecar) in `out`.
+"""
+function compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate")
+    mkpath(out)
+    names = sort([splitext(f)[1] for f in readdir(other_sumdir) if endswith(f, ".json") && isfile(joinpath(ref_sumdir, f))])
+    res = Dict{String,Any}("reference" => ref_sumdir, "other" => other_sumdir, "key" => key, "points" => Dict{String,Any}())
+    fig = Figure(size = (900, 500))
+    ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "U_other / U_reference", title = "$key: the two codes at the same Δt")
+    side = Dict{String,Any}("plot" => "ratio of the fitted series of the two codes at the same output times, to the reference run's saturation")
+    for (i, p) in enumerate(names)
+        a, b = load_point(ref_sumdir, p), load_point(other_sumdir, p)
+        ta, Ua = series_of(a.rec, key)
+        tb, Ub = series_of(b.rec, key)
+        n = min(length(ta), length(tb))
+        maximum(abs.(ta[1:n] .- tb[1:n])) <= 1e-9 * ta[n] || error("compare_codes: $p: the output times differ")
+        fa = growth_from_window(ta, Ua; window = window_of(a.case, key))
+        i1, i2 = findfirst(==(first(fa.t_fit)), ta), findfirst(==(last(fa.t_fit)), ta)
+        fb = linear_fit(tb[i1:i2], log.(Ub[i1:i2]))
+        own = evaluate(b, key)
+        isat = findfirst(==(fa.t_max), ta)
+        r = Ub[1:isat] ./ Ua[1:isat]
+        res["points"][p] = Dict{String,Any}("dt" => a.dt, "dx" => a.dx, "gamma_reference" => fa.gamma,
+            "gamma_other_same_samples" => fb.slope / 2,
+            "relative_difference_same_samples" => (fb.slope / 2 - fa.gamma) / fa.gamma,
+            "ratio_window_start" => r[i1], "ratio_window_end" => r[i2], "ratio_t0" => r[1],
+            "other_own_rule" => own)
+        keep = Ua[1:isat] .> 1e-3 * Ua[i1]
+        lines!(ax, ta[1:isat][keep], r[keep]; label = "$p (Δt = $(round(a.dt; sigdigits = 4)))",
+            color = i, colormap = :viridis, colorrange = (1, max(2, length(names))))
+        side[p] = Dict("t" => ta[1:isat][keep][1:4:end], "ratio" => r[keep][1:4:end])
+    end
+    axislegend(ax; position = :lb)
+    save_fig(out, "code-ratio", fig, side)
+    open(io -> JSON.print(io, res, 2), joinpath(out, "comparison.json"), "w")
+    return res
+end
+
 end
