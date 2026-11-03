@@ -1,7 +1,7 @@
-commit = "bff23828695faf4371db35742048fcc8737044dc"
-dirty = true
+commit = "2215eee1916eb2da8a13333eca8dc34701a0f9e3"
+dirty = false
 report = "scripts/crosscode/convergence.jl report"
-updated = "2026-11-03T15:59:13.903Z"
+updated = "2026-11-03T15:59:35.744Z"
 
 [box]
 branch = "runs/wp031-weibel-2d-2"
