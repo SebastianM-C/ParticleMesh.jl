@@ -431,4 +431,13 @@ end
         @test v["relative_difference_same_samples"] ≈ δc / v["gamma_reference"] rtol = 1e-8
         @test v["ratio_t0"] == 1
     end
+    # its run manifest (F3) hashes both summaries' points and cases
+    m = TOML.parsefile(joinpath(dirname(sd2), "cmp2", "manifest.toml"))
+    @test length(m["inputs"]) == 4length(pts) && m["points"] == sort(first.(pts))
+    # an other run that stops inside the reference's window is refused with a message
+    rec = JSON.parsefile(joinpath(sd2, "n0128.json"))
+    s = rec["series"]["growth_rate"]
+    s["t"], s["U"] = s["t"][1:100], s["U"][1:100]
+    open(io -> JSON.print(io, rec), joinpath(sd2, "n0128.json"), "w")
+    @test_throws "ends before the reference's saturation" R.compare_codes(sd, sd2, joinpath(dirname(sd2), "cmp3"))
 end

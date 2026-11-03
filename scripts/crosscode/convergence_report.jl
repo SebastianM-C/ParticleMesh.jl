@@ -264,6 +264,7 @@ times), its difference from the reference γ, and U_other/U_ref at the window's 
 every sample to saturation; `comparison.json` and `code-ratio.png` (with its sidecar) in `out`.
 """
 function compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate")
+    c0 = git_commit(ROOT)      # before this step rewrites its own (tracked) outputs
     mkpath(out)
     names = sort([splitext(f)[1] for f in readdir(other_sumdir) if endswith(f, ".json") && isfile(joinpath(ref_sumdir, f))])
     res = Dict{String,Any}("reference" => ref_sumdir, "other" => other_sumdir, "key" => key, "points" => Dict{String,Any}())
@@ -278,10 +279,10 @@ function compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate")
         maximum(abs.(ta[1:n] .- tb[1:n])) <= 1e-9 * ta[n] || error("compare_codes: $p: the output times differ")
         fa = growth_from_window(ta, Ua; window = window_of(a.case, key))
         i1, i2 = findfirst(==(first(fa.t_fit)), ta), findfirst(==(last(fa.t_fit)), ta)
-        fb = linear_fit(tb[i1:i2], log.(Ub[i1:i2]))
-        own = evaluate(b, key)
         isat = findfirst(==(fa.t_max), ta)
         length(Ub) >= isat || error("compare_codes: $p: the other run ends before the reference's saturation")
+        fb = linear_fit(tb[i1:i2], log.(Ub[i1:i2]))
+        own = evaluate(b, key)
         r = Ub[1:isat] ./ Ua[1:isat]
         res["points"][p] = Dict{String,Any}("dt" => a.dt, "dx" => a.dx, "gamma_reference" => fa.gamma,
             "gamma_other_same_samples" => fb.slope / 2,
@@ -296,6 +297,16 @@ function compare_codes(ref_sumdir, other_sumdir, out; key = "growth_rate")
     axislegend(ax; position = :lb)
     save_fig(out, "code-ratio", fig, side)
     open(io -> JSON.print(io, res, 2), joinpath(out, "comparison.json"), "w")
+    # the run manifest (F3): both summaries' points and cases, the code, the commit before this step
+    inputs = String[]
+    for d in (ref_sumdir, other_sumdir), p in names
+        push!(inputs, joinpath(d, p * ".json"), joinpath(d, "cases", p * ".toml"))
+    end
+    extra = Dict{String,Any}("report" => "scripts/crosscode/convergence.jl compare", "points" => names, "key" => key,
+        "commit" => c0.commit, "dirty" => coalesce(c0.dirty, "unknown"),
+        "report_inputs" => Dict("scripts/crosscode/" * f => "sha256:" * file_hash(joinpath(ROOT, "scripts", "crosscode", f))
+                                for f in ("convergence.jl", "convergence_report.jl", "theory.jl", "analysis.jl")))
+    write_manifest(out; inputs = [relpath(abspath(f), abspath(out)) for f in inputs], extra)
     return res
 end
 
