@@ -272,6 +272,7 @@ seeds = { d1 = 8, d2 = 32 }
 smilei_picongpu_difference = { d1 = 0.0057, d1_in_combined_stderr = 0.29, d2 = -0.0047, d2_in_combined_stderr = 1.01 }
 proposed_threshold = "|γ_PM − γ_ref| ≤ 2 √(σ_PM² + σ_ref²), σ the jackknife standard error over the case's seeds, the same seed count in both codes, against each of Smilei and PIConGPU"
 proposed_threshold_values = { d1 = 0.039, d2 = 0.0093 }
+expected_offset_2d = "a correct ParticleMesh run with the 3V load (theory about 0.1525) sits about +0.005 from Smilei and +0.006 from PIConGPU (1.4 combined errors at 32 seeds), because their theory rates with their own loads are 0.1478 and 0.1463; the d2 threshold on raw γ is therefore not a test of agreement, and each code's measured minus its own-load theory is the comparison that is (questions/wp-017-a7-thresholds.md, P2)"
 source = "reports/crosscode-picongpu/README.md; questions/wp-017-a7-thresholds.md (P2)"
 status = "proposed: the Smilei–PIConGPU difference is not resolved by these ensembles, so the threshold is a multiple of the combined statistical error; for the owner to accept by editing A7"
 
@@ -383,3 +384,67 @@ scale = "k·max|Float32 value| per component"
 C = 8
 measured = { "Dual{Float32,3}" = 1.49 }
 status = "proposed; not bitwise (A4)"
+
+# WP-026: the laser antenna
+["T-401"]
+quantity = "energy behind the antenna plane (the wrapped leak included, measured where it is) over the pulse's energy, the A8 runs (C, waist 4, duration 5) and the physics runs (C_main, waist 6, duration 8); a0·∂E/∂a0 − E over eps(T)·max|E|·√steps (C_linear)"
+scale = "fraction (C, C_main); see quantity (C_linear); 16 × 8 cells per wavelength"
+C = 3e-3
+C_main = 1e-4
+C_linear = 10
+measured = { C = { Float32 = 1.51e-3, Float64 = 1.51e-3, "Dual{Float32,3}" = 1.51e-3 }, C_main = 2.99e-5, C_linear = 0.0 }
+status = "proposed"
+
+["T-402"]
+quantity = "relative L² difference of the ω₀ transform on the probe columns from the Yee angular-spectrum propagation of the incident field (C); the same for a plane wave (C_plane)"
+scale = "(3/16)·√105/w0⁴, the antenna's order (k_y/k)⁴ (waist 6, Float64) for C; eps(T)·√steps for C_plane"
+C = 1.5
+C_plane = 2
+measured = { Ey = 1.16, Ez = 0.714, C_plane = { Float32 = 0.529, Float64 = 0.754, "Dual{Float32,3}" = 0.529 } }
+status = "proposed"
+
+["T-403"]
+quantity = "radius and Gouy phase against the Yee angular-spectrum prediction (C_angular); |w/w_paraxial − 1| (C_waist) and |Gouy − Gouy_paraxial| in radians (C_gouy) against the scheme's paraxial beam; the centroid of |Â|² from the laser's axis (C_axis)"
+scale = "(3/16)·√105/w0⁴ (C_angular); 3/w0², the non-paraxial widening (C_waist); 1/w0² (C_gouy); Δy (C_axis); waist 6, Float64"
+C_angular = 2
+C_waist = 1
+C_gouy = 1
+C_axis = 1e-4
+measured = { C_angular = 1.32, C_waist = 0.547, C_gouy = 0.609, C_axis = 9.2e-6 }
+status = "proposed"
+
+["T-404"]
+quantity = "|v_centroid/v_spectral − 1|, the energy centroid's velocity against the energy-weighted Yee group velocity, over the pulse's window"
+scale = "relative (waist 6, Float64)"
+C = 1e-6
+measured = { C = 6.9e-8 }
+status = "proposed"
+
+["T-405"]
+quantity = "|W/Φ − 1|, the conserved energy of the pulse's window against the discrete Poynting flux of the incident field (C); |Φ/laser_energy − 1| (C_flux)"
+scale = "1/w0⁴ (C); Δt² + Δx² (C_flux) (waist 6, Float64)"
+C = 0.2
+C_flux = 0.25
+measured = { C = 0.0362, C_flux = 0.124 }
+status = "proposed"
+
+["T-406"]
+quantity = "Gauss residual and ∇·B off the antenna's columns, and on them minus the accumulated surface charges"
+scale = "eps(T)·√(k+1)·((n₁ + n₂)·max|ρ| + (Σ 2/Δ_d)·max|E|) for Gauss, eps(T)·√(k+1)·(Σ 2/Δ_d)·max|B| for ∇·B"
+C = 1
+measured = { Float32 = 0.201, Float64 = 0.158, "Dual{Float32,3}" = 0.173 }
+status = "proposed"
+
+["T-407"]
+quantity = "AD against the finite-difference floor of the ω₀ intensity on the axis of a probe, in focus and chirp"
+scale = "rel/floor_rel at the minimising step (A7)"
+C = 1
+measured = { focus = 0.112, chirp = 0.113 }
+status = "proposed"
+
+["T-409"]
+quantity = "the run with the beam's axis m rows off the middle against the centred run shifted by m rows, max over the E and B components relative to the component's max"
+scale = "eps(T)·√(steps + 1)"
+C = 4
+measured = { Float32 = 1.30, Float64 = 1.04 }
+status = "proposed"
