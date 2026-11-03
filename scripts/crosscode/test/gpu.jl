@@ -14,7 +14,7 @@ include(joinpath(Main.CC, "loadcheck.jl"))
 end
 using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
 
-@testset "T-400 the smilei-gpu recipe is pinned and builds the CPU image's Smilei [A6, WP-030]" begin
+@testset "T-430 the smilei-gpu recipe is pinned and builds the CPU image's Smilei [A6, WP-030]" begin
     recipe = read(joinpath(CC, "containers", "smilei-gpu.Containerfile"), String)
     cpu = read(joinpath(CC, "containers", "smilei.Containerfile"), String)
     froms = [l for l in split(recipe, '\n') if startswith(strip(l), "FROM")]
@@ -81,7 +81,7 @@ without_key(text, key) = filter(l -> !occursin(Regex("^\\s*$key\\s*="), l), spli
 python_parses(text) = (f = tempname() * ".py"; write(f, text);
     success(`python3 -c "import ast, sys; ast.parse(open(sys.argv[1]).read())" $f`))
 
-@testset "T-401 the GPU namelist differs from the CPU one only in the build and the layout [A5, WP-030]" begin
+@testset "T-431 the GPU namelist differs from the CPU one only in the build and the layout [A5, WP-030]" begin
     @test Sys.which("python3") !== nothing
     for name in ("landau-oblique-2d", "weibel-2d")
         c = load_case(name)
@@ -156,7 +156,7 @@ function run_sh(dir, stub)
     run(setenv(`bash $(joinpath(dir, "run.sh"))`, "PATH" => stub * ":" * ENV["PATH"], "PM_RUN_DIR" => dir, "PM_MPI_ENV" => mpi))
 end
 
-@testset "T-402 run.sh keeps the generated namelist, records the build and the GPU, and resumes [A5, WP-030]" begin
+@testset "T-432 run.sh keeps the generated namelist, records the build and the GPU, and resumes [A5, WP-030]" begin
     stub, calls = stub_bin()
     runs = mktempdir()
     case = load_case("landau-oblique-2d")
@@ -222,7 +222,7 @@ end
     @test GPUCompare.smilei_time_loop(sd) === nothing
 end
 
-@testset "T-403 the load-check run: one step, the t = 0 corner of every mobile species [A5, WP-030]" begin
+@testset "T-433 the load-check run: one step, the t = 0 corner of every mobile species [A5, WP-030]" begin
     for name in ("landau-oblique-2d", "weibel-2d")
         c = load_case(name)
         s = first(case_seeds(c))
@@ -302,7 +302,7 @@ function write_loadcheck_run(dir, t; rho_shift = 0.0, ukin = 0.5, build = "cpu")
     open(io -> TOML.print(io, Dict("build" => build, "patches" => [4, 4], "load_check" => true)), joinpath(dir, "manifest.toml"), "w")
 end
 
-@testset "T-404 the load check matches particles by position and sees one ulp [A4, A5, WP-030]" begin
+@testset "T-434 the load check matches particles by position and sees one ulp [A4, A5, WP-030]" begin
     rng = Xoshiro(404)
     n = 200
     # a regular lattice: distinct positions, random momenta
@@ -383,7 +383,7 @@ end
     @test r["species"]["electron"]["identical"] && !r["species"]["beam"]["identical"] && !r["identical"]
 end
 
-@testset "T-405 GPU runs carry their own label; paired seeds only with one layout [A5, A7, WP-030]" begin
+@testset "T-435 GPU runs carry their own label; paired seeds only with one layout [A5, A7, WP-030]" begin
     runs = mktempdir()
     cpu = SmileiDeck.prepare_run("landau-oblique-2d"; runs)
     g11 = SmileiDeck.prepare_run("landau-oblique-2d"; runs, gpu = true)
@@ -467,7 +467,7 @@ module GPUThroughput
 include(joinpath(Main.CC, "throughput.jl"))
 end
 
-@testset "T-406 time per mobile particle-step from the run records [A5, WP-030]" begin
+@testset "T-436 time per mobile particle-step from the run records [A5, WP-030]" begin
     stub, _ = stub_bin()
     runs = mktempdir()
     case = load_case("landau-oblique-2d")

@@ -12,7 +12,7 @@ julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --load-check [--gpu] [--patches 4x4]     # one step, the t = 0 load
 julia +1.13 --project=scripts scripts/crosscode/loadcheck.jl <load-check run a> <load-check run b> <out dir>                 # same particles?
 julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes, two precisions or two builds on one case
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-400 to T-405
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-430 to T-436
 julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>   # seeds per code for a two-code comparison
 julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>   # the ensemble rule on disjoint groups of seeds, both runs
 julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
@@ -29,13 +29,13 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 |---|---|
 | `cases/<case>.toml` | The case in the units of A1, with its observables and their linear-theory values |
 | `theory.jl` | Dispersion relations the theory values come from, with the 2D Weibel relation derived in its header (T-160, T-273); Landau damping with the relativistic push for a given thermal load, by the linearized initial-value problem in time (T-394, post hoc for WP-025) |
-| `smilei.jl` | `load_case` and `case_view` (both schemas), `smilei_parameters` (the unit conversion, T-010, T-271), `namelist`, `prepare_run`; the GPU build, patch layouts and the load check (T-401 to T-403). The input is `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` in the working directory (#256); run directories before WP-030 have `smilei.py`, overwritten by that dump |
-| `loadcheck.jl` | Two load-check runs compared particle by particle (matched by position), with their first scalars and t = 0 fields (T-404) |
+| `smilei.jl` | `load_case` and `case_view` (both schemas), `smilei_parameters` (the unit conversion, T-010, T-271), `namelist`, `prepare_run`; the GPU build, patch layouts and the load check (T-431 to T-433). The input is `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` in the working directory (#256); run directories before WP-030 have `smilei.py`, overwritten by that dump |
+| `loadcheck.jl` | Two load-check runs compared particle by particle (matched by position), with their first scalars and t = 0 fields (T-434) |
 | `picongpu.jl` | `picongpu_parameters` (the conversion to PIConGPU's SI input, T-250), `param_files`, `background_field` (the initial field, T-255), `run_arguments`, `run_script`, `prepare_run`; schema-1 cases as quasi-1D runs (T-254) |
-| `compare.jl` | Two runs of one case (two codes, one code in two precisions, or Smilei's two builds): the difference of each observable in units of the seed spreads and standard errors, and the overlay plot; for two Smilei runs with the same seeds and patch layout (the same loads, `paired_loads`) also the per-seed differences (T-405) |
+| `compare.jl` | Two runs of one case (two codes, one code in two precisions, or Smilei's two builds): the difference of each observable in units of the seed spreads and standard errors, and the overlay plot; for two Smilei runs with the same seeds and patch layout (the same loads, `paired_loads`) also the per-seed differences (T-435) |
 | `test/namelist-hashes.toml` | Hashes of the schema-1 namelists, recorded before schema 2 (T-270) |
 | `containers/smilei.Containerfile` | The Smilei image (T-013); build and tag convention in `containers/README.md` |
-| `containers/smilei-gpu.Containerfile` | The Smilei GPU image (T-400), with `smilei-gpu/` (the guide's environment file, the cc89 probe, `pm-versions`) |
+| `containers/smilei-gpu.Containerfile` | The Smilei GPU image (T-430), with `smilei-gpu/` (the guide's environment file, the cc89 probe, `pm-versions`) |
 | `run-smilei.sh` | Plain `podman run` of a prepared run directory, for runs outside the factory |
 | `read.jl` | Readers for `scalars.txt` and `Fields<n>.h5`, 1D and 2D (T-012, T-275); PIConGPU's openPMD and energy files, with the y-average of the quasi-1D runs (T-252) |
 | `analysis.jl` | Rate fits, mode amplitudes, the complex mode coefficient (1D, and 2D with the projection on k) (T-161, T-274); `checked_fit` refuses a fit on too few points (T-186) |
@@ -45,7 +45,7 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | `landau_relativistic.jl` | Post hoc: two seeded Landau runs against linear theory with each code's load and the relativistic push |
 | `subensembles.jl` | Post hoc: the ensemble rule on disjoint consecutive groups of 4, 8, 16 and all seeds of two runs, from their `seed-coefficients.json`: the measured spread of a g-seed ensemble against its jackknife estimate, and the group-by-group two-run difference (T-392) |
 | `seed_count.jl` | Design: the spread of the ensemble γ and of a two-code difference against the seed count, from synthetic ensembles at two runs' measured noise and from their jackknife errors scaled as 1/√M |
-| `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases; Smilei's own time-loop time and the GPU of a GPU run (T-402) |
+| `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases; Smilei's own time-loop time and the GPU of a GPU run (T-432) |
 | `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the runner's log (T-184) |
 
 ## Case schema, version 1

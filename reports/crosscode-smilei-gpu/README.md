@@ -23,9 +23,9 @@ This report records measurements and sets no tolerance (A7). Each run directory 
 - the MPI include path comes from the SDK's wrapper;
 - `-cuda` is on the link line.
 
-Six owner builds were needed. Each failure is in the commit history of the recipe, and the build now checks every one of them: the toolkit pin, the cc89 probe, HPC-X's prefix (`OPAL_PREFIX`), its library path, and an isolated singleton MPI start. The build's MPI probe chose `ob1` over shared memory: UCX's pml could not be opened in the build container. The image holds two binaries: `smilei`, with the guide's `-gpu=cc89,cuda12.3,fastmath`, and `smilei-nofastmath`, with the same flags without fastmath (T-400 checks the pins).
+Six owner builds were needed. Each failure is in the commit history of the recipe, and the build now checks every one of them: the toolkit pin, the cc89 probe, HPC-X's prefix (`OPAL_PREFIX`), its library path, and an isolated singleton MPI start. The build's MPI probe chose `ob1` over shared memory: UCX's pml could not be opened in the build container. The image holds two binaries: `smilei`, with the guide's `-gpu=cc89,cuda12.3,fastmath`, and `smilei-nofastmath`, with the same flags without fastmath (T-430 checks the pins).
 
-**The namelists.** `smilei.jl prepare <case> --gpu` writes the CPU namelist plus `gpu_computing = True` and a patch layout. One patch is the default, Smilei's guideline (`Understand/GPU_offloading.rst`); `--patches` sets another. Nothing else changes (T-401). Smilei's GPU binary runs one MPI rank without OpenMP (`gpu_nvidia` implies `noopenmp`). A GPU binary refuses `gpu_computing = False`, a CPU binary refuses `True`. The rank picks its GPU from `SLURM_LOCALID`, which the image sets. The generated input is now `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` and overwrote the input before (#256).
+**The namelists.** `smilei.jl prepare <case> --gpu` writes the CPU namelist plus `gpu_computing = True` and a patch layout. One patch is the default, Smilei's guideline (`Understand/GPU_offloading.rst`); `--patches` sets another. Nothing else changes (T-431). Smilei's GPU binary runs one MPI rank without OpenMP (`gpu_nvidia` implies `noopenmp`). A GPU binary refuses `gpu_computing = False`, a CPU binary refuses `True`. The rank picks its GPU from `SLURM_LOCALID`, which the image sets. The generated input is now `namelist.py`, because Smilei writes its expanded namelist to `smilei.py` and overwrote the input before (#256).
 
 **Matching.** Both builds run the same Smilei commit with the same namelist apart from the two lines above: shape order 2, Esirkepov deposition, no filter, Boris push, Yee solver, FP64, the cases' output cadence. The comparisons against the CPU therefore measure the build: the compiler (nvc++ against g++), OpenACC, the GPU's atomic-add current deposition (`Projector2D2OrderGPUKernelCUDAHIP.cu`), fastmath, and the patch layout.
 
@@ -35,7 +35,7 @@ Six owner builds were needed. Each failure is in the commit history of the recip
 
 ### Does a seed load the same particles?
 
-`smilei.jl prepare <case> --load-check` writes a one-step run of the case's first seed. It dumps the t = 0 particles of the box's lower-left eighth per axis (262 144 electrons, `DiagTrackParticles`) and the fields at t = 0. `loadcheck.jl` matches the particles of two such runs by lattice index and compares them (T-403, T-404). `landau-oblique-2d`, seed 20261031 (`loadchecks/*/loadcheck.json`):
+`smilei.jl prepare <case> --load-check` writes a one-step run of the case's first seed. It dumps the t = 0 particles of the box's lower-left eighth per axis (262 144 electrons, `DiagTrackParticles`) and the fields at t = 0. `loadcheck.jl` matches the particles of two such runs by lattice index and compares them (T-433, T-434). `landau-oblique-2d`, seed 20261031 (`loadchecks/*/loadcheck.json`):
 
 | a | b | positions | momenta | weights | t = 0 fields (max relative) | t = 0 scalars |
 |---|---|---|---|---|---|---|
@@ -142,14 +142,14 @@ The ensemble's time loop shows no slowdown from that load. Seed 20261031, on an 
 
 ## Verification status
 
-- T-400 to T-406 pass on the CPU (`julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl`, which CI runs):
-  - T-400: the recipe's pins (the same Smilei commit as the CPU image), the toolkit pin, the MPI probe;
-  - T-401: the GPU namelist differs from the CPU one only in the build line and the layout;
-  - T-402: run.sh, executed with stand-ins for Smilei, nvidia-smi and pm-versions, keeps `namelist.py`, records the build, the GPU and the MPI setting, and resumes;
-  - T-403: the load-check run;
-  - T-404: the load comparison, which sees a single ulp;
-  - T-405: labels, pairing, sub-ensembles, the paired coefficient drift;
-  - T-406: the time per particle-step.
+- T-430 to T-436 pass on the CPU (`julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl`, which CI runs):
+  - T-430: the recipe's pins (the same Smilei commit as the CPU image), the toolkit pin, the MPI probe;
+  - T-431: the GPU namelist differs from the CPU one only in the build line and the layout;
+  - T-432: run.sh, executed with stand-ins for Smilei, nvidia-smi and pm-versions, keeps `namelist.py`, records the build, the GPU and the MPI setting, and resumes;
+  - T-433: the load-check run;
+  - T-434: the load comparison, which sees a single ulp;
+  - T-435: labels, pairing, sub-ensembles, the paired coefficient drift;
+  - T-436: the time per particle-step.
 - The deliberate breaks seen to fail are in the pull request.
 - The full CPU test matrix (root, `lib/ParticleMeshCore`, `lib/ParticleMeshElectromagnetic`, trace tests and checker, cross-code tests) passes.
 - Not verified: whether `fastmath` changes the generated code; why UCX's pml could not be opened in the build; the GPU build's behaviour with more than one rank or on several GPUs (not used).
