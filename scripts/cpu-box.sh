@@ -46,7 +46,7 @@
 # and follows CONTINUE.md, so the submitting session can end once the batch is submitted.
 set -euo pipefail
 set -f
-LEAK='(ssh:/''/|BEGIN [A-Z ]*PRIVATE KEY|([0-9]{1,3}\.){3}[0-9]{1,3})'
+LEAK='(ssh:/''/|BEGIN [A-Z ]*PRIVATE KEY|\b([0-9]{1,3}\.){3}[0-9]{1,3}\b)'
 die() { echo "cpu-box: $*" >&2; exit 64; }
 [ $# -ge 2 ] || die "usage: cpu-box.sh submit|status|fetch <tag> [request.toml]"
 cmd="$1" tag="$2"
