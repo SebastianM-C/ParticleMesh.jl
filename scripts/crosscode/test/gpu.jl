@@ -444,6 +444,9 @@ end
     @test sd["max_abs_difference_relative_to_max"] ≈ 1e-5 && sd["at_t"] == 3.0
     @test sd["max_relative_difference"] ≈ 1e-5 && sd["first_t_relative_above_1e-10"] == 1.0
     @test sd["first_t_relative_above_1e-6"] == 3.0 && sd["first_t_relative_above_1e-2"] === nothing
+    # a series that is exactly 0 where the other holds roundoff: the Inf ratio is not a drift
+    sz = GPUCompare.series_drift([0.0, 1.0], [0.0, 1.0], [1e-30, 1.0])
+    @test sz["first_t_relative_above_1e-2"] === nothing && sz["max_relative_difference"] == 0.0
     # the paired drift of the mode coefficients, from both runs' seed-coefficients.json
     ca, cb = mktempdir(), mktempdir()
     t = collect(0.0:0.5:2.0)
