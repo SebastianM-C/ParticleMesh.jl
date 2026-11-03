@@ -45,7 +45,11 @@ using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
     @test occursin(r"for variant in fastmath nofastmath", recipe)
     @test match(r"ARG PM_SM=(\d+)", recipe).captures[1] == "89"
     env = read(joinpath(CC, "containers", "smilei-gpu", "nvidia_env.sh"), String)
-    @test occursin("-gpu=\${PM_GPU_CC}\${PM_FASTMATH}", env)
+    # every nvc++ -gpu= names the bundled toolkit (without a driver nvc++ would ask for another)
+    @test occursin("-gpu=\${PM_GPU_CC},cuda\${PM_CUDA}\${PM_FASTMATH}", env)
+    @test occursin("-gpu=\${PM_GPU_CC:?},cuda\${PM_CUDA:?} ", env)
+    @test count("PM_CUDA=\${CUDA_RELEASE}", recipe) == 2
+    @test occursin("-gpu=\${cc},cuda\${CUDA_RELEASE}", recipe) && occursin("test -s /opt/smilei/GPU_CC", recipe)
     @test occursin("-arch=sm_\${PM_SM:?}", env)
     @test !occursin("ccnative", replace(env, r"#[^\n]*" => ""))
     for f in ("nvidia_env.sh", "acc-probe.cpp", "pm-versions.sh")

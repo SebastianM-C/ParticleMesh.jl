@@ -47,12 +47,17 @@ COPY smilei-gpu/pm-versions.sh /usr/local/bin/pm-versions
 
 # The nvc++ target: cc89 if this nvc++ accepts it for OpenACC, else cc86, whose code runs on the
 # 8.9 card (same major compute capability). Decided by compiling (not linking: the build has no
-# driver) a probe; recorded in GPU_CC.
+# driver) a probe; recorded in GPU_CC; the build stops if neither compiles. Every nvc++ call names
+# the bundled toolkit (-gpu=cuda12.3): without a driver nvc++ otherwise asks for the CUDA of the
+# driver or its fallback 11.8, which this single-CUDA package does not have.
 RUN mkdir -p /opt/smilei \
  && export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE}/compilers/bin:$PATH \
- && if nvc++ -acc=gpu -gpu=cc89 -c -o /tmp/acc-probe.o /opt/smilei-gpu/acc-probe.cpp; then echo cc89; else echo cc86; fi \
-      > /opt/smilei/GPU_CC \
- && rm -f /tmp/acc-probe.o && cat /opt/smilei/GPU_CC
+ && for cc in cc89 cc86; do \
+      if nvc++ -acc=gpu -gpu=${cc},cuda${CUDA_RELEASE} -c -o /tmp/acc-probe.o /opt/smilei-gpu/acc-probe.cpp; then \
+        echo $cc > /opt/smilei/GPU_CC; break; \
+      fi; \
+    done \
+ && test -s /opt/smilei/GPU_CC && rm -f /tmp/acc-probe.o && cat /opt/smilei/GPU_CC
 
 # HDF5 with the SDK's mpicc, as in the guide (parallel on); tests and examples off to save build
 # time. Fetched at the tag and refused unless it is the pinned commit.
@@ -78,7 +83,7 @@ RUN git clone --depth 1 --branch "${SMILEI_TAG}" https://github.com/SmileiPIC/Sm
 WORKDIR /opt/smilei/src
 RUN jobs=$(( $(nproc) < 16 ? $(nproc) : 16 )) \
  && for variant in fastmath nofastmath; do \
-      ( export NVHPC_RELEASE=${NVHPC_RELEASE} PM_SM=${PM_SM} PM_GPU_CC=$(cat /opt/smilei/GPU_CC) \
+      ( export NVHPC_RELEASE=${NVHPC_RELEASE} PM_CUDA=${CUDA_RELEASE} PM_SM=${PM_SM} PM_GPU_CC=$(cat /opt/smilei/GPU_CC) \
                PM_FASTMATH=$([ $variant = fastmath ] && echo ,fastmath || true) \
         && . /opt/smilei-gpu/nvidia_env.sh \
         && make -j"$jobs" config="gpu_nvidia" BUILD_DIR=build_$variant \
@@ -87,7 +92,7 @@ RUN jobs=$(( $(nproc) < 16 ? $(nproc) : 16 )) \
         && rm -f smilei smilei_test ) || exit 1; \
     done \
  && rm -rf build_fastmath build_nofastmath \
- && export NVHPC_RELEASE=${NVHPC_RELEASE} PM_SM=${PM_SM} PM_GPU_CC=$(cat /opt/smilei/GPU_CC) PM_FASTMATH= \
+ && export NVHPC_RELEASE=${NVHPC_RELEASE} PM_CUDA=${CUDA_RELEASE} PM_SM=${PM_SM} PM_GPU_CC=$(cat /opt/smilei/GPU_CC) PM_FASTMATH= \
  && . /opt/smilei-gpu/nvidia_env.sh \
  && make happi \
  && echo "${SMILEI_TAG} ${SMILEI_COMMIT} gpu" > /opt/smilei/VERSION
