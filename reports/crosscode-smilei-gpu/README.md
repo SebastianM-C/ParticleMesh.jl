@@ -95,7 +95,7 @@ The total energy changes by at most 1.33 × 10⁻⁶ over the run in both builds
 
 ### Charge density dumps of the GPU build
 
-The 2D GPU projector's diagnostic branch carries the comment "Does not compute Rho !" (Projector2D2OrderGPU.cpp). In `weibel-2d`, the GPU build's `Rho` dumps agree with the CPU's at t = 0 to 4 × 10⁻¹⁴. From the second dump (iteration 16) on, they equal the CPU's minus the frozen ions' charge density (1 per cell) to 8.5 × 10⁻¹², so their box sum is −65 536, one per cell. The dynamics do not use the dumped density: ions are frozen and carry no current, and the growth rates agree as above. The analysis uses Rho only at t = 0. No observable here is affected, but a GPU run's later Rho dumps are not the charge density. @@UPSTREAM@@
+In `weibel-2d`, the GPU build's `Rho` dumps agree with the CPU's at t = 0 to 4 × 10⁻¹⁴. From the second dump (iteration 16) on, they equal the CPU's minus the frozen ions' charge density (1 per cell) to 8.5 × 10⁻¹², so their box sum is −65 536, one per cell. A plain Smilei namelist reproduces it (#288, `upstream`): 32 × 32 cells, a frozen ion species, 20 steps. There the GPU's Rho_ion is exactly 0 after t = 0. With the ions mobile, or without them, both builds agree to 3 × 10⁻¹⁵. The likely mechanism, read from the v5.1 source and not tested in a patched build: on diagnostic steps Smilei deposits frozen species on the host (`Species.cpp`), then copies the device's density over the host arrays (`VectorPatch.cpp`), and the device holds only the mobile deposit. The projector's "Does not compute Rho !" comment is in the mobile-species path, which deposits correctly here. The dynamics do not use the dumped density: frozen ions carry no current, and the growth rates agree as above. The analysis uses Rho only at t = 0. No observable here is affected, but a GPU run's later Rho dumps miss every frozen species.
 
 ## Time per particle-step on the RTX 4080 SUPER
 
@@ -152,7 +152,7 @@ The ensemble's time loop shows no slowdown from that load. Seed 20261031, on an 
 ## Known limitations and open items
 
 - The GPU build is not bitwise reproducible run to run (atomic adds), as A4 expects of a fast mode. Smilei has no deterministic GPU deposition.
-- The GPU build's `Rho` dumps after t = 0 lack frozen species (above).
+- The GPU build's `Rho` dumps after t = 0 lack frozen species (above, #288).
 - One patch is both the guideline and the fastest layout here. A layout other than the CPU's changes Smilei's post-Poisson offset (#157), so `energy_ratio` comparisons between builds need the same layout.
 - No review yet (header).
 
