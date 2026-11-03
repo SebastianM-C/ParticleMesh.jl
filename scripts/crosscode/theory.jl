@@ -209,8 +209,11 @@ true`) or v = p, for the load `thermal_load(load, T)`: the Volterra equation in 
 by the trapezoid rule with step h on [0, tmax] and a midpoint rule in |p| with np points up to
 pmax (default 14√T, where the load is below 1e-40 of its peak). γ is −½ the slope of a
 least-squares line through log e(t)² at its maxima in `window`; ω is π over their mean
-spacing, so it is quantized by h (about 3e-4 at the default). Converged to about 3e-5 in γ
-at the defaults for k = 10, T = 2.5e-3 (h halved and np doubled).
+spacing, so it is quantized by h (about 3e-4 at the default). At k = 10, T = 2.5e-3 the
+momentum grid is converged (np doubled moves γ by 1e-11); halving h moves γ by 2e-6 for the
+momentum and velocity Maxwellians and by 1.9e-5 for the classical-energy load, not
+monotonically (1.6e-5 at h/4), because the maxima are taken on the time grid without
+refinement.
 """
 function landau_rate_relativistic(k, T; load = :momentum_maxwellian, relativistic = true,
                                   window = (8.0, 22.0), tmax = 25.0, h = 0.0025, np = 3000,

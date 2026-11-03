@@ -241,6 +241,13 @@ end
     @test d(T, k) / d(T4, k4) ≈ 4 rtol = 0.15
 end
 
+# Two parsed JSON records equal up to floating-point summation order: numbers to `rtol`, all
+# else exactly (another CPU may sum in another order, so the last bits may differ).
+json_close(a::AbstractDict, b::AbstractDict; rtol) = Set(keys(a)) == Set(keys(b)) && all(json_close(a[k], b[k]; rtol) for k in keys(a))
+json_close(a::AbstractVector, b::AbstractVector; rtol) = length(a) == length(b) && all(json_close(x, y; rtol) for (x, y) in zip(a, b))
+json_close(a::Real, b::Real; rtol) = a isa AbstractFloat || b isa AbstractFloat ? isapprox(a, b; rtol) : a == b
+json_close(a, b; rtol) = a == b
+
 @testset "T-395 the committed 32-seed records are what their code computes from the committed coefficients [A4, A7, WP-025]" begin
     R = joinpath(REPORTS, "crosscode-picongpu")
     runs = [joinpath(R, "smilei-landau-oblique-2d-431f4192"), joinpath(R, "picongpu-landau-oblique-2d-fp64-431f4192")]
@@ -251,16 +258,21 @@ end
         @test s == case_seeds(c)                       # the case's seeds, in its order
         e = ensemble_damping(t, cs; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
         ob = JSON.parsefile(joinpath(r, "observables.json"))
-        @test e.gamma == ob["measured"] && e.jackknife.stderr == ob["measured_stderr"] && length(e.used) == ob["maxima_used"]
+        @test e.gamma ≈ ob["measured"] rtol = 1e-12
+        @test e.jackknife.stderr ≈ ob["measured_stderr"] rtol = 1e-12
+        @test length(e.used) == ob["maxima_used"]
     end
     mktempdir() do out
-        # the sub-ensembles and the theory comparison regenerate bit for bit
+        # the sub-ensembles and the theory comparison regenerate (bit for bit on the machine that
+        # wrote them; to 1e-12 elsewhere, where the summation order may differ)
         r = subensembles(runs..., joinpath(out, "sub"))
-        @test JSON.parsefile(joinpath(out, "sub", "subensembles.json")) ==
-              JSON.parsefile(joinpath(R, "subensembles-landau-oblique-2d-431f4192", "subensembles.json"))
+        @test json_close(JSON.parsefile(joinpath(out, "sub", "subensembles.json")),
+                         JSON.parsefile(joinpath(R, "subensembles-landau-oblique-2d-431f4192", "subensembles.json")); rtol = 1e-12)
         compare_theory(runs, joinpath(out, "th"))
-        @test JSON.parsefile(joinpath(out, "th", "landau-relativistic.json")) ==
-              JSON.parsefile(joinpath(R, "landau-relativistic-431f4192", "landau-relativistic.json"))
+        @test json_close(JSON.parsefile(joinpath(out, "th", "landau-relativistic.json")),
+                         JSON.parsefile(joinpath(R, "landau-relativistic-431f4192", "landau-relativistic.json")); rtol = 1e-12)
+        @test !json_close(Dict("a" => [1.0, 2.0]), Dict("a" => [1.0, 2.0 + 1e-9]); rtol = 1e-12)   # the helper still sees a real change
+        @test !json_close(Dict("a" => 1), Dict("b" => 1); rtol = 1e-12)
         # the guards: other seeds, another case
         mkpath(joinpath(out, "b2"))
         cp(joinpath(runs[2], "case.toml"), joinpath(out, "b2", "case.toml"))
