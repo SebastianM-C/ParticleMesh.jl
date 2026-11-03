@@ -1,0 +1,15 @@
+## step 0 (smilei): exit 0 after 5s
+
+## step 1 (smilei): exit 0 after 30s
+
+## step 2 (smilei): exit 0 after 221s
+
+## step 3 (smilei): exit 0 after 1721s
+
+## step 4 (smilei): exit 0 after 55s
+
+## step 5 (smilei): exit 0 after 106s
+
+## step 6 (smilei): exit 0 after 210s
+
+## step 7 (smilei): exit 143 after 377s

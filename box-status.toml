@@ -1,0 +1,74 @@
+branch = "runs/wp031-weibel-2d-1-rerun"
+request_commit = "5cd5fbbead98d4784c07aeb43456f60b2cb1326b"
+started = "2026-11-03T14:16:02Z"
+category = "unspecified"
+environment = "scripts/ environment matches no commit of main's last 300: run offline against main's warmed depot; packages not in it fail to load"
+outputs = ["scripts/runs/wp031-weibel-2d-offset/summary", "scripts/runs/wp031-weibel-2d-offset/n064", "scripts/runs/wp031-weibel-2d-offset/n128", "scripts/runs/wp031-weibel-2d-offset/n256", "scripts/runs/wp031-weibel-2d-offset/n512", "scripts/runs/wp031-weibel-2d-offset/n128-dt2", "scripts/runs/wp031-weibel-2d-offset/n128-dt4", "scripts/runs/wp031-weibel-2d-offset/n128-dt8", "scripts/runs/wp031-weibel-2d-offset/n256-dt2", "scripts/runs/wp031-weibel-2d-offset/n128-a0.1", "scripts/runs/wp031-weibel-2d-offset/n128-a10", "scripts/runs/wp031-weibel-2d-offset/n128-ppc0.5", "scripts/runs/wp031-weibel-2d-offset/n128-ppc2", "scripts/runs/wp031-weibel-2d-offset/n128-seed1"]
+finished = "2026-11-03T15:01:27Z"
+ok = false
+files_returned = 115
+dumps_over_20MB = ["scripts/runs/wp031-weibel-2d-offset/n128/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n256/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n512/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-dt2/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-dt4/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-dt8/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n256-dt2/Fields0.h5"]
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:16:02Z"
+exit = 0
+seconds = 5
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:16:07Z"
+exit = 0
+seconds = 30
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:16:37Z"
+exit = 0
+seconds = 221
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:20:19Z"
+exit = 0
+seconds = 1721
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:48:59Z"
+exit = 0
+seconds = 55
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:49:55Z"
+exit = 0
+seconds = 106
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:51:41Z"
+exit = 0
+seconds = 210
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T14:55:10Z"
+exit = 143
+seconds = 377
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"

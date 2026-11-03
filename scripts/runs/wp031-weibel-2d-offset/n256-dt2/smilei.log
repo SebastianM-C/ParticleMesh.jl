@@ -1,0 +1,203 @@
+                    _            _
+  ___           _  | |        _  \ \   Version : 5.1-HEAD
+ / __|  _ __   (_) | |  ___  (_)  | |   
+ \__ \ | '  \   _  | | / -_)  _   | |
+ |___/ |_|_|_| |_| |_| \___| |_|  | |  
+                                 /_/    
+ 
+ 
+
+ Reading the simulation parameters
+ -------------------------------------------------------------------------------
+ HDF5 version 1.10.10
+ Python version 3.12.3
+	 Parsing pyinit.py
+	 Parsing 5.1-HEAD
+	 Parsing pyprofiles.py
+	 Parsing smilei.py
+	 Parsing pycontrol.py
+	 Check for function preprocess()
+	 python preprocess function does not exist
+	 Calling python _smilei_check
+	 Calling python _prepare_checkpoint_dir
+	 Calling python _keep_python_running() :
+[1;36mCAREFUL: Patches distribution: hilbertian
+[0m
+	 Smilei will run on CPU devices
+[;33m
+[WARNING](0) src/Params/Params.cpp:1170 (compute) simulation_time has been redefined from 40.004909 to 40.000300 to match timestep.[0m
+[;33m
+[WARNING](0) src/Params/Params.cpp:1262 (compute) Particles cluster width `cluster_width` set to : 32[0m
+ 
+
+ Geometry: 2Dcartesian
+ -------------------------------------------------------------------------------
+	 Interpolation order : 2
+	 Maxwell solver : Yee
+	 simulation duration = 40.000300,   total number of iterations = 4340
+	 timestep = 0.009217 = 0.475000 x CFL,   time resolution = 108.499186
+	 Grid length: 7.02481, 7.02481
+	 Cell length: 0.0274407, 0.0274407, 0
+	 Number of cells: 256, 256
+	 Spatial resolution: 36.4422, 36.4422
+ 
+
+ Electromagnetic boundary conditions
+ -------------------------------------------------------------------------------
+	 xmin periodic
+	 xmax periodic
+	 ymin periodic
+	 ymax periodic
+ 
+
+ Vectorization: 
+ -------------------------------------------------------------------------------
+	 Mode: off
+	 Calling python writeInfo
+ 
+
+ Initializing MPI
+ -------------------------------------------------------------------------------
+	 applied topology for periodic BCs in x-direction
+	 applied topology for periodic BCs in y-direction
+	 MPI_THREAD_MULTIPLE enabled
+	 Number of MPI processes: 1
+	 Number of threads per MPI process : 16
+	 OpenMP task parallelization not activated
+ 
+	 Number of patches: 4 x 4
+	 Number of cells in one patch: 64 x 64
+	 Dynamic load balancing: never
+ 
+
+ Initializing the restart environment
+ -------------------------------------------------------------------------------
+ 
+ 
+ 
+
+ Initializing species
+ -------------------------------------------------------------------------------
+	 
+	 Creating Species #0: beam_plus
+		 > Pusher: boris
+		 > Boundary conditions: periodic periodic periodic periodic
+		 > Density profile: 2D user-defined function (uses numpy)
+	 
+	 Creating Species #1: beam_minus
+		 > Pusher: boris
+		 > Boundary conditions: periodic periodic periodic periodic
+		 > Density profile: 2D user-defined function (uses numpy)
+	 
+	 Creating Species #2: ion
+		 > Pusher: boris
+		 > Species frozen until time: 80.000600
+		 > Boundary conditions: periodic periodic periodic periodic
+		 > Density profile: 2D built-in profile `constant` (value: 1.000000)
+ 
+
+ Initializing Patches
+ -------------------------------------------------------------------------------
+	 First patch created
+		 Approximately 10% of patches created
+		 Approximately 20% of patches created
+		 Approximately 30% of patches created
+		 Approximately 40% of patches created
+		 Approximately 50% of patches created
+		 Approximately 60% of patches created
+		 Approximately 70% of patches created
+		 Approximately 80% of patches created
+		 Approximately 90% of patches created
+	 All patches created
+ 
+
+ Creating Diagnostics, antennas, and external fields
+ -------------------------------------------------------------------------------
+	 Diagnostic Fields #0  :
+		 Bx By 
+ 
+
+ Finalize MPI environment
+ -------------------------------------------------------------------------------
+	 Done creating diagnostics, antennas, and external fields
+ 
+
+ Minimum memory consumption (does not include all temporary buffers)
+ -------------------------------------------------------------------------------
+              Particles: Master 403 MB;   Max 403 MB;   Global 0.394 GB
+                 Fields: Master 7 MB;   Max 7 MB;   Global 0.00738 GB
+            scalars.txt: Master 0 MB;   Max 0 MB;   Global 0 GB
+             Fields0.h5: Master 0 MB;   Max 0 MB;   Global 0 GB
+ 
+
+ Initial fields setup
+ -------------------------------------------------------------------------------
+	 Solving Poisson at time t = 0
+ 
+
+ Initializing E field through Poisson solver
+ -------------------------------------------------------------------------------
+	 Poisson solver converged at iteration: 0, relative err is ctrl = 0.000000 x 1e-14
+	 Poisson equation solved. Maximum err = 0.000000 at i= -1
+ Time in Poisson : 0.000937
+	 Applying external fields at time t = 0
+	 Applying prescribed fields at time t = 0
+	 Applying antennas at time t = 0
+ 
+
+ Open files & initialize diagnostics
+ -------------------------------------------------------------------------------
+ 
+
+ Running diags at time t = 0
+ -------------------------------------------------------------------------------
+ 
+
+ Species creation summary
+ -------------------------------------------------------------------------------
+		 Species 0 (beam_plus) created with 4194304 particles
+		 Species 1 (beam_minus) created with 4194304 particles
+		 Species 2 (ion) created with 65536 particles
+ 
+
+ Expected disk usage (approximate)
+ -------------------------------------------------------------------------------
+	 WARNING: disk usage by non-uniform particles maybe strongly underestimated,
+	    especially when particles are created at runtime (ionization, pair generation, etc.)
+	 
+	 Expected disk usage for diagnostics:
+		 File Fields0.h5: 137.66 M
+		 File scalars.txt: 478.56 K
+	 Total disk usage for diagnostics: 138.13 M
+	 
+ 
+
+ Keeping or closing the python runtime environment
+ -------------------------------------------------------------------------------
+	 Checking for cleanup() function:
+	 python cleanup function does not exist
+	 Closing Python
+ 
+
+ Time-Loop started: number of time-steps n_time = 4340
+ -------------------------------------------------------------------------------
+[1;36mCAREFUL: The following `push time` assumes a global number of 16 cores (hyperthreading is unknown)
+[0m
+    timestep       sim time   cpu time [s]   (    diff [s] )   push time [ns]
+    217/4340     2.0046e+00     2.1587e+01   (  2.1587e+01 )             188 
+    434/4340     4.0046e+00     4.2622e+01   (  2.1035e+01 )             183 
+    651/4340     6.0047e+00     6.3614e+01   (  2.0992e+01 )             183 
+    868/4340     8.0047e+00     8.4705e+01   (  2.1091e+01 )             183 
+   1085/4340     1.0005e+01     1.0603e+02   (  2.1329e+01 )             186 
+   1302/4340     1.2005e+01     1.2745e+02   (  2.1413e+01 )             186 
+   1519/4340     1.4005e+01     1.4900e+02   (  2.1555e+01 )             187 
+   1736/4340     1.6005e+01     1.7005e+02   (  2.1051e+01 )             183 
+   1953/4340     1.8005e+01     1.9111e+02   (  2.1053e+01 )             183 
+   2170/4340     2.0005e+01     2.1215e+02   (  2.1048e+01 )             183 
+   2387/4340     2.2005e+01     2.3373e+02   (  2.1580e+01 )             188 
+   2604/4340     2.4005e+01     2.5505e+02   (  2.1313e+01 )             185 
+   2821/4340     2.6005e+01     2.7611e+02   (  2.1065e+01 )             183 
+   3038/4340     2.8005e+01     2.9731e+02   (  2.1197e+01 )             184 
+   3255/4340     3.0005e+01     3.1884e+02   (  2.1527e+01 )             187 
+   3472/4340     3.2005e+01     3.4100e+02   (  2.2162e+01 )             193 
+   3689/4340     3.4005e+01     3.6319e+02   (  2.2192e+01 )             193 
