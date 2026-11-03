@@ -13,7 +13,7 @@ Smilei v5.1 on the CPU box (AMD EPYC 9655): Δx at the case's Courant number, Δ
 | offset γ/θ − 1 at the case's resolution | −1.500 % | −1.084 % | −1.006 % |
 | offset at the finest point | −1.407 % (1024 cells) | −1.067 % (512²) | −0.984 % (512²) |
 | the transient (linear solution, same samples) | −0.961 % to −1.035 % (163 or 164 samples) | −1.021 % | −0.930 % |
-| residual (γ − γ_lin)/θ, limit Δx, Δt → 0 (fit r∞ + aΔx² + bΔt + cΔt² over all points, #281) | −0.4476 % ± 0.0009 % | −0.0443 % ± 0.0030 % | −0.0468 % ± 0.0021 % |
+| residual (γ − γ_lin)/θ, limit Δx, Δt → 0 (fit r∞ + aΔx² + bΔt + cΔt² over all points, #281) | −0.4470 % ± 0.00002 % (163 common samples) | −0.0443 % ± 0.0030 % | −0.0469 % ± 0.0040 % |
 | discretization part of the residual at the case's resolution, Smilei | −0.019 % | −0.023 % | −0.029 % |
 | the same for ParticleMesh (physics breaker) | −0.028 % | about −0.03 % | about −0.03 % |
 | order in Δx (Δt ∝ Δx); in Δt alone | 2; 1 | 2; about 1 | 2; 2 |
@@ -31,13 +31,13 @@ ParticleMesh reproduces both on two-stream from 64 to 1024 cells (its residual c
 
 - For a run of a cold case, γ_ref = γ_lin + r_NL θ.
   - γ_lin is the fit of `cold_ivp`'s solution over the samples the run's window took (`point_fits`, `scripts/crosscode/convergence.jl`).
-  - r_NL is the converged residual above: two-stream −0.448 %, Weibel −0.044 % (mode) and −0.047 % (energy).
+  - r_NL is the converged residual above: two-stream −0.447 %, Weibel −0.044 % (mode) and −0.047 % (energy).
 - A code passes when **|γ − γ_ref| ≤ 1 × 10⁻³ θ**.
 - The value is about three times the largest discretization part measured at the cases' resolutions (3 × 10⁻⁴ θ, ParticleMesh), rounded to a power of ten.
 - These all lie inside it:
   - the spread of r_NL over amplitude, particles per cell and seed (±0.04 % on two-stream; within 0.02 % on Weibel's energy observable);
   - the Float32 roundoff of ParticleMesh (5 × 10⁻⁵ θ at 42 000 steps, physics breaker);
-  - the start of the loaded momenta (#226, #282): at the case's Δt it moves the residual by 10⁻⁴ θ; with γ_lin taken from the run's own start (`cold_ivp(case; momenta_at)`) the first-order term drops by a factor of ten, and the two starts give the same r_NL.
+  - the start of the loaded momenta (#226, #282): at the case's Δt it moves the residual by 10⁻⁴ θ; with γ_lin taken from the run's own start (`cold_ivp(case; momenta_at)`) the first-order term falls from +0.0130 to −0.0059 per unit Δt (a remainder of unknown origin, −4.5 × 10⁻⁵ θ at the case's Δt), and the two starts give the same r_NL.
 - A test of this kind catches a 0.1 % error in a code's growth rate, which a comparison with the root cannot (P2).
 
 **P2, not recommended: the dispersion root with a tolerance wide enough for the offset.** Against θ alone the tolerance must cover the transient and the onset of saturation, at least 1.6 % (two-stream) and 1.2 % (Weibel) at these windows. The transient also moves by 0.07 % with one sample more or less in the window. Such a test passes a code whose rate is wrong by a per cent.
