@@ -1,7 +1,7 @@
-commit = "674a88649b56388072b95801f3b384dd606fe3bd"
+commit = "06ac998cdff4c513f767299c02a0737a94ffc7c6"
 dirty = false
 report = "scripts/crosscode/convergence.jl report"
-updated = "2026-11-03T19:04:50.499Z"
+updated = "2026-11-03T19:48:24.893Z"
 
 [box]
 branch = "runs/wp031-two-stream-1"
@@ -65,5 +65,5 @@ started = "2026-11-03T12:57:03Z"
 [report_inputs]
 "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
 "scripts/crosscode/convergence.jl" = "sha256:000d451dc72788d6c053356221269165aebeb645d59458ac2459a7509dc4f805"
-"scripts/crosscode/convergence_report.jl" = "sha256:e6680f80d1a2de8bb24b4aa3b8343a4994e85403f2085cbb4f0ff98cc0c4fa76"
-"scripts/crosscode/theory.jl" = "sha256:c3cf60653abce1c9ef216cb6c0f89a9d238df0110a7d390c96f0f1e5c8ee9f12"
+"scripts/crosscode/convergence_report.jl" = "sha256:24e3ead78eaaed8bac0e00e0f5cd64e921f0048bc8332b382280a3fbb73ec62e"
+"scripts/crosscode/theory.jl" = "sha256:b4b6b427b870ac8323f55bc0dc64ec9664c77ba6d76ddce91affccba96d21b08"
