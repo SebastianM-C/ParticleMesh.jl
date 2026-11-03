@@ -113,8 +113,6 @@ ENV SMILEI_TAG=${SMILEI_TAG} \
     OPAL_PREFIX=/opt/nvhpc-mpi \
     PYTHONPATH=/opt/smilei/src \
     OMPI_MCA_rmaps_base_oversubscribe=1 \
-    OMPI_MCA_pml=ob1 \
-    OMPI_MCA_btl=self,vader \
     OMPI_MCA_btl_vader_single_copy_mechanism=none \
     OMPI_MCA_coll_hcoll_enable=0 \
     OMPI_MCA_ess_singleton_isolated=1 \
@@ -125,8 +123,12 @@ ENV SMILEI_TAG=${SMILEI_TAG} \
 # directory, whose parent holds share/openmpi; comm_libs/hpcx/bin/mpicc itself sits in a
 # wrapper directory, not in that tree), linked as /opt/nvhpc-mpi. The step prints what it
 # found before checking it. Then a singleton MPI start with MPI_THREAD_MULTIPLE, as Smilei
-# makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables), with a
-# time limit: a hang ends the build with the startup logged.
+# makes it, which needs no GPU (run as root at build time, hence the two ALLOW variables), each
+# try under a time limit and with the components' load errors shown: first UCX (HPC-X's own
+# messaging layer) on shared memory, then ob1 over shared memory, then ob1 alone; the first that
+# starts is recorded in /opt/smilei/mpi_env.sh, and none starting stops the build. (ob1 with
+# vader was the first choice and could not be opened in the build: "Framework: pml, Component:
+# ob1", vader's init returning failure.)
 COPY smilei-gpu/mpi-probe.c /opt/smilei-gpu/mpi-probe.c
 RUN NV=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE} \
  && echo "mpicc: $(command -v mpicc) -> $(readlink -f "$(command -v mpicc)") ($(file -b "$(readlink -f "$(command -v mpicc)")"))" \
@@ -139,11 +141,13 @@ RUN NV=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_RELEASE} \
  && ln -s "$prefix" /opt/nvhpc-mpi \
  && mpicc -o /tmp/mpi-probe /opt/smilei-gpu/mpi-probe.c \
  && export OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
- && if ! timeout 120 /tmp/mpi-probe; then \
-      echo "mpi-probe failed or hung for 120 s; again with the startup logged:"; \
-      timeout 60 env OMPI_MCA_ess_base_verbose=10 OMPI_MCA_pml_base_verbose=10 OMPI_MCA_btl_base_verbose=10 /tmp/mpi-probe; \
-      exit 1; \
-    fi \
+ && for cfg in "OMPI_MCA_pml=ucx UCX_TLS=self,sm" "OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader" "OMPI_MCA_pml=ob1 OMPI_MCA_btl=self"; do \
+      echo "mpi-probe with: $cfg"; \
+      if timeout 120 env $cfg OMPI_MCA_mca_base_component_show_load_errors=1 /tmp/mpi-probe; then \
+        for v in $cfg; do echo "export $v"; done > /opt/smilei/mpi_env.sh; break; \
+      fi; \
+    done \
+ && test -s /opt/smilei/mpi_env.sh && echo "chosen:" && cat /opt/smilei/mpi_env.sh \
  && rm -f /tmp/mpi-probe
 
 # Every shared library resolves except the driver's (libcuda, libnvidia-*), which the runner
@@ -153,6 +157,8 @@ RUN chmod 0755 /usr/local/bin/pm-versions \
       missing=$(ldd /usr/local/bin/$b | grep 'not found' | grep -v -E 'libcuda\.so|libnvidia' || true); \
       if [ -n "$missing" ]; then echo "$b: $missing"; exit 1; fi; \
     done \
- && pm-versions > /opt/smilei/VERSION.toml && cat /opt/smilei/VERSION.toml
+ && pm-versions > /opt/smilei/VERSION.toml \
+ && printf 'mpi_env = "%s"\n' "$(sed 's/^export //' /opt/smilei/mpi_env.sh | paste -sd ' ' -)" >> /opt/smilei/VERSION.toml \
+ && cat /opt/smilei/VERSION.toml
 
 WORKDIR /run-dir

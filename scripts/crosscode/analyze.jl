@@ -104,7 +104,7 @@ function hardware(dir)
         h["cpu_source"] = "not recorded by the run"
     end
     h["build"] = smilei_build(dir)
-    for (key, prefix) in (("patches", "# patches:"), ("fastmath", "# fastmath:"), ("gpu", "# gpu:"),
+    for (key, prefix) in (("patches", "# patches:"), ("fastmath", "# fastmath:"), ("mpi", "# mpi:"), ("gpu", "# gpu:"),
                           ("gpu_before", "# gpu before:"), ("gpu_processes_before", "# gpu processes before:"),
                           ("gpu_after", "# gpu after:"))
         k = findfirst(l -> startswith(l, prefix), lines)

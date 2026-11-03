@@ -57,7 +57,9 @@ using .GPULoadCheck.LoadCheck: read_track, compare_tracks, compare_loads
     @test occursin("OPAL_PREFIX=/opt/nvhpc-mpi", recipe) && occursin("ln -s \"\$prefix\" /opt/nvhpc-mpi", recipe)
     @test occursin("test -f \"\$prefix/share/openmpi/help-mpi-runtime.txt\"", recipe)
     @test occursin("MPI_THREAD_MULTIPLE", read(joinpath(CC, "containers", "smilei-gpu", "mpi-probe.c"), String))
-    @test occursin("timeout 120 /tmp/mpi-probe", recipe) && occursin("OMPI_MCA_ess_singleton_isolated=1", recipe)
+    @test occursin("timeout 120 env \$cfg", recipe) && occursin("OMPI_MCA_ess_singleton_isolated=1", recipe)
+    @test occursin("> /opt/smilei/mpi_env.sh", recipe) && occursin("test -s /opt/smilei/mpi_env.sh", recipe)
+    @test !occursin("OMPI_MCA_pml=", split(recipe, "RUN NV=")[1])   # the pml is the probe's, not a fixed ENV
     for f in ("nvidia_env.sh", "acc-probe.cpp", "pm-versions.sh", "mpi-probe.c")
         @test occursin("COPY smilei-gpu/$f ", recipe)
     end
@@ -129,7 +131,11 @@ function stub_bin()
     return stub, calls
 end
 
-run_sh(dir, stub) = run(setenv(`bash $(joinpath(dir, "run.sh"))`, "PATH" => stub * ":" * ENV["PATH"], "PM_RUN_DIR" => dir))
+function run_sh(dir, stub)
+    mpi = joinpath(stub, "mpi_env.sh")
+    isfile(mpi) || write(mpi, "export OMPI_MCA_pml=ucx\nexport UCX_TLS=self,sm\n")
+    run(setenv(`bash $(joinpath(dir, "run.sh"))`, "PATH" => stub * ":" * ENV["PATH"], "PM_RUN_DIR" => dir, "PM_MPI_ENV" => mpi))
+end
 
 @testset "T-402 run.sh keeps the generated namelist, records the build and the GPU, and resumes [A5, F3, WP-030, #256]" begin
     stub, calls = stub_bin()
@@ -159,6 +165,8 @@ run_sh(dir, stub) = run(setenv(`bash $(joinpath(dir, "run.sh"))`, "PATH" => stub
             if gpu
                 @test h["gpu"] == "NVIDIA GeForce RTX 4080 SUPER, 595.104.02"
                 @test h["fastmath"] == (fastmath ? "yes" : "no")
+                @test occursin("# mpi: OMPI_MCA_pml=ucx UCX_TLS=self,sm\n", ct)   # the image's verified MPI setting
+                @test h["mpi"] == "OMPI_MCA_pml=ucx UCX_TLS=self,sm"
                 @test h["gpu_before"] == "0 %, 1 MiB" && h["gpu_after"] == "0 %, 1 MiB" && h["gpu_processes_before"] == ""
             else
                 @test !haskey(h, "gpu") && !haskey(h, "fastmath")

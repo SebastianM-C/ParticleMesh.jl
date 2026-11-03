@@ -561,11 +561,19 @@ function run_header(p; binary, gpu)
              "echo \"# cpu model: \$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')\"",
              "echo \"# patches: $(join(p.number_of_patches, "x"))\""]
     gpu && append!(lines, ["echo \"# fastmath: $(binary == "smilei" ? "yes" : "no")\"",
+                           "echo \"# mpi: \$(grep -h '^export ' \"\$mpi_env\" | sed 's/^export //' | paste -sd ' ' -)\"",
                            "echo \"# gpu: $(nvq("gpu=name,driver_version"))\"",
                            "echo \"# gpu before: $(nvq("gpu=utilization.gpu,memory.used"))\"",
                            "echo \"# gpu processes before: $(nvq("compute-apps=pid,process_name,used_memory"))\""])
     return join(lines, "\n")
 end
+
+"""
+The lines of a GPU run.sh that set up MPI: the image's /opt/smilei/mpi_env.sh, the messaging
+layer and transports its build verified with a singleton MPI start (smilei-gpu.Containerfile),
+or the file `PM_MPI_ENV` names.
+"""
+mpi_env_lines() = "mpi_env=\"\${PM_MPI_ENV:-/opt/smilei/mpi_env.sh}\"\n. \"\$mpi_env\""
 
 "The line a GPU run appends to container.txt after Smilei ends (empty for a CPU run)."
 gpu_after(gpu) = gpu ? "echo \"# gpu after: \$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader 2>/dev/null | paste -sd ';' - || echo unknown)\" >> container.txt" : ""
@@ -594,6 +602,7 @@ function run_script(p; seeds = nothing, budget = nothing, gpu = false, fastmath 
     cd "\${PM_RUN_DIR:-/run-dir}"
     export OMP_NUM_THREADS=$threads
     export OMP_SCHEDULE=dynamic
+    $(gpu ? mpi_env_lines() : "")
     $(gpu ? "pm-versions > versions.toml" : "")
     {
     $(indent(run_header(p; binary, gpu), 2))
@@ -623,6 +632,7 @@ function seeded_run_script(p, threads, seeds; budget = nothing, binary = "smilei
     top="\${PM_RUN_DIR:-/run-dir}"
     export OMP_NUM_THREADS=$threads
     export OMP_SCHEDULE=dynamic
+    $(gpu ? mpi_env_lines() : "")
     $(gpu ? "pm-versions > \"\$top/versions.toml\"" : "")
     job_start=\$(date +%s)
     budget=$(something(budget, ""))
