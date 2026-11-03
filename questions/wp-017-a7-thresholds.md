@@ -12,15 +12,15 @@ PIConGPU 0.8.0 against Smilei v5.1, FP64 in both, on the matched cases (A5's mat
 | two-stream `growth_rate`, 256 cells | 0.3459258 | 0.3459259 | +7.5 × 10⁻⁸ (2.2 × 10⁻⁷) | as above |
 | two-stream γ from \|Ê₁\|², 128 / 256 cells | 0.3369876 / 0.3370343 | 0.3369876 / 0.3370343 | 6.9 × 10⁻⁸ / −2.8 × 10⁻⁹ | — |
 | Landau `damping_rate_ensemble` (8 seeds, quasi-1D in PIConGPU) | 0.1303 ± 0.0144 | 0.1360 ± 0.0131 | +0.0057: 0.29 combined jackknife errors | seed spread 0.027 (Smilei), 0.041 (PIConGPU) |
-| oblique 2D `damping_rate_mode_ensemble` (4 seeds) | 0.1570 ± 0.0060 | 0.1405 ± 0.0096 | −0.0165: 1.46 combined jackknife errors | seed spread 0.013 (Smilei), 0.007 (PIConGPU) |
-| oblique 2D `damping_rate_mode`, mean over 4 seeds | 0.1465 ± 0.0267 (std) | 0.1522 ± 0.0208 | +0.0057: 0.33 combined errors of the means | — |
+| oblique 2D `damping_rate_mode_ensemble` (32 seeds, WP-025) | 0.1504 ± 0.0033 | 0.1458 ± 0.0033 | −0.0047: 1.01 combined jackknife errors; over common windows of 3 to 6 maxima −0.0043 to +0.0046, each within 1.02 | seed spread 0.019 (both) |
+| oblique 2D `damping_rate_mode`, mean over 32 seeds | 0.1454 ± 0.0183 (std) | 0.1465 ± 0.0212 | +0.0011: 0.23 combined errors of the means | — |
 
 PIConGPU FP32 against FP64 (the precision effect, A5): two-stream 1 × 10⁻⁶ to 3 × 10⁻⁶ relative in γ; Landau ensemble γ 0.1323 ± 0.0142 (FP32) against 0.1360 ± 0.0131 (FP64), −0.0036, 0.19 combined jackknife errors.
 
 Two kinds of observable, two kinds of spread:
 
 - **Deterministic** (cold, regular loading: two-stream). The two codes agree to 10⁻⁶ relative, about a thousandth of the fit's own residual error. That is the spread of two implementations of one scheme with one initial-condition convention, not a statistical quantity.
-- **Noise-limited** (thermal: both Landau cases). The code difference is consistent with zero at the seed counts used (0.3 and 1.5 combined standard errors). The spread A7 refers to cannot be separated from the seed noise here, so the noise sets the scale.
+- **Noise-limited** (thermal: both Landau cases). The code difference is consistent with zero at the seed counts used (0.3 and 1.0 combined standard errors). In 2D, 32 seeds per code bound it to −0.014 to +0.004 (95 %, normal approximation; `reports/crosscode-picongpu/README.md`, "over 32 seeds"); the four-seed difference of 1.46 errors was noise. The spread A7 refers to cannot be separated from the seed noise here, so the noise sets the scale.
 
 ## Proposal
 
@@ -31,7 +31,7 @@ Two kinds of observable, two kinds of spread:
 
 The value is about 5 times the larger measured difference, rounded up to a power of ten. ParticleMesh's remaining constant factor of 1.0002 in U (attributed, untested, to per-particle against cell-centred weights) does not enter it: a constant factor does not change a slope over a fixed window, and the no-kick run has that factor and equals both codes' γ to six digits.
 
-**P2, noise-limited observables (Landau 1D and 2D).** ParticleMesh's ensemble γ agrees with each reference code's within **2 combined jackknife standard errors**, √(σ²_PM + σ²_ref), on the same case and seed count. The measured Smilei–PIConGPU differences are 0.29 and 1.46 such errors, both inside it. This is option (b) of `questions/wp-012-a5-a7-proposals.md`. The measurement shows the code-to-code spread is not resolved by these ensembles, so a threshold in units of the measured difference would be a threshold in units of noise. With the cases as registered, 2 errors are 0.039 in 1D (8 seeds each) and 0.023 in 2D (4 seeds each); a tighter threshold needs more seeds.
+**P2, noise-limited observables (Landau 1D and 2D).** ParticleMesh's ensemble γ agrees with each reference code's within **2 combined jackknife standard errors**, √(σ²_PM + σ²_ref), on the same case and seed count. The measured Smilei–PIConGPU differences are 0.29 (1D, 8 seeds) and 1.01 (2D, 32 seeds) such errors, both inside it. This is option (b) of `questions/wp-012-a5-a7-proposals.md`. The measurement shows the code-to-code spread is not resolved by these ensembles, so a threshold in units of the measured difference would be a threshold in units of noise. With the cases as registered, 2 errors are 0.039 in 1D (8 seeds each) and 0.0093 in 2D (32 seeds each, if ParticleMesh's jackknife error equals the reference codes' 0.0033). The comparison uses the same seed count in both codes, as a precaution: on synthetic ensembles the rule is biased by −0.001 to −0.003 at four seeds and by at most 3 × 10⁻⁴ at 32 (WP-025). Two consequences for the owner. A correct code that runs both comparisons at 2 errors each fails about one run in eleven (independent comparisons). And "the same case" must include the thermal-load convention. The reference codes' deficit below the case's non-relativistic theory value is the relativistic push with their loads: linear theory with each load gives 0.1478 (Smilei) and 0.1463 (PIConGPU), and the ensembles agree with it to 0.8 and 0.15 errors (WP-025, post hoc). ParticleMesh's 3V load (a Maxwellian in velocity, u = γv) has 0.1525. A correct ParticleMesh run would then sit about +0.006 from PIConGPU (1.4 combined errors at 32 seeds) and +0.005 from Smilei, and would fail P2 against PIConGPU about a quarter of the time. Either ParticleMesh loads one reference code's distribution for the comparison, or each code's ensemble is compared with the linear theory of its own load and the codes with each other only through that. The second is proposed here; it needs the owner's choice.
 
 **P3, precision.** No threshold is proposed: the FP32–FP64 difference is a property of the code under test, not of the reference. On the noise-limited Landau case the FP32 ensemble is an independent draw (−0.0036, 0.19 combined errors), so FP32 enters P2 like a code; on the deterministic two-stream case FP32 stays within P1 (3 × 10⁻⁶ < 10⁻⁵).
 
@@ -48,4 +48,4 @@ The value is about 5 times the larger measured difference, rounded up to a power
 
 Assumption taken here: none is accepted; the numbers above are proposals.
 
-Affected: A7; WP-012, WP-017; T-214, T-215.
+Affected: A7; WP-012, WP-017, WP-025; T-214, T-215.
