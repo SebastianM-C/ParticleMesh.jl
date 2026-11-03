@@ -1,0 +1,20 @@
+case = "two-stream-n0128-a10"
+case_source = "scripts/runs/wp031-two-stream-offset/summary/cases/n0128-a10.toml"
+code = "smilei"
+commit = "94de3e8243a4f9d47b1705aa67107f8f1ff3ca5d"
+dirty = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:cc07d0b854cbb92a2d53d4ac297b21576450b42a64be3726c2445a433616b24d"
+run = "n0128-a10"
+seeds = [20261031]
+updated = "2026-11-03T12:56:26.942Z"
+
+[image]
+id = "pending: written by the analyze step from the runner log"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:318c05a79ee23eacaba8f4c67593814fce6556f7b2c43920dafd20fe4bf15897"
+"run.sh" = "sha256:2d26c00b98a73042a6d6e6752bc8b383890caf8b3c4631bf4fcc007b8f999843"
+"smilei.py" = "sha256:ca2d2149a700a5eba6986753afb59321206404d9922b43fc5c67f67980821933"

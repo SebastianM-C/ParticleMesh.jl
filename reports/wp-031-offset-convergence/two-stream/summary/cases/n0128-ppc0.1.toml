@@ -1,0 +1,84 @@
+description = "Cold symmetric two-stream instability, beams at ±0.1 c, k v₀ = √(3/8) ω_p, immobile ions; WP-031 scan point n0128-ppc0.1"
+name = "two-stream-n0128-ppc0.1"
+schema = 1
+
+[derived]
+amplitude_factor = 1.0
+dt_divisor = "1//1"
+fields = "case"
+from = "two-stream"
+from_sha256 = "736a428fe67b795543c2c1380a73c94a115d4ec803fb81d59b0089293814a817"
+ppc_factor = "1//10"
+refine = "1//1"
+seed = "case"
+
+[diagnostics]
+fields = ["Ex", "Rho"]
+fields_every = 32
+scalars_every = 4
+
+[grid]
+boundaries = "periodic"
+cells = 128
+length = 1.0260398641294912
+
+[numerics]
+current_deposition = "esirkepov"
+filter_passes = 0
+precision = "Float64"
+random_seed = 20261031
+shape_order = 2
+
+[observables.growth_rate]
+formula = "1 = (ω_p²/2γ₀³)[(ω - kv₀)⁻² + (ω + kv₀)⁻²], a biquadratic in ω; γ = √(-(a + p/2 - √(p² + 8ap)/2)) with a = (kv₀)², p = γ₀⁻³; computed by scripts/crosscode/theory.jl (T-160)"
+method = "exponential_window"
+signal = "Uelm_Ex"
+theory = 0.35087576924479724
+theory_nonrelativistic = 0.3535533905932736
+window = [0.001, 0.03]
+
+[[species]]
+charge = -1.0
+density = 0.5
+drift = -0.1
+mass = 1.0
+mobile = true
+name = "beam_minus"
+particles_per_cell = 100
+position = "regular"
+thermal_velocity = 0.0
+velocity = "cold"
+
+    [species.perturbation]
+    amplitude = 0.001
+    mode = 1
+[[species]]
+charge = -1.0
+density = 0.5
+drift = 0.1
+mass = 1.0
+mobile = true
+name = "beam_plus"
+particles_per_cell = 100
+position = "regular"
+thermal_velocity = 0.0
+velocity = "cold"
+
+    [species.perturbation]
+    amplitude = 0.001
+    mode = 1
+[[species]]
+charge = 1.0
+density = 1.0
+drift = 0.0
+mass = 1836.0
+mobile = false
+name = "ion"
+particles_per_cell = 1
+position = "regular"
+thermal_velocity = 0.0
+velocity = "cold"
+
+[time]
+dt = 0.0076151
+t_end = 40.0

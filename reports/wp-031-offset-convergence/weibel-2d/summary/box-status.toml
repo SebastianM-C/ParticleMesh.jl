@@ -1,0 +1,115 @@
+branch = "runs/wp031-weibel-2d-2"
+request_commit = "a1d02151de5fa6e4800c90fa19578021480b941b"
+started = "2026-11-03T15:01:29Z"
+category = "validation"
+outputs = ["scripts/runs/wp031-weibel-2d-offset/summary", "scripts/runs/wp031-weibel-2d-offset/n064", "scripts/runs/wp031-weibel-2d-offset/n128", "scripts/runs/wp031-weibel-2d-offset/n256", "scripts/runs/wp031-weibel-2d-offset/n512", "scripts/runs/wp031-weibel-2d-offset/n128-dt2", "scripts/runs/wp031-weibel-2d-offset/n128-dt4", "scripts/runs/wp031-weibel-2d-offset/n128-dt8", "scripts/runs/wp031-weibel-2d-offset/n256-dt2", "scripts/runs/wp031-weibel-2d-offset/n128-a0.1", "scripts/runs/wp031-weibel-2d-offset/n128-a10", "scripts/runs/wp031-weibel-2d-offset/n128-ppc0.5", "scripts/runs/wp031-weibel-2d-offset/n128-ppc2", "scripts/runs/wp031-weibel-2d-offset/n128-seed1"]
+finished = "2026-11-03T15:51:39Z"
+ok = true
+files_returned = 173
+dumps_over_20MB = ["scripts/runs/wp031-weibel-2d-offset/n128/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n256/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n512/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-dt2/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-dt4/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-dt8/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n256-dt2/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-a0.1/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-a10/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-ppc0.5/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-ppc2/Fields0.h5", "scripts/runs/wp031-weibel-2d-offset/n128-seed1/Fields0.h5"]
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:01:29Z"
+exit = 0
+seconds = 5
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:01:35Z"
+exit = 0
+seconds = 31
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:02:06Z"
+exit = 0
+seconds = 221
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:05:47Z"
+exit = 0
+seconds = 1720
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:34:26Z"
+exit = 0
+seconds = 57
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:35:23Z"
+exit = 0
+seconds = 109
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:37:12Z"
+exit = 0
+seconds = 211
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:40:43Z"
+exit = 0
+seconds = 428
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:47:51Z"
+exit = 0
+seconds = 29
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:48:20Z"
+exit = 0
+seconds = 30
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:48:50Z"
+exit = 0
+seconds = 8
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:48:59Z"
+exit = 0
+seconds = 115
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-03T15:50:53Z"
+exit = 0
+seconds = 30
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-03T15:51:23Z"
+exit = 0
+seconds = 15
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"
