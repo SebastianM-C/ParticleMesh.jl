@@ -99,7 +99,7 @@ In `weibel-2d`, the GPU build's `Rho` dumps agree with the CPU's at t = 0 to 4 �
 
 ### Field extrema in the GPU build's scalars
 
-The physics breaker found that the GPU build's extrema columns of `scalars.txt` are wrong after t = 0: `ExMax`, `ExMin`, `Bx_mMax`, `JzMax`, `RhoMax` and the rest, with their `*Cell` locations. Each `*Max` equals its `*Min`. In Weibel at t = 19.91, ExMax = ExMin = 1.36 × 10⁻⁵ where the CPU has ±3.2 × 10⁻⁴, and Bx_mMax = Bx_mMin = −5.5 × 10⁻⁵ where the CPU has ±5.0 × 10⁻³. At the first output after t = 0 they are 0, where the CPU has ±8.8 × 10⁻¹⁴. The same run's field dump has max Bx 5.27 × 10⁻³ at t = 20.06, as on the CPU, and the energy columns (`Uelm_*`, `Ukin`, `Utot`) agree with the CPU to all printed digits. No observable or check here uses the extrema. @@MINMAX@@
+The physics breaker found that the GPU build's extrema columns of `scalars.txt` are wrong after t = 0: `ExMax`, `ExMin`, `Bx_mMax`, `JzMax`, `RhoMax` and the rest, with their `*Cell` locations. Each `*Max` equals its `*Min`. In Weibel at t = 19.91, ExMax = ExMin = 1.36 × 10⁻⁵ where the CPU has ±3.2 × 10⁻⁴, and Bx_mMax = Bx_mMin = −5.5 × 10⁻⁵ where the CPU has ±5.0 × 10⁻³. At the first output after t = 0 they are 0, where the CPU has ±8.8 × 10⁻¹⁴. The same run's field dump has max Bx 5.27 × 10⁻³ at t = 20.06, as on the CPU, and the energy columns (`Uelm_*`, `Ukin`, `Utot`) agree with the CPU to all printed digits. No observable or check here uses the extrema. A minimal namelist reproduces it (#289, `upstream`, which links the open Smilei report SmileiPIC/Smilei#806). Each patch's extrema stay at its first cell's value on the host, refreshed only on DiagFields steps. The likely mechanism, read from the source and not tested in a patched build: DiagnosticScalar's OpenACC loop updates host scalars that are not in a data or reduction clause, and no device-to-host copy precedes it. The energies come from a device reduction and are right.
 
 ## Time per particle-step on the RTX 4080 SUPER
 
@@ -157,7 +157,7 @@ The ensemble's time loop shows no slowdown from that load. Seed 20261031, on an 
 ## Known limitations and open items
 
 - The GPU build is not bitwise reproducible run to run (atomic adds), as A4 expects of a fast mode. Smilei has no deterministic GPU deposition.
-- The GPU build's `Rho` dumps after t = 0 lack frozen species (above, #288), and its scalar extrema columns are wrong after t = 0 (above).
+- The GPU build's `Rho` dumps after t = 0 lack frozen species (above, #288), and its scalar extrema columns are wrong (above, #289).
 - One patch is both the guideline and the fastest layout here. A layout other than the CPU's changes Smilei's post-Poisson offset (#157), so `energy_ratio` comparisons between builds need the same layout.
 - No review yet (header).
 
