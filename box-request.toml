@@ -1,0 +1,59 @@
+# CPU box request of the WP-031 scan wp031-two-stream-offset (scripts/crosscode/convergence.jl prepare)
+timeout = 7200
+outputs = ["scripts/runs/wp031-two-stream-offset/summary"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0064"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0256"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0512"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n1024"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-dt2"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-dt4"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-dt8"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0512-dt4"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-a0.1"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-a10"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-ppc0.1"
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/wp031-two-stream-offset/n0128-seed1"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/crosscode/convergence.jl", "summarize", "scripts/runs/wp031-two-stream-offset"]
