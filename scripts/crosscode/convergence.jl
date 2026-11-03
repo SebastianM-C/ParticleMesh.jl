@@ -10,7 +10,7 @@
 # writes, under scripts/runs/<scan>/, one derived case file per point (summary/cases/<point>.toml,
 # by `derive_case`), one Smilei run directory per point (smilei.jl's `prepare_run`) and the CPU
 # box request (box-request.toml: a smilei step per point, then the summarize step; only the
-# summary directory comes back). `summarize` reads each finished point's scalars and field
+# summary directory comes back; `category = "validation"` for the box's cost ledger). `summarize` reads each finished point's scalars and field
 # dumps and writes summary/<point>.json: the series of the case's observables (the field energy
 # and the complex mode coefficient), the wall time and the output hashes, so that the dumps
 # need not leave the box. `report` evaluates the pre-registered window fit on every point, the
@@ -130,6 +130,7 @@ function prepare_scan(scan_path; runs = joinpath(SCRIPTS, "runs"))
     io = IOBuffer()
     println(io, "# CPU box request of the WP-031 scan $name (scripts/crosscode/convergence.jl prepare)")
     println(io, "timeout = ", get(scan, "timeout", 7200))
+    println(io, "category = \"validation\"")
     println(io, "outputs = [\"", rel(sumdir), "\"]")
     for n in names
         println(io, "\n[[steps]]\nkind = \"smilei\"\ndir = \"", rel(joinpath(dir, n)), "\"")

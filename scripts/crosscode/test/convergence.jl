@@ -123,6 +123,18 @@ end
     f = joinpath(mktempdir(), "w.toml")
     open(io -> TOML.print(io, w; sorted = true), f, "w")
     @test load_case(f)["grid"]["cells"] == [128, 128]
+    # the box request of a scan: one Smilei step per point, then the summarize step; only the
+    # summary comes back; the cost-ledger category of scripts/cpu-box.sh
+    scan = joinpath(CC, "scans", "two-stream-offset.toml")
+    dir = prepare_scan(scan; runs = mktempdir())
+    req = TOML.parsefile(joinpath(dir, "box-request.toml"))
+    pts = TOML.parsefile(scan)["points"]
+    @test req["category"] == "validation"
+    @test [s["kind"] for s in req["steps"]] == [fill("smilei", length(pts)); "julia"]
+    @test [basename(s["dir"]) for s in req["steps"][1:end-1]] == [p["name"] for p in pts]
+    @test req["steps"][end]["args"][3] == "summarize"
+    @test length(req["outputs"]) == 1 && endswith(only(req["outputs"]), "/summary")
+    @test isfile(joinpath(dir, pts[1]["name"], "smilei.py")) && isfile(joinpath(dir, "summary", "scan.toml"))
 end
 
 # A series that follows the exact linear solution up to t_sat and then turns over, so that the
