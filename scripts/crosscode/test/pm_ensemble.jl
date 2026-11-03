@@ -8,7 +8,7 @@ module PMEns
 include(joinpath(dirname(dirname(@__DIR__)), "em2d", "landau_ensemble.jl"))
 end
 
-@testset "T-430 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
+@testset "T-460 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
     mktempdir() do tmp
         # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell, with a
         # 10 % perturbation so that the ensemble fit finds its maxima above the noise of 16384 electrons
@@ -64,7 +64,7 @@ end
     end
 end
 
-@testset "T-431 the three-code comparison takes the reference ensembles of the run's case file [A5, WP-032]" begin
+@testset "T-461 the three-code comparison takes the reference ensembles of the run's case file [A5, WP-032]" begin
     em2d = PMEns
     wp023 = joinpath(REPORTS, "wp-023-em-step-2d", "em2d-pm-landau-oblique-2d-20261102T163231")
     four = em2d.reference_ensembles("landau-oblique-2d", wp023)
