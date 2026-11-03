@@ -1,0 +1,23 @@
+{
+  "growth_rate_energy": {
+    "final": 0.198696567918,
+    "fit_points": 121,
+    "fit_range": [
+      12.313456472,
+      21.161449146
+    ],
+    "initial": 0.0,
+    "max": 0.320264051853,
+    "measured": 0.2610729389046595,
+    "measured_stderr": 0.0009126520702121924,
+    "method": "exponential_window",
+    "relative_difference": -0.010057918655197097,
+    "saturation": {
+      "t": 32.000240172,
+      "value": 0.320264051853
+    },
+    "signal": "scalar_sum",
+    "theory": 0.26372546821123183
+  },
+  "plot": "field energy (sum of Uelm_Bx_m + Uelm_By_m) versus time, log scale"
+}

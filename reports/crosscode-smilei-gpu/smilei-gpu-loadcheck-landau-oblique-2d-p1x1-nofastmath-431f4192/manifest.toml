@@ -1,0 +1,26 @@
+build = "gpu"
+case = "landau-oblique-2d"
+case_source = "scripts/crosscode/cases/landau-oblique-2d.toml"
+code = "smilei"
+commit = "b69aca3fd7200402edfa55e097b1f60acecb3383"
+dirty = false
+fastmath = false
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:268ba650af84c6b38973db2bd7a4f599edf89d217d013752f6c653b17aa172b7"
+load_check = true
+patches = [1, 1]
+run = "smilei-gpu-loadcheck-landau-oblique-2d-p1x1-nofastmath-431f4192"
+seeds = [20261031]
+updated = "2026-11-03T15:20:51.935Z"
+
+[image]
+family = "smilei-gpu"
+id = "pending: written by the analyze step from the runner log"
+outside_factory_tag = "particlemesh-smilei-gpu:5942672dd98eef65"
+recipe = "scripts/crosscode/containers/smilei-gpu.Containerfile"
+recipe_hash = "sha256:75cde81ae8726aefaf5ace87e8effe7b2585ff0d40d051e049e3a9f83716260a"
+
+[inputs]
+"case.toml" = "sha256:431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
+"namelist.py" = "sha256:c130dd93fa04c0d4e399b3e55ee41de8f490cff42629f657883bbe81bc8d58f3"
+"run.sh" = "sha256:f6d40f3c0975fc851aad8ffece75e62091883216dfdbe37c86645dd3a9d8b259"

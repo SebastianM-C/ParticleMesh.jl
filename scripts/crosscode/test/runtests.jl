@@ -349,14 +349,14 @@ without_seed(text) = replace(text, r"\n\s*random_seed = \d+,\n" => "\n")
     runs = mktempdir()
     dir = prepare_run("landau"; tag = "t181", runs)
     for s in seeds
-        @test read(joinpath(dir, "seed-$s", "smilei.py"), String) == namelist(landau; seed = s)
+        @test read(joinpath(dir, "seed-$s", "namelist.py"), String) == namelist(landau; seed = s)
         @test isfile(joinpath(dir, "seed-$s", "case.toml"))
     end
     sh = read(joinpath(dir, "run.sh"), String)
     @test occursin("for seed in $(join(seeds, ' ')); do", sh) && occursin(raw"cd \"$top/seed-$seed\"", sh)
     m = TOML.parsefile(joinpath(dir, "manifest.toml"))
     @test m["seeds"] == seeds
-    @test all(s -> haskey(m["inputs"], "seed-$s/smilei.py"), seeds)
+    @test all(s -> haskey(m["inputs"], "seed-$s/namelist.py"), seeds)
 end
 
 @testset "T-183 seed aggregation: mean and spread, refusal of a failed seed [A7, WP-012]" begin
@@ -953,4 +953,5 @@ end
 include(joinpath(@__DIR__, "picongpu.jl"))
 include(joinpath(@__DIR__, "seeds.jl"))
 include(joinpath(@__DIR__, "convergence.jl"))
+include(joinpath(@__DIR__, "gpu.jl"))
 include(joinpath(@__DIR__, "pm_ensemble.jl"))

@@ -1,0 +1,572 @@
+{
+  "a": {
+    "build": "cpu",
+    "fastmath": "not applicable (CPU build)",
+    "load_check": true,
+    "patches": [
+      4,
+      4
+    ],
+    "run": "smilei-loadcheck-landau-oblique-2d-p4x4-431f4192"
+  },
+  "b": {
+    "build": "cpu",
+    "fastmath": "not applicable (CPU build)",
+    "load_check": true,
+    "patches": [
+      1,
+      1
+    ],
+    "run": "smilei-loadcheck-landau-oblique-2d-p1x1-431f4192"
+  },
+  "fields_t0": {
+    "Ex": {
+      "bitwise_equal": false,
+      "max_abs": 0.0008945306264007207,
+      "max_abs_difference": 2.1799402560862546e-14,
+      "relative": 2.436965478596942e-11
+    },
+    "Ey": {
+      "bitwise_equal": false,
+      "max_abs": 0.000463308964322708,
+      "max_abs_difference": 1.6016561246469374e-5,
+      "relative": 0.03456993600346869
+    },
+    "Rho": {
+      "bitwise_equal": false,
+      "max_abs": 0.009980172839151917,
+      "max_abs_difference": 2.8483292113801184e-14,
+      "relative": 2.853987859014033e-12
+    }
+  },
+  "identical": false,
+  "note": "particles of the lower-left eighth of the box per axis at t = 0, matched by position; a measurement",
+  "positions_match": true,
+  "scalars_first_output": {
+    "Bx_mMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bx_mMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bx_mMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bx_mMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "By_mMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Bz_mMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Dens_electron": {
+      "a": 1.9739208802,
+      "b": 1.9739208802,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Dens_ion": {
+      "a": 1.9739208802,
+      "b": 1.9739208802,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "ExMax": {
+      "a": 0.0008945306264,
+      "b": 0.00089453062641,
+      "difference": 1.0000030317702802e-14,
+      "relative": 1.1179080986804771e-11
+    },
+    "ExMaxCell": {
+      "a": 12320.0,
+      "b": 12448.0,
+      "difference": 128.0,
+      "relative": 0.01038961038961039
+    },
+    "ExMin": {
+      "a": -0.00089127889968,
+      "b": -0.00089127889967,
+      "difference": 1.0000030317702802e-14,
+      "relative": 1.1219866555006698e-11
+    },
+    "ExMinCell": {
+      "a": 12257.0,
+      "b": 160.0,
+      "difference": -12097.0,
+      "relative": -0.9869462348046014
+    },
+    "EyMax": {
+      "a": 0.00046330896432,
+      "b": 0.0004472924031,
+      "difference": -1.6016561219999988e-5,
+      "relative": -0.03456993594653957
+    },
+    "EyMaxCell": {
+      "a": 8412.0,
+      "b": 6903.0,
+      "difference": -1509.0,
+      "relative": -0.17938659058487874
+    },
+    "EyMin": {
+      "a": -0.00042963614816,
+      "b": -0.00044565270938,
+      "difference": -1.6016561219999988e-5,
+      "relative": -0.037279361358661306
+    },
+    "EyMinCell": {
+      "a": 4192.0,
+      "b": 4193.0,
+      "difference": 1.0,
+      "relative": 0.00023854961832061068
+    },
+    "EzMax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "EzMaxCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "EzMin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "EzMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "JxMax": {
+      "a": 0.0032373202225,
+      "b": 0.0036098447522,
+      "difference": 0.00037252452969999995,
+      "relative": 0.11507188170971862
+    },
+    "JxMaxCell": {
+      "a": 8960.0,
+      "b": 4520.0,
+      "difference": -4440.0,
+      "relative": -0.4955357142857143
+    },
+    "JxMin": {
+      "a": -0.0035388991458,
+      "b": -0.0034514970455,
+      "difference": 8.740210029999996e-5,
+      "relative": 0.02469753917789085
+    },
+    "JxMinCell": {
+      "a": 3839.0,
+      "b": 15005.0,
+      "difference": 11166.0,
+      "relative": 2.9085699400885647
+    },
+    "JyMax": {
+      "a": 0.0039775699282,
+      "b": 0.0035814560071,
+      "difference": -0.0003961139210999997,
+      "relative": -0.0995869156923298
+    },
+    "JyMaxCell": {
+      "a": 15517.0,
+      "b": 9038.0,
+      "difference": -6479.0,
+      "relative": -0.4175420506541213
+    },
+    "JyMin": {
+      "a": -0.00374050929,
+      "b": -0.0041838485073,
+      "difference": -0.0004433392173000001,
+      "relative": -0.11852375784368126
+    },
+    "JyMinCell": {
+      "a": 1868.0,
+      "b": 10960.0,
+      "difference": 9092.0,
+      "relative": 4.867237687366167
+    },
+    "JzMax": {
+      "a": 0.0031718426436,
+      "b": 0.0036318843956,
+      "difference": 0.00046004175200000004,
+      "relative": 0.1450392732843325
+    },
+    "JzMaxCell": {
+      "a": 4619.0,
+      "b": 2138.0,
+      "difference": -2481.0,
+      "relative": -0.5371292487551418
+    },
+    "JzMin": {
+      "a": -0.0039051153378,
+      "b": -0.0031774142768,
+      "difference": 0.0007277010610000001,
+      "relative": 0.1863456000789878
+    },
+    "JzMinCell": {
+      "a": 12540.0,
+      "b": 931.0,
+      "difference": -11609.0,
+      "relative": -0.9257575757575758
+    },
+    "Ntot_electron": {
+      "a": 1.6777216e7,
+      "b": 1.6777216e7,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ntot_ion": {
+      "a": 16384.0,
+      "b": 16384.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXmax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXmaxInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXmin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyXminInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYmax": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYmaxInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYmin": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "PoyYminInst": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "RhoMax": {
+      "a": 0.0099801728391,
+      "b": 0.0099801728392,
+      "difference": 9.999986949615902e-14,
+      "relative": 1.0019853474318876e-11
+    },
+    "RhoMaxCell": {
+      "a": 6112.0,
+      "b": 6241.0,
+      "difference": 129.0,
+      "relative": 0.021106020942408377
+    },
+    "RhoMin": {
+      "a": -0.0099801728392,
+      "b": -0.0099801728392,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "RhoMinCell": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ubal": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ubal_norm": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm": {
+      "a": 5.036799639e-7,
+      "b": 5.0339428648e-7,
+      "difference": -2.8567742000006894e-10,
+      "relative": -0.0005671804329639504
+    },
+    "Uelm_Bx_m": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_By_m": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Bz_m": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Ex": {
+      "a": 4.0266692286e-7,
+      "b": 4.0266692286e-7,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_Ey": {
+      "a": 1.0101304104e-7,
+      "b": 1.0072736362e-7,
+      "difference": -2.8567742000000277e-10,
+      "relative": -0.002828124141781632
+    },
+    "Uelm_Ez": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_bnd": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_inj_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uelm_out_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Uexp": {
+      "a": 0.0074038838604,
+      "b": 0.007401401837,
+      "difference": -2.4820234000005187e-6,
+      "relative": -0.00033523262206687634
+    },
+    "Ukin": {
+      "a": 0.0074033801804,
+      "b": 0.0074008984427,
+      "difference": -2.4817376999995353e-6,
+      "relative": -0.00033521683873128456
+    },
+    "Ukin_bnd": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_electron": {
+      "a": 0.0074033801804,
+      "b": 0.0074008984427,
+      "difference": -2.4817376999995353e-6,
+      "relative": -0.00033521683873128456
+    },
+    "Ukin_inj_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_ion": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_new": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Ukin_out_mvw": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "UmBWpairs": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Urad": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Urad_electron": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Urad_ion": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Utot": {
+      "a": 0.0074038838604,
+      "b": 0.007401401837,
+      "difference": -2.4820234000005187e-6,
+      "relative": -0.00033523262206687634
+    },
+    "Zavg_electron": {
+      "a": -1.0,
+      "b": -1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "Zavg_ion": {
+      "a": 1.0,
+      "b": 1.0,
+      "difference": 0.0,
+      "relative": 0.0
+    },
+    "time": {
+      "a": 0.0,
+      "b": 0.0,
+      "difference": 0.0,
+      "relative": 0.0
+    }
+  },
+  "species": {
+    "electron": {
+      "identical": false,
+      "match_tolerance": 0.00016721665924718243,
+      "max_abs_position_difference": 0.0,
+      "particles": [
+        262144,
+        262144
+      ],
+      "positions": {
+        "x": {
+          "differing": 0,
+          "max_abs_difference": 0.0,
+          "max_ulps": 0
+        },
+        "y": {
+          "differing": 0,
+          "max_abs_difference": 0.0,
+          "max_ulps": 0
+        }
+      },
+      "positions_match": true,
+      "px": {
+        "differing": 245760,
+        "max_abs_difference": 0.3372516897584406,
+        "max_relative_to_max_abs": 1.420886255143063
+      },
+      "py": {
+        "differing": 245760,
+        "max_abs_difference": 0.3179351209284411,
+        "max_relative_to_max_abs": 1.2767938344757326
+      },
+      "pz": {
+        "differing": 245760,
+        "max_abs_difference": 0.31681588781800873,
+        "max_relative_to_max_abs": 1.3315601057612456
+      },
+      "same_positions": true,
+      "w": {
+        "differing": 0,
+        "max_abs_difference": 0.0,
+        "max_relative_to_max_abs": 0.0
+      }
+    }
+  }
+}

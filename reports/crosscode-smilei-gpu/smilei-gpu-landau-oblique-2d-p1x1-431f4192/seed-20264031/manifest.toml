@@ -1,0 +1,99 @@
+updated = "2026-11-03T17:21:21.382Z"
+
+[analysis]
+commit = "d78acdd54f2ea5ae023b73f76fa687f17fa67b50"
+dirty = false
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+    "scripts/crosscode/analyze.jl" = "sha256:ed5363e1ff81b244eaff5d025a5ac7b23a48daf4f9b32d967ecc5bcf1fc34268"
+    "scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:d7b7b1cd3456732bd08dd20fc3a1a64de16111d25f85c488424a09c300cd076f"
+    "scripts/crosscode/manifest.jl" = "sha256:af54e978c5fb31a7d3ca128c3543d34ec7d55cce9372cb0e464b5d80e0942eca"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[checks]
+gauss_residual_t0_relative = 8.977732130081808e-10
+rho_max_deviation_t0 = 0.009980172839155888
+rho_mean_t0 = -2.9505482157185254e-16
+rho_mode_amplitude_t0 = 0.00998018974812869
+sensitivity_energy_ratio_t0_without_box_mean = 3.9975909124103444
+
+[hardware]
+build = "gpu"
+cpu = "Intel(R) Core(TM) i9-14900K"
+cpu_source = "run"
+cpus = 1
+fastmath = "yes"
+gpu = "NVIDIA GeForce RTX 4080 SUPER, 595.112.07"
+gpu_after = "95 %, 2513 MiB"
+gpu_before = "72 %, 2526 MiB"
+gpu_processes_before = ""
+mpi = "OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader"
+patches = "1x1"
+threads = 1
+
+[image]
+id = "4c5e373b2057c24c24d151a71f1215b24b9bf699981f58d5897b6b49b5465f7d"
+name = "localhost/particlemesh-smilei-gpu:369b4134f81b8901"
+
+[inputs]
+
+[observables.damping_rate_energy]
+fit_points = 0
+method = "peak_envelope"
+noise_floor = 3.9291973338e-8
+signal = "scalar_sum"
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+
+[observables.damping_rate_mode]
+fit_points = 7
+fit_range = [4.750744357808722, 18.014852301474733]
+measured = 0.1390374431489966
+measured_frequency = 1.4210948826407854
+measured_stderr = 0.004634395708083915
+method = "peak_envelope"
+noise_floor = 3.2278911286253073e-10
+relative_difference = -0.09338858597526513
+signal = "mode_projection"
+theory = 0.15335946690960509
+theory_frequency = 1.4156618886045358
+
+[observables.energy_ratio]
+measured = 3.9975921972810196
+method = "first_output"
+relative_difference = 3.2141124575805746e-7
+signal = "scalar_ratio"
+t = 0.0
+theory = 3.9975909124103444
+theory_continuum = 4.0
+
+[observables.energy_ratio_mode]
+measured = 3.9937752945724694
+method = "median_over_fit"
+points = 7
+relative_difference = -0.0009544793155371571
+signal = "mode_ratio"
+theory = 3.9975909124103444
+theory_continuum = 4.0
+
+[outputs]
+"Fields0.h5" = "sha256:cb421f5bc2fa5c5274faf822ba345497824d10bfb0591dd9ed093c7add0255d6"
+"container.txt" = "sha256:3487cfdb6fda8e59e35c7a676213b0f603f83e5412f38fd3b7697010f980d8ac"
+"scalars.txt" = "sha256:10f96dd789424d945297d67bcff5c8bea8c31608248f7b8248963ac6379be472"
+"smilei.log" = "sha256:94233436226e2688c9d152ddac2ac4c6a5a4a5ee3af7c3a0912de7c1557ce975"
+
+[performance]
+build = "gpu"
+cells = 16384
+mobile_particle_steps = 56891539456
+mobile_particles = 16777216
+ns_per_mobile_particle_step = 3.630153129530389
+ns_per_mobile_particle_step_time_loop = 3.5884070276897657
+particle_steps = 56947097600
+particles = 16793600
+steps = 3391
+steps_source = "smilei.log (n_time)"
+time_loop_seconds = 204.15
+wall_seconds = 206.525

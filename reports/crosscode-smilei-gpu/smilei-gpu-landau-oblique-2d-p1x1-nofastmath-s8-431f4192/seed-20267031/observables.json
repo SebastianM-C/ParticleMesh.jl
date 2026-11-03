@@ -1,0 +1,75 @@
+{
+  "build": "gpu",
+  "case": "landau-oblique-2d",
+  "checks": {
+    "gauss_residual_t0_relative": 8.977732130081808e-10,
+    "rho_max_deviation_t0": 0.009980172839155888,
+    "rho_mean_t0": -2.9505482157185254e-16,
+    "rho_mode_amplitude_t0": 0.00998018974812869,
+    "sensitivity_energy_ratio_t0_without_box_mean": 3.9975909124103444
+  },
+  "code": "smilei",
+  "observables": {
+    "damping_rate_energy": {
+      "fit_points": 0,
+      "fit_range": null,
+      "measured": null,
+      "measured_frequency": null,
+      "measured_stderr": null,
+      "method": "peak_envelope",
+      "noise_floor": 4.0142748724e-8,
+      "relative_difference": null,
+      "signal": "scalar_sum",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "damping_rate_mode": {
+      "fit_points": 7,
+      "fit_range": [
+        4.791501386873484,
+        18.44014531776493
+      ],
+      "measured": 0.14462510324546726,
+      "measured_frequency": 1.381057049841846,
+      "measured_stderr": 0.006919199196412945,
+      "method": "peak_envelope",
+      "noise_floor": 6.202009453742044e-11,
+      "relative_difference": -0.056953534334376194,
+      "signal": "mode_projection",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "energy_ratio": {
+      "measured": 3.9975921972810196,
+      "method": "first_output",
+      "relative_difference": 3.2141124575805746e-7,
+      "signal": "scalar_ratio",
+      "t": 0.0,
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    },
+    "energy_ratio_mode": {
+      "measured": 3.9167515795491874,
+      "method": "median_over_fit",
+      "points": 7,
+      "relative_difference": -0.020222012365045866,
+      "signal": "mode_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    }
+  },
+  "performance": {
+    "build": "gpu",
+    "cells": 16384,
+    "mobile_particle_steps": 56891539456,
+    "mobile_particles": 16777216,
+    "ns_per_mobile_particle_step": 3.5195039880201904,
+    "ns_per_mobile_particle_step_time_loop": 3.4766153612870867,
+    "particle_steps": 56947097600,
+    "particles": 16793600,
+    "steps": 3391,
+    "steps_source": "smilei.log (n_time)",
+    "time_loop_seconds": 197.79,
+    "wall_seconds": 200.23
+  }
+}
