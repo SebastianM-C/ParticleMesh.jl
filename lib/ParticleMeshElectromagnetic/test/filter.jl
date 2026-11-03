@@ -392,11 +392,13 @@ end
         more_particles = step_bytes_filter(N, mode; ppc = (8, 8), cells = (16, 12))
         larger_grid = step_bytes_filter(N, mode; ppc = (2, 2), cells = (64, 48))
         unfiltered = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12), passes = 0)
-        @info "T-445 bytes per step with two filter passes" N mode small more_particles larger_grid unfiltered threads = Threads.nthreads()
+        more_passes = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12), passes = 8)
+        @info "T-445 bytes per step with two filter passes" N mode small more_particles larger_grid unfiltered more_passes threads = Threads.nthreads()
         # at more than one thread the Reference sort allocates per particle (#82, as T-367); CI runs one thread
         if Threads.nthreads() == 1 || mode isa Fast
             @test more_particles <= small
             @test larger_grid <= small
+            @test more_passes <= small       # the passes reuse the scratch and launch with fixed arguments
         end
     end
 end
