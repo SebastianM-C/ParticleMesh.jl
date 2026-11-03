@@ -62,6 +62,11 @@ function evaluate(pt, key)
         "fit_points" => length(f.idx), "fit_range" => [t[first(f.idx)], t[last(f.idx)]],
         "saturation" => Dict("t" => f.r.t_max, "U" => f.r.U_max),
         "ratio_to_ivp_window_start" => f.ratio[1], "ratio_to_ivp_window_end" => f.ratio[2]))
+    # the same against the linear solution of a load whose momenta are taken at −Δt/2 (Smilei's
+    # start, and ParticleMesh's with momenta_at = :t_minus_half)
+    fh = point_fits(pt.case, key, t, U; window = w, momenta_at = :t_minus_half)
+    out["gamma_ivp_minus_half_start"] = fh.gamma_ivp
+    out["residual_minus_half_start"] = (f.gamma - fh.gamma_ivp) / θ
     out["window_sensitivity_post_hoc"] = map(window_variants(w...)) do wv
         g = point_fits(pt.case, key, t, U; window = wv)
         Dict{String,Any}("window" => collect(wv), "gamma" => isfinite(g.gamma) ? g.gamma : nothing,
@@ -194,7 +199,9 @@ function report(sumdir, out; box_status = nothing)
         ev = [res["points"][p.name]["observables"][k] for p in pl]
         all(e -> haskey(e, "residual"), ev) || continue
         f = limit_fit([p.dx for p in pl], [p.dt for p in pl], [e["residual"] for e in ev])
-        isempty(f) || (lim[k] = merge(f, Dict{String,Any}("points" => [p.name for p in pl])))
+        isempty(f) && continue
+        fh = limit_fit([p.dx for p in pl], [p.dt for p in pl], [e["residual_minus_half_start"] for e in ev])
+        lim[k] = merge(f, Dict{String,Any}("points" => [p.name for p in pl], "minus_half_start" => fh))
     end
     res["limit"] = lim
     open(io -> JSON.print(io, res, 2), joinpath(out, "results.json"), "w")

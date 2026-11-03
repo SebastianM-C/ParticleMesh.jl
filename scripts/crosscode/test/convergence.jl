@@ -106,6 +106,18 @@ end
     x = (0:N-1) .* (L / N)
     @test sum(abs2, real.(A .* cis.(2π / L .* x))) * (L / N) / 2 ≈ abs2(A) * L / 4 rtol = 1e-13
     @test_throws ErrorException cold_ivp(load_case("landau"))
+    # the −Δt/2 load (#282): two-stream, half a kick qE⁰Δt/(2mγ³) on each beam's velocity and
+    # nothing else; symmetric Weibel, no field at t = 0 and so no change; an unknown start refused
+    tsh = cold_ivp(tsc; momenta_at = :t_minus_half)
+    γb = 1 / sqrt(1 - 0.1^2)
+    kick = -1 * ts.y0[ts.index] * tsc["time"]["dt"] / (2 * γb^3)
+    @test tsh.y0[[2, 4]] ≈ [kick, kick] rtol = 1e-14
+    @test tsh.y0[[1, 3, 5]] == ts.y0[[1, 3, 5]] && tsh.M == ts.M
+    @test cold_ivp(wc; momenta_at = :t_minus_half).y0 == wb.y0
+    pah = cold_ivp(asym; momenta_at = :t_minus_half)
+    @test pah.y0[2] ≈ -pa.y0[7] * wc["time"]["dt"] / (2 * (1 / sqrt(1 - 0.09))) rtol = 1e-14
+    @test pah.y0[[3, 6]] == [0, 0] && pah.y0[[1, 4, 7, 8, 9]] == pa.y0[[1, 4, 7, 8, 9]]
+    @test_throws ArgumentError cold_ivp(tsc; momenta_at = :t1)
 end
 
 @testset "T-412 a scan point changes only what it names [A5, WP-031]" begin
@@ -417,6 +429,17 @@ end
     @test L["r_inf"] ≈ δ∞ rtol = 1e-7
     @test L["fits"]["dx2+dt+dt2"]["max_abs_misfit"] < 1e-10
     @test abs(L["fits"]["dx2+dt"]["r_inf"] - δ∞) > 1e-7 && L["r_inf_spread"] >= abs(L["fits"]["dx2+dt"]["r_inf"] - δ∞)
+    # the residual against the −Δt/2 start is recorded per point and is the fit against cold_ivp's
+    # :t_minus_half solution over the same samples
+    for (name, _) in pts
+        c = TOML.parsefile(joinpath(sd, "cases", name * ".toml"))
+        rec = JSON.parsefile(joinpath(sd, name * ".json"))
+        t, U = Float64.(rec["series"]["growth_rate"]["t"]), Float64.(rec["series"]["growth_rate"]["U"])
+        fh = point_fits(c, "growth_rate", t, U; window = Tuple(c["observables"]["growth_rate"]["window"]), momenta_at = :t_minus_half)
+        e = res["points"][name]["observables"]["growth_rate"]
+        @test e["residual_minus_half_start"] ≈ (fh.gamma - fh.gamma_ivp) / θ rtol = 1e-12
+        @test e["residual_minus_half_start"] != e["residual"]
+    end
     @test all(isfile, joinpath.(out, ["results.json", "manifest.toml", "offset-vs-resolution.png", "local-rate.png", "ratio-to-linear.png"]))
     # compare_codes: the same summary against itself, and against a copy grown by e^{2δt}
     cmp = R.compare_codes(sd, sd, joinpath(dirname(sd), "cmp1"))
