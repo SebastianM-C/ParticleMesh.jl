@@ -28,11 +28,14 @@ maximum, so it fits every kernel.
 
 The `instance` `kernel(backend, workgroupsize)` of a KernelAbstractions kernel with a fixed
 `workgroupsize`, launched like the instance itself (`l(args...; ndrange)`). A launch that
-KernelAbstractions refuses with an `ArgumentError` (the work-group does not fit the kernel or
-the backend) is refused again with an `ArgumentError` that keeps KernelAbstractions' message,
-names the requested `workgroupsize` and the kernel, and says that `nothing` fits. The refusal
-comes from KernelAbstractions' host-side check of the launch geometry, before the kernel runs;
-nothing here branches on device data.
+KernelAbstractions refuses with an `ArgumentError` about the work-group (its message names the
+work-group or the `workgroupsize`: the size does not fit the kernel or the backend) is refused
+again with an `ArgumentError` that keeps KernelAbstractions' message, names the requested
+`workgroupsize` and the kernel, and says that `nothing` fits. The refusal comes from
+KernelAbstractions' host-side check of the launch geometry, before the kernel runs; nothing
+here branches on device data. Any other exception, including an `ArgumentError` that does not
+mention the work-group (an argument that cannot be converted for the device, say), passes
+unchanged.
 """
 struct SizedLaunch{I,K,B,W}
     instance::I
@@ -45,11 +48,13 @@ function (l::SizedLaunch)(args...; ndrange)
     try
         l.instance(args...; ndrange)
     catch err
-        err isa ArgumentError || rethrow()
+        err isa ArgumentError && is_workgroup_message(err.msg) || rethrow()
         throw_workgroupsize_error(l, err)
     end
     return nothing
 end
+
+is_workgroup_message(msg::AbstractString) = occursin(r"work-?group"i, msg)
 
 @noinline function throw_workgroupsize_error(l::SizedLaunch, err::ArgumentError)
     throw(ArgumentError("workgroupsize = $(l.workgroupsize) does not fit the launch of $(nameof(l.kernel)) on " *
