@@ -14,7 +14,8 @@ The engine holds no physics (A9): a physics module composes its own step from th
 All kernels are KernelAbstractions kernels, generic in the element type `T`, with static
 shapes and no host-side branching on device data (`docs/plan/architecture-draft.md` §0.4);
 every launch takes `workgroupsize = nothing` (the backend default), which selects the launch
-shape only. `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
+shape only; a fixed size the kernel cannot take is refused with an `ArgumentError` (`launcher`).
+`N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
 the prefix sum, which is `N = 1` only). The contracts are those of
 `docs/plan/architecture-draft.md` §0.7.
 """
