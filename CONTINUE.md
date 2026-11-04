@@ -18,6 +18,13 @@ Each PM request writes `scripts/runs/wp032-pm-landau-r<n>/` (`scripts/em2d/landa
 A request whose result has `ok = false` (a spot eviction) reruns on the next box by itself; if it
 has no result after its timeout plus an hour, resubmit it under `<tag>-rerun` from this branch.
 
+State at 2026-11-04 10:08 UTC: all eight requests ran on the box (every seed line appeared in the
+box's `log_tail`), but only r1 and r2 relayed; r3 to r8 are still at their request commits (#320).
+r1 and r2 are fetched and checked: WP-023's four seeds reproduce bit for bit, Smilei's seed
+20261031 reproduces WP-025's bit for bit; 26.8 to 27.0 ns per particle-step against Smilei's 12.74.
+If #320 cannot bring the outputs back, resubmit the missing requests under `<tag>-rerun` (the
+request files: `git show runs/<tag>:box-request.toml`).
+
 ## Remaining steps
 
 1. `scripts/cpu-box.sh status <tag>` for every tag; when all are back, `scripts/cpu-box.sh fetch <tag>` each.
