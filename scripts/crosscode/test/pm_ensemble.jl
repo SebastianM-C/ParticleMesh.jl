@@ -21,7 +21,7 @@ function edit_json!(change!, f)
     open(io -> PMEns.JSON.print(io, d), f, "w")
 end
 
-@testset "T-460 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
+@testset "T-490 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
     mktempdir() do tmp
         # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell, with a
         # 10 % perturbation so that the ensemble fit finds its maxima above the noise of 16384 electrons
@@ -147,7 +147,7 @@ end
     end
 end
 
-@testset "T-461 the three-code comparison takes the reference ensembles of the run's case file [A5, WP-032]" begin
+@testset "T-491 the three-code comparison takes the reference ensembles of the run's case file [A5, WP-032]" begin
     em2d = PMEns
     wp023 = joinpath(REPORTS, "wp-023-em-step-2d", "em2d-pm-landau-oblique-2d-20261102T163231")
     four = em2d.reference_ensembles("landau-oblique-2d", wp023)
@@ -185,7 +185,7 @@ end
     end
 end
 
-@testset "T-462 the committed 32-seed ParticleMesh record is what the merge computes from the committed seed files [A4, A5, A7, WP-032]" begin
+@testset "T-492 the committed 32-seed ParticleMesh record is what the merge computes from the committed seed files [A4, A5, A7, WP-032]" begin
     run = joinpath(REPORTS, "wp-032-pm-landau-ensemble", "em2d-pm-landau-oblique-2d-32")
     case = TOML.parsefile(joinpath(run, "case.toml"))
     seeds = PMEns.case_seeds(case)

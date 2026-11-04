@@ -12,14 +12,14 @@ julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --load-check [--gpu] [--patches 4x4]     # one step, the t = 0 load
 julia +1.13 --project=scripts scripts/crosscode/loadcheck.jl <load-check run a> <load-check run b> <out dir>                 # same particles?
 julia +1.13 --project=scripts scripts/crosscode/compare.jl <run a> <run b> <out dir>   # two codes, two precisions or two builds on one case
-julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-410 to T-416, T-430 to T-436, T-460 to T-462
+julia +1.13 --project=scripts scripts/crosscode/test/runtests.jl              # T-010 to T-161, T-180 to T-188, T-250 to T-256, T-270 to T-275, T-390 to T-396, T-410 to T-416, T-430 to T-436, T-490 to T-492
 julia +1.13 --project=scripts scripts/crosscode/seed_count.jl <difference> <separation> <run a> <run b>   # seeds per code for a two-code comparison
 julia +1.13 --project=scripts scripts/crosscode/subensembles.jl <run a> <run b> <out dir>   # the ensemble rule on disjoint groups of seeds, both runs
 julia +1.13 --project=scripts -t 16 scripts/em1d/crosscode.jl run landau       # the ParticleMesh column, one run per seed
 julia +1.13 --project=scripts scripts/em1d/crosscode.jl compare <pm run> <smilei run>
 julia +1.13 --project=scripts scripts/em2d/landau_ensemble.jl run <dir> <seed>...   # ParticleMesh on named seeds of landau-oblique-2d, one CPU box request (WP-032)
-julia +1.13 --project=scripts scripts/em2d/landau_ensemble.jl merge <out dir> <request dir>...   # the requests' seeds as one ensemble (T-460)
-julia +1.13 --project=scripts scripts/em2d/crosscode.jl compare <pm run>       # the 2D cases against the reference runs of the run's case file (T-461)
+julia +1.13 --project=scripts scripts/em2d/landau_ensemble.jl merge <out dir> <request dir>...   # the requests' seeds as one ensemble (T-490)
+julia +1.13 --project=scripts scripts/em2d/crosscode.jl compare <pm run>       # the 2D cases against the reference runs of the run's case file (T-491)
 julia +1.13 --project=scripts scripts/crosscode/convergence.jl prepare scripts/crosscode/scans/<scan>.toml   # a resolution scan: derived cases, Smilei runs, the CPU box request
 julia +1.13 --project=scripts scripts/crosscode/convergence.jl report <summary dir> <out dir> [box-status.toml]
 julia +1.13 --project=scripts scripts/crosscode/convergence.jl compare <reference summary> <other summary> <out dir>
