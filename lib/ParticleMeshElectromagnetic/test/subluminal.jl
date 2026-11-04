@@ -104,6 +104,20 @@ function body_T481(be)
         @test check_subluminal(s, d) === s
         s.status .= ParticleMeshCore.ALIVE                     # the same slots alive: refused
         @test_throws ArgumentError check_subluminal(s, d)
+        # a NaN in one slot only, the others subluminal: the reduction's `max` must carry it through
+        # (for the Dual element type too, where `max` compares values; the all-NaN load above would pass either way)
+        s2 = Species(be, T, prod(prob.cells) * prod(d.ppc); q = d.charge, m = d.mass, N = 2)
+        load_quiet!(s2, grid, ParticleMeshElectromagnetic.CosineProfile(), (d.density, d.amplitude, z, z), d.ppc;
+                    vth = d.thermal, seed = 1, stream = 1)
+        @test check_subluminal(s2, d) === s2
+        for slot in (1, 7, length(s2.w))
+            u1 = Array(s2.u[1])
+            u1[slot] = T(NaN)
+            copyto!(s2.u[1], u1)
+            @test_throws ArgumentError check_subluminal(s2, d)
+            u1[slot] = z
+            copyto!(s2.u[1], u1)
+        end
     end
 end
 
