@@ -62,7 +62,7 @@ engine_refusal(err, wg, kernel) =
     end
 end
 
-@testset "T-501 the launcher passes nothing through, refuses an oversized launch by name before it writes, and rewraps only ArgumentErrors [A4, A9]" begin
+@testset "T-501 the launcher passes nothing through, refuses an oversized launch by name before it writes, and rewraps only ArgumentErrors about the work-group [A4, A9]" begin
     k = ParticleMeshCore.fill_guards_kernel!
     @test ParticleMeshCore.launcher(k, backend, nothing) isa KernelAbstractions.Kernel
     @test ParticleMeshCore.launcher(k, backend, 7) isa ParticleMeshCore.SizedLaunch
@@ -84,9 +84,13 @@ end
     fill_guards!(a, grid; workgroupsize = 3)
     fill_guards!(b, grid)
     @test a == b && a != before
-    # Only an ArgumentError of the launch is rewrapped; any other exception passes unchanged.
+    # Only an ArgumentError about the work-group is rewrapped; any other exception, an
+    # ArgumentError about something else included (#325), passes unchanged.
     stub(e) = ParticleMeshCore.SizedLaunch((args...; ndrange) -> throw(e), k, backend, 7)
     @test_throws DomainError(1.0) stub(DomainError(1.0))(a; ndrange = 4)
-    r = try stub(ArgumentError("too big"))(a; ndrange = 4) catch e e end
-    @test engine_refusal(r, 7, :fill_guards_kernel!) && occursin(": too big.", r.msg)
+    unrelated = ArgumentError("Don't know how to convert arguments for Kernel")
+    @test_throws unrelated stub(unrelated)(a; ndrange = 4)
+    msg = "Work-group size (9,) has more than 8 work-items, the maximum for this kernel"
+    r = try stub(ArgumentError(msg))(a; ndrange = 4) catch e e end
+    @test engine_refusal(r, 7, :fill_guards_kernel!) && occursin(": $msg.", r.msg)
 end
