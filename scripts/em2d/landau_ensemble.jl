@@ -112,18 +112,23 @@ end
 """
     request_record(rdir, manifest) -> Dict
 
-One request of a merged ensemble: its directory, seeds, host and box status, and its commit. On
-the box git cannot read the checkout, so the run's manifest records `commit = "unknown"`; then
-the commit is the box status's `request_commit` (`commit_source = "box-status.toml"`), and
-`code_commit` is that commit's parent (the request commit adds only the request file and the run
-directories it names) when this checkout has it.
+One request of a merged ensemble: its directory, seeds, host and box status, and its commit.
+Where git cannot read the checkout on the box, the run's manifest records `commit = "unknown"`;
+then the commit is the box status's `request_commit` (`commit_source = "box-status.toml"`).
+Whenever the commit is the request commit, `code_commit` is its parent (the request commit adds
+only the request file and the run directories it names), or `"unknown"` when this checkout lacks
+it; a run outside the box has no `code_commit`. The box status sits one level above the request
+directory (scripts/cpu-box.sh fetch).
 """
 function request_record(rdir, m)
     st = box_status(rdir)
     r = Dict{String,Any}("directory" => relpath(normpath(rdir), REPO), "seeds" => m["seeds"], "host" => m["host"],
                          "box_status" => something(st, "none"), "commit" => m["commit"], "commit_source" => "run manifest")
-    if m["commit"] == "unknown" && st !== nothing && haskey(st, "request_commit")
+    (st === nothing || !haskey(st, "request_commit")) && return r
+    if m["commit"] == "unknown"
         r["commit"], r["commit_source"] = st["request_commit"], "box-status.toml"
+    end
+    if r["commit"] == st["request_commit"]
         parent = try
             readchomp(`git -C $REPO rev-parse $(st["request_commit"])^`)
         catch
@@ -178,13 +183,10 @@ function merge_requests(out, rdirs; case_file = joinpath(CASES, "$CASE_NAME.toml
         m["case_sha256"] == ref["case_sha256"] || error("merge: $r ran another case file")
         m["parameters"] == ref["parameters"] || error("merge: $r ran other parameters")
     end
-    mkpath(out)
-    cp(joinpath(rdirs[1], "case.toml"), joinpath(out, "case.toml"); force = true)
     coeffs, per_run, tC = Vector{ComplexF64}[], [], nothing
     walls, nsps, particles, steps, threads, cpus = Float64[], Float64[], Int[], Int[], Int[], String[]
     for s in seeds
         src = joinpath(where_[s], "seed-$s")
-        cp(src, joinpath(out, "seed-$s"); force = true)
         t, El, pr = seed_series(src, case)
         tC === nothing ? (tC = t) : (t == tC || error("merge: seed $s has another field time grid"))
         push!(coeffs, El)
@@ -195,10 +197,17 @@ function merge_requests(out, rdirs; case_file = joinpath(CASES, "$CASE_NAME.toml
         push!(cpus, TOML.parsefile(joinpath(where_[s], "manifest.toml"))["cpu"])
     end
     length(unique(particles)) == 1 && length(unique(steps)) == 1 || error("merge: the seeds ran different sizes")
+    # everything is checked; only now is anything written
+    mkpath(out)
+    cp(joinpath(rdirs[1], "case.toml"), joinpath(out, "case.toml"); force = true)
+    for s in seeds
+        cp(joinpath(where_[s], "seed-$s"), joinpath(out, "seed-$s"); force = true)
+    end
     r = write_ensemble(out, case, tC, coeffs, seeds; code = "particlemesh", per_run,
         extra = Dict{String,Any}("wall_seconds_per_seed" => walls, "ns_per_particle_step" => nsps,
             "particles_per_seed" => first(particles), "steps" => first(steps),
-            "particle_steps_per_seed" => first(particles) * first(steps), "threads" => unique(threads), "cpu" => unique(cpus)))
+            "particle_steps_per_seed" => first(particles) * first(steps), "threads" => unique(threads), "cpu" => unique(cpus),
+            "per_run_energy_floors" => [pr.floor for pr in per_run]))
     write_seed_coefficients(out, tC, seeds, coeffs; observable = r["observable"])
     requests = [request_record(rd, m) for (rd, m) in zip(rdirs, manifests)]
     outputs = Dict{String,Any}()
@@ -247,7 +256,7 @@ function checks(ens, smilei_seed, out)
             "gauss_relative_final" => Dict("box" => a["checks"]["gauss_relative_final"], "wp023" => b["checks"]["gauss_relative_final"]))
     end
     side["wp023_seeds_rerun"] = rerun
-    s = basename(normpath(smilei_seed))
+    s = "seed-" * match(r"seed-(\d+)$", basename(normpath(smilei_seed))).captures[1]
     a = JSON.parsefile(joinpath(smilei_seed, "observables.json"))
     b = JSON.parsefile(joinpath(WP025_SMILEI, s, "observables.json"))
     side["smilei_seed_rerun"] = Dict{String,Any}("seed" => s, "observables" => Dict{String,Any}(k => Dict("box" => get(get(a["observables"], k, Dict()), "measured", nothing),

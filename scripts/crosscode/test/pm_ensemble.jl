@@ -57,6 +57,7 @@ end
             pr = PMEns.seed_series(joinpath(out, "seed-$s"), case)[3]
             @test pr.floor == per_run[i].floor && pr.used == per_run[i].used
         end
+        @test r["per_run_energy_floors"] == [x.floor for x in per_run]      # each seed's own fit, in the case's order
         # the throughput fields: each seed's own record, in the case's order, and its definition
         perf = [PMEns.JSON.parsefile(joinpath(out, "seed-$s", "observables.json"))["performance"] for s in seeds]
         @test r["ns_per_particle_step"] == [p["ns_per_particle_step"] for p in perf]
