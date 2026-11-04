@@ -1,0 +1,318 @@
+{
+  "note": "post-hoc checks, not thresholds (A7)",
+  "smilei_seed_rerun": {
+    "observables": {
+      "damping_rate_energy": {
+        "box": null,
+        "equal": true,
+        "wp025": null
+      },
+      "damping_rate_mode": {
+        "box": 0.1609299586220137,
+        "equal": true,
+        "wp025": 0.1609299586220137
+      },
+      "energy_ratio": {
+        "box": 3.986286510278891,
+        "equal": true,
+        "wp025": 3.986286510278891
+      },
+      "energy_ratio_mode": {
+        "box": 3.945003677041125,
+        "equal": true,
+        "wp025": 3.945003677041125
+      }
+    },
+    "seed": "seed-20261031"
+  },
+  "throughput": {
+    "electrons": 16777216,
+    "normalization": "wall time / (mobile electrons × steps); ParticleMesh times its steps (run!), Smilei's container.txt its whole run, initialization and output included",
+    "particlemesh": {
+      "cpu": [
+        "AMD EPYC 9655 96-Core Processor"
+      ],
+      "max": 27.514953969186543,
+      "median": 26.91174775485056,
+      "min": 26.527926479458845,
+      "ns_per_particle_step": [
+        26.993565299207923,
+        26.926058644726016,
+        26.91143239092876,
+        26.827019132508955,
+        26.62714923387852,
+        26.621201268447532,
+        26.851254601089767,
+        26.85476187475309,
+        26.91206311877236,
+        26.78304160899801,
+        26.772558863624926,
+        27.158438778668863,
+        26.709102933243713,
+        26.527926479458845,
+        26.58792012669772,
+        26.885293490202578,
+        26.996532337288,
+        27.000120466119665,
+        27.0189966133512,
+        26.936446209953655,
+        26.7588728248493,
+        26.647961234930378,
+        26.594256801226962,
+        26.889275790614317,
+        27.001381803722516,
+        26.959561182576554,
+        26.967422355877126,
+        27.02531464115352,
+        27.328228335312353,
+        27.514953969186543,
+        27.211667820965072,
+        27.32610614048067
+      ],
+      "threads": [
+        16
+      ],
+      "wall_seconds_per_seed": [
+        1535.705485278,
+        1531.864927781,
+        1531.032817686,
+        1526.230417464,
+        1514.85951124,
+        1514.52112233,
+        1527.609210581,
+        1527.808744779,
+        1531.068700764,
+        1523.72846845,
+        1523.132088928,
+        1545.08539134,
+        1519.521983361,
+        1509.214575992,
+        1512.627706941,
+        1529.545735384,
+        1535.874284642,
+        1536.078418815,
+        1537.15231189,
+        1532.455892358,
+        1522.353469113,
+        1516.043538019,
+        1512.98821011,
+        1529.772294585,
+        1536.150178253,
+        1533.770938735,
+        1534.218172986,
+        1537.511754218,
+        1554.744980601,
+        1565.368089368,
+        1548.1136735,
+        1554.62424567
+      ]
+    },
+    "ratio_particlemesh_median_over_smilei": 2.112231163999448,
+    "smilei": {
+      "hardware": {
+        "cpu": "AMD EPYC 9655 96-Core Processor",
+        "cpu_source": "run",
+        "cpus": 16,
+        "threads": 16
+      },
+      "ns_per_particle_step": 12.740910281758152,
+      "steps": 3391,
+      "wall_seconds": 724.85
+    },
+    "steps": 3391
+  },
+  "wp023_seeds_rerun": {
+    "20261031": {
+      "El_im": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.0009988359534598107,
+        "bitwise": true
+      },
+      "El_re": {
+        "max_abs_difference": 0.0,
+        "max_abs": 3.377800306583474e-5,
+        "bitwise": true
+      },
+      "WEx": {
+        "max_abs_difference": 0.0,
+        "max_abs": 3.938181566795796e-7,
+        "bitwise": true
+      },
+      "gauss_relative_final": {
+        "box": 1.5658551090479533e-14,
+        "wp023": 2.489914838665864e-13
+      },
+      "observables": {
+        "damping_rate_energy": {
+          "box": null,
+          "equal": true,
+          "wp023": null
+        },
+        "damping_rate_mode": {
+          "box": 0.1601867678073345,
+          "equal": true,
+          "wp023": 0.1601867678073345
+        },
+        "energy_ratio": {
+          "box": 3.997590912410345,
+          "equal": true,
+          "wp023": 3.997590912410345
+        },
+        "energy_ratio_mode": {
+          "box": 4.071709029302986,
+          "equal": true,
+          "wp023": 4.071709029302986
+        }
+      },
+      "total": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.007473530488790828,
+        "bitwise": true
+      }
+    },
+    "20262031": {
+      "El_im": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.0009988359534598107,
+        "bitwise": true
+      },
+      "El_re": {
+        "max_abs_difference": 0.0,
+        "max_abs": 4.203964194284835e-5,
+        "bitwise": true
+      },
+      "WEx": {
+        "max_abs_difference": 0.0,
+        "max_abs": 3.938181566795796e-7,
+        "bitwise": true
+      },
+      "gauss_relative_final": {
+        "box": 1.4766557601539154e-14,
+        "wp023": 2.1010001937734152e-13
+      },
+      "observables": {
+        "damping_rate_energy": {
+          "box": null,
+          "equal": true,
+          "wp023": null
+        },
+        "damping_rate_mode": {
+          "box": 0.14593066061570797,
+          "equal": true,
+          "wp023": 0.14593066061570797
+        },
+        "energy_ratio": {
+          "box": 3.997590912410345,
+          "equal": true,
+          "wp023": 3.997590912410345
+        },
+        "energy_ratio_mode": {
+          "box": 4.067202624054636,
+          "equal": true,
+          "wp023": 4.067202624054636
+        }
+      },
+      "total": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.007474924106968234,
+        "bitwise": true
+      }
+    },
+    "20263031": {
+      "El_im": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.0009988359534598107,
+        "bitwise": true
+      },
+      "El_re": {
+        "max_abs_difference": 0.0,
+        "max_abs": 3.096196468644776e-5,
+        "bitwise": true
+      },
+      "WEx": {
+        "max_abs_difference": 0.0,
+        "max_abs": 3.9483703905922164e-7,
+        "bitwise": true
+      },
+      "gauss_relative_final": {
+        "box": 1.592891922582467e-14,
+        "wp023": 2.558647443144656e-13
+      },
+      "observables": {
+        "damping_rate_energy": {
+          "box": null,
+          "equal": true,
+          "wp023": null
+        },
+        "damping_rate_mode": {
+          "box": 0.12714871385812213,
+          "equal": true,
+          "wp023": 0.12714871385812213
+        },
+        "energy_ratio": {
+          "box": 3.997590912410345,
+          "equal": true,
+          "wp023": 3.997590912410345
+        },
+        "energy_ratio_mode": {
+          "box": 3.9833269229986525,
+          "equal": true,
+          "wp023": 3.9833269229986525
+        }
+      },
+      "total": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.0074708282450854785,
+        "bitwise": true
+      }
+    },
+    "20264031": {
+      "El_im": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.0009988359534598107,
+        "bitwise": true
+      },
+      "El_re": {
+        "max_abs_difference": 0.0,
+        "max_abs": 2.6876397546997165e-5,
+        "bitwise": true
+      },
+      "WEx": {
+        "max_abs_difference": 0.0,
+        "max_abs": 3.938181566795796e-7,
+        "bitwise": true
+      },
+      "gauss_relative_final": {
+        "box": 1.454498627364334e-14,
+        "wp023": 1.9203035768836522e-13
+      },
+      "observables": {
+        "damping_rate_energy": {
+          "box": null,
+          "equal": true,
+          "wp023": null
+        },
+        "damping_rate_mode": {
+          "box": 0.14719470150792016,
+          "equal": true,
+          "wp023": 0.14719470150792016
+        },
+        "energy_ratio": {
+          "box": 3.997590912410345,
+          "equal": true,
+          "wp023": 3.997590912410345
+        },
+        "energy_ratio_mode": {
+          "box": 3.991003990269921,
+          "equal": true,
+          "wp023": 3.991003990269921
+        }
+      },
+      "total": {
+        "max_abs_difference": 0.0,
+        "max_abs": 0.007473800545923207,
+        "bitwise": true
+      }
+    }
+  }
+}
