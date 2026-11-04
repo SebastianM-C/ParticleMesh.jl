@@ -1,9 +1,9 @@
 case_sha256 = "431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
-commit = "6826cc6b16186b65eade90907f2d66ce903fcf14"
+commit = "1e2b912aedfc63e1547cddda056accb29838429a"
 dirty = false
 merged_by = "scripts/em2d/landau_ensemble.jl merge"
 run_id = "em2d-pm-landau-oblique-2d-32"
-updated = "2026-11-04T12:26:21.953Z"
+updated = "2026-11-04T14:02:32.928Z"
 work_package = "WP-032"
 
 [inputs]
@@ -56,8 +56,8 @@ observable_exists = true
 [outputs]
 "case.toml" = "sha256:431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
 "ensemble-series.json" = "sha256:e520858f817fd1f8884a64c23ef4f0dd5e734a8cd8d597dffc974969b49b6c01"
-"observables.json" = "sha256:7a389b11e41c8766f810af87267da9f966251e53540dde75d6ebf57569dccd4c"
-"plots/ensemble-energy.json" = "sha256:11cb95233db5a61f168263872ba7f66ef36cce2498db49a6ee7847f525c60eef"
+"observables.json" = "sha256:a8141152797bd6f2836cb5ffbd8d68bee438f53170db7b7afc2883ae862d7fd0"
+"plots/ensemble-energy.json" = "sha256:33e1464e6e7fc8695d57d0d4ccf44dd591f9a54998f538153487d48c125bdda3"
 "plots/ensemble-energy.png" = "sha256:3ac1589aa4eecc1f9b147738346bc0550d1eda00550ec5d23e62fcb9ffd79156"
 "plots/per-seed-rates.json" = "sha256:7ee861e3203d57c89c831ae07c7954063da96e7d29dad6bca69b73b0a03257c8"
 "plots/per-seed-rates.png" = "sha256:a7f851f0c52863e253cd7048ccb7064739410fc08e0931dafcd90a45a8c85742"
@@ -488,6 +488,7 @@ seeds = [20265031, 20266031, 20267031, 20268031]
     cpus = 16
     threads = 16
 [[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
 commit = "f29fea3b00efbab2e3057074e417d8b90d747171"
 commit_source = "run manifest"
 directory = "scripts/runs/box-wp032-pm-r3/wp032-pm-landau-r3"
@@ -531,6 +532,7 @@ seeds = [20269031, 20270031, 20271031, 20272031]
     cpus = 16
     threads = 16
 [[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
 commit = "8b2a54e70c5192ca1d33054b5d105b2edb966395"
 commit_source = "run manifest"
 directory = "scripts/runs/box-wp032-pm-r4/wp032-pm-landau-r4"
@@ -574,6 +576,7 @@ seeds = [20273031, 20274031, 20275031, 20276031]
     cpus = 16
     threads = 16
 [[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
 commit = "5c53c3ad31608f0883c277ff5df816212642795e"
 commit_source = "run manifest"
 directory = "scripts/runs/box-wp032-pm-r5/wp032-pm-landau-r5"
@@ -617,6 +620,7 @@ seeds = [20277031, 20278031, 20279031, 20280031]
     cpus = 16
     threads = 16
 [[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
 commit = "695849c4046f0fd60a8bbffedaf9efbe04467d0c"
 commit_source = "run manifest"
 directory = "scripts/runs/box-wp032-pm-r6/wp032-pm-landau-r6"
@@ -660,6 +664,7 @@ seeds = [20281031, 20282031, 20283031, 20284031]
     cpus = 16
     threads = 16
 [[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
 commit = "459b15db3831488368e898cf69bc6a3f5a15edd0"
 commit_source = "run manifest"
 directory = "scripts/runs/box-wp032-pm-r7/wp032-pm-landau-r7"
@@ -703,6 +708,7 @@ seeds = [20285031, 20286031, 20287031, 20288031]
     cpus = 16
     threads = 16
 [[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
 commit = "f76ba1fc3ae54917f8c475ee181b7930bf1f9679"
 commit_source = "run manifest"
 directory = "scripts/runs/box-wp032-pm-r8/wp032-pm-landau-r8"
