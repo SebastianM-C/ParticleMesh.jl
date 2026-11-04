@@ -51,7 +51,7 @@ function write_manifest(dir; inputs = String[], extra = Dict{String,Any}(), root
     if root !== nothing
         c = git_commit(root)
         m["commit"] = c.commit
-        c.dirty === missing || (m["dirty"] = c.dirty)
+        c.dirty === missing ? delete!(m, "dirty") : (m["dirty"] = c.dirty)
         c.commit_source == "git" ? delete!(m, "commit_source") : (m["commit_source"] = c.commit_source)
     end
     hashes = get(m, "inputs", Dict{String,Any}())
