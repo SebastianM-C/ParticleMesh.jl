@@ -116,6 +116,8 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     end
     isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
     all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
+    boundaries isa Union{Symbol,AbstractString} &&
+        throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic and :open per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
     length(bd) == N && all(in((:periodic, :open, :window)), bd) ||
         throw(ArgumentError("boundaries = $boundaries: one of :periodic, :open and :window per axis, $N of them"))
