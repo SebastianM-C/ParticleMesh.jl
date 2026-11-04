@@ -1,0 +1,12 @@
+# The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320.
+# The step's own log is below.
+
+## The poller's log for this request
+2026-11-04T08:19:50Z running runs/wp032-pm-r8 at f76ba1fc3a
+2026-11-04T10:04:08Z runs/wp032-pm-r8: cannot access local variable 'e' where it is not associated with a value
+
+## The step's output
+seed 20289031: 1554.7 s, 27.33 ns per particle-step, damping_rate_mode = 0.15920324882336803; Gauss 1.515978787373139e-14
+seed 20290031: 1565.4 s, 27.51 ns per particle-step, damping_rate_mode = 0.17863882715745602; Gauss 1.6189709105310697e-14
+seed 20291031: 1548.1 s, 27.21 ns per particle-step, damping_rate_mode = 0.17206599949978257; Gauss 1.3085055090975829e-14
+seed 20292031: 1554.6 s, 27.33 ns per particle-step, damping_rate_mode = 0.1286773985537881; Gauss 1.3320228936042716e-14
