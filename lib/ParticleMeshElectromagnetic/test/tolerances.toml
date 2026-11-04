@@ -496,3 +496,27 @@ scale = "as T-450"
 C = 10
 measured = { Float32 = 0.0228, Float64 = 0.23, "Dual{Float32,3}" = 0.0228 }
 status = "proposed"
+
+["T-472"]
+quantity = "the moving window's E and B against its static twin's, on every column before it moves and on the columns 25 … n₁ after, relative to the twin's max |E, B| there, Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 1000
+status = "proposed"
+
+["T-473"]
+quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts, off nodes 1, 2 and the antenna's two columns, a laser driving the plasma, both modes"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
+C = 1
+status = "proposed"
+
+["T-474"]
+quantity = "the fields of Fast against Reference after 120 window steps (about 50 shifts), Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 1e6
+status = "proposed"
+
+["T-475"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 window steps against the ramp length, Float64, Reference"
+scale = "the finite-difference floor (A7)"
+C = 1
+status = "proposed"
