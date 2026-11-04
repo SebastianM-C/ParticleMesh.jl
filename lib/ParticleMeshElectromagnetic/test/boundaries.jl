@@ -362,6 +362,8 @@ end
     @test_throws ArgumentError mk((:periodic, :reflecting))
     @test_throws ArgumentError mk((:periodic,))
     @test mk(("periodic", "open")).boundaries == (:periodic, :open)
+    @test_throws ArgumentError mk(:open)
+    @test_throws ArgumentError mk("open")
     @test_throws ArgumentError EMProblem("x", 1.0, 8, 0.1, 1, (), 1, 1.0; boundaries = (:open,))
     @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; absorber = ab))
     # the time step is the one the layer was made for
