@@ -1,0 +1,27 @@
+## step 0 (julia): exit 1 after 2s
+ERROR: SystemError: opening file "scripts/runs/box-smoke-poller/out.txt": No such file or directory
+Stacktrace:
+  [1] systemerror(p::String, errno::Int32; extrainfo::Nothing)
+    @ Base ./error.jl:186
+  [2] open(fname::String; lock::Bool, read::Nothing, write::Nothing, create::Nothing, truncate::Bool, append::Nothing)
+    @ Base ./iostream.jl:327
+  [3] open
+    @ ./iostream.jl:306 [inlined]
+  [4] open(fname::String, mode::String; lock::Bool)
+    @ Base ./iostream.jl:390
+  [5] open
+    @ ./iostream.jl:389 [inlined]
+  [6] #open#324
+    @ ./io.jl:427 [inlined]
+  [7] open
+    @ ./io.jl:426 [inlined]
+  [8] write(::String, ::String)
+    @ Base ./io.jl:508
+  [9] top-level scope
+    @ none:1
+ [10] eval(m::Module, e::Any)
+    @ Core ./boot.jl:489
+ [11] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:310
+ [12] _start()
+    @ Base ./client.jl:577
