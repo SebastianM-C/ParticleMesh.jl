@@ -45,7 +45,15 @@ Differences (measurements, not thresholds):
 - For comparison, WP-025's PIConGPU − Smilei: −0.0047, 1.01 combined errors.
 - Seed 20261031 alone against WP-019's single Smilei run: 0.1602 ± 0.0079 against 0.1609 ± 0.0078 (−0.07 combined errors).
 
-So the three 32-seed ensembles agree within their combined jackknife errors, ParticleMesh between the two reference codes, and both of its differences are smaller than the Smilei–PIConGPU difference on which A7 rests the 2D thresholds. All three lie below linear theory, by 0.9 to 2.3 of their own errors (the same direction as the 1D ensembles, #167); the three codes load different thermal distributions (§2 here, WP-023 §3, WP-025), and their effect on the rate with the relativistic push is #268's, not resolved here.
+So the three 32-seed ensembles agree within their combined jackknife errors, ParticleMesh between the two reference codes, and both of its differences are smaller than the Smilei–PIConGPU difference on which A7 rests the 2D thresholds. All three lie below the case's non-relativistic theory, by 0.9 to 2.3 of their own errors (the same direction as the 1D ensembles, #167). The three codes load different thermal distributions, and WP-025's post-hoc linear theory with the relativistic push and each code's load (`reports/crosscode-picongpu/landau-relativistic-431f4192/landau-relativistic.json`, the grid not included) moves the theory values apart:
+
+| | load | theory γ with that load | ensemble − theory | in the code's jackknife errors |
+|---|---|---|---|---|
+| ParticleMesh | Maxwellian in velocity, u = γv | 0.15255 (ω 1.4110) | −0.0041 | −1.26 |
+| Smilei | classical energy distribution | 0.14780 (ω 1.4101) | +0.0026 | +0.80 |
+| PIConGPU | Maxwellian in momentum | 0.14626 (ω 1.4097) | −0.0005 | −0.15 |
+
+With each code's load theory taken out, the code differences become −0.0068 against Smilei (−1.46 combined errors) and −0.0036 against PIConGPU (−0.79): the loads predict ParticleMesh 0.0047 above Smilei and 0.0063 above PIConGPU, and the measured ensembles do not show that offset. Both readings, the raw differences and the load-corrected ones, stay within 1.5 combined errors; neither resolves a code difference at 32 seeds. Over the first five maxima, where Smilei's rule stops, ParticleMesh's 0.15001 is 0.0025 below its load theory.
 
 ![three ensembles](wp-032-pm-landau-ensemble/em2d-pm-landau-oblique-2d-32/compare/landau-oblique-2d-three-ensembles.png)
 ![rates per code](wp-032-pm-landau-ensemble/em2d-pm-landau-oblique-2d-32/compare/three-codes-rates.png)
@@ -81,7 +89,7 @@ Eight requests of about 1 h 42 min each (6106 s to 6258 s for four ParticleMesh 
 ## 6. Verification status
 
 - Verified: the merge against a single-process ensemble, bit for bit (T-460); the reproduction of WP-023's four seeds and of Smilei's seed 20261031 bit for bit; the conservation checks of §2 on every seed; the figures were inspected before the numbers were recorded.
-- Not verified: an independent review of this report; the effect of the three codes' thermal loads on γ (#268); why all three ensembles sit below theory (#167); a profile of ParticleMesh's step on the CPU.
+- Not verified: an independent review of this report; the load theory of §3 on the grid (it is the continuum relation with each load and the relativistic push); why all three ensembles sit below the non-relativistic theory (#167); a profile of ParticleMesh's step on the CPU.
 
 ## 7. Open items
 
