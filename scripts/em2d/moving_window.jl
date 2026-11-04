@@ -16,7 +16,7 @@
 #    and of one that does not, and of `shift_window!` alone, on the same state.
 #   julia +1.13 --project=scripts scripts/em2d/moving_window.jl
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
-using ParticleMeshCore
+const ParticleMeshCore = ParticleMesh.ParticleMeshCore   # window_cases.jl names it; the scripts reach the engine through ParticleMesh
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: shift_window!
 using ForwardDiff: ForwardDiff
