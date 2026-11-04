@@ -348,8 +348,10 @@ function load_window_columns!(s, grid, load, lost, col0, ncol, origin; workgroup
     return s
 end
 
-# The initial load of a window problem's species i (step2d.jl's `initialize!`): columns 1 … n₁ − 1 at the window's first position.
-function load_species_2d!(w::WindowFrame, i, s, grid, problem, d, k, wgs)
+# The initial load of a window problem's species i (step2d.jl's `initialize!`): the window's own
+# loader on its plasma columns 1 … n₁ − 1 at its first position, the engine's quiet start at the
+# same cells as a static load, the velocities converted to momenta in the same kernel.
+function load_window_species!(w::WindowFrame, i, s, grid, wgs)
     fill!(s.count, Int32(0))
     load_window_columns!(s, grid, w.loads[i], w.lost[i], 1, injection_column(w), 0; workgroupsize = wgs)
     return s

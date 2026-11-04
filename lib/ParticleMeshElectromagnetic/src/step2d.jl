@@ -187,7 +187,10 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
     for (i, (s, d)) in enumerate(zip(st.species, problem.species))
         fill!(s.status, ParticleMeshCore.FREE)
         k = ntuple(a -> 2 * T(π) * d.mode[a] / problem.length[a], Val(2))
-        load_species_2d!(window, i, s, grid, problem, d, k, wgs)
+        window === nothing || (load_window_species!(window, i, s, grid, wgs); continue)
+        load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k[1], k[2]), d.ppc; vdrift = d.drift,
+                    vth = d.thermal, seed = problem.seed, stream = d.stream, workgroupsize = wgs)
+        launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     foreach(a -> fill!(a, zero(T)), st.fields)
     for (s, ws) in zip(st.species, st.ws)
@@ -213,17 +216,6 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
     end
     kinetic!(st)
     return st
-end
-
-# The initial load of species s (description d): the engine's quiet start on the whole periodic
-# box with the cosine profile, the velocities then converted to momenta; with a moving window the
-# window's own loader on its plasma columns 1 … n₁ − 1, the same quiet start at the same cells
-# (the method of window.jl).
-function load_species_2d!(::Nothing, i, s, grid, problem, d, k, wgs)
-    load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k[1], k[2]), d.ppc; vdrift = d.drift, vth = d.thermal,
-                seed = problem.seed, stream = d.stream, workgroupsize = wgs)
-    launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
-    return s
 end
 
 # The current of the step, by the numerics' choice: none, or the charge-conserving one.
