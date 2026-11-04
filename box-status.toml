@@ -1,0 +1,14 @@
+branch = "runs/wp032-relay-check-1"
+request_commit = "b12ad68069747b312c911b103b28f6a778dec42b"
+started = "2026-11-04T12:22:59Z"
+steps = []
+category = "smoke"
+error = "a julia step names its project once, as --project=<path in the repository>"
+finished = "2026-11-04T12:22:59Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
