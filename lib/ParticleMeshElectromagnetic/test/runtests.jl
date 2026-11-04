@@ -22,6 +22,7 @@ include("boundaries_cases.jl") # WP-027: the open boundary's runs and the layer'
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
         include("initialize.jl")    # T-420, the time of the loaded momenta
+        include("subluminal.jl")    # T-480, T-481: a load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
         include("physics.jl")
         include("determinism.jl")
         include("gradient.jl")

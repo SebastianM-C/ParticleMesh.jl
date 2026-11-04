@@ -83,21 +83,23 @@ first_u(st) = (s = first(st.species); (Array(s.u[1])[1], Array(s.u[2])[1], Array
 # --- WP-023: the 2D step with the charge-conserving current -------------------------------
 
 """
-    plasma_step_2d(T; amplitude = 1/10, cells = (10, 8), ppc = (3, 3), nsteps = 40, seed = 7) -> EMProblem{2}
+    plasma_step_2d(T; amplitude = 1/10, cells = (10, 8), ppc = (3, 3), nsteps = 40, seed = 7, vth = 1/10) -> EMProblem{2}
 
 Two mobile species that cross cells and the periodic seams within a few steps: thermal electrons
-(v_th = 0.1 in every component) with the drift (0.3, −0.2, 0.1) and an oblique perturbation of
+(v_th = `vth`, 0.1 by default, in every component) with the drift (0.3, −0.2, 0.1) and an oblique perturbation of
 mode (2, 1), and positive particles of mass 4 (v_th = 0.05) drifting along (−0.2, 0.25, −0.15)
 with the mode (1, −1), on a box of 2π × 3π/2 (Δx ≠ Δy), Δt at 0.9 of the Courant limit. The
-loader draws velocities, so v_th keeps every |v| well below c. The electrons' `amplitude` may be
-a dual (T-366).
+loader draws velocities, so v_th = 0.1 keeps every |v| well below c; at `vth = 3/10` some drawn
+electron speed passes c and `initialize!` refuses the load (T-480). The electrons' `amplitude`
+may be a dual (T-366).
 """
-function plasma_step_2d(::Type{T}; amplitude = one(T) / 10, cells = (10, 8), ppc = (3, 3), nsteps = 40, seed = 7) where {T}
+function plasma_step_2d(::Type{T}; amplitude = one(T) / 10, cells = (10, 8), ppc = (3, 3), nsteps = 40, seed = 7,
+                        vth = one(T) / 10) where {T}
     L = (2 * T(π), 3 * T(π) / 2)
     dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2))) / 10
     tenth = one(T) / 10
     e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), T(amplitude), (2, 1), ppc, (3tenth, -2tenth, tenth),
-                              (tenth, tenth, tenth), 1)
+                              (T(vth), T(vth), T(vth)), 1)
     p = SpeciesDescription{T}(:positive, one(T), 4 * one(T), one(T) / 2, tenth / 2, (1, -1), ppc, (-2tenth, 5tenth / 2, -3tenth / 2),
                               (tenth / 2, tenth / 2, tenth / 2), 2)
     return EMProblem("plasma-step-2d", L, cells, T(dt), nsteps, (e, p), seed, (2, 1))

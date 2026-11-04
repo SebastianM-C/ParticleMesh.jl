@@ -77,6 +77,28 @@ end
 end
 
 """
+    check_subluminal(s, d::SpeciesDescription) -> s
+
+Refuse a load of species `d` into `s` in which a drawn speed reaches c, before the velocities
+become momenta (γ = 1/√(1 − v²) is not finite there; #257). The loader draws each velocity
+component as `drift + thermal·z` with `z` standard normal, in velocity, so the Gaussian tail
+passes c with a probability that grows with the thermal speed. One device reduction, the
+largest |v|² over the alive slots, then one host comparison of that scalar (§0.4); an
+`ArgumentError` names the species, the largest drawn |v| and the cause. A NaN velocity is
+refused too. Called by `initialize!` at N = 1 and 2, never inside `step!`.
+"""
+function check_subluminal(s, d)
+    T = eltype(s.w)
+    v2 = mapreduce((a, b, c, st) -> ifelse(st == ALIVE, a * a + b * b + c * c, zero(T)), max, s.u[1], s.u[2], s.u[3],
+                   s.status; init = zero(T))
+    v2 < one(T) ||
+        throw(ArgumentError("species $(d.name): a loaded speed reaches c, the largest drawn |v| is $(sqrt(v2)) (in c); " *
+                            "the thermal spread is drawn in velocity, drift + thermal·z with z standard normal, " *
+                            "so its Gaussian tail can pass c: lower the thermal speed or the drift"))
+    return s
+end
+
+"""
     EMState{N}
 
 Everything a step reads and writes, allocated once: the numerics, the grid (`PeriodicGrid{N}`),
@@ -168,7 +190,8 @@ check_momenta_at(m::Symbol) = m in (:t0, :t_minus_half) ? m :
 The state at t = 0 from the problem description: each species loaded by the engine's quiet
 start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
 through the weights, A3; velocities `drift + thermal·z` from Philox draws keyed by the problem's
-seed and the species' stream), the velocities converted to momenta `u = γv`; the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
+seed and the species' stream), the velocities converted to momenta `u = γv` (a load in which a
+drawn speed reaches c is an `ArgumentError` naming the species, `check_subluminal`); the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
 ρ, so that (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ) to roundoff, the mean being the immobile
 neutralizing background; the background fields `E0` and `B0` of the problem added where they
 are nonzero (so a problem without them keeps the bits of the fields); then the momenta at
@@ -194,6 +217,7 @@ function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol =
         k = 2 * T(π) * d.mode / problem.length
         load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k), d.ppc; vdrift = d.drift, vth = d.thermal,
                     seed = problem.seed, stream = d.stream, workgroupsize = wgs)
+        check_subluminal(s, d)
         launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     foreach(a -> fill!(a, zero(T)), st.fields)
