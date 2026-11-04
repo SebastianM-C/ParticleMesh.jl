@@ -151,7 +151,11 @@ struct NoCurrent end
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
 solver, the current and its filter. `workgroupsize` is passed to every engine launch (it selects
-the launch shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
+the launch shape only). A fixed size has to fit every kernel of the step: the largest work-group
+a kernel accepts depends on the backend, the kernel and the element type (on the CPU (PoCL)
+backend the 2D flux deposition with `Dual{Float32,3}` and the quadratic shape takes at most 983
+work-items, as PoCL reported it, #297), and a launch it does not fit stops the step with an
+`ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
 N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
