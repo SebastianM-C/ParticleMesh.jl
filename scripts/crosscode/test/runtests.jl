@@ -975,6 +975,11 @@ include(joinpath(@__DIR__, "gpu.jl"))
             RunManifest.write_manifest(d; root = d)
             m = RunManifest.read_manifest(d)
             @test m["commit"] == sha && m["commit_source"] == "PM_COMMIT" && !haskey(m, "dirty")
+            # a manifest first written under git keeps no stale dirty flag next to the new commit
+            write(joinpath(d, "manifest.toml"), "commit = \"old\"\ndirty = true\n")
+            RunManifest.write_manifest(d; root = d)
+            m = RunManifest.read_manifest(d)
+            @test m["commit"] == sha && m["commit_source"] == "PM_COMMIT" && !haskey(m, "dirty")
         end
     end
     root = dirname(dirname(dirname(@__DIR__)))           # this checkout: git sees it
