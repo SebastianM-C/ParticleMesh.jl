@@ -17,7 +17,7 @@
 ## 2. Reproduction on the box
 
 - **WP-023's four seeds**, rerun at `1ad212f` on the EPYC at 16 threads, equal WP-023's runs (commit `2ae4382`, Intel Core i9-14900K, 32 threads) bit for bit: every per-seed observable and every series of `series.json` (the mode coefficients, the field and total energies). The step and the loader therefore did not change between the two commits for this case, and the Reference mode gives the same bits on the two CPUs at these thread counts. WP-023 recorded its Gauss residual relative to max|ρ − ρ̄| (the script at `2ae4382`, SHA-256 `c25511a5…`), the merged script relative to max|ρ|, so the recorded values differ (2.1 to 2.5 × 10⁻¹³ there, 1.5 to 1.6 × 10⁻¹⁴ here) while the fields are the same.
-- **Smilei's seed 20261031** on the box, from the namelist of WP-025's run (SHA-256 `9c0baf35…` in both manifests), equals WP-025's run of that seed in every per-seed observable (`damping_rate_mode` 0.1609299586220137, `energy_ratio` 3.986286510278891, `energy_ratio_mode` 3.945003677041125), on another CPU and image build.
+- **Smilei's seed 20261031** on the box, from the namelist of WP-025's run (SHA-256 `9c0baf35…` in both manifests), gives WP-025's measured value of that seed in every per-seed observable, to every digit (`damping_rate_mode` 0.1609299586220137, `energy_ratio` 3.986286510278891, `energy_ratio_mode` 3.945003677041125), on another CPU and image build. It is not bitwise in everything recorded: the noise floor of `damping_rate_mode` differs in the 16th digit (6.344718447183057 against 6.34471844718306 × 10⁻¹⁰), so the field series differ at roundoff; the dumps were not compared.
 
 Checks over the 32 ParticleMesh seeds (`seed-*/observables.json`): Gauss's law after 3390 steps at most 1.8 × 10⁻¹⁴ of max|ρ|, ∇·B at most 1.2 × 10⁻¹² of max|B|, the total energy within 2.0 × 10⁻⁷ of its initial value. The initial kinetic energy is 7.4725 × 10⁻³ (seed mean, standard error 2.6 × 10⁻⁷), 0.95 % above (3/2) n T L² = 7.4022 × 10⁻³, the velocity Maxwellian of WP-023 (§3 there).
 
@@ -45,7 +45,7 @@ Differences (measurements, not thresholds):
 - For comparison, WP-025's PIConGPU − Smilei: −0.0047, 1.01 combined errors.
 - Seed 20261031 alone against WP-019's single Smilei run: 0.1602 ± 0.0079 against 0.1609 ± 0.0078 (−0.07 combined errors).
 
-So the three 32-seed ensembles agree within their combined jackknife errors, ParticleMesh between the two reference codes, and both of its differences are smaller than the Smilei–PIConGPU difference on which A7 rests the 2D thresholds. All three lie below the case's non-relativistic theory, by 0.9 to 2.3 of their own errors (the same direction as the 1D ensembles, #167). The three codes load different thermal distributions, and WP-025's post-hoc linear theory with the relativistic push and each code's load (`reports/crosscode-picongpu/landau-relativistic-431f4192/landau-relativistic.json`, the grid not included) moves the theory values apart:
+So the three 32-seed ensembles agree within their combined jackknife errors, and both of ParticleMesh's differences are smaller than the Smilei–PIConGPU difference on which A7 rests the 2D thresholds. All three lie below the case's non-relativistic theory, by 0.9 to 2.3 of their own errors (the same direction as the 1D ensembles, #167). The three codes load different thermal distributions, and WP-025's post-hoc linear theory with the relativistic push and each code's load (`reports/crosscode-picongpu/landau-relativistic-431f4192/landau-relativistic.json`, the grid not included) moves the theory values apart:
 
 | | load | theory γ with that load | ensemble − theory | in the code's jackknife errors |
 |---|---|---|---|---|
@@ -59,7 +59,7 @@ With each code's load theory taken out, the code differences become −0.0068 ag
 ![rates per code](wp-032-pm-landau-ensemble/em2d-pm-landau-oblique-2d-32/compare/three-codes-rates.png)
 ![ParticleMesh ensemble](wp-032-pm-landau-ensemble/em2d-pm-landau-oblique-2d-32/plots/ensemble-energy.png)
 
-**The fit windows differ.** The rule takes six maxima in ParticleMesh and PIConGPU and five in Smilei: ParticleMesh's late-time floor is the lowest of the three (the late noise falls in ParticleMesh and grows in Smilei, #169), so its sixth maximum (t = 15.92, |⟨Ê⟩|² = 4.64 × 10⁻⁹) clears ten times its floor (2.76 × 10⁻⁹) with room, while Smilei's sixth maximum (t = 15.93, 4.6925 × 10⁻⁹) misses ten times Smilei's floor (4.6950 × 10⁻⁹) by 0.05 %. Smilei's five-maximum γ is thus one maximum from its six-maximum value, 0.15010 (table below). With the same first k maxima after `fit_start` in both runs (post hoc, `subensembles-vs-*/subensembles.json`, `first_maxima`):
+**The fit windows differ.** The rule takes six maxima in ParticleMesh and PIConGPU and five in Smilei. The floor is not a noise level here: it is 26 to 51 times its noise-only value (the table above), and the seeds' scatter gives the same per-seed noise in the three codes (4.4 to 5.2 × 10⁻¹⁰ at t = 21 to 25, ParticleMesh's flat over the run at 4.9 × 10⁻¹⁰ from t = 3 to 8), so the floor measures the damped wave's late signal, which sits highest in Smilei. ParticleMesh's sixth maximum (t = 15.92, |⟨Ê⟩|² = 4.64 × 10⁻⁹) clears ten times its floor (2.76 × 10⁻⁹) with room, while Smilei's sixth maximum (t = 15.93, 4.6925 × 10⁻⁹) misses ten times Smilei's floor (4.6950 × 10⁻⁹) by 0.05 %. Smilei's five-maximum γ is thus one maximum from its six-maximum value, 0.15010 (table below). With the same first k maxima after `fit_start` in both runs (post hoc, `subensembles-vs-*/subensembles.json`, `first_maxima`):
 
 | k (last maximum) | ParticleMesh γ ± jackknife | Smilei − ParticleMesh | PIConGPU − ParticleMesh |
 |---|---|---|---|
@@ -68,7 +68,9 @@ With each code's load theory taken out, the code differences become −0.0068 ag
 | 5 (t = 13.68) | 0.15001 ± 0.00288 | +0.0004 (+0.10) | −0.0004 (−0.09) |
 | 6 (t = 15.93) | 0.14842 ± 0.00326 | +0.0017 (+0.37; beyond Smilei's rule) | −0.0027 (−0.57) |
 
-At every common window the difference stays within 1.3 combined errors. ParticleMesh's γ is 0.150 for three to five maxima, −2.2 % from theory, and the sixth maximum lowers it to 0.148.
+Up to the six maxima the rule allows, the difference stays within 1.3 combined errors; with a seventh (below every code's rule) Smilei − ParticleMesh is −1.02 and PIConGPU − ParticleMesh −1.46 combined errors. ParticleMesh's γ is 0.150 for three to five maxima, −2.2 % from theory, and the sixth maximum lowers it to 0.148.
+
+**Sensitivity to the rule** (post hoc, the physics breaker's recomputation from the committed coefficients, §8). With `fit_start` from 2 to 7 every difference stays within 0.72 combined errors; with `floor_factor` 15, 20 or 30 within 1.02. Lower factors take more, later maxima: at `floor_factor` 5 and 7 ParticleMesh − PIConGPU is +1.46 combined errors, and at 3 (eight maxima) +2.41, with ParticleMesh − Smilei +1.56. The ordering of the three codes is not stable either: under the pre-registered rule ParticleMesh lies between PIConGPU and Smilei, at three maxima and at `floor_factor` 5 above both, and a least-squares fit of a damped cosine to Re and Im of ⟨Ê⟩ over t = 3 to 16 gives 0.1503 ± 0.0019 (ParticleMesh), 0.1483 ± 0.0021 (Smilei), 0.1489 ± 0.0022 (PIConGPU), every difference within 1.05 combined errors. The agreement therefore holds at the pre-registered rule and at stricter floors, and the order of the codes is noise. Smilei's rule sits at its fifth or sixth maximum depending on the seeds: 15 of its 32 leave-one-out fits take six, which mixes two windows in its jackknife (0.00329 against 0.00343 with the window held at five maxima).
 
 **Error estimates** (post hoc, same files): over 300 random splits of ParticleMesh's seeds into groups of four, the spread of the four-seed γ over their mean jackknife error has a median of 0.90 (5 % to 95 %: 0.50 to 1.36), as in WP-025's runs (0.97 and 0.93), so the four-seed jackknife is consistent with an unbiased one. A bootstrap of each run's seeds gives an sd of the two-run difference of 0.0045 against Smilei and 0.0047 against PIConGPU, against the combined jackknife errors of 0.0046 in both cases. The group-by-group differences of consecutive groups scatter with sd 0.0116 (g = 4), 0.0115 (g = 8) and 0.0038 (g = 16) against Smilei.
 
@@ -88,10 +90,10 @@ Eight requests of about 1 h 42 min each (6106 s to 6258 s for four ParticleMesh 
 
 ## 6. Verification status
 
-- Verified: the merge against a single-process ensemble, bit for bit (T-460); the reproduction of WP-023's four seeds and of Smilei's seed 20261031 bit for bit; the conservation checks of §2 on every seed; the figures were inspected before the numbers were recorded.
+- Verified: the merge against a single-process ensemble, bit for bit (T-460); the reproduction of WP-023's four seeds bit for bit and of Smilei's seed 20261031 in every measured value; the conservation checks of §2 on every seed; the figures were inspected before the numbers were recorded.
 - Not verified: an independent review of this report; the load theory of §3 on the grid (it is the continuum relation with each load and the relativistic push); why all three ensembles sit below the non-relativistic theory (#167); a profile of ParticleMesh's step on the CPU.
 
 ## 7. Open items
 
-- The rule's window depends on each code's late-time floor (§3); comparing codes at a fixed number of maxima, as the post-hoc table does, would remove that, but it is not the pre-registered observable.
+- The rule's window depends on each code's late signal through the floor (§3), and at `floor_factor` ≤ 5 ParticleMesh and PIConGPU separate by 1.5 to 2.4 combined errors; comparing codes at a fixed number of maxima, as the post-hoc table does, would remove the window's dependence, but it is not the pre-registered observable.
 - ParticleMesh's 2D cross-code runs take the loaded momenta at t = 0 and kick them back half a step (A2), while Smilei and PIConGPU take them at −Δt/2 (#226); the 1D runs switched to the reference codes' convention (#282), the 2D runs here did not, so as to reproduce WP-023.

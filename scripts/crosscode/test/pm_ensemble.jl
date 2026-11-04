@@ -60,7 +60,14 @@ end
         other = joinpath(tmp, "other.toml")
         write(other, read(case_file, String) * "\n")
         @test_throws ErrorException PMEns.merge_requests(joinpath(tmp, "x4"), [r1, r2]; case_file = other)
-        @test !any(isdir, joinpath.(tmp, ["x1", "x2", "x3", "x4"]))
+        # a seed directory moved from one request to another: every seed once, but neither request's
+        # directories are the seeds its manifest ran
+        cp(r1, joinpath(tmp, "r1d")); cp(r2, joinpath(tmp, "r2d"))
+        mv(joinpath(tmp, "r2d", "seed-$(seeds[4])"), joinpath(tmp, "r1d", "seed-$(seeds[4])"))
+        @test_throws ErrorException PMEns.merge_requests(joinpath(tmp, "x5"), [joinpath(tmp, "r1d"), joinpath(tmp, "r2d")]; case_file)
+        @test !any(isdir, joinpath.(tmp, ["x1", "x2", "x3", "x4", "x5"]))
+        # a request never reuses a seed directory that exists (another commit or size could have written it)
+        @test_throws ErrorException PMEns.run_seeds(r1, case_file, seeds[[1]]; sz...)
     end
 end
 

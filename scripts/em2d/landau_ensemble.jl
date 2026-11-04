@@ -49,7 +49,9 @@ Run each of `seeds` (each one of the case's seeds) of the case in `case_file` in
 `dir/seed-<seed>/` with `run_one` (Reference mode, Float64), and write a copy of the case file
 `dir/case.toml` and `dir/manifest.toml`: the
 commit, the SHA-256 of every input, the seeds, the host (`host_record`), and per seed the wall
-time of the steps and its ns per particle-step. A seed whose `observables.json` exists is kept.
+time of the steps and its ns per particle-step. A seed directory that exists already is refused,
+before anything runs: a request starts from a fresh checkout, and a kept seed could come from
+another commit or size.
 """
 function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing)
     case = TOML.parsefile(case_file)
@@ -57,6 +59,8 @@ function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing)
     bad = setdiff(seeds, all_seeds)
     isempty(bad) || error("run_seeds: seeds $bad are not seeds of the case")
     allunique(seeds) || error("run_seeds: a seed is named twice")
+    old = filter(s -> ispath(joinpath(dir, "seed-$s")), seeds)
+    isempty(old) || error("run_seeds: $dir holds seeds $old already")
     mkpath(dir)
     cp(case_file, joinpath(dir, "case.toml"); force = true)
     script = @__FILE__
@@ -74,10 +78,6 @@ function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing)
     record()
     for s in seeds
         sdir = joinpath(dir, "seed-$s")
-        if isfile(joinpath(sdir, "observables.json"))
-            println("seed $s: kept from an earlier run")
-            continue
-        end
         sim, out = run_one(sdir, case, s; ppc, cells)
         p = out["performance"]
         perf[string(s)] = Dict{String,Any}("wall_seconds" => p["wall_seconds"], "ns_per_particle_step" => p["ns_per_particle_step"],
@@ -140,7 +140,8 @@ end
 Merge the request directories `rdirs` (each written by `run_seeds`) into the ensemble directory
 `out`. Every request must have run `case_file` (its `case.toml` has the same SHA-256) with the
 same inputs (the same SHA-256 per file) and parameters, every seed of the case must come from
-exactly one request, and no request may hold a seed the case does not have; otherwise it throws
+exactly one request, no request may hold a seed the case does not have, and each request's seed
+directories must be the seeds its manifest names and records as finished; otherwise it throws
 before writing anything. Writes `out/seed-<seed>/`
 (copies), `out/case.toml`, `seed-coefficients.json`, the ensemble observable with its plots
 (`write_ensemble`, the seeds in the case's order) and `manifest.toml` with each request (its
@@ -164,6 +165,9 @@ function merge_requests(out, rdirs; case_file = joinpath(CASES, "$CASE_NAME.toml
             isfile(joinpath(r, name, "series.json")) || error("merge: seed $s in $r did not finish (no series.json)")
             where_[s] = r
         end
+        held = sort([s for (s, x) in where_ if x == r])
+        held == sort(Int.(m["seeds"])) && sort(parse.(Int, collect(keys(m["per_seed"])))) == held ||
+            error("merge: the seed directories of $r ($held) are not the seeds its manifest ran ($(m["seeds"]), finished $(sort(collect(keys(m["per_seed"])))))")
     end
     missing_ = setdiff(seeds, keys(where_))
     isempty(missing_) || error("merge: no request holds seeds $missing_")
