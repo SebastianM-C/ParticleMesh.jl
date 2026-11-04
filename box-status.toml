@@ -1,0 +1,20 @@
+branch = "runs/box-smoke-320"
+request_commit = "7d025fc75ce952b3599c3858cf6fd37c4038f393"
+started = "2026-11-04T12:24:01Z"
+category = "smoke"
+outputs = ["scripts/runs/box-smoke-320"]
+finished = "2026-11-04T12:24:02Z"
+ok = true
+files_returned = 2
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-04T12:24:01Z"
+exit = 0
+seconds = 0
