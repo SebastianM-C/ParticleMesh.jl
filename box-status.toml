@@ -1,0 +1,20 @@
+branch = "runs/box-smoke-poller-2"
+request_commit = "aa186408918f1143a7ab3fa29595dac6c19301c8"
+started = "2026-11-04T22:30:24Z"
+category = "smoke"
+outputs = ["scripts/runs/box-smoke-poller-2"]
+finished = "2026-11-04T22:30:24Z"
+ok = true
+files_returned = 2
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-04T22:30:24Z"
+exit = 0
+seconds = 0

@@ -1,0 +1,2 @@
+## step 0 (julia): exit 0 after 0s
+smoke after the poller redeploy done
