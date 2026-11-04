@@ -1,0 +1,8 @@
+# A smoke request for #320: a julia step on the scripts environment that writes one output file
+timeout = 600
+category = "smoke"
+outputs = ["scripts/runs/box-smoke-320"]
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "write(\"scripts/runs/box-smoke-320/out.txt\", \"threads = $(Threads.nthreads())\\n\"); println(\"smoke for #320 done\")"]
