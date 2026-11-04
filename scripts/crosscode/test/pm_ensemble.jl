@@ -8,12 +8,25 @@ module PMEns
 include(joinpath(dirname(dirname(@__DIR__)), "em2d", "landau_ensemble.jl"))
 end
 
+"Equal JSON records: the same keys and strings, numbers equal to `rtol` (a record recomputed elsewhere may differ in the last digits)."
+pm_close(a::AbstractDict, b::AbstractDict; rtol) = keys(a) == keys(b) && all(k -> pm_close(a[k], b[k]; rtol), keys(a))
+pm_close(a::AbstractVector, b::AbstractVector; rtol) = length(a) == length(b) && all(i -> pm_close(a[i], b[i]; rtol), eachindex(a))
+pm_close(a::Real, b::Real; rtol) = isapprox(a, b; rtol)
+pm_close(a, b; rtol) = isequal(a, b)
+
+"Rewrite the JSON file `f` after `change!` edits its parsed content."
+function edit_json!(change!, f)
+    d = PMEns.JSON.parsefile(f)
+    change!(d)
+    open(io -> PMEns.JSON.print(io, d), f, "w")
+end
+
 @testset "T-460 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
     mktempdir() do tmp
         # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell, with a
         # 10 % perturbation so that the ensemble fit finds its maxima above the noise of 16384 electrons
         src = TOML.parsefile(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
-        seeds = Int.(src["numerics"]["seeds"][1:4])
+        seeds = Int.(src["numerics"]["seeds"][1:4])[[2, 1, 4, 3]]     # not ascending: a sort shows
         src["numerics"]["seeds"] = seeds
         src["species"][1]["perturbation"]["amplitude"] = 0.1
         case_file = joinpath(tmp, "case.toml")
@@ -38,7 +51,18 @@ end
         for k in ("measured", "measured_stderr", "measured_frequency", "maxima_used", "ensemble_floor", "jackknife_gammas")
             @test isequal(r[k], direct[k])
         end
-        @test isequal(r["per_seed_single_run_rule_on_energy"]["gammas"], direct["per_seed_single_run_rule_on_energy"]["gammas"])
+        @test isequal(r["per_seed_single_run_rule_on_energy"], direct["per_seed_single_run_rule_on_energy"])
+        # the per-run energy series of each seed is Ex's plus Ey's energy, seed by seed
+        for (i, s) in enumerate(seeds)
+            pr = PMEns.seed_series(joinpath(out, "seed-$s"), case)[3]
+            @test pr.floor == per_run[i].floor && pr.used == per_run[i].used
+        end
+        # the throughput fields: each seed's own record, in the case's order, and its definition
+        perf = [PMEns.JSON.parsefile(joinpath(out, "seed-$s", "observables.json"))["performance"] for s in seeds]
+        @test r["ns_per_particle_step"] == [p["ns_per_particle_step"] for p in perf]
+        @test all(p -> p["ns_per_particle_step"] ≈ 1e9 * p["wall_seconds"] / (p["particles"] * p["steps"]), perf)
+        @test r["particle_steps_per_seed"] == perf[1]["particles"] * perf[1]["steps"] == 32 * 32 * 16 * sims[1].nsteps
+        @test r["wall_seconds_per_seed"] == [p["wall_seconds"] for p in perf] && r["cpu"] == [Sys.cpu_info()[1].model]
         t, s_, c = PMEns.seed_coefficients(out)
         @test s_ == seeds && t == sims[1].tC
         @test all(reinterpret(UInt64, c[i]) == reinterpret(UInt64, sims[i].El) for i in 1:4)
@@ -68,6 +92,57 @@ end
         @test !any(isdir, joinpath.(tmp, ["x1", "x2", "x3", "x4", "x5"]))
         # a request never reuses a seed directory that exists (another commit or size could have written it)
         @test_throws ErrorException PMEns.run_seeds(r1, case_file, seeds[[1]]; sz...)
+        @test_throws ErrorException PMEns.run_seeds(joinpath(tmp, "r4"), case_file, seeds[[1, 1]]; sz...)
+        @test !isdir(joinpath(tmp, "r4"))
+        # more refusals, each on a copy of r2 changed in one place, before anything is written
+        function refused(change!, name)
+            d = joinpath(tmp, "c-$name")
+            cp(r2, d)
+            change!(d)
+            o = joinpath(tmp, "x-$name")
+            ok = try
+                PMEns.merge_requests(o, [r1, d]; case_file)
+                false
+            catch e
+                e isa ErrorException
+            end
+            return ok && !ispath(o)
+        end
+        s2 = seeds[2]
+        @test refused("foreign") do d                      # a seed of no case in a request's directory
+            cp(joinpath(d, "seed-$s2"), joinpath(d, "seed-$(s2 + 7)"))
+        end
+        @test refused("unfinished") do d                   # a seed directory without its series
+            rm(joinpath(d, "seed-$s2", "series.json"))
+        end
+        @test refused("parameters") do d                   # another size recorded in the manifest
+            mb = TOML.parsefile(joinpath(d, "manifest.toml"))
+            mb["parameters"]["scaled"] = "ppc = (8, 8), cells = (32, 32)"
+            open(io -> TOML.print(io, mb; sorted = true), joinpath(d, "manifest.toml"), "w")
+        end
+        @test refused("grid") do d                         # another field time grid
+            edit_json!(x -> (x["tC"][end] += 1.0), joinpath(d, "seed-$s2", "series.json"))
+        end
+        @test refused("size") do d                         # another particle count
+            edit_json!(x -> (x["performance"]["particles"] += 1), joinpath(d, "seed-$s2", "observables.json"))
+        end
+        # provenance: the commit from box-status.toml one level up when the box could not read git,
+        # and the request commit's parent as the code commit in either case
+        head = readchomp(`git -C $(PMEns.REPO) rev-parse HEAD`)
+        parent = try readchomp(`git -C $(PMEns.REPO) rev-parse HEAD^`) catch; "unknown" end
+        box = mkpath(joinpath(tmp, "box-x"))
+        cp(r1, joinpath(box, "r1"))
+        write(joinpath(box, "box-status.toml"), "request_commit = \"$head\"\nok = true\n")
+        mu = TOML.parsefile(joinpath(box, "r1", "manifest.toml"))
+        mu["commit"] = "unknown"
+        q = PMEns.request_record(joinpath(box, "r1"), mu)
+        @test q["commit"] == head && q["commit_source"] == "box-status.toml" && q["code_commit"] == parent
+        @test q["box_status"]["request_commit"] == head
+        mu["commit"] = head
+        q = PMEns.request_record(joinpath(box, "r1"), mu)
+        @test q["commit"] == head && q["commit_source"] == "run manifest" && q["code_commit"] == parent
+        q = PMEns.request_record(r1, m1)                    # not from the box: no box status, no code commit
+        @test q["box_status"] == "none" && q["commit"] == m1["commit"] && !haskey(q, "code_commit")
     end
 end
 
@@ -87,6 +162,25 @@ end
         @test all(isfile(joinpath(last(p), "seed-coefficients.json")) for p in all32)
         write(joinpath(tmp, "case.toml"), read(joinpath(tmp, "case.toml"), String) * "\n")
         @test em2d.reference_ensembles("landau-oblique-2d", tmp) == ()
+        # compare itself, on copies of the committed runs: WP-023's four seeds against WP-017's
+        # references, WP-032's 32 against WP-025's, the record as committed; a seeded run of an
+        # unknown case file is refused instead of compared with nothing
+        run32 = joinpath(REPORTS, "wp-032-pm-landau-ensemble", "em2d-pm-landau-oblique-2d-32")
+        for (src, h) in ((wp023, "bc8fd6af"), (run32, "431f4192"))
+            d = joinpath(tmp, basename(src))
+            cp(src, d)
+            rm(joinpath(d, "compare"); recursive = true)
+            side = redirect_stdout(() -> em2d.compare(d), devnull)
+            for code in ("smilei", "picongpu")
+                @test endswith(side["$(code)_ensemble"]["reference_run"], "-$h")
+                @test side["$(code)_ensemble"]["particlemesh"]["measured"] == em2d.JSON.parsefile(joinpath(src, "observables.json"))["measured"]
+            end
+            h == "431f4192" && @test pm_close(em2d.JSON.parsefile(joinpath(d, "compare", "landau-oblique-2d-comparison.json")),
+                                               em2d.JSON.parsefile(joinpath(src, "compare", "landau-oblique-2d-comparison.json")); rtol = 1e-12)
+        end
+        d = joinpath(tmp, basename(run32))
+        write(joinpath(d, "case.toml"), read(joinpath(d, "case.toml"), String) * "\n")
+        @test_throws ErrorException redirect_stdout(() -> em2d.compare(d), devnull)
     end
 end
 
@@ -112,5 +206,35 @@ end
         e = cmp["$(code)_ensemble"]
         @test e[code]["measured"] == ref["measured"] && e["particlemesh"]["measured"] == ob["measured"]
         @test e["difference_in_units_of_combined_stderr"] ≈ (ob["measured"] - ref["measured"]) / hypot(ob["measured_stderr"], ref["measured_stderr"]) rtol = 1e-12
+    end
+    # the checks and the figure regenerate from the committed records
+    smilei = joinpath(REPORTS, "wp-032-pm-landau-ensemble", "smilei-seed-20261031")
+    mktempdir() do tmp
+        ck = redirect_stdout(() -> PMEns.checks(run, smilei, tmp), devnull)
+        @test pm_close(PMEns.JSON.parsefile(joinpath(tmp, "checks.json")), PMEns.JSON.parsefile(joinpath(run, "checks", "checks.json")); rtol = 1e-12)
+        th = ck["throughput"]
+        sm = PMEns.JSON.parsefile(joinpath(smilei, "observables.json"))["performance"]
+        @test th["particlemesh"]["ns_per_particle_step"] == ob["ns_per_particle_step"]
+        @test th["smilei"]["ns_per_particle_step"] ≈ 1e9 * sm["wall_seconds"] / (sm["mobile_particles"] * sm["steps"])
+        @test th["ratio_particlemesh_median_over_smilei"] ≈ PMEns.median(ob["ns_per_particle_step"]) / th["smilei"]["ns_per_particle_step"]
+        @test ob["particles_per_seed"] == sm["mobile_particles"] == 128^2 * 32^2
+        @test all(v -> v["El_re"].bitwise && all(o -> o["equal"], values(v["observables"])), values(ck["wp023_seeds_rerun"]))
+        @test all(o -> o["equal"], values(ck["smilei_seed_rerun"]["observables"]))
+        # the rerun check compares with WP-023's run, not with itself: a changed series shows
+        d = joinpath(tmp, "changed")
+        mkpath(d)
+        for f in ("observables.json", "case.toml")
+            cp(joinpath(run, f), joinpath(d, f))
+        end
+        for s in Int.(TOML.parsefile(joinpath(PMEns.WP023_RUN, "case.toml"))["numerics"]["seeds"])
+            cp(joinpath(run, "seed-$s"), joinpath(d, "seed-$s"))
+        end
+        edit_json!(x -> (x["El_re"][end] *= 2), joinpath(d, "seed-20261031", "series.json"))
+        ck2 = redirect_stdout(() -> PMEns.checks(d, smilei, joinpath(tmp, "c2")), devnull)
+        @test !ck2["wp023_seeds_rerun"]["20261031"]["El_re"].bitwise && ck2["wp023_seeds_rerun"]["20262031"]["El_re"].bitwise
+        fig = PMEns.summary_figure(run, joinpath(tmp, "fig"))
+        @test pm_close(fig, PMEns.JSON.parsefile(joinpath(run, "compare", "three-codes-rates.json")); rtol = 1e-12)
+        @test fig["particlemesh"]["per_seed_at_ensemble_peaks"] == ob["per_seed_at_ensemble_peaks"]["gammas"]
+        @test all(endswith(fig[c]["run"], "-431f4192") for c in ("smilei", "picongpu"))
     end
 end

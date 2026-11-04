@@ -38,7 +38,7 @@
       0.17209281529207737,
       0.13286185740534034
     ],
-    "run": "scripts/runs/em2d-pm-landau-oblique-2d-32"
+    "run": "reports/wp-032-pm-landau-ensemble/em2d-pm-landau-oblique-2d-32"
   },
   "picongpu": {
     "M": 32,

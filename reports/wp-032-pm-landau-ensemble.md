@@ -97,3 +97,16 @@ Eight requests of about 1 h 42 min each (6106 s to 6258 s for four ParticleMesh 
 
 - The rule's window depends on each code's late signal through the floor (§3), and at `floor_factor` ≤ 5 ParticleMesh and PIConGPU separate by 1.5 to 2.4 combined errors; comparing codes at a fixed number of maxima, as the post-hoc table does, would remove the window's dependence, but it is not the pre-registered observable.
 - ParticleMesh's 2D cross-code runs take the loaded momenta at t = 0 and kick them back half a step (A2), while Smilei and PIConGPU take them at −Δt/2 (#226); the 1D runs switched to the reference codes' convention (#282), the 2D runs here did not, so as to reproduce WP-023.
+
+## 8. Independent checks (the PR's breakers)
+
+Two fresh agents, given only the branch, the work package and the changed files.
+
+- **Physics breaker.** It recomputed the report's numbers from the committed coefficients and per-seed files in its own code (Python), and all match: the three ensemble rates, jackknife errors, fit errors, maxima and floors; the differences in combined errors; the per-seed statistics; the equal-window table; the bootstrap; the throughput. Its robustness checks are in §3:
+  - the floor is late signal, not noise;
+  - the floor_factor and fit_start sensitivity;
+  - the code ordering under other estimators, including a least-squares damped-cosine fit;
+  - Smilei's switching between 5 and 6 maxima in its jackknife.
+
+  Its seed subsets all stay within 1.3 combined errors: without WP-023's four seeds, even and odd seeds, first and last 16, and each request left out. Its reduced-size reruns (64² cells, 8 × 8 per cell, seed 20261031) matched bit for bit across 2 and 4 threads and between the run commit `1ad212f` and the branch head. Fast() deposition against Reference(): the mode coefficient agrees to 8.6 × 10⁻¹⁶ of its maximum, with no growth. It found the request-manifest gap fixed in §1 (a seed directory moved between requests).
+- **Mutation breaker.** It planted 32 defects in the changed code; 15 were caught at first. The 17 uncaught were in code no test ran (`compare`, `checks`, the figure), in fields no test compared (the throughput fields, the per-run energy fits, the commit record) and in refusals no test exercised. The tests were extended to cover each (T-460 to T-462), and the merge now validates everything before it writes.
