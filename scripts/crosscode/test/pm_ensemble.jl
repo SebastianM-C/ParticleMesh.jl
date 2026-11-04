@@ -82,3 +82,28 @@ end
         @test em2d.reference_ensembles("landau-oblique-2d", tmp) == ()
     end
 end
+
+@testset "T-462 the committed 32-seed ParticleMesh record is what the merge computes from the committed seed files [A4, A5, A7, WP-032]" begin
+    run = joinpath(REPORTS, "wp-032-pm-landau-ensemble", "em2d-pm-landau-oblique-2d-32")
+    case = TOML.parsefile(joinpath(run, "case.toml"))
+    seeds = PMEns.case_seeds(case)
+    @test length(seeds) == 32 && PMEns.RunManifest.file_hash(joinpath(run, "case.toml")) == PMEns.RunManifest.file_hash(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
+    # every seed's series gives the committed coefficients, and the ensemble the committed record
+    series = [PMEns.seed_series(joinpath(run, "seed-$s"), case) for s in seeds]
+    t, s_, c = PMEns.seed_coefficients(run)
+    @test s_ == seeds && all(x -> x[1] == t, series) && all(i -> c[i] == series[i][2], eachindex(seeds))
+    r = PMEns.EnsembleReport.ensemble_result(case, t, c, seeds; per_run = last.(series))[1]
+    ob = PMEns.JSON.parsefile(joinpath(run, "observables.json"))
+    for k in ("measured", "measured_stderr", "measured_frequency", "maxima_used", "ensemble_floor")
+        @test r[k] ≈ ob[k] rtol = 1e-12
+    end
+    @test ob["M"] == 32 && ob["maxima_used"] == 6
+    # the comparison record holds the committed reference ensembles of the same case file
+    cmp = PMEns.JSON.parsefile(joinpath(run, "compare", "landau-oblique-2d-comparison.json"))
+    for (code, dir) in PMEns.reference_ensembles("landau-oblique-2d", run)
+        ref = PMEns.JSON.parsefile(joinpath(dir, "observables.json"))
+        e = cmp["$(code)_ensemble"]
+        @test e[code]["measured"] == ref["measured"] && e["particlemesh"]["measured"] == ob["measured"]
+        @test e["difference_in_units_of_combined_stderr"] ≈ (ob["measured"] - ref["measured"]) / hypot(ob["measured_stderr"], ref["measured_stderr"]) rtol = 1e-12
+    end
+end
