@@ -1,0 +1,29 @@
+branch = "runs/wp032-pm-r3"
+request_commit = "f29fea3b00efbab2e3057074e417d8b90d747171"
+started = "2026-11-03T23:47:41Z"
+category = "validation"
+outputs = ["scripts/runs/wp032-pm-landau-r3"]
+finished = "2026-11-04T01:30:16Z"
+ok = true
+files_returned = 42
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-03T23:47:41Z"
+exit = "unrecorded"
+seconds = 6155
+
+[batch]
+name = "wp032-pm-landau"
+total = 8
+branch = "claude/epic-cerf-3g9o79"
+
+[reconstructed]
+reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."

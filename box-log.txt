@@ -1,0 +1,10 @@
+# The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320.
+# The step's own log was not kept.
+
+## The poller's log for this request
+2026-11-03T23:44:47Z running runs/wp032-pm-r3 at f29fea3b00
+2026-11-03T23:44:49Z recover: runs/wp032-pm-r3 at f29fea3b00 was interrupted; it runs again
+2026-11-03T23:44:50Z running runs/wp032-pm-r3 at f29fea3b00
+2026-11-03T23:47:40Z recover: runs/wp032-pm-r3 at f29fea3b00 was interrupted; it runs again
+2026-11-03T23:47:41Z running runs/wp032-pm-r3 at f29fea3b00
+2026-11-04T01:30:16Z runs/wp032-pm-r3: cannot access local variable 'e' where it is not associated with a value
