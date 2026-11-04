@@ -95,14 +95,17 @@ the push stores), the workspaces, the fields of [`field_layout`](@ref)`(Val(2))`
 kinetic-energy chunks `K` (one entry per [`KINETIC_CHUNK`](@ref) slots of each species), the
 histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
 diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
-axis (written once), the diagnostics' per-row partial sums and the [`Antenna`](@ref)s of the
-problem's lasers, placed on the grid.
+axis (written once), the diagnostics' per-row partial sums, the [`Antenna`](@ref)s of the
+problem's lasers, placed on the grid, the absorbing layer's [`LayerFactors`](@ref) (`layer`,
+`nothing` for a periodic box) and the time step `dt` that the antennas and the layer were made for.
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
 used by `Fast()` on an element type without atomics). Throws an `ArgumentError` unless the
 current is `Esirkepov()` or [`NoCurrent`](@ref)`()` and unless `problem.dt` is below the
-Courant limit of the numerics' solver ([`check_courant`](@ref)).
+Courant limit of the numerics' solver ([`check_courant`](@ref)), and unless the numerics'
+`absorber` is an [`AbsorbingLayer`](@ref) exactly when the problem's axis 2 is `:open` (the layer
+also checks its fit on the grid).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -111,6 +114,12 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     wgs = numerics.workgroupsize
     grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)
+    open_y = problem.boundaries[2] === :open
+    open_y && !(numerics.absorber isa AbsorbingLayer) &&
+        throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...), got $(numerics.absorber)"))
+    !open_y && numerics.absorber !== nothing &&
+        throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
+    layer = open_y ? LayerFactors(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
     species = map(problem.species) do d
         Species(backend, T, prod(n) * prod(d.ppc); q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
     end
@@ -128,7 +137,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            kmode = problem.kmode, khat = (k[1] / knorm, k[2] / knorm), tables = tables,
            partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]),
-           antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers))
+           antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers), layer = layer, dt = problem.dt)
     return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), hist, aux)
 end
@@ -151,7 +160,8 @@ end
 
 The 2D state at t = 0, as in 1D: each species loaded by the engine's 2D quiet start (weights
 `density·(1 + amplitude·cos(k·x))/prod(ppc)` with `k_d = 2π·mode_d/L_d`, so the parameters enter
-through the weights, A3), the velocities converted to momenta; the fields zero; Ex and Ey from
+through the weights, A3), the velocities converted to momenta (refused if a drawn speed reaches c,
+`check_subluminal`); the fields zero; Ex and Ey from
 the deposited charge by the engine's periodic solve, `φ` from `inverse_laplacian_periodic!` of ρ
 and `E = G` from `gradient_periodic!`, so that the backward-difference divergence of E is
 ρ − mean(ρ) to roundoff (the mean is the immobile background); the background fields `E0`, `B0`
@@ -170,6 +180,7 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
         k = ntuple(a -> 2 * T(π) * d.mode[a] / problem.length[a], Val(2))
         load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k[1], k[2]), d.ppc; vdrift = d.drift,
                     vth = d.thermal, seed = problem.seed, stream = d.stream, workgroupsize = wgs)
+        check_subluminal(s, d)
         launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     foreach(a -> fill!(a, zero(T)), st.fields)
@@ -234,10 +245,14 @@ the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the gu
 numerics' [`BinomialFilter`](@ref); for `NoCurrent()` J stays zero); the kinetic energy at
 n + 1/2; the mesh solve (Yee: B half step, E full step with J, B half step), with the antennas'
 total-field/scattered-field corrections between the sub-steps (time `(k − 1)·Δt` at the start of
-the step). With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff after
-every step (T-360), off the antenna columns with lasers (T-406); with passes its filtered form
-does (T-441). `k` must lie within the allocated steps and
-`params.kmode` must be the state's diagnostic mode (an `ArgumentError` otherwise).
+the step). With an open axis 2 the particles that crossed the box edge are retired after the
+current of their last move is deposited, and the absorbing layer damps the fields around each
+sub-step (WP-027). With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
+after every step (T-360), off the antenna columns with lasers (T-406), and off the layer rows
+with an open boundary (T-451); with passes its filtered form does (T-441). `k` must lie within
+the allocated steps, `params.kmode` must be the state's diagnostic mode and `params.dt` the
+problem's time step, for which the antennas and the layer were made (an `ArgumentError`
+otherwise).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer)
     (; numerics, grid, fields) = st
@@ -247,13 +262,15 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
     n = Int32.(ncells(grid))
     g = Int32(guards(grid))
     dx = cellsize(grid)
+    p.dt == st.aux.dt || throw(ArgumentError("params.dt = $(p.dt) is not the time step $(st.aux.dt) the state's antennas and layer were made for"))
     record_diagnostics!(st, k)
     for s in st.species
         launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
                                                        (p.dt / dx[1], p.dt / dx[2]), n; ndrange = capacity(s))
     end
     current!(numerics.current, st, p)
+    retire!(st.aux.layer, st)
     kinetic!(st)
-    solve_fields!(numerics.solver, fields, grid, p.dt, st.aux.antennas, (k - 1) * p.dt; workgroupsize = wgs)
+    solve_fields!(numerics.solver, fields, grid, p.dt, st.aux.antennas, (k - 1) * p.dt, st.aux.layer; workgroupsize = wgs)
     return st
 end

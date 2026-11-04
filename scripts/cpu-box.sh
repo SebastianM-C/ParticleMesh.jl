@@ -100,9 +100,9 @@ st, tag = json.load(sys.stdin), sys.argv[1]
 c, q, k = st.get("current") or {}, st.get("queue") or [], st.get("keeper") or {}
 print(f"box: {st.get('"'"'state'"'"')} (status of {st.get('"'"'updated'"'"', '"'"'?'"'"')}; keeper {k.get('"'"'mode'"'"', '"'"'?'"'"')}, box {k.get('"'"'box'"'"')})")
 if c.get("tag") == tag:
-    print(f"running: step {c.get('"'"'step'"'"')}/{c.get('"'"'steps'"'"')} ({c.get('"'"'step_kind'"'"')}), {c.get('"'"'elapsed_s'"'"', 0) // 60} min in, "
+    print(f"running: step {c.get('"'"'step'"'"')}/{c.get('"'"'steps'"'"')} ({c.get('"'"'step_kind'"'"')}), {(c.get('"'"'elapsed_s'"'"') or 0) // 60} min in, "
           f"{c.get('"'"'seed_dirs_with_observables'"'"', 0)} seed dirs with observables, {c.get('"'"'output_files'"'"', 0)} output files")
-    for l in st.get("log_tail", [])[-5:]:
+    for l in (st.get("log_tail") or [])[-5:]:
         print("  | " + l)
 elif tag in q:
     print(f"queued: position {q.index(tag) + 1} of {len(q)}" + (f", after {c.get('"'"'tag'"'"')} (running)" if c else ""))

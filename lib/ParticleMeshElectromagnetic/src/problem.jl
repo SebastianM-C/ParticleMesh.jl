@@ -55,19 +55,22 @@ A2), the `seed` of the velocity draws, the diagnostic `kmode`, the uniform backg
 fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
 not differentiable parameters, A3: the addition tests them for zero on the host), and the
 `lasers`, a tuple of [`GaussianLaser`](@ref) descriptions launched by antenna planes during
-the steps (N = 2 only, empty by default; their parameters may be differentiable, A3). At N = 1
+the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
+`boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
+at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
+[`AbsorbingLayer`](@ref) and particles that cross the box edge are retired. At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
 
-    EMProblem(name, length, cells, dt, nsteps, species, seed, kmode; E0 = zeros, B0 = zeros, lasers = ())
+    EMProblem(name, length, cells, dt, nsteps, species, seed, kmode; E0 = zeros, B0 = zeros, lasers = (), boundaries = periodic)
 
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2), that the cells and the particles per cell are positive, at N = 2 that
-`kmode` is not the zero mode, and that lasers are given only at N = 2 (an `ArgumentError`
-otherwise).
+`kmode` is not the zero mode, that lasers are given only at N = 2, and that the boundaries are
+`:periodic` or `:open`, one per axis, with axis 1 periodic (an `ArgumentError` otherwise).
 """
-struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple}
+struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD}
     name::String
     length::L
     cells::C
@@ -79,10 +82,12 @@ struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple}
     E0::NTuple{3,T}
     B0::NTuple{3,T}
     lasers::LZ
+    boundaries::BD
 end
 
 function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, seed::Integer, kmode;
-                   E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = ()) where {T}
+                   E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = (),
+                   boundaries = nothing) where {T}
     N = cells isa Integer ? 1 : length(cells)
     N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
     M = N == 1 ? Int : NTuple{2,Int}
@@ -102,12 +107,20 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     end
     isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
     all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
+    boundaries isa Union{Symbol,AbstractString} &&
+        throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic and :open per axis, a tuple of $N"))
+    bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
+    length(bd) == N && all(in((:periodic, :open)), bd) ||
+        throw(ArgumentError("boundaries = $boundaries: one of :periodic and :open per axis, $N of them"))
+    first(bd) === :periodic ||
+        throw(ArgumentError("boundaries = $bd: axis 1 is periodic (the open transverse boundary is axis 2; the moving window is WP-028)"))
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode
-    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers)}(String(name), L, c, dt, Int(nsteps),
-                                                                                         species, Int(seed), k, T.(Tuple(E0)),
-                                                                                         T.(Tuple(B0)), lasers)
+    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd)}(String(name), L, c, dt,
+                                                                                                    Int(nsteps), species,
+                                                                                                    Int(seed), k, T.(Tuple(E0)),
+                                                                                                    T.(Tuple(B0)), lasers, bd)
 end
 
 Base.eltype(::EMProblem{N,T}) where {N,T} = T
@@ -135,17 +148,23 @@ struct NoCurrent end
 
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
-               current = Esirkepov(), filter = BinomialFilter(0))
+               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
 solver, the current and its filter. `workgroupsize` is passed to every engine launch (it selects
-the launch shape only). `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
+the launch shape only). A fixed size has to fit every kernel of the step: the largest work-group
+a kernel accepts depends on the backend, the kernel and the element type (on the CPU (PoCL)
+backend the 2D flux deposition with `Dual{Float32,3}` and the quadratic shape takes at most 983
+work-items, as PoCL reported it, #297), and a launch it does not fit stops the step with an
+`ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
 N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
-before the mesh solve, with no passes by default.
+before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
+problem: an [`AbsorbingLayer`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
+then, refused otherwise), `nothing` for a periodic box.
 """
-struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
+struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     shape::S
     mode::M
     pusher::P
@@ -153,11 +172,12 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C}
     workgroupsize::W
     current::C
     filter::BinomialFilter
+    absorber::A
 end
 
 EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov(),
-           filter::BinomialFilter = BinomialFilter(0)) =
-    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter)
+           filter::BinomialFilter = BinomialFilter(0), absorber = nothing) =
+    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber)
 
 """
     EMParams(dt, kmode)
@@ -209,7 +229,9 @@ Schema 1: the velocity is the `drift` along x plus the `transverse_drift`, with 
 cases have no transverse momenta); the diagnostic wavenumber is that of the first perturbed
 species' mode. Schema 2: two box lengths, cells, particles per cell and mode integers per axis,
 the drift `[v_x, v_y, v_z]`, an isotropic thermal spread `thermal_velocity` in all three
-components (Smilei's scalar temperature), and the diagnostic mode the case's `wavevector.mode`.
+components (Smilei's scalar temperature), the diagnostic mode the case's `wavevector.mode`, and
+`grid.boundaries`, `"periodic"` or `"open"` per axis (axis 2 may be open, WP-027; a schema-1
+case is periodic).
 
 The default seed is [`case_seed`](@ref)`(case)`: the first of a `seeds` list or the
 `random_seed`. The keywords override the case for tests and scans: `ppc` for every mobile species
@@ -226,8 +248,9 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
     schema in (1, 2) || throw(ArgumentError("case schema $schema: 1 and 2 are implemented"))
     grid = case["grid"]
     bounds = getnum(grid, "boundaries", "periodic")
-    all(==("periodic"), bounds isa AbstractVector ? bounds : [bounds]) ||
-        throw(ArgumentError("only periodic boundaries are implemented"))
+    bounds = bounds isa AbstractVector ? bounds : [bounds]
+    all(in(("periodic", "open")), bounds) || throw(ArgumentError("boundaries $bounds: \"periodic\" or \"open\" per axis"))
+    schema == 2 || all(==("periodic"), bounds) || throw(ArgumentError("a schema-1 (1D) case is periodic, got $bounds"))
     dt_run = dt === nothing ? case["time"]["dt"] : dt
     dtT = T(dt_run)
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
@@ -290,7 +313,9 @@ function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude
     end
     isempty(species) && throw(ArgumentError("the case has no mobile species"))
     kmode = pair(case["wavevector"]["mode"])
-    return EMProblem(String(case["name"]), L, n, dt, nsteps, Tuple(species), seed, kmode)
+    bounds = getnum(grid, "boundaries", ["periodic", "periodic"])
+    boundaries = bounds isa AbstractVector ? Tuple(Symbol.(bounds)) : (Symbol(bounds), Symbol(bounds))
+    return EMProblem(String(case["name"]), L, n, dt, nsteps, Tuple(species), seed, kmode; boundaries)
 end
 
 """
@@ -299,8 +324,10 @@ end
 The numerics a case file asks for (either schema): its `shape_order` (1 or 2); the deposition
 must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filter_passes`
 (default 0), a non-negative integer, is the pass count of the [`BinomialFilter`](@ref) (A2), and
-anything else is an `ArgumentError`. The mode, the pusher and the launch shape are not in the
-case.
+anything else is an `ArgumentError`. With an open boundary in `grid.boundaries`, the table
+`[numerics.absorbing_layer]` gives the layer's `cells`, `strength` and optional `order`
+([`AbsorbingLayer`](@ref), WP-027), which a periodic case must not have. The mode, the pusher
+and the launch shape are not in the case.
 """
 function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
     num = case["numerics"]
@@ -310,5 +337,17 @@ function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Bor
     passes isa Integer && !(passes isa Bool) && passes >= 0 ||
         throw(ArgumentError("filter_passes must be a non-negative integer, got $(repr(passes))"))
     shape = Int(getnum(num, "shape_order", 2)) == 1 ? Linear : Quadratic
-    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes))
+    bounds = getnum(case["grid"], "boundaries", "periodic")
+    open_axis = any(==("open"), bounds isa AbstractVector ? bounds : [bounds])
+    absorber = nothing
+    if open_axis
+        haskey(num, "absorbing_layer") ||
+            throw(ArgumentError("an open boundary needs [numerics.absorbing_layer] with cells and strength"))
+        al = num["absorbing_layer"]
+        absorber = AbsorbingLayer(; cells = Int(al["cells"]), strength = Float64(al["strength"]), order = Int(getnum(al, "order", 2)))
+    else
+        haskey(num, "absorbing_layer") && throw(ArgumentError("[numerics.absorbing_layer] needs an open boundary"))
+    end
+    return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes),
+                      absorber)
 end
