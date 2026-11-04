@@ -1,0 +1,8 @@
+# A relay check for #320: one trivial step, no outputs
+timeout = 600
+category = "smoke"
+outputs = []
+
+[[steps]]
+kind = "julia"
+args = ["-e", "println(\"relay check for #320\")"]
