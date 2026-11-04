@@ -1,0 +1,8 @@
+# A smoke request after the poller's redeploy: a julia step on the scripts environment that writes one output file
+timeout = 600
+category = "smoke"
+outputs = ["scripts/runs/box-smoke-poller"]
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "write(\"scripts/runs/box-smoke-poller/out.txt\", \"threads = $(Threads.nthreads())\\n\"); println(\"smoke after the poller redeploy done\")"]
