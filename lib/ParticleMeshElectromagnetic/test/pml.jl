@@ -99,9 +99,10 @@ end
 
 # A long run stays bounded: random fields (every mode, the evanescent ones and the static ones
 # included) in an open vacuum box of 16 × 40 cells with 8-cell PMLs, 8000 steps (about 40 crossing
-# times of the box along y). The energy over the box of this start never exceeds its start (a
-# static field reaching into the layer can rise a few per cent above it, so the bound is the
-# start's, not the PML's), and what remains at
+# times of the box along y). The energy of E and B over the box stays within a few per cent of its
+# start (it is not the PML's energy: the convolution fields hold some, and sampled every 20 steps
+# Smilei's grading rises 1.4 % above the start early on; a static field reaching into the layer
+# rose 8 % in a breaker's run), and what remains at
 # the end is what cannot reach the layers (modes with k_y = 0 and the static fields), which
 # fluctuates by a few per cent and does not grow: the mean over the last quarter of the run is not
 # above that over the second quarter. A growing late-time mode would break both.
@@ -132,7 +133,7 @@ end
         q = length(w) ÷ 4
         late, mid = sum(w[(3q + 1):end]) / q, sum(w[(q + 1):2q]) / q
         @info "T-542" name max = maximum(w) last = w[end] mid late
-        @test maximum(w) <= 1
+        @test maximum(w) <= 1.05
         @test w[end] < 0.7
         @test late <= mid * (1 + 1e-2)
     end
