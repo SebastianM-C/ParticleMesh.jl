@@ -1,0 +1,37 @@
+## step 0 (julia): exit 0 after 94s
+pm pm-vacuum: step 829 of 10777, 5.2 s
+pm pm-vacuum: step 1658 of 10777, 8.6 s
+pm pm-vacuum: step 2487 of 10777, 12.9 s
+pm pm-vacuum: step 3316 of 10777, 18.3 s
+pm pm-vacuum: step 4145 of 10777, 23.8 s
+pm pm-vacuum: step 4974 of 10777, 29.3 s
+pm pm-vacuum: step 5803 of 10777, 34.7 s
+pm pm-vacuum: step 6632 of 10777, 40.1 s
+pm pm-vacuum: step 7461 of 10777, 45.5 s
+pm pm-vacuum: step 8290 of 10777, 50.9 s
+pm pm-vacuum: step 9119 of 10777, 56.3 s
+pm pm-vacuum: step 9948 of 10777, 61.8 s
+pm pm-vacuum: step 10777 of 10777, 67.2 s
+
+## step 1 (julia): exit 0 after 2673s
+pm pm-plasma: step 829 of 10777, 166.5 s
+pm pm-plasma: step 1658 of 10777, 333.8 s
+pm pm-plasma: step 2487 of 10777, 522.1 s
+pm pm-plasma: step 3316 of 10777, 737.7 s
+pm pm-plasma: step 4145 of 10777, 953.5 s
+pm pm-plasma: step 4974 of 10777, 1166.5 s
+pm pm-plasma: step 5803 of 10777, 1380.0 s
+pm pm-plasma: step 6632 of 10777, 1593.9 s
+pm pm-plasma: step 7461 of 10777, 1805.9 s
+pm pm-plasma: step 8290 of 10777, 2017.1 s
+pm pm-plasma: step 9119 of 10777, 2230.0 s
+pm pm-plasma: step 9948 of 10777, 2443.5 s
+pm pm-plasma: step 10777 of 10777, 2656.1 s
+
+## step 2 (smilei): exit 0 after 48s
+
+## step 3 (julia): exit 0 after 7s
+
+## step 4 (smilei): exit 0 after 401s
+
+## step 5 (julia): exit 0 after 8s
