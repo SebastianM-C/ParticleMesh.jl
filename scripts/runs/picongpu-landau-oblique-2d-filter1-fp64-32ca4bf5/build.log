@@ -1,0 +1,247 @@
+Cloning from /opt/picongpu/share/picongpu/examples/Empty to setup
+[32mbuild directory:[0m .build
+[32mcmake command:[0m cmake   -DCMAKE_INSTALL_PREFIX=/run-dir/setup -DPIC_EXTENSION_PATH=/run-dir/setup   -Dalpaka_ACC_GPU_CUDA_ENABLE=ON -Dalpaka_ACC_GPU_CUDA_ONLY_MODE=ON -Dalpaka_CUDA_EXPT_EXTENDED_LAMBDA=ON -DCMAKE_CUDA_ARCHITECTURES=89 /opt/picongpu/include/picongpu
+-- The CXX compiler identification is GNU 13.3.0
+-- The C compiler identification is GNU 13.3.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Looking for a CUDA compiler
+-- Looking for a CUDA compiler - /usr/local/cuda-12.5/bin/nvcc
+-- The CUDA compiler identification is NVIDIA 12.5.82
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- Check for working CUDA compiler: /usr/local/cuda-12.5/bin/nvcc - skipped
+-- Detecting CUDA compile features
+-- Detecting CUDA compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found suitable version "1.83.0", minimum required is "1.74.0") found components: atomic 
+-- C++20 math constants not found. Falling back to non-standard constants.
+-- Found CUDAToolkit: /usr/local/cuda-12.5/targets/x86_64-linux/include (found version "12.5.82") 
+-- nvcc is used as CUDA compiler
+-- alpaka_ACC_GPU_CUDA_ONLY_MODE
+-- alpaka_ACC_GPU_CUDA_ENABLED
+
+List of compiler flags added by alpaka
+host compiler:
+    $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>,$<COMPILE_LANGUAGE:CXX>>:SHELL:-Og>;$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>,$<COMPILE_LANGUAGE:CUDA>>:SHELL:-Xcompiler -Og>;$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang,AppleClang,IntelLLVM>>:SHELL:-O0>;$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>:SHELL:/Od>
+device compiler:
+    $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>,$<COMPILE_LANGUAGE:CXX>>:SHELL:-Og>;$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>,$<COMPILE_LANGUAGE:CUDA>>:SHELL:-Xcompiler -Og>;$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang,AppleClang,IntelLLVM>>:SHELL:-O0>;$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:MSVC>>:SHELL:/Od>;$<$<COMPILE_LANGUAGE:CUDA>:SHELL:--extended-lambda>;$<$<COMPILE_LANGUAGE:CUDA>:SHELL:--expt-relaxed-constexpr>;$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CUDA>>:SHELL:-G>;$<$<AND:$<CONFIG:RelWithDebInfo>,$<COMPILE_LANGUAGE:CUDA>>:SHELL:-g -lineinfo>;$<$<COMPILE_LANGUAGE:CUDA>:SHELL:$<IF:$<VERSION_LESS:$<CUDA_COMPILER_VERSION>,11.2.0>,-Xcudafe=--display_error_number,--display-error-number>>
+
+-- Looking for std::filesystem::path::preferred_separator
+-- Looking for std::filesystem::path::preferred_separator - found
+-- Found MPI_C: /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so (found version "3.1") 
+-- Found MPI_CXX: /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so (found version "3.1") 
+-- Found MPI: TRUE (found version "3.1")  
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found suitable version "1.83.0", minimum required is "1.74") found components: program_options 
+-- Boost: deactivate std::auto_ptr
+-- Found OpenMP_C: -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found suitable version "1.83.0", minimum required is "1.65.1")  
+-- Using mallocMC from thirdParty/ directory
+CMake Warning (dev) at /opt/picongpu/include/pmacc/PMaccConfig.cmake:387 (find_package):
+  Policy CMP0144 is not set: find_package uses upper-case <PACKAGENAME>_ROOT
+  variables.  Run "cmake --help-policy CMP0144" for policy details.  Use the
+  cmake_policy command to set the policy and suppress this warning.
+
+  CMake variable MALLOCMC_ROOT is set to:
+
+    /opt/picongpu/include/pmacc/../../thirdParty/mallocMC
+
+  For compatibility, find_package is ignoring the variable, but code in a
+  .cmake module might still use it.
+Call Stack (most recent call first):
+  CMakeLists.txt:151 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Found mallocMC: /opt/picongpu/thirdParty/mallocMC/src (found suitable version "2.6.0", minimum required is "2.6.0")  
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found suitable version "1.83.0", minimum required is "1.74.0") found components: program_options 
+-- Could NOT find NVML (missing: NVML_LIBRARY NVML_INCLUDE_DIR) 
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake (found suitable version "1.83.0", minimum required is "1.66.0") found components: program_options 
+-- Found HDF5: /usr/lib/x86_64-linux-gnu/hdf5/openmpi/libhdf5.so;/usr/lib/x86_64-linux-gnu/libcrypto.so;/usr/lib/x86_64-linux-gnu/libcurl.so;/usr/lib/x86_64-linux-gnu/libsz.so;/usr/lib/x86_64-linux-gnu/libz.so;/usr/lib/x86_64-linux-gnu/libdl.a;/usr/lib/x86_64-linux-gnu/libm.so (found version "1.10.10")  
+-- Found openPMD: /opt/openPMD-api/lib/cmake/openPMD
+CMake Deprecation Warning at /opt/picongpu/thirdParty/toml11/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Deprecation Warning at /opt/picongpu/thirdParty/nlohmann_json/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Using the single-header code from /opt/picongpu/thirdParty/nlohmann_json/single_include/
+-- Implicit conversions are disabled
+-- Could NOT find PNGwriter (missing: PNGwriter_DIR)
+-- Could NOT find PNGwriter - set PNGwriter_DIR or check your CMAKE_PREFIX_PATH
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Could NOT find PkgConfig for fftw3- set Pkgconfig_DIR or check your CMAKE_PREFIX_PATH
+
+Optional Dependencies:
+  openPMD: ON
+  PNGwriter: OFF
+  ISAAC: OFF
+  FFTW3: OFF
+
+-- Configuring done (4.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /run-dir/setup/.build
+[32mcall build:[0m cmake --build . --target install --parallel 16
+[  7%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/common/stringHelpers.cpp.o
+[  7%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/Manager.cpp.o
+[  7%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/common/MPIHelpers.cpp.o
+[  7%] Building CUDA object build_cuda_memtest/CMakeFiles/cuda_memtest.dir/misc.cpp.o
+[  9%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/misc/ComponentNames.cpp.o
+[  9%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/events/ComputeEvent.cpp.o
+[  7%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/dataManagement/DataConnector.cpp.o
+[ 10%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/events/ComputeEventHandle.cpp.o
+[ 11%] Building CXX object build_mpiInfo/CMakeFiles/mpiInfo.dir/mpiInfo.cpp.o
+[ 14%] Building CXX object CMakeFiles/picongpu-hostonly.dir/initialization/ParserGridDistribution.cpp.o
+[ 14%] Building CXX object CMakeFiles/picongpu-hostonly.dir/ArgsParser.cpp.o
+[ 15%] Building CUDA object build_cuda_memtest/CMakeFiles/cuda_memtest.dir/tests.cpp.o
+[ 17%] Building CUDA object build_cuda_memtest/CMakeFiles/cuda_memtest.dir/cuda_memtest.cpp.o
+[ 19%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/communication/CommunicatorMPI.cpp.o
+[ 19%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/eventSystem.cpp.o
+[ 21%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/misc/removeSpaces.cpp.o
+[ 22%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/misc/splitString.cpp.o
+[ 23%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/openPMD/Json.cpp.o
+[ 25%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/openPMD/openPMDWriter.cpp.o
+[ 26%] Building CXX object CMakeFiles/picongpu-hostonly.dir/plugins/openPMD/toml.cpp.o
+[ 27%] Building CXX object CMakeFiles/picongpu-hostonly.dir/random/seed/Seed.cpp.o
+[ 28%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/events/EventNotify.cpp.o
+[ 30%] Linking CUDA executable cuda_memtest
+[ 31%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/events/EventTask.cpp.o
+[ 31%] Built target cuda_memtest
+[ 32%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/queues/Queue.cpp.o
+[ 34%] Linking CXX executable mpiInfo
+[ 35%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/tasks/DeviceTask.cpp.o
+[ 35%] Built target mpiInfo
+[ 36%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/tasks/TaskKernel.cpp.o
+[ 38%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/transactions/Transaction.cpp.o
+[ 39%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/transactions/TransactionManager.cpp.o
+[ 40%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/eventSystem/waitForAllTasks.cpp.o
+[ 42%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/mappings/simulation/Filesystem.cpp.o
+[ 43%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/misc/splitString.cpp.o
+[ 44%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/pluginSystem/PluginConnector.cpp.o
+[ 46%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/simulationControl/SimulationHelper.cpp.o
+[ 47%] Building CUDA object CMakeFiles/pmacc.dir/opt/picongpu/include/pmacc/simulationControl/signal.cpp.o
+[ 48%] Linking CXX static library libpicongpu-hostonly.a
+[ 48%] Built target picongpu-hostonly
+[ 50%] Linking CXX static library libpmacc.a
+[ 50%] Built target pmacc
+[ 51%] Building CUDA object CMakeFiles/picongpu.dir/fields/FieldJ.x.cpp.o
+[ 52%] Building CUDA object CMakeFiles/picongpu.dir/fields/FieldB.x.cpp.o
+[ 53%] Building CUDA object CMakeFiles/picongpu.dir/fields/absorber/AbsorberImpl.x.cpp.o
+[ 55%] Building CUDA object CMakeFiles/picongpu.dir/main.x.cpp.o
+[ 56%] Building CUDA object CMakeFiles/picongpu.dir/plugins/BinEnergyParticles.x.cpp.o
+[ 57%] Building CUDA object CMakeFiles/picongpu.dir/fields/FieldTmp.x.cpp.o
+[ 60%] Building CUDA object CMakeFiles/picongpu.dir/plugins/ChargeConservation.x.cpp.o
+[ 60%] Building CUDA object CMakeFiles/picongpu.dir/fields/EMFieldBase.x.cpp.o
+[ 61%] Building CUDA object CMakeFiles/picongpu.dir/fields/FieldE.x.cpp.o
+[ 63%] Building CUDA object CMakeFiles/picongpu.dir/fields/absorber/Absorber.x.cpp.o
+[ 64%] Building CUDA object CMakeFiles/picongpu.dir/plugins/CountParticles.x.cpp.o
+[ 65%] Building CUDA object CMakeFiles/picongpu.dir/particles/debyeLength/Check.x.cpp.o
+[ 67%] Building CUDA object CMakeFiles/picongpu.dir/plugins/Checkpoint.x.cpp.o
+[ 68%] Building CUDA object CMakeFiles/picongpu.dir/plugins/Emittance.x.cpp.o
+[ 69%] Building CUDA object CMakeFiles/picongpu.dir/plugins/EnergyFields.x.cpp.o
+[ 71%] Building CUDA object CMakeFiles/picongpu.dir/plugins/EnergyParticles.x.cpp.o
+[ 72%] Building CUDA object CMakeFiles/picongpu.dir/plugins/IsaacPlugin.x.cpp.o
+[ 73%] Building CUDA object CMakeFiles/picongpu.dir/plugins/PhaseSpace/PhaseSpace.x.cpp.o
+[ 75%] Building CUDA object CMakeFiles/picongpu.dir/plugins/PngPlugin.x.cpp.o
+[ 76%] Building CUDA object CMakeFiles/picongpu.dir/plugins/SumCurrents.x.cpp.o
+[ 77%] Building CUDA object CMakeFiles/picongpu.dir/plugins/binning/BinningDispatcher.x.cpp.o
+[ 78%] Building CUDA object CMakeFiles/picongpu.dir/plugins/makroParticleCounter/PerSuperCell.x.cpp.o
+[ 80%] Building CUDA object CMakeFiles/picongpu.dir/plugins/openPMD/openPMDWriter.x.cpp.o
+[ 81%] Building CUDA object CMakeFiles/picongpu.dir/plugins/particleCalorimeter/ParticleCalorimeter.x.cpp.o
+[ 82%] Building CUDA object CMakeFiles/picongpu.dir/plugins/radiation/Radiation.x.cpp.o
+[ 84%] Building CUDA object CMakeFiles/picongpu.dir/plugins/shadowgraphy/Shadowgraphy.x.cpp.o
+[ 85%] Building CUDA object CMakeFiles/picongpu.dir/plugins/transitionRadiation/TransitionRadiation.x.cpp.o
+[ 86%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/AtomicPhysics.x.cpp.o
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 88%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/Collision.x.cpp.o
+[ 89%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/CurrentDeposition.x.cpp.o
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 90%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/IterationStart.x.cpp.o
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 92%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticleBoundaries.x.cpp.o
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 93%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticleInit.x.cpp.o
+[ 94%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticleIonization.x.cpp.o
+[ 96%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticlePush.x.cpp.o
+[ 97%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/SynchrotronRadiation.x.cpp.o
+[ 98%] Building CUDA object CMakeFiles/picongpu.dir/versionFormat.x.cpp.o
+[100%] Linking CXX executable picongpu
+[100%] Built target picongpu
+Install the project...
+-- Install configuration: "Release"
+-- Installing: /run-dir/setup/bin/cuda_memtest
+-- Set non-toolchain portion of runtime path of "/run-dir/setup/bin/cuda_memtest" to "$ORIGIN"
+-- Installing: /run-dir/setup/bin/mpiInfo
+-- Set non-toolchain portion of runtime path of "/run-dir/setup/bin/mpiInfo" to "$ORIGIN:/usr/lib/x86_64-linux-gnu/openmpi/lib"
+-- Installing: /run-dir/setup/bin/picongpu
+-- Set non-toolchain portion of runtime path of "/run-dir/setup/bin/picongpu" to "$ORIGIN:/opt/openPMD-api/lib:/usr/lib/x86_64-linux-gnu/openmpi/lib:/usr/local/cuda-12.5/targets/x86_64-linux/lib"
+-- Up-to-date: /run-dir/setup/bin
+-- Installing: /run-dir/setup/bin/cuda_memtest.sh
+-- Installing: /run-dir/setup/bin/egetopt
+-- Installing: /run-dir/setup/bin/pic-build
+-- Installing: /run-dir/setup/bin/pic-compile
+-- Installing: /run-dir/setup/bin/pic-configure
+-- Installing: /run-dir/setup/bin/pic-create
+-- Installing: /run-dir/setup/bin/pic-edit
+-- Installing: /run-dir/setup/bin/picongpu-completion.bash
+-- Installing: /run-dir/setup/bin/tbg
+/run-dir/setup
