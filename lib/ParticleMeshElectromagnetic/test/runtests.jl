@@ -36,6 +36,7 @@ include("window_cases.jl")     # WP-028: the moving window's problems
         include("boundaries.jl")    # WP-027: T-450 to T-457, after em2d_step.jl (its helpers) and determinism.jl (T-454's worker runs)
         include("pml.jl")           # WP-034: T-540 to T-549, after boundaries.jl (its helpers)
         include("window.jl")        # WP-028: T-470 to T-479
+        include("pml_back.jl")      # WP-034: T-570 to T-574, the PML on the window's back edge, after window.jl
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET

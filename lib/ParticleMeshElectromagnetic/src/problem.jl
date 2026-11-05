@@ -178,7 +178,7 @@ struct NoCurrent end
 
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
-               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, headroom = 1/4)
+               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, back_absorber = nothing, headroom = 1/4)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
@@ -193,12 +193,15 @@ any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the fold
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
 then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
-with either absorber until a test checks the two together. `headroom` sizes the particle buffers of
+with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
+the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
+back), or `nothing`, the window's field-free outside alone; a state refuses it without a
+window. `headroom` sizes the particle buffers of
 a moving-window state, `(1 + headroom)·prod(cells)·prod(ppc)` slots per species, for particles
 that stay in the window longer than the plasma at rest (a refill that finds no free slot is
 counted, [`window_lost`](@ref)); other states ignore it.
 """
-struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
+struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     shape::S
     mode::M
     pusher::P
@@ -207,13 +210,15 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     current::C
     filter::BinomialFilter
     absorber::A
+    back_absorber::K
     headroom::Float64
 end
 
 function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
-                    current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, headroom::Real = 1 / 4)
+                    current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, back_absorber = nothing,
+                    headroom::Real = 1 / 4)
     headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
-    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, Float64(headroom))
+    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom))
 end
 
 """

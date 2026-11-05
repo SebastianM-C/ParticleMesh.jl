@@ -50,7 +50,8 @@ convention. The current deposited in the layer is not damped: with plasma inside
 slow currents build up a field there, and a positive `alpha_max` (0.2 to 1) keeps it about two
 orders of magnitude smaller (questions/wp-034-pml.md §5). These are numerics, not differentiable
 parameters (A3). The layer must be at least as thick as the grid's guards and leave interior rows
-between the two layers (checked by the state).
+between the two layers (checked by the state). The same `PML` on a moving window's back edge,
+along x, is `EMNumerics(; back_absorber)` ([`BackPMLFields`](@ref)).
 """
 struct PML
     cells::Int
@@ -244,14 +245,17 @@ function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas
     h = T(dt) / 2
     yee_b_half!(f, grid, h; workgroupsize)
     pml_b!(L, f, grid, h, false, workgroupsize)
+    back_b!(window, f, grid, h, false, workgroupsize)
     antenna_b!(antennas, f, h, t, workgroupsize)
     edges_b!(window, f, workgroupsize)
     yee_e!(f, grid, dt; workgroupsize)
     pml_e!(L, f, grid, dt, workgroupsize)
+    back_e!(window, f, grid, dt, workgroupsize)
     antenna_e!(antennas, f, dt, t + h, workgroupsize)
     edges_e!(window, f, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
     pml_b!(L, f, grid, h, true, workgroupsize)
+    back_b!(window, f, grid, h, true, workgroupsize)
     antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
     edges_b!(window, f, workgroupsize)
     return f
@@ -282,3 +286,135 @@ retire!(::PMLFields, st) = retire_open!(st)
 # in order on one integrator) is the same run.
 reset_absorber!(::Any) = nothing
 reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBx, L.ψBz, L.ψEx, L.ψEz)); nothing)
+
+# --- the moving window's back edge (WP-034 with WP-028) -------------------------------------------
+#
+# The same PML along x on the window's back edge: its first `cells` columns, the depth counted in
+# integer half columns from the back face (half column p = 2i₀ + sh of interior column i₀, depth
+# d = 2·cells − p, r = d/(2·cells)), one layer only (the front is where the undisturbed outside
+# comes in). Four terms of the 2D curls carry an x-difference: By from D⁺ₓEz (+), Bz from D⁺ₓEy (−)
+# on B's Center() columns, and Ey from D⁻ₓBz (−), Ez from D⁻ₓBy (+) on E's Node() columns. Each has
+# its convolution field on the layer columns, advanced once per step as on the y axis. Behind the
+# layer the window's x-guards stay zero (its field-free outside), so what the layer has not
+# absorbed reflects there and crosses it again. The profile is fixed in the window, which moves at
+# c: a shift moves E, B and the convolution fields one column back together (each ψ belongs to its
+# field's point), so a point deepens by one column in the layer per shift and the last layer column
+# starts from ψ = 0. The x and y corrections of Bz are independent, so the corners take both.
+
+"""
+    BackPMLFields
+
+The PML of the moving window's back edge placed on a grid ([`WindowFrame`](@ref)'s `back`): per
+stagger along x (`node` for E's x-differences, `center` for B's) the coefficients b, c (τ = Δt)
+and q = 1/κ − 1 per layer column, the convolution fields `ψBy`, `ψBz` (Center() columns) and
+`ψEy`, `ψEz` (Node() columns), each `cells` columns by n₂ rows, zero at t = 0, and a scratch of
+their size for the shift. `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁).
+"""
+struct BackPMLFields{V,M,T}
+    node::NTuple{3,V}
+    center::NTuple{3,V}
+    ψBy::M
+    ψBz::M
+    ψEy::M
+    ψEz::M
+    scratch::M
+    cells::Int
+    g::Int
+    n::NTuple{2,Int}
+    dt::T
+    sigma_max::T
+end
+
+@kernel function back_coef_kernel!(b, c, q, sm, km, am, orders::NTuple{3,Int}, sh::Int32, τ, n1::Int32, cells::Int32)
+    k = Int32(@index(Global, Linear))
+    σ, κ, α = pml_profile(sm, km, am, orders, Int32(2) * (k - Int32(1)) + sh, n1, cells)
+    bb, cc, qq = pml_coefficients(σ, κ, α, τ)
+    @inbounds b[k] = bb
+    @inbounds c[k] = cc
+    @inbounds q[k] = qq
+end
+
+"""
+    BackPMLFields(pml::PML, grid::PeriodicGrid{2}, dt; backend, workgroupsize = nothing)
+
+Place `pml` on the back `pml.cells` columns of `grid` for the step `dt`. Throws an `ArgumentError`
+unless `guards(grid) ≤ pml.cells` and `2·cells < n₁` (the profile evaluated at the back reads no
+row of the front).
+"""
+function BackPMLFields(l::PML, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize = nothing) where {T}
+    n, h, g = ncells(grid), cellsize(grid), guards(grid)
+    g <= l.cells || throw(ArgumentError("the back-edge PML of $(l.cells) cells must be at least as thick as the $g guard cells"))
+    2 * l.cells < n[1] || throw(ArgumentError("a back-edge PML of $(l.cells) cells needs more than $(2 * l.cells) window columns, got $(n[1])"))
+    sm = pml_sigma_max(l, T(h[1]))
+    orders = (l.order, l.kappa_order, l.alpha_order)
+    sets = map((0, 1)) do sh
+        v = ntuple(_ -> KernelAbstractions.allocate(backend, T, l.cells), 3)
+        launcher(back_coef_kernel!, backend, workgroupsize)(v..., sm, T(l.kappa_max), T(l.alpha_max), orders, Int32(sh), dt,
+                                                            Int32(n[1]), Int32(l.cells); ndrange = l.cells)
+        v
+    end
+    ψ = ntuple(_ -> KernelAbstractions.zeros(backend, T, l.cells, n[2]), 5)
+    return BackPMLFields(sets..., ψ..., l.cells, g, n, dt, sm)
+end
+
+# One correction along x: ndrange (cells, n₂). Layer column k is the interior column i₀ = k − 1
+# (array column g + k) and row j the array row g + j; D the x-difference of F at X's stagger
+# (forward from Node() for B, backward from Center() for E), then ψ ← bψ + c·D where `adv` and
+# X ← X + s·τ·(q·D + ψ).
+@kernel function back_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rdx, fwd::Bool, adv::Bool, g::Int32)
+    k, j = @index(Global, NTuple)
+    ii = g + Int32(k)
+    jj = g + Int32(j)
+    @inbounds begin
+        D = ifelse(fwd, F[ii + Int32(1), jj] - F[ii, jj], F[ii, jj] - F[ii - Int32(1), jj]) * rdx
+        p = ifelse(adv, b[k] * ψ[k, j] + c[k] * D, ψ[k, j])
+        ψ[k, j] = p
+        X[ii, jj] += sτ * (q[k] * D + p)
+    end
+end
+
+function back_correct!(X, ψ, F, coef, sτ, rdx, fwd, adv, L::BackPMLFields, grid, wgs)
+    launcher(back_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rdx, fwd, adv, Int32(L.g); ndrange = (L.cells, L.n[2]))
+    fill_guards!(X, grid; workgroupsize = wgs)
+    return X
+end
+
+# After a B half step of length h: By += h(q·D⁺ₓEz + ψBy), Bz −= h(q·D⁺ₓEy + ψBz) on their Center()
+# columns, ψ advanced in the second half step only; after the E step: Ey −= Δt(q·D⁻ₓBz + ψEy),
+# Ez += Δt(q·D⁻ₓBy + ψEz) on Node() columns. Without a window or a back-edge PML nothing is done.
+back_b!(::Nothing, f, grid, h, adv, wgs) = nothing
+back_e!(::Nothing, f, grid, dt, wgs) = nothing
+back_b!(w, f, grid, h, adv, wgs) = back_b!(w.back, f, grid, h, adv, wgs)
+back_e!(w, f, grid, dt, wgs) = back_e!(w.back, f, grid, dt, wgs)
+function back_b!(L::BackPMLFields, f, grid, h, adv, wgs)
+    T = eltype(f.By)
+    rdx = inv(cellsize(grid)[1])
+    back_correct!(f.By, L.ψBy, f.Ez, L.center, T(h), rdx, true, adv, L, grid, wgs)
+    back_correct!(f.Bz, L.ψBz, f.Ey, L.center, -T(h), rdx, true, adv, L, grid, wgs)
+    return nothing
+end
+function back_e!(L::BackPMLFields, f, grid, dt, wgs)
+    T = eltype(f.Ey)
+    rdx = inv(cellsize(grid)[1])
+    back_correct!(f.Ey, L.ψEy, f.Bz, L.node, -T(dt), rdx, false, true, L, grid, wgs)
+    back_correct!(f.Ez, L.ψEz, f.By, L.node, T(dt), rdx, false, true, L, grid, wgs)
+    return nothing
+end
+
+# The window's shift: ψ[k, j] ← ψ[k + 1, j] on the layer columns 1 … cells − 1, zero on the last
+# (its field point comes from outside the layer, where nothing was convolved).
+@kernel function back_shift_kernel!(ψ, @Const(src), cells::Int32)
+    k, j = @index(Global, NTuple)
+    k32 = Int32(k)
+    @inbounds ψ[k, j] = ifelse(k32 < cells, src[min(k32 + Int32(1), cells), j], zero(eltype(ψ)))
+end
+function shift_absorber!(L::BackPMLFields, wgs)
+    for ψ in (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
+        copyto!(L.scratch, ψ)
+        launcher(back_shift_kernel!, get_backend(ψ), wgs)(ψ, L.scratch, Int32(L.cells); ndrange = size(ψ))
+    end
+    return nothing
+end
+reset_absorber!(L::BackPMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBy, L.ψBz, L.ψEy, L.ψEz)); nothing)
+reset_back!(::Nothing) = nothing
+reset_back!(w) = reset_absorber!(w.back)

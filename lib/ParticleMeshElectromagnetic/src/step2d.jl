@@ -126,7 +126,12 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     open_y && numerics.filter.passes > 0 &&
         throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with an open boundary (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
     layer = open_y ? place_absorber(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
-    window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
+    numerics.back_absorber === nothing || numerics.back_absorber isa PML ||
+        throw(ArgumentError("back_absorber = $(numerics.back_absorber): the window's back edge takes a PML(...) or nothing"))
+    problem.window === nothing && numerics.back_absorber !== nothing &&
+        throw(ArgumentError("back_absorber = $(numerics.back_absorber) needs a moving window (boundaries = (:window, ·))"))
+    window = problem.window === nothing ? nothing :
+             WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes; back = numerics.back_absorber, workgroupsize = wgs)
     antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers)
     window === nothing || check_window_antennas(window, antennas)
     species = map(problem.species) do d
@@ -294,7 +299,7 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
     g = Int32(guards(grid))
     dx = cellsize(grid)
     p.dt == st.aux.dt || throw(ArgumentError("params.dt = $(p.dt) is not the time step $(st.aux.dt) the state's antennas and layer were made for"))
-    k == 1 && reset_absorber!(st.aux.layer)
+    k == 1 && (reset_absorber!(st.aux.layer); reset_back!(st.aux.window))
     record_diagnostics!(st, k)
     for s in st.species
         launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
