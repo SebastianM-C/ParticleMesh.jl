@@ -1,0 +1,6 @@
+timeout = 10800
+category = "test"
+outputs = []
+[[steps]]
+kind = "julia"
+args = ["--project=lib/ParticleMeshElectromagnetic/test", "lib/ParticleMeshElectromagnetic/test/runtests.jl"]
