@@ -89,12 +89,6 @@ theory = 0.15335946690960509      # γ / ω_p at |k|λ_D = 0.5, equal to landau.
 theory_frequency = 1.4156618886045358
 formula = "least-damped root of 1 + (|k|λ_D)⁻² [1 + ζ Z(ζ)] = 0, ζ = ω/(√2 |k| v_th), the 1D relation at |k| for an isotropic Maxwellian; landau_root in scripts/crosscode/theory.jl (T-160, T-273)"
 caveat = "Smilei loads a Maxwell–Jüttner distribution at T = 2.5e-3 m_e c²; the relativistic correction to the root is not computed here"
-# The caveat above is pre-registered and kept as written, but it is loose: below T = 0.1 m_e c²
-# Smilei's maxwell-juttner draws the classical Maxwell–Boltzmann energy and sets
-# |p| = √((1 + E)² − 1) (scripts/crosscode/README.md), PIConGPU loads a Maxwellian in momentum and
-# ParticleMesh a Maxwell–Jüttner (an isotropic spread, WP-033) or a Gaussian in momentum (a
-# spread along x only). The rate of each isotropic load with the relativistic push is
-# landau_rate_relativistic (scripts/crosscode/theory.jl, T-394), post hoc.
 
 [observables.damping_rate_energy]
 signal = "scalar_sum"             # the electrostatic energy Uelm_Ex + Uelm_Ey from scalars.txt

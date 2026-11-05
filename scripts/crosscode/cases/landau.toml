@@ -69,12 +69,6 @@ theory = 0.1533594669096052       # γ / ω_p, field amplitude
 theory_frequency = 1.4156618886045358   # ω_r / ω_p
 formula = "least-damped root of 1 + (kλ_D)⁻² [1 + ζ Z(ζ)] = 0, ζ = ω/(√2 k v_th), Z the plasma dispersion function (Fried and Conte 1961); nonrelativistic Maxwellian; computed by scripts/crosscode/theory.jl (T-160)"
 caveat = "Smilei loads a Maxwell–Jüttner distribution at T = 2.5e-3 m_e c²; the relativistic correction to the root is not computed here"
-# The caveat above is pre-registered and kept as written, but it is loose: below T = 0.1 m_e c²
-# Smilei's maxwell-juttner draws the classical Maxwell–Boltzmann energy and sets
-# |p| = √((1 + E)² − 1) (scripts/crosscode/README.md), PIConGPU loads a Maxwellian in momentum and
-# ParticleMesh a Maxwell–Jüttner (an isotropic spread, WP-033) or a Gaussian in momentum (a
-# spread along x only). The rate of each isotropic load with the relativistic push is
-# landau_rate_relativistic (scripts/crosscode/theory.jl, T-394), post hoc.
 
 [observables.damping_rate_ensemble]
 signal = "Ex mode"                # complex Fourier coefficient Ê of Ex at the perturbation's mode, from the field dumps
