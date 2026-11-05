@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Work package | WP-028 (goals A2, A3, A4, A7, A8) |
-| Commits | the window, its tests and the script `7e1a0d6`; the script's import `fd63c19`; the plot floor `3879cc4`, the run's commit |
-| Runs | `em2d-moving-window-20261104T025337` (commit `3879cc4`, `dirty = false`) |
-| Input hashes | SHA-256 of every input file in the run's manifest: `wp-028-moving-window/em2d-moving-window-20261104T025337/manifest.toml` |
-| Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.80GHz (the model string the CPU reports), 4 vCPUs of a shared cloud VM, other Julia sessions running beside it; 1 thread |
-| Figures | `wp-028-moving-window/em2d-moving-window-20261104T025337/window_vacuum.png` and `window_gauss.png`, each with its JSON sidecar (every row) |
+| Commits | the window, its tests and the script `7e1a0d6`; the script's import `fd63c19`; the plot floor `3879cc4`; the warm-plasma front `d354572`; `c21573f`, the run's commit |
+| Runs | `em2d-moving-window-20261105T115422` (commit `c21573f`, `dirty = false`) |
+| Input hashes | SHA-256 of every input file in the run's manifest: `wp-028-moving-window/em2d-moving-window-20261105T115422/manifest.toml` |
+| Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.10GHz (the model string the CPU reports), 4 vCPUs of a cloud VM; 1 thread |
+| Figures | `wp-028-moving-window/em2d-moving-window-20261105T115422/window_vacuum.png` and `window_gauss.png`, each with its JSON sidecar (every row) |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review |
 
 ## 1. Setup
@@ -31,7 +31,7 @@ The vacuum case is the same without the plasma. Its static twin is the same prob
 
 ## 2. A vacuum pulse with and without the window
 
-![per column and against time, the largest difference of E and B between the window and its static twin](wp-028-moving-window/em2d-moving-window-20261104T025337/window_vacuum.png)
+![per column and against time, the largest difference of E and B between the window and its static twin](wp-028-moving-window/em2d-moving-window-20261105T115422/window_vacuum.png)
 
 - **Before the window moves.** The two runs have the same back edge. They differ only where the pulse's precursor and Gaussian tail reach the window's front edge, which the twin does not have: at most 1.7 × 10⁻¹⁴ of the largest field (T-472).
 - **After it moves.** The difference is largest at the back edge, 0.15 of the largest field in the back 8 columns. In two dimensions a pulse leaves a trailing field behind it, and the window's field-free outside reflects it there. The difference falls by about an order of magnitude per two columns towards the front. Through Yee's stencil it can reach forward one cell per step, while the window moves 0.67 cells per step. It reaches roundoff by column 20. On columns 25 to 64, the comparison T-472 makes, it is at most 1.4 × 10⁻¹⁴ (65·eps). Ahead of the pulse it falls to 10⁻¹⁹, where both fields are tiny.
@@ -39,7 +39,7 @@ The vacuum case is the same without the plasma. Its static twin is the same prob
 
 ## 3. Gauss's law across shifts
 
-![per column, the largest Gauss residual over the run, and against time off the edges and on the back nodes](wp-028-moving-window/em2d-moving-window-20261104T025337/window_gauss.png)
+![per column, the largest Gauss residual over the run, and against time off the edges and on the back nodes](wp-028-moving-window/em2d-moving-window-20261105T115422/window_gauss.png)
 
 The laser drives the plasma to |u| ≈ 0.4. The window moves 92 cells, more than its 64, so the whole plasma in it at the end has entered through the front.
 
@@ -68,15 +68,15 @@ How the residual was found and removed, in the order the measurements showed it:
 
 ## 5. The cost of a shift
 
-On the run's state after 150 steps (4032 particles, 64 × 16 cells, one thread):
+On the run's state after 150 steps (3904 particles, 64 × 16 cells, one thread):
 
 | | median |
 |---|---|
-| a step without a shift | 3.6 ms |
-| a step with a shift | 4.9 ms |
-| `shift_window!` alone | 1.3 ms |
+| a step without a shift | 3.7 ms |
+| a step with a shift | 4.8 ms |
+| `shift_window!` alone | 1.1 ms |
 
-Two steps in three shift at this Courant number. The shift costs about a third of a step: six field copies, a sort, and the refill. These are single-run timings on a shared VM, not benchmark numbers. A ring buffer would avoid the copies (`questions/wp-028-moving-window.md` §2).
+Two steps in three shift at this Courant number. The shift costs about a quarter of a step: six field copies, a sort, and the refill. These are single-run timings on a shared VM, not benchmark numbers. A ring buffer would avoid the copies (`questions/wp-028-moving-window.md` §2).
 
 ## 6. Verification status and open issues
 
