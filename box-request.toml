@@ -1,0 +1,12 @@
+timeout = 10800
+category = "test"
+outputs = ["scripts/runs/wp028-subluminal-tests"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/trace/build.jl", "--check"]
+[[steps]]
+kind = "julia"
+args = ["--project=lib/ParticleMeshCore", "-e", "using Pkg; Pkg.test()"]
+[[steps]]
+kind = "julia"
+args = ["--project=lib/ParticleMeshElectromagnetic/test", "scripts/runs/wp028-subluminal-tests/logged.jl"]
