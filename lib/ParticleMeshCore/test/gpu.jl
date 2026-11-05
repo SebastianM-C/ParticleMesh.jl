@@ -88,7 +88,7 @@ else
             end
         end
         rerun_on(GPU, (("T-263", body_T263), ("T-264", body_T264), ("T-265", be -> body_T265(be; nodes = false)),
-                       ("T-267", body_T267), ("T-269", body_T269)))
+                       ("T-267", body_T267), ("T-269", body_T269), ("T-530", body_T530), ("T-531", body_T531)))
     end
 
     @testset "T-192 Reference mode of the engine on CUDA is bitwise across reruns and launch shapes [A4, WP-013]" begin
@@ -96,8 +96,9 @@ else
         # per element type, at the default and two explicit workgroup sizes; three reruns.
         # N = 2 (T-266's set): the sort with extras, the deposition of a species that crossed both
         # seams and the corner, the gather, fill, fold and the load.
+        # WP-033: the momentum loads of T-536 (Maxwell–Jüttner at N = 1 and 2, Gaussian in momentum).
         runs = [vcat(thread_digests(GPU; wgs = GPU_WG_SIZES), flux_digests(GPU; wgs = GPU_WG_SIZES),
-                     engine2d_digests(GPU; wgs = GPU_WG_SIZES)) for _ in 1:3]
+                     engine2d_digests(GPU; wgs = GPU_WG_SIZES), momenta_digests(GPU; wgs = GPU_WG_SIZES)) for _ in 1:3]
         @test runs[1] == runs[2] == runs[3]
         @test all(l -> endswith(l, "|true"), filter(startswith("sortmatch|"), runs[1]))
         for (case, digests) in by_case(filter(l -> !startswith(l, "sortmatch"), runs[1]))

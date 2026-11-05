@@ -41,7 +41,7 @@ export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
-export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case
+export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
 export EMState, initialize!, step!, run!, params
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history

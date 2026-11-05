@@ -1,23 +1,25 @@
-# T-480, T-481: a load whose drawn speeds reach c is refused (#257). The loader draws each
-# velocity component as drift + thermal·z (z standard normal, in velocity), and the module turns
-# velocities into momenta with γ = 1/√(1 − v²), which is not finite for |v| ≥ 1; `initialize!`
-# refuses such a load with an ArgumentError naming the species and the largest drawn |v|,
-# before any step (questions/issue-257-thermal-draw.md).
+# T-480, T-481: a Gaussian-velocity load whose drawn speeds reach c is refused (#257). With
+# `momentum = :gaussian_velocity` the loader draws each velocity component as drift + thermal·z
+# (z standard normal, in velocity), and the module turns velocities into momenta with
+# γ = 1/√(1 − v²), which is not finite for |v| ≥ 1; `initialize!` refuses such a load with an
+# ArgumentError naming the species and the largest drawn |v|, before any step. The default
+# distributions draw momenta and never reach c (WP-033, T-539); a cold species keeps the
+# velocity draw, so its drift is checked here too.
 
 using ParticleMeshElectromagnetic: check_subluminal
 
-"A cold or thermal electron species at N = 1 on a 2π box of `cells` cells (zero perturbation)."
-function electrons_1d(::Type{T}; drift = zero3(T), vth = zero(T), cells = 16, ppc = 16, seed = 1) where {T}
+"A cold or thermal electron species at N = 1 on a 2π box of `cells` cells (zero perturbation), drawn in velocity unless `momentum` says otherwise."
+function electrons_1d(::Type{T}; drift = zero3(T), vth = zero(T), cells = 16, ppc = 16, seed = 1, momentum = :gaussian_velocity) where {T}
     L = 2 * T(π)
-    sp = (SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), 1, ppc, drift, (T(vth), T(vth), T(vth)), 1),)
+    sp = (SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), 1, ppc, drift, (T(vth), T(vth), T(vth)), 1; momentum),)
     return EMProblem("electrons-1d", L, cells, 9 * L / cells / 10, 4, sp, seed, 2 * T(π) / L)
 end
 
 "The same at N = 2: a 2π × 2π box of `cells` cells."
-function electrons_2d(::Type{T}; drift = zero3(T), vth = zero(T), cells = (6, 6), ppc = (2, 2), seed = 1) where {T}
+function electrons_2d(::Type{T}; drift = zero3(T), vth = zero(T), cells = (6, 6), ppc = (2, 2), seed = 1, momentum = :gaussian_velocity) where {T}
     L = (2 * T(π), 2 * T(π))
     dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2))) / 10
-    sp = (SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), (1, 0), ppc, drift, (T(vth), T(vth), T(vth)), 1),)
+    sp = (SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), (1, 0), ppc, drift, (T(vth), T(vth), T(vth)), 1; momentum),)
     return EMProblem("electrons-2d", L, cells, T(dt), 4, sp, seed, (1, 0))
 end
 
@@ -58,7 +60,7 @@ end
 function body_T480(be)
     for T in TYPES, mode in (Reference(), Fast())
         # #257's reproduction: the WP-023 plasma with the electron v_th raised from 0.1 to 0.3
-        hot = plasma_step_2d(T; nsteps = 4, vth = 3 * one(T) / 10)
+        hot = plasma_step_2d(T; nsteps = 4, vth = 3 * one(T) / 10, momentum = :gaussian_velocity)
         v2 = drawn_v2_max(hot, hot.species[1]; be)
         @test v2 >= one(T)                                          # the case does draw past c
         @test drawn_v2_max(hot, hot.species[2]; be) < one(T)        # the positive species does not
@@ -69,7 +71,7 @@ function body_T480(be)
             @test occursin("largest drawn |v| is $(sqrt(v2))", msg)
             @test occursin("drawn in velocity", msg)
         end
-        @test loads_and_steps(plasma_step_2d(T; nsteps = 4); mode, be)  # the ordinary case still loads
+        @test loads_and_steps(plasma_step_2d(T; nsteps = 4, momentum = :gaussian_velocity); mode, be)  # the ordinary case still loads
         # the same at N = 1
         hot1 = electrons_1d(T; vth = 4 * one(T) / 10)
         v21 = drawn_v2_max(hot1, hot1.species[1]; be)
@@ -121,7 +123,7 @@ function body_T481(be)
     end
 end
 
-@testset "T-480 initialize! refuses a load whose drawn speeds reach c with an ArgumentError naming the species and the largest |v|, and the ordinary loads still step, at N = 1 and 2 [A2, A8]" begin
+@testset "T-480 initialize! refuses a Gaussian-velocity load whose drawn speeds reach c with an ArgumentError naming the species and the largest |v|, and the ordinary loads still step, at N = 1 and 2 [A2, A8]" begin
     body_T480(CPU())
 end
 

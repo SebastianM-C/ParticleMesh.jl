@@ -18,9 +18,21 @@ struct CosineProfile end
 
 One mobile species of the problem, in A1 units: `charge` (e), `mass` (mₑ), `density` (n_c),
 `amplitude` and `mode` of the cosine perturbation, `ppc` particles per cell (quiet start), the
-drift velocity `drift` and the thermal speeds `thermal` per component (v_th = √(T/m), in c; a
-velocity-space Maxwellian, converted to the momentum `u = γv` after loading), and the Philox
-`stream` of its velocity draws. At N = 1 `mode` and `ppc` are integers and
+drift velocity `drift` (β, in c) and the thermal speeds `thermal` per component (v_th = √(T/m),
+in c), the Philox `stream` of its momentum draws, and `momentum`, the distribution they are
+drawn from (WP-033, [`momentum_distribution`](@ref)):
+
+- `:maxwell_juttner`: Maxwell–Jüttner at θ = T/(mc²) = v_th², drifting with β = `drift`; it needs
+  an isotropic, nonzero `thermal`;
+- `:gaussian_momentum`: `u = Γβ + thermal·z` per component, Γ = 1/√(1 − β²), `z` standard normal;
+- `:gaussian_velocity`: `v = drift + thermal·z` per component, converted to `u = γv` after loading
+  (a load in which a drawn speed reaches c is refused, [`check_subluminal`](@ref)).
+
+The keyword `momentum = :default` (of the 10-argument constructor) picks `:maxwell_juttner` for an
+isotropic nonzero spread, `:gaussian_momentum` for any other nonzero spread, and
+`:gaussian_velocity` for a cold species, where all three load `u = Γβ` and that one keeps the
+bits of the cold loads; the first two always give a finite γ. Anything else, or
+`:maxwell_juttner` with a spread that is not isotropic and nonzero, is an `ArgumentError`. At N = 1 `mode` and `ppc` are integers and
 n(x) = density·(1 + amplitude·cos(2π·mode·x/L)); at N = 2 both are `NTuple{2,Int}`, one integer
 per axis, and n(x, y) = density·(1 + amplitude·cos(2π(mode₁·x/L₁ + mode₂·y/L₂))) on a lattice of
 `ppc₁ × ppc₂` particles per cell. A species of zero density is a set of test particles: zero
@@ -37,10 +49,42 @@ struct SpeciesDescription{T,M}
     drift::NTuple{3,T}
     thermal::NTuple{3,T}
     stream::Int
+    momentum::Symbol
 end
 
-SpeciesDescription{T}(name, charge, mass, density, amplitude, mode::M, ppc::M, drift, thermal, stream) where {T,M} =
-    SpeciesDescription{T,M}(name, charge, mass, density, amplitude, mode, ppc, drift, thermal, stream)
+const MOMENTUM_DISTRIBUTIONS = (:maxwell_juttner, :gaussian_momentum, :gaussian_velocity)
+
+function SpeciesDescription{T}(name, charge, mass, density, amplitude, mode::M, ppc::M, drift, thermal, stream;
+                               momentum::Symbol = :default) where {T,M}
+    th = T.(Tuple(thermal))
+    isotropic = th[1] == th[2] == th[3] && th[1] > 0
+    cold = all(iszero, th)
+    m = momentum === :default ? (cold ? :gaussian_velocity : isotropic ? :maxwell_juttner : :gaussian_momentum) : momentum
+    m in MOMENTUM_DISTRIBUTIONS ||
+        throw(ArgumentError("species $name: momentum = :$momentum, one of :default, :maxwell_juttner, :gaussian_momentum and :gaussian_velocity"))
+    m === :maxwell_juttner && !isotropic &&
+        throw(ArgumentError("species $name: a Maxwell–Jüttner load is isotropic and hot, so its thermal spread must be the same nonzero speed in every component, got $thermal"))
+    return SpeciesDescription{T,M}(name, charge, mass, density, amplitude, mode, ppc, drift, th, stream, m)
+end
+
+"""
+    momentum_distribution(d::SpeciesDescription{T}) -> GaussianVelocity, GaussianMomentum or MaxwellJuttner
+
+The engine's distribution object (`load_quiet!`'s `dist`) of a species' `momentum`:
+`MaxwellJuttner(thermal[1]², drift)`, `GaussianMomentum(Γ·drift, thermal)` or
+`GaussianVelocity(drift, thermal)`. For the two momentum draws a drift of |β| ≥ 1 (or NaN) or a
+thermal speed that is not finite is an `ArgumentError` (the velocity draw leaves both to
+[`check_subluminal`](@ref)).
+"""
+function momentum_distribution(d::SpeciesDescription{T}) where {T}
+    d.momentum === :gaussian_velocity && return GaussianVelocity(d.drift, d.thermal)
+    all(isfinite, d.thermal) || throw(ArgumentError("species $(d.name): the thermal speeds $(d.thermal) must be finite"))
+    b2 = d.drift[1]^2 + d.drift[2]^2 + d.drift[3]^2
+    b2 < 1 || throw(ArgumentError("species $(d.name): the drift speed $(sqrt(b2)) must be below c"))
+    d.momentum === :maxwell_juttner && return MaxwellJuttner{T}(d.thermal[1]^2, d.drift)
+    Γ = one(T) / sqrt(one(T) - b2)
+    return GaussianMomentum(map(b -> Γ * b, d.drift), d.thermal)
+end
 
 """
     EMProblem{N,T}
@@ -217,7 +261,7 @@ end
 
 """
     problem_from_case(case, T; ppc = nothing, cells = nothing, t_end = nothing, dt = nothing, amplitude = nothing,
-                      seed = nothing, transverse_thermal = false) -> EMProblem{1,T} or EMProblem{2,T}
+                      seed = nothing, transverse_thermal = false, momentum = nothing) -> EMProblem{1,T} or EMProblem{2,T}
 
 The problem description of a parsed case file (`scripts/crosscode/cases/<case>.toml`, in A1
 units): schema 1 gives an `EMProblem{1}` (with the per-species `transverse_drift = [v_y, v_z]`
@@ -240,10 +284,16 @@ The default seed is [`case_seed`](@ref)`(case)`: the first of a `seeds` list or 
 limit, which `EMState` requires), `amplitude`, which replaces the magnitude of every nonzero
 perturbation amplitude and keeps its sign (the parameter of the A3 gradient check, so it may be a
 `Dual`), and `seed`, the seed of the velocity draws (common random numbers on both sides of a
-gradient check, A7; one member of a seed ensemble).
+gradient check, A7; one member of a seed ensemble), and `momentum`, the distribution of every mobile
+species' momentum draws (a `Symbol` of [`SpeciesDescription`](@ref)'s `momentum`), which replaces
+each species' optional `momentum_distribution` key (`"maxwell_juttner"`, `"gaussian_momentum"` or
+`"gaussian_velocity"`; without it the species takes `SpeciesDescription`'s default, so an
+isotropic thermal species loads Maxwell–Jüttner and a schema-1 spread along x only a Gaussian in
+momentum).
 """
 function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells = nothing, t_end = nothing,
-                           dt = nothing, amplitude = nothing, seed = nothing, transverse_thermal::Bool = false) where {T}
+                           dt = nothing, amplitude = nothing, seed = nothing, transverse_thermal::Bool = false,
+                           momentum = nothing) where {T}
     schema = getnum(case, "schema", 1)
     schema in (1, 2) || throw(ArgumentError("case schema $schema: 1 and 2 are implemented"))
     grid = case["grid"]
@@ -256,7 +306,7 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
     nsteps = round(Int, tend / dt_run)
     seed = seed === nothing ? case_seed(case) : Int(seed)
-    schema == 2 && return problem_from_case_2d(case, T, ppc, cells, dtT, nsteps, amplitude, seed)
+    schema == 2 && return problem_from_case_2d(case, T, ppc, cells, dtT, nsteps, amplitude, seed, momentum)
     L = T(grid["length"])
     n = cells === nothing ? Int(grid["cells"]) : Int(cells)
     species = SpeciesDescription{T,Int}[]
@@ -275,7 +325,8 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
                                              Int(pert["mode"]),
                                              ppc === nothing ? Int(s["particles_per_cell"]) : Int(ppc),
                                              (T(getnum(s, "drift", 0.0)), T(vt[1]), T(vt[2])),
-                                             transverse_thermal ? (vth, vth, vth) : (vth, zero(T), zero(T)), k))
+                                             transverse_thermal ? (vth, vth, vth) : (vth, zero(T), zero(T)), k;
+                                             momentum = case_momentum(s, momentum)))
     end
     isempty(species) && throw(ArgumentError("the case has no mobile species"))
     i = findfirst(s -> !iszero(s.amplitude), species)
@@ -286,9 +337,19 @@ end
 
 pair(v) = (Int(v[1]), Int(v[2]))
 
+# A species' momentum distribution: the keyword of `problem_from_case` for every species, else the
+# species' `momentum_distribution` key ("maxwell_juttner", "gaussian_momentum" or
+# "gaussian_velocity"), else the default of `SpeciesDescription`.
+function case_momentum(s, momentum)
+    momentum === nothing || return Symbol(momentum)
+    m = getnum(s, "momentum_distribution", "default")
+    m isa AbstractString || throw(ArgumentError("species $(s["name"]): momentum_distribution must be a string, got $(repr(m))"))
+    return Symbol(m)
+end
+
 # Schema 2 (WP-019's 2D cases): every per-axis entry is a pair, the drift has three components,
 # the thermal spread is isotropic.
-function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude, seed) where {T}
+function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude, seed, momentum) where {T}
     grid = case["grid"]
     L = (T(grid["length"][1]), T(grid["length"][2]))
     n = cells === nothing ? pair(grid["cells"]) : pair(cells)
@@ -309,7 +370,7 @@ function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude
         length(v) == 3 || throw(ArgumentError("species $(s["name"]): a schema-2 drift has three components, got $v"))
         push!(species, SpeciesDescription{T}(Symbol(s["name"]), T(s["charge"]), T(s["mass"]), T(s["density"]), a,
                                              pair(pert["mode"]), ppc === nothing ? pair(s["particles_per_cell"]) : pair(ppc),
-                                             (T(v[1]), T(v[2]), T(v[3])), (vth, vth, vth), k))
+                                             (T(v[1]), T(v[2]), T(v[3])), (vth, vth, vth), k; momentum = case_momentum(s, momentum)))
     end
     isempty(species) && throw(ArgumentError("the case has no mobile species"))
     kmode = pair(case["wavevector"]["mode"])

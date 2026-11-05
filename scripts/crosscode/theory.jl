@@ -213,7 +213,10 @@ v = p); `:classical_energy`, the kinetic energy E drawn from the classical Maxwe
 energy distribution 2√(E/π) T^(-3/2) e^(-E/T) and |p| = √((1 + E)² − 1), isotropic
 (Smilei's `maxwell-juettner` below T = 0.1, scripts/crosscode/README.md);
 `:velocity_maxwellian`, each component of v normal with variance T and u = γv (ParticleMesh's
-electromagnetic module in 3V, `problem.jl`), so f₀(p) = f_v(p/γ)/γ⁵ (d³p = γ⁵ d³v).
+electromagnetic module in 3V with `momentum = :gaussian_velocity`, `problem.jl`), so
+f₀(p) = f_v(p/γ)/γ⁵ (d³p = γ⁵ d³v); `:maxwell_juttner`, f₀ ∝ e^(−(γ − 1)/T) (ParticleMesh's default
+for an isotropic thermal species, WP-033), normalized by a midpoint rule in |p| (200 000 points up
+to the energy 60T, beyond which the load is below e^(−60) of its peak).
 """
 function thermal_load(kind, T)
     kind === :momentum_maxwellian && return p -> exp(-p^2 / (2T)) / (2π * T)^1.5
@@ -225,6 +228,12 @@ function thermal_load(kind, T)
     kind === :velocity_maxwellian && return function (p)
         γ = sqrt(1 + p^2)
         return exp(-(p / γ)^2 / (2T)) / (2π * T)^1.5 / γ^5
+    end
+    if kind === :maxwell_juttner
+        pmax = sqrt(60T * (60T + 2))
+        dp = pmax / 200_000
+        Z = sum(4π * p^2 * exp(-(sqrt(1 + p^2) - 1) / T) * dp for p in ((i - 0.5) * dp for i in 1:200_000))
+        return p -> exp(-(sqrt(1 + p^2) - 1) / T) / Z
     end
     error("thermal_load: unknown kind $kind")
 end

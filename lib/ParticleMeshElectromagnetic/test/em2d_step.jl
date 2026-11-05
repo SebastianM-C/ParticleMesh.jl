@@ -262,10 +262,17 @@ end
 # one seed spreads the fitted Landau rate by 27 % of theory (20 seeds, `scripts/em2d/landau_seeds.jl`,
 # whose seed mean agrees with theory), so T-364 bounds the rate by three seed standard deviations:
 # it checks that the wave damps at the right order, and the frequency (which every seed gives
-# within 5 %) and the longitudinal polarization more closely. The rate itself is established by
-# the full-size runs against theory, Smilei and PIConGPU in reports/wp-023-em-step-2d/. The cold
+# within 5 %) and the longitudinal polarization more closely. The reference is the linear theory
+# of the distribution the species loads, with the relativistic push (`landau_rate_relativistic`,
+# T-394; WP-033); the seed spread was measured with the velocity load, whose rate is 3 % higher.
+# The rate itself is established by the full-size runs against theory, Smilei and PIConGPU in
+# reports/wp-023-em-step-2d/ (the velocity load) and reports/wp-032-pm-landau-ensemble.md. The cold
 # Weibel case has no seed noise.
 const PHYSICS_2D = Dict{String,Any}()
+
+"The isotropic load of `landau_rate_relativistic` (scripts/crosscode/theory.jl) that each momentum distribution draws."
+const LANDAU_LOADS = Dict(:maxwell_juttner => :maxwell_juttner, :gaussian_momentum => :momentum_maxwellian,
+                          :gaussian_velocity => :velocity_maxwellian)
 
 function run_case_2d(name; be = CPU(), ppc, cells, amplitude = nothing, t_end = nothing)
     case = load_case(name)
@@ -285,14 +292,19 @@ function body_T364(be)
     kλ = r.case["wavevector"]["magnitude"] * e["thermal_velocity"] / sqrt(e["density"])
     ω = landau_root(kλ)
     @test -imag(ω) ≈ o["theory"] rtol = 1e-10
+    # the reference is the linear theory of the loaded distribution with the relativistic push
+    # (WP-033: Maxwell–Jüttner by default, 0.1486 against the nonrelativistic root 0.1534)
+    sp = only(r.prob.species)
+    load = LANDAU_LOADS[sp.momentum]
+    th = landau_rate_relativistic(r.case["wavevector"]["magnitude"] / sqrt(e["density"]), e["thermal_velocity"]^2; load)
     U = abs2.(complex.(r.h.El_re, r.h.El_im))
     f = damping_from_peaks(r.ts, U; fit_start = o["fit_start"], floor_factor = o["floor_factor"])
-    rel, relω = (f.gamma - o["theory"]) / o["theory"], (f.omega - real(ω)) / real(ω)
+    rel, relω = (f.gamma - th.gamma) / th.gamma, (f.omega - th.omega) / th.omega
     # the wave is longitudinal: the part of mode (2, 1) perpendicular to k stays small
     k̂ = (2, 1) ./ sqrt(5)
     Et = abs.(-k̂[2] .* complex.(r.h.Ex_re, r.h.Ex_im) .+ k̂[1] .* complex.(r.h.Ey_re, r.h.Ey_im))
     transverse = maximum(Et) / maximum(sqrt.(U))
-    @info "T-364 oblique Landau" backend = backend_label(be) γ_theory = o["theory"] γ = f.gamma rel ω_theory = real(ω) ω = f.omega relω peaks = length(f.t_fit) transverse seconds = r.seconds
+    @info "T-364 oblique Landau" backend = backend_label(be) load γ_theory = th.gamma γ_nonrelativistic = o["theory"] γ = f.gamma rel ω_theory = th.omega ω = f.omega relω peaks = length(f.t_fit) transverse seconds = r.seconds
     PHYSICS_2D[physics_key("landau-oblique-2d", be)] = (; r..., f)
     d = get!(MEASURED, "T-364 relative to theory", Dict{String,Float64}())
     d["γ $(backend_label(be))"], d["ω $(backend_label(be))"], d["transverse $(backend_label(be))"] = rel, relω, transverse
@@ -303,7 +315,7 @@ function body_T364(be)
     @test transverse <= emC("T-364", "transverse")
 end
 
-@testset "T-364 oblique Landau damping in 2D against linear theory [A5, A7, WP-023]" begin
+@testset "T-364 oblique Landau damping in 2D against the relativistic linear theory of its load [A5, A7, WP-023, WP-033]" begin
     body_T364(CPU())
 end
 

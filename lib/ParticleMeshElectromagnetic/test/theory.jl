@@ -40,7 +40,7 @@
 # above and unverified against the literature.
 
 include(joinpath(REPO, "scripts", "crosscode", "theory.jl"))   # module Theory: landau_root, two_stream_cold_growth
-using .Theory: landau_root, two_stream_cold_growth
+using .Theory: landau_root, two_stream_cold_growth, landau_rate_relativistic
 
 """
     weibel_cold_growth(k, v0; ωp2 = 1) -> γ
