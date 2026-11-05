@@ -429,7 +429,8 @@ end
     shift_window!(state::EMState{2}) -> state
 
 Move the window of `state` by one cell: E and B one column back (through the scratch ρ, the
-x-guards and the front column zero but for Ex on the front face, which is carried along), every particle one cell back with the back column's retired, the
+x-guards and the front column zero but for Ex on the front face, which is carried along), a PML's
+convolution fields with them (front column zero), every particle one cell back with the back column's retired, the
 slots compacted by the sort, the fresh plasma of the [`injection_column`](@ref) loaded behind the
 alive count, and the kinetic-energy chunks recomputed. Called by `step!` at the end of a step; the window
 position it moves to is the caller's (the count of shifts).
@@ -443,6 +444,7 @@ function shift_window!(st::EMState{2}, s_new::Integer)
         copyto!(st.ρ, a)
         launcher(shift_columns_kernel!, get_backend(a), wgs)(a, st.ρ, Int32(g + 1), Int32(g + n[1]), a === fields.Ex; ndrange = size(a))
     end
+    shift_absorber!(aux.layer, wgs)
     for (s, ws, load, lost, fast, flags) in zip(st.species, st.ws, w.loads, w.lost, w.fast, w.flags)
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
         sort_by_cell!(s, grid, ws; workgroupsize = wgs)

@@ -1,0 +1,57 @@
+backend = "KernelAbstractions CPU"
+commit = "79a55bde4033a2240a97b28b79944df43ea31051"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = true
+julia = "1.13.3"
+run_id = "em2d-pml-20261105T183921"
+threads = 4
+updated = "2026-11-05T18:39:21.945Z"
+work_package = "WP-034"
+
+[inputs]
+"Manifest.toml" = "sha256:5944c96e8fd2e27dfa9a1f91680dfe7ba8dea6426f42f299ddc66191993128f3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:731682d511a545673eafbc7871830db5f7098d172ea4f6264ce9d6d822c8b345"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:f12d293a2df8986f707b767af18a948a547f887edd8b183ef3cf4f0f1b2a2416"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:9de59470cce1a5ff69b1ab52c4fdbc4fff2a25eb8aa35789fcadf0542a5f4167"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:f3d28d2eba2c0f6e5b1078e21fded52eb2533066559e154088abd8b21b354b93"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:68dbc7529ce970ce10fefa16885de016c562687964c7da74d190c54b5374a35b"
+"lib/ParticleMeshElectromagnetic/src/boundaries.jl" = "sha256:173b6cc6e871cbb498ba399e7808d52f06dfb80c48d5b1626263364ab742c3c3"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/filter.jl" = "sha256:e6d949e2c7cec476d62181efb2f50bdce46a2fc1ef4b23b08c704ba7a6f6df23"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/pml.jl" = "sha256:58a9414ca4c220c6d353a80ec307d4d9f523907bab6be6d372a34747db0cbb74"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:c5ee155215016f6493142317ea65b71204e5aa73f92896f4a578941ebe7ea411"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:262195c61a2a196b7b5bedb8ae576039976ec9b60fe48366a403b87e8d2b47fc"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:e01e585dfc46197679c5ec60e08033d6dcf41f04e98f4e614efc130a585e0362"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"lib/ParticleMeshElectromagnetic/test/boundaries_cases.jl" = "sha256:696dfaf6eeef8f3948f03a12c1754a28923abf3c1f958a3bec6ad5934c9e71d1"
+"lib/ParticleMeshElectromagnetic/test/pml_cases.jl" = "sha256:00230d023c4153171d4ed09f017f368849c0fef8cf9c676481473f2007e671e0"
+"scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
+"scripts/em2d/pml.jl" = "sha256:db9580a23711d7dce5756a1204f42028b895bee3187607baf1295c16e4a2786a"
+"scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
+
+[parameters]
+angles = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.1, 1.2]
+courant = 0.95
+layer_strength_times_cells = 32
+margin = 8
+ncx = 16
+ncy = 8
+profile = "PIConGPU"
+thickness = [8, 16, 32]
+type = "Float64"
+width_wavelengths = "4/cos θ"

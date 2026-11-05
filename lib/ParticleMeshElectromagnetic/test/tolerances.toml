@@ -497,6 +497,15 @@ C = 10
 measured = { Float32 = 0.0228, Float64 = 0.23, "Dual{Float32,3}" = 0.0228 }
 status = "proposed"
 
+# WP-034: the convolutional PML. Measured on the CPU backend (Julia 1.13.3, 4 threads).
+["T-540"]
+quantity = "PML, vacuum slab packet: |R − R_theory| and |Tr − Tr_theory| against the discrete frequency-domain theory of the PML (pml_rt), Float64; 8 and 16 cells at 0, 0.4, 0.8 rad with PIConGPU's profile, and Smilei's grading with α and κ alone at 8 cells, 0.4 rad, TE and TM; also T-541 (16 cells, 1.2 rad) and T-546 (each element type)"
+scale = "as T-450"
+C = 10
+measured = { Float64 = 4.08, "T-541" = 0.0065, "T-546" = { Float32 = 0.0166, Float64 = 4.06, "Dual{Float32,3}" = 0.0166 } }
+note = "the largest ratios are the transmission of the profile with κ_max = 80 and α: theory 2·10⁻⁵², measured 3.4·10⁻²⁸ in Float64, the roundoff floor of the lower half; every R ratio is below 0.01"
+status = "proposed"
+
 ["T-472"]
 quantity = "the moving window's E and B against its static twin's, on every column before it moves and on the columns 25 … n₁ after, relative to the twin's max |E, B| there, Float64"
 scale = "eps(Float64)·max|E, B|"

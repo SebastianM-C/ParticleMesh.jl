@@ -58,7 +58,7 @@ not differentiable parameters, A3: the addition tests them for zero on the host)
 the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
 at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
-[`AbsorbingLayer`](@ref) and particles that cross the box edge are retired, or `:window` on
+[`AbsorbingLayer`](@ref) or [`PML`](@ref) and particles that cross the box edge are retired, or `:window` on
 axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box moves at c along
 axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
 [`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
@@ -191,9 +191,9 @@ work-items, as PoCL reported it, #297), and a launch it does not fit stops the s
 N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
-problem: an [`AbsorbingLayer`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
+problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
 then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
-with the layer until a test checks the two together. `headroom` sizes the particle buffers of
+with either absorber until a test checks the two together. `headroom` sizes the particle buffers of
 a moving-window state, `(1 + headroom)·prod(cells)·prod(ppc)` slots per species, for particles
 that stay in the window longer than the plasma at rest (a refill that finds no free slot is
 counted, [`window_lost`](@ref)); other states ignore it.
@@ -363,7 +363,9 @@ must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filt
 (default 0), a non-negative integer, is the pass count of the [`BinomialFilter`](@ref) (A2), and
 anything else is an `ArgumentError`. With an open boundary in `grid.boundaries`, the table
 `[numerics.absorbing_layer]` gives the layer's `cells`, `strength` and optional `order`
-([`AbsorbingLayer`](@ref), WP-027), which a periodic case must not have. The mode, the pusher
+([`AbsorbingLayer`](@ref), WP-027), or the table `[numerics.pml]` the PML's `cells` and optional
+`sigma_max`, `order`, `kappa_max`, `kappa_order`, `alpha_max` and `alpha_order` ([`PML`](@ref),
+WP-034), exactly one of the two; a periodic case must have neither. The mode, the pusher
 and the launch shape are not in the case.
 """
 function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
@@ -377,13 +379,24 @@ function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Bor
     bounds = getnum(case["grid"], "boundaries", "periodic")
     open_axis = any(==("open"), bounds isa AbstractVector ? bounds : [bounds])
     absorber = nothing
+    has_al, has_pml = haskey(num, "absorbing_layer"), haskey(num, "pml")
     if open_axis
-        haskey(num, "absorbing_layer") ||
-            throw(ArgumentError("an open boundary needs [numerics.absorbing_layer] with cells and strength"))
-        al = num["absorbing_layer"]
-        absorber = AbsorbingLayer(; cells = Int(al["cells"]), strength = Float64(al["strength"]), order = Int(getnum(al, "order", 2)))
+        has_al + has_pml == 1 ||
+            throw(ArgumentError("an open boundary needs exactly one of [numerics.absorbing_layer] (cells, strength) and [numerics.pml] (cells)"))
+        if has_al
+            al = num["absorbing_layer"]
+            absorber = AbsorbingLayer(; cells = Int(al["cells"]), strength = Float64(al["strength"]), order = Int(getnum(al, "order", 2)))
+        else
+            pl = num["pml"]
+            order = Int(getnum(pl, "order", 4))
+            sm = getnum(pl, "sigma_max", nothing)
+            absorber = PML(; cells = Int(pl["cells"]), sigma_max = sm === nothing ? nothing : Float64(sm), order,
+                           kappa_max = Float64(getnum(pl, "kappa_max", 1)), kappa_order = Int(getnum(pl, "kappa_order", order)),
+                           alpha_max = Float64(getnum(pl, "alpha_max", 0)), alpha_order = Int(getnum(pl, "alpha_order", 1)))
+        end
     else
-        haskey(num, "absorbing_layer") && throw(ArgumentError("[numerics.absorbing_layer] needs an open boundary"))
+        has_al && throw(ArgumentError("[numerics.absorbing_layer] needs an open boundary"))
+        has_pml && throw(ArgumentError("[numerics.pml] needs an open boundary"))
     end
     return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes),
                       absorber)
