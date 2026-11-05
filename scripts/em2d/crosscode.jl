@@ -216,11 +216,13 @@ over the snapshots, and the deviations for one pass fewer and one more.
 """
 function observe_filtered_gauss(obs, sim)
     S, p = sim.gauss.snaps, sim.passes
-    per = [filtered_gauss(S[1].r, S[1].ρ, S[k].r, S[k].ρ, p; floor = obs["floor"]) for k in 2:length(S) if S[k].ρ != S[1].ρ]
+    ks = [k for k in 2:length(S) if S[k].ρ != S[1].ρ]
+    isempty(ks) && error("ρ never changed between the snapshots of the filtered Gauss observable")
+    per = [filtered_gauss(S[1].r, S[1].ρ, S[k].r, S[k].ρ, p; floor = obs["floor"]) for k in ks]
     g = per[end]
     tol = Float64(obs["tolerance"])
     return Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],
-        "passes" => p, "measured" => g.deviation, "t" => sim.gauss.t[end],
+        "passes" => p, "measured" => g.deviation, "t" => sim.gauss.t[ks[end]],
         "measured_max_over_outputs" => maximum(x -> x.deviation, per),
         "deviation_other_pass_counts" => Dict(string(q) => v for (q, v) in g.deviation_other),
         "charge_change_scale" => g.charge_change_scale, "modes_above_floor" => g.modes,
