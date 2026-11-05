@@ -163,5 +163,13 @@ end
         @test g["passes"] == sim.passes && g["within_tolerance"] && g["measured"] < 1e-12
         @test all(>(1e-2), values(g["deviation_other_pass_counts"]))
         @test g["outputs"] == 6 && g["t"] ≈ 41 * sim.dt
+        # a last snapshot that returns to the first ρ is skipped, and `t` is that of the output measured
+        S = sim.gauss.snaps
+        back = merge(sim, (; gauss = (; t = [sim.gauss.t; sim.gauss.t[end] + sim.dt], snaps = [S; [S[1]]])))
+        gb = PMFilter.observe_filtered_gauss(case["observables"]["filtered_gauss"], back)
+        @test gb["t"] ≈ g["t"] && gb["measured"] == g["measured"] && gb["outputs"] == 7
+        # no change of ρ at all is a clear error, not a BoundsError
+        flat = merge(sim, (; gauss = (; t = sim.gauss.t, snaps = fill(S[1], length(S)))))
+        @test_throws ErrorException PMFilter.observe_filtered_gauss(case["observables"]["filtered_gauss"], flat)
     end
 end

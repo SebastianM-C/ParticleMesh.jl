@@ -543,19 +543,20 @@ function filtered_gauss_observable(dir, case, obs, fl)
     s = filtered_gauss_series(fl, case)
     n = length(s.ρ)
     n >= 2 || error("filtered_gauss needs at least two field outputs")
-    per = [filtered_gauss(s.r[1], s.ρ[1], s.r[k], s.ρ[k], p; floor = obs["floor"]) for k in 2:n if s.ρ[k] != s.ρ[1]]
-    isempty(per) && error("$dir: ρ never changed between the field outputs")
+    ks = [k for k in 2:n if s.ρ[k] != s.ρ[1]]
+    isempty(ks) && error("$dir: ρ never changed between the field outputs")
+    per = [filtered_gauss(s.r[1], s.ρ[1], s.r[k], s.ρ[k], p; floor = obs["floor"]) for k in ks]
     last_ = per[end]
     tol = filtered_gauss_tolerance(obs, run_precision(dir))
     r = Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],
-        "passes" => p, "measured" => last_.deviation, "t" => s.t[end],
+        "passes" => p, "measured" => last_.deviation, "t" => s.t[ks[end]],
         "measured_max_over_outputs" => maximum(x -> x.deviation, per),
         "deviation_other_pass_counts" => Dict(string(q) => v for (q, v) in last_.deviation_other),
         "charge_change_scale" => last_.charge_change_scale, "modes_above_floor" => last_.modes,
         "tolerance" => tol, "within_tolerance" => last_.deviation <= tol, "outputs" => n, "precision" => run_precision(dir))
     fig = Figure(size = (700, 600))
     ax = Axis(fig[1, 1]; xlabel = "1 − H(m), $p pass$(p == 1 ? "" : "es")", ylabel = "|Δr̂(m)| / |Δρ̂(m)|",
-        title = "$(case["name"]) ($(code_label(dir))): Gauss residual change per mode, t = $(round(s.t[end]; digits = 2))")
+        title = "$(case["name"]) ($(code_label(dir))): Gauss residual change per mode, t = $(round(s.t[ks[end]]; digits = 2))")
     scatter!(ax, last_.one_minus_H, last_.ratio; color = :black, markersize = 4, label = "modes, |Δρ̂| > $(obs["floor"]) max")
     lines!(ax, [0.0, 1.0], [0.0, 1.0]; color = :blue, linestyle = :dash, label = "filtered Gauss law")
     axislegend(ax; position = :lt)
