@@ -173,6 +173,8 @@ jobs:
         run: julia --project=scripts scripts/trace/test/runtests.jl
       - name: Tests of the cross-code scripts
         run: julia --project=scripts scripts/crosscode/test/runtests.jl
+      - name: Tests of the LWFA case's generators and readers
+        run: julia --project=scripts scripts/lwfa/test/runtests.jl
       - name: Goal links, test tags and engine dependencies
         run: julia --project=scripts scripts/trace/build.jl --check
   leak-scan:
