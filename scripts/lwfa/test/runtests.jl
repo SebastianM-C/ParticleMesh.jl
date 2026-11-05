@@ -5,9 +5,11 @@ using Test
 include(joinpath(@__DIR__, "..", "lwfa.jl"))
 using ParticleMeshElectromagnetic: ramp_factor
 
-const CASE = TOML.parsefile(joinpath(@__DIR__, "..", "cases", "lwfa-2d-a2.toml"))
+# A5's case and its coarse-grid reference, the input of reports/lwfa-2d-a2.md.
+const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml", "lwfa-2d-a2.toml")]
 
-@testset "T-510 the Smilei namelist carries the case: grid, step, window, the laser's envelope and the density profile [A1, A5]" begin
+@testset "T-510 the Smilei namelist carries the case: grid, step, window, the laser's envelope and the density profile [A1, A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     nl = smilei_namelist(CASE; plasma = true)
     num(key) = parse(Float64, match(Regex("\\b$key = ([-0-9.e]+)"), nl).captures[1])
@@ -34,7 +36,8 @@ const CASE = TOML.parsefile(joinpath(@__DIR__, "..", "cases", "lwfa-2d-a2.toml")
     @test !occursin("Species(", vac) && occursin("fields = [\"Ex\", \"Ey\"]", vac)
 end
 
-@testset "T-511 the ParticleMesh problem is the case with the antenna offset: plane on node antenna_cells + 1, focus and profile shifted [A1, A3, A5]" begin
+@testset "T-511 the ParticleMesh problem is the case with the antenna offset: plane on node antenna_cells + 1, focus and profile shifted [A1, A3, A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     prob = pm_problem(CASE)
     @test prob.cells == (d.nx + d.na, d.ny)
@@ -45,7 +48,7 @@ end
     st = EMState(pm_problem(CASE; plasma = false), EMNumerics())
     @test only(st.aux.antennas).ia == d.na + 1                     # node i at (i − 1)Δx: the plane x = x_a
     @test window_shifts(st, 0) == 0
-    k = 2000
+    k = ceil(Int, (CASE["window"]["start"] + 100) / d.dt)          # 100/ω₀ after the window starts
     @test window_shifts(st, k) == floor(Int, (k * d.dt - CASE["window"]["start"]) / d.dx)
 end
 
@@ -62,10 +65,13 @@ end
     @test running_envelope([0.0, 1.0, -3.0, 0.5, 0.0], 1) == [1.0, 3.0, 3.0, 3.0, 0.5]
 end
 
-@testset "T-513 Smilei's dumps are read on the lab lattice: x_moved, the dual and primal axes, the axis rows [A5]" begin
+@testset "T-513 Smilei's dumps are read on the lab lattice: x_moved, the dual and primal axes, the axis rows [A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     mktempdir() do dir
-        cp(joinpath(@__DIR__, "..", "cases", "lwfa-2d-a2.toml"), joinpath(dir, "case.toml"))
+        cp(file, joinpath(dir, "case.toml"))
+        patch = d.nx ÷ Int(CASE["grid"]["smilei_patches"][1])     # Smilei moves its window by a patch
+        bins = Int(CASE["diagnostics"]["spectrum_ekin"][3])
         write(joinpath(dir, "kind.txt"), "plasma\n")
         nx, ny = d.nx, d.ny
         steps = output_steps(CASE)
@@ -73,7 +79,7 @@ end
             data = create_group(f, "data")
             for (j, it) in enumerate(steps)
                 g = create_group(data, lpad(it, 10, '0'))
-                HDF5.attributes(g)["x_moved"] = 24 * d.dx * (j - 1)
+                HDF5.attributes(g)["x_moved"] = patch * d.dx * (j - 1)
                 # C order [y][x]: HDF5.jl writes a Julia (ny', nx') array as x-first after the reader's permutedims
                 Ex = [Float64(i) + 1000 * jj for jj in 0:ny, i in 0:(nx + 1)]           # dual in x
                 Ey = [Float64(i) + 1000 * jj for jj in 0:(ny + 1), i in 0:nx]           # dual in y
@@ -83,18 +89,18 @@ end
         end
         h5open(joinpath(dir, "ParticleBinning0.h5"), "w") do f
             for it in steps
-                f["timestep" * lpad(it, 8, '0')] = fill(Float64(it), 200)
+                f["timestep" * lpad(it, 8, '0')] = fill(Float64(it), bins)
             end
         end
         write(joinpath(dir, "container.txt"), "# start: 2026-11-05T10:00:00.000000000Z\n# end: 2026-11-05T10:01:30.500000000Z\n")
         summarize_smilei(dir)
         s = JSON.parsefile(joinpath(dir, "summary.json"))
         o = s["outputs"][3]
-        @test o["Ex_m0"] == 48 && o["rho_m0"] == 48 && o["Ey_m0"] == 48
+        @test o["Ex_m0"] == 2patch && o["rho_m0"] == 2patch && o["Ey_m0"] == 2patch           # output 3: two patches moved
         @test o["Ex_axis"][1:3] == [0.0, 1.0, 2.0] .+ 1000 * d.jaxis                  # row jaxis (from 0) is y = y_c
         @test o["rho_axis"][1] == -1000.0 * d.jaxis
         @test o["Ey_axis"][1] == 1000.0 * d.jaxis + 500                                # rows jaxis, jaxis + 1 at y_c ∓ Δy/2
-        @test o["spectrum"] == fill(Float64(steps[3]), 200)
+        @test o["spectrum"] == fill(Float64(steps[3]), bins)
         @test s["seconds"] ≈ 90.5
         maps = h5open(joinpath(dir, "maps.h5"), "r") do f
             [k for k in keys(f)]
