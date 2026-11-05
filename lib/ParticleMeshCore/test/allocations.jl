@@ -46,15 +46,9 @@
             # broken there (questions/wp-011-t144-threads.md); an unexpected pass after an
             # upstream fix fails the test, which is the signal to drop this.
             sort_allocates = Threads.nthreads() > 1 && name == "sort"
-            # Julia 1.14 allocates per particle in some of these cases, and which ones differs
-            # between machines (#58), so the particle-count check is skipped there (recorded as
-            # broken); the @info above still logs the bytes. Remove the skip when #58 is closed.
-            if VERSION >= v"1.14-"
-                @test_skip bytes[(name, 32, 256)] <= small
-            else
-                @test bytes[(name, 32, 256)] <= small broken = sort_allocates
-            end
-            @test bytes[(name, 128, 16)] <= small broken = sort_allocates
+            # Skipped on Julia 1.14 (#58, `@test_alloc`); the @info above still logs the bytes.
+            @test_alloc bytes[(name, 32, 256)] <= small broken = sort_allocates
+            @test_alloc bytes[(name, 128, 16)] <= small broken = sort_allocates
         end
     end
 end

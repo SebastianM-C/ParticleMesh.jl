@@ -2,6 +2,25 @@
 # host writes are direct; no kernel code is involved in setting up a test).
 
 """
+    @test_alloc ex [broken = cond]
+
+`@test ex` for an allocation-growth check, except on Julia 1.14 or later, where it is
+`@test_skip ex` (recorded as broken). The 1.14 pre-release allocates in these CPU operations in
+amounts that change between runs and machines (#58), so such a check there can neither pass
+nor be marked `@test_broken` reliably (a lucky run would be an unexpected pass). The bytes are
+still measured and logged. Use `@test` again when #58 is closed.
+"""
+macro test_alloc(ex, kws...)
+    esc(quote
+        if VERSION >= v"1.14-"
+            @test_skip $ex
+        else
+            @test $ex $(kws...)
+        end
+    end)
+end
+
+"""
     test_species(T, grid, np; seed, q = -1, extras = NamedTuple())
 
 `np` alive particles spread over every cell (including the first and last, so the stencils

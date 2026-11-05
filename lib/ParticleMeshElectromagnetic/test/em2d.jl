@@ -401,8 +401,8 @@ end
         more_particles = step_bytes_2d(mode; ppc = (8, 8), cells = (16, 12))
         larger_grid = step_bytes_2d(mode; ppc = (2, 2), cells = (64, 48))
         @info "T-357 bytes per 2D step" mode small more_particles larger_grid threads = Threads.nthreads()
-        @test more_particles <= small
-        @test larger_grid <= small
+        @test_alloc more_particles <= small
+        @test_alloc larger_grid <= small
     end
 end
 

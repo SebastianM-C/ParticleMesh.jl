@@ -274,8 +274,8 @@ end
             bytes[(n, np)] = @allocated run()
         end
         @info "T-306 bytes per 2D deposit_flux!" T mode st bytes
-        @test bytes[((16, 12), 8000)] <= bytes[((16, 12), 500)]
-        @test bytes[((32, 24), 500)] <= bytes[((16, 12), 500)]
+        @test_alloc bytes[((16, 12), 8000)] <= bytes[((16, 12), 500)]
+        @test_alloc bytes[((32, 24), 500)] <= bytes[((16, 12), 500)]
     end
 end
 

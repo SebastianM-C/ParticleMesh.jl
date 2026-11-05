@@ -614,7 +614,7 @@ end
         small = solve_bytes(nd_grid(Val(N), Float64))
         large = solve_bytes(nd_grid(Val(N), Float64; scale = 8))
         @info "T-329 bytes per solve_fields!" N small large
-        @test large <= small
+        @test_alloc large <= small
     end
 end
 
