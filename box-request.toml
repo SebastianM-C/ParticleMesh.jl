@@ -1,0 +1,15 @@
+timeout = 3600
+category = "crosscode"
+outputs = ["scripts/runs/smilei-landau-oblique-2d-filter1-32ca4bf5", "scripts/runs/smilei-landau-oblique-2d-filter2-7da4b2d2"]
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/smilei-landau-oblique-2d-filter1-32ca4bf5"
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/smilei-landau-oblique-2d-filter2-7da4b2d2"
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/crosscode/analyze.jl", "scripts/runs/smilei-landau-oblique-2d-filter1-32ca4bf5"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/crosscode/analyze.jl", "scripts/runs/smilei-landau-oblique-2d-filter2-7da4b2d2"]

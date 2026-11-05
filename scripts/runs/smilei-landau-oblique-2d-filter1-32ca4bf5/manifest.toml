@@ -1,0 +1,27 @@
+build = "cpu"
+case = "landau-oblique-2d-filter1"
+case_source = "scripts/crosscode/cases/landau-oblique-2d-filter1.toml"
+code = "smilei"
+commit = "35860309aa5b31c537ff35080a72890547aeb3e8"
+dirty = false
+fastmath = "not applicable (CPU build)"
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:dc2e2446bd6cd9bbfe2c7862d288c974d59fb8b8b3da09aeaad9e84679398ee6"
+load_check = false
+patches = [4, 4]
+run = "smilei-landau-oblique-2d-filter1-32ca4bf5"
+seed_subset = "all of the case's seeds"
+seeds = [20261105]
+updated = "2026-11-05T18:13:40.903Z"
+
+[image]
+family = "smilei"
+id = "pending: written by the analyze step from the runner log"
+outside_factory_tag = "particlemesh-smilei:6517bfe50b31069b"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:32ca4bf54bcce3df4b9f264cfe8ecaebb7d9c02c79a4a1fa795726a3d2d8bfe6"
+"namelist.py" = "sha256:03337b687fd8ac2fb321495f3a42591643b998247087d05870c707db19e37b18"
+"run.sh" = "sha256:60dbdd86305da1c64a2be3d54c1ddc4a3b599094eff3bcddc772ccaf59c9fd7e"
