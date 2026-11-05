@@ -505,3 +505,41 @@ C = 10
 measured = { Float64 = 4.08, "T-541" = 0.0065, "T-546" = { Float32 = 0.0166, Float64 = 4.06, "Dual{Float32,3}" = 0.0166 } }
 note = "the largest ratios are the transmission of the profile with κ_max = 80 and α: theory 2·10⁻⁵², measured 3.4·10⁻²⁸ in Float64, the roundoff floor of the lower half; every R ratio is below 0.01"
 status = "proposed"
+
+["T-472"]
+quantity = "the moving window's E and B against its static twin's, on every column before it moves and on the columns 25 … n₁ after, relative to the twin's max |E, B| there, Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 1000
+measured = { Float64 = 64.8 }
+status = "proposed"
+
+["T-473"]
+quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts, off nodes 1, 2 and the antenna's two columns: a laser driving the plasma, a warm plasma (thermal 0.1 c) at rest and with a drift through a ramp, both modes; T-479's hot refill run (thermal 0.3 c, Reference) takes the same C"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.227, Float64 = 0.204, "Dual{Float32,3}" = 0.227 }
+measured_warm = { Float32 = 0.0588, Float64 = 0.0636, "Dual{Float32,3}" = 0.0602 }
+measured_warm_ramp = { Float32 = 0.061, Float64 = 0.0722, "Dual{Float32,3}" = 0.061 }
+measured_hot_refill_T479 = { Float32 = 0.0182, Float64 = 0.0195, "Dual{Float32,3}" = 0.0195 }
+status = "proposed"
+
+["T-474"]
+quantity = "the fields of Fast against Reference after 120 window steps (about 50 shifts), Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 32
+measured = { Float64 = 5.45 }
+status = "proposed"
+
+["T-475"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 window steps against the ramp length, Float64, Reference"
+scale = "the finite-difference floor (A7)"
+C = 1
+measured = { Float64 = 0.537 }
+status = "proposed"
+
+["T-561"]
+quantity = "the moving window's fields on CUDA against the CPU's, Float64, Reference, window_lwfa to 120 steps: max over the components of |CUDA − CPU|"
+scale = "eps(Float64)·max|field| on the CPU"
+C = 64
+measured = { Float64 = 6.02 }
+status = "proposed"

@@ -10,7 +10,7 @@
 include(joinpath(@__DIR__, "..", "em1d", "common.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble_report.jl"))
-using .Observables: damping_from_peaks, growth_from_window
+using .Observables: damping_from_peaks, growth_from_window, filtered_gauss
 using .Ensemble
 using .EnsembleReport
 using Statistics: mean, median, std
@@ -67,6 +67,32 @@ function gauss_2d(st)
     return (; gauss = res / maximum(abs, ρ[I1, I2]), divB = Bmax > 0 ? divB / Bmax : 0.0, gauss_absolute = res, rho_deviation = dev)
 end
 
+"""
+    gauss_snapshot(st) -> (; r, ρ)
+
+The plain Gauss residual r = D⁻ₓEx + D⁻_yEy − (ρ − mean ρ) and the charge density ρ (deposited
+now in the state's mode, folded) at every interior node, as host arrays: the input of the
+filtered Gauss check (`filtered_gauss`, WP-038).
+"""
+function gauss_snapshot(st)
+    (; grid, numerics) = st
+    T = eltype(st.ρ)
+    ρd = field(get_backend(st.ρ), T, grid)
+    for (s, ws) in zip(st.species, st.ws)
+        deposit!(numerics.mode, ρd, s, numerics.shape, (RHO_STAGGER, RHO_STAGGER), grid, ws)
+    end
+    fold_guards!(ρd, grid)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    I1, I2 = (g + 1):(g + n[1]), (g + 1):(g + n[2])
+    ρ, Ex, Ey = Array(ρd), Array(st.fields.Ex), Array(st.fields.Ey)
+    ρ̄ = sum(ρ[I1, I2]) / prod(n)
+    r = [(Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2] - (ρ[i, j] - ρ̄) for i in I1, j in I2]
+    return (; r = Float64.(r), ρ = Float64.(ρ[I1, I2]))
+end
+
+"Whether a case registers the filtered Gauss check (`signal = \"filtered_gauss\"`)."
+has_filtered_gauss(case) = any(o -> o["signal"] == "filtered_gauss", values(case["observables"]))
+
 "The problem of `case` at `seed`, optionally scaled to `ppc` and `cells` per axis (Δt at the case's Courant fraction)."
 function problem(case, seed; ppc = nothing, cells = nothing)
     cells === nothing && return problem_from_case(case, Float64; seed, ppc)
@@ -93,7 +119,21 @@ function simulate(case, seed; ppc = nothing, cells = nothing, momenta_at = MOMEN
     snap(c) = (g = guards(st.grid); n = ncells(st.grid); Array(getfield(st.fields, c))[(g + 1):(g + n[1]), (g + 1):(g + n[2])])
     comp = case["name"] == "weibel-2d" ? :Bx : :Ex
     snap0 = snap(comp)
-    wall = @elapsed run!(st, params(prob), prob.nsteps)
+    # a case with the filtered Gauss check is run in chunks of the field cadence, with the residual
+    # and ρ taken at t = 0 and after every chunk (the step does not depend on the chunking)
+    gsnaps, gtimes = [], Float64[]
+    if has_filtered_gauss(case)
+        fe = case["diagnostics"]["fields_every"]
+        push!(gsnaps, gauss_snapshot(st)); push!(gtimes, 0.0)
+        wall = 0.0
+        for k0 in 1:fe:prob.nsteps
+            m = min(fe, prob.nsteps - k0 + 1)
+            wall += @elapsed run!(st, params(prob), m; first = k0)
+            push!(gsnaps, gauss_snapshot(st)); push!(gtimes, (k0 + m - 1) * Float64(prob.dt))
+        end
+    else
+        wall = @elapsed run!(st, params(prob), prob.nsteps)
+    end
     last_check = gauss_2d(st)
     h = histories(st)
     d = case["diagnostics"]
@@ -106,7 +146,8 @@ function simulate(case, seed; ppc = nothing, cells = nothing, momenta_at = MOMEN
               Ey = cx(h.Ey_re, h.Ey_im), total = total_energy_history(h), K = kinetic_energy_history(h), dt, wall, seed,
               nsteps = prob.nsteps, particles = sum(alive_count, st.species), checks = (initial = first_check, final = last_check),
               snapshots = (component = String(comp), first = snap0, last = snap(comp), length = Float64.(prob.length)),
-              cells = prob.cells, ppc = first(prob.species).ppc)
+              cells = prob.cells, ppc = first(prob.species).ppc, gauss = (; t = gtimes, snaps = gsnaps),
+              passes = st.numerics.filter.passes)
 end
 
 "The series a pre-registered observable fits, from a simulation (the module's diagnostics in place of Smilei's scalars and dumps)."
@@ -135,6 +176,10 @@ function observe(case, sim)
     fits, results, series = Dict{String,Any}(), Dict{String,Any}(), Dict{String,Any}()
     for key in order
         obs = observables[key]
+        if obs["signal"] == "filtered_gauss"
+            results[key] = observe_filtered_gauss(obs, sim)
+            continue
+        end
         t, U = series[key] = observable_series(obs, sim)
         r = Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"])
         if obs["method"] == "peak_envelope"
@@ -160,6 +205,27 @@ function observe(case, sim)
         results[key] = r
     end
     return results, fits, series
+end
+
+"""
+    observe_filtered_gauss(obs, sim) -> Dict
+
+The filtered Gauss observable on a simulation's snapshots, by the rule of `analyze.jl`'s
+`filtered_gauss_observable`: the deviation between the first and the last snapshot, its largest
+over the snapshots, and the deviations for one pass fewer and one more.
+"""
+function observe_filtered_gauss(obs, sim)
+    S, p = sim.gauss.snaps, sim.passes
+    per = [filtered_gauss(S[1].r, S[1].ρ, S[k].r, S[k].ρ, p; floor = obs["floor"]) for k in 2:length(S) if S[k].ρ != S[1].ρ]
+    g = per[end]
+    tol = Float64(obs["tolerance"])
+    return Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],
+        "passes" => p, "measured" => g.deviation, "t" => sim.gauss.t[end],
+        "measured_max_over_outputs" => maximum(x -> x.deviation, per),
+        "deviation_other_pass_counts" => Dict(string(q) => v for (q, v) in g.deviation_other),
+        "charge_change_scale" => g.charge_change_scale, "modes_above_floor" => g.modes,
+        "tolerance" => tol, "within_tolerance" => g.deviation <= tol, "outputs" => length(S),
+        "one_minus_H" => g.one_minus_H, "ratio" => g.ratio)
 end
 
 "The standard plot set of one seed (F3), PNG plus JSON sidecar in `dir/plots/`."
@@ -193,6 +259,19 @@ function standard_plots(dir, case, sim, results, fits, series)
         end
         axislegend(ax; position = :rb)
         save_plot(out, plotname, fig, side)
+    end
+    for key in sort([k for (k, o) in observables if o["signal"] == "filtered_gauss" && haskey(results, k)])
+        r = results[key]
+        fig = Figure(size = (700, 600))
+        ax = Axis(fig[1, 1]; xlabel = "1 − H(m), $(r["passes"]) pass(es)", ylabel = "|Δr̂(m)| / |Δρ̂(m)|",
+                  title = "$name, ParticleMesh, seed $(sim.seed): Gauss residual change per mode, t = $(round(r["t"]; digits = 2))")
+        scatter!(ax, r["one_minus_H"], r["ratio"]; color = :black, markersize = 4, label = "modes, |Δρ̂| > $(observables[key]["floor"]) max")
+        lines!(ax, [0.0, 1.0], [0.0, 1.0]; color = :blue, linestyle = :dash, label = "filtered Gauss law")
+        axislegend(ax; position = :lt)
+        save_plot(out, "filtered-gauss", fig, Dict{String,Any}(
+            "plot" => "per Fourier mode m above the floor, |Δr̂|/|Δρ̂| between the first and last snapshots against 1 − H(m) of the run's filter",
+            "passes" => r["passes"], "one_minus_H" => r["one_minus_H"], "ratio" => r["ratio"], "deviation" => r["measured"],
+            "deviation_other_pass_counts" => r["deviation_other_pass_counts"]))
     end
     drift = (sim.total .- sim.total[1]) ./ sim.total[1]
     fig = Figure(size = (800, 500))
