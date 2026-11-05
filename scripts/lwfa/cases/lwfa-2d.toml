@@ -22,6 +22,7 @@ cells = [2304, 384]               # 301.6 × 201.1 c/ω₀ ahead of the injectio
 antenna_cells = 60                # ParticleMesh only: 7.85 c/ω₀ behind the antenna plane, as in lwfa-2d-a2
 transverse = "periodic"           # all codes; the box is 7.2 waists wide
 smilei_patches = [64, 8]          # 36 × 48 cells per patch; Smilei's window moves by a patch
+picongpu_devices = 2              # PIConGPU: local domains along y on the one GPU, the window and the hidden one (scripts/lwfa/picongpu.jl)
 
 [time]
 courant = 0.95                    # dt = courant / sqrt(1/dx² + 1/dy²) = 0.1206, Yee's 2D limit; a0·dt = 0.241
