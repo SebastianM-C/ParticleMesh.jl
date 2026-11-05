@@ -1,4 +1,4 @@
-# #226, item 2: where `load_quiet!` evaluates the density, T-510 and T-511. With
+# #226, item 2: where `load_quiet!` evaluates the density, T-520 and T-521. With
 # `density_at = :particle` (the default) the weight of a particle is the density at its own
 # position; with `:cell_centre` it is the density at the centre of its cell, so the loaded profile
 # is piecewise constant per cell, as Smilei and PIConGPU sample it. Positions, draws and status
@@ -14,7 +14,7 @@ centre_weight(density, p, grid::PeriodicGrid{2}, ::Type{T}, c, K) where {T} =
 weights_match(::Type{T}, w, ref) where {T} =
     T === D3 ? all(i -> absdiff(w[i], ref[i]) <= 2eps(Float32) * absmax(ref[i]), eachindex(w, ref)) : all(i -> w[i] == ref[i], eachindex(w, ref))
 
-function body_T510()
+function body_T520()
     for T in TYPES
         # N = 1
         grid = PeriodicGrid(16, basetype(T)(1 // 8), 2)
@@ -56,7 +56,7 @@ end
 # (δₖ − 1/2)Δx are symmetric about x_c, so Σₖ cos(k(x_c + (δₖ − 1/2)Δx)) = cos(k·x_c)·Σₖ cos(k(δₖ − 1/2)Δx):
 # the cell sum is the centre value with the cosine scaled by the Dirichlet factor
 # sin(y)/(ppc·sin(y/ppc)), y = kΔx/2, which is 1 − (kΔx)²/24 + O((kΔx)⁴, (kΔx)²/ppc²).
-function body_T511()
+function body_T521()
     n, ppc, α = 32, 16, 0.3
     for mode in (1, 3)
         grid = PeriodicGrid(n, 0.25, 2)
@@ -75,10 +75,10 @@ function body_T511()
     end
 end
 
-@testset "T-510 load_quiet!'s density_at: :particle (default) keeps the weights bit for bit, :cell_centre samples the cell centre, the rest unchanged, N = 1 and 2 [A3, A4, A8]" begin
-    body_T510()
+@testset "T-520 load_quiet!'s density_at: :particle (default) keeps the weights bit for bit, :cell_centre samples the cell centre, the rest unchanged, N = 1 and 2 [A3, A4, A8]" begin
+    body_T520()
 end
 
-@testset "T-511 the cell sums of a cosine's weights: the profile at the cell centre (cell-centred), the centre value with the Dirichlet factor on the cosine (per particle) [A3]" begin
-    body_T511()
+@testset "T-521 the cell sums of a cosine's weights: the profile at the cell centre (cell-centred), the centre value with the Dirichlet factor on the cosine (per particle) [A3]" begin
+    body_T521()
 end

@@ -67,7 +67,7 @@ end
     body_T420(CPU())
 end
 
-# T-512: where `initialize!` samples the density profile (#226, item 2). `density_at = :particle`
+# T-522: where `initialize!` samples the density profile (#226, item 2). `density_at = :particle`
 # (the default) is today's load bit for bit; `:cell_centre` evaluates the profile at the centre of
 # each particle's cell, as Smilei and PIConGPU do, so every particle of a cell carries the same
 # weight. With the momenta kept as loaded (`:t_minus_half`), positions, momenta and status are the
@@ -86,7 +86,7 @@ function weights_per_cell_constant(s)
     return true
 end
 
-function body_T512(be)
+function body_T522(be)
     for name in ("landau", "two-stream"), T in TYPES
         amplitude = T === D3 ? seeded(T, name == "landau" ? 0.01 : 0.001) : nothing
         kw = (; mode = Reference(), ppc = 16, t_end = 1, amplitude, be)
@@ -122,6 +122,6 @@ function body_T512(be)
     @test_throws ArgumentError initialize!(EMState(prob2, EMNumerics(); backend = be), prob2; density_at = :node)
 end
 
-@testset "T-512 initialize! samples the density at each particle (default, bit for bit) or at its cell centre, with positions and momenta unchanged, at N = 1 and 2 [A3, A4, A8]" begin
-    body_T512(CPU())
+@testset "T-522 initialize! samples the density at each particle (default, bit for bit) or at its cell centre, with positions and momenta unchanged, at N = 1 and 2 [A3, A4, A8]" begin
+    body_T522(CPU())
 end
