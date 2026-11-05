@@ -505,17 +505,18 @@ measured = { Float64 = 64.8 }
 status = "proposed"
 
 ["T-473"]
-quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts, off nodes 1, 2 and the antenna's two columns, a laser driving the plasma, both modes"
+quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts, off nodes 1, 2 and the antenna's two columns: a laser driving the plasma, and a warm plasma (thermal 0.1 c), both modes"
 scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
 C = 1
 measured = { Float32 = 0.227, Float64 = 0.204, "Dual{Float32,3}" = 0.227 }
+measured_warm = { Float32 = 0.0588, Float64 = 0.0636, "Dual{Float32,3}" = 0.0602 }
 status = "proposed"
 
 ["T-474"]
 quantity = "the fields of Fast against Reference after 120 window steps (about 50 shifts), Float64"
 scale = "eps(Float64)·max|E, B|"
-C = 1e6
-measured = { Float64 = 4.59 }
+C = 32
+measured = { Float64 = 5.45 }
 status = "proposed"
 
 ["T-475"]

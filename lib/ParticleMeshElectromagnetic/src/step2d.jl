@@ -122,7 +122,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     !open_y && numerics.absorber !== nothing &&
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
     layer = open_y ? LayerFactors(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
-    window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend)
+    window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
     antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers)
     window === nothing || check_window_antennas(window, antennas)
     species = map(problem.species) do d
@@ -267,7 +267,7 @@ retired before the current (their current would land at the opposite edge), the 
 in the lab frame (their window columns move back with the shifts, and they stop once the window
 has passed them), and after the field solve the window shifts by the cells it moved in this
 step ([`window_shifts`](@ref)): E, B and the particles one column back, the back column dropped,
-the fresh plasma of the front column loaded. With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
+the fresh plasma of the injection column loaded. With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
 after every step (T-360), off the antenna columns with lasers (T-406), and off the layer rows
 with an open boundary (T-451); with passes its filtered form does (T-441). `k` must lie within
 the allocated steps, `params.kmode` must be the state's diagnostic mode and `params.dt` the

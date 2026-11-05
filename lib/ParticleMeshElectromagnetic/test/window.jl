@@ -95,10 +95,11 @@ end
         @test ok_fields
         @test ok_charge
         @test ok_set
-        # the plateau is uniform bit for bit: the nodes 3 … n₁ − 3 (away from the edges, whose
-        # stencils miss the outside) whose particles all lie beyond the ramp's end at x = 8
+        # the plateau is uniform bit for bit: the nodes 3 … injection column − 1 (away from the
+        # back edge and from the plasma's front, whose stencils miss the outside or the empty front
+        # columns) whose particles all lie beyond the ramp's end at x = 8
         hx = value_of(cellsize(st.grid)[1])
-        plateau = [i for i in 3:(n[1] - 3) if (i - 3 + s_end) * hx >= 8]
+        plateau = [i for i in 3:(injection_column(st.aux.window) - 1) if (i - 3 + s_end) * hx >= 8]
         @test length(plateau) > 10
         vals = ρ[g .+ plateau, (g + 1):(g + n[2])]
         @test all(v -> same_bits([v], [vals[1]]), vals)
@@ -169,6 +170,13 @@ end
 # which carry the surface charges of its sheets (T-406), in the lab frame, so they move back with
 # the shifts. The laser drives the plasma (|u| about 0.4), the window moves 70 cells, more than its
 # 64, so the whole plasma has entered through the front; scale as T-360.
+#
+# A warm plasma (thermal speeds 0.1 c, no laser) is the case that needs the front treatment: its
+# particles reach past their cells, and its fields reach the front column. With the fresh plasma
+# loaded on the injection column and Ex on the front face carried along by the shift, Gauss's law
+# holds at every node but 1 and 2 there as well; loaded on column n₁ − 1, or with the face's Ex
+# zeroed, the residual reaches 10¹⁰ to 10¹² of the scale on every column within 60 steps (the
+# measurements are in the PR that added this case).
 @testset "T-473 Gauss's law to roundoff across window shifts with a laser driving the plasma, all three types, both modes [A2, A4, A7, A8, WP-028]" begin
     C = emC("T-473")
     for T in TYPES, mode in (Reference(), Fast())
@@ -191,6 +199,21 @@ end
         @test window_shifts(st, prob.nsteps) > prob.cells[1]
         @test umax > 1 / 10
         record!("T-473 $(nameof(typeof(mode)))", T, worst)
+        @test worst <= C
+    end
+    for T in TYPES, mode in (Reference(), Fast())
+        prob = window_plasma(T; cells = (24, 6), vacuum = -100, ramp = 1, thermal = (T(1) / 10, T(1) / 10, T(1) / 10), nsteps = 60)
+        st = window_state(prob; mode)
+        p = params(prob)
+        worst = 0.0
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            r = window_gauss(st, window_shifts(st, k))
+            worst = max(worst, Float64(maximum(r.res[3:end, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
+        end
+        @info "T-473 warm" T mode worst shifts = window_shifts(st, prob.nsteps)
+        @test window_shifts(st, prob.nsteps) > prob.cells[1]
+        record!("T-473 warm $(nameof(typeof(mode)))", T, worst)
         @test worst <= C
     end
 end
@@ -245,8 +268,8 @@ end
 
 # --- T-476 ----------------------------------------------------------------------------------
 
-# The edges and the buffers. A plasma drifting backwards at 0.3 c crosses the back edge between
-# shifts: exactly the particles whose cell along x jumped across the seam in a step are retired,
+# The edges and the buffers. A plasma drifting backwards at 0.9 c (fast enough to cross the back
+# edge before the next shift drops its column) crosses the back edge between shifts: exactly the particles whose cell along x jumped across the seam in a step are retired,
 # before the current (Fast mode, Float64, no permutation, so a slot is a particle). Their current
 # would land at the front (the engine places it at the new cell, across the seam), so in a step
 # without a shift Gauss's law must not change on the nodes 3 … n₁ (it changes on nodes 1 and 2,
@@ -256,7 +279,7 @@ end
 # the particles they could not place; with a headroom of 3/2 none is lost (the default 1/4 is for
 # a plasma that does not stream with the window).
 @testset "T-476 particles crossing the back edge are retired before their current, and the buffers count what does not fit [A2, A4, WP-028]" begin
-    prob = window_plasma(Float64; drift = (-0.3, 0.0, 0.0), nsteps = 20, vacuum = -10, start = 4)
+    prob = window_plasma(Float64; drift = (-0.9, 0.0, 0.0), nsteps = 20, vacuum = -10)
     st = window_state(prob; mode = Fast())
     p = params(prob)
     retired = 0
@@ -322,7 +345,18 @@ end
     a = st.aux.window
     @test window_shifts(st, 0) == 0
     @test all(k -> window_shifts(st, k) == max(0, floor(Int, (k * a.dt - 1.0) / a.dx1)), 0:50)
-    @test injection_column(a) == ncells(st.grid)[1] - 1
+    @test injection_column(a) == ncells(st.grid)[1] - 3           # quadratic shape: reach 2 past the cell
+    lin = EMState(window_plasma(Float64), EMNumerics(; shape = Linear))
+    @test injection_column(lin.aux.window) == ncells(lin.grid)[1] - 2
+    filt = EMState(window_plasma(Float64), EMNumerics(; filter = BinomialFilter(2)))
+    @test injection_column(filt.aux.window) == ncells(filt.grid)[1] - 5
+    # a window too narrow to keep plasma behind its front margin (the grid itself needs n₁ ≥ 2g)
+    @test_throws ArgumentError EMState(window_plasma(Float64; cells = (8, 6)), EMNumerics(; filter = BinomialFilter(4)))
+    @test EMState(window_plasma(Float64; cells = (8, 6)), EMNumerics(; filter = BinomialFilter(3))) isa EMState{2}
+    # a window that starts late takes cold plasma only (before it moves, its front is a fixed edge)
+    @test_throws ArgumentError window_plasma(Float64; start = 1.0, thermal = (0.01, 0.01, 0.01))
+    @test_throws ArgumentError window_plasma(Float64; start = 1.0, drift = (0.0, 0.1, 0.0))
+    @test window_plasma(Float64; start = 0, thermal = (0.01, 0.01, 0.01)) isa EMProblem{2}
 end
 
 # --- T-478 ----------------------------------------------------------------------------------

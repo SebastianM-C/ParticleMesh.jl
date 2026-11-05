@@ -63,7 +63,8 @@ axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box move
 axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
 [`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
 background of its own profile (so every species' `amplitude` is zero and `E0`, `B0` are zero) and
-is refilled at the front; a laser's antenna plane stays at its place in the lab frame and must have
+is refilled behind the front; a window that starts later than t = 0 takes only cold species at
+rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
 finished its pulse before the window passes it (checked by the state). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
@@ -137,6 +138,12 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         end
         all(iszero, E0) && all(iszero, B0) ||
             throw(ArgumentError("a moving-window problem takes no background fields (the outside of the window is field-free)"))
+        if window isa MovingWindow && window.start > 0
+            for d in species
+                all(iszero, d.drift) && all(iszero, d.thermal) ||
+                    throw(ArgumentError("species $(d.name): before a moving window starts (start = $(window.start)) its front is a fixed edge, and a plasma with a drift or a thermal speed reaches it and leaves a residual of Gauss's law that the shifts carry into the box; start the window at 0 or load the species cold, got drift $(d.drift) and thermal $(d.thermal)"))
+            end
+        end
     end
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
