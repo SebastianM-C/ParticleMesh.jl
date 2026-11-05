@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Work package | WP-034 (goals A2, A4, A7, A8, A10) |
-| Commits | the PML, its tests and the script `2aa82b1`; the B convolution advanced once per step, as PIConGPU does, after the physics breaker, with the mutation breaker's tests `17ee7ce`; the merge with main `79a55bd` |
+| Commits | the PML, its tests and the script `2aa82b1`; the B convolution advanced once per step, as PIConGPU does, after the physics breaker, with the mutation breaker's tests `17ee7ce`; the merge with main `79a55bd`; this report `6eb431d`; the PML inside WP-028's moving window (T-549), after main took WP-028, in the commit after the second merge with main, which leaves the step without a window bit for bit as measured here |
 | Runs | `em2d-pml-20261105T183921` (commit `79a55bd`). Its manifest says `dirty = true`: the one modified tracked file at its start was `questions/wp-034-pml.md`, which is not an input, and all 34 input hashes in the manifest equal the files at `79a55bd` |
 | Input hashes | SHA-256 of every input file in the run's manifest: `wp-034-pml/em2d-pml-20261105T183921/manifest.toml` |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.10GHz (the model string the CPU reports), 4 vCPUs of a shared cloud VM; 4 threads |
@@ -23,6 +23,7 @@ The PML is a second `absorber` of the open y axis, next to WP-027's matched laye
 - **Where it sits.** WP-027's rows: the outer `cells` rows on each side along y, meeting at the periodic seam. The depth is counted in integer half rows.
 - **The profiles.** σ = σ_max·r^m, κ = 1 + (κ_max − 1)·r^{m_κ} and α = α_max·(1 − r)^{m_α}. The default is PIConGPU's: m = 4, σ_max = 0.8(m + 1)/Δy, κ_max = 1, and α = 0 (PIConGPU's 0.2 S/m is about 10⁻⁵ ω₀). Smilei's grading (σ = 20u², κ = 1 + 79u⁴) is expressible; Smilei's own uniaxial discretization is not implemented.
 - **Particles.** Retired at the seam as with the matched layer.
+- **In a moving window** (WP-028, `boundaries = (:window, :open)`). The window's zero x-guards are applied after the PML's correction in each sub-step, and each shift moves the convolution fields one column back with E and B, the front column zero.
 
 Every reflection measurement is WP-027's vacuum slab packet: the module's step in Float64 at 0.95 of the 2D Courant limit, 16 cells per wavelength along x and 8 along y. Here the envelope is 4/cos θ wavelengths wide, not WP-027's 3/cos θ, because the PML's much smaller R at large angles needs the slow modes of the incident packet further away at the measurement time.
 
@@ -127,6 +128,7 @@ The largest T-540 and T-546 ratios are a transmission at the roundoff floor: the
 - T-545: the Reference step with particles is bitwise across reruns, workgroup sizes 32 and 256, and 1 and 4 threads, with the convolution fields in the digest.
 - T-547: the input checks, the case file's defaults, and the refusal of filter passes with an open axis.
 - T-548: allocation is flat, 384 B per Fast step at every size.
+- T-549: in a moving window, a zero profile is the zero-strength matched layer bit for bit, the convolution fields shift with the fields, and Gauss's law holds off the layer across the shifts (T-473's constant; measured 0.036, 0.046 and 0.036 in Float32, Float64 and Dual).
 
 The PML tests take about 9 min on 2 threads, most of it T-545's worker runs.
 
@@ -145,7 +147,7 @@ The PML tests take about 9 min on 2 threads, most of it T-545's worker runs.
 
 ## 9. Open items
 
-- **The back edge of the moving window** is part of WP-034 and waits for WP-028 (#323). The work package stays active.
+- **The back edge of the moving window** is part of WP-034. WP-028 (#323) has merged, so it follows in its own pull request, and the work package stays active.
 - **No GPU run.** The kernels are elementwise and within §0.4, but CUDA is untested: this session has no GPU.
 - **Plasma inside the layer** at α = 0 (section 6, #343).
 - **Smilei's discretization** (uniaxial, bilinear time rule) is not implemented, only its grading.

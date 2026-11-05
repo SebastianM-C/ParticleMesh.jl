@@ -137,8 +137,9 @@ The PML placed on a grid by the state: per stagger along y (`node` for E's y-dif
 `center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row,
 and the convolution fields ψ of the four y-difference terms (`ψBx`,
 `ψBz` on Center() rows, `ψEx`, `ψEz` on Node() rows), each of n₁ columns by 2·cells layer rows
-(the first `cells` interior rows and the last `cells`), zero at t = 0. `dt` is the time step the
-coefficients were made for, `sigma_max` the σ_max they use.
+(the first `cells` interior rows and the last `cells`), zero at t = 0, and a scratch array of
+their size for the moving window's shift. `dt` is the time step the coefficients were made for,
+`sigma_max` the σ_max they use.
 """
 struct PMLFields{V,M,T}
     node::NTuple{3,V}
@@ -147,6 +148,7 @@ struct PMLFields{V,M,T}
     ψBz::M
     ψEx::M
     ψEz::M
+    scratch::M
     cells::Int
     g::Int
     n::NTuple{2,Int}
@@ -176,7 +178,7 @@ function PMLFields(l::PML, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize 
                                                                       Int32(n[2]), Int32(l.cells); ndrange = rows)
                    v
                end, ((0, dt), (1, dt)))
-    ψ = ntuple(_ -> KernelAbstractions.zeros(backend, T, n[1], rows), 4)
+    ψ = ntuple(_ -> KernelAbstractions.zeros(backend, T, n[1], rows), 5)
     return PMLFields(sets..., ψ..., l.cells, g, n, dt, sm)
 end
 
@@ -226,26 +228,50 @@ function pml_e!(L::PMLFields, f, grid, dt, wgs)
 end
 
 """
-    solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, pml::PMLFields; workgroupsize = nothing)
+    solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, pml::PMLFields[, window]; workgroupsize = nothing)
 
 The Yee step with the antennas' corrections and the convolutional PML: after each Yee sub-step,
 the PML's correction of the four y-difference terms in the layer rows (their convolution fields
-advanced first, B's in the second half step only), then the antennas' correction. With a zero profile (σ = α = 0, κ = 1) the
-corrections add zero, so the step is the antennas' solve bit for bit up to the sign of zero.
+advanced first, B's in the second half step only), then the antennas' correction, then, with a
+moving window's [`WindowFrame`](@ref) (WP-028), the zero x-guards of the components the sub-step
+updated. With a zero profile (σ = α = 0, κ = 1) the corrections add zero, so the step is the
+antennas' solve (and the window's) bit for bit up to the sign of zero.
 """
-function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, L::PMLFields; workgroupsize = nothing)
+solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, L::PMLFields; workgroupsize = nothing) =
+    solve_fields!(Yee(), f, grid, dt, antennas, t, L, nothing; workgroupsize)
+function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, L::PMLFields, window; workgroupsize = nothing)
     T = eltype(f.Ex)
     h = T(dt) / 2
     yee_b_half!(f, grid, h; workgroupsize)
     pml_b!(L, f, grid, h, false, workgroupsize)
     antenna_b!(antennas, f, h, t, workgroupsize)
+    edges_b!(window, f, workgroupsize)
     yee_e!(f, grid, dt; workgroupsize)
     pml_e!(L, f, grid, dt, workgroupsize)
     antenna_e!(antennas, f, dt, t + h, workgroupsize)
+    edges_e!(window, f, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
     pml_b!(L, f, grid, h, true, workgroupsize)
     antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
+    edges_b!(window, f, workgroupsize)
     return f
+end
+
+# The moving window's shift (WP-028) moves E and B one column back; the convolution fields belong
+# to the same points and move with them: ψ[i, k] ← ψ[i + 1, k] on the columns 1 … n₁ − 1, zero on
+# the front column (zero fields ahead of the window). One work item per entry.
+@kernel function pml_shift_kernel!(ψ, @Const(src), n1::Int32)
+    i, k = @index(Global, NTuple)
+    i32 = Int32(i)
+    @inbounds ψ[i, k] = ifelse(i32 < n1, src[min(i32 + Int32(1), n1), k], zero(eltype(ψ)))
+end
+shift_absorber!(::Any, wgs) = nothing
+function shift_absorber!(L::PMLFields, wgs)
+    for ψ in (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
+        copyto!(L.scratch, ψ)
+        launcher(pml_shift_kernel!, get_backend(ψ), wgs)(ψ, L.scratch, Int32(L.n[1]); ndrange = size(ψ))
+    end
+    return nothing
 end
 
 retire!(::PMLFields, st) = retire_open!(st)

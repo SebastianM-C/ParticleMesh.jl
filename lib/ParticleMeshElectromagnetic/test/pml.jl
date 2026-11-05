@@ -412,3 +412,58 @@ end
         end
     end
 end
+
+# --- T-549 ----------------------------------------------------------------------------------
+
+# The PML on the open y axis of a moving window (WP-028): the window's x edges are applied after
+# the PML's correction, and a shift moves the convolution fields one column back with E and B
+# (front column zero). A zero profile is the window's step with a zero-strength matched layer bit
+# for bit; and with a real PML and a warm plasma leaving through both y edges, Gauss's law holds
+# to roundoff across the shifts on the nodes off the layer rows and off the back nodes 1 and 2
+# (T-473's scale and constant).
+@testset "T-549 the PML in the moving window: the convolution fields shift with the fields, Gauss's law off the layer across shifts [A2, A4, A8, WP-034]" begin
+    warm(T) = window_plasma(T; cells = (24, 16), thermal = (T(1) / 10, T(1) / 10, T(1) / 10), nsteps = 60, open_y = true)
+    for T in TYPES
+        prob = warm(T)
+        a = window_state(prob; absorber = PML(; cells = 4, sigma_max = 0, kappa_max = 1, alpha_max = 0))
+        b = window_state(prob; absorber = AbsorbingLayer(; cells = 4, strength = 0))
+        run!(a, params(prob), prob.nsteps)
+        run!(b, params(prob), prob.nsteps)
+        @test window_shifts(a, prob.nsteps) > 0
+        @test all(c -> Array(getfield(a.fields, c)) == Array(getfield(b.fields, c)), keys(a.fields))
+        @test particle_set(a.species[1]) == particle_set(b.species[1])
+    end
+    # the shift of the convolution fields
+    st = window_state(warm(Float64); absorber = PML(; cells = 4, kappa_max = 2, alpha_max = 0.1))
+    L = st.aux.layer
+    foreach(c -> (getfield(L, c) .= randn(Xoshiro(17), size(getfield(L, c)))), (:ψBx, :ψBz, :ψEx, :ψEz))
+    before = map(c -> copy(getfield(L, c)), (:ψBx, :ψBz, :ψEx, :ψEz))
+    PME_shift = ParticleMeshElectromagnetic.shift_absorber!
+    PME_shift(L, nothing)
+    n1 = ncells(st.grid)[1]
+    for (c, old) in zip((:ψBx, :ψBz, :ψEx, :ψEz), before)
+        new = getfield(L, c)
+        @test new[1:(n1 - 1), :] == old[2:n1, :]
+        @test all(iszero, new[n1, :])
+    end
+    # Gauss's law across shifts with a real PML
+    C = emC("T-473")
+    for T in TYPES
+        prob = warm(T)
+        st = window_state(prob; absorber = PML(; cells = 4, kappa_max = 2, alpha_max = 0.2))
+        n2 = ncells(st.grid)[2]
+        off = 5:(n2 - 4)        # node rows j₀ = 4 … n₂ − 5, whose Ex is not corrected
+        p = params(prob)
+        n0 = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species)
+        worst = 0.0
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            r = window_gauss(st, window_shifts(st, k))
+            worst = max(worst, Float64(maximum(r.res[3:end, off]) / (base_eps(T) * r.scale * sqrt(k + 1))))
+        end
+        @info "T-549" T worst shifts = window_shifts(st, prob.nsteps) alive = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species) of = n0
+        @test window_shifts(st, prob.nsteps) > prob.cells[1]
+        record!("T-549", T, worst)
+        @test worst <= C
+    end
+end
