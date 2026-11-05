@@ -1,0 +1,386 @@
+## step 0 (julia): exit 0 after 4s
+trace: 11 goals, 26 work packages, 240 tagged testsets
+coverage (goal: packages; tests):
+  A0 Aims: WP-010, WP-011, WP-018; T-003, T-004, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269
+  A1 Units and normalization: WP-003, WP-012, WP-014, WP-015, WP-016, WP-017, WP-019, WP-022, WP-023, WP-024; T-010, T-012, T-013, T-160, T-161, T-180, T-181, T-182, T-183, T-184, T-185, T-186, T-187, T-188, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-231, T-232, T-233, T-234, T-235, T-236, T-237, T-240, T-241, T-242, T-243, T-244, T-245, T-250, T-251, T-252, T-253, T-254, T-255, T-256, T-270, T-271, T-272, T-273, T-274, T-275, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-360, T-361, T-362, T-363, T-364, T-365, T-366, T-367, T-368, T-369, T-374, T-380, T-381, T-420, T-456
+  A2 Baseline numerical scheme, written down as a decision set: WP-009, WP-010, WP-011, WP-013, WP-014, WP-015, WP-016, WP-018, WP-020, WP-022, WP-023, WP-024, WP-026, WP-027, WP-028, WP-029; T-110, T-111, T-112, T-113, T-114, T-115, T-116, T-117, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-231, T-232, T-233, T-234, T-235, T-236, T-237, T-240, T-241, T-242, T-243, T-244, T-245, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-280, T-300, T-301, T-302, T-303, T-304, T-305, T-306, T-307, T-308, T-309, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-360, T-361, T-362, T-363, T-364, T-365, T-366, T-367, T-368, T-369, T-374, T-380, T-381, T-400, T-401, T-402, T-403, T-404, T-405, T-406, T-407, T-408, T-409, T-420, T-440, T-441, T-442, T-443, T-444, T-445, T-446, T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457, T-470, T-471, T-472, T-473, T-474, T-475, T-476, T-477, T-478, T-479, T-480, T-481
+  A3 How parameters enter the simulation: WP-008, WP-009, WP-010, WP-011, WP-014, WP-018, WP-024, WP-026, WP-028; T-100, T-101, T-102, T-103, T-104, T-105, T-106, T-110, T-111, T-112, T-113, T-114, T-115, T-116, T-117, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-366, T-400, T-401, T-402, T-403, T-404, T-405, T-406, T-407, T-408, T-409, T-470, T-471, T-472, T-473, T-474, T-475, T-476, T-477, T-478, T-479, T-520, T-521, T-522
+  A4 Determinism policy: WP-009, WP-010, WP-011, WP-012, WP-013, WP-014, WP-018, WP-020, WP-021, WP-022, WP-023, WP-024, WP-027, WP-028, WP-029; T-110, T-111, T-112, T-113, T-114, T-115, T-116, T-117, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-180, T-181, T-182, T-183, T-184, T-185, T-186, T-187, T-188, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-280, T-300, T-301, T-302, T-303, T-304, T-305, T-306, T-307, T-308, T-309, T-310, T-311, T-312, T-313, T-314, T-315, T-316, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-340, T-341, T-345, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-360, T-361, T-362, T-363, T-364, T-365, T-366, T-367, T-368, T-369, T-374, T-380, T-381, T-395, T-406, T-420, T-434, T-440, T-441, T-442, T-443, T-444, T-445, T-446, T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457, T-470, T-471, T-472, T-473, T-474, T-475, T-476, T-477, T-478, T-479, T-490, T-492, T-500, T-501, T-520, T-522
+  A5 Canonical benchmark cases with numbers: WP-003, WP-010, WP-012, WP-013, WP-014, WP-017, WP-019, WP-023, WP-025, WP-030, WP-031, WP-032; T-010, T-012, T-013, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-160, T-161, T-180, T-181, T-182, T-183, T-184, T-185, T-186, T-187, T-188, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-250, T-251, T-252, T-253, T-254, T-255, T-256, T-270, T-271, T-272, T-273, T-274, T-275, T-280, T-360, T-361, T-362, T-363, T-364, T-365, T-366, T-367, T-368, T-369, T-374, T-380, T-381, T-390, T-391, T-392, T-393, T-394, T-395, T-396, T-410, T-411, T-412, T-413, T-414, T-415, T-416, T-417, T-420, T-430, T-431, T-432, T-433, T-434, T-435, T-436, T-490, T-491, T-492
+  A6 Repository and environment: WP-013, WP-014, WP-015, WP-017, WP-018, WP-019, WP-030; T-000, T-145, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-231, T-232, T-233, T-234, T-235, T-236, T-237, T-250, T-251, T-252, T-253, T-254, T-255, T-256, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275, T-280, T-370, T-371, T-372, T-373, T-375, T-376, T-420, T-430, T-431, T-432, T-433, T-434, T-435, T-436, T-460
+  A7 Acceptance criteria and budgets per work package: WP-003, WP-008, WP-009, WP-010, WP-011, WP-012, WP-013, WP-014, WP-015, WP-016, WP-017, WP-018, WP-019, WP-020, WP-021, WP-022, WP-023, WP-024, WP-025, WP-026, WP-027, WP-028, WP-029, WP-030, WP-031, WP-032; T-010, T-012, T-013, T-100, T-101, T-102, T-103, T-104, T-105, T-106, T-110, T-111, T-112, T-113, T-114, T-115, T-116, T-117, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-160, T-161, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-180, T-181, T-182, T-183, T-184, T-185, T-186, T-187, T-188, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-231, T-232, T-233, T-234, T-235, T-236, T-237, T-240, T-241, T-242, T-243, T-244, T-245, T-250, T-251, T-252, T-253, T-254, T-255, T-256, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275, T-280, T-300, T-301, T-302, T-303, T-304, T-305, T-306, T-307, T-308, T-309, T-310, T-311, T-312, T-313, T-314, T-315, T-316, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-340, T-341, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-360, T-361, T-362, T-363, T-364, T-365, T-366, T-367, T-368, T-369, T-374, T-380, T-381, T-390, T-391, T-392, T-393, T-394, T-395, T-396, T-400, T-401, T-402, T-403, T-404, T-405, T-406, T-407, T-408, T-409, T-410, T-411, T-412, T-413, T-414, T-415, T-416, T-417, T-420, T-430, T-431, T-432, T-433, T-434, T-435, T-436, T-440, T-441, T-442, T-443, T-444, T-445, T-446, T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457, T-470, T-471, T-472, T-473, T-474, T-475, T-476, T-477, T-478, T-479, T-490, T-491, T-492
+  A8 Element type is a user-level choice, never hard-coded: WP-008, WP-009, WP-010, WP-011, WP-013, WP-014, WP-015, WP-016, WP-018, WP-020, WP-021, WP-022, WP-023, WP-024, WP-026, WP-027, WP-028, WP-029; T-100, T-101, T-102, T-103, T-104, T-105, T-106, T-110, T-111, T-112, T-113, T-114, T-115, T-116, T-117, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-231, T-232, T-233, T-234, T-235, T-236, T-237, T-240, T-241, T-242, T-243, T-244, T-245, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-280, T-300, T-301, T-302, T-303, T-304, T-305, T-306, T-307, T-308, T-309, T-310, T-311, T-312, T-313, T-314, T-315, T-316, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-342, T-344, T-345, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-360, T-361, T-362, T-363, T-364, T-365, T-366, T-367, T-368, T-369, T-374, T-380, T-381, T-400, T-401, T-402, T-403, T-404, T-405, T-406, T-407, T-408, T-409, T-420, T-440, T-441, T-442, T-443, T-444, T-445, T-446, T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457, T-470, T-471, T-472, T-473, T-474, T-475, T-476, T-477, T-478, T-479, T-480, T-481, T-500, T-520, T-522
+  A9 Scope: a generic particle–mesh framework: WP-008, WP-010, WP-011, WP-013, WP-014, WP-018, WP-020, WP-021, WP-022; T-003, T-100, T-101, T-102, T-103, T-104, T-105, T-106, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-138, T-139, T-140, T-144, T-145, T-171, T-172, T-173, T-174, T-175, T-176, T-177, T-190, T-191, T-192, T-193, T-194, T-195, T-196, T-197, T-198, T-199, T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-260, T-261, T-262, T-263, T-264, T-265, T-266, T-267, T-268, T-269, T-280, T-300, T-301, T-302, T-303, T-304, T-305, T-306, T-307, T-308, T-309, T-310, T-311, T-312, T-313, T-314, T-315, T-316, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-501
+  A10 Problem description separated from numerical implementation: WP-014, WP-015, WP-021, WP-022, WP-024, WP-027; T-210, T-211, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221, T-230, T-231, T-232, T-233, T-234, T-235, T-236, T-237, T-310, T-311, T-312, T-313, T-314, T-315, T-316, T-320, T-321, T-322, T-323, T-324, T-325, T-326, T-327, T-328, T-329, T-350, T-351, T-352, T-353, T-354, T-355, T-356, T-357, T-358, T-368, T-444, T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457, T-477
+errors: none
+trace check passed
+
+## step 1 (julia): exit 0 after 607s
+      Status `~/jobs/wp028-subluminal-6/lib/ParticleMeshCore/test/Project.toml`
+  [4c88cf16] Aqua v0.8.18
+⌃ [bd0ed864] CUDACore v6.5.0
+⌃ [f6369f11] ForwardDiff v1.4.6
+  [c3a54625] JET v0.13.1
+  [63c18a36] KernelAbstractions v0.10.4
+  [5afebaaa] ParticleMeshCore v0.1.0-DEV `lib/ParticleMeshCore`
+  [fa267f1f] TOML v1.0.3
+  [8dfed614] Test v1.11.0
+      Status `~/jobs/wp028-subluminal-6/Manifest.toml`
+  [6a4ca0a5] AcceleratedKernels v0.5.11
+  [79e6a3ab] Adapt v4.7.4
+  [4c88cf16] Aqua v0.8.18
+  [dce04be8] ArgCheck v2.5.0
+  [a9b6321e] Atomix v1.7.0
+  [ab4f0b2a] BFloat16s v0.6.3
+⌅ [fa961155] CEnum v0.5.0
+⌃ [bd0ed864] CUDACore v6.5.0
+  [1af6417a] CUDA_Runtime_Discovery v2.1.1
+  [da1fd8a2] CodeTracking v3.0.2
+  [bbf7d656] CommonSubexpressions v0.3.1
+  [34da2185] Compat v4.18.1
+  [807dbc54] Compiler v0.1.1
+  [9db33cc3] CompilerCaching v0.5.1
+  [163ba53b] DiffResults v1.1.0
+  [b552c78f] DiffRules v1.16.0
+⌅ [ffbed154] DocStringExtensions v0.9.5
+  [e2ba6199] ExprTools v0.1.11
+⌃ [f6369f11] ForwardDiff v1.4.6
+  [0c68f7d7] GPUArrays v12.2.0
+  [46192b85] GPUArraysCore v0.2.2
+  [61eb1bfa] GPUCompiler v2.19.0
+  [096a3bc2] GPUToolbox v3.5.0
+  [076d061b] HashArrayMappedTries v0.2.0
+  [92d709cd] IrrationalConstants v0.2.7
+  [c3a54625] JET v0.13.1
+  [692b3bcd] JLLWrappers v1.8.0
+  [aa1ae85d] JuliaInterpreter v0.12.2
+  [70703baa] JuliaSyntax v1.0.2
+  [63c18a36] KernelAbstractions v0.10.4
+  [4ee993da] KernelInterface v0.4.3
+⌃ [929cbde3] LLVM v10.4.2
+  [8b046642] LLVMLoopInfo v1.0.0
+  [11f193de] LMDB v3.0.1
+  [2ab3a3ac] LogExpFunctions v1.0.3
+  [6f1432cf] LoweredCodeUtils v3.10.2
+  [1914dd2f] MacroTools v0.5.16
+  [77ba4419] NaNMath v1.1.5
+  [bac558e1] OrderedCollections v2.0.3
+  [5afebaaa] ParticleMeshCore v0.1.0-DEV `lib/ParticleMeshCore`
+  [aea7be01] PrecompileTools v1.3.4
+  [21216c6a] Preferences v1.6.1
+  [74087812] Random123 v1.7.1
+  [e6cf234a] RandomNumbers v1.6.0
+  [189a3867] Reexport v1.2.2
+  [295af30f] Revise v3.18.0
+  [71d1d633] SPIRVIntrinsics v1.6.0
+  [7e506255] ScopedValues v1.6.2
+  [6c6a2e73] Scratch v1.3.0
+  [276daf66] SpecialFunctions v2.9.1
+  [1e83bf80] StaticArraysCore v1.4.4
+  [10745b16] Statistics v1.11.5
+  [e689c965] Tracy v0.1.6
+  [013be700] UnsafeAtomics v0.4.0
+  [d1e2174e] CUDA_Compiler_jll v0.6.3+2
+  [4ee394cb] CUDA_Driver_jll v13.3.6+0
+  [76a88914] CUDA_Runtime_jll v0.25.0+3
+  [e33a78d0] Hwloc_jll v2.15.0+0
+  [dad2f222] LLVMExtra_jll v0.0.56+0
+  [1d63c593] LLVMOpenMP_jll v23.1.1+0
+  [6206cf0b] LMDB_jll v1.0.3+0
+  [ad6e5548] LibTracyClient_jll v0.13.1+0
+  [94ce4f54] Libiconv_jll v1.18.0+0
+  [ce32ce21] MSVCRuntime_jll v14.51.36247+0
+  [ef6e0fe3] NVPTX_LLVM_Backend_jll v23.1.2+2
+  [efe28fd5] OpenSpecFun_jll v0.5.6+0
+  [63e82ce6] SLEEF_jll v3.9.0+2
+  [4376b9bf] SPIRV_LLVM_Backend_jll v23.1.1+8
+  [6ac6d60f] SPIRV_Tools_jll v2025.4.0+0
+  [02c8fc9c] XML2_jll v2.15.4+0
+  [a65dc6b1] Xorg_libpciaccess_jll v0.19.0+0
+  [54f56a70] pocl_standalone_jll v7.2.3+2
+  [8b5cbfcf] tree_sitter_gcn_jll v0.1.0+0
+  [44208993] tree_sitter_llvm_jll v1.1.0+0
+  [71e3f6e6] tree_sitter_ptx_jll v0.1.0+0
+  [f0e86581] tree_sitter_spirv_jll v0.1.0+0
+  [0dad84c5] ArgTools v1.1.2
+  [56f22d72] Artifacts v1.11.0
+  [2a0f44e3] Base64 v1.11.0
+  [8bf52ea8] CRC32c v1.11.0
+  [ade2ca70] Dates v1.11.0
+  [f43a241f] Downloads v1.7.0
+  [7b1f6079] FileWatching v1.11.0
+  [b77e0a4c] InteractiveUtils v1.11.0
+  [ac6e5ff7] JuliaSyntaxHighlighting v1.12.0
+  [4af54fe1] LazyArtifacts v1.11.0
+  [b27032c2] LibCURL v1.0.0
+  [76f85450] LibGit2 v1.11.0
+  [8f399da3] Libdl v1.11.0
+  [37e2e46d] LinearAlgebra v1.13.0
+  [56ddb016] Logging v1.11.0
+  [d6f4376e] Markdown v1.11.0
+  [ca575930] NetworkOptions v1.3.0
+  [44cfe95a] Pkg v1.13.0
+  [de0858da] Printf v1.11.0
+  [3fa0cd96] REPL v1.11.0
+  [9a3f8284] Random v1.11.0
+  [ea8e919c] SHA v1.0.0
+  [9e88b42a] Serialization v1.11.0
+  [6462fe0b] Sockets v1.11.0
+  [2f01184e] SparseArrays v1.13.0
+  [f489334b] StyledStrings v1.11.0
+  [fa267f1f] TOML v1.0.3
+  [a4e569a6] Tar v1.10.0
+  [8dfed614] Test v1.11.0
+  [cf7118a7] UUIDs v1.11.0
+  [4ec0a83e] Unicode v1.11.0
+  [e66e0078] CompilerSupportLibraries_jll v1.5.5+2
+  [deac9b47] LibCURL_jll v8.22.0+0
+  [e37daf67] LibGit2_jll v1.9.7+0
+  [29816b5a] LibSSH2_jll v1.11.104+0
+  [14a3606d] MozillaCACerts_jll v2026.10.20
+  [4536629a] OpenBLAS_jll v0.3.30+0
+  [05823500] OpenLibm_jll v0.8.7+0
+  [458c3c95] OpenSSL_jll v3.5.8+0
+  [efcefdf7] PCRE2_jll v10.47.0+0
+  [bea87d4a] SuiteSparse_jll v7.10.1+0
+  [83775a58] Zlib_jll v1.3.2+0
+  [3161d3a3] Zstd_jll v1.5.7+1
+  [8e850b90] libblastrampoline_jll v5.15.0+0
+  [8e850ede] nghttp2_jll v1.70.0+0
+  [3f19e933] p7zip_jll v17.8.3+0
+        Info Packages marked with ⌃ and ⌅ have new versions available. Those with ⌃ may be upgradable, but those with ⌅ are restricted by compatibility constraints from upgrading.
+Precompiling for configuration --code-coverage=none --color=auto --warn-overwrite=yes --depwarn=yes --inline=yes --startup-file=no --track-allocation=none
+   3.1 s  ✓ ParticleMeshCore
+  1 dependency successfully precompiled in 5 seconds. 124 already precompiled.
+     Testing Running tests...
+┌ Info: T-144 bytes per call
+│   T = Float32
+│   extras = ()
+│   bytes = Dict{Tuple{String, Int64, Int64}, Int64} with 24 entries: …
+└   nthreads = 16
+┌ Info: T-144 bytes per call
+│   T = Float32
+│   extras = (:old_cell, :old_offset)
+│   bytes = Dict{Tuple{String, Int64, Int64}, Int64} with 24 entries: …
+└   nthreads = 16
+┌ Info: T-144 bytes per call
+│   T = Float64
+│   extras = ()
+│   bytes = Dict{Tuple{String, Int64, Int64}, Int64} with 24 entries: …
+└   nthreads = 16
+┌ Info: T-144 bytes per call
+│   T = Float64
+│   extras = (:old_cell, :old_offset)
+│   bytes = Dict{Tuple{String, Int64, Int64}, Int64} with 24 entries: …
+└   nthreads = 16
+┌ Info: T-176 floors
+│   floors =
+│    Dict{String, Float64} with 3 entries:
+│      "exp/3"         => 4.1349e-11
+│      "sin"           => 5.01875e-11
+└      "sin + η·noise" => 6.0028e-7
+┌ Info: T-116 order 1, Node
+│   ad = 15.37129313542296
+│   best_h = 3.162277660168379e-8
+│   r.floor_rel = 3.755806033723313e-9
+│   rel_at_best = 7.360606934351273e-10
+└   ratio = 0.19597942141475144
+┌ Info: T-116 order 1, Center
+│   ad = 18.36993687421485
+│   best_h = 0.03162277660168379
+│   r.floor_rel = 1.933982518898747e-15
+│   rel_at_best = 0.0
+└   ratio = 0.0
+┌ Info: T-116 order 2, Node
+│   ad = 1.2999171555623592
+│   best_h = 0.03162277660168379
+│   r.floor_rel = 2.4768092009833483e-14
+│   rel_at_best = 6.490948250852913e-15
+└   ratio = 0.2620689655172414
+┌ Info: T-116 order 2, Center
+│   ad = 18.20621858261826
+│   best_h = 1.0e-8
+│   r.floor_rel = 7.71348182126787e-10
+│   rel_at_best = 2.988698647377496e-10
+└   ratio = 0.3874642757485934
+┌ Info: T-117 bytes per deposit_flux!
+│   T = Float32
+│   mode = Reference()
+│   bytes =
+│    Dict{Tuple{Int64, Int64}, Int64} with 3 entries:
+│      (16, 500) => 0
+└      ⋮         => ⋮
+┌ Info: T-117 bytes per deposit_flux!
+│   T = Float32
+│   mode = Fast()
+│   bytes =
+│    Dict{Tuple{Int64, Int64}, Int64} with 3 entries:
+│      (16, 500) => 0
+└      ⋮         => ⋮
+┌ Info: T-117 bytes per deposit_flux!
+│   T = Float64
+│   mode = Reference()
+│   bytes =
+│    Dict{Tuple{Int64, Int64}, Int64} with 3 entries:
+│      (16, 500) => 0
+└      ⋮         => ⋮
+┌ Info: T-117 bytes per deposit_flux!
+│   T = Float64
+│   mode = Fast()
+│   bytes =
+│    Dict{Tuple{Int64, Int64}, Int64} with 3 entries:
+│      (16, 500) => 0
+└      ⋮         => ⋮
+┌ Info: T-268 bytes per call
+│   T = Float32
+│   extras = ()
+│   bytes = Dict{Tuple{String, Tuple{Int64, Int64}, Tuple{Int64, Int64}}, Int64} with 21 entries: …
+└   nthreads = 16
+┌ Info: T-268 bytes per call
+│   T = Float32
+│   extras = (:old_cell, :old_offset)
+│   bytes = Dict{Tuple{String, Tuple{Int64, Int64}, Tuple{Int64, Int64}}, Int64} with 21 entries: …
+└   nthreads = 16
+┌ Info: T-268 bytes per call
+│   T = Float64
+│   extras = ()
+│   bytes = Dict{Tuple{String, Tuple{Int64, Int64}, Tuple{Int64, Int64}}, Int64} with 21 entries: …
+└   nthreads = 16
+┌ Info: T-268 bytes per call
+│   T = Float64
+│   extras = (:old_cell, :old_offset)
+│   bytes = Dict{Tuple{String, Tuple{Int64, Int64}, Tuple{Int64, Int64}}, Int64} with 21 entries: …
+└   nthreads = 16
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float32
+│   mode = Reference()
+│   st = (Node(), Node())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float32
+│   mode = Reference()
+│   st = (Center(), Center())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float32
+│   mode = Fast()
+│   st = (Node(), Node())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float32
+│   mode = Fast()
+│   st = (Center(), Center())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float64
+│   mode = Reference()
+│   st = (Node(), Node())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float64
+│   mode = Reference()
+│   st = (Center(), Center())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float64
+│   mode = Fast()
+│   st = (Node(), Node())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+┌ Info: T-306 bytes per 2D deposit_flux!
+│   T = Float64
+│   mode = Fast()
+│   st = (Center(), Center())
+└   bytes = Dict{Tuple{Tuple{Int64, Int64}, Int64}, Int64} with 3 entries: …
+[ Info: T-314: the Dual primal is bitwise the Float32 run (recorded, not asserted; A4)
+┌ Info: T-315 bytes per call
+│   T = Float32
+│   bytes =
+│    Dict{Tuple{String, Any}, Int64} with 4 entries:
+│      ("gradient", (32, 24)) => 0
+│      ("gradient", (16, 12)) => 0
+│      ("solve", (16, 12))    => 0
+└      ("solve", (32, 24))    => 0
+┌ Info: T-315 bytes per call
+│   T = Float32
+│   bytes =
+│    Dict{Tuple{String, Any}, Int64} with 4 entries:
+│      ("gradient", 256) => 96
+│      ("gradient", 64)  => 96
+│      ("solve", 256)    => 96
+└      ("solve", 64)     => 96
+┌ Info: T-315 bytes per call
+│   T = Float64
+│   bytes =
+│    Dict{Tuple{String, Any}, Int64} with 4 entries:
+│      ("gradient", (32, 24)) => 0
+│      ("gradient", (16, 12)) => 0
+│      ("solve", (16, 12))    => 0
+└      ("solve", (32, 24))    => 0
+┌ Info: T-315 bytes per call
+│   T = Float64
+│   bytes =
+│    Dict{Tuple{String, Any}, Int64} with 4 entries:
+│      ("gradient", 256) => 96
+│      ("gradient", 64)  => 96
+│      ("solve", 256)    => 96
+└      ("solve", 64)     => 96
+7 instances of unbound type parameters detected. To get a list, set `broken = false`.
+T-500 Dual{Float32,3} Quadratic 2D flux on POCLBackend: workgroupsize 512 ran, workgroupsize 1024 refused, workgroupsize 4096 refused
+GPU tests (WP-013) not run: PM_TEST_GPU=0
+
+Measured err/(eps(T)·scale) per test (compare with tolerances.toml):
+  T-110: Dual{Float32,3} = 3.59, Float32 = 4.36, Float64 = 4.51
+  T-111: Dual{Float32,3} = 14.1, Float32 = 4.5, Float64 = 5.42
+  T-112: Dual{Float32,3} = 0.86, Float32 = 0.084, Float64 = 0.107
+  T-112 zero displacement: Dual{Float32,3} = 0.0, Float32 = 0.0, Float64 = 0.0
+  T-113: Float32 = 5.13, Float64 = 3.32
+  T-114: Dual{Float32,3} = 3.88
+  T-116 floor_rel: order 1, Center = 1.93e-15, order 1, Node = 3.76e-9, order 2, Center = 7.71e-10, order 2, Node = 2.48e-14
+  T-116 rel/floor: order 1, Center = 0.0, order 1, Node = 0.196, order 2, Center = 0.387, order 2, Node = 0.262
+  T-130: Dual{Float32,3} = 1.0, Float32 = 1.0, Float64 = 1.0
+  T-131: Dual{Float32,3} = 0.667, Float32 = 0.667, Float64 = 0.667
+  T-132: Dual{Float32,3} = 1.36, Float32 = 1.7, Float64 = 2.04
+  T-133: Dual{Float32,3} = 0.288, Float32 = 0.316, Float64 = 0.262
+  T-134: Dual{Float32,3} = 5.46, Float32 = 5.46, Float64 = 2.05
+  T-135: Float32 = 10.5, Float64 = 14.3
+  T-138: Dual{Float32,3} = 0.1, Float32 = 0.1, Float64 = 0.1
+  T-140: Dual{Float32,3} = 3.42
+  T-172: Dual{Float32,3} = 0.583, Float32 = 0.267, Float64 = 0.838
+  T-174: Dual{Float32,3} = 1.54, Float32 = 0.0281, Float64 = 0.0632
+  T-174 nodes: Float32 = 0.372, Float64 = 0.413
+  T-175: Dual{Float32,3} = 0.861, Float32 = 0.0587, Float64 = 0.0755
+  T-175 partials: Dual{Float32,3} = 2.81
+  T-176 rel/floor: exp/3 = 0.436, sin = 1.02, sin + η·noise = 1.0
+  T-262: Dual{Float32,3} = 2.0, Float32 = 2.0, Float64 = 2.0
+  T-263: Dual{Float32,3} = 0.185, Float32 = 0.0955, Float64 = 0.501
+  T-264: Dual{Float32,3} = 2.0, Float32 = 2.0, Float64 = 1.33
+  T-265: Dual{Float32,3} = 3.08, Float32 = 0.684, Float64 = 0.856
+  T-265 adjoint: Dual{Float32,3} = 0.399, Float32 = 0.0633, Float64 = 0.0859
+  T-265 nodes: Float32 = 1.44, Float64 = 1.5
+  T-265 partials: Dual{Float32,3} = 1.87
+  T-267: Dual{Float32,3} = 4.85, Float32 = 0.606, Float64 = 0.606
+  T-269: Dual{Float32,3} = 1.52, Float32 = 1.52, Float64 = 1.47
+  T-269 gather: Dual{Float32,3} = 0.776, Float32 = 0.776, Float64 = 1.55
+  T-300: Dual{Float32,3} = 2.41, Float32 = 1.89, Float64 = 1.98
+  T-301: Dual{Float32,3} = 0.866, Float32 = 0.0474, Float64 = 0.0913
+  T-301 1D average: Float64 = 1.59
+  T-301 hand: Float64 = 1.25
+  T-302: Float32 = 4.35, Float64 = 3.87
+  T-304: Dual{Float32,3} = 0.464, Float32 = 3.2, Float64 = 3.43
+  T-305: Dual{Float32,3} = 2.03
+  T-305 primal bitwise: 1,Center,Center = 1.0, 1,Center,Node = 1.0, 1,Node,Center = 1.0, 1,Node,Node = 1.0, 2,Center,Center = 1.0, 2,Center,Node = 1.0, 2,Node,Center = 1.0, 2,Node,Node = 1.0
+  T-307 floor_rel: order 1, Node,Node, dir (0, 1) = 2.85e-9, order 1, Node,Node, dir (1, 0) = 2.88e-9, order 1, Node,Node, dir (1, 1) = 9.75e-10, order 2, Center,Center, dir (0, 1) = 1.22e-9, order 2, Center,Center, dir (1, 0) = 8.1e-9, order 2, Center,Center, dir (1, 1) = 8.4e-10, order 2, Center,Node, dir (0, 1) = 4.75e-15, order 2, Center,Node, dir (1, 0) = 5.75e-10, order 2, Center,Node, dir (1, 1) = 3.5e-9, order 2, Node,Center, dir (0, 1) = 1.71e-9, order 2, Node,Center, dir (1, 0) = 1.85e-15, order 2, Node,Center, dir (1, 1) = 1.95e-8, order 2, Node,Node, dir (0, 1) = 8.68e-16, order 2, Node,Node, dir (1, 0) = 3.72e-15, order 2, Node,Node, dir (1, 1) = 1.4e-10
+  T-307 rel/floor: order 1, Node,Node, dir (0, 1) = 0.259, order 1, Node,Node, dir (1, 0) = 0.152, order 1, Node,Node, dir (1, 1) = 0.539, order 2, Center,Center, dir (0, 1) = 0.62, order 2, Center,Center, dir (1, 0) = 0.0917, order 2, Center,Center, dir (1, 1) = 1.25, order 2, Center,Node, dir (0, 1) = 0.265, order 2, Center,Node, dir (1, 0) = 1.21, order 2, Center,Node, dir (1, 1) = 0.395, order 2, Node,Center, dir (0, 1) = 0.397, order 2, Node,Center, dir (1, 0) = 0.0, order 2, Node,Center, dir (1, 1) = 0.253, order 2, Node,Node, dir (0, 1) = 0.0, order 2, Node,Node, dir (1, 0) = 1.0, order 2, Node,Node, dir (1, 1) = 0.198
+  T-309: Dual{Float32,3} = 1.59, Float32 = 0.0946, Float64 = 0.108
+  T-310: Dual{Float32,3} = 0.0389, Float32 = 0.0406, Float64 = 0.0402
+  T-310 mean: Dual{Float32,3} = 0.00213, Float32 = 0.00256, Float64 = 0.00125
+  T-311: Dual{Float32,3} = 0.109, Float32 = 0.109, Float64 = 0.109
+  T-313: Dual{Float32,3} = 0.0156, Float32 = 0.0108, Float64 = 0.0104
+  T-314: primal bitwise with Float32 (1 = yes) = 1.0
+  T-314 partials: Dual{Float32,3} = 0.604
+  T-314 primal: Dual{Float32,3} = 0.0
+Test Summary:    |  Pass  Broken  Total     Time
+ParticleMeshCore | 28532      17  28549  9m54.5s
+     Testing ParticleMeshCore tests passed 
+
+## step 2 (julia): exit 0 after 680s
