@@ -403,8 +403,17 @@ end
 
 relrms(a, b) = sqrt(sum(abs2, a .- b) / max(sum(abs2, b), eps()))
 
-# The m of the envelope peak (the laser's centre on the axis).
+# The m of the envelope peak (the laser's centre on the axis, to within the carrier: the running
+# max snaps to a crest); used to place the wake window.
 peak_m(o) = o["Ey_m0"] + argmax(Float64.(o["Ey_envelope"])) - 1
+
+# The energy centroid of E_y² on the axis, in c/ω₀: the laser's position, independent of the
+# carrier phase (which differs between the codes by Smilei's missing Gouy phase).
+function centroid_x(o, dx)
+    e = Float64.(o["Ey_axis"]) .^ 2
+    m = o["Ey_m0"] .+ (0:(length(e) - 1))
+    return sum(e) > 0 ? sum(m .* e) / sum(e) * dx : nothing
+end
 
 "Compare the four summaries under `runs` (pm-*, smilei-*) and write the figures, sidecars and `comparison.json` into `out`."
 function compare(runs, out)
@@ -425,6 +434,7 @@ function compare(runs, out)
             r = Dict{String,Any}("step" => o["step"], "t" => o["t"],
                                  "Ey_absmax" => [o["Ey_absmax"], s["Ey_absmax"]],
                                  "peak_x" => [peak_m(o) * d.dx, peak_m(s) * d.dx],
+                                 "centroid_x" => Any[centroid_x(o, d.dx), centroid_x(s, d.dx)],
                                  "envelope_relrms" => isempty(env.m) ? nothing : relrms(env.a, env.b))
             if medium == "plasma"
                 # the wake: from the laser's peak back two plasma wavelengths, on the axis
@@ -476,7 +486,7 @@ end
 function plot_wake(out, S, case, d, λp)
     pm, sm = S["pm-plasma"]["outputs"], S["smilei-plasma"]["outputs"]
     bystep = Dict(o["step"] => o for o in sm)
-    picks = pm[Int.(case["diagnostics"]["map_outputs"])]
+    picks = pm[Int.(get(case["diagnostics"], "wake_outputs", [6, 9, 13]))]   # in the plasma: t ≈ 500, 800, 1300 for the proposed case
     fig = Figure(size = (1100, 300 * length(picks)))
     side = Dict{String,Any}()
     for (row, o) in enumerate(picks)
@@ -527,14 +537,13 @@ function plot_spectra(out, S)
     edges = Float64.(S["pm-plasma"]["spectrum_edges"])
     mids = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
     fig = Figure(size = (700, 420))
-    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "dN/dE, normalized to the bins above 1 mₑc²", yscale = log10,
-              title = "electron spectrum at the end")
+    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "fraction of the electron weight per bin", yscale = log10,
+              title = "electron spectrum at the end (bins of $(round(edges[2] - edges[1]; digits = 3)) mₑc²)")
     side = Dict{String,Any}("ekin" => mids)
     for (code, key) in (("ParticleMesh", "pm"), ("Smilei", "smilei"))
         h = Float64.(last(S["$key-plasma"]["outputs"])["spectrum"])
         isempty(h) && continue
-        sel = mids .> 1
-        norm = sum(h[sel])
+        norm = sum(h)
         hn = norm > 0 ? h ./ norm : h
         ok = hn .> 0
         any(ok) && scatterlines!(ax, mids[ok], hn[ok]; label = code, color = getfield(COLORS, Symbol(key)))
