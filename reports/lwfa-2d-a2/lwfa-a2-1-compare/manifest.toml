@@ -1,0 +1,7 @@
+case = "lwfa-2d-a2"
+commit = "ae10436941c404878852fb9dadafa884f4d1c6df"
+dirty = false
+runs = "scripts/runs/box-lwfa-a2-1/lwfa-a2-1"
+updated = "2026-11-05T11:36:43.295Z"
+
+[inputs]
