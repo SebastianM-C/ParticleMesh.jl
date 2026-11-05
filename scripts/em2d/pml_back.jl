@@ -122,7 +122,7 @@ function back_report()
             scatter!(ax3, [r["theta"] for r in sel], [r["R"] for r in sel]; color = :black, marker = :xcross, markersize = 9,
                      label = "measured (module's step)")
         end
-        col == 1 && axislegend(ax3; position = :lb, labelsize = 10, merge = true, unique = true)
+        col == 1 && axislegend(ax3; position = :rc, labelsize = 10, merge = true, unique = true)
     end
     println("wrote ", save_plot(dir, "pml_back_theory", fig3, Dict("runs" => tr, "cpu" => cpu_model(), "threads" => Threads.nthreads())))
     return rows, lr, tr
