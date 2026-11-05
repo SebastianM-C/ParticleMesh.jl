@@ -102,3 +102,131 @@ end
         @test sort(maps) == sort(["step$(steps[j])" for j in Int.(CASE["diagnostics"]["map_outputs"])])
     end
 end
+
+# --- PIConGPU (scripts/lwfa/picongpu.jl) -------------------------------------------------------------
+
+cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).captures[1])
+
+@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" begin
+    d = derived(CASE)
+    u = reference_units(CASE["lambda0_um"] * 1e-6)
+    f = picongpu_param_files(CASE; plasma = true)
+    sim, las = f["simulation.param"], f["incidentField.param"]
+    @test cnum(sim, "CELL_WIDTH_SI") == d.dy * u.length          # PIConGPU x: the case's transverse axis
+    @test cnum(sim, "CELL_HEIGHT_SI") == d.dx * u.length         # PIConGPU y: the propagation axis
+    @test cnum(sim, "DELTA_T_SI") == d.dt * u.time
+    @test cnum(sim, "BASE_DENSITY_SI") == u.density
+    @test occursin("Solver = maxwellSolver::Yee", f["fieldSolver.param"]) && occursin("precision64Bit", f["precision.param"])
+    @test occursin("mCT::Int<$(CASE["plasma"]["particles_per_cell"][2]), $(CASE["plasma"]["particles_per_cell"][1]), 1>", f["particle.param"])
+    @test occursin("DIRECTION_Y = 1.0", las) && occursin("POLARISATION_DIRECTION_X = 1.0", las) && occursin("using YMin = LwfaLaser", las)
+    @test occursin("{$HUYGENS, -$HUYGENS}, // y", las)
+    L = CASE["laser"]
+    @test cnum(las, "AMPLITUDE_SI") == L["a0"] * u.efield
+    @test cnum(las, "W0_SI") == L["waist"] * u.length
+    lay = picongpu_layout(CASE)
+    @test cnum(las, "FOCUS_POSITION_Y_SI") ≈ (lay.j0 * d.dx + L["focus"]) * u.length rtol = 1e-15
+    # GaussianPulse.hpp: envelope exp(−((t + TIME_SHIFT)/(2σ))²), TIME_SHIFT = −PULSE_INIT·σ/2, at the Huygens
+    # surface (HUYGENS + 0.75)Δ; on lab x = 0, a quarter cell later, it must be the case's exp(−(t − delay)²/τ²)
+    σ = cnum(las, "PULSE_DURATION_SI") / u.time
+    init = cnum(las, "PULSE_INIT")
+    pic(t) = exp(-((t - 0.25 * d.dx) - init * σ / 2)^2 / (2σ)^2)
+    @test all(t -> isapprox(pic(t), exp(-(t - L["delay"])^2 / L["duration"]^2); rtol = 1e-12), 0:13:260)
+    args = picongpu_arguments(picongpu_parameters(CASE))
+    @test occursin("-g $(d.ny) $(lay.cells[2])", args) && occursin("-s $(d.steps)", args) && occursin("--periodic 1 0", args)
+    @test occursin("-d 1 $(lay.devices) -r $(lay.devices)", args) && occursin("--currentInterpolation none", args)
+    @test occursin("--e_energyHistogram.binCount $(CASE["diagnostics"]["spectrum_ekin"][3])", args)
+    keV = 1e3 * PIConGPUDeck.QE_SI
+    @test parse(Float64, match(r"maxEnergy ([0-9.e+]+)", args).captures[1]) * keV ≈ CASE["diagnostics"]["spectrum_ekin"][2] * u.energy rtol = 1e-14
+    vac = picongpu_param_files(CASE; plasma = false)
+    @test occursin("InitPipeline = pmacc::mp_list<>", vac["speciesInitialization.param"])
+    @test !occursin("energyHistogram", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
+end
+
+@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" begin
+    d = derived(CASE)
+    lay = picongpu_layout(CASE)
+    @test lay.window == (lay.devices - 1) * lay.local_y && lay.cells[2] == lay.devices * lay.local_y
+    @test lay.local_y % PIC_SUPERCELL == 0 && d.ny % PIC_SUPERCELL == 0
+    @test lay.window >= d.nx + lay.j0                                     # it holds the case's window and the cells behind x = 0
+    @test ceil(Int, lay.window * (1 - lay.move_point)) == lay.start_cell  # MovingWindow.hpp's virtual photon start
+    @test HUYGENS >= PIC_ABSORBER + 1
+    @test picongpu_window_back(CASE, 0) == -lay.j0
+    start = CASE["window"]["start"]
+    for k in round.(Int, range(start / d.dt + 50, d.steps; length = 40))
+        @test abs(picongpu_window_back(CASE, k) * d.dx - (k * d.dt - start)) <= 2 * d.dx
+    end
+    # the window never moves backwards, and the front of the case's window stays inside it
+    backs = [picongpu_window_back(CASE, k) for k in 0:d.steps]
+    @test all(>=(0), diff(backs))
+    @test all(k -> picongpu_window_back(CASE, k) + lay.window - 1 >= max(0.0, k * d.dt - start) / d.dx + d.nx - 2, 0:97:d.steps)
+end
+
+@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" begin
+    d = derived(CASE)
+    lay = picongpu_layout(CASE)
+    P = CASE["plasma"]
+    dens = picongpu_param_files(CASE)["density.param"]
+    @test cnum(dens, "DENSITY") == P["density"] && cnum(dens, "VACUUM") == P["vacuum"] && cnum(dens, "RAMP") == P["ramp"]
+    @test cnum(dens, "DX") == d.dx && cnum(dens, "J0") == lay.j0
+    prob = pm_problem(CASE)
+    for j in (0, lay.j0, lay.j0 + 1320, lay.j0 + 1400, lay.j0 + 1600, lay.j0 + 1700, 5000)
+        x = (j + 0.5 - lay.j0) * d.dx                                         # lab x of the cell centre
+        @test picongpu_density(CASE, j) ≈ P["density"] * ramp_factor(x + d.xa, prob.profile.vacuum, prob.profile.ramp) atol = 1e-15
+    end
+end
+
+@testset "T-517 PIConGPU's dumps are read with the axes swapped back: the window offset, E_y as E_x, E_x as E_y, the axis columns [A5]" begin
+    d = derived(CASE)
+    lay = picongpu_layout(CASE)
+    u = reference_units(CASE["lambda0_um"] * 1e-6)
+    W, N = lay.window, d.ny
+    mktempdir() do dir
+        cp(joinpath(@__DIR__, "..", "cases", "lwfa-2d-a2.toml"), joinpath(dir, "case.toml"))
+        write(joinpath(dir, "kind.txt"), "plasma\n")
+        steps = output_steps(CASE)
+        mkpath(joinpath(dir, "openPMD"))
+        h5open(joinpath(dir, "openPMD", "simData.h5"), "w") do f
+            HDF5.attributes(f)["meshesPath"] = "fields/"
+            data = create_group(f, "data")
+            for (q, it) in enumerate(steps)
+                fl = create_group(create_group(data, string(it)), "fields")
+                E = create_group(fl, "E")
+                HDF5.attributes(E)["axisLabels"] = ["y", "x"]
+                HDF5.attributes(E)["gridUnitSI"] = u.length
+                HDF5.attributes(E)["gridGlobalOffset"] = [10.0 * (q - 1) * d.dx, 0.0]     # y first, in units of gridUnitSI
+                # HDF5.jl writes a Julia (x, y) array as C order [y][x]
+                E["x"] = [1000.0 * i + j for i in 0:(N - 1), j in 0:(W - 1)]
+                E["y"] = [-1000.0 * i - j for i in 0:(N - 1), j in 0:(W - 1)]
+                HDF5.attributes(E["x"])["unitSI"] = u.efield                              # the reader's scale is then exactly 1
+                HDF5.attributes(E["y"])["unitSI"] = u.efield
+                fl["e_all_chargeDensity"] = [Float64(j + 2000 * i) for i in 0:(N - 1), j in 0:(W - 1)]
+                HDF5.attributes(fl["e_all_chargeDensity"])["unitSI"] = PIConGPUDeck.QE_SI * u.density
+            end
+        end
+        per_weight = u.density * u.length^2 * d.dx * u.length
+        open(joinpath(dir, "e_energyHistogram_all.dat"), "w") do io
+            println(io, "#step <0 header")
+            for it in steps
+                println(io, join([it; 7.0; fill(Float64(it), 200); 3.0; 99.0], " "))
+            end
+        end
+        summarize_picongpu(dir)
+        s = JSON.parsefile(joinpath(dir, "summary.json"))
+        @test s["code"] == "PIConGPU"
+        o = s["outputs"][3]
+        jw = 20
+        @test o["window_offset"] == jw
+        @test o["Ey_m0"] == jw - lay.j0 && o["rho_m0"] == jw - lay.j0 && o["Ex_m0"] == jw - lay.j0 + 1
+        @test o["Ex_axis"][1:3] == -1000.0 * d.jaxis .- [0.0, 1.0, 2.0]            # PIConGPU's E_y on column jaxis (from 0)
+        @test o["Ey_axis"][1] == 1000.0 * d.jaxis - 500                             # its E_x on columns jaxis − 1, jaxis
+        @test o["Ey_absmax"] == 1000.0 * (N - 1) + W - 1
+        @test o["rho_axis"][5] == 4.0 + 2000 * d.jaxis
+        @test o["spectrum"] ≈ fill(steps[3] / per_weight, 200) rtol = 1e-14
+        @test o["spectrum_under"] ≈ 7 / per_weight rtol = 1e-14
+        maps = h5open(joinpath(dir, "maps.h5"), "r") do f
+            Dict(k => size(read(f[k]["rho"])) for k in keys(f))
+        end
+        @test sort(collect(keys(maps))) == sort(["step$(steps[j])" for j in Int.(CASE["diagnostics"]["map_outputs"])])
+        @test all(==((W, N)), values(maps))                                          # (x, y) as the other codes' maps
+    end
+end
