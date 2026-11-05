@@ -511,20 +511,63 @@ function observable_series(obs, sc, fl, mode, lengths)
     error("unknown signal $sig")
 end
 
+"""
+    filtered_gauss_observable(dir, case, obs, fl) -> Dict
+
+The observable `signal = "filtered_gauss"` (WP-038): `filtered_gauss` between the first field
+output and every later one, for the case's `filter_passes`. `measured` is its deviation at
+the last output (theory 0, to roundoff; `tolerance` from the case), with the largest over the
+outputs, and the deviations for one pass fewer and one more at the last output, which show that
+the check tells the pass counts apart. Writes `filtered-gauss.png` with its sidecar: per mode
+|Δr̂|/|Δρ̂| against 1 − H(m) at the last output.
+"""
+function filtered_gauss_observable(dir, case, obs, fl)
+    p = Int(get(case["numerics"], "filter_passes", 0))
+    s = filtered_gauss_series(fl, case)
+    n = length(s.ρ)
+    n >= 2 || error("filtered_gauss needs at least two field outputs")
+    per = [filtered_gauss(s.r[1], s.ρ[1], s.r[k], s.ρ[k], p; floor = obs["floor"]) for k in 2:n]
+    last_ = per[end]
+    tol = Float64(obs["tolerance"])
+    r = Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],
+        "passes" => p, "measured" => last_.deviation, "t" => s.t[end],
+        "measured_max_over_outputs" => maximum(x -> x.deviation, per),
+        "deviation_other_pass_counts" => Dict(string(q) => v for (q, v) in last_.deviation_other),
+        "charge_change_scale" => last_.charge_change_scale, "modes_above_floor" => last_.modes,
+        "tolerance" => tol, "within_tolerance" => last_.deviation <= tol, "outputs" => n)
+    fig = Figure(size = (700, 600))
+    ax = Axis(fig[1, 1]; xlabel = "1 − H(m), $p pass$(p == 1 ? "" : "es")", ylabel = "|Δr̂(m)| / |Δρ̂(m)|",
+        title = "$(case["name"]) ($(code_label(dir))): Gauss residual change per mode, t = $(round(s.t[end]; digits = 2))")
+    scatter!(ax, last_.one_minus_H, last_.ratio; color = :black, markersize = 4, label = "modes, |Δρ̂| > $(obs["floor"]) max")
+    lines!(ax, [0.0, 1.0], [0.0, 1.0]; color = :blue, linestyle = :dash, label = "filtered Gauss law")
+    axislegend(ax; position = :lt)
+    save_plot(dir, "filtered-gauss", fig, Dict{String,Any}(
+        "plot" => "per Fourier mode m above the floor, |Δr̂|/|Δρ̂| between the first and last field outputs against 1 − H(m) of the run's filter",
+        "passes" => p, "one_minus_H" => last_.one_minus_H, "ratio" => last_.ratio, "deviation" => last_.deviation,
+        "deviation_other_pass_counts" => r["deviation_other_pass_counts"]))
+    return r
+end
+
 function analyze_2d(dir, case; log = nothing, image = nothing)
     name = case["name"]
     code = code_label(dir)
     # the per-run observables; a seeded case's ensemble observable is evaluated by analyze_seeded
     observables = filter(p -> p.second["method"] != "ensemble_peak_envelope", case["observables"])
+    gauss_obs = filter(p -> p.second["signal"] == "filtered_gauss", observables)
+    observables = filter(p -> p.second["signal"] != "filtered_gauss", observables)
     sc = run_scalars(dir)
     fieldnames = unique(vcat(String[], (get(o, "fields", String[]) for o in values(observables))...))
     "Rho" in case["diagnostics"]["fields"] && push!(fieldnames, "Rho")   # for the loading checks below
+    isempty(gauss_obs) || append!(fieldnames, setdiff(["Ex", "Ey", "Rho"], fieldnames))
     fl = run_fields(dir; names = fieldnames, timestep = case["time"]["dt"])
     lengths = Tuple(Float64.(case["grid"]["length"]))
     mode = Tuple(Int.(case["wavevector"]["mode"]))
     series = Dict(k => observable_series(o, sc, fl, mode, lengths) for (k, o) in observables)
     fits = Dict{String,Any}()
     results = Dict{String,Any}()
+    for (key, obs) in gauss_obs
+        results[key] = filtered_gauss_observable(dir, case, obs, fl)
+    end
     # rate fits first, then the observables that refer to a fit (`fit_of`)
     order = sort(collect(keys(observables)); by = k -> (haskey(observables[k], "fit_of"), k))
     for key in order

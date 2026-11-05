@@ -186,6 +186,7 @@ where a case quantity becomes a Smilei quantity; `namelist` only formats its res
 - patches: the largest power of 2 that divides the cells and leaves at least 8 cells per
   patch (Smilei needs a power of 2 and more than 2·oversize + 1 = 5 cells per patch at
   interpolation order 2), capped at 32;
+- the binomial current filter's pass count (`filter_passes`), emitted as `CurrentFilter`;
 - diagnostics cadence in steps, as given.
 """
 function smilei_parameters_1d(case)
@@ -197,7 +198,7 @@ function smilei_parameters_1d(case)
     steps = round(Int, Float64(t["t_end"]) / dt)
     order = Int(num["shape_order"])
     order == 2 || error("Smilei supports interpolation orders 2 and 4; the cases use 2 (A2)")
-    get(num, "filter_passes", 0) == 0 || error("current filtering is not generated yet")
+    passes = filter_passes(num; gpu = false)
     get(num, "precision", "Float64") == "Float64" || error("Smilei runs in double precision")
     dt < dx || @warn "dt ≥ Δx violates the CFL condition of Smilei's 1D Yee solver"
     patches = 1
@@ -232,7 +233,7 @@ function smilei_parameters_1d(case)
     return (; geometry = "1Dcartesian", interpolation_order = order,
               cell_length = dx, number_of_cells = N, grid_length = N * dx,
               timestep = dt, number_of_timesteps = steps, simulation_time = steps * dt,
-              number_of_patches = patches,
+              number_of_patches = patches, filter_passes = passes,
               random_seed = first(case_seeds(case)),
               species,
               scalars_every = Int(d["scalars_every"]), fields_every = Int(d["fields_every"]),
@@ -291,7 +292,8 @@ rules as `smilei_parameters_1d`, per axis:
 - `gpu = true` (the smilei-gpu image, WP-030): `gpu_computing = True`, one MPI rank without
   OpenMP (`make config="gpu_nvidia"` implies `noopenmp`), so `threads = 1`, and one patch
   unless `patches` says otherwise (Smilei's guideline: one patch per GPU);
-- `patches = (px, py)` overrides the layout of either build, checked as `patches_2d`'s rule.
+- `patches = (px, py)` overrides the layout of either build, checked as `patches_2d`'s rule;
+- the filter's pass count as in 1D (`filter_passes`), refused with `gpu = true`.
 """
 function smilei_parameters_2d(case; gpu = false, patches = nothing)
     g, t, num = case["grid"], case["time"], case["numerics"]
@@ -302,7 +304,7 @@ function smilei_parameters_2d(case; gpu = false, patches = nothing)
     steps = round(Int, Float64(t["t_end"]) / dt)
     order = Int(num["shape_order"])
     order == 2 || error("Smilei supports interpolation orders 2 and 4; the cases use 2 (A2)")
-    get(num, "filter_passes", 0) == 0 || error("current filtering is not generated yet")
+    passes = filter_passes(num; gpu)
     get(num, "precision", "Float64") == "Float64" || error("Smilei runs in double precision")
     dt < 1 / sqrt(sum(abs2, 1 ./ dx)) || @warn "dt violates the CFL condition of Smilei's 2D Yee solver"
     patches = patches === nothing ? (gpu ? (1, 1) : patches_2d(N)) : check_patches(Tuple(Int.(patches)), N)
@@ -336,11 +338,45 @@ function smilei_parameters_2d(case; gpu = false, patches = nothing)
               cell_length = dx, number_of_cells = N, grid_length = N .* dx,
               timestep = dt, number_of_timesteps = steps, simulation_time = steps * dt,
               number_of_patches = patches, threads = gpu ? 1 : prod(patches), gpu_computing = gpu,
+              filter_passes = passes,
               random_seed = first(case_seeds(case)),
               species,
               scalars_every = Int(d["scalars_every"]), fields_every = Int(d["fields_every"]),
               fields = collect(String, d["fields"]))
 end
+
+"""
+    filter_passes(numerics; gpu) -> Int
+
+The case's binomial pass count (`filter_passes`, default 0), a non-negative integer. Smilei's
+`CurrentFilter(model = "binomial", passes = [p])` is the same operator as ParticleMesh's
+`BinomialFilter(p)` (v5.1 source: `Params.cpp` copies a one-element `passes` to every axis;
+`ElectroMagn1D/2D::binomialCurrentFilter` sweeps J[i] ← (J[i] + J[i+1])/2 up and
+J[i] ← (J[i] + J[i−1])/2 down, which is (1, 2, 1)/4, along x then y, on Jx, Jy and Jz on their own
+extents, once per pass, with a guard exchange after each pass; `VectorPatch::solveMaxwell` runs
+it after the current is summed and before the Yee update). The filter has no device code, so a
+GPU run (`gpu = true`) with passes is refused.
+"""
+function filter_passes(num; gpu)
+    p = get(num, "filter_passes", 0)
+    p isa Integer && p >= 0 || error("filter_passes must be a non-negative integer, got $(repr(p))")
+    gpu && p > 0 && error("Smilei's binomial current filter has no GPU code path (v5.1); run a filtered case on the CPU build")
+    return Int(p)
+end
+
+"""
+    current_filter_block(p) -> String
+
+The namelist's `CurrentFilter` block for `p.filter_passes` passes along every axis; empty for
+zero passes, so that an unfiltered namelist stays as it was.
+"""
+current_filter_block(p) = p.filter_passes == 0 ? "" : """
+    CurrentFilter(
+        model = "binomial",
+        passes = [$(p.filter_passes)],
+    )
+
+    """
 
 # Julia's shortest round-trip form; Python's float() parses it to the same double.
 pyfloat(x::Real) = (isfinite(x) || error("non-finite value in namelist"); string(Float64(x)))
@@ -402,6 +438,7 @@ function namelist_1d(case; seed = first(case_seeds(case)))
         )
         """)
     end
+    print(io, current_filter_block(p))
     println(io, """
     DiagScalar(
         every = $(p.scalars_every),
@@ -529,6 +566,7 @@ function namelist_2d(case; seed = first(case_seeds(case)), gpu = false, patches 
         )
         """)
     end
+    print(io, current_filter_block(p))
     println(io, """
     DiagScalar(
         every = $(p.scalars_every),
