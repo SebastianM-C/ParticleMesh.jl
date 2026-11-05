@@ -1,0 +1,84 @@
+# The binomial current filter in all three codes (WP-038): the oblique Landau case of landau-oblique-2d.toml
+# at WP-029's test size, with 1 binomial pass of the current per step.
+# Units (A1) as in landau-oblique-2d.toml. Density 1 n_c, so ω_p = ω₀; v_th = 0.05 c, |k| = 10 ω₀/c along mode [2, 1].
+# Sizes: 32 × 32 cells (Δx = Δy = 0.8780 λ_D), 16 × 16 electrons per cell (2.6e5 electrons), 1 ion per cell,
+# a 5 % perturbation (WP-029 §3), 610 steps to t = 18.
+# The check: with the current filtered by F, D⁻·Eⁿ − Fρⁿ is constant, so between two outputs every Fourier mode m
+# of the plain Gauss residual r = D⁻·E − (ρ − mean ρ) changes by (H(m) − 1) times the change of ρ̂(m), with
+# H(m) = Π_d cos^(2p)(π m_d/n_d). The thermal noise fills every mode, so one run checks the whole transfer
+# function, the Nyquist rows included, whatever the physics.
+# Schema: scripts/crosscode/README.md, version 2. Pre-registered before any run.
+
+schema = 2
+name = "landau-oblique-2d-filter1"
+description = "Linear Landau damping as landau-oblique-2d at 32 × 32 cells, 5 % perturbation, 1 binomial current filter pass"
+
+[grid]
+length = [1.4049629462081454, 1.4049629462081454]   # as landau-oblique-2d.toml
+cells = [32, 32]                                    # Δx = Δy = 0.043905 c/ω₀ = 0.8780 λ_D
+boundaries = ["periodic", "periodic"]
+
+[time]
+dt = 0.029493308914082177           # 0.95 / √(1/Δx² + 1/Δy²)
+t_end = 18.0                      # round(t_end / dt) = 610 steps
+
+[wavevector]
+mode = [2, 1]
+magnitude = 10.0
+angle = 0.4636476090008061
+
+[numerics]
+shape_order = 2
+current_deposition = "esirkepov"
+filter_passes = 1
+precision = "Float64"
+random_seed = 20261105
+
+[[species]]
+name = "electron"
+charge = -1.0
+mass = 1.0
+density = 1.0
+particles_per_cell = [16, 16]
+position = "regular"
+velocity = "maxwellian"
+thermal_velocity = 0.05
+drift = [0.0, 0.0, 0.0]
+mobile = true
+perturbation = { amplitude = 0.05, mode = [2, 1] }
+
+[[species]]
+name = "ion"
+charge = 1.0
+mass = 1836.0
+density = 1.0
+particles_per_cell = [1, 1]
+position = "regular"
+velocity = "cold"
+thermal_velocity = 0.0
+drift = [0.0, 0.0, 0.0]
+mobile = false
+
+[diagnostics]
+scalars_every = 2                 # steps
+fields_every = 10                 # steps; 62 outputs
+fields = ["Ex", "Ey", "Rho"]
+
+[observables.filtered_gauss]      # the primary observable
+signal = "filtered_gauss"         # the Gauss residual and ρ from the field dumps, between the first and the last output
+method = "mode_by_mode"           # max_m |Δr̂ − (H_p − 1)Δρ̂| / max_m |Δρ̂| (filtered_gauss in scripts/crosscode/analysis.jl)
+theory = 0.0
+tolerance = 1e-9                  # FP64: the change of the residual is exact up to roundoff; any other pass count misses it by O(1 − H) of the grid-scale modes
+floor = 0.001                     # the modes plotted: |Δρ̂| above this fraction of the largest
+formula = "D⁻·Eⁿ − Fρⁿ constant for a filter F that commutes with D⁻ (T-441); F's transfer Π_d cos^(2p)(π m_d/n_d) (T-440)"
+
+[observables.damping_rate_mode]   # secondary, reported only: WP-029 found the rate noise-limited at this size
+signal = "mode_projection"
+fields = ["Ex", "Ey"]
+component = "parallel"
+method = "peak_envelope"
+fit_start = 3.0
+floor_factor = 10.0
+theory = 0.16185654221517362
+theory_frequency = 1.3974134154356355
+formula = "√H·landau_root(|k|λ_D/√H), the 1D root with ω_p² → H·ω_p², H = H_p(2, 1) = 0.95270 at 32 × 32 cells (WP-029 §4)"

@@ -115,6 +115,13 @@ a case quantity becomes a PIConGPU quantity; the writers only format its result.
   profile (base, relative amplitude, mode, cells), the temperature in keV (T = m v_th² m_e c²),
   the drift as γ and a direction, and whether it is mobile;
 - precision "Float64" or "Float32" (PIConGPU's precision64Bit or precision32Bit);
+- the filter's pass count, 0 or 1: PIConGPU's `--currentInterpolation binomial`
+  (`fields/currentInterpolation/Binomial.hpp`) adds to E, at each E point, J smoothed by the
+  2D stencil (1, 2, 1; 2, 4, 2; 1, 2, 1)/16 = one (1, 2, 1)/4 pass along x and one along y, on
+  each component at its own stagger, and has no pass count; it is refused with an activated
+  `FieldBackgroundJ` (`simulation/stage/CurrentInterpolationAndAdditionToEMF.hpp`), which the
+  generator never activates. A quasi-1D run filters along y too, which leaves the k_y = 0 modes
+  of the 1D case unchanged;
 - supercells and guards (memory.param), diagnostics cadence, the seeds.
 """
 function picongpu_parameters(case; precision = nothing, lambda0 = nothing)
@@ -125,7 +132,9 @@ function picongpu_parameters(case; precision = nothing, lambda0 = nothing)
     prec in ("Float64", "Float32") || error("precision must be Float64 or Float32, got $prec")
     Int(num["shape_order"]) == 2 || error("the cases use quadratic shapes (TSC in PIConGPU)")
     num["current_deposition"] == "esirkepov" || error("only Esirkepov deposition is generated")
-    get(num, "filter_passes", 0) == 0 || error("current filtering is not generated")
+    passes = get(num, "filter_passes", 0)
+    passes isa Integer && passes >= 0 || error("filter_passes must be a non-negative integer, got $(repr(passes))")
+    passes <= 1 || error("filter_passes = $passes: PIConGPU's binomial current interpolation is one fixed pass (fields/currentInterpolation/Binomial.hpp); more passes cannot be matched without changing PIConGPU")
     dt = Float64(t["dt"])
     steps = round(Int, Float64(t["t_end"]) / dt)
     quasi1d = v.ndims == 1
@@ -176,7 +185,7 @@ function picongpu_parameters(case; precision = nothing, lambda0 = nothing)
     end
     return (; units, lambda0 = units.lambda0, precision = prec, quasi1d, transverse, cells,
               cell_size = Δ, cell_size_SI, dt, dt_SI = dt * units.time, steps,
-              supercell, guard, species,
+              supercell, guard, species, filter_passes = Int(passes),
               scalars_every = Int(d["scalars_every"]), fields_every = Int(d["fields_every"]),
               seeds = case_seeds(case), seeded = haskey(num, "seeds"), case_name = case["name"])
 end
@@ -587,14 +596,14 @@ end
     run_arguments(p) -> String
 
 The command-line options of the run: one device, the grid, the step count, periodic boundaries,
-no current interpolation (filter), the duplicated field buffers of the background (so that the
+the current interpolation (`binomial` for one filter pass, `none` for zero), the duplicated field buffers of the background (so that the
 subtraction after the push restores the grid field bit for bit), openPMD field dumps (E, B and
 the charge densities, HDF5, all iterations in one file), the field energies per component, the
 kinetic energy of each mobile species, and the charge-conservation check.
 """
 function run_arguments(p)
     a = ["-d 1 1", "-g $(p.cells[1]) $(p.cells[2])", "-s $(p.steps)", "--periodic 1 1",
-         "--currentInterpolation none", "--fieldBackground.duplicateFields",
+         "--currentInterpolation $(p.filter_passes == 1 ? "binomial" : "none")", "--fieldBackground.duplicateFields",
          "--openPMD.period $(p.fields_every)", "--openPMD.file simData", "--openPMD.ext h5",
          "--openPMD.infix NULL", "--openPMD.source fields_all",
          "--fields_energy.period $(p.scalars_every)",

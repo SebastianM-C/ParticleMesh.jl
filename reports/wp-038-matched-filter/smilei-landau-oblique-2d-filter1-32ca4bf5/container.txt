@@ -1,0 +1,8 @@
+# build: cpu
+# smilei binary: /usr/local/bin/smilei
+# smilei version: v5.1 438d43d8ab727d02dd8f4402c50393343e871b99
+# threads: 16, cpus: 16
+# cpu model: AMD EPYC 9655 96-Core Processor
+# patches: 4x4
+# start: 2026-11-05T18:14:43.685542308Z
+# end: 2026-11-05T18:14:47.188339872Z
