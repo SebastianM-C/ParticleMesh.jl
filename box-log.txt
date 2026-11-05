@@ -1,0 +1,116 @@
+## step 0 (julia): exit 1 after 6s
+┌ Warning: could not download https://pkg.julialang.org/registries
+│   exception = RequestError: Could not resolve host: pkg.julialang.org while requesting https://pkg.julialang.org/registries
+└ @ Pkg.Registry ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Registry/Registry.jl:121
+     Cloning [d236fae5-4411-538c-8e31-a6e3d9e00b46] PreallocationTools from https://github.com/SciML/PreallocationTools.jl.git
+ERROR: failed to clone from https://github.com/SciML/PreallocationTools.jl.git, error: GitError(Code:ERROR, Class:Net, failed to resolve address for github.com: Temporary failure in name resolution)
+Stacktrace:
+  [1] pkgerror(msg::String)
+    @ Pkg.Types ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Types.jl:68
+  [2] clone(io::IOContext{IO}, url::String, source_path::String; header::String, credentials::Nothing, isbare::Bool, depth::Int64, kwargs::@Kwargs{})
+    @ Pkg.GitTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:204
+  [3] clone
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:138 [inlined]
+  [4] #ensure_clone#2
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:124 [inlined]
+  [5] ensure_clone
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:120 [inlined]
+  [6] install_git(io::IOContext{IO}, uuid::Base.UUID, name::String, hash::Base.SHA1, urls::Set{String}, version_path::String)
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1300
+  [7] (::Pkg.Operations.var"#132#133"{Bool, Pkg.Types.Context, Int64, String, Set{String}, PackageSpec})()
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1757
+  [8] mkpidlock(f::Pkg.Operations.var"#132#133"{Bool, Pkg.Types.Context, Int64, String, Set{String}, PackageSpec}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64})
+    @ FileWatching.Pidfile ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/FileWatching/src/pidfile.jl:97
+  [9] mkpidlock
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/FileWatching/src/pidfile.jl:94 [inlined]
+ [10] mkpidlock
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/FileWatching/src/pidfile.jl:92 [inlined]
+ [11] download_source(ctx::Pkg.Types.Context, pkgs::Vector{PackageSpec}; readonly::Bool)
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1755
+ [12] download_source
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1615 [inlined]
+ [13] instantiate(ctx::Pkg.Types.Context; manifest::Nothing, update_registry::Bool, verbose::Bool, platform::Base.BinaryPlatforms.Platform, allow_build::Bool, allow_autoprecomp::Bool, workspace::Bool, julia_version_strict::Bool, kwargs::@Kwargs{})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:1397
+ [14] instantiate
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:1272 [inlined]
+ [15] test(ctx::Pkg.Types.Context, pkgs::Vector{PackageSpec}; coverage::Bool, julia_args::Cmd, test_args::Cmd, test_fn::Nothing, force_latest_compatible_version::Bool, allow_earlier_backwards_compatible_versions::Bool, allow_reresolve::Bool)
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:3291
+ [16] test
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:3239 [inlined]
+ [17] test(ctx::Pkg.Types.Context, pkgs::Vector{PackageSpec}; coverage::Bool, test_fn::Nothing, julia_args::Cmd, test_args::Cmd, force_latest_compatible_version::Bool, allow_earlier_backwards_compatible_versions::Bool, allow_reresolve::Bool, kwargs::@Kwargs{io::IOContext{IO}})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:587
+ [18] test(pkgs::Vector{PackageSpec}; io::IOContext{IO}, kwargs::@Kwargs{})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:172
+ [19] test(pkgs::Vector{PackageSpec})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:161
+ [20] test(; name::Nothing, uuid::Nothing, version::Nothing, url::Nothing, rev::Nothing, path::Nothing, mode::PackageMode, subdir::Nothing, kwargs::@Kwargs{})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:189
+ [21] test()
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:178
+ [22] top-level scope
+    @ none:1
+ [23] eval(m::Module, e::Any)
+    @ Core ./boot.jl:489
+ [24] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:310
+ [25] _start()
+    @ Base ./client.jl:577
+
+caused by: GitError(Code:ERROR, Class:Net, failed to resolve address for github.com: Temporary failure in name resolution)
+Stacktrace:
+  [1] macro expansion
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/LibGit2/src/error.jl:124 [inlined]
+  [2] clone(repo_url::SubString{String}, repo_path::String, clone_opts::LibGit2.CloneOptions)
+    @ LibGit2 ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/LibGit2/src/repository.jl:491
+  [3] clone(repo_url::SubString{String}, repo_path::String; branch::String, isbare::Bool, remote_cb::Ptr{Nothing}, depth::Int64, credentials::LibGit2.CachedCredentials, callbacks::Dict{Symbol, Tuple{Ptr{Nothing}, Any}})
+    @ LibGit2 ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/LibGit2/src/LibGit2.jl:613
+  [4] clone
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/LibGit2/src/LibGit2.jl:580 [inlined]
+  [5] clone(io::IOContext{IO}, url::String, source_path::String; header::String, credentials::Nothing, isbare::Bool, depth::Int64, kwargs::@Kwargs{})
+    @ Pkg.GitTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:193
+  [6] clone
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:138 [inlined]
+  [7] #ensure_clone#2
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:124 [inlined]
+  [8] ensure_clone
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/GitTools.jl:120 [inlined]
+  [9] install_git(io::IOContext{IO}, uuid::Base.UUID, name::String, hash::Base.SHA1, urls::Set{String}, version_path::String)
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1300
+ [10] (::Pkg.Operations.var"#132#133"{Bool, Pkg.Types.Context, Int64, String, Set{String}, PackageSpec})()
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1757
+ [11] mkpidlock(f::Pkg.Operations.var"#132#133"{Bool, Pkg.Types.Context, Int64, String, Set{String}, PackageSpec}, at::String, pid::Int32; kwopts::@Kwargs{stale_age::Int64})
+    @ FileWatching.Pidfile ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/FileWatching/src/pidfile.jl:97
+ [12] mkpidlock
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/FileWatching/src/pidfile.jl:94 [inlined]
+ [13] mkpidlock
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/FileWatching/src/pidfile.jl:92 [inlined]
+ [14] download_source(ctx::Pkg.Types.Context, pkgs::Vector{PackageSpec}; readonly::Bool)
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1755
+ [15] download_source
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:1615 [inlined]
+ [16] instantiate(ctx::Pkg.Types.Context; manifest::Nothing, update_registry::Bool, verbose::Bool, platform::Base.BinaryPlatforms.Platform, allow_build::Bool, allow_autoprecomp::Bool, workspace::Bool, julia_version_strict::Bool, kwargs::@Kwargs{})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:1397
+ [17] instantiate
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:1272 [inlined]
+ [18] test(ctx::Pkg.Types.Context, pkgs::Vector{PackageSpec}; coverage::Bool, julia_args::Cmd, test_args::Cmd, test_fn::Nothing, force_latest_compatible_version::Bool, allow_earlier_backwards_compatible_versions::Bool, allow_reresolve::Bool)
+    @ Pkg.Operations ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:3291
+ [19] test
+    @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/Operations.jl:3239 [inlined]
+ [20] test(ctx::Pkg.Types.Context, pkgs::Vector{PackageSpec}; coverage::Bool, test_fn::Nothing, julia_args::Cmd, test_args::Cmd, force_latest_compatible_version::Bool, allow_earlier_backwards_compatible_versions::Bool, allow_reresolve::Bool, kwargs::@Kwargs{io::IOContext{IO}})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:587
+ [21] test(pkgs::Vector{PackageSpec}; io::IOContext{IO}, kwargs::@Kwargs{})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:172
+ [22] test(pkgs::Vector{PackageSpec})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:161
+ [23] test(; name::Nothing, uuid::Nothing, version::Nothing, url::Nothing, rev::Nothing, path::Nothing, mode::PackageMode, subdir::Nothing, kwargs::@Kwargs{})
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:189
+ [24] test()
+    @ Pkg.API ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Pkg/src/API.jl:178
+ [25] top-level scope
+    @ none:1
+ [26] eval(m::Module, e::Any)
+    @ Core ./boot.jl:489
+ [27] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:310
+ [28] _start()
+    @ Base ./client.jl:577
