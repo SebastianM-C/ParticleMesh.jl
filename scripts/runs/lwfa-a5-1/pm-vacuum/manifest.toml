@@ -1,0 +1,11 @@
+case = "lwfa-2d"
+code = "ParticleMesh"
+commit = "4648c36c37f1693787b816718b708da227364e39"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+run_id = "lwfa-a5-1/pm-vacuum"
+updated = "2026-11-05T19:28:17.655Z"
+
+[inputs]
+"case.toml" = "sha256:3c189e041755de315bcff2c43b2a989ad4ebb1076c4f171b2f64fa5e0a2cf559"
+"kind.txt" = "sha256:566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
