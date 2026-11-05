@@ -1,0 +1,107 @@
+build = "cpu"
+case = "landau-oblique-2d-filter1"
+case_source = "scripts/crosscode/cases/landau-oblique-2d-filter1.toml"
+code = "smilei"
+commit = "35860309aa5b31c537ff35080a72890547aeb3e8"
+dirty = false
+fastmath = "not applicable (CPU build)"
+generator = "scripts/crosscode/smilei.jl"
+generator_hash = "sha256:dc2e2446bd6cd9bbfe2c7862d288c974d59fb8b8b3da09aeaad9e84679398ee6"
+load_check = false
+patches = [4, 4]
+run = "smilei-landau-oblique-2d-filter1-32ca4bf5"
+seed_subset = "all of the case's seeds"
+seeds = [20261105]
+updated = "2026-11-05T18:29:00.498Z"
+
+[analysis]
+commit = "35860309aa5b31c537ff35080a72890547aeb3e8"
+dirty = true
+
+    [analysis.inputs]
+    "scripts/crosscode/analysis.jl" = "sha256:da2433f1ab624225122029706590b58c5cbb200650963b673c8bed27ee1f6bae"
+    "scripts/crosscode/analyze.jl" = "sha256:5eb38f15063ede05f77ea080356b8c4da4d19cd9ef9c5a9d0982ae3282e8d461"
+    "scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
+    "scripts/crosscode/ensemble_report.jl" = "sha256:d7b7b1cd3456732bd08dd20fc3a1a64de16111d25f85c488424a09c300cd076f"
+    "scripts/crosscode/manifest.jl" = "sha256:9aae4fc53a1739115dde2f06ea512a09ea1e7bc1f5b79067a67548d645ff8a45"
+    "scripts/crosscode/read.jl" = "sha256:99dc42b6b06e4573fe373e169e36feb21775e49fb8abf06c1f16c35b8a835279"
+
+[checks]
+gauss_residual_t0_relative = 2.720323087575904e-12
+rho_max_deviation_t0 = 0.048435124304206635
+rho_mean_t0 = -1.1205229452637688e-16
+rho_mode_amplitude_t0 = 0.04843643780510843
+sensitivity_energy_ratio_t0_without_box_mean = 3.9615705608064586
+
+[hardware]
+build = "cpu"
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpu_source = "run"
+cpus = 16
+patches = "4x4"
+threads = 16
+
+[image]
+family = "smilei"
+id = "unknown"
+name = "unknown"
+outside_factory_tag = "particlemesh-smilei:6517bfe50b31069b"
+recipe = "scripts/crosscode/containers/smilei.Containerfile"
+recipe_hash = "sha256:6517bfe50b31069bb9c3b180d154e08c96b54269aa7804391c2a75cafdbbcdd9"
+
+[inputs]
+"case.toml" = "sha256:32ca4bf54bcce3df4b9f264cfe8ecaebb7d9c02c79a4a1fa795726a3d2d8bfe6"
+"namelist.py" = "sha256:03337b687fd8ac2fb321495f3a42591643b998247087d05870c707db19e37b18"
+"run.sh" = "sha256:60dbdd86305da1c64a2be3d54c1ddc4a3b599094eff3bcddc772ccaf59c9fd7e"
+
+[observables.damping_rate_mode]
+fit_points = 3
+fit_range = [4.881831174035921, 9.507607536899023]
+measured = 0.14638741624295545
+measured_frequency = 1.3582985458662853
+measured_stderr = 0.002761488722859016
+method = "peak_envelope"
+noise_floor = 1.6200718863439387e-8
+relative_difference = -0.09557306587986641
+signal = "mode_projection"
+theory = 0.16185654221517362
+theory_frequency = 1.3974134154356355
+
+[observables.filtered_gauss]
+charge_change_scale = 0.025469400792116202
+measured = 5.428416984572121e-15
+measured_max_over_outputs = 7.741284873023309e-14
+method = "mode_by_mode"
+modes_above_floor = 1021
+outputs = 62
+passes = 1
+precision = "Float64"
+signal = "filtered_gauss"
+t = 17.99091843759013
+theory = 0.0
+tolerance = 1.0e-9
+within_tolerance = true
+
+    [observables.filtered_gauss.deviation_other_pass_counts]
+    0 = 0.06709506020549905
+    2 = 0.04506446211108331
+
+[outputs]
+"Fields0.h5" = "sha256:bcc585913071eae9c98c3dbe30d125413e340c4fc6e886c88ed8a42f702d950f"
+"container.txt" = "sha256:69073edfdc2bd1f415506dae328f4011ebac1c70c6b81cb9ab6e980ff2e33ca6"
+"scalars.txt" = "sha256:62d1d7acc578081829148e9d5204c3815592da4d3e7d4e3b97a08a482b57550a"
+"smilei.log" = "sha256:6c6a116ac89758ef810b6a04217a1602c779ea8c7fbf3a50bb44ca967f2b3889"
+
+[performance]
+build = "cpu"
+cells = 1024
+mobile_particle_steps = 159907840
+mobile_particles = 262144
+ns_per_mobile_particle_step = 21.906368068007172
+ns_per_mobile_particle_step_time_loop = 15.069304919633709
+particle_steps = 160532480
+particles = 263168
+steps = 610
+steps_source = "smilei.log (n_time)"
+time_loop_seconds = 2.4097
+wall_seconds = 3.503
