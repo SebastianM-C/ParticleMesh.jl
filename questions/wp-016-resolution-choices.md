@@ -42,16 +42,6 @@ Rodrigues' formula, cos θ·u⁻ + …, multiplies u⁻ by the rounded cos θ �
 
 tan(θ/2) is unbounded at θ = π, so this form is used for θ² < 1. Above that, Rodrigues' formula is used. The two are chosen with `ifelse`, and the unused value is kept finite. The map is the same in exact arithmetic, so the algorithm is unchanged.
 
-## 7. The LWFA time steps
-
-The report is asked to apply the thresholds to "the CFL Δt of the planned LWFA runs at their a₀". A5's 2D LWFA case is not specified yet: it has no a₀, resolution or Δt anywhere in the repository. The report therefore applies the thresholds to representative steps, and states those as assumptions:
-- 0.95 of the 2D Courant limit;
-- Δy = 4Δx;
-- 16 to 64 cells per laser wavelength along x;
-- a₀ ∈ {1, 2, 3, 5, 10}.
-
-The check should be redone once the A5 case exists.
-
-## 8. The reference orbit
+## 7. The reference orbit
 
 The package suggests `Vern9` where the closed form needs inverting. Over one period no inversion is needed. For Gordon and Hafizi's diagnostic, which ends at a lab time that is not a period, η is found from t = η + z(η) by Newton's method. That is exact to roundoff and more accurate than `Vern9`. T-237 already checks `Vern9` against the closed form.
