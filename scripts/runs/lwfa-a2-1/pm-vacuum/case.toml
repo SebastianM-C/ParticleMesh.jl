@@ -1,0 +1,54 @@
+# A 2D laser-wakefield case for the cross-code comparison of ParticleMesh with Smilei (A5).
+#
+# PROPOSED VALUES, not the owner's: A5 leaves a0, w0, tau, n0, ramp, box, resolution, particles
+# per cell, steps and diagnostics to the owner (questions/wp-017-lwfa-case.md). They are chosen
+# here to give a mildly nonlinear wake that both codes can run on the CPU box in minutes, with no
+# claim that they match a published experiment or simulation. The resonance and matching rules
+# they follow (c·tau_FWHM ≈ lambda_p/2, k_p·w0 ≈ 2·sqrt(a0)) are common LWFA rules of thumb,
+# not checked against a cited source here.
+#
+# Units of A1 throughout: lengths c/ω₀, times 1/ω₀, densities n_c, fields mₑcω₀/e. The case's x
+# coordinate is the lab coordinate with x = 0 on the laser's injection plane: Smilei's xmin at
+# t = 0 and ParticleMesh's antenna plane, which ParticleMesh places `antenna_cells` columns into
+# its box (its grid starts at x = −antenna_cells·dx). Both windows have the same front.
+
+schema = "lwfa-proposal-1"
+name = "lwfa-2d-a2"
+description = "2D Cartesian LWFA: a0 = 2, w0 = 28, tau = 26 (1/e field), n0 = 0.01 n_c behind a 260 vacuum and a 60 sin² ramp, moving window from t = 256, periodic in y"
+lambda0_um = 0.8                  # only for the SI numbers of the report
+
+[grid]
+dx = 0.19634954084936207          # λ₀/32 = 2π/32
+dy = 0.7853981633974483           # 4·dx
+cells = [1536, 256]               # the window ahead of the injection plane (Smilei's box)
+antenna_cells = 40                # ParticleMesh only: its columns behind the antenna plane
+transverse = "periodic"           # both codes; the box is 7.2 waists wide
+smilei_patches = [64, 8]          # 24 × 32 cells per patch; Smilei's window moves by a patch
+
+[time]
+courant = 0.95                    # dt = courant / sqrt(1/dx² + 1/dy²), Yee's 2D limit
+steps = 7189                      # 13 outputs of 553 steps, t_end ≈ 1301
+fields_every = 553
+
+[laser]
+a0 = 2.0                          # peak field at the focus
+waist = 28.0                      # 1/e field radius at the focus (k_p·w0 = 2.8)
+duration = 26.0                   # 1/e half width of the field envelope (intensity FWHM 30.6, about 13 fs at 0.8 µm)
+delay = 104.0                     # envelope peak on the injection plane at t = 4·duration
+focus = 320.0                     # the start of the density plateau
+polarization = "y"                # E along y, in the simulation plane
+
+[window]
+start = 256.0                     # after the antenna has finished (ParticleMesh needs delay + 6·duration before it passes the plane)
+
+[plasma]
+density = 0.01                    # n0 in n_c: ω_p = 0.1 ω₀, λ_p = 62.8 c/ω₀
+vacuum = 260.0                    # zero density up to x = 260
+ramp = 60.0                       # sin² up-ramp over 60 c/ω₀, then the plateau
+particles_per_cell = [2, 2]       # electrons, regular; ions immobile (ParticleMesh's background, Smilei's frozen species)
+seed = 1                          # unused by a cold load, recorded
+
+[diagnostics]
+spectrum_ekin = [0.0, 20.0, 200]  # electron kinetic-energy histogram, mₑc² units: min, max, bins
+map_stride = [4, 2]               # the 2D maps in the summaries keep every 4th column and 2nd row
+map_outputs = [4, 8, 13]          # which outputs (1-based, of 13) keep a 2D map
