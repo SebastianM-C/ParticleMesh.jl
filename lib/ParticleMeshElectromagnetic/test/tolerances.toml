@@ -546,15 +546,15 @@ status = "proposed"
 
 # WP-034: the PML on the moving window's back edge. Measured on the CPU backend (Julia 1.13.3, 4 threads).
 ["T-570"]
-quantity = "T-472's vacuum pulse, window against its static twin, both with a back-edge PML of 8 cells (PIConGPU's profile): the largest difference on the eight columns behind the layer over the same without a back absorber (0.146 of the largest field), Float64; the test asks for less than 1/100, before the move and from column 25 on T-472's C"
+quantity = "T-472's vacuum pulse in back_lwfa's window against free space (a static box with 100 more columns behind), with a back-edge PML of 8 cells (PIConGPU's profile): the largest difference on the eight columns behind the layer over the same without a back absorber (0.095 of the largest field), Float64; the test asks for less than 1/100, and against the static twin with the same back edge, before the move and from column 25 on, T-472's C"
 scale = "the difference without a back absorber"
 C = 0.01
-measured = { Float64 = 0.00498 }
+measured = { Float64 = 0.00331 }
 status = "proposed"
 
 ["T-572"]
 quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts with a back-edge PML of 6 cells (α_max = 0.2), off nodes 1 … 6 and the antenna's two columns, T-473's run, both modes; the test takes T-473's C"
 scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
 C = 1
-measured = { Float32 = 0.191, Float64 = 0.236, "Dual{Float32,3}" = 0.176 }
+measured = { Float32 = 0.236, Float64 = 0.241, "Dual{Float32,3}" = 0.236 }
 status = "proposed"

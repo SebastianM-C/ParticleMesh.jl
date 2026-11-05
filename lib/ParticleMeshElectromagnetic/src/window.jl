@@ -298,14 +298,20 @@ window_antennas(antennas::Tuple, s::Integer) =
     map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht), antennas)
 
 # The window passes antenna a in the step after which it has moved ia − g − 1 cells; its pulse must
-# be over by then, six durations after its delay (the envelope below Float64 roundoff).
+# be over by then, six durations after its delay (the envelope below Float64 roundoff). With a PML
+# on the back edge (WP-034) the plane must also stay out of the layer's columns 1 … cells while it
+# emits: it reaches them after ia − cells − 1 shifts, and a plane inside them at the start is refused.
 function check_window_antennas(w::WindowFrame, antennas::Tuple)
+    cb = back_cells(w.back)
     for a in antennas
-        smax = a.ia - a.g - 2                     # the last window position at which it acts
-        t_off = w.window.start + (smax + 1) * w.dx1   # the window has moved smax + 1 cells after this time
+        edge = max(Int(a.g), cb)
+        s_off = a.ia - edge - 1                    # the shifts after which it no longer acts outside the layer
+        cb > 0 && s_off <= 0 &&
+            throw(ArgumentError("the antenna's columns $(a.ia - 1) and $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + 1)"))
+        t_off = w.window.start + s_off * w.dx1
         l = a.laser
         l.delay + 6 * l.duration <= t_off ||
-            throw(ArgumentError("laser of delay $(l.delay) and duration $(l.duration): the window passes its antenna (column $(a.ia)) at t ≈ $t_off, before six durations after the delay; place the plane further forward or start the window later"))
+            throw(ArgumentError("laser of delay $(l.delay) and duration $(l.duration): the window passes its antenna (column $(a.ia))$(cb > 0 ? " into the back-edge PML of $cb cells" : "") at t ≈ $t_off, before six durations after the delay; place the plane further forward or start the window later"))
     end
     return nothing
 end

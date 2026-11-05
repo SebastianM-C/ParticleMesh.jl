@@ -418,3 +418,6 @@ end
 reset_absorber!(L::BackPMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBy, L.ψBz, L.ψEy, L.ψEz)); nothing)
 reset_back!(::Nothing) = nothing
 reset_back!(w) = reset_absorber!(w.back)
+"The columns the back-edge PML takes (0 without one)."
+back_cells(::Nothing) = 0
+back_cells(L::BackPMLFields) = L.cells
