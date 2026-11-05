@@ -556,8 +556,9 @@ end
     # the keys of a point of summarize_scan (T-414), less the ones only a Smilei run has, plus the
     # time of the loaded momenta (#282), in the record and in the manifest
     @test sort(collect(keys(rec))) == sort(["point", "case", "derived", "code", "dt", "cells", "steps", "wall_seconds",
-                                            "threads", "cpu", "energy", "series", "momenta_at"])
+                                            "threads", "cpu", "energy", "series", "momenta_at", "density_at"])
     @test rec["momenta_at"] == m["momenta_at"] == string(PMScan.MOMENTA_AT) == "t_minus_half"
+    @test rec["density_at"] == m["density_at"] == string(PMScan.DENSITY_AT) == "cell_centre"
     @test rec["point"] == "tiny" && rec["code"] == "particlemesh" && rec["case"] == case["name"] && rec["derived"] == case["derived"]
     @test sort(collect(keys(rec["series"]))) == ["growth_rate", "mode"]
     dt = case["time"]["dt"]
