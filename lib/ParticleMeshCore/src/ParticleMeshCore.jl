@@ -37,7 +37,7 @@ export cumsum_periodic!
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
 export deposit_flux!, flux_guard_width, flux_extras
 export philox4x32, uniform_open, box_muller
-export load_quiet!
+export load_quiet!, quiet_particle_2d
 
 include("launch.jl")
 include("grid.jl")

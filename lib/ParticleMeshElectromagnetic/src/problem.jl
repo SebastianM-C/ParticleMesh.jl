@@ -58,7 +58,14 @@ not differentiable parameters, A3: the addition tests them for zero on the host)
 the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
 at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
-[`AbsorbingLayer`](@ref) and particles that cross the box edge are retired. At N = 1
+[`AbsorbingLayer`](@ref) and particles that cross the box edge are retired, or `:window` on
+axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box moves at c along
+axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
+[`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
+background of its own profile (so every species' `amplitude` is zero and `E0`, `B0` are zero) and
+is refilled behind the front; a window that starts later than t = 0 takes only cold species at
+rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
+finished its pulse before the window passes it (checked by the state). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -68,9 +75,10 @@ any [`EMNumerics`](@ref).
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2), that the cells and the particles per cell are positive, at N = 2 that
 `kmode` is not the zero mode, that lasers are given only at N = 2, and that the boundaries are
-`:periodic` or `:open`, one per axis, with axis 1 periodic (an `ArgumentError` otherwise).
+`:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1 together with
+a `window` and the conditions above (an `ArgumentError` otherwise).
 """
-struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD}
+struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR}
     name::String
     length::L
     cells::C
@@ -83,11 +91,13 @@ struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD}
     B0::NTuple{3,T}
     lasers::LZ
     boundaries::BD
+    window::W
+    profile::PR
 end
 
 function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, seed::Integer, kmode;
                    E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = (),
-                   boundaries = nothing) where {T}
+                   boundaries = nothing, window = nothing, profile = nothing) where {T}
     N = cells isa Integer ? 1 : length(cells)
     N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
     M = N == 1 ? Int : NTuple{2,Int}
@@ -108,19 +118,39 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
     all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
     boundaries isa Union{Symbol,AbstractString} &&
-        throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic and :open per axis, a tuple of $N"))
+        throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic, :open and :window per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
-    length(bd) == N && all(in((:periodic, :open)), bd) ||
-        throw(ArgumentError("boundaries = $boundaries: one of :periodic and :open per axis, $N of them"))
-    first(bd) === :periodic ||
-        throw(ArgumentError("boundaries = $bd: axis 1 is periodic (the open transverse boundary is axis 2; the moving window is WP-028)"))
+    length(bd) == N && all(in((:periodic, :open, :window)), bd) ||
+        throw(ArgumentError("boundaries = $boundaries: one of :periodic, :open and :window per axis, $N of them"))
+    first(bd) in (:periodic, :window) && last(bd) !== :window ||
+        throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), axis 2 :periodic or :open (the open transverse boundary)"))
+    moving = first(bd) === :window
+    moving && N != 2 && throw(ArgumentError("the moving window is implemented at N = 2 only"))
+    moving == (window !== nothing) ||
+        throw(ArgumentError("boundaries = $bd with window = $window: a :window axis 1 and a MovingWindow come together"))
+    window === nothing || window isa MovingWindow || throw(ArgumentError("window must be a MovingWindow, got $window"))
+    profile === nothing || profile isa DensityRamp || throw(ArgumentError("profile must be a DensityRamp, got $profile"))
+    profile !== nothing && !moving && throw(ArgumentError("a density profile is implemented with the moving window only"))
+    if moving
+        for d in species
+            iszero(d.amplitude) ||
+                throw(ArgumentError("species $(d.name): a moving-window plasma starts neutral against its immobile background, so its amplitude must be zero, got $(d.amplitude)"))
+        end
+        all(iszero, E0) && all(iszero, B0) ||
+            throw(ArgumentError("a moving-window problem takes no background fields (the outside of the window is field-free)"))
+        if window isa MovingWindow && window.start > 0
+            for d in species
+                all(iszero, d.drift) && all(iszero, d.thermal) ||
+                    throw(ArgumentError("species $(d.name): before a moving window starts (start = $(window.start)) its front is a fixed edge, and a plasma with a drift or a thermal speed reaches it and leaves a residual of Gauss's law that the shifts carry into the box; start the window at 0 or load the species cold, got drift $(d.drift) and thermal $(d.thermal)"))
+            end
+        end
+    end
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode
-    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd)}(String(name), L, c, dt,
-                                                                                                    Int(nsteps), species,
-                                                                                                    Int(seed), k, T.(Tuple(E0)),
-                                                                                                    T.(Tuple(B0)), lasers, bd)
+    win = window === nothing ? nothing : MovingWindow(T(window.start))
+    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd),typeof(win),typeof(profile)}(
+        String(name), L, c, dt, Int(nsteps), species, Int(seed), k, T.(Tuple(E0)), T.(Tuple(B0)), lasers, bd, win, profile)
 end
 
 Base.eltype(::EMProblem{N,T}) where {N,T} = T
@@ -148,7 +178,7 @@ struct NoCurrent end
 
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
-               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing)
+               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, headroom = 1/4)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
@@ -163,7 +193,10 @@ any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the fold
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
 then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
-with the layer until a test checks the two together.
+with the layer until a test checks the two together. `headroom` sizes the particle buffers of
+a moving-window state, `(1 + headroom)·prod(cells)·prod(ppc)` slots per species, for particles
+that stay in the window longer than the plasma at rest (a refill that finds no free slot is
+counted, [`window_lost`](@ref)); other states ignore it.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     shape::S
@@ -174,11 +207,14 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     current::C
     filter::BinomialFilter
     absorber::A
+    headroom::Float64
 end
 
-EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov(),
-           filter::BinomialFilter = BinomialFilter(0), absorber = nothing) =
-    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber)
+function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
+                    current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, headroom::Real = 1 / 4)
+    headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
+    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, Float64(headroom))
+end
 
 """
     EMParams(dt, kmode)

@@ -42,7 +42,7 @@ Derived design choices without a goal id (2D Cartesian first with the envelope m
 5. **Testing and CI design.** Test tiers (unit, conservation, benchmark, cross-code, gradient), runtime budgets per tier, which run on GitHub Actions and which on the GPU runner or the nightly loop, where expected values and cross-code reference outputs live (size, LFS or a self-hosted server), how failures become trace records.
 6. **Artifact and data management.** Run record format (reuse EDM's manifests or generalize them), where plots and large outputs go, retention, the publishing path to the dashboard, content addressing of inputs.
 7. **Dashboard.** Reuse the EDM dashboard pattern (static viewer plus builder) with the trace views added, or build new; hosting and access.
-8. **Moving window specification** (B1), **differentiable diagnostics** (B3), **FP32 drift test** (B5), **symbolic spike criteria** (B6), **Reactant compatibility spike** (B9), **Molly interface study** (B10).
+8. **Differentiable diagnostics** (B3), **FP32 drift test** (B5), **symbolic spike criteria** (B6), **Reactant compatibility spike** (B9), **Molly interface study** (B10).
 9. **The GPU loop.** The Agent SDK script: cadence, what it runs, how it reports, API key handling, budget caps, container versus bare metal, reuse of the EDM campaign recipes.
 10. **Observability backend.** Where OTLP goes (a self-hosted Grafana stack, a hosted one, or a file collector at first), retention, how cost is attributed per work package.
 

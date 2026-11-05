@@ -3,7 +3,7 @@
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
 `N = 1` and `N = 2` (1D3V and 2D3V; periodic, and at `N = 2` with an open transverse axis
-through an absorbing layer, WP-027), with the current a choice of the numerics
+through an absorbing layer, WP-027, and a moving window along axis 1, WP-028), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields at `N = 2`). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
@@ -49,6 +49,7 @@ export state_partition, remake_reload, harness_state
 export GaussianLaser, Antenna, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors
+export MovingWindow, DensityRamp, WindowFrame, window_shifts, window_lost, window_superluminal, window_charge!, window_background!
 
 include("layout.jl")
 include("yee.jl")
@@ -60,6 +61,7 @@ include("step.jl")
 include("step2d.jl")
 include("antenna.jl")
 include("boundaries.jl")
+include("window.jl")
 include("diagnostics.jl")
 include("harness.jl")
 

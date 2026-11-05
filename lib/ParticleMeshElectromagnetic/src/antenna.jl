@@ -218,9 +218,14 @@ end
     end
 end
 
+# An antenna acts while its plane lies in the box: always on a static grid (the constructor checks
+# it), until the moving window has passed it otherwise (`window_antennas`, WP-028).
+active(a::Antenna) = a.ia >= a.g + Int32(2)
+
 antenna_b!(::Tuple{}, f, h, t, wgs) = nothing
 function antenna_b!(as::Tuple, f, h, t, wgs)
     for a in as
+        active(a) || continue
         T = eltype(f.Bz)
         launcher(antenna_b_kernel!, get_backend(f.Bz), wgs)(f.By, f.Bz, a, T(h) / a.dx[1], T(t); ndrange = size(f.Bz, 2))
     end
@@ -230,6 +235,7 @@ end
 antenna_e!(::Tuple{}, f, dt, t, wgs) = nothing
 function antenna_e!(as::Tuple, f, dt, t, wgs)
     for a in as
+        active(a) || continue
         T = eltype(f.Ey)
         launcher(antenna_e_kernel!, get_backend(f.Ey), wgs)(f.Ey, f.Ez, a, T(dt) / a.dx[1], T(t); ndrange = size(f.Ey, 2))
     end
