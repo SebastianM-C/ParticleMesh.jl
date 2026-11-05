@@ -148,6 +148,7 @@ end
     @test back_state(window_lwfa(Float64; nsteps = 4, start = 40); back = PML(; cells = 6)).aux.window.back isa BackPMLFields
     plain, _ = open_plasma_2d(Float64)
     @test_throws ArgumentError EMState(plain, EMNumerics(; absorber = PML(; cells = 4), back_absorber = PML(; cells = 4)))
+    @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; back_absorber = PML(; cells = 4)))   # no window at N = 1
 end
 
 # --- T-574 ----------------------------------------------------------------------------------
