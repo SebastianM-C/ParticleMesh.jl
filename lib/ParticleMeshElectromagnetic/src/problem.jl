@@ -192,7 +192,8 @@ N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
-then, refused otherwise), `nothing` for a periodic box. `headroom` sizes the particle buffers of
+then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
+with the layer until a test checks the two together. `headroom` sizes the particle buffers of
 a moving-window state, `(1 + headroom)·prod(cells)·prod(ppc)` slots per species, for particles
 that stay in the window longer than the plasma at rest (a refill that finds no free slot is
 counted, [`window_lost`](@ref)); other states ignore it.
