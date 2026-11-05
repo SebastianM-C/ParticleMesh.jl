@@ -1,0 +1,193 @@
+
+
+--- Timestep = 0 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 1.408e+00	 1.408e+00	 1.408e+00	 0.000e+00
+       Maxwell	 5.390e-01	 5.390e-01	 5.390e-01	 0.000e+00
+    Maxwell_BC	 2.133e-01	 2.133e-01	 2.133e-01	 0.000e+00
+   Diagnostics	 2.557e-02	 2.557e-02	 2.557e-02	 0.000e+00
+    Collisions	 4.551e-03	 4.551e-03	 4.551e-03	 0.000e+00
+Sync Particles	 1.365e-01	 1.365e-01	 1.365e-01	 0.000e+00
+   Sync Fields	 3.318e-02	 3.318e-02	 3.318e-02	 0.000e+00
+Sync Densities	 5.591e-02	 5.591e-02	 5.591e-02	 0.000e+00
+  Part Merging	 5.129e-03	 5.129e-03	 5.129e-03	 0.000e+00
+Part Injection	 3.016e-03	 3.016e-03	 3.016e-03	 0.000e+00
+
+
+--- Timestep = 1 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 2.813e+00	 2.813e+00	 2.813e+00	 0.000e+00
+       Maxwell	 1.081e+00	 1.081e+00	 1.081e+00	 0.000e+00
+    Maxwell_BC	 4.229e-01	 4.229e-01	 4.229e-01	 0.000e+00
+   Diagnostics	 8.553e-02	 8.553e-02	 8.553e-02	 0.000e+00
+    Collisions	 9.212e-03	 9.212e-03	 9.212e-03	 0.000e+00
+Sync Particles	 2.736e-01	 2.736e-01	 2.736e-01	 0.000e+00
+   Sync Fields	 6.747e-02	 6.747e-02	 6.747e-02	 0.000e+00
+Sync Densities	 1.123e-01	 1.123e-01	 1.123e-01	 0.000e+00
+  Part Merging	 1.029e-02	 1.029e-02	 1.029e-02	 0.000e+00
+Part Injection	 6.108e-03	 6.108e-03	 6.108e-03	 0.000e+00
+
+
+--- Timestep = 2 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 4.261e+00	 4.261e+00	 4.261e+00	 0.000e+00
+       Maxwell	 1.623e+00	 1.623e+00	 1.623e+00	 0.000e+00
+    Maxwell_BC	 6.175e-01	 6.175e-01	 6.175e-01	 0.000e+00
+   Diagnostics	 1.484e-01	 1.484e-01	 1.484e-01	 0.000e+00
+    Collisions	 1.378e-02	 1.378e-02	 1.378e-02	 0.000e+00
+    Mov window	 2.389e-02	 2.389e-02	 2.389e-02	 0.000e+00
+Sync Particles	 4.143e-01	 4.143e-01	 4.143e-01	 0.000e+00
+   Sync Fields	 1.013e-01	 1.013e-01	 1.013e-01	 0.000e+00
+Sync Densities	 1.697e-01	 1.697e-01	 1.697e-01	 0.000e+00
+  Part Merging	 1.529e-02	 1.529e-02	 1.529e-02	 0.000e+00
+Part Injection	 9.216e-03	 9.216e-03	 9.216e-03	 0.000e+00
+
+
+--- Timestep = 3 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 7.375e+00	 7.375e+00	 7.375e+00	 0.000e+00
+       Maxwell	 2.198e+00	 2.198e+00	 2.198e+00	 0.000e+00
+    Maxwell_BC	 7.989e-01	 7.989e-01	 7.989e-01	 0.000e+00
+   Diagnostics	 2.197e-01	 2.197e-01	 2.197e-01	 0.000e+00
+    Collisions	 1.829e-02	 1.829e-02	 1.829e-02	 0.000e+00
+    Mov window	 1.285e-01	 1.285e-01	 1.285e-01	 0.000e+00
+Sync Particles	 5.966e-01	 5.966e-01	 5.966e-01	 0.000e+00
+   Sync Fields	 1.388e-01	 1.388e-01	 1.388e-01	 0.000e+00
+Sync Densities	 2.316e-01	 2.316e-01	 2.316e-01	 0.000e+00
+  Part Merging	 2.029e-02	 2.029e-02	 2.029e-02	 0.000e+00
+Part Injection	 1.274e-02	 1.274e-02	 1.274e-02	 0.000e+00
+
+
+--- Timestep = 4 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 1.306e+01	 1.306e+01	 1.306e+01	 0.000e+00
+       Maxwell	 2.843e+00	 2.843e+00	 2.843e+00	 0.000e+00
+    Maxwell_BC	 1.011e+00	 1.011e+00	 1.011e+00	 0.000e+00
+   Diagnostics	 3.187e-01	 3.187e-01	 3.187e-01	 0.000e+00
+    Collisions	 2.284e-02	 2.284e-02	 2.284e-02	 0.000e+00
+    Mov window	 2.268e-01	 2.268e-01	 2.268e-01	 0.000e+00
+Sync Particles	 8.762e-01	 8.762e-01	 8.762e-01	 0.000e+00
+   Sync Fields	 1.872e-01	 1.872e-01	 1.872e-01	 0.000e+00
+Sync Densities	 3.103e-01	 3.103e-01	 3.103e-01	 0.000e+00
+  Part Merging	 2.563e-02	 2.563e-02	 2.563e-02	 0.000e+00
+
+
+--- Timestep = 5 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 2.108e+01	 2.108e+01	 2.108e+01	 0.000e+00
+       Maxwell	 3.486e+00	 3.486e+00	 3.486e+00	 0.000e+00
+    Maxwell_BC	 1.221e+00	 1.221e+00	 1.221e+00	 0.000e+00
+   Diagnostics	 4.412e-01	 4.412e-01	 4.412e-01	 0.000e+00
+    Mov window	 3.219e-01	 3.219e-01	 3.219e-01	 0.000e+00
+Sync Particles	 1.267e+00	 1.267e+00	 1.267e+00	 0.000e+00
+   Sync Fields	 2.247e-01	 2.247e-01	 2.247e-01	 0.000e+00
+Sync Densities	 3.975e-01	 3.975e-01	 3.975e-01	 0.000e+00
+  Part Merging	 3.118e-02	 3.118e-02	 3.118e-02	 0.000e+00
+
+
+--- Timestep = 6 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 2.987e+01	 2.987e+01	 2.987e+01	 0.000e+00
+       Maxwell	 4.157e+00	 4.157e+00	 4.157e+00	 0.000e+00
+    Maxwell_BC	 1.445e+00	 1.445e+00	 1.445e+00	 0.000e+00
+   Diagnostics	 5.650e-01	 5.650e-01	 5.650e-01	 0.000e+00
+    Mov window	 4.378e-01	 4.378e-01	 4.378e-01	 0.000e+00
+Sync Particles	 1.725e+00	 1.725e+00	 1.725e+00	 0.000e+00
+   Sync Fields	 3.021e-01	 3.021e-01	 3.021e-01	 0.000e+00
+Sync Densities	 5.467e-01	 5.467e-01	 5.467e-01	 0.000e+00
+
+
+--- Timestep = 7 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 3.856e+01	 3.856e+01	 3.856e+01	 0.000e+00
+       Maxwell	 4.804e+00	 4.804e+00	 4.804e+00	 0.000e+00
+    Maxwell_BC	 1.663e+00	 1.663e+00	 1.663e+00	 0.000e+00
+   Diagnostics	 6.905e-01	 6.905e-01	 6.905e-01	 0.000e+00
+    Mov window	 5.343e-01	 5.343e-01	 5.343e-01	 0.000e+00
+Sync Particles	 2.138e+00	 2.138e+00	 2.138e+00	 0.000e+00
+   Sync Fields	 3.392e-01	 3.392e-01	 3.392e-01	 0.000e+00
+Sync Densities	 6.380e-01	 6.380e-01	 6.380e-01	 0.000e+00
+
+
+--- Timestep = 8 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 4.724e+01	 4.724e+01	 4.724e+01	 0.000e+00
+       Maxwell	 5.457e+00	 5.457e+00	 5.457e+00	 0.000e+00
+    Maxwell_BC	 1.885e+00	 1.885e+00	 1.885e+00	 0.000e+00
+   Diagnostics	 8.161e-01	 8.161e-01	 8.161e-01	 0.000e+00
+    Mov window	 6.316e-01	 6.316e-01	 6.316e-01	 0.000e+00
+Sync Particles	 2.555e+00	 2.555e+00	 2.555e+00	 0.000e+00
+   Sync Fields	 3.789e-01	 3.789e-01	 3.789e-01	 0.000e+00
+Sync Densities	 7.260e-01	 7.260e-01	 7.260e-01	 0.000e+00
+
+
+--- Timestep = 9 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 5.591e+01	 5.591e+01	 5.591e+01	 0.000e+00
+       Maxwell	 6.112e+00	 6.112e+00	 6.112e+00	 0.000e+00
+    Maxwell_BC	 2.117e+00	 2.117e+00	 2.117e+00	 0.000e+00
+   Diagnostics	 9.430e-01	 9.430e-01	 9.430e-01	 0.000e+00
+    Mov window	 7.308e-01	 7.308e-01	 7.308e-01	 0.000e+00
+Sync Particles	 2.973e+00	 2.973e+00	 2.973e+00	 0.000e+00
+   Sync Fields	 4.194e-01	 4.194e-01	 4.194e-01	 0.000e+00
+Sync Densities	 8.178e-01	 8.178e-01	 8.178e-01	 0.000e+00
+
+
+--- Timestep = 10 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 6.453e+01	 6.453e+01	 6.453e+01	 0.000e+00
+       Maxwell	 6.774e+00	 6.774e+00	 6.774e+00	 0.000e+00
+    Maxwell_BC	 2.338e+00	 2.338e+00	 2.338e+00	 0.000e+00
+   Diagnostics	 9.896e-01	 9.896e-01	 9.896e-01	 0.000e+00
+    Mov window	 8.296e-01	 8.296e-01	 8.296e-01	 0.000e+00
+Sync Particles	 3.384e+00	 3.384e+00	 3.384e+00	 0.000e+00
+   Sync Fields	 4.623e-01	 4.623e-01	 4.623e-01	 0.000e+00
+Sync Densities	 9.054e-01	 9.054e-01	 9.054e-01	 0.000e+00
+
+
+--- Timestep = 11 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 7.321e+01	 7.321e+01	 7.321e+01	 0.000e+00
+       Maxwell	 7.430e+00	 7.430e+00	 7.430e+00	 0.000e+00
+    Maxwell_BC	 2.565e+00	 2.565e+00	 2.565e+00	 0.000e+00
+   Diagnostics	 1.125e+00	 1.125e+00	 1.125e+00	 0.000e+00
+    Mov window	 9.328e-01	 9.328e-01	 9.328e-01	 0.000e+00
+Sync Particles	 3.801e+00	 3.801e+00	 3.801e+00	 0.000e+00
+   Sync Fields	 5.064e-01	 5.064e-01	 5.064e-01	 0.000e+00
+Sync Densities	 1.003e+00	 1.003e+00	 1.003e+00	 0.000e+00
+
+
+--- Timestep = 12 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 8.185e+01	 8.185e+01	 8.185e+01	 0.000e+00
+       Maxwell	 8.087e+00	 8.087e+00	 8.087e+00	 0.000e+00
+    Maxwell_BC	 2.784e+00	 2.784e+00	 2.784e+00	 0.000e+00
+   Diagnostics	 1.251e+00	 1.251e+00	 1.251e+00	 0.000e+00
+    Mov window	 1.031e+00	 1.031e+00	 1.031e+00	 0.000e+00
+Sync Particles	 4.217e+00	 4.217e+00	 4.217e+00	 0.000e+00
+   Sync Fields	 5.499e-01	 5.499e-01	 5.499e-01	 0.000e+00
+Sync Densities	 1.089e+00	 1.089e+00	 1.089e+00	 0.000e+00
+
+
+--- Timestep = 13 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 9.055e+01	 9.055e+01	 9.055e+01	 0.000e+00
+       Maxwell	 8.753e+00	 8.753e+00	 8.753e+00	 0.000e+00
+    Maxwell_BC	 3.040e+00	 3.040e+00	 3.040e+00	 0.000e+00
+   Diagnostics	 1.468e+00	 1.468e+00	 1.468e+00	 0.000e+00
+    Mov window	 1.130e+00	 1.130e+00	 1.130e+00	 0.000e+00
+Sync Particles	 4.670e+00	 4.670e+00	 4.670e+00	 0.000e+00
+   Sync Fields	 5.932e-01	 5.932e-01	 5.932e-01	 0.000e+00
+Sync Densities	 1.180e+00	 1.180e+00	 1.180e+00	 0.000e+00
+
+
+--- Timestep = 13 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 9.055e+01	 9.055e+01	 9.055e+01	 0.000e+00
+       Maxwell	 8.753e+00	 8.753e+00	 8.753e+00	 0.000e+00
+    Maxwell_BC	 3.040e+00	 3.040e+00	 3.040e+00	 0.000e+00
+   Diagnostics	 1.561e+00	 1.561e+00	 1.561e+00	 0.000e+00
+    Mov window	 1.167e+00	 1.167e+00	 1.167e+00	 0.000e+00
+Sync Particles	 4.670e+00	 4.670e+00	 4.670e+00	 0.000e+00
+   Sync Fields	 5.932e-01	 5.932e-01	 5.932e-01	 0.000e+00
+Sync Densities	 1.180e+00	 1.180e+00	 1.180e+00	 0.000e+00

@@ -1,0 +1,37 @@
+## step 0 (julia): exit 0 after 50s
+pm pm-vacuum: step 553 of 7189, 2.2 s
+pm pm-vacuum: step 1106 of 7189, 2.8 s
+pm pm-vacuum: step 1659 of 7189, 3.8 s
+pm pm-vacuum: step 2212 of 7189, 4.9 s
+pm pm-vacuum: step 2765 of 7189, 6.1 s
+pm pm-vacuum: step 3318 of 7189, 7.3 s
+pm pm-vacuum: step 3871 of 7189, 8.4 s
+pm pm-vacuum: step 4424 of 7189, 9.6 s
+pm pm-vacuum: step 4977 of 7189, 10.8 s
+pm pm-vacuum: step 5530 of 7189, 11.9 s
+pm pm-vacuum: step 6083 of 7189, 13.1 s
+pm pm-vacuum: step 6636 of 7189, 14.3 s
+pm pm-vacuum: step 7189 of 7189, 15.4 s
+
+## step 1 (julia): exit 0 after 765s
+pm pm-plasma: step 553 of 7189, 49.3 s
+pm pm-plasma: step 1106 of 7189, 97.0 s
+pm pm-plasma: step 1659 of 7189, 149.8 s
+pm pm-plasma: step 2212 of 7189, 209.7 s
+pm pm-plasma: step 2765 of 7189, 269.6 s
+pm pm-plasma: step 3318 of 7189, 330.0 s
+pm pm-plasma: step 3871 of 7189, 389.8 s
+pm pm-plasma: step 4424 of 7189, 449.7 s
+pm pm-plasma: step 4977 of 7189, 509.8 s
+pm pm-plasma: step 5530 of 7189, 569.7 s
+pm pm-plasma: step 6083 of 7189, 629.7 s
+pm pm-plasma: step 6636 of 7189, 689.7 s
+pm pm-plasma: step 7189 of 7189, 749.5 s
+
+## step 2 (smilei): exit 0 after 16s
+
+## step 3 (julia): exit 0 after 6s
+
+## step 4 (smilei): exit 0 after 117s
+
+## step 5 (julia): exit 0 after 7s
