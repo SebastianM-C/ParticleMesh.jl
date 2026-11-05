@@ -6,7 +6,9 @@
 #    16 and 32 cells, in both polarizations; measured by the module's step and predicted by the PML's
 #    discrete theory (`pml_rt`, lib/ParticleMeshElectromagnetic/test/pml_cases.jl), next to the
 #    theory of WP-027's matched layer at the same thickness and its nominal attenuation
-#    strength·cells = 32. The envelope is 3/cos θ wavelengths wide, as in WP-027's script.
+#    strength·cells = 32. The envelope is 4/cos θ wavelengths wide (WP-027's script takes 3/cos θ;
+#    the PML's far smaller R at large angles needs the slow modes of the incident packet further
+#    away at the measurement time).
 # 2. Profiles (pml_profiles.png): at 8 cells, R against angle (theory, carrier) for PIConGPU's
 #    profile, Smilei's default grading (σ = 20u², κ = 1 + 79u⁴), κ_max = 4 and a frequency shift.
 # 3. A long run (pml_long_run.png): random fields in an open vacuum box with 8-cell PMLs, the energy
@@ -28,7 +30,7 @@ include(joinpath(EM_TEST, "pml_cases.jl"))
 const ANGLES = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.1, 1.2)
 const THICKNESS = (8, 16, 32)
 
-geometry(θ, cells) = slab_geometry(; theta = θ, cells, strength = 32 / cells, width = 3 / cos(θ))
+geometry(θ, cells) = slab_geometry(; theta = θ, cells, strength = 32 / cells, width = 4 / cos(θ))
 
 const PROFILES = (("PIConGPU (m = 4, κ = 1, α = 0)", cells -> PML(; cells)),
                   ("Smilei grading (20u², 1 + 79u⁴)", cells -> PML(; cells, sigma_max = 20, order = 2, kappa_max = 80, kappa_order = 4)),
@@ -117,7 +119,7 @@ function pml_report()
                   extra_inputs = [joinpath(EM_TEST, "boundaries_cases.jl"), joinpath(EM_TEST, "pml_cases.jl")],
                   params = Dict{String,Any}("angles" => collect(ANGLES), "thickness" => collect(THICKNESS), "profile" => "PIConGPU",
                                             "type" => "Float64", "ncx" => 16, "ncy" => 8, "courant" => 0.95,
-                                            "width_wavelengths" => "3/cos θ", "margin" => 8, "layer_strength_times_cells" => 32))
+                                            "width_wavelengths" => "4/cos θ", "margin" => 8, "layer_strength_times_cells" => 32))
     rows = reflection_rows()
     lines = reflection_lines(PROFILES[1:1])
     colors = Dict(8 => :royalblue, 16 => :darkorange, 32 => :seagreen)

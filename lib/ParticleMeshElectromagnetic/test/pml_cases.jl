@@ -20,15 +20,16 @@ end
 
 The reflection and transmission amplitudes of the PML slab (the top layer, the seam and the bottom
 layer) for the scheme's mode (k_x, k_y) at its Yee ω, from the time-harmonic step. With every field
-∝ e^{i k_x x}·λⁿ, λ = e^{−iωΔt}, a y-difference D_yF of a sub-step of length τ becomes
-(1/κ)D_yF + ψ and ψ ← bψ + c·D_yF with b = e^{−(σ/κ + α)τ}, c = σ(b − 1)/(κ(σ + κα)), written
-here from the formula, not from the kernel. Over a step, the B half steps' ψ (values P₁ after the
-first, P₂ after the second) give P₁ = c(1 + b)D/(1 − b²/λ), P₂ = bP₁ + cλD for the y-difference D
-of E at time n, so the half-step B is X^{n+½} = ∓G·D with
+∝ e^{i k_x x}·λⁿ, λ = e^{−iωΔt}, a y-difference D_yF becomes (1/κ)D_yF + ψ, and ψ advances once
+per step as ψ ← bψ + c·D_yF with b = e^{−(σ/κ + α)Δt}, c = σ(b − 1)/(κ(σ + κα)), written here from
+the formula, not from the kernel. B's ψ advances in the second half step from E^{n+1} and the
+first half step of the next step reuses it, so ψ_B is cD/(1 − b/λ) for the y-difference D of E^n
+during step n's first half and λ times that during its second. The two half steps of h = Δt/2 then
+give B^{n+1} − B^n = ∓h(1 + λ)(1/κ + c/(1 − b/λ))·D, and the half-step B is X^{n+½} = ∓G·D with
 
-    G = h·(2/κ + c + c(1 + b)(1 + b/λ)/(1 − b²/λ))/(1 − 1/λ)   (h = Δt/2, at B's Center() row),
+    G = h·(2/κ + 2c/(1 − b/λ))/(1 − 1/λ)   (at B's Center() row),
 
-and the E step's ψ makes its y-difference S·D, S = 1/κ + λc/(λ − b) at E's Node() row (τ = Δt).
+and the E step's ψ makes its y-difference S·D, S = 1/κ + λc/(λ − b) at E's Node() row.
 Eliminating By (TE) or Ey (TM), whose updates carry x-differences only (D⁻_xD⁺_x = −κ_x²):
 
     TE: (λ − 1)·e_j + Δt²κ_x²/(1 − 1/λ)·e_j − (ΔtS_j/Δy²)·(G_{j+½}(e_{j+1} − e_j) − G_{j−½}(e_j − e_{j−1})) = 0
@@ -37,7 +38,9 @@ Eliminating By (TE) or Ey (TM), whose updates carry x-differences only (D⁻_xD�
 for Ez on the Node() rows (TE) and the half-step Bz on the Center() rows (TM). In vacuum (G = Δt/(1 − 1/λ),
 S = 1) both reduce to the Yee dispersion relation. Outgoing above the slab, iterated down through it
 and split below it into the incident and reflected vacuum roots, as `layer_rt` does. Independent of
-the kernels: it shares only the profile `pml_profile`.
+the kernels: it shares only the profile `pml_profile`. Deep in a very strong layer
+(σ_maxΔt ≳ 100) S vanishes to roundoff and the recurrence is singular; the theory then throws
+instead of returning NaN.
 """
 function pml_rt(geo, pml, pol, ky)
     dt, dy = geo.dt, geo.dy
@@ -50,7 +53,7 @@ function pml_rt(geo, pml, pol, ky)
         c = σ > 0 ? σ * (b - 1) / (κ * (σ + κ * α)) : 0.0
         return (b, c, κ)
     end
-    G(pc) = ((b, c, κ) = bc(pc, h); h * (2 / κ + c + c * (1 + b) * (1 + b / λ) / (1 - b^2 / λ)) / (1 - 1 / λ))
+    G(pc) = ((b, c, κ) = bc(pc, dt); h * (2 / κ + 2c / (1 - b / λ)) / (1 - 1 / λ))
     S(pn) = ((b, c, κ) = bc(pn, dt); 1 / κ + λ * c / (λ - b))
     j0 = geo.ny - geo.cells - 3
     j1 = geo.ny + geo.cells + 3
@@ -81,6 +84,7 @@ function pml_rt(geo, pml, pol, ky)
     end
     b = (F - Fp / μu) / (1 / μd - 1 / μu)
     a = Fp - b
+    isfinite(b / a) && isfinite(1 / a) || error("pml_rt: the recurrence is singular for this profile (σ_max·Δt too large)")
     return (b / a, 1 / a)
 end
 

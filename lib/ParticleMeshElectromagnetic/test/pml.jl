@@ -5,7 +5,7 @@
 # the same scheme (`pml_rt`, pml_cases.jl); the plasma runs are `open_plasma_2d` with a PML.
 
 using ForwardDiff: ForwardDiff, Partials
-using ParticleMeshElectromagnetic: PMLFields
+using ParticleMeshElectromagnetic: PMLFields, pml_b!, pml_e!
 
 "The vacuum slab run of `geo` with `pml` against `pml_rt`: (; run, pred, geo, k)."
 function pml_slab(geo, pml, pol; T = Float64)
@@ -71,14 +71,15 @@ end
 # --- T-541 ----------------------------------------------------------------------------------
 
 # Where the matched layer fails, at grazing incidence: at 1.2 rad and 16 cells WP-027's layer at its
-# nominal attenuation reflects about 8 % (its discrete theory, T-450), the PML with PIConGPU's
-# profile a few 10⁻⁵. The run is against the PML's theory as in T-540, with a packet 9 wavelengths
-# wide (at 3 wavelengths its slowest modes, still on their way up, triple the measured R), and the
+# nominal attenuation reflects about 9 % (its discrete theory, T-450), the PML with PIConGPU's
+# profile about 5·10⁻¹⁵. The run is against the PML's theory as in T-540, with a packet 12
+# wavelengths wide (at 9 wavelengths the slowest modes of the incident packet, still on their way
+# up, add 3·10⁻⁴ of that R, 400 times the roundoff scale; at 12 they are below it), and the
 # PML has to beat the layer at the same thickness by more than two orders of magnitude at 0.8 and
 # 1.2 rad, from the two theories.
 @testset "T-541 at grazing incidence the PML matches its theory and reflects far less than the matched layer [A2, A7, WP-034]" begin
     C = emC("T-540")
-    geo = slab_geometry(; theta = 1.2, cells = 16, width = 9)
+    geo = slab_geometry(; theta = 1.2, cells = 16, width = 12)
     (; run, pred, k) = pml_slab(geo, slab_pml(geo), :TE)
     eR = abs(run.R - pred.R) / slab_scale(Float64, k, pred.R)
     eT = abs(run.Tr - pred.Tr) / slab_scale(Float64, k, pred.Tr)
@@ -98,7 +99,9 @@ end
 
 # A long run stays bounded: random fields (every mode, the evanescent ones and the static ones
 # included) in an open vacuum box of 16 × 40 cells with 8-cell PMLs, 8000 steps (about 40 crossing
-# times of the box along y). The energy over the box never exceeds its start, and what remains at
+# times of the box along y). The energy over the box of this start never exceeds its start (a
+# static field reaching into the layer can rise a few per cent above it, so the bound is the
+# start's, not the PML's), and what remains at
 # the end is what cannot reach the layers (modes with k_y = 0 and the static fields), which
 # fluctuates by a few per cent and does not grow: the mean over the last quarter of the run is not
 # above that over the second quarter. A growing late-time mode would break both.
@@ -232,7 +235,8 @@ end
     st = open_state(prob, pml)
     L = st.aux.layer
     n2 = ncells(st.grid)[2]
-    for (set, sh, τ) in ((L.node_full, 0, prob.dt), (L.center_full, 1, prob.dt), (L.node_half, 0, prob.dt / 2), (L.center_half, 1, prob.dt / 2))
+    for (set, sh) in ((L.node, 0), (L.center, 1))
+        τ = prob.dt
         b, c, q = map(Array, set)
         @test length(b) == 8
         for k in 1:8
@@ -253,6 +257,30 @@ end
     end
     @test all(iszero, Array(L.ψBx)) && all(iszero, Array(L.ψEx))
     @test size(L.ψBx) == (ncells(st.grid)[1], 8)
+    # each correction on its own: the B correction changes Bx and Bz on their layer rows and
+    # nothing else, advancing ψBx and ψBz only when asked (the second half step), and the E
+    # correction changes Ex and Ez only, each advancing its ψ
+    foreach(a -> (a .= randn(Xoshiro(11), size(a)); fill_guards!(a, st.grid)), values(st.fields))
+    g, n = guards(st.grid), ncells(st.grid)
+    inner, rows = (g + 1):(g + n[1]), vcat((g + 1):(g + 4), (g + n[2] - 3):(g + n[2]))
+    for (fn, changed, ψs, adv) in ((pml_b!, (:Bx, :Bz), (:ψBx, :ψBz), false), (pml_b!, (:Bx, :Bz), (:ψBx, :ψBz), true),
+                                   (pml_e!, (:Ex, :Ez), (:ψEx, :ψEz), true))
+        Lc = PMLFields(pml, st.grid, prob.dt; backend = CPU())
+        foreach(c -> (a = getfield(Lc, c); a .= randn(Xoshiro(13), size(a))), (:ψBx, :ψBz, :ψEx, :ψEz))
+        ψ0 = map(c -> copy(getfield(Lc, c)), (ψBx = :ψBx, ψBz = :ψBz, ψEx = :ψEx, ψEz = :ψEz))
+        f = map(copy, st.fields)
+        fn === pml_b! ? fn(Lc, f, st.grid, prob.dt / 2, adv, nothing) : fn(Lc, f, st.grid, prob.dt, nothing)
+        for c in keys(f)
+            if c in changed
+                @test all(j -> Array(getfield(f, c))[inner, j] != Array(getfield(st.fields, c))[inner, j], rows)
+            else
+                @test bits(Array(getfield(f, c))) == bits(Array(getfield(st.fields, c)))
+            end
+        end
+        for c in keys(ψ0)
+            @test (getfield(Lc, c) == ψ0[c]) == !(adv && c in ψs)
+        end
+    end
     # PIConGPU's optimum when sigma_max is not given
     @test PMLFields(PML(; cells = 4), st.grid, prob.dt; backend = CPU()).sigma_max ≈ 0.8 * 5 / cellsize(st.grid)[2]
 end
@@ -344,6 +372,8 @@ end
     case["grid"]["boundaries"] = ["periodic", "open"]
     case["numerics"]["pml"] = Dict("cells" => 6)
     @test numerics_from_case(case).absorber == PML(; cells = 6)
+    case["numerics"]["pml"] = Dict("cells" => 6, "order" => 2)       # κ's order follows σ's
+    @test numerics_from_case(case).absorber == PML(; cells = 6, order = 2, kappa_order = 2, alpha_order = 1)
     case["numerics"]["pml"] = Dict("cells" => 6, "sigma_max" => 20, "order" => 2, "kappa_max" => 80, "kappa_order" => 4,
                                    "alpha_max" => 0.1, "alpha_order" => 2)
     @test numerics_from_case(case).absorber == PML(; cells = 6, sigma_max = 20, order = 2, kappa_max = 80, kappa_order = 4,

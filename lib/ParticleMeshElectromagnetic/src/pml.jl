@@ -1,16 +1,22 @@
 # The convolutional perfectly matched layer of the open transverse axis at N = 2 (WP-034, A2: "PML
 # later"): the complex-frequency-shifted stretched-coordinate PML in the recursive-convolution form
-# of Roden and Gedney (2000), as PIConGPU 0.8.0 implements it (`fields/absorber/pml/Pml.kernel`).
+# of Roden and Gedney (2000), with PIConGPU 0.8.0's coefficients and time rule
+# (`fields/absorber/pml/Pml.kernel`).
 # Along the open axis y the derivative ∂_y becomes (1/s_y)∂_y with s_y = κ + σ/(α + iω), which in
 # the time domain is (1/κ)∂_y F + ψ, ψ the convolution of ∂_y F with the kernel
 # −σ/κ²·exp(−(σ/κ + α)t). Over a sub-step of length τ with ∂_y F held, ψ advances exactly by
 #     ψ ← b·ψ + c·D_y F,   b = exp(−(σ/κ + α)τ),   c = σ(b − 1)/(κ(σ + κα))
 # (c = 0 where σ = 0). Four terms of the 2D curls carry a y-difference: Bx from D⁺_y Ez, Bz from
-# D⁺_y Ex (each B half step, τ = Δt/2) and Ex from D⁻_y Bz, Ez from D⁻_y Bx (the E step, τ = Δt).
-# Each has its convolution field ψ on the layer rows only.
+# D⁺_y Ex (on B's Center() rows) and Ex from D⁻_y Bz, Ez from D⁻_y Bx (on E's Node() rows). Each
+# has its convolution field ψ on the layer rows only, and each ψ advances once per step with
+# τ = Δt: the E fields' in the E step, the B fields' in the second B half step, from E^{n+1}. The
+# first B half step of the next step reads the same E^{n+1}, so it reuses that ψ without advancing
+# it. This is PIConGPU's rule (its `updatePsiB` is set in one of the two B half steps only); it
+# keeps ψ_B a function of E at integer times, and the half steps' B sum to one Δt-centred update.
 #
 # The update is a correction after the plain Yee sub-step, which already added the vacuum term
-# ±τ·D_y F: in the layer rows X ← X ± τ·((1/κ − 1)·D_y F + ψ), with ψ advanced first, the sign that
+# ±τ·D_y F: in the layer rows X ← X ± τ·((1/κ − 1)·D_y F + ψ), with ψ advanced first where it
+# advances (τ = Δt/2 for the B half steps, Δt for the E step), the sign that
 # of the curl term (Bx −, Bz +, Ex +, Ez −). The Yee kernels, the antennas and the interior are
 # untouched; only the roundoff order differs from a fused kernel. Off the layer κ = 1, σ = α = 0, so
 # the correction is exactly zero.
@@ -40,8 +46,11 @@ the layer (0 at its inner edge, 1 at the box edge). σ and α are rates in ω₀
 PIConGPU 0.8.0's (order 4, κ_max = 1), except α: PIConGPU's 0.2 S/m is about 1·10⁻⁵ ω₀ at
 λ₀ = 0.8 µm, so the default here is zero. Smilei's default profiles over its layer are
 `PML(; cells, sigma_max = 20, order = 2, kappa_max = 80, kappa_order = 4)` up to its depth
-convention. These are numerics, not differentiable parameters (A3). The layer must be at least as
-thick as the grid's guards and leave interior rows between the two layers (checked by the state).
+convention. The current deposited in the layer is not damped: with plasma inside it, α = 0 lets
+slow currents build up a field there, and a positive `alpha_max` (0.2 to 1) keeps it about two
+orders of magnitude smaller (questions/wp-034-pml.md §5). These are numerics, not differentiable
+parameters (A3). The layer must be at least as thick as the grid's guards and leave interior rows
+between the two layers (checked by the state).
 """
 struct PML
     cells::Int
@@ -124,18 +133,16 @@ end
 """
     PMLFields
 
-The PML placed on a grid by the state: per stagger along y (`node`, `center`) and sub-step
-(`half` for the B half steps, τ = Δt/2; `full` for the E step, τ = Δt) the coefficients b, c and
-q = 1/κ − 1 per layer row, and the convolution fields ψ of the four y-difference terms (`ψBx`,
+The PML placed on a grid by the state: per stagger along y (`node` for E's y-differences,
+`center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row,
+and the convolution fields ψ of the four y-difference terms (`ψBx`,
 `ψBz` on Center() rows, `ψEx`, `ψEz` on Node() rows), each of n₁ columns by 2·cells layer rows
 (the first `cells` interior rows and the last `cells`), zero at t = 0. `dt` is the time step the
 coefficients were made for, `sigma_max` the σ_max they use.
 """
 struct PMLFields{V,M,T}
-    node_half::NTuple{3,V}
-    center_half::NTuple{3,V}
-    node_full::NTuple{3,V}
-    center_full::NTuple{3,V}
+    node::NTuple{3,V}
+    center::NTuple{3,V}
     ψBx::M
     ψBz::M
     ψEx::M
@@ -168,7 +175,7 @@ function PMLFields(l::PML, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize 
                    launcher(pml_coef_kernel!, backend, workgroupsize)(v..., sm, T(l.kappa_max), T(l.alpha_max), orders, Int32(sh), τ,
                                                                       Int32(n[2]), Int32(l.cells); ndrange = rows)
                    v
-               end, ((0, dt / 2), (1, dt / 2), (0, dt), (1, dt)))
+               end, ((0, dt), (1, dt)))
     ψ = ntuple(_ -> KernelAbstractions.zeros(backend, T, n[1], rows), 4)
     return PMLFields(sets..., ψ..., l.cells, g, n, dt, sm)
 end
@@ -176,43 +183,45 @@ end
 # One correction: ndrange (n₁, 2·cells), one work item per layer entry of X. With the layer row k
 # at the interior row j₀ (array row j = g + 1 + j₀) and column i (array column g + i), the
 # y-difference D of F at X's stagger (forward from Node() for B, `fwd = true`; backward from
-# Center() for E), then ψ ← bψ + c·D and X ← X + s·τ·(q·D + ψ), s the curl term's sign.
-@kernel function pml_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rdy, fwd::Bool, g::Int32, n2::Int32,
-                                     cells::Int32)
+# Center() for E), then ψ ← bψ + c·D where `adv` (else ψ is read as it is) and
+# X ← X + s·τ·(q·D + ψ), s the curl term's sign.
+@kernel function pml_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rdy, fwd::Bool, adv::Bool, g::Int32,
+                                     n2::Int32, cells::Int32)
     i, k = @index(Global, NTuple)
     k32 = Int32(k)
     ii = Int32(i) + g
     j = g + Int32(1) + pml_row(k32, n2, cells)
     @inbounds begin
         D = ifelse(fwd, F[ii, j + Int32(1)] - F[ii, j], F[ii, j] - F[ii, j - Int32(1)]) * rdy
-        p = b[k] * ψ[i, k] + c[k] * D
+        p = ifelse(adv, b[k] * ψ[i, k] + c[k] * D, ψ[i, k])
         ψ[i, k] = p
         X[ii, j] += sτ * (q[k] * D + p)
     end
 end
 
-function pml_correct!(X, ψ, F, coef, sτ, rdy, fwd, L::PMLFields, grid, wgs)
-    launcher(pml_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rdy, fwd, Int32(L.g), Int32(L.n[2]), Int32(L.cells);
-                                                         ndrange = (L.n[1], 2 * L.cells))
+function pml_correct!(X, ψ, F, coef, sτ, rdy, fwd, adv, L::PMLFields, grid, wgs)
+    launcher(pml_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rdy, fwd, adv, Int32(L.g), Int32(L.n[2]),
+                                                         Int32(L.cells); ndrange = (L.n[1], 2 * L.cells))
     fill_guards!(X, grid; workgroupsize = wgs)
     return X
 end
 
 # After a B half step of length h: Bx −= h(q·D⁺_y Ez + ψBx), Bz += h(q·D⁺_y Ex + ψBz), each on its
-# Center() rows; after the E step of length Δt: Ex += Δt(q·D⁻_y Bz + ψEx), Ez −= Δt(q·D⁻_y Bx + ψEz)
-# on Node() rows. The guards of E are filled before the B corrections read them and vice versa.
-function pml_b!(L::PMLFields, f, grid, h, wgs)
+# Center() rows, the ψ advanced (`adv`) in the second half step only; after the E step of length Δt:
+# Ex += Δt(q·D⁻_y Bz + ψEx), Ez −= Δt(q·D⁻_y Bx + ψEz) on Node() rows. The guards of E are filled
+# before the B corrections read them and vice versa.
+function pml_b!(L::PMLFields, f, grid, h, adv, wgs)
     T = eltype(f.Bx)
     rdy = inv(cellsize(grid)[2])
-    pml_correct!(f.Bx, L.ψBx, f.Ez, L.center_half, -T(h), rdy, true, L, grid, wgs)
-    pml_correct!(f.Bz, L.ψBz, f.Ex, L.center_half, T(h), rdy, true, L, grid, wgs)
+    pml_correct!(f.Bx, L.ψBx, f.Ez, L.center, -T(h), rdy, true, adv, L, grid, wgs)
+    pml_correct!(f.Bz, L.ψBz, f.Ex, L.center, T(h), rdy, true, adv, L, grid, wgs)
     return nothing
 end
 function pml_e!(L::PMLFields, f, grid, dt, wgs)
     T = eltype(f.Ex)
     rdy = inv(cellsize(grid)[2])
-    pml_correct!(f.Ex, L.ψEx, f.Bz, L.node_full, T(dt), rdy, false, L, grid, wgs)
-    pml_correct!(f.Ez, L.ψEz, f.Bx, L.node_full, -T(dt), rdy, false, L, grid, wgs)
+    pml_correct!(f.Ex, L.ψEx, f.Bz, L.node, T(dt), rdy, false, true, L, grid, wgs)
+    pml_correct!(f.Ez, L.ψEz, f.Bx, L.node, -T(dt), rdy, false, true, L, grid, wgs)
     return nothing
 end
 
@@ -221,20 +230,20 @@ end
 
 The Yee step with the antennas' corrections and the convolutional PML: after each Yee sub-step,
 the PML's correction of the four y-difference terms in the layer rows (their convolution fields
-advanced first), then the antennas' correction. With a zero profile (σ = α = 0, κ = 1) the
+advanced first, B's in the second half step only), then the antennas' correction. With a zero profile (σ = α = 0, κ = 1) the
 corrections add zero, so the step is the antennas' solve bit for bit up to the sign of zero.
 """
 function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, L::PMLFields; workgroupsize = nothing)
     T = eltype(f.Ex)
     h = T(dt) / 2
     yee_b_half!(f, grid, h; workgroupsize)
-    pml_b!(L, f, grid, h, workgroupsize)
+    pml_b!(L, f, grid, h, false, workgroupsize)
     antenna_b!(antennas, f, h, t, workgroupsize)
     yee_e!(f, grid, dt; workgroupsize)
     pml_e!(L, f, grid, dt, workgroupsize)
     antenna_e!(antennas, f, dt, t + h, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
-    pml_b!(L, f, grid, h, workgroupsize)
+    pml_b!(L, f, grid, h, true, workgroupsize)
     antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
     return f
 end
@@ -242,7 +251,8 @@ end
 retire!(::PMLFields, st) = retire_open!(st)
 
 # The convolution fields are part of the field state but not of the state's arrays: step 1 starts
-# them at zero, so every run from step 1 (`run!`, or a solve of the harness, which takes the steps
+# them at zero (so its first B half step reads ψ_B = 0, not c·D⁺_y E⁰; zero for fields that start
+# at zero in the layer), so every run from step 1 (`run!`, or a solve of the harness, which takes the steps
 # in order on one integrator) is the same run.
 reset_absorber!(::Any) = nothing
 reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBx, L.ψBz, L.ψEx, L.ψEz)); nothing)
