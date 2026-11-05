@@ -196,7 +196,7 @@ then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filte
 with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
 the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
 back), or `nothing`, the window's field-free outside alone; a state refuses it without a
-window. `headroom` sizes the particle buffers of
+window, and refuses a laser antenna that the layer reaches before its pulse is over. `headroom` sizes the particle buffers of
 a moving-window state, `(1 + headroom)·prod(cells)·prod(ppc)` slots per species, for particles
 that stay in the window longer than the plasma at rest (a refill that finds no free slot is
 counted, [`window_lost`](@ref)); other states ignore it.

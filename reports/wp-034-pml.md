@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Work package | WP-034 (goals A2, A4, A7, A8, A10) |
-| Commits | the PML, its tests and the script `2aa82b1`; the B convolution advanced once per step, as PIConGPU does, after the physics breaker, with the mutation breaker's tests `17ee7ce`; the merge with main `79a55bd`; this report `6eb431d`; the PML inside WP-028's moving window (T-549), after main took WP-028, in the commit after the second merge with main, which leaves the step without a window bit for bit as measured here |
-| Runs | `em2d-pml-20261105T183921` (commit `79a55bd`). Its manifest says `dirty = true`: the one modified tracked file at its start was `questions/wp-034-pml.md`, which is not an input, and all 34 input hashes in the manifest equal the files at `79a55bd` |
-| Input hashes | SHA-256 of every input file in the run's manifest: `wp-034-pml/em2d-pml-20261105T183921/manifest.toml` |
+| Commits | the PML, its tests and the script `2aa82b1`; the B convolution advanced once per step, as PIConGPU does, after the physics breaker, with the mutation breaker's tests `17ee7ce`; the merge with main `79a55bd`; this report `6eb431d`; the PML inside WP-028's moving window (T-549), after main took WP-028, in the commit after the second merge with main, which leaves the step without a window bit for bit as measured here; the back edge `15b776d`, after its physics breaker `18397bf`, its discrete theory after its mutation breaker `2ebb12e`, a figure's legend `7d83c42` |
+| Runs | `em2d-pml-20261105T183921` (commit `79a55bd`). Its manifest says `dirty = true`: the one modified tracked file at its start was `questions/wp-034-pml.md`, which is not an input, and all 34 input hashes in the manifest equal the files at `79a55bd`. The back edge (§7): `em2d-pml-back-20261105T215131` (commit `7d83c42`, clean) |
+| Input hashes | SHA-256 of every input file in each run's manifest: `wp-034-pml/em2d-pml-20261105T183921/manifest.toml` and `wp-034-pml/em2d-pml-back-20261105T215131/manifest.toml` |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.10GHz (the model string the CPU reports), 4 vCPUs of a shared cloud VM; 4 threads |
-| Figures | `wp-034-pml/em2d-pml-20261105T183921/pml_reflection.png`, `pml_profiles.png`, `pml_long_run.png` and `pml_gauss.png`, each with its JSON sidecar (every row) |
+| Figures | `wp-034-pml/em2d-pml-20261105T183921/pml_reflection.png`, `pml_profiles.png`, `pml_long_run.png` and `pml_gauss.png`; `wp-034-pml/em2d-pml-back-20261105T215131/pml_back_theory.png`, `pml_back_reflection.png` and `pml_back_long_run.png`; each with its JSON sidecar (every row) |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review |
 
 ## 1. Setup
@@ -111,25 +111,55 @@ The energy is still rising at the end of every PML run. The likely mechanism is 
 
 ## 7. The moving window's back edge
 
-The window's x-guards are its field-free outside (WP-028). In 2D a pulse leaves a trailing field behind it, and the outside reflects that field at the back edge. `EMNumerics(; back_absorber = PML(; cells))` puts the same PML along x on the window's first `cells` columns, graded towards the back face. It corrects the four x-difference terms (By, Bz, Ey, Ez) with their own convolution fields, on the same once-per-step rule. The profile moves with the window, and each shift moves the convolution fields one column back with E and B. The choices are in `questions/wp-034-pml.md` §6.
+The window's x-guards are its field-free outside (WP-028). In 2D a pulse leaves a trailing field behind it, and the outside reflects that field at the back edge. `EMNumerics(; back_absorber = PML(; cells))` puts the same PML along x on the window's first `cells` columns, graded towards the back face. It corrects the four x-difference terms (By, Bz, Ey, Ez) with their own convolution fields, on the same once-per-step rule. The profile moves with the window, and each shift moves the convolution fields one column back with E and B. The choices are in `questions/wp-034-pml.md` §6. The run is `em2d-pml-back-20261105T215131` (`scripts/em2d/pml_back.jl`).
 
-The measurement is T-472's vacuum pulse (`window_lwfa` without plasma, 64 × 16 cells, 200 steps, 92 shifts), compared with its static twin, a box long enough for the whole run whose window never moves, both with the same back-edge absorber. The table gives the largest difference relative to the twin's largest field. These are single runs in Float64 of T-570's helper `back_comparison` (`lib/ParticleMeshElectromagnetic/test/pml_back.jl`) from a scratch script, so they have no run manifest; T-570 reruns the bare and 8-cell rows:
+**Against its discrete theory** (T-576, `pml_back_theory.png`). WP-027's slab packet, turned on its side, travels along −x into the back edge of a window that never moves. Behind the layer the zero x-guards reflect what is left, so nothing is transmitted. `back_rt` (`lib/ParticleMeshElectromagnetic/test/pml_back_cases.jl`) is the scheme's time-harmonic reflection of the layer with that termination, derived as `pml_rt` is (§1) with x the layer's axis: TE has no By in the guard column behind node 0, and TM has the guard's Bz at zero. The grid has 8 cells per wavelength along x and 16 along y, so Δx ≠ Δy, at 0.95 of the Courant limit. The profile is PIConGPU's.
 
-| back edge | before the window moves | 8 columns behind the layer | columns 25 … 64 |
-|---|---|---|---|
-| field-free outside (WP-028) | 1.7e-14 | 0.146 | 1.4e-14 |
-| PML, 4 cells | 1.7e-14 | 2.2e-3 | 1.4e-14 |
-| PML, 8 cells | 1.7e-14 | 7.2e-4 | 1.4e-14 |
-| PML, 16 cells | 1.3e-14 | 1.7e-4 | 1.3e-10 |
-| PML, 8 cells, α_max = 0.2 | 1.7e-14 | 6.9e-4 | 1.4e-14 |
+| θ (rad) | R, 8 cells | R, 16 cells |
+|---|---|---|
+| 0 | 4.41·10⁻⁷ | 7.35·10⁻¹³ |
+| 0.2 | 3.76·10⁻⁷ | 3.92·10⁻¹³ |
+| 0.4 | 2.56·10⁻⁷ | 1.92·10⁻¹³ |
+| 0.6 | 1.35·10⁻⁷ | 1.79·10⁻¹³ |
+| 0.8 | 5.27·10⁻⁸ | 7.40·10⁻¹⁴ |
 
-For the field-free outside, the columns behind the layer are columns 1 to 8.
+- **Agreement.** Run and theory agree to 3.4·10⁻¹² relative at 8 cells and to 1.5·10⁻⁹ at 16 cells. A 10⁻¹³ energy is near the roundoff floor of the measurement.
+- **The two polarizations.** TE and TM give the same R to 12 digits at every angle, in the theory as in the runs.
+- **The test.** T-576 runs 0 and 0.4 rad, both polarizations, with PIConGPU's profile, Smilei's grading with α, and κ_max = 4 with α_max = 0.2. It reaches at most 0.0089 of T-540's scale. A zero profile reflects everything in the theory (|r| = 1 to 10⁻¹⁴).
 
-- **The reflection.** 8 cells take the back-edge difference from 0.15 to 7·10⁻⁴, a factor of 200. 16 cells take it to 1.7·10⁻⁴.
-- **The front of the window.** It is unchanged: from column 25 on the window keeps T-472's agreement. The exception is the 16-cell layer, where columns 25 to 32 are within 9 of the layer and see 10⁻¹⁰.
-- **With plasma.** In the laser–plasma run of T-473 (0.02 n_c, 600 steps), the field energy on columns 9 to 64 agrees to three digits with and without an 8-cell back-edge PML at α_max = 0, 0.2 and 1, so no build-up like that of §6 shows there. That plasma is dilute, and the run is a single one.
-- **Gauss's law.** It holds across the shifts to roundoff off the layer columns and the antenna (T-572: 0.18 to 0.24 of T-473's constant in the three types and both modes).
-- **A zero profile** is the window's step bit for bit (T-571).
+**The trailing field of a pulse** (T-570, `pml_back_reflection.png`). The pulse is T-472's vacuum pulse in the window of `back_lwfa`: `window_lwfa` without plasma, with its antenna at x = 10 and 72 × 16 cells, 200 steps, 92 shifts. The reference is free space: a static box with 100 more columns behind and the antenna moved by as many, whose bare back is too far away to matter within the run. The table gives the largest difference on the eight columns behind the layer (columns 1 to 8 for the field-free outside), relative to the reference's largest field.
+
+| back edge | 8 columns behind the layer |
+|---|---|
+| field-free outside (WP-028) | 0.095 |
+| PML, 4 cells | 1.4·10⁻³ |
+| PML, 8 cells | 3.2·10⁻⁴ |
+| PML, 8 cells, α_max = 0.2 | 3.0·10⁻⁴ |
+| PML, 8 cells, κ_max = 5 | 1.2·10⁻³ |
+| PML, 8 cells, Smilei's grading | 8.7·10⁻³ |
+| field-free outside, antenna at x = 16, 80 columns | 0.070 |
+| PML, 8 cells, the same | 9.7·10⁻⁵ |
+| PML, 16 cells, the same | 1.9·10⁻⁵ |
+
+- **The reflection.** 8 cells take it down by a factor of 300, and 16 cells by a factor of 3700.
+- **The shift's mechanics.** Against the static twin with the same back edge, the window is the same as the twin before it moves (≤ 10⁻³⁰). After it moves it keeps T-472's agreement from column 25 on (≤ 5.7·10⁻¹⁴; 6·10⁻¹² with 16 cells, whose layer ends 9 columns before column 25).
+- **Where the antenna sits.** The antenna must stay out of the layer while it emits, and the state refuses a plane that the layer would reach earlier. `window_lwfa`'s plane at x = 6 (columns 8 and 9) lies inside a 16-cell layer: that run damped the pulse by 15 %, and a twin with the same distorted source did not show it. So the 16-cell rows use the plane at x = 16.
+- **Why free space.** A twin with the same back edge has its own back reflection, which can cancel part of the window's (by up to 10× in the physics breaker's runs), so T-570 uses free space.
+
+**A long run** (T-575, `pml_back_long_run.png`). Random fields in the empty window of `back_lwfa` with an 8-cell back edge, 12000 steps.
+
+- **Static window, α = 0.** The energy ends at 0.39 of its start. The field-free outside alone stays at 1.16.
+- **Static window, α > 0.** With α_max = 0.2 it reaches 4.1 and with α_max = 1 it reaches 10.3, still rising. The growing part is a box-wide uniform Bz driven by the static part of E that is not divergence-free (#357).
+- **Moving window.** Every profile ends at 0.020, as does the field-free outside: what does not travel with the window leaves through its back edge either way. That run checks that the moving layer is stable, not how much it absorbs.
+- **The test.** T-575 runs the default profile for 4000 steps, static and moving.
+
+**With plasma.**
+
+- **Moving window.** In the laser–plasma run of T-473 the back-edge PML shows no build-up like that of §6. Gauss's law holds across the shifts to roundoff off the layer columns and the antenna (T-572: 0.24 of T-473's constant in the three types and both modes). The physics breaker ran 2000 steps at 0.02 and 0.1 n_c and found Gauss's law off the layer at 0.04 to 0.36 of that constant.
+- **Static window.** With plasma filling the layer at α = 0, the layer builds up field as in §6. In the breaker's run at 0.1 n_c, the field energy in the layer reached 19 after 4000 steps, against 1.9 without the layer (#343). α_max = 0.2 or 1 avoids this, but in vacuum it grows the uniform Bz above.
+- **So no single α is safe for a long static phase.** In a moving window the default α = 0 is.
+
+**A zero profile** is the window's step bit for bit (T-571). With an open y axis, the y-PML's step and the matched layer's apply the same back-edge corrections.
 
 ## 8. Tolerances (A7)
 
@@ -142,8 +172,9 @@ Measured on the CPU backend at 2 threads. Every value is a proposal in `lib/Part
 | T-543 | Gauss's law off the layer, T-451's constant | 0.33, 0.38, 0.20 | 1 |
 | T-543 | ∇·B off the layer, T-451's constant | 0.37, 0.36, 0.31 | 2 |
 | T-546 | as T-540, one run in each element type | 0.0166, 4.06, 0.0166 | 10 |
-| T-570 | back-edge difference with 8 cells over the field-free outside's | —, 0.0050, — | 0.01 |
-| T-572 | Gauss's law off the back-edge layer across shifts, T-473's constant | 0.19, 0.24, 0.18 | 1 |
+| T-570 | back-edge difference against free space with 8 cells over the field-free outside's | —, 0.0033, — | 0.01 |
+| T-572 | Gauss's law off the back-edge layer across shifts, T-473's constant | 0.24, 0.24, 0.24 | 1 |
+| T-576 | back edge of a static window, \|R − R_theory\| on T-450's scale, Float64 | —, 0.0089, — | 10 |
 
 The largest T-540 and T-546 ratios are a transmission at the roundoff floor: the profile with κ_max = 80 and α, theory 2·10⁻⁵², measured 3.4·10⁻²⁸. Every R ratio is below 0.01. The suite's other tests are exact or structural:
 
@@ -152,8 +183,9 @@ The largest T-540 and T-546 ratios are a transmission at the roundoff floor: the
 - T-545: the Reference step with particles is bitwise across reruns, workgroup sizes 32 and 256, and 1 and 4 threads, with the convolution fields in the digest.
 - T-547: the input checks, the case file's defaults, and the refusal of filter passes with an open axis.
 - T-548: allocation is flat, 384 B per Fast step at every size.
-- T-571: a zero-profile back-edge PML is the window's step bit for bit; each x correction changes only its two components on the layer columns; the shift and the reset of its convolution fields.
-- T-573: the back edge's input checks (a PML only, a window only, the guard width, fewer than half the columns).
+- T-571: a zero-profile back-edge PML is the window's step bit for bit; with an open y axis the y-PML's step and the matched layer's apply the same back-edge corrections bit for bit; each x correction changes only its two components on the layer columns; the shift and the reset of its convolution fields.
+- T-573: the back edge's input checks (a PML only, a window only, the guard width, fewer than half the columns, an antenna that the layer would reach while it emits).
+- T-575: random fields with the 8-cell back edge over 4000 steps: in a static window never above the field-free outside's energy and ending below half of it, in a moving one below 5 % after 450 steps.
 - T-574: the window's Reference step with the back-edge PML is bitwise across reruns and workgroup sizes 32 and 256.
 - T-549: in a moving window, a zero profile is the zero-strength matched layer bit for bit, the convolution fields shift with the fields, and Gauss's law holds off the layer across the shifts (T-473's constant; measured 0.036, 0.046 and 0.036 in Float32, Float64 and Dual).
 
@@ -172,9 +204,19 @@ The PML tests take about 9 min on 2 threads, most of it T-545's worker runs.
   - *Survivor: the case file's κ order default.* Replacing it with 4 passed, since no case gave `order` without `kappa_order`. T-547 now does.
   - *Weak spots.* A dropped Bz correction and Ex taking the Center() coefficients were seen only by T-540. T-544 now checks each correction on its own, and that the first B half step does not advance ψ_B.
 
+- **Physics breaker on the back edge** (on its first commit `15b776d`, about 30 min).
+  - *The antenna inside the layer.* Nothing refused a 16-cell layer over `window_lwfa`'s antenna (columns 8 and 9). The pulse came out 15 % weaker, and the static twin hid it because the twin had the same source. The first version of this report had a 16-cell row from such a run. The state now refuses an antenna that the layer reaches while it emits. The back-edge tests use the antenna at x = 10 (`back_lwfa`), and the 16-cell rows use x = 16.
+  - *The twin metric.* The twin's own back reflection can cancel part of the window's, by up to 10× in other geometries. T-570 now measures against free space. In T-570's own geometry the breaker found the two agree within 1.1× for 8 cells.
+  - *A long static phase.* With α_max > 0 a static window grows a uniform Bz (§7, #357). With plasma at α = 0 the layer builds up field (#343). T-575 covers the bounded cases.
+  - *Confirmed.* Float32 and Dual give the same ratios as Float64. A late start works. Plasma passing through the moving layer for 2000 steps is fine in both modes and three types. The corner with the y-PML shows no defect, and the residual there is the y-layer's own reflection. The matched layer's path gives a zero profile bit for bit.
+- **Mutation breaker on the back edge** (on `15b776d`, about 70 min). 31 mutations, of which 16 survived and 1 was equivalent (the E correction before the Yee E step).
+  - *Why so many survived.* T-570 sees one polarization at κ = 1 and α = 0 on square cells, and its bound is a threshold, not a theory. The survivors were signs and staggers of By and Ez, the coefficient index, ψ_B advanced in both half steps or never, κ and α ignored, σ_max from Δy, the rows shifted by one, the q·D term dropped, and the first back correction of the y-PML's window step dropped. Some of these even lowered T-570's number.
+  - *What changed.* T-576 compares the back edge with its own discrete theory, in both polarizations, with κ and α active, on cells that are not square. Rechecked against it, the coefficient index, both time-rule mutations, the Bz sign, the row shift and σ_max from Δy are all caught in at least one polarization, at 1.4·10⁹ times the scale or more. T-571 now checks the y-PML's window step against the matched layer's with a back edge, which catches the dropped back correction.
+
 ## 10. Open items
 
-- **The back edge** has no discrete theory, only the comparison with the static twin (§7). Its thickness and profile for the LWFA case are not chosen yet.
+- **The back edge in a long static phase.** With α_max > 0 a static window grows a uniform Bz from random fields (#357), and with plasma in the layer at α = 0 it builds up field (#343). Its thickness and profile for the LWFA case are not chosen yet.
+- **No case-file key** for the back edge, since a case file cannot describe a moving window yet.
 - **No GPU run.** The kernels are elementwise and within §0.4, but CUDA is untested: this session has no GPU.
 - **Plasma inside the layer** at α = 0 (section 6, #343).
 - **Smilei's discretization** (uniaxial, bilinear time rule) is not implemented, only its grading.
