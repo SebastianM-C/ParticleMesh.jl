@@ -12,11 +12,11 @@ patches = [4, 4]
 run = "smilei-landau-oblique-2d-filter1-32ca4bf5"
 seed_subset = "all of the case's seeds"
 seeds = [20261105]
-updated = "2026-11-05T18:29:00.498Z"
+updated = "2026-11-05T18:47:14.539Z"
 
 [analysis]
-commit = "35860309aa5b31c537ff35080a72890547aeb3e8"
-dirty = true
+commit = "23f600c77e41fd314c0ca09f797f999749e05604"
+dirty = false
 
     [analysis.inputs]
     "scripts/crosscode/analysis.jl" = "sha256:da2433f1ab624225122029706590b58c5cbb200650963b673c8bed27ee1f6bae"
