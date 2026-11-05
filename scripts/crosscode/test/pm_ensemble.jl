@@ -24,19 +24,20 @@ end
 @testset "T-490 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
     mktempdir() do tmp
         # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell, with a
-        # 20 % perturbation so that the ensemble fit and its jackknife find their maxima above the noise of
-        # 16384 electrons (at 10 % the reference codes' start, momenta at −Δt/2 and the density at cell
-        # centres, gave no jackknife error on these four seeds)
+        # 10 % perturbation so that the ensemble fit finds its maxima above the noise of 16384 electrons;
+        # started as WP-023 (`initialize!`'s defaults), with which this size gives a jackknife error on
+        # these four seeds (the reference codes' start at this size leaves a leave-one-out fit without one)
         src = TOML.parsefile(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
         seeds = Int.(src["numerics"]["seeds"][1:4])[[2, 1, 4, 3]]     # not ascending: a sort shows
         src["numerics"]["seeds"] = seeds
-        src["species"][1]["perturbation"]["amplitude"] = 0.2
+        src["species"][1]["perturbation"]["amplitude"] = 0.1
         case_file = joinpath(tmp, "case.toml")
         open(io -> TOML.print(io, src; sorted = true), case_file, "w")
-        sz = (; ppc = (4, 4), cells = (32, 32))
+        sz = (; ppc = (4, 4), cells = (32, 32), momenta_at = :t0, density_at = :particle)
         r1 = PMEns.run_seeds(joinpath(tmp, "r1"), case_file, seeds[[3, 1]]; sz...)
         r2 = PMEns.run_seeds(joinpath(tmp, "r2"), case_file, seeds[[2, 4]]; sz...)
         m1 = TOML.parsefile(joinpath(r1, "manifest.toml"))
+        @test m1["parameters"]["momenta_at"] == "t0" && m1["parameters"]["density_at"] == "particle"   # the start it ran with
         @test m1["seeds"] == seeds[[3, 1]] && sort(collect(keys(m1["per_seed"]))) == sort(string.(seeds[[3, 1]]))
         @test m1["host"]["threads"] == Threads.nthreads() && haskey(m1["host"], "boot_id")
         @test m1["case_sha256"] == PMEns.RunManifest.file_hash(case_file)

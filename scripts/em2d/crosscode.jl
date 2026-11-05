@@ -76,18 +76,19 @@ function problem(case, seed; ppc = nothing, cells = nothing)
 end
 
 """
-    simulate(case, seed; ppc, cells) -> NamedTuple
+    simulate(case, seed; ppc, cells, momenta_at = MOMENTA_AT, density_at = DENSITY_AT) -> NamedTuple
 
-Run one seed of a case in Reference mode, Float64, started as Smilei and PIConGPU start (the
-loaded momenta at −Δt/2, the density sampled at cell centres: `MOMENTA_AT`, `DENSITY_AT`): the
+Run one seed of a case in Reference mode, Float64, by default started as Smilei and PIConGPU start
+(the loaded momenta at −Δt/2, the density sampled at cell centres: `MOMENTA_AT`, `DENSITY_AT`;
+the keywords are `initialize!`'s, and its defaults are WP-023's start): the
 field energies at the scalar cadence, the mode coefficients at the field cadence (entry k of the
 histories is t = (k − 1)Δt, as Smilei's iteration k − 1), the total energy at integer times, Gauss's law and ∇·B before and after the
 run, the field of the case's projection at the first and last step, and the wall time of the steps.
 """
-function simulate(case, seed; ppc = nothing, cells = nothing)
+function simulate(case, seed; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     prob = problem(case, seed; ppc, cells)
     st = EMState(prob, numerics_from_case(case; mode = Reference()))
-    initialize!(st, prob; momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
+    initialize!(st, prob; momenta_at, density_at)
     first_check = gauss_2d(st)
     snap(c) = (g = guards(st.grid); n = ncells(st.grid); Array(getfield(st.fields, c))[(g + 1):(g + n[1]), (g + 1):(g + n[2])])
     comp = case["name"] == "weibel-2d" ? :Bx : :Ex
@@ -213,9 +214,9 @@ function standard_plots(dir, case, sim, results, fits, series)
 end
 
 "One seed of a case into `dir`: series, observables, checks and the standard plots."
-function run_one(dir, case, seed; ppc = nothing, cells = nothing)
+function run_one(dir, case, seed; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     mkpath(dir)
-    sim = simulate(case, seed; ppc, cells)
+    sim = simulate(case, seed; ppc, cells, momenta_at, density_at)
     results, fits, series = observe(case, sim)
     out = Dict{String,Any}("case" => case["name"], "code" => "particlemesh", "seed" => seed, "observables" => results,
         "checks" => Dict("gauss_relative_initial" => sim.checks.initial.gauss, "gauss_relative_final" => sim.checks.final.gauss,
