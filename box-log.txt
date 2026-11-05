@@ -1,0 +1,119 @@
+## step 0 (julia): exit 0 after 224s
+# all seeds done
+# all seeds done
+# all seeds done
+# all seeds done
+# all seeds done
+# all seeds done
+Test Summary:                                | Pass  Total  Time
+T-010 unit conversion to Smilei [A1, WP-003] |   38     38  1.1s
+Test Summary:                                    | Pass  Total  Time
+T-012 Smilei reader on a synthetic file [WP-003] |   14     14  3.5s
+Test Summary:                             | Pass  Total  Time
+T-013 container recipe is pinned [WP-003] |    7      7  0.1s
+Test Summary:                                    | Pass  Total  Time
+T-253 the PIConGPU recipe is pinned [A6, WP-017] |   15     15  0.1s
+Test Summary:                                           | Pass  Total  Time
+T-160 linear-theory values of the 1D cases [A5, WP-003] |   13     13  0.1s
+Test Summary:                                                     | Pass  Total  Time
+T-161 rate fits recover known rates on synthetic signals [WP-003] |   13     13  1.6s
+Test Summary:                                                                       | Pass  Total  Time
+T-180 ensemble fit recovers a damping rate; the floor falls as 1/M [A5, A7, WP-012] |  134    134  2.3s
+Test Summary:                                                                   | Pass  Total  Time
+T-181 one namelist per seed, identical apart from the seed [A5, WP-003, WP-012] |   26     26  1.3s
+Test Summary:                                                                  | Pass  Total  Time
+T-183 seed aggregation: mean and spread, refusal of a failed seed [A7, WP-012] |    9      9  0.5s
+Test Summary:                                            | Pass  Total  Time
+T-184 the manifest stores the bare image id [A5, WP-012] |    6      6  0.1s
+Test Summary:                                                                | Pass  Total  Time
+T-185 the two-stream resolution pair differs only in resolution [A5, WP-012] |    7      7  0.1s
+Test Summary:                                                         | Pass  Total  Time
+T-186 a fit with too few points is refused, not reported [A5, WP-012] |    5      5  0.1s
+Test Summary:                                                                         | Pass  Total  Time
+T-187 the seed scatter measures the noise of the mean without the signal [A5, WP-012] |   42     42  0.3s
+Test Summary:                                                                    | Pass  Total   Time
+T-182 a seed means one ParticleMesh load and one set of observables [A4, WP-012] |   14     14  12.3s
+Test Summary:                                                          | Pass  Total   Time
+T-188 the ParticleMesh mode fit runs on the field cadence [A5, WP-012] |    5      5  13.2s
+Test Summary:                                  | Pass  Total  Time
+T-270 schema 2 keeps schema 1 [A1, A5, WP-019] |   41     41  0.9s
+Test Summary:                                          | Pass  Total  Time
+T-271 2D unit conversion and namelist [A1, A5, WP-019] |   79     79  0.4s
+Test Summary:                          | Pass  Total  Time
+T-272 the oblique profile [A5, WP-019] |   12     12  0.4s
+Test Summary:                                 | Pass  Total  Time
+T-273 theory of the 2D cases [A5, A7, WP-019] |   51     51  0.1s
+Test Summary:                      | Pass  Total  Time
+T-274 the 2D mode fit [A7, WP-019] |   21     21  4.0s
+Test Summary:                       | Pass  Total  Time
+T-275 the 2D Smilei reader [WP-019] |   12     12  1.3s
+Test Summary:                                  | Pass  Total  Time
+T-250 unit conversion to PIConGPU [A1, WP-017] |   40     40  1.4s
+Test Summary:                                             | Pass  Total  Time
+T-251 the oblique profile in both generators [A5, WP-017] |    6      6  0.4s
+Test Summary:                           | Pass  Total  Time
+T-254 quasi-1D equivalence [A5, WP-017] |   66     66  0.2s
+Test Summary:                                                                       | Pass  Total  Time
+T-255 the initial field closes Gauss's law on PIConGPU's loaded charge [A5, WP-017] |    9      9  0.6s
+Test Summary:                          | Pass  Total  Time
+T-252 PIConGPU openPMD reader [WP-017] |   32     32  4.5s
+Test Summary:                                              | Pass  Total  Time
+T-256 the oblique seed ensemble in both codes [A5, WP-017] |   16     16  1.1s
+Test Summary:                                                                                  | Pass  Total  Time
+T-390 the 32-seed oblique case extends WP-017's four-seed case by seeds alone [A5, A7, WP-025] |    8      8  0.0s
+Test Summary:                                                                            | Pass  Total   Time
+T-391 a seeded run.sh skips finished seeds and starts none after its budget [A5, WP-025] |   27     27  25.6s
+Test Summary:                                                                      | Pass  Total  Time
+T-392 sub-ensembles are the ensemble rule on disjoint groups of seeds [A7, WP-025] |   20     20  9.8s
+Test Summary:                                                                                                  | Pass  Total  Time
+T-393 the fixed-window jackknife is the rule's when every leave-one-out fit takes the same maxima [A7, WP-025] |    5      5  0.1s
+Test Summary:                                                                                                                | Pass  Total   Time
+T-394 Landau damping with a relativistic push: the non-relativistic limit, the loads, the T scaling [A5, A7, WP-025, WP-033] |   12     12  24.6s
+Test Summary:                                                                                                     | Pass  Total   Time
+T-395 the committed 32-seed records are what their code computes from the committed coefficients [A4, A7, WP-025] |   17     17  14.1s
+Test Summary:                                                | Pass  Total  Time
+T-396 the seed-count design and the plot labels [A7, WP-025] |    8      8  1.1s
+Test Summary:                                                                            | Pass  Total  Time
+T-410 the linear cold-beam systems have the dispersion roots as eigenvalues [A5, WP-031] |   23     23  0.8s
+Test Summary:                                                                        | Pass  Total  Time
+T-411 the exact linear solution keeps Gauss's law and grows at the root [A5, WP-031] |   46     46  3.7s
+Test Summary:                                              | Pass  Total  Time
+T-412 a scan point changes only what it names [A5, WP-031] |  112    112  8.3s
+Test Summary:                                                                       | Pass  Total  Time
+T-413 the residual from the linear solution is exact on synthetic runs [A7, WP-031] |   39     39  0.8s
+Test Summary:                                                                  | Pass  Total  Time
+T-414 summarize reads a finished Smilei run into the scan summary [A5, WP-031] |   11     11  2.1s
+Test Summary:                                                                | Pass  Total  Time
+T-415 summarize projects the 2D dumps on B·ê of the case's mode [A5, WP-031] |    5      5  1.0s
+Test Summary:                                                                   | Pass  Total   Time
+T-416 the report's residuals, families, orders and code comparison [A7, WP-031] |   93     93  15.6s
+tiny: 66 steps in 0.1 s
+Test Summary:                                                                              | Pass  Total  Time
+T-417 the ParticleMesh scan driver writes the record format of summarize_scan [A5, WP-031] |   19     19  1.3s
+Test Summary:                                                                        | Pass  Total  Time
+T-430 the smilei-gpu recipe is pinned and builds the CPU image's Smilei [A6, WP-030] |   42     42  0.1s
+Test Summary:                                                                                 | Pass  Total  Time
+T-431 the GPU namelist differs from the CPU one only in the build and the layout [A5, WP-030] |   31     31  0.4s
+Test Summary:                                                                                      | Pass  Total  Time
+T-432 run.sh keeps the generated namelist, records the build and the GPU, and resumes [A5, WP-030] | 1240   1240  1.7s
+Test Summary:                                                                             | Pass  Total  Time
+T-433 the load-check run: one step, the t = 0 corner of every mobile species [A5, WP-030] |   63     63  1.1s
+Test Summary:                                                                        | Pass  Total  Time
+T-434 the load check matches particles by position and sees one ulp [A4, A5, WP-030] |   28     28  2.1s
+Test Summary:                                                                            | Pass  Total  Time
+T-435 GPU runs carry their own label; paired seeds only with one layout [A5, A7, WP-030] |   38     38  2.6s
+Test Summary:                                                         | Pass  Total  Time
+T-436 time per mobile particle-step from the run records [A5, WP-030] |   10     10  0.9s
+Test Summary:                                                                               | Pass  Total  Time
+T-460 a run manifest names its commit without git: the runner's PM_COMMIT, and says so [A6] |    9      9  0.4s
+seed 20264031: 3.2 s, 228.14 ns per particle-step, damping_rate_mode = none; Gauss 2.189335642781116e-15
+seed 20262031: 1.2 s, 85.84 ns per particle-step, damping_rate_mode = none; Gauss 1.880779953951383e-15
+seed 20261031: 1.3 s, 90.71 ns per particle-step, damping_rate_mode = none; Gauss 1.7932898415735507e-15
+seed 20263031: 1.3 s, 95.97 ns per particle-step, damping_rate_mode = 0.09398147561320551; Gauss 1.9584431697020525e-15
+ParticleMesh ensemble of 4 seeds: γ = 0.11949178591329897 ± 0.014019253141285484 (4 maxima)
+Test Summary:                                                                                                                              | Pass  Total   Time
+T-490 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032] |   46     46  30.1s
+Test Summary:                                                                                     | Pass  Total  Time
+T-491 the three-code comparison takes the reference ensembles of the run's case file [A5, WP-032] |   16     16  2.7s
+Test Summary:                                                                                                                 | Pass  Total  Time
+T-492 the committed 32-seed ParticleMesh record is what the merge computes from the committed seed files [A4, A5, A7, WP-032] |   23     23  3.9s
