@@ -14,22 +14,22 @@ using ParticleMeshCore: quiet_particle_2d
 # profile's parameter enters through the weights only (A3): with the ramp length a dual, the
 # positions carry no partials and the weights carry exactly the derivative of the profile, here
 # checked against the closed form of ∂/∂L sin²(π(x − x_v)/(2L)).
-@testset "T-470 the window's refill is the engine's quiet start at the global cell, the profile entering through the weights [A3, A4, A8, WP-028]" begin
+function body_T470(be)
     for T in TYPES
         ramp = seeded(T, 4)
         prob = window_plasma(T; thermal = (T(1) / 10, T(1) / 20, T(1) / 30), drift = (T(1) / 50, zero(T), zero(T)), vacuum = 14, ramp)
-        st = EMState(prob, EMNumerics())
+        st = EMState(prob, EMNumerics(); backend = be)
         w = st.aux.window
         n = ncells(st.grid)
         s_win = 8                     # the fresh column, global column 31, lies on the ramp (x from 14 to 18)
         col = injection_column(w)
         # the window's column `col` at position s_win, through the refill kernel
-        sc = Species(CPU(), T, n[2] * 4; q = -one(T), m = one(T), N = 2)
-        load_window_columns!(sc, st.grid, w.loads[1], KernelAbstractions.zeros(CPU(), Int32, 1), col, 1, s_win)
+        sc = Species(be, T, n[2] * 4; q = -one(T), m = one(T), N = 2)
+        load_window_columns!(sc, st.grid, w.loads[1], KernelAbstractions.zeros(be, Int32, 1), col, 1, s_win)
         @test alive_count(sc) == n[2] * 4
         # the static domain of n₁ + s_win columns, loaded by the engine with the same profile
         big = PeriodicGrid((n[1] + s_win, n[2]), cellsize(st.grid), guards(st.grid))
-        sb = Species(CPU(), T, prod(ncells(big)) * 4; q = -one(T), m = one(T), N = 2)
+        sb = Species(be, T, prod(ncells(big)) * 4; q = -one(T), m = one(T), N = 2)
         load_quiet!(sb, big, ParticleMeshElectromagnetic.RampedCosine(), w.loads[1].p, (2, 2); vdrift = w.loads[1].vdrift,
                     vth = w.loads[1].vth, seed = prob.seed, stream = 1)
         sel = findall(==(Int32(col + s_win)), Array(sb.cell[1]))
@@ -61,6 +61,10 @@ using ParticleMeshCore: quiet_particle_2d
     end
 end
 
+@testset "T-470 the window's refill is the engine's quiet start at the global cell, the profile entering through the weights [A3, A4, A8, WP-028]" begin
+    body_T470(CPU())
+end
+
 # --- T-471 ----------------------------------------------------------------------------------
 
 # A cold plasma at rest stays what it is while the window moves through it: no current (a particle
@@ -72,13 +76,13 @@ end
 # The ramp (vacuum 4, ramp 4) enters through the front; after 40 steps the window has moved 29
 # cells, more than its 24, so every particle has been loaded by a refill. In the plateau every
 # node carries the same bits.
-@testset "T-471 a cold plasma at rest stays uniform and neutral to the last bit in the moving window, all three types, both modes [A2, A3, A4, A8, WP-028]" begin
+function body_T471(be)
     for T in TYPES, mode in (Reference(), Fast())
         prob = window_plasma(T)
-        st = window_state(prob; mode)
+        st = window_state(prob; mode, be)
         p = params(prob)
         g, n = guards(st.grid), ncells(st.grid)
-        ρ, ρ0 = field(CPU(), T, st.grid), field(CPU(), T, st.grid)
+        ρ, ρ0 = field(be, T, st.grid), field(be, T, st.grid)
         ok_fields = ok_charge = ok_set = true
         for k in 1:prob.nsteps
             step!(st, p, k)
@@ -87,7 +91,7 @@ end
             window_charge!(ρ, st)
             window_background!(ρ0, st, s_win)
             ok_charge &= effective_mode(mode, T) isa Reference ? same_bits(ρ, ρ0) :
-                         maximum(absdiff.(ρ, ρ0)) <= 8 * base_eps(T) * maximum(absmax, ρ)
+                         maximum(absdiff.(Array(ρ), Array(ρ0))) <= 8 * base_eps(T) * maximum(absmax, Array(ρ))
             ok_set &= particle_set(st.species[1]) == particle_set(fresh_window_load(st, s_win))
         end
         s_end = window_shifts(st, prob.nsteps)
@@ -101,10 +105,14 @@ end
         hx = value_of(cellsize(st.grid)[1])
         plateau = [i for i in 3:(injection_column(st.aux.window) - 1) if (i - 3 + s_end) * hx >= 8]
         @test length(plateau) > 10
-        vals = ρ[g .+ plateau, (g + 1):(g + n[2])]
+        vals = Array(ρ)[g .+ plateau, (g + 1):(g + n[2])]
         @test all(v -> same_bits([v], [vals[1]]), vals)
         @test window_lost(st) == (0,)
     end
+end
+
+@testset "T-471 a cold plasma at rest stays uniform and neutral to the last bit in the moving window, all three types, both modes [A2, A3, A4, A8, WP-028]" begin
+    body_T471(CPU())
 end
 
 # --- T-472 ----------------------------------------------------------------------------------
@@ -119,14 +127,14 @@ end
 # cuts the pulse's Gaussian tail, six durations ahead of its peak and below Float64 roundoff. The
 # antenna stays in the lab frame, so it keeps launching while the window moves until it is passed.
 # Float64 only: fields only, no deposition, the same kernels for every type.
-@testset "T-472 a vacuum pulse is the same with and without the moving window, off the back edge [A2, A7, WP-028]" begin
+function body_T472(be)
     C = emC("T-472")
     prob = window_lwfa(Float64; plasma = false, nsteps = 200)
     n = prob.cells
-    win = window_state(prob)
+    win = window_state(prob; be)
     s_end = window_shifts(win, prob.nsteps)
     twin = static_twin(prob, n[1] + s_end + 8)
-    ref = window_state(twin)
+    ref = window_state(twin; be)
     p = params(prob)
     g = guards(win.grid)
     J = (g + 1):(g + n[2])
@@ -139,7 +147,7 @@ end
         s_win = window_shifts(win, k)
         for c in keys(win.fields)
             c in (:Jx, :Jy, :Jz) && continue
-            a, b = getfield(win.fields, c), getfield(ref.fields, c)
+            a, b = Array(getfield(win.fields, c)), Array(getfield(ref.fields, c))
             m = maximum(abs, b[(g + 1 + s_win):(g + n[1] + s_win), J])
             m > 0 || continue
             if s_win == 0                 # the same back edge: every column
@@ -155,8 +163,12 @@ end
     @test s_end > n[1]
     @test worst_before <= C * eps(Float64)
     @test back > 1e-3                     # the back edge does differ, so the comparison sees it
-    record!("T-472", Float64, worst / eps(Float64))
+    record!("T-472", Float64, worst / eps(Float64), be)
     @test worst <= C * eps(Float64)
+end
+
+@testset "T-472 a vacuum pulse is the same with and without the moving window, off the back edge [A2, A7, WP-028]" begin
+    body_T472(CPU())
 end
 
 # --- T-473 ----------------------------------------------------------------------------------
@@ -177,11 +189,11 @@ end
 # holds at every node but 1 and 2 there as well; loaded on column n₁ − 1, or with the face's Ex
 # zeroed, the residual reaches 10¹⁰ to 10¹² of the scale on every column within 60 steps (the
 # measurements are in the PR that added this case).
-@testset "T-473 Gauss's law to roundoff across window shifts with a laser driving the plasma, all three types, both modes [A2, A4, A7, A8, WP-028]" begin
+function body_T473(be)
     C = emC("T-473")
     for T in TYPES, mode in (Reference(), Fast())
         prob = window_lwfa(T)
-        st = window_state(prob; mode)
+        st = window_state(prob; mode, be)
         p = params(prob)
         ia = st.aux.antennas[1].ia            # the plane's interior column on the static grid
         worst = 0.0
@@ -198,12 +210,12 @@ end
         @info "T-473" T mode worst shifts = window_shifts(st, prob.nsteps) umax
         @test window_shifts(st, prob.nsteps) > prob.cells[1]
         @test umax > 1 / 10
-        record!("T-473 $(nameof(typeof(mode)))", T, worst)
+        record!("T-473 $(nameof(typeof(mode)))", T, worst, be)
         @test worst <= C
     end
     for T in TYPES, mode in (Reference(), Fast())
         prob = window_plasma(T; cells = (24, 6), vacuum = -100, ramp = 1, thermal = (T(1) / 10, T(1) / 10, T(1) / 10), nsteps = 60)
-        st = window_state(prob; mode)
+        st = window_state(prob; mode, be)
         p = params(prob)
         worst = 0.0
         for k in 1:prob.nsteps
@@ -213,14 +225,14 @@ end
         end
         @info "T-473 warm" T mode worst shifts = window_shifts(st, prob.nsteps)
         @test window_shifts(st, prob.nsteps) > prob.cells[1]
-        record!("T-473 warm $(nameof(typeof(mode)))", T, worst)
+        record!("T-473 warm $(nameof(typeof(mode)))", T, worst, be)
         @test worst <= C
     end
     # a warm plasma streaming forward through a ramp: the front treatment with a drift and a profile
     for T in TYPES, mode in (Reference(), Fast())
         prob = window_plasma(T; cells = (24, 6), vacuum = 2, ramp = 4, drift = (T(3) / 10, zero(T), zero(T)),
                              thermal = (T(1) / 10, T(1) / 10, T(1) / 10), nsteps = 60)
-        st = window_state(prob; mode)
+        st = window_state(prob; mode, be)
         p = params(prob)
         worst = 0.0
         for k in 1:prob.nsteps
@@ -230,9 +242,13 @@ end
         end
         @info "T-473 warm, drift and ramp" T mode worst shifts = window_shifts(st, prob.nsteps)
         @test window_shifts(st, prob.nsteps) > prob.cells[1]
-        record!("T-473 warm ramp $(nameof(typeof(mode)))", T, worst)
+        record!("T-473 warm ramp $(nameof(typeof(mode)))", T, worst, be)
         @test worst <= C
     end
+end
+
+@testset "T-473 Gauss's law to roundoff across window shifts with a laser driving the plasma, all three types, both modes [A2, A4, A7, A8, WP-028]" begin
+    body_T473(CPU())
 end
 
 # --- T-474 ----------------------------------------------------------------------------------
@@ -241,21 +257,25 @@ end
 # work item per entry, the refill writes each fresh particle once at a slot fixed by the alive
 # count, and the sort fixes the order the deposition sees. The two modes agree to roundoff in the
 # fields (Float64, the run of T-473 to 120 steps).
-@testset "T-474 the moving-window step is bitwise across reruns and launch shapes in Reference mode, and the modes agree [A4, WP-028]" begin
-    ref = window_digests()
-    @test ref == window_digests()
-    for wgs in (32, 256)
-        @test window_digests(; workgroupsize = wgs) == ref
+function body_T474(be)
+    ref = window_digests(; be)
+    @test ref == window_digests(; be)
+    for wgs in (be isa CPU ? (32, 256) : (64, 256))
+        @test window_digests(; workgroupsize = wgs, be) == ref
     end
     prob = window_lwfa(Float64; nsteps = 120)
-    a, b = window_state(prob; mode = Reference()), window_state(prob; mode = Fast())
+    a, b = window_state(prob; mode = Reference(), be), window_state(prob; mode = Fast(), be)
     run!(a, params(prob), prob.nsteps)
     run!(b, params(prob), prob.nsteps)
-    m = maximum(c -> maximum(abs, getfield(a.fields, c)), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
-    d = maximum(c -> maximum(abs, getfield(a.fields, c) .- getfield(b.fields, c)), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
+    m = maximum(c -> maximum(abs, Array(getfield(a.fields, c))), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
+    d = maximum(c -> maximum(abs, Array(getfield(a.fields, c)) .- Array(getfield(b.fields, c))), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
     @info "T-474 Reference against Fast" rel = d / m
-    record!("T-474", Float64, d / (m * eps(Float64)))
+    record!("T-474", Float64, d / (m * eps(Float64)), be)
     @test d <= emC("T-474") * eps(Float64) * m
+end
+
+@testset "T-474 the moving-window step is bitwise across reruns and launch shapes in Reference mode, and the modes agree [A4, WP-028]" begin
+    body_T474(CPU())
 end
 
 # --- T-475 ----------------------------------------------------------------------------------
@@ -266,21 +286,25 @@ end
 # floor of `fd_scan` (Float64, Reference, one seed). Every particle in the window at the end was
 # loaded at a refill or at t = 0 with the weights of the profile; the positions and the shift
 # times do not depend on L, so the observable is smooth in it.
-@testset "T-475 the field energy after window shifts is differentiable in the ramp length through the refill [A3, A7, WP-028]" begin
+function body_T475(be)
     f(L, mode, seed) = begin
         T = typeof(L)
         prob = window_plasma(T; ramp = L, drift = (T(1) / 10, zero(T), zero(T)), nsteps = 30, seed, cells = (24, 6))
-        st = window_state(prob; mode)
+        st = window_state(prob; mode, be)
         run!(st, params(prob), prob.nsteps)
-        sum(c -> sum(abs2, getfield(st.fields, c)), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
+        sum(c -> sum(abs2, Array(getfield(st.fields, c))), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
     end
     x0 = 4.0
     ad = ForwardDiff.derivative(x -> f(x, Reference(), 1), x0)
     s = fd_scan(f, x0, [10.0^(-k) for k in 2:7]; seed = 1, ad)
     @info "T-475" ad fd = s.fd floor = s.floor_rel rel = s.rel[s.istar]
     @test abs(ad) > 0
-    record!("T-475", Float64, s.rel[s.istar] / s.floor_rel)
+    record!("T-475", Float64, s.rel[s.istar] / s.floor_rel, be)
     @test s.rel[s.istar] <= emC("T-475") * s.floor_rel
+end
+
+@testset "T-475 the field energy after window shifts is differentiable in the ramp length through the refill [A3, A7, WP-028]" begin
+    body_T475(CPU())
 end
 
 # --- T-476 ----------------------------------------------------------------------------------
@@ -295,9 +319,9 @@ end
 # at rest, so its particle count grows: with no headroom the refills run out of slots and count
 # the particles they could not place; with a headroom of 3/2 none is lost (the default 1/4 is for
 # a plasma that does not stream with the window).
-@testset "T-476 particles crossing the back edge are retired before their current, and the buffers count what does not fit [A2, A4, WP-028]" begin
+function body_T476(be)
     prob = window_plasma(Float64; drift = (-0.9, 0.0, 0.0), nsteps = 20, vacuum = -10)
-    st = window_state(prob; mode = Fast())
+    st = window_state(prob; mode = Fast(), be)
     p = params(prob)
     retired = 0
     n1 = prob.cells[1]
@@ -320,13 +344,17 @@ end
     @info "T-476 retired at the back edge" retired
     @test retired > 10
     fwd = window_plasma(Float64; drift = (0.5, 0.0, 0.0), nsteps = 40, vacuum = -10, density = 1e-4)
-    tight = window_state(fwd; headroom = 0)
+    tight = window_state(fwd; headroom = 0, be)
     run!(tight, params(fwd), fwd.nsteps)
-    roomy = window_state(fwd; headroom = 3 / 2)
+    roomy = window_state(fwd; headroom = 3 / 2, be)
     run!(roomy, params(fwd), fwd.nsteps)
     @info "T-476 lost particles" tight = window_lost(tight) roomy = window_lost(roomy)
     @test window_lost(tight)[1] > 0
     @test window_lost(roomy) == (0,)
+end
+
+@testset "T-476 particles crossing the back edge are retired before their current, and the buffers count what does not fit [A2, A4, WP-028]" begin
+    body_T476(CPU())
 end
 
 # --- T-477 ----------------------------------------------------------------------------------
@@ -392,18 +420,33 @@ function step_bytes_window(; ppc, cells)
     return @allocated run!(st, p, 3; first = 4)      # steps 4 to 6, at least one shift
 end
 
-@testset "T-478 the filter does not wrap along the window's axis, and allocation per window step does not grow [A2, A7, WP-028]" begin
-    st = window_state(window_plasma(Float64))
+function device_step_bytes_window(be; ppc, cells)
+    prob = window_plasma(Float64; ppc, cells, drift = (0.1, 0.0, 0.0), nsteps = 9, vacuum = -10)
+    st = window_state(prob; be)
+    p = params(prob)
+    run!(st, p, 3)
+    KernelAbstractions.synchronize(be)
+    sync_run!(first) = (run!(st, p, 3; first); KernelAbstractions.synchronize(be))
+    return (; host = (@allocated sync_run!(4)), dev = (CUDACore.@allocated sync_run!(7)))
+end
+
+function body_T478(be)
+    st = window_state(window_plasma(Float64); be)
     grid = st.grid
     g, n = guards(grid), ncells(grid)
-    a, b = field(CPU(), Float64, grid), field(CPU(), Float64, grid)
-    a[g + 1, g + 3] = 1.0
-    b .= a
-    binomial!(a, field(CPU(), Float64, grid), grid, 2; edges = st.aux.window)
-    binomial!(b, field(CPU(), Float64, grid), grid, 2)
+    h = field(CPU(), Float64, grid)
+    h[g + 1, g + 3] = 1.0
+    a, b = copyto!(field(be, Float64, grid), h), copyto!(field(be, Float64, grid), h)
+    binomial!(a, field(be, Float64, grid), grid, 2; edges = st.aux.window)
+    binomial!(b, field(be, Float64, grid), grid, 2)
+    a, b = Array(a), Array(b)
     @test all(iszero, a[(g + n[1] - 2):(g + n[1]), :])
     @test maximum(abs, b[(g + n[1] - 1):(g + n[1]), :]) > 0
     @test sum(a[(g + 1):(g + n[1]), (g + 1):(g + n[2])]) < 1          # what left through the back edge is gone
+end
+
+@testset "T-478 the filter does not wrap along the window's axis, and allocation per window step does not grow [A2, A7, WP-028]" begin
+    body_T478(CPU())
     small = step_bytes_window(; ppc = (2, 2), cells = (24, 6))
     more_particles = step_bytes_window(; ppc = (6, 6), cells = (24, 6))
     larger_grid = step_bytes_window(; ppc = (2, 2), cells = (72, 18))
@@ -422,9 +465,9 @@ end
 # inside a step, loads such a particle at the drift velocity and counts it: on a small box at
 # thermal 0.3 c, the first seed whose initial load stays below c and whose refills reach c runs
 # with finite momenta, a positive count, and Gauss's law as T-473 off nodes 1 and 2.
-@testset "T-479 a drawn speed at or above c is refused in the window's initial load and replaced and counted in its refills [A2, A4, A8, WP-028]" begin
+function body_T479(be)
     for th in (0.2, 0.3)
-        @test_throws ArgumentError window_state(window_plasma(Float64; cells = (24, 6), vacuum = -100, ramp = 1, thermal = (th, th, th)))
+        @test_throws ArgumentError window_state(window_plasma(Float64; cells = (24, 6), vacuum = -100, ramp = 1, thermal = (th, th, th)); be)
     end
     C = emC("T-473")
     for T in TYPES
@@ -433,7 +476,7 @@ end
         for seed in 1:40
             prob = window_plasma(T; cells = (16, 6), ppc = (1, 1), vacuum = -100, ramp = 1, thermal = (th, th, th), nsteps = 150, seed)
             st = try
-                window_state(prob)
+                window_state(prob; be)
             catch err
                 err isa ArgumentError || rethrow()
                 continue
@@ -452,11 +495,15 @@ end
             alive = Array(s.status) .== ParticleMeshCore.ALIVE
             @info "T-479 refills at or above c" T seed fast = window_superluminal(st) worst
             @test all(d -> all(x -> isfinite(value_of(x)), Array(s.u[d])[alive]), 1:3)
-            record!("T-479", T, worst)
+            record!("T-479", T, worst, be)
             @test worst <= C
             found = true
             break
         end
         @test found
     end
+end
+
+@testset "T-479 a drawn speed at or above c is refused in the window's initial load and replaced and counted in its refills [A2, A4, A8, WP-028]" begin
+    body_T479(CPU())
 end

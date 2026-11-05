@@ -80,7 +80,8 @@ Two steps in three shift at this Courant number. The shift costs about a quarter
 
 ## 6. Verification status and open issues
 
-- **Not run.** The 1- and 4-thread bitwise check (T-474 has no worker run), the CUDA backend and the harness.
+- **Not run.** The 1- and 4-thread bitwise check (T-474 has no worker run) and the harness.
+- **CUDA.** T-510 reruns T-470 to T-476, the filter of T-478 and T-479 on CUDA with the CPU's tolerances, T-511 bounds the CPU–CUDA difference of the window's fields, and T-512 the allocation per step (RTX 4080 SUPER).
 - **The back edge.** The field-free outside reflects the trailing field that reaches it. A PML at the back (A2's "later") would remove the 0.15 difference of §2.
 - **The static phase.** Before the window starts moving its front is a fixed edge, and a particle that reaches it is retired with its charge; the shifts would carry the residual into the box. So `EMProblem` refuses a window with `start > 0` for a species with a drift or a thermal speed (T-477). A cold plasma at rest can still be set moving by a laser before the window starts; a case must start the window before the laser reaches the plasma at the front.
 - **The case files.** There is no schema for the window and the profile yet, and the cross-code generators do not map the window's axis.
