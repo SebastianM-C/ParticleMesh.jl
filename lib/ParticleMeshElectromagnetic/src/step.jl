@@ -89,7 +89,8 @@ refused too. Called by `initialize!` at N = 1 and 2, never inside `step!`.
 """
 function check_subluminal(s, d)
     T = eltype(s.w)
-    v2 = mapreduce((a, b, c, st) -> ifelse(st == ALIVE, a * a + b * b + c * c, zero(T)), max, s.u[1], s.u[2], s.u[3],
+    z = zero(T)   # a value, not the type, in the closure: a Type field is not isbits on the device
+    v2 = mapreduce((a, b, c, st) -> ifelse(st == ALIVE, a * a + b * b + c * c, z), max, s.u[1], s.u[2], s.u[3],
                    s.status; init = zero(T))
     v2 < one(T) ||
         throw(ArgumentError("species $(d.name): a loaded speed reaches c, the largest drawn |v| is $(sqrt(v2)) (in c); " *
