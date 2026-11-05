@@ -1,0 +1,72 @@
+## step 0 (julia): exit 1 after 68s
+ERROR: LoadError: Some tests did not pass: 15 passed, 1 failed, 0 errored, 0 broken.
+in expression starting at /home/pm/jobs/wp033-tests-2/scripts/crosscode/test/picongpu.jl:349
+in expression starting at /home/pm/jobs/wp033-tests-2/scripts/crosscode/test/runtests.jl:953
+Test Summary:                                | Pass  Total  Time
+T-010 unit conversion to Smilei [A1, WP-003] |   38     38  1.0s
+Test Summary:                                    | Pass  Total  Time
+T-012 Smilei reader on a synthetic file [WP-003] |   14     14  3.5s
+Test Summary:                             | Pass  Total  Time
+T-013 container recipe is pinned [WP-003] |    7      7  0.1s
+Test Summary:                                    | Pass  Total  Time
+T-253 the PIConGPU recipe is pinned [A6, WP-017] |   15     15  0.1s
+Test Summary:                                           | Pass  Total  Time
+T-160 linear-theory values of the 1D cases [A5, WP-003] |   13     13  0.1s
+Test Summary:                                                     | Pass  Total  Time
+T-161 rate fits recover known rates on synthetic signals [WP-003] |   13     13  1.6s
+Test Summary:                                                                       | Pass  Total  Time
+T-180 ensemble fit recovers a damping rate; the floor falls as 1/M [A5, A7, WP-012] |  134    134  2.3s
+Test Summary:                                                                   | Pass  Total  Time
+T-181 one namelist per seed, identical apart from the seed [A5, WP-003, WP-012] |   26     26  1.3s
+Test Summary:                                                                  | Pass  Total  Time
+T-183 seed aggregation: mean and spread, refusal of a failed seed [A7, WP-012] |    9      9  0.4s
+Test Summary:                                            | Pass  Total  Time
+T-184 the manifest stores the bare image id [A5, WP-012] |    6      6  0.1s
+Test Summary:                                                                | Pass  Total  Time
+T-185 the two-stream resolution pair differs only in resolution [A5, WP-012] |    7      7  0.1s
+Test Summary:                                                         | Pass  Total  Time
+T-186 a fit with too few points is refused, not reported [A5, WP-012] |    5      5  0.1s
+Test Summary:                                                                         | Pass  Total  Time
+T-187 the seed scatter measures the noise of the mean without the signal [A5, WP-012] |   42     42  0.3s
+Test Summary:                                                                    | Pass  Total   Time
+T-182 a seed means one ParticleMesh load and one set of observables [A4, WP-012] |   14     14  12.1s
+Test Summary:                                                          | Pass  Total   Time
+T-188 the ParticleMesh mode fit runs on the field cadence [A5, WP-012] |    5      5  14.3s
+Test Summary:                                  | Pass  Total  Time
+T-270 schema 2 keeps schema 1 [A1, A5, WP-019] |   41     41  0.9s
+Test Summary:                                          | Pass  Total  Time
+T-271 2D unit conversion and namelist [A1, A5, WP-019] |   79     79  0.4s
+Test Summary:                          | Pass  Total  Time
+T-272 the oblique profile [A5, WP-019] |   12     12  0.4s
+Test Summary:                                 | Pass  Total  Time
+T-273 theory of the 2D cases [A5, A7, WP-019] |   51     51  0.1s
+Test Summary:                      | Pass  Total  Time
+T-274 the 2D mode fit [A7, WP-019] |   21     21  3.9s
+Test Summary:                       | Pass  Total  Time
+T-275 the 2D Smilei reader [WP-019] |   12     12  1.3s
+Test Summary:                                  | Pass  Total  Time
+T-250 unit conversion to PIConGPU [A1, WP-017] |   40     40  1.3s
+Test Summary:                                             | Pass  Total  Time
+T-251 the oblique profile in both generators [A5, WP-017] |    6      6  0.4s
+Test Summary:                           | Pass  Total  Time
+T-254 quasi-1D equivalence [A5, WP-017] |   66     66  0.2s
+Test Summary:                                                                       | Pass  Total  Time
+T-255 the initial field closes Gauss's law on PIConGPU's loaded charge [A5, WP-017] |    9      9  0.6s
+Test Summary:                          | Pass  Total  Time
+T-252 PIConGPU openPMD reader [WP-017] |   32     32  4.4s
+
+T-256 the oblique seed ensemble in both codes [A5, WP-017]: Test Failed at /home/pm/jobs/wp033-tests-2/scripts/crosscode/test/picongpu.jl:359
+  Expression: bytes2hex(sha256(take!(io))) == "ac7d0fd307a4a8d99f24fc8157f8bce520923864eb3bddb7fac2c516a0335326"
+   Evaluated: "52e5483aed9ce62731c244dbaee8224802ffee9339bada10fe1a3deb9b835ee5" == "ac7d0fd307a4a8d99f24fc8157f8bce520923864eb3bddb7fac2c516a0335326"
+  Stacktrace:
+   [1] top-level scope
+     @ ~/jobs/wp033-tests-2/scripts/crosscode/test/picongpu.jl:350
+   [2] macro expansion
+     @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:1967 [inlined]
+   [3] macro expansion
+     @ ~/jobs/wp033-tests-2/scripts/crosscode/test/picongpu.jl:359 [inlined]
+   [4] macro expansion
+     @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:758 [inlined]
+Test Summary:                                              | Pass  Fail  Total  Time
+T-256 the oblique seed ensemble in both codes [A5, WP-017] |   15     1     16  1.9s
+RNG of the outermost testset: Xoshiro(0x858fa2ec2d8ff809, 0x40badf5a4c2dcbae, 0x3fddba850c60e7c1, 0x2f2f7fa06b6465a6, 0xd16162f73fbca962)
