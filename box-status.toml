@@ -1,0 +1,20 @@
+branch = "runs/wp028-subluminal-4"
+request_commit = "f6ce8b896693393537c3bd15de0463b0cba23ceb"
+started = "2026-11-05T15:28:33Z"
+category = "test"
+outputs = ["scripts/runs/wp028-subluminal-tests"]
+finished = "2026-11-05T15:39:26Z"
+ok = false
+files_returned = 1
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-05T15:28:33Z"
+exit = 1
+seconds = 653

@@ -1,0 +1,309 @@
+## step 0 (julia): exit 1 after 653s
+Tr = 3.101192798763825e-14
+│   Tr_theory = 3.101192799210129e-14
+│   ratio_R = 0.007030844442132514
+└   ratio_T = 0.0014348053098762947
+┌ Info: T-450
+│   cells = 8
+│   θ = 0.8
+│   pol = :TE
+│   R = 0.02454000902814097
+│   R_theory = 0.02454000902814021
+│   Tr = 5.52296562543044e-15
+│   Tr_theory = 5.522965607742832e-15
+│   ratio_R = 0.23045806450046644
+└   ratio_T = 0.011308573091594862
+┌ Info: T-450
+│   cells = 8
+│   θ = 0.8
+│   pol = :TM
+│   R = 0.02425038594400903
+│   R_theory = 0.024250385944007812
+│   Tr = 5.496656549692734e-15
+│   Tr_theory = 5.49665653662125e-15
+│   ratio_R = 0.3715634130224407
+└   ratio_T = 0.008377230775927579
+┌ Info: T-451
+│   T = Float32
+│   mode = Reference()
+│   worst = 0.18511042698073732
+│   worstB = 0.3631105061872071
+│   worst_layer = 50294.36607966555
+│   left = 760
+└   of = 2880
+┌ Info: T-451
+│   T = Float32
+│   mode = Fast()
+│   worst = 0.2649868151026056
+│   worstB = 0.30637463025784073
+│   worst_layer = 50294.370718524726
+│   left = 760
+└   of = 2880
+┌ Info: T-451
+│   T = Float64
+│   mode = Reference()
+│   worst = 0.1876461790251758
+│   worstB = 0.31153095216647997
+│   worst_layer = 2.7001531226765133e13
+│   left = 760
+└   of = 2880
+┌ Info: T-451
+│   T = Float64
+│   mode = Fast()
+│   worst = 0.3004874623578828
+│   worstB = 0.2963395389770434
+│   worst_layer = 2.7001531226765156e13
+│   left = 760
+└   of = 2880
+┌ Info: T-451
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Reference()
+│   worst = 0.19842316316770817
+│   worstB = 0.29680583209907785
+│   worst_layer = 50294.35086510991
+│   left = 760
+└   of = 2880
+┌ Info: T-451
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Fast()
+│   worst = 0.19842316316770817
+│   worstB = 0.29680583209907785
+│   worst_layer = 50294.35086510991
+│   left = 760
+└   of = 2880
+┌ Info: T-452
+│   retired = 760
+└   crossed_x = 1100
+┌ Info: T-455
+│   T = Float32
+│   R = 0.024539981647460456
+│   R_theory = 0.02454000902814021
+│   Tr = 7.527743631406188e-13
+│   Tr_theory = 5.522965607742832e-15
+└   ratio = 0.022811756543869376
+┌ Info: T-455
+│   T = Float64
+│   R = 0.02454000902814097
+│   R_theory = 0.02454000902814021
+│   Tr = 5.52296562543044e-15
+│   Tr_theory = 5.522965607742832e-15
+└   ratio = 0.23045806450046644
+┌ Info: T-455
+│   T = Dual{Nothing, Float32, 3}
+│   R = 0.024539981647460456
+│   R_theory = 0.02454000902814021
+│   Tr = 7.527743631406188e-13
+│   Tr_theory = 5.522965607742832e-15
+└   ratio = 0.022811756543869376
+┌ Info: T-457 bytes per open-boundary step
+│   mode = Reference()
+│   small = 115056
+│   more_particles = 361376
+│   larger_grid = 295776
+└   threads = 16
+┌ Info: T-457 bytes per open-boundary step
+│   mode = Fast()
+│   small = 384
+│   more_particles = 384
+│   larger_grid = 384
+└   threads = 16
+┌ Info: T-472 window against its static twin
+│   shifts = 92
+│   worst_before = 1.6699445322629797e-14
+│   worst = 1.4170326745706343e-14
+└   back = 0.14551035845661445
+┌ Info: T-473
+│   T = Float32
+│   mode = Reference()
+│   worst = 0.2274983612957842
+│   shifts = 92
+└   umax = 0.38622785f0
+┌ Info: T-473
+│   T = Float32
+│   mode = Fast()
+│   worst = 0.22749834434583444
+│   shifts = 92
+└   umax = 0.38622785f0
+┌ Info: T-473
+│   T = Float64
+│   mode = Reference()
+│   worst = 0.20402640757389498
+│   shifts = 92
+└   umax = 0.3862273870650589
+┌ Info: T-473
+│   T = Float64
+│   mode = Fast()
+│   worst = 0.20402640757389487
+│   shifts = 92
+└   umax = 0.3862273870650589
+┌ Info: T-473
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Reference()
+│   worst = 0.2274983612957842
+│   shifts = 92
+└   umax = 0.38622785f0
+┌ Info: T-473
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Fast()
+│   worst = 0.2274983612957842
+│   shifts = 92
+└   umax = 0.38622785f0
+┌ Info: T-473 warm
+│   T = Float32
+│   mode = Reference()
+│   worst = 0.058808652372950444
+└   shifts = 38
+┌ Info: T-473 warm
+│   T = Float32
+│   mode = Fast()
+│   worst = 0.0427147340908733
+└   shifts = 38
+┌ Info: T-473 warm
+│   T = Float64
+│   mode = Reference()
+│   worst = 0.0635954043571797
+└   shifts = 38
+┌ Info: T-473 warm
+│   T = Float64
+│   mode = Fast()
+│   worst = 0.03709731920835482
+└   shifts = 38
+┌ Info: T-473 warm
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Reference()
+│   worst = 0.06017629545139115
+└   shifts = 38
+┌ Info: T-473 warm
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Fast()
+│   worst = 0.06017629545139115
+└   shifts = 38
+┌ Info: T-473 warm, drift and ramp
+│   T = Float32
+│   mode = Reference()
+│   worst = 0.06096144778291067
+└   shifts = 38
+┌ Info: T-473 warm, drift and ramp
+│   T = Float32
+│   mode = Fast()
+│   worst = 0.04775964812229174
+└   shifts = 38
+┌ Info: T-473 warm, drift and ramp
+│   T = Float64
+│   mode = Reference()
+│   worst = 0.05380954738384126
+└   shifts = 38
+┌ Info: T-473 warm, drift and ramp
+│   T = Float64
+│   mode = Fast()
+│   worst = 0.0722001521859136
+└   shifts = 38
+┌ Info: T-473 warm, drift and ramp
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Reference()
+│   worst = 0.06096144778291067
+└   shifts = 38
+┌ Info: T-473 warm, drift and ramp
+│   T = Dual{Nothing, Float32, 3}
+│   mode = Fast()
+│   worst = 0.06096144778291067
+└   shifts = 38
+┌ Info: T-474 Reference against Fast
+└   rel = 1.3582205241100238e-15
+┌ Info: T-475
+│   ad = -1.0926420573597152e-5
+│   fd = 6-element Vector{Float64}: …
+│   floor = 4.775624533753757e-6
+└   rel = 2.512257837343585e-6
+┌ Info: T-476 retired at the back edge
+└   retired = 36
+┌ Info: T-476 lost particles
+│   tight = (228,)
+└   roomy = (0,)
+┌ Info: T-478 bytes per three window steps
+│   small = 242792
+│   more_particles = 300736
+│   larger_grid = 324472
+└   threads = 16
+┌ Info: T-479 refills at or above c
+│   T = Float32
+│   seed = 6
+│   fast = (12,)
+└   worst = 0.018158632852306563
+┌ Info: T-479 refills at or above c
+│   T = Float64
+│   seed = 6
+│   fast = (12,)
+└   worst = 0.01948644290075245
+┌ Info: T-479 refills at or above c
+│   T = Dual{Nothing, Float32, 3}
+│   seed = 6
+│   fast = (12,)
+└   worst = 0.019486437087257075
+ERROR: LoadError: Some tests did not pass: 95578 passed, 0 failed, 1 errored, 0 broken.
+in expression starting at /home/pm/jobs/wp028-subluminal-4/scripts/runs/wp028-subluminal-tests/run.jl:17
+  T-480 initialize! refuses a load whose drawn speeds reach c with an ArgumentError naming the species and the largest |v|, and the ordinary loads still step, at N = 1 and 2 [A2, A8] |    60            60     18.2s
+  T-481 the refusal of superluminal loads is exact at |v| = c on every axis, refuses NaN velocities and counts only alive slots [A2, A8]                                               |    57            57      4.6s
+  T-214 Landau damping through the module against linear theory [A5, A7, A9, WP-014]                                                                                                   |     2             2   1m45.1s
+  T-215 two-stream through the module against linear theory [A5, A7, A9, WP-014]                                                                                                       |     3             3     25.3s
+  T-213 the edge cases stay electrostatic, bit for bit [A9, WP-014]                                                                                                                    |     6             6      0.5s
+  T-216 Weibel growth rate against the cold-fluid relation [A1, A5, A7, WP-014]                                                                                                        |     8             8      3.4s
+  T-217 total energy drift per case [A7, WP-014]                                                                                                                                       |     3             3      0.4s
+  T-218 Reference mode is bitwise identical across reruns and 1 and 4 threads [A4, WP-014]                                                                                             |    25            25   2m14.0s
+  T-219 ForwardDiff through the module step against the fd_scan floor [A3, A7, WP-014]                                                                                                 |     3             3      9.7s
+  T-220 allocation per step does not grow with particle count or grid size [A7, WP-014]                                                                                                |     4             4      1.1s
+  T-221 step! refuses a step outside the histories it was allocated for [A7, WP-014]                                                                                                   |     2             2      0.1s
+  T-350 test particles in prescribed uniform fields at N = 2 [A1, A2, WP-024]                                                                                                          |    20            20     14.5s
+  T-351 the 2D gather picks each component at its own stagger [A7, WP-024]                                                                                                             |    12            12      0.7s
+  T-352 half-step centring: second-order gyration phase from initialize! [A2, WP-024]                                                                                                  |    12            12      2.5s
+  T-353 the initial field at N = 2: Gauss's law from the solve, and E0, B0 added exactly [A2, A7, WP-024]                                                                              |    42            42      2.2s
+  T-354 the 2D diagnostics against closed forms [A7, WP-024]                                                                                                                           |     9             9      3.1s
+  T-355 the 2D diagnostics and the kinetic-energy reduction are bitwise and equal a serial sum [A4, A7, WP-024]                                                                        |    23            23     24.3s
+  T-356 Dual through initialize! and one step at N = 2 [A3, A8, WP-024]                                                                                                                |     7             7      0.4s
+  T-357 allocation per 2D step does not grow with particle count or grid size [A7, WP-024]                                                                                             |     4             4      2.0s
+  T-358 input checks of the 2D problem and state [A7, A10, WP-024]                                                                                                                     |     8             8      0.1s
+  T-360 Gauss's law and ∇·B to roundoff after every 2D step with moving particles, and Σ Jz exact, both modes [A2, A7, A8, WP-023]                                                     |    24            24      2.2s
+  T-361 a 2D run invariant along one axis is the 1D run, along x and along y [A2, A7, A8, WP-023]                                                                                      |    36            36      8.5s
+  T-362 the Reference and Fast 2D steps agree to roundoff [A4, A7, WP-023]                                                                                                             |     2             2      0.6s
+  T-363 the 2D step with current is bitwise across reruns, launch shapes and 1 and 4 threads in Reference mode [A4, WP-023]                                                            |    13            13      8.5s
+  T-364 oblique Landau damping in 2D against linear theory [A5, A7, WP-023]                                                                                                            |     6             6      6.7s
+  T-365 2D Weibel growth rate against the cold-fluid relation [A1, A5, A7, WP-023]                                                                                                     |     5             5      4.1s
+  T-366 Dual through the 2D step with current [A3, A8, WP-023]                                                                                                                         |    19            19      0.1s
+  T-367 allocation per 2D step with current does not grow with particle count or grid size [A7, WP-023]                                                                                |     2             2      0.6s
+  T-368 the case files at N = 2 and their seeds (#183), and the current choice [A1, A4, A10, WP-023]                                                                                   |    24            24      0.4s
+  T-369 the in-plane magnetic diagnostics against closed forms [A7, WP-023]                                                                                                            |     6             6      0.2s
+  T-400 the antenna's incident field is the 2D paraxial Gaussian beam with its B, and laser_energy its flux [A2, A3, WP-026]                                                           |    10            10      1.4s
+  T-401 the antenna launches one way, is linear in a0, and without antennas the step is the plain step bit for bit [A2, A3, A8, WP-026]                                                |    12            12      7.3s
+  T-402 the launched beam is the Yee angular-spectrum propagation of the incident field, to the antenna's order (k_y/k)⁴ [A2, A7, WP-026]                                              |     8             8      3.0s
+  T-403 the launched beam keeps the waist and the 2D Gouy phase the scheme predicts [A2, A7, WP-026]                                                                                   |    19            19      0.5s
+  T-404 the pulse's energy travels at the Yee group velocity of its modes [A2, A7, WP-026]                                                                                             |    15            15      1.4s
+  T-405 the energy the pulse carries matches the Poynting flux through the antenna [A2, A7, WP-026]                                                                                    |     6             6      0.1s
+  T-406 with the antenna Gauss's law and ∇·B hold to roundoff off its columns and on them up to its surface charges [A2, A4, A8, WP-026]                                               |    24            24      9.0s
+  T-407 laser parameters enter through the antenna: gradients in focus and chirp agree with the finite-difference floor [A3, A7, WP-026]                                               |     4             4      4.7s
+  T-408 the antenna refuses a plane at the periodic seam and lasers at N = 1 [A2, WP-026]                                                                                              |     7             7      0.1s
+  T-409 the antenna's beam is periodic in y: its axis may sit at the seam [A2, A8, WP-026]                                                                                             |    30            30      0.8s
+  T-440 the binomial filter's transfer function is Π cos^(2p)(kΔ/2) mode by mode, on every stagger, with its exact identities [A2, A7, A8, WP-029]                                     |   120           120      4.6s
+  T-441 with p passes Gauss's law holds in its filtered form D⁻·E − Fρ = const to roundoff, and the plain residual (F − 1)(ρⁿ − ρ⁰) is measured, both modes [A2, A7, A8, WP-029]       |    96            96      6.1s
+  T-442 the step filters the folded Jx, Jy, Jz and the mesh solve takes the filtered current, at N = 1 and 2, both modes [A2, A7, A8, WP-029]                                          |   132           132      1.5s
+  T-443 with the filter the Reference step is bitwise across reruns, launch shapes and 1 and 4 threads, and Fast agrees with it to roundoff [A4, A7, WP-029]                           |    21            21      4.1s
+  T-444 the case files' filter_passes, and zero passes leave the step's bits alone [A2, A4, A10, WP-029]                                                                               |    46            46      0.6s
+  T-445 allocation per step with the filter does not grow with particle count, grid size or passes [A7, WP-029]                                                                        |     6             6      0.2s
+  T-450 the absorbing layer's reflection and transmission against the scheme's discrete theory, over thickness and angle [A2, A7, WP-027]                                              |   259           259     17.6s
+  T-451 Gauss's law and ∇·B to roundoff off the absorbing layer with particles leaving, all three types, both modes [A2, A7, A8, WP-027]                                               |    24            24      6.7s
+  T-452 particles that cross the open edge are retired after their current is deposited, the x seam keeps them [A2, WP-027]                                                            |   290           290      1.1s
+  T-453 a zero-strength layer is the periodic step bit for bit, and the factors sit on the layer rows [A2, A4, A8, WP-027]                                                             |   370           370      6.9s
+  T-454 the open-boundary step is bitwise across reruns, launch shapes and 1 and 4 threads in Reference mode [A4, WP-027]                                                              |    13            13      8.9s
+  T-455 the reflection in Float32, Float64 and Dual, and the dual's partials linear [A7, A8, WP-027]                                                                                   |    12            12      5.3s
+  T-456 input checks and the case file's open boundary and layer [A1, A10, WP-027]                                                                                                     |    27            27      0.5s
+  T-457 allocation per open-boundary step does not grow with particle count or grid size [A7, WP-027]                                                                                  |     2             2      0.3s
+  T-470 the window's refill is the engine's quiet start at the global cell, the profile entering through the weights [A3, A4, A8, WP-028]                                              |    79            79      3.5s
+  T-471 a cold plasma at rest stays uniform and neutral to the last bit in the moving window, all three types, both modes [A2, A3, A4, A8, WP-028]                                     |    42            42      9.7s
+  T-472 a vacuum pulse is the same with and without the moving window, off the back edge [A2, A7, WP-028]                                                                              |     4             4      0.7s
+  T-473 Gauss's law to roundoff across window shifts with a laser driving the plasma, all three types, both modes [A2, A4, A7, A8, WP-028]                                             |    42            42     11.4s
+  T-474 the moving-window step is bitwise across reruns and launch shapes in Reference mode, and the modes agree [A4, WP-028]                                                          |     4             4     17.4s
+  T-475 the field energy after window shifts is differentiable in the ramp length through the refill [A3, A7, WP-028]                                                                  |     2             2      6.8s
+  T-476 particles crossing the back edge are retired before their current, and the buffers count what does not fit [A2, A4, WP-028]                                                    |    19            19      0.2s
+  T-477 input checks: the window, its profile and its antennas [A2, A10, WP-028]                                                                                                       |    23            23      0.5s
+  T-478 the filter does not wrap along the window's axis, and allocation per window step does not grow [A2, A7, WP-028]                                                                |     3             3      0.5s
+  T-479 a drawn speed at or above c is refused in the window's initial load and replaced and counted in its refills [A2, A4, A8, WP-028]                                               |    14            14      1.3s
+RNG of the outermost testset: Xoshiro(0x9dfeb4c390461edb, 0x45e17a1941dde699, 0xb4e227d1cece243e, 0x83b8ea0158e3a946, 0x921c5031ce2028c6)
