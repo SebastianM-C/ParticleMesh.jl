@@ -12,10 +12,10 @@ patches = [4, 4]
 run = "smilei-landau-oblique-2d-filter1-32ca4bf5"
 seed_subset = "all of the case's seeds"
 seeds = [20261105]
-updated = "2026-11-05T18:47:14.539Z"
+updated = "2026-11-05T18:49:03.171Z"
 
 [analysis]
-commit = "23f600c77e41fd314c0ca09f797f999749e05604"
+commit = "1ad62f4fe648244c7883fa4105d3802808f4ca23"
 dirty = false
 
     [analysis.inputs]
