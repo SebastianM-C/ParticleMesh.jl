@@ -184,7 +184,7 @@ jobs:
         run: |
           # git grep exits 0 on a match, 1 on none, and above 1 on an error, which must not pass as clean.
           status=0
-          git grep -nIE '(ssh://|BEGIN [A-Z ]*PRIVATE KEY|(^|[^0-9A-Za-z.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9A-Za-z.]|$))' -- . ':!.github/workflows/CI.yml' || status=$?
+          git grep -nIE '(ssh://|BEGIN [A-Z ]*PRIVATE KEY|(^|[^0-9A-Za-z.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9A-Za-z.]|\.([^0-9]|$)|$))' -- . ':!.github/workflows/CI.yml' || status=$?
           if [ "$status" -eq 0 ]; then
             echo "Found a pattern that looks like private infrastructure; see matches above." >&2
             exit 1
