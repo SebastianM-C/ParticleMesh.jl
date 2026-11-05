@@ -96,16 +96,16 @@ kinetic-energy chunks `K` (one entry per [`KINETIC_CHUNK`](@ref) slots of each s
 histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
 diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
 axis (written once), the diagnostics' per-row partial sums, the [`Antenna`](@ref)s of the
-problem's lasers, placed on the grid, the absorbing layer's [`LayerFactors`](@ref) (`layer`,
-`nothing` for a periodic box) and the time step `dt` that the antennas and the layer were made for.
+problem's lasers, placed on the grid, the absorber placed on the grid (`layer`: the absorbing
+layer's [`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref), `nothing` for a periodic box) and the time step `dt` that the antennas and the layer were made for.
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
 used by `Fast()` on an element type without atomics). Throws an `ArgumentError` unless the
 current is `Esirkepov()` or [`NoCurrent`](@ref)`()` and unless `problem.dt` is below the
 Courant limit of the numerics' solver ([`check_courant`](@ref)), and unless the numerics'
-`absorber` is an [`AbsorbingLayer`](@ref) exactly when the problem's axis 2 is `:open` (the layer
-also checks its fit on the grid).
+`absorber` is an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) exactly when the problem's axis 2 is
+`:open` (the absorber also checks its fit on the grid).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -115,11 +115,11 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)
     open_y = problem.boundaries[2] === :open
-    open_y && !(numerics.absorber isa AbsorbingLayer) &&
-        throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...), got $(numerics.absorber)"))
+    open_y && !(numerics.absorber isa Union{AbsorbingLayer,PML}) &&
+        throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...) or PML(...), got $(numerics.absorber)"))
     !open_y && numerics.absorber !== nothing &&
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
-    layer = open_y ? LayerFactors(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
+    layer = open_y ? place_absorber(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
     species = map(problem.species) do d
         Species(backend, T, prod(n) * prod(d.ppc); q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
     end
@@ -266,6 +266,7 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
     g = Int32(guards(grid))
     dx = cellsize(grid)
     p.dt == st.aux.dt || throw(ArgumentError("params.dt = $(p.dt) is not the time step $(st.aux.dt) the state's antennas and layer were made for"))
+    k == 1 && reset_absorber!(st.aux.layer)
     record_diagnostics!(st, k)
     for s in st.species
         launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,

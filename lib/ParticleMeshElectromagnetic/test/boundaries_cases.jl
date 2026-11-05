@@ -12,7 +12,14 @@
 # time-harmonic step reduces along y to a three-point recurrence, solved through the layer slab
 # with outgoing waves on the far side.
 
-using ParticleMeshElectromagnetic: LayerFactors, layer_sigma, yee_b_half!
+using ParticleMeshElectromagnetic: LayerFactors, layer_sigma, yee_b_half!, RHO_STAGGER_2D
+
+"""
+The spurious energy fraction of a slab run against its prediction, in units of the roundoff of the
+measurement: the fields carry an error of about eps(T)·√steps of the incident amplitude, so an
+energy fraction X is known to eps·√k·(2√X + eps·√k).
+"""
+slab_scale(T, k, X) = base_eps(T) * sqrt(k) * (2 * sqrt(X) + base_eps(T) * sqrt(k))
 
 """
     slab_geometry(; theta, cells = 16, strength = 2.0, order = 2, ncx = 16, ncy = 8, width = 3, courant = 95//100, margin = 8)
@@ -54,10 +61,11 @@ function slab_geometry(; theta, cells = 16, strength = 2.0, order = 2, ncx = 16,
 end
 
 "The vacuum problem and the numerics of a reflection run of `geo` in element type `T` (open axis 2)."
-function slab_problem(::Type{T}, geo; nsteps = round(Int, geo.tmeas / geo.dt)) where {T}
+function slab_problem(::Type{T}, geo; nsteps = round(Int, geo.tmeas / geo.dt),
+                      absorber = AbsorbingLayer(; cells = geo.cells, strength = geo.strength, order = geo.order)) where {T}
     prob = EMProblem("slab", (T(geo.Lx), T(geo.Ly)), (geo.nx, geo.ny), T(geo.dt), nsteps, (), 1, (1, 1);
                      boundaries = (:periodic, :open))
-    num = EMNumerics(; current = NoCurrent(), absorber = AbsorbingLayer(; cells = geo.cells, strength = geo.strength, order = geo.order))
+    num = EMNumerics(; current = NoCurrent(), absorber)
     return prob, num
 end
 
@@ -150,12 +158,15 @@ end
 """
     slab_run(T, geo, pol; history = false, be = CPU(), workgroupsize = nothing) -> (; R, Tr, W0, st, hist)
 
-A reflection run: the slab packet in vacuum to the measurement time; `R` and `Tr` the energies of
+A reflection run: the slab packet in vacuum to the measurement time (or `nsteps`), through the
+open axis' `absorber` (WP-027's layer of `geo` by default); `R` and `Tr` the energies of
 the upper and lower halves of the interior over the initial energy `W0` (the reflected and the
 transmitted packets), `hist` the interior energy every 10 steps when `history`.
 """
-function slab_run(::Type{T}, geo, pol; history = false, be = CPU(), workgroupsize = nothing) where {T}
-    prob, num = slab_problem(T, geo)
+function slab_run(::Type{T}, geo, pol; history = false, be = CPU(), workgroupsize = nothing,
+                  absorber = AbsorbingLayer(; cells = geo.cells, strength = geo.strength, order = geo.order),
+                  nsteps = round(Int, geo.tmeas / geo.dt)) where {T}
+    prob, num = slab_problem(T, geo; absorber, nsteps)
     num = EMNumerics(; current = num.current, absorber = num.absorber, workgroupsize)
     st = EMState(prob, num; backend = be)
     initialize!(st, prob)
@@ -318,3 +329,41 @@ function open_step_digests(; workgroupsize = nothing, be = CPU())
     end
     return out
 end
+
+# --- the residuals of the open box (T-451, T-543) ---------------------------------------------
+
+"""
+    open_residuals(st, ρ̄₀) -> (; free, layer, scale, divB, bscale, ρbar)
+
+Gauss's law `D⁻ₓEx + D⁻_yEy − (ρ − ρ̄₀)` on the free node rows and its maximum on the layer rows,
+ρ deposited now (the species sorted first in Reference mode, since retired particles stay in
+their segments until the next sort), `scale = (n₁ + n₂)·max|ρ|`; ∇·B on the free centre rows
+j₀ = cells … n₂ − cells − 1 with T-360's `bscale`; `ρbar` the current mean of ρ.
+"""
+function open_residuals(st, ρbar0)
+    (; grid, numerics) = st
+    T = eltype(st.ρ)
+    ρd = field(get_backend(st.ρ), T, grid)
+    for (s, ws) in zip(st.species, st.ws)
+        numerics.mode isa Reference && sort_by_cell!(s, grid, ws)
+        deposit!(numerics.mode, ρd, s, numerics.shape, RHO_STAGGER_2D, grid, ws)
+    end
+    fold_guards!(ρd, grid)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    L = numerics.absorber.cells
+    I1 = (g + 1):(g + n[1])
+    free = (g + 1 + L + 1):(g + 1 + n[2] - L - 1)
+    lay = setdiff((g + 1):(g + n[2]), free)
+    cfree = (g + 1 + L):(g + 1 + n[2] - L - 1)
+    ρ, Ex, Ey, Bx, By = Array(ρd), Array(st.fields.Ex), Array(st.fields.Ey), Array(st.fields.Bx), Array(st.fields.By)
+    gauss(i, j) = absmax((Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2] - (ρ[i, j] - ρbar0))
+    res = maximum(gauss(i, j) for i in I1, j in free)
+    resl = maximum(gauss(i, j) for i in I1, j in lay)
+    divB = maximum(absmax((Bx[i + 1, j] - Bx[i, j]) / h[1] + (By[i, j + 1] - By[i, j]) / h[2]) for i in I1, j in cfree)
+    bmax = max(maximum(absmax, Bx[I1, cfree]), maximum(absmax, By[I1, cfree]))
+    hv = map(value_of, h)
+    return (; free = res, layer = resl, scale = sum(n) * maximum(absmax, ρ[I1, (g + 1):(g + n[2])]), divB,
+            bscale = (2 / hv[1] + 2 / hv[2]) * bmax, ρbar = sum(ρ[I1, (g + 1):(g + n[2])]) / prod(n))
+end
+
+alive_total(st) = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species)
