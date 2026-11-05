@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -24,7 +24,8 @@ else
     @testset "T-195 the module on CUDA passes its CPU tests with the CPU's tolerances [A2, A5, A7, A8, WP-013]" begin
         rerun_module_on(GPU, (("T-210", body_T210), ("T-211", body_T211), ("T-212", body_T212), ("T-214", body_T214),
                               ("T-215", body_T215), ("T-216", body_T216), ("T-213", body_T213), ("T-217", body_T217),
-                              ("T-219", body_T219), ("T-420", body_T420)))
+                              ("T-219", body_T219), ("T-420", body_T420), ("T-522", body_T522),
+                              ("T-480", body_T480), ("T-481", body_T481)))
     end
 
     @testset "T-380 the 2D step on CUDA passes T-360, T-361, T-364 and T-365 with the CPU's tolerances [A2, A5, A7, A8, WP-023]" begin
@@ -55,6 +56,40 @@ else
         for wgs in (64, 256)
             @test filter_digests(; workgroupsize = wgs, be = GPU) == first
         end
+    end
+
+    @testset "T-560 the moving window on CUDA passes T-470 to T-476, T-478's filter and T-479 with the CPU's tolerances [A2, A3, A4, A7, A8, WP-028]" begin
+        rerun_module_on(GPU, (("T-470", body_T470), ("T-471", body_T471), ("T-472", body_T472), ("T-473", body_T473), ("T-474", body_T474),
+                              ("T-475", body_T475), ("T-476", body_T476), ("T-478", body_T478), ("T-479", body_T479)))
+    end
+
+    # The same laser in the same plasma on both backends, 120 steps through about 50 shifts (Float64,
+    # Reference): a backend's bits are its own (A4), so the fields differ, by roundoff.
+    @testset "T-561 CPU and CUDA window runs differ by roundoff in the fields [A4, A7, WP-028]" begin
+        prob = window_lwfa(Float64; nsteps = 120)
+        g, c = window_state(prob; be = GPU), window_state(prob)
+        run!(g, params(prob), prob.nsteps)
+        run!(c, params(prob), prob.nsteps)
+        names = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
+        m = maximum(n -> maximum(abs, getfield(c.fields, n)), names)
+        d = maximum(n -> maximum(abs, Array(getfield(g.fields, n)) .- getfield(c.fields, n)), names)
+        @info "T-561 CPU–CUDA window fields" rel = d / m
+        record!("T-561", Float64, d / (m * eps(Float64)), GPU)
+        @test d <= emC("T-561") * eps(Float64) * m
+    end
+
+    @testset "T-562 window allocation per step on CUDA does not grow with particle count or grid size [A7, WP-028]" begin
+        small = device_step_bytes_window(GPU; ppc = (2, 2), cells = (24, 6))
+        more_particles = device_step_bytes_window(GPU; ppc = (6, 6), cells = (24, 6))
+        larger_grid = device_step_bytes_window(GPU; ppc = (2, 2), cells = (72, 18))
+        @info "T-562 bytes per three window steps on CUDA" small more_particles larger_grid
+        @test more_particles.dev <= small.dev
+        @test larger_grid.dev <= small.dev
+        # Host bytes, three steps, as T-280: constant up to 1 KiB a step, plus 1 KiB per doubling of
+        # the capacity for the merge sort's bookkeeping. Both larger cases have nine times the capacity.
+        slack = 3 * 1024 * (1 + log2(9) + 1)
+        @test more_particles.host <= small.host + slack
+        @test larger_grid.host <= small.host + slack
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin

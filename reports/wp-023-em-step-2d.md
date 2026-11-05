@@ -9,6 +9,7 @@
 | Case files | `scripts/crosscode/cases/landau-oblique-2d.toml` (`bc8fd6af…`, the four seeds of WP-017) and `weibel-2d.toml` (`dca1230a…`), unchanged; each run directory holds a copy (`case.toml`) |
 | References | Smilei v5.1: WP-019's single runs (`reports/crosscode-smilei-2d/`) and WP-017's four-seed Landau ensemble; PIConGPU 0.8.0 FP64: WP-017's four-seed Landau ensemble (`reports/crosscode-picongpu/`). Theory: `scripts/crosscode/theory.jl` (T-160, T-273), the values of the case files |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend, Float64, `Reference()` mode; Intel Core i9-14900K, 32 threads (Landau) and 24 threads (Weibel), with other jobs on the machine (see Cost) |
+| Start | the loaded momenta taken at t = 0 and kicked back half a step in E⁰ and the density profile evaluated at each particle (`initialize!`'s defaults; the manifests have no `momenta_at` or `density_at` key), while Smilei and PIConGPU take the loaded momenta at −Δt/2 and sample the profile at cell centres (#226) |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review |
 
 ## 1. What was built

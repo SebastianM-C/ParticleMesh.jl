@@ -1,0 +1,78 @@
+{
+  "case": "landau-oblique-2d",
+  "checks": {
+    "divB_relative_final": 9.999459373013951e-13,
+    "energy_max_abs_relative_change": 1.868469759029368e-7,
+    "gauss_absolute_final": 1.63202784619898e-14,
+    "gauss_absolute_initial": 3.58046925441613e-15,
+    "gauss_relative_final": 1.515978787373139e-14,
+    "gauss_relative_initial": 3.5450718871525382e-15,
+    "kinetic_energy_initial": 0.007471729345198011,
+    "rho_deviation_initial": 0.00998495048629966
+  },
+  "code": "particlemesh",
+  "observables": {
+    "damping_rate_energy": {
+      "fit_points": 0,
+      "fit_range": null,
+      "measured": null,
+      "measured_frequency": null,
+      "measured_stderr": null,
+      "method": "peak_envelope",
+      "noise_floor": 3.941080182615801e-8,
+      "relative_difference": null,
+      "signal": "scalar_sum",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "damping_rate_mode": {
+      "fit_points": 4,
+      "fit_range": [
+        4.763701702662463,
+        11.444347076920197
+      ],
+      "measured": 0.15920324882336803,
+      "measured_frequency": 1.4107586068084832,
+      "measured_stderr": 0.010264924647680938,
+      "method": "peak_envelope",
+      "noise_floor": 1.0782753996835208e-9,
+      "relative_difference": 0.038105126677360296,
+      "signal": "mode_projection",
+      "theory": 0.15335946690960509,
+      "theory_frequency": 1.4156618886045358
+    },
+    "energy_ratio": {
+      "measured": 3.997590912410345,
+      "method": "first_output",
+      "relative_difference": 1.1108920837082335e-16,
+      "signal": "scalar_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    },
+    "energy_ratio_mode": {
+      "measured": 3.889883395387826,
+      "method": "median_over_fit",
+      "points": 4,
+      "relative_difference": -0.02694310633140208,
+      "signal": "mode_ratio",
+      "theory": 3.9975909124103444,
+      "theory_continuum": 4.0
+    }
+  },
+  "performance": {
+    "cells": [
+      128,
+      128
+    ],
+    "ns_per_particle_step": 27.328228335312353,
+    "particles": 16777216,
+    "ppc": [
+      32,
+      32
+    ],
+    "steps": 3391,
+    "threads": 16,
+    "wall_seconds": 1554.744980601
+  },
+  "seed": 20289031
+}

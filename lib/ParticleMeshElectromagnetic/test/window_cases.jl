@@ -1,5 +1,6 @@
 # WP-028: the moving window's problems, used by window.jl.
 
+using KernelAbstractions: get_backend
 using ParticleMeshElectromagnetic: injection_column, load_window_columns!, velocity_momentum, window_density_params
 
 const ZERO3(T) = (zero(T), zero(T), zero(T))
@@ -44,8 +45,8 @@ function window_lwfa(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (64, 16)
 end
 
 "The initialized state of a window problem."
-function window_state(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber))
+function window_state(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, be = CPU())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber); backend = be)
     initialize!(st, prob)
     return st
 end
@@ -65,8 +66,9 @@ function fresh_window_load(st, s_win; species = 1, thermal = false)
     thermal || (load = (; load..., vdrift = ZERO3(T), vth = ZERO3(T)))
     sp = st.species[species]
     n = ncells(st.grid)
-    sc = Species(CPU(), T, prod(n) * prod(load.ppc); q = sp.q, m = sp.m, N = 2)
-    load_window_columns!(sc, st.grid, load, KernelAbstractions.zeros(CPU(), Int32, 1), 1, injection_column(st.aux.window), s_win)
+    be = get_backend(st.ρ)
+    sc = Species(be, T, prod(n) * prod(load.ppc); q = sp.q, m = sp.m, N = 2)
+    load_window_columns!(sc, st.grid, load, KernelAbstractions.zeros(be, Int32, 1), 1, injection_column(st.aux.window), s_win)
     return sc
 end
 
@@ -80,11 +82,13 @@ and the background's ρ₀ from [`window_background!`](@ref), per interior node;
 function window_gauss(st, s_win)
     T = eltype(st.ρ)
     grid = st.grid
-    ρ, ρ0 = field(CPU(), T, grid), field(CPU(), T, grid)
+    be = get_backend(st.ρ)
+    ρ, ρ0 = field(be, T, grid), field(be, T, grid)
     window_charge!(ρ, st)
     window_background!(ρ0, st, s_win)
+    ρ, ρ0 = Array(ρ), Array(ρ0)
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
-    Ex, Ey = st.fields.Ex, st.fields.Ey
+    Ex, Ey = Array(st.fields.Ex), Array(st.fields.Ey)
     res = [absmax((Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2] - (ρ[i, j] - ρ0[i, j]))
            for i in (g + 1):(g + n[1]), j in (g + 1):(g + n[2])]
     return (; res, scale = sum(n) * maximum(absmax, ρ[(g + 1):(g + n[1]), (g + 1):(g + n[2])]))
@@ -99,11 +103,11 @@ function static_twin(prob::EMProblem{2,T}, n1) where {T}
 end
 
 "T-474: a Reference run of `window_lwfa` (120 steps, about 50 shifts) per element type, one digest each."
-function window_digests(; workgroupsize = nothing)
+function window_digests(; workgroupsize = nothing, be = CPU())
     out = Tuple{DataType,UInt64}[]
     for T in TYPES
         prob = window_lwfa(T; nsteps = 120)
-        st = window_state(prob; workgroupsize)
+        st = window_state(prob; workgroupsize, be)
         run!(st, params(prob), prob.nsteps)
         push!(out, (T, state_digest_2d(st)))
     end

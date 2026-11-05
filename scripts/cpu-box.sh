@@ -4,7 +4,9 @@
 #   scripts/cpu-box.sh submit <tag> <request.toml>   push branch runs/<tag>: HEAD, the request as
 #                                                    box-request.toml, and the run directories it names
 #   scripts/cpu-box.sh status <tag>                  print the result's box-status.toml; while pending, the
-#                                                    box's progress on it (branch box-status), and exit 1
+#                                                    box's progress on it (branch box-status), and exit 1;
+#                                                    this also names a request the box lost, one that died
+#                                                    before its result was staged
 #   scripts/cpu-box.sh fetch <tag>                   put the result into scripts/runs/box-<tag>/ (the run
 #                                                    directories, box-status.toml, box-log.txt); never
 #                                                    overwrites a local run
@@ -38,7 +40,9 @@
 # lists them under dumps_over_20MB; the owner keeps them 30 days), so analyse large dumps in a
 # julia step. Nothing comes back if a file fails the leak scan of CI. Run branches are never
 # merged and stay, as the record of the run that a report can cite. The box is a spot instance:
-# a request lost to an eviction runs again on the next box.
+# a request lost to an eviction runs again on the next box. A request the box itself lost (status
+# says so) gets no result until the owner, already alerted, restarts the poller or stages it by hand;
+# do not resubmit it unless it is still missing after its timeout plus an hour.
 #
 # Hands-off batches: give every request of a long campaign the same three fields,
 #   batch = "<name>"   batch_total = <number of requests>   branch = "<your pushed branch>"
@@ -98,6 +102,7 @@ EOF
 import json, sys
 st, tag = json.load(sys.stdin), sys.argv[1]
 c, q, k = st.get("current") or {}, st.get("queue") or [], st.get("keeper") or {}
+e, f = st.get("last_error") or {}, st.get("last_finished") or {}
 print(f"box: {st.get('"'"'state'"'"')} (status of {st.get('"'"'updated'"'"', '"'"'?'"'"')}; keeper {k.get('"'"'mode'"'"', '"'"'?'"'"')}, box {k.get('"'"'box'"'"')})")
 if c.get("tag") == tag:
     print(f"running: step {c.get('"'"'step'"'"')}/{c.get('"'"'steps'"'"')} ({c.get('"'"'step_kind'"'"')}), {(c.get('"'"'elapsed_s'"'"') or 0) // 60} min in, "
@@ -106,6 +111,10 @@ if c.get("tag") == tag:
         print("  | " + l)
 elif tag in q:
     print(f"queued: position {q.index(tag) + 1} of {len(q)}" + (f", after {c.get('"'"'tag'"'"')} (running)" if c else ""))
+elif e.get("tag") == tag:
+    print(f"LOST: the box died on this request at {e.get('"'"'at'"'"')}, before staging its result: {e.get('"'"'error'"'"')}")
+elif f.get("tag") == tag:
+    print(f"finished on the box at {f.get('"'"'finished'"'"')}, ok = {f.get('"'"'ok'"'"')}; the result should land about a minute after that")
 else:
     print("not seen by the box yet (it polls every minute; a parked box boots within about 10 minutes)")
 ' "$tag" || true

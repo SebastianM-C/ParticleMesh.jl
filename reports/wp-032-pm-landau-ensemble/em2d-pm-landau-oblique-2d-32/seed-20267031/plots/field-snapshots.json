@@ -1,0 +1,7 @@
+{
+  "max_abs": {
+    "t = 0": 0.0008933322089191607,
+    "t = 25.0": 0.0005517740620131619
+  },
+  "plot": "Ex(x, y) at the first and the last step"
+}

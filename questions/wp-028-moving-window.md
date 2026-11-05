@@ -28,6 +28,8 @@ Before the window starts moving, the front is a fixed edge, and a particle that 
 
 The fresh plasma's drawn velocities, converted to γv, are taken as the momenta at the half step. That is the convention of Smilei and PIConGPU (`momenta_at = :t_minus_half`); no pusher kick is applied. It is exact where the fields at the front vanish, which §4 requires anyway. A refilled thermal plasma also does not reproduce the static run's state at that cell, which has evolved since t = 0. Only a cold plasma at rest is the same with and without the window (T-471).
 
+A drawn speed can reach c, since the thermal spread is drawn in velocity (#257). The initial load refuses it, as a static load does. A refill cannot raise inside a step (§0.4), and dropping the particle would leave its charge out of the plasma against the background, so it is loaded at the drift velocity and counted (`window_superluminal`, T-479). This biases the tail of the refilled distribution by the counted particles only.
+
 ## 7. The antenna
 
 **Assumption:** an antenna plane stays at its place in the lab frame. Its window column moves back with the shifts, and it stops once the window has passed it. The state refuses a laser whose pulse is not over by then, meaning six durations after its delay, where the envelope is below Float64 roundoff. A2's "antenna plane at the window front" is read as a plane fixed in the lab, ahead of the plasma, which the pulse leaves before the window passes it. An antenna that moves with the window would need the antenna's TF/SF corrections to follow a moving plane, and is not implemented.

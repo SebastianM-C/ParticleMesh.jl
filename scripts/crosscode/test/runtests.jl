@@ -954,6 +954,7 @@ include(joinpath(@__DIR__, "picongpu.jl"))
 include(joinpath(@__DIR__, "seeds.jl"))
 include(joinpath(@__DIR__, "convergence.jl"))
 include(joinpath(@__DIR__, "gpu.jl"))
+include(joinpath(@__DIR__, "filter.jl"))
 
 @testset "T-460 a run manifest names its commit without git: the runner's PM_COMMIT, and says so [A6]" begin
     # A sandbox or container that mounts the worktree but not the repository's .git (the CPU box
@@ -989,3 +990,4 @@ include(joinpath(@__DIR__, "gpu.jl"))
         @test c.commit != sha && occursin(r"^[0-9a-f]{40}$", c.commit)
     end
 end
+include(joinpath(@__DIR__, "pm_ensemble.jl"))

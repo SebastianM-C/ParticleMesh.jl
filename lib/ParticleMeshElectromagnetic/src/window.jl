@@ -44,6 +44,12 @@
 #   A2) cancels the initial charge, so E⁰ = 0 and no initial solve is needed; Gauss's law then reads
 #   D⁻·E = ρ − ρ₀(s), ρ₀(s) the charge of the cold quiet start of the window at its position s
 #   ([`window_background!`](@ref)).
+# - A drawn speed can reach c: the loader draws the thermal spread in velocity, drift + thermal·z
+#   with z standard normal, and the Gaussian tail passes c (#257). The initial load refuses it
+#   with an `ArgumentError`, as `check_subluminal` refuses it in a static load. A refill cannot
+#   raise inside a step (§0.4), and dropping the particle would leave its charge out of the plasma
+#   against the background, so the refill loads it at the drift velocity and counts it on the
+#   device ([`window_superluminal`](@ref)).
 
 """
     MovingWindow(; start = 0)
@@ -111,11 +117,13 @@ The moving window placed on a grid by the state: the description, the time step 
 along axis 1 it counts its shifts with, the interior columns `n1`, the injection column `inj` (the
 plasma is loaded on columns `1 … inj`, [`injection_column`](@ref)), the guard width `g`, the
 headroom of the particle buffers, per species the loader parameters, particles per cell, drift,
-thermal speeds and Philox key of its refill, and `lost`, one device counter per species of the
+thermal speeds and Philox key of its refill, `lost`, one device counter per species of the
 fresh particles that found no free slot (zero unless the buffers overflow; read with
-[`window_lost`](@ref) outside a step).
+[`window_lost`](@ref) outside a step), `fast`, one device counter per species of the fresh
+particles of the refills whose drawn speed reached c (read with [`window_superluminal`](@ref)),
+and `flags`, per species the refill's scratch of one flag per fresh particle that `fast` sums.
 """
-struct WindowFrame{W,T,P,L}
+struct WindowFrame{W,T,P,L,F}
     window::W
     dt::T
     dx1::T
@@ -124,6 +132,8 @@ struct WindowFrame{W,T,P,L}
     g::Int
     loads::P
     lost::L
+    fast::L
+    flags::F
 end
 
 """
@@ -154,6 +164,19 @@ window_shifts(st::EMState, k::Integer) = window_shifts(st.aux.window, k)
 "The fresh particles of each species that found no free slot in the window's refills (a device read: never inside a step)."
 window_lost(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.lost)
 
+"""
+    window_superluminal(state::EMState) -> NTuple{Int}
+
+Per species, the fresh particles of the window's refills whose drawn speed reached c: the loader
+draws each velocity component as `drift + thermal·z` with `z` standard normal, in velocity, so the
+Gaussian tail passes c with a probability that grows with the thermal speed (#257). Such a
+particle is loaded at the drift velocity instead, so its charge stays in the plasma and Gauss's
+law holds, and it is counted here, on the device (raising inside a step would be host branching
+on device data, §0.4). The initial load refuses such a draw instead, with an `ArgumentError`
+([`initialize!`](@ref)). A device read: never inside a step.
+"""
+window_superluminal(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.fast)
+
 function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Integer) where {T}
     n1 = ncells(grid)[1]
     inj = window_injection_column(n1, shape, passes)
@@ -164,7 +187,9 @@ function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Inte
          key = (UInt32(problem.seed), UInt32(d.stream)))
     end
     lost = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
-    return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), loads, lost)
+    fast = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
+    flags = map(d -> KernelAbstractions.zeros(backend, Int32, inj * ncells(grid)[2] * prod(d.ppc)), problem.species)
+    return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), loads, lost, fast, flags)
 end
 
 # --- the x edges ------------------------------------------------------------------------------
@@ -318,8 +343,9 @@ end
 # (global column = window column + origin), written behind the alive count: work item i is the
 # in-cell index k of the cell (column, row) in the order of the static loader within a column
 # (row by row, k fastest), into slot count[1] + i if that slot exists. Positions and draws are the
-# engine's quiet start at the global cell, the momenta γv of the drawn velocities.
-@kernel function refill_kernel!(s, @Const(count), density, p, dx, ppc::NTuple{2,Int32}, col0::Int32, n2::Int32,
+# engine's quiet start at the global cell, the momenta γv of the drawn velocities; a drawn speed
+# that reaches c (or a NaN) is replaced by the drift velocity, and flags[i] says so (1, else 0).
+@kernel function refill_kernel!(s, flags, @Const(count), density, p, dx, ppc::NTuple{2,Int32}, col0::Int32, n2::Int32,
                                 origin::Int32, vdrift, vth, key, cap::Int32)
     i = Int32(@index(Global, Linear))
     K = ppc[1] * ppc[2]
@@ -328,9 +354,11 @@ end
     c2 = cell % n2 + Int32(1)
     c1 = col0 + cell ÷ n2
     @inbounds slot = count[1] + i
+    fast = false
     if slot <= cap
-        δ, v, w = quiet_particle_2d(c1 + origin, c2, k, ppc, dx, density, p, vdrift, vth, key)
-        u = velocity_momentum(v)
+        δ, v0, w = quiet_particle_2d(c1 + origin, c2, k, ppc, dx, density, p, vdrift, vth, key)
+        fast = !(v0[1] * v0[1] + v0[2] * v0[2] + v0[3] * v0[3] < one(v0[1]))
+        u = velocity_momentum(ifelse(fast, vdrift, v0))
         @inbounds begin
             s.cell[1][slot] = c1
             s.cell[2][slot] = c2
@@ -343,6 +371,7 @@ end
             s.status[slot] = ALIVE
         end
     end
+    @inbounds flags[i] = ifelse(fast, Int32(1), Int32(0))
 end
 
 # After a refill of `nnew` particles: the count, capped at the capacity, and the lost particles.
@@ -355,30 +384,44 @@ end
 end
 
 """
-    load_window_columns!(s, grid, load, col0, ncol, origin; workgroupsize = nothing)
+    load_window_columns!(s, grid, load, lost, col0, ncol, origin; fast = nothing, flags = nothing, workgroupsize = nothing)
 
 Load the fresh plasma of `load` (a species' entry of the [`WindowFrame`](@ref)) on the window
 columns `col0 … col0 + ncol − 1` at the window position `origin`, into the slots behind
 `s.count` (which must be the alive count, as after a sort), and advance the count; fresh particles
-beyond the capacity are counted in `lost` instead. All on the device.
+beyond the capacity are counted in `lost` instead. A fresh particle whose drawn speed reaches c
+is loaded at the drift velocity and, with a device counter `fast`, counted there (through the
+scratch `flags` of at least one entry per fresh particle, allocated when `nothing`). All on the
+device.
 """
-function load_window_columns!(s, grid, load, lost, col0, ncol, origin; workgroupsize = nothing)
+function load_window_columns!(s, grid, load, lost, col0, ncol, origin; fast = nothing, flags = nothing, workgroupsize = nothing)
     n2 = ncells(grid)[2]
     nnew = ncol * n2 * prod(load.ppc)
     be = get_backend(s)
-    launcher(refill_kernel!, be, workgroupsize)(s, s.count, RampedCosine(), load.p, cellsize(grid), load.ppc, Int32(col0),
+    flags === nothing && (flags = KernelAbstractions.zeros(be, Int32, nnew))
+    launcher(refill_kernel!, be, workgroupsize)(s, flags, s.count, RampedCosine(), load.p, cellsize(grid), load.ppc, Int32(col0),
                                                 Int32(n2), Int32(origin), load.vdrift, load.vth, load.key,
                                                 Int32(capacity(s)); ndrange = nnew)
     launcher(refill_count_kernel!, be, workgroupsize)(s.count, lost, Int32(nnew), Int32(capacity(s)); ndrange = 1)
+    fast === nothing || sum!(fast, view(flags, 1:nnew); init = false)
     return s
 end
 
-# The initial load of a window problem's species i (step2d.jl's `initialize!`): the window's own
-# loader on its plasma columns 1 … injection_column at its first position, the engine's quiet start at the
-# same cells as a static load, the velocities converted to momenta in the same kernel.
-function load_window_species!(w::WindowFrame, i, s, grid, wgs)
+# The initial load of a window problem's species i, description d (step2d.jl's `initialize!`):
+# the window's own loader on its plasma columns 1 … injection_column at its first position, the
+# engine's quiet start at the same cells as a static load, the velocities converted to momenta in
+# the same kernel. A drawn speed that reaches c is refused here, as `check_subluminal` refuses it
+# in a static load (#257): one device count, read on the host outside the step (§0.4).
+function load_window_species!(w::WindowFrame, i, s, grid, wgs, d)
     fill!(s.count, Int32(0))
-    load_window_columns!(s, grid, w.loads[i], w.lost[i], 1, injection_column(w), 0; workgroupsize = wgs)
+    fill!(w.fast[i], Int32(0))
+    load_window_columns!(s, grid, w.loads[i], w.lost[i], 1, injection_column(w), 0; fast = w.fast[i], flags = w.flags[i],
+                         workgroupsize = wgs)
+    nfast = Int(Array(w.fast[i])[1])
+    nfast == 0 ||
+        throw(ArgumentError("species $(d.name): $nfast of the speeds drawn for the moving window's initial load reach c (in c); " *
+                            "the thermal spread is drawn in velocity, drift + thermal·z with z standard normal, " *
+                            "so its Gaussian tail can pass c: lower the thermal speed or the drift"))
     return s
 end
 
@@ -400,10 +443,10 @@ function shift_window!(st::EMState{2}, s_new::Integer)
         copyto!(st.ρ, a)
         launcher(shift_columns_kernel!, get_backend(a), wgs)(a, st.ρ, Int32(g + 1), Int32(g + n[1]), a === fields.Ex; ndrange = size(a))
     end
-    for (s, ws, load, lost) in zip(st.species, st.ws, w.loads, w.lost)
+    for (s, ws, load, lost, fast, flags) in zip(st.species, st.ws, w.loads, w.lost, w.fast, w.flags)
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
         sort_by_cell!(s, grid, ws; workgroupsize = wgs)
-        load_window_columns!(s, grid, load, lost, injection_column(w), 1, s_new; workgroupsize = wgs)
+        load_window_columns!(s, grid, load, lost, injection_column(w), 1, s_new; fast, flags, workgroupsize = wgs)
     end
     kinetic!(st)
     return st

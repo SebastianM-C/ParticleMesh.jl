@@ -10,21 +10,30 @@
 include(joinpath(@__DIR__, "..", "em1d", "common.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble_report.jl"))
-using .Observables: damping_from_peaks, growth_from_window
+using .Observables: damping_from_peaks, growth_from_window, filtered_gauss
 using .Ensemble
 using .EnsembleReport
 using Statistics: mean, median, std
 
 const CROSSCODE = joinpath(REPO, "scripts", "crosscode")
+"The time of the loaded momenta (`initialize!`'s `momenta_at`): −Δt/2, the reference codes' convention, recorded in the manifest."
+const MOMENTA_AT = :t_minus_half
+"Where the density profile is sampled (`initialize!`'s `density_at`): at cell centres, as Smilei and PIConGPU sample it, recorded in the manifest."
+const DENSITY_AT = :cell_centre
 """
-The committed reference runs this script compares with: WP-019's single Smilei runs and WP-017's
-four-seed Landau ensembles of Smilei and PIConGPU (FP64). The two reference ensembles differ by
-1.5 combined errors (reports/crosscode-picongpu/), so their numbers are recorded, not thresholds.
+The committed reference runs this script compares with: WP-019's single Smilei runs and, for the
+seeded Landau case, the reference ensembles of Smilei and PIConGPU (FP64) on the same case file,
+chosen by the first 8 hex of its SHA-256: WP-017's four seeds (`bc8fd6af`) or WP-025's 32
+(`431f4192`). The reference ensembles' difference is recorded, not a threshold (A7).
 """
 const SMILEI = Dict("landau-oblique-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-landau-oblique-2d-c8709f77"),
-                                            ensembles = ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-bc8fd6af"),
-                                                         "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-bc8fd6af"))),
-                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = ()))
+                                            ensembles = Dict(h => ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-$h"),
+                                                                   "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-$h"))
+                                                             for h in ("bc8fd6af", "431f4192"))),
+                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = Dict()))
+
+"The reference ensembles of a run's case file (`case.toml` in the run directory), by its hash; none for an unknown file."
+reference_ensembles(name, pmdir) = get(SMILEI[name].ensembles, RunManifest.file_hash(joinpath(pmdir, "case.toml"))[1:8], ())
 
 "The seeds of a case: its `seeds` list, or its single `random_seed`."
 case_seeds(case) = haskey(case["numerics"], "seeds") ? Int.(case["numerics"]["seeds"]) : [Int(case["numerics"]["random_seed"])]
@@ -58,6 +67,32 @@ function gauss_2d(st)
     return (; gauss = res / maximum(abs, ρ[I1, I2]), divB = Bmax > 0 ? divB / Bmax : 0.0, gauss_absolute = res, rho_deviation = dev)
 end
 
+"""
+    gauss_snapshot(st) -> (; r, ρ)
+
+The plain Gauss residual r = D⁻ₓEx + D⁻_yEy − (ρ − mean ρ) and the charge density ρ (deposited
+now in the state's mode, folded) at every interior node, as host arrays: the input of the
+filtered Gauss check (`filtered_gauss`, WP-038).
+"""
+function gauss_snapshot(st)
+    (; grid, numerics) = st
+    T = eltype(st.ρ)
+    ρd = field(get_backend(st.ρ), T, grid)
+    for (s, ws) in zip(st.species, st.ws)
+        deposit!(numerics.mode, ρd, s, numerics.shape, (RHO_STAGGER, RHO_STAGGER), grid, ws)
+    end
+    fold_guards!(ρd, grid)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    I1, I2 = (g + 1):(g + n[1]), (g + 1):(g + n[2])
+    ρ, Ex, Ey = Array(ρd), Array(st.fields.Ex), Array(st.fields.Ey)
+    ρ̄ = sum(ρ[I1, I2]) / prod(n)
+    r = [(Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2] - (ρ[i, j] - ρ̄) for i in I1, j in I2]
+    return (; r = Float64.(r), ρ = Float64.(ρ[I1, I2]))
+end
+
+"Whether a case registers the filtered Gauss check (`signal = \"filtered_gauss\"`)."
+has_filtered_gauss(case) = any(o -> o["signal"] == "filtered_gauss", values(case["observables"]))
+
 "The problem of `case` at `seed`, optionally scaled to `ppc` and `cells` per axis (Δt at the case's Courant fraction)."
 function problem(case, seed; ppc = nothing, cells = nothing)
     cells === nothing && return problem_from_case(case, Float64; seed, ppc)
@@ -67,22 +102,38 @@ function problem(case, seed; ppc = nothing, cells = nothing)
 end
 
 """
-    simulate(case, seed; ppc, cells) -> NamedTuple
+    simulate(case, seed; ppc, cells, momenta_at = MOMENTA_AT, density_at = DENSITY_AT) -> NamedTuple
 
-Run one seed of a case in Reference mode, Float64: the field energies at the scalar cadence, the
-mode coefficients at the field cadence (entry k of the histories is t = (k − 1)Δt, as Smilei's
-iteration k − 1), the total energy at integer times, Gauss's law and ∇·B before and after the
+Run one seed of a case in Reference mode, Float64, by default started as Smilei and PIConGPU start
+(the loaded momenta at −Δt/2, the density sampled at cell centres: `MOMENTA_AT`, `DENSITY_AT`;
+the keywords are `initialize!`'s, and its defaults are WP-023's start): the
+field energies at the scalar cadence, the mode coefficients at the field cadence (entry k of the
+histories is t = (k − 1)Δt, as Smilei's iteration k − 1), the total energy at integer times, Gauss's law and ∇·B before and after the
 run, the field of the case's projection at the first and last step, and the wall time of the steps.
 """
-function simulate(case, seed; ppc = nothing, cells = nothing)
+function simulate(case, seed; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     prob = problem(case, seed; ppc, cells)
     st = EMState(prob, numerics_from_case(case; mode = Reference()))
-    initialize!(st, prob)
+    initialize!(st, prob; momenta_at, density_at)
     first_check = gauss_2d(st)
     snap(c) = (g = guards(st.grid); n = ncells(st.grid); Array(getfield(st.fields, c))[(g + 1):(g + n[1]), (g + 1):(g + n[2])])
     comp = case["name"] == "weibel-2d" ? :Bx : :Ex
     snap0 = snap(comp)
-    wall = @elapsed run!(st, params(prob), prob.nsteps)
+    # a case with the filtered Gauss check is run in chunks of the field cadence, with the residual
+    # and ρ taken at t = 0 and after every chunk (the step does not depend on the chunking)
+    gsnaps, gtimes = [], Float64[]
+    if has_filtered_gauss(case)
+        fe = case["diagnostics"]["fields_every"]
+        push!(gsnaps, gauss_snapshot(st)); push!(gtimes, 0.0)
+        wall = 0.0
+        for k0 in 1:fe:prob.nsteps
+            m = min(fe, prob.nsteps - k0 + 1)
+            wall += @elapsed run!(st, params(prob), m; first = k0)
+            push!(gsnaps, gauss_snapshot(st)); push!(gtimes, (k0 + m - 1) * Float64(prob.dt))
+        end
+    else
+        wall = @elapsed run!(st, params(prob), prob.nsteps)
+    end
     last_check = gauss_2d(st)
     h = histories(st)
     d = case["diagnostics"]
@@ -95,7 +146,8 @@ function simulate(case, seed; ppc = nothing, cells = nothing)
               Ey = cx(h.Ey_re, h.Ey_im), total = total_energy_history(h), K = kinetic_energy_history(h), dt, wall, seed,
               nsteps = prob.nsteps, particles = sum(alive_count, st.species), checks = (initial = first_check, final = last_check),
               snapshots = (component = String(comp), first = snap0, last = snap(comp), length = Float64.(prob.length)),
-              cells = prob.cells, ppc = first(prob.species).ppc)
+              cells = prob.cells, ppc = first(prob.species).ppc, gauss = (; t = gtimes, snaps = gsnaps),
+              passes = st.numerics.filter.passes)
 end
 
 "The series a pre-registered observable fits, from a simulation (the module's diagnostics in place of Smilei's scalars and dumps)."
@@ -124,6 +176,10 @@ function observe(case, sim)
     fits, results, series = Dict{String,Any}(), Dict{String,Any}(), Dict{String,Any}()
     for key in order
         obs = observables[key]
+        if obs["signal"] == "filtered_gauss"
+            results[key] = observe_filtered_gauss(obs, sim)
+            continue
+        end
         t, U = series[key] = observable_series(obs, sim)
         r = Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"])
         if obs["method"] == "peak_envelope"
@@ -149,6 +205,27 @@ function observe(case, sim)
         results[key] = r
     end
     return results, fits, series
+end
+
+"""
+    observe_filtered_gauss(obs, sim) -> Dict
+
+The filtered Gauss observable on a simulation's snapshots, by the rule of `analyze.jl`'s
+`filtered_gauss_observable`: the deviation between the first and the last snapshot, its largest
+over the snapshots, and the deviations for one pass fewer and one more.
+"""
+function observe_filtered_gauss(obs, sim)
+    S, p = sim.gauss.snaps, sim.passes
+    per = [filtered_gauss(S[1].r, S[1].ρ, S[k].r, S[k].ρ, p; floor = obs["floor"]) for k in 2:length(S) if S[k].ρ != S[1].ρ]
+    g = per[end]
+    tol = Float64(obs["tolerance"])
+    return Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],
+        "passes" => p, "measured" => g.deviation, "t" => sim.gauss.t[end],
+        "measured_max_over_outputs" => maximum(x -> x.deviation, per),
+        "deviation_other_pass_counts" => Dict(string(q) => v for (q, v) in g.deviation_other),
+        "charge_change_scale" => g.charge_change_scale, "modes_above_floor" => g.modes,
+        "tolerance" => tol, "within_tolerance" => g.deviation <= tol, "outputs" => length(S),
+        "one_minus_H" => g.one_minus_H, "ratio" => g.ratio)
 end
 
 "The standard plot set of one seed (F3), PNG plus JSON sidecar in `dir/plots/`."
@@ -183,6 +260,19 @@ function standard_plots(dir, case, sim, results, fits, series)
         axislegend(ax; position = :rb)
         save_plot(out, plotname, fig, side)
     end
+    for key in sort([k for (k, o) in observables if o["signal"] == "filtered_gauss" && haskey(results, k)])
+        r = results[key]
+        fig = Figure(size = (700, 600))
+        ax = Axis(fig[1, 1]; xlabel = "1 − H(m), $(r["passes"]) pass(es)", ylabel = "|Δr̂(m)| / |Δρ̂(m)|",
+                  title = "$name, ParticleMesh, seed $(sim.seed): Gauss residual change per mode, t = $(round(r["t"]; digits = 2))")
+        scatter!(ax, r["one_minus_H"], r["ratio"]; color = :black, markersize = 4, label = "modes, |Δρ̂| > $(observables[key]["floor"]) max")
+        lines!(ax, [0.0, 1.0], [0.0, 1.0]; color = :blue, linestyle = :dash, label = "filtered Gauss law")
+        axislegend(ax; position = :lt)
+        save_plot(out, "filtered-gauss", fig, Dict{String,Any}(
+            "plot" => "per Fourier mode m above the floor, |Δr̂|/|Δρ̂| between the first and last snapshots against 1 − H(m) of the run's filter",
+            "passes" => r["passes"], "one_minus_H" => r["one_minus_H"], "ratio" => r["ratio"], "deviation" => r["measured"],
+            "deviation_other_pass_counts" => r["deviation_other_pass_counts"]))
+    end
     drift = (sim.total .- sim.total[1]) ./ sim.total[1]
     fig = Figure(size = (800, 500))
     ax = Axis(fig[1, 1]; xlabel = "t [1/ω₀]", ylabel = "(U − U(0)) / U(0)", title = "$name, ParticleMesh, seed $(sim.seed): total energy")
@@ -203,9 +293,9 @@ function standard_plots(dir, case, sim, results, fits, series)
 end
 
 "One seed of a case into `dir`: series, observables, checks and the standard plots."
-function run_one(dir, case, seed; ppc = nothing, cells = nothing)
+function run_one(dir, case, seed; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     mkpath(dir)
-    sim = simulate(case, seed; ppc, cells)
+    sim = simulate(case, seed; ppc, cells, momenta_at, density_at)
     results, fits, series = observe(case, sim)
     out = Dict{String,Any}("case" => case["name"], "code" => "particlemesh", "seed" => seed, "observables" => results,
         "checks" => Dict("gauss_relative_initial" => sim.checks.initial.gauss, "gauss_relative_final" => sim.checks.final.gauss,
@@ -235,6 +325,7 @@ function run_case(name; ppc = nothing, cells = nothing)
     dir = run_dir("pm-$name", @__FILE__, name; work_package = "WP-023", extra_inputs = inputs, prefix = "em2d",
         params = Dict{String,Any}("case" => name, "seeds" => seeds, "element_type" => "Float64", "mode" => "Reference",
                                   "module" => "ParticleMeshElectromagnetic", "current" => "Esirkepov",
+                                  "momenta_at" => string(MOMENTA_AT), "density_at" => string(DENSITY_AT),
                                   "scaled" => ppc === nothing && cells === nothing ? "no" : "ppc = $ppc, cells = $cells"))
     cp(joinpath(CASES, "$name.toml"), joinpath(dir, "case.toml"))
     coeffs, per_run, walls, tC, sims = Vector{ComplexF64}[], [], Float64[], nothing, nothing
@@ -273,7 +364,7 @@ fmt(x; d = 4) = x === nothing ? "none" : string(round(x; sigdigits = d))
 
 The ParticleMesh run against the committed reference runs of its case: every per-run observable
 against WP-019's single Smilei run (seed 20261031) and, for the seeded Landau case, against each
-reference ensemble of WP-017 (Smilei and PIConGPU FP64, same case file and seeds): the per-seed
+reference ensemble of the same case file and seeds (`reference_ensembles`): the per-seed
 observables (difference of the seed means in combined errors of the means) and the ensembles
 (`compare_ensembles`, in units of the reference's seed spread and of the combined jackknife
 error), with an overlay of the three ensembles. Writes `dir/compare/`. Measurements, not
@@ -303,7 +394,9 @@ function compare(pmdir)
                              (b - a) / hypot(s["measured_stderr"], o["measured_stderr"]))
     end
     side["single_run_seed_$(first_seed)"] = single
-    if seeded && !isempty(ref.ensembles)
+    ensembles = reference_ensembles(name, pmdir)
+    seeded && haskey(SMILEI[name].ensembles, "bc8fd6af") && isempty(ensembles) && error("compare: no reference ensembles for the case file of $pmdir")
+    if seeded && !isempty(ensembles)
         seeds = case_seeds(case)
         series(d) = JSON.parsefile(joinpath(d, "ensemble-series.json"))
         pm = series(pmdir)
@@ -312,9 +405,9 @@ function compare(pmdir)
         st(v) = length(ok(v)) >= 2 ? (mean(ok(v)), std(ok(v)), length(ok(v))) : nothing
         fig = Figure(size = (900, 550))
         ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|⟨k̂·Ê⟩|² of mode $(case["wavevector"]["mode"]), seed mean",
-                  title = "$name: four-seed ensembles of three codes")
+                  title = "$name: $(length(seeds))-seed ensembles of three codes")
         overlay = Dict{String,Any}("plot" => "ensemble |⟨k̂·Ê⟩|² of each code versus time, log scale", "theory" => B.result["theory"])
-        for (code, dir) in ref.ensembles
+        for (code, dir) in ensembles
             per = Dict{String,Any}()
             for k in ("damping_rate_mode", "energy_ratio_mode")
                 sv = [JSON.parsefile(joinpath(dir, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]

@@ -22,7 +22,8 @@ include("window_cases.jl")     # WP-028: the moving window's problems
         include("pushers_sciml.jl")
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
-        include("initialize.jl")    # T-420, the time of the loaded momenta
+        include("initialize.jl")    # T-420, the time of the loaded momenta; T-522, where the density is sampled
+        include("subluminal.jl")    # T-480, T-481: a load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
         include("physics.jl")
         include("determinism.jl")
         include("gradient.jl")
@@ -32,7 +33,7 @@ include("window_cases.jl")     # WP-028: the moving window's problems
         include("antenna.jl")       # WP-026: T-400 to T-409
         include("filter.jl")        # WP-029: T-440 to T-445, after em2d.jl and em2d_step.jl (their helpers)
         include("boundaries.jl")    # WP-027: T-450 to T-457, after em2d_step.jl (its helpers) and determinism.jl (T-454's worker runs)
-        include("window.jl")        # WP-028: T-470 to T-478
+        include("window.jl")        # WP-028: T-470 to T-479
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET

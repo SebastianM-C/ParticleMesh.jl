@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Work package | WP-028 (goals A2, A3, A4, A7, A8) |
-| Commits | the window, its tests and the script `7e1a0d6`; the script's import `fd63c19`; the plot floor `3879cc4`, the run's commit |
-| Runs | `em2d-moving-window-20261104T025337` (commit `3879cc4`, `dirty = false`) |
-| Input hashes | SHA-256 of every input file in the run's manifest: `wp-028-moving-window/em2d-moving-window-20261104T025337/manifest.toml` |
-| Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.80GHz (the model string the CPU reports), 4 vCPUs of a shared cloud VM, other Julia sessions running beside it; 1 thread |
-| Figures | `wp-028-moving-window/em2d-moving-window-20261104T025337/window_vacuum.png` and `window_gauss.png`, each with its JSON sidecar (every row) |
+| Commits | the window, its tests and the script `7e1a0d6`; the script's import `fd63c19`; the plot floor `3879cc4`; the warm-plasma front `d354572`; `c21573f`, the run's commit |
+| Runs | `em2d-moving-window-20261105T115422` (commit `c21573f`, `dirty = false`) |
+| Input hashes | SHA-256 of every input file in the run's manifest: `wp-028-moving-window/em2d-moving-window-20261105T115422/manifest.toml` |
+| Environment | Julia 1.13.3, KernelAbstractions 0.10 CPU backend; Intel Xeon Processor @ 2.10GHz (the model string the CPU reports), 4 vCPUs of a cloud VM; 1 thread |
+| Figures | `wp-028-moving-window/em2d-moving-window-20261105T115422/window_vacuum.png` and `window_gauss.png`, each with its JSON sidecar (every row) |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review |
 
 ## 1. Setup
@@ -31,7 +31,7 @@ The vacuum case is the same without the plasma. Its static twin is the same prob
 
 ## 2. A vacuum pulse with and without the window
 
-![per column and against time, the largest difference of E and B between the window and its static twin](wp-028-moving-window/em2d-moving-window-20261104T025337/window_vacuum.png)
+![per column and against time, the largest difference of E and B between the window and its static twin](wp-028-moving-window/em2d-moving-window-20261105T115422/window_vacuum.png)
 
 - **Before the window moves.** The two runs have the same back edge. They differ only where the pulse's precursor and Gaussian tail reach the window's front edge, which the twin does not have: at most 1.7 × 10⁻¹⁴ of the largest field (T-472).
 - **After it moves.** The difference is largest at the back edge, 0.15 of the largest field in the back 8 columns. In two dimensions a pulse leaves a trailing field behind it, and the window's field-free outside reflects it there. The difference falls by about an order of magnitude per two columns towards the front. Through Yee's stencil it can reach forward one cell per step, while the window moves 0.67 cells per step. It reaches roundoff by column 20. On columns 25 to 64, the comparison T-472 makes, it is at most 1.4 × 10⁻¹⁴ (65·eps). Ahead of the pulse it falls to 10⁻¹⁹, where both fields are tiny.
@@ -39,7 +39,7 @@ The vacuum case is the same without the plasma. Its static twin is the same prob
 
 ## 3. Gauss's law across shifts
 
-![per column, the largest Gauss residual over the run, and against time off the edges and on the back nodes](wp-028-moving-window/em2d-moving-window-20261104T025337/window_gauss.png)
+![per column, the largest Gauss residual over the run, and against time off the edges and on the back nodes](wp-028-moving-window/em2d-moving-window-20261105T115422/window_gauss.png)
 
 The laser drives the plasma to |u| ≈ 0.4. The window moves 92 cells, more than its 64, so the whole plasma in it at the end has entered through the front.
 
@@ -62,26 +62,27 @@ How the residual was found and removed, in the order the measurements showed it:
 - **T-471.** A cold plasma at rest stays what it is while the window renews it, 29 shifts of a 24-column window. The fields stay +0.0. The window holds exactly the particle set of a fresh load at its position. ρ = ρ₀(s) holds bit for bit in Reference mode and to roundoff with Fast mode's atomics. The plateau's nodes all carry the same bits.
 - **T-474.** The Reference step is bitwise across reruns and launch shapes 32 and 256 in all three types. Fast and Reference fields agree to 1.0 × 10⁻¹⁵ relative after 120 steps.
 - **T-475.** The field energy after 30 steps of a plasma drifting into the window, against the ramp length: ForwardDiff agrees with the finite differences to 1.0 × 10⁻⁸ relative, against an fd_scan floor of 3.7 × 10⁻⁷.
-- **T-476.** Exactly the particles that cross the back edge are retired, and Gauss's law does not change on nodes 3 … n₁ in those steps. A dilute plasma streaming forward at 0.5 c overflows a buffer with no headroom: 276 particles are counted as lost. With a headroom of 3/2 none is lost.
+- **T-476.** A plasma drifting backwards at 0.9 c crosses the back edge between shifts (36 particles in 20 steps). Exactly the particles that cross it are retired, and Gauss's law does not change on nodes 3 … n₁ in those steps. A dilute plasma streaming forward at 0.5 c overflows a buffer with no headroom: 228 particles are counted as lost. With a headroom of 3/2 none is lost.
 - **T-477.** The input checks.
 - **T-478.** The filter does not wrap along x. The allocation per window step is the same at 4 and 36 particles per cell and at 3 × 3 times the grid: 9856 bytes for three steps.
 
 ## 5. The cost of a shift
 
-On the run's state after 150 steps (4032 particles, 64 × 16 cells, one thread):
+On the run's state after 150 steps (3904 particles, 64 × 16 cells, one thread):
 
 | | median |
 |---|---|
-| a step without a shift | 3.6 ms |
-| a step with a shift | 4.9 ms |
-| `shift_window!` alone | 1.3 ms |
+| a step without a shift | 3.7 ms |
+| a step with a shift | 4.8 ms |
+| `shift_window!` alone | 1.1 ms |
 
-Two steps in three shift at this Courant number. The shift costs about a third of a step: six field copies, a sort, and the refill. These are single-run timings on a shared VM, not benchmark numbers. A ring buffer would avoid the copies (`questions/wp-028-moving-window.md` §2).
+Two steps in three shift at this Courant number. The shift costs about a quarter of a step: six field copies, a sort, and the refill. These are single-run timings on a shared VM, not benchmark numbers. A ring buffer would avoid the copies (`questions/wp-028-moving-window.md` §2).
 
 ## 6. Verification status and open issues
 
-- **Not run.** The 1- and 4-thread bitwise check (T-474 has no worker run), the CUDA backend and the harness.
+- **Not run.** The 1- and 4-thread bitwise check (T-474 has no worker run) and the harness.
+- **CUDA.** T-560 reruns T-470 to T-476, the filter of T-478 and T-479 on CUDA with the CPU's tolerances, T-561 bounds the CPU–CUDA difference of the window's fields, and T-562 the allocation per step (RTX 4080 SUPER).
 - **The back edge.** The field-free outside reflects the trailing field that reaches it. A PML at the back (A2's "later") would remove the 0.15 difference of §2.
 - **The static phase.** Before the window starts moving its front is a fixed edge, and a particle that reaches it is retired with its charge; the shifts would carry the residual into the box. So `EMProblem` refuses a window with `start > 0` for a species with a drift or a thermal speed (T-477). A cold plasma at rest can still be set moving by a laser before the window starts; a case must start the window before the laser reaches the plasma at the front.
 - **The case files.** There is no schema for the window and the profile yet, and the cross-code generators do not map the window's axis.
-- **The thermal load.** The window's loader converts drawn velocities to γv in its own kernel, so a refusal of drawn speeds ≥ c in `initialize!` (#257) does not cover the window's load.
+- **The thermal load.** The loader draws the thermal spread in velocity, so its Gaussian tail can pass c (#257). The window's initial load refuses such a draw with an `ArgumentError`, as `initialize!` does for a static load. A refill cannot raise inside a step (§0.4), so it loads such a particle at the drift velocity, keeping its charge, and counts it (`window_superluminal`, T-479). Drawing the spread in momentum would remove the case; that is #330.
