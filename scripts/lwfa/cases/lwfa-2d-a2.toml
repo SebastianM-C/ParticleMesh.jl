@@ -21,6 +21,7 @@ cells = [1536, 256]               # the window ahead of the injection plane (Smi
 antenna_cells = 40                # ParticleMesh only: its columns behind the antenna plane
 transverse = "periodic"           # both codes; the box is 7.2 waists wide
 smilei_patches = [64, 8]          # 24 × 32 cells per patch; Smilei's window moves by a patch
+picongpu_devices = 5              # PIConGPU: local domains along y on the one GPU, a window of four and the hidden one
 
 [time]
 courant = 0.95                    # dt = courant / sqrt(1/dx² + 1/dy²), Yee's 2D limit

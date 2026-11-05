@@ -3,12 +3,17 @@
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl prepare <case.toml> <tag>     # scripts/runs/lwfa-<tag>/ and box-request.toml
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl run-pm <dir>                  # ParticleMesh into <dir>/summary.json, maps.h5
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-smilei <dir>        # Smilei's dumps into the same format
+#   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-picongpu <dir>      # PIConGPU's dumps into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare <runs dir> <out dir>  # the comparison, figures and sidecars
 #
-# A prepared run has four directories: `smilei-vacuum`, `smilei-plasma`, `pm-vacuum`, `pm-plasma`.
-# The vacuum pair checks that the two codes launch the same pulse (A5's "the injected field should
-# be compared in vacuum before any plasma run", `questions/wp-017-lwfa-case.md` §3); the plasma pair
-# is the comparison.
+# A prepared run has six directories: `smilei-vacuum`, `smilei-plasma`, `pm-vacuum`, `pm-plasma`,
+# `picongpu-vacuum`, `picongpu-plasma`. The vacuum pairs check that the codes launch the same pulse
+# (A5's "the injected field should be compared in vacuum before any plasma run",
+# `questions/wp-017-lwfa-case.md` §3); the plasma runs are the comparison. The CPU box request
+# covers ParticleMesh and Smilei; the PIConGPU directories go to the GPU runner (`command: picongpu
+# scripts/runs/lwfa-<tag>/picongpu-<kind>`), and `compare` takes PIConGPU in when its summaries
+# exist. How PIConGPU is matched, its axes swapped (its window moves along y), is in
+# scripts/lwfa/picongpu.jl.
 #
 # How the two codes are matched (each line a choice, the case file holds the numbers):
 #
@@ -347,7 +352,7 @@ end
 
 # --- prepare --------------------------------------------------------------------------------------
 
-"Write the four run directories of `case_path` under scripts/runs/lwfa-<tag>/ and its CPU box request."
+"Write the six run directories of `case_path` under scripts/runs/lwfa-<tag>/ and the CPU box request of ParticleMesh and Smilei."
 function prepare(case_path, tag)
     case = TOML.parsefile(case_path)
     root = joinpath(REPO, "scripts", "runs", "lwfa-$tag")
@@ -368,6 +373,14 @@ function prepare(case_path, tag)
         write_manifest(dir; root = REPO, inputs,
                        extra = Dict{String,Any}("run_id" => "lwfa-$tag/$kind", "code" => startswith(kind, "smilei") ? "Smilei v5.1" : "ParticleMesh",
                                                 "case" => case["name"], "generator" => "scripts/lwfa/lwfa.jl"))
+    end
+    for kind in PIC_KINDS
+        dir = joinpath(root, kind)
+        mkpath(dir)
+        cp(case_path, joinpath(dir, "case.toml"))
+        plasma = endswith(kind, "plasma")
+        write(joinpath(dir, "kind.txt"), plasma ? "plasma\n" : "vacuum\n")
+        prepare_picongpu(dir, case_path, case; plasma, tag, kind)
     end
     rel(k) = "scripts/runs/lwfa-$tag/$k"
     req = IOBuffer()
@@ -415,67 +428,89 @@ function centroid_x(o, dx)
     return sum(e) > 0 ? sum(m .* e) / sum(e) * dx : nothing
 end
 
-"Compare the four summaries under `runs` (pm-*, smilei-*) and write the figures, sidecars and `comparison.json` into `out`."
+# The rows of one medium's comparison of ParticleMesh (`pm`) with another code (`other`), per output both hold.
+function compare_rows(pm, other, medium, d, λp)
+    bystep = Dict(o["step"] => o for o in other)
+    rows = Dict{String,Any}[]
+    for o in pm
+        s = get(bystep, o["step"], nothing)
+        s === nothing && continue
+        env = common_points(o["Ey_envelope"], o["Ey_m0"], s["Ey_envelope"], s["Ey_m0"])
+        r = Dict{String,Any}("step" => o["step"], "t" => o["t"],
+                             "Ey_absmax" => [o["Ey_absmax"], s["Ey_absmax"]],
+                             "peak_x" => [peak_m(o) * d.dx, peak_m(s) * d.dx],
+                             "centroid_x" => Any[centroid_x(o, d.dx), centroid_x(s, d.dx)],
+                             "envelope_relrms" => isempty(env.m) ? nothing : relrms(env.a, env.b))
+        if medium == "plasma"
+            # the wake: from the laser's peak back two plasma wavelengths, on the axis
+            mp = peak_m(o)
+            wake = common_points(o["Ex_axis"], o["Ex_m0"], s["Ex_axis"], s["Ex_m0"];
+                                 mlo = mp - round(Int, 2λp / d.dx), mhi = mp)
+            rho = common_points(o["rho_axis"], o["rho_m0"], s["rho_axis"], s["rho_m0"];
+                                mlo = mp - round(Int, 2λp / d.dx), mhi = mp)
+            if !isempty(wake.m)
+                r["wake_Ex_relrms"] = relrms(wake.a, wake.b)
+                r["wake_Ex_min"] = [minimum(wake.a), minimum(wake.b)]
+                r["wake_Ex_max"] = [maximum(wake.a), maximum(wake.b)]
+                r["wake_rho_relrms"] = relrms(rho.a, rho.b)
+            end
+            r["ekin_max_pm"] = get(o, "ekin_max", nothing)
+        end
+        push!(rows, r)
+    end
+    return rows
+end
+
+"The codes whose summaries are under `runs`: ParticleMesh and Smilei always, PIConGPU when both its summaries exist."
+function present_codes(runs)
+    codes = ["pm", "smilei"]
+    all(k -> isfile(joinpath(runs, k, "summary.json")), PIC_KINDS) && push!(codes, "picongpu")
+    return codes
+end
+
+"""
+Compare the summaries under `runs` (pm-*, smilei-*, and picongpu-* when present) and write the
+figures, sidecars and `comparison.json` into `out`. `comparison.json` keeps ParticleMesh against
+Smilei under `vacuum` and `plasma`, and ParticleMesh against PIConGPU under `picongpu_vacuum` and
+`picongpu_plasma`; each pair is [ParticleMesh, other].
+"""
 function compare(runs, out)
     mkpath(out)
     case = TOML.parsefile(joinpath(runs, "pm-plasma", "case.toml"))
     d = derived(case)
     λp = 2π / sqrt(case["plasma"]["density"])
-    S = Dict(k => load_summary(joinpath(runs, k)) for k in KINDS)
-    result = Dict{String,Any}("case" => case["name"], "dx" => d.dx, "dt" => d.dt, "lambda_p" => λp)
+    codes = present_codes(runs)
+    kinds = ["$c-$m" for c in codes for m in ("vacuum", "plasma")]
+    S = Dict(k => load_summary(joinpath(runs, k)) for k in kinds)
+    result = Dict{String,Any}("case" => case["name"], "dx" => d.dx, "dt" => d.dt, "lambda_p" => λp, "codes" => codes)
     for medium in ("vacuum", "plasma")
-        pm, sm = S["pm-$medium"]["outputs"], S["smilei-$medium"]["outputs"]
-        bystep = Dict(o["step"] => o for o in sm)
-        rows = Dict{String,Any}[]
-        for o in pm
-            s = get(bystep, o["step"], nothing)
-            s === nothing && continue
-            env = common_points(o["Ey_envelope"], o["Ey_m0"], s["Ey_envelope"], s["Ey_m0"])
-            r = Dict{String,Any}("step" => o["step"], "t" => o["t"],
-                                 "Ey_absmax" => [o["Ey_absmax"], s["Ey_absmax"]],
-                                 "peak_x" => [peak_m(o) * d.dx, peak_m(s) * d.dx],
-                                 "centroid_x" => Any[centroid_x(o, d.dx), centroid_x(s, d.dx)],
-                                 "envelope_relrms" => isempty(env.m) ? nothing : relrms(env.a, env.b))
-            if medium == "plasma"
-                # the wake: from the laser's peak back two plasma wavelengths, on the axis
-                mp = peak_m(o)
-                wake = common_points(o["Ex_axis"], o["Ex_m0"], s["Ex_axis"], s["Ex_m0"];
-                                     mlo = mp - round(Int, 2λp / d.dx), mhi = mp)
-                rho = common_points(o["rho_axis"], o["rho_m0"], s["rho_axis"], s["rho_m0"];
-                                    mlo = mp - round(Int, 2λp / d.dx), mhi = mp)
-                if !isempty(wake.m)
-                    r["wake_Ex_relrms"] = relrms(wake.a, wake.b)
-                    r["wake_Ex_min"] = [minimum(wake.a), minimum(wake.b)]
-                    r["wake_Ex_max"] = [maximum(wake.a), maximum(wake.b)]
-                    r["wake_rho_relrms"] = relrms(rho.a, rho.b)
-                end
-                r["ekin_max_pm"] = get(o, "ekin_max", nothing)
-            end
-            push!(rows, r)
-        end
-        result[medium] = rows
+        result[medium] = compare_rows(S["pm-$medium"]["outputs"], S["smilei-$medium"]["outputs"], medium, d, λp)
+        "picongpu" in codes &&
+            (result["picongpu_$medium"] = compare_rows(S["pm-$medium"]["outputs"], S["picongpu-$medium"]["outputs"], medium, d, λp))
     end
-    result["seconds"] = Dict(k => get(S[k], "seconds", nothing) for k in KINDS)
+    result["seconds"] = Dict(k => get(S[k], "seconds", nothing) for k in kinds)
     open(io -> JSON.print(io, result, 2), joinpath(out, "comparison.json"), "w")
-    plot_laser(out, S, d)
-    plot_wake(out, S, case, d, λp)
-    plot_maps(out, runs, case, d)
-    plot_spectra(out, S)
+    plot_laser(out, S, d, codes)
+    plot_wake(out, S, case, d, λp, codes)
+    plot_maps(out, runs, case, d, codes)
+    plot_spectra(out, S, codes)
     write_manifest(out; root = REPO, extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"]))
     return result
 end
 
-const COLORS = (pm = "#1f77b4", smilei = "#d62728")
+const COLORS = (pm = "#1f77b4", smilei = "#d62728", picongpu = "#2ca02c")
+const NAMES = Dict("pm" => "ParticleMesh", "smilei" => "Smilei", "picongpu" => "PIConGPU")
+const STYLES = Dict("pm" => :solid, "smilei" => :dash, "picongpu" => :dot)
 
-function plot_laser(out, S, d)
+function plot_laser(out, S, d, codes)
     fig = Figure(size = (1100, 420))
     side = Dict{String,Any}()
     for (col, medium) in enumerate(("vacuum", "plasma"))
         ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = "max |E_y| in the box (mₑcω₀/e)", title = "laser amplitude, $medium")
-        for (code, key) in (("ParticleMesh", "pm"), ("Smilei", "smilei"))
+        for key in codes
             o = S["$key-$medium"]["outputs"]
             t, a = Float64[x["t"] for x in o], Float64[x["Ey_absmax"] for x in o]
-            scatterlines!(ax, t, a; label = code, color = getfield(COLORS, Symbol(key)))
+            scatterlines!(ax, t, a; label = NAMES[key], color = getfield(COLORS, Symbol(key)))
             side["$key-$medium"] = Dict("t" => t, "Ey_absmax" => a)
         end
         axislegend(ax; position = :lt)
@@ -483,30 +518,42 @@ function plot_laser(out, S, d)
     save_plot(out, "laser_amplitude", fig, side)
 end
 
-function plot_wake(out, S, case, d, λp)
-    pm, sm = S["pm-plasma"]["outputs"], S["smilei-plasma"]["outputs"]
-    bystep = Dict(o["step"] => o for o in sm)
+function plot_wake(out, S, case, d, λp, codes)
+    pm = S["pm-plasma"]["outputs"]
+    others = [c for c in codes if c != "pm"]
+    bystep = Dict(c => Dict(o["step"] => o for o in S["$c-plasma"]["outputs"]) for c in others)
     picks = pm[Int.(get(case["diagnostics"], "wake_outputs", [6, 9, 13]))]   # in the plasma: t ≈ 500, 800, 1300 for the proposed case
     fig = Figure(size = (1100, 300 * length(picks)))
     side = Dict{String,Any}()
     for (row, o) in enumerate(picks)
-        s = bystep[o["step"]]
         mp = peak_m(o)
         lo, hi = mp - round(Int, 2.5λp / d.dx), mp + round(Int, 0.5λp / d.dx)
         for (col, (key, m0key, lab)) in enumerate((("Ex_axis", "Ex_m0", "E_x on axis"), ("rho_axis", "rho_m0", "ρ_e on axis (n_c e)")))
-            c = common_points(o[key], o[m0key], s[key], s[m0key]; mlo = lo, mhi = hi)
-            ξ = key == "Ex_axis" ? (c.m .- 0.5) .* d.dx : c.m .* d.dx
             ax = Axis(fig[row, col]; xlabel = "x (c/ω₀), lab frame", ylabel = lab, title = "t = $(round(o["t"]; digits = 1))")
-            lines!(ax, ξ, c.a; label = "ParticleMesh", color = COLORS.pm)
-            lines!(ax, ξ, c.b; label = "Smilei", color = COLORS.smilei, linestyle = :dash)
+            # the points every code holds, so that the curves share one x range
+            l, h = lo, hi
+            for c in others
+                s = bystep[c][o["step"]]
+                m = common_points(o[key], o[m0key], s[key], s[m0key]; mlo = l, mhi = h).m
+                isempty(m) || ((l, h) = (first(m), last(m)))
+            end
+            entry = Dict{String,Any}()
+            for c in codes
+                s = c == "pm" ? o : bystep[c][o["step"]]
+                v = common_points(s[key], s[m0key], o[key], o[m0key]; mlo = l, mhi = h)
+                ξ = key == "Ex_axis" ? (v.m .- 0.5) .* d.dx : v.m .* d.dx
+                lines!(ax, ξ, v.a; label = NAMES[c], color = getfield(COLORS, Symbol(c)), linestyle = STYLES[c])
+                entry["x"] = ξ
+                entry[c] = v.a
+            end
             row == 1 && axislegend(ax; position = :lb)
-            side["$(key)_step$(o["step"])"] = Dict("x" => ξ, "pm" => c.a, "smilei" => c.b)
+            side["$(key)_step$(o["step"])"] = entry
         end
     end
     save_plot(out, "wake_axis", fig, side)
 end
 
-function plot_maps(out, runs, case, d)
+function plot_maps(out, runs, case, d, codes)
     stride = Int.(case["diagnostics"]["map_stride"])
     steps = output_steps(case)[Int.(case["diagnostics"]["map_outputs"])]
     k = last(steps)
@@ -514,44 +561,51 @@ function plot_maps(out, runs, case, d)
         g = f["step$k"]
         (rho = read(g["rho"]), m0 = read_attribute(g, "m0"))
     end
-    a, b = read_map("pm"), read_map("smilei")
-    lo, hi = max(a.m0, b.m0), min(a.m0 + size(a.rho, 1), b.m0 + size(b.rho, 1)) - 1
-    ia, ib = (lo:hi) .- a.m0 .+ 1, (lo:hi) .- b.m0 .+ 1
-    sel = 1:stride[1]:length(ia)
+    maps = [read_map(c) for c in codes]
+    lo, hi = maximum(a.m0 for a in maps), minimum(a.m0 + size(a.rho, 1) for a in maps) - 1
+    n = length(lo:hi)
+    sel = 1:stride[1]:n
     ys = 1:stride[2]:d.ny
-    A, B = a.rho[ia[sel], ys], b.rho[ib[sel], ys]
     x, y = collect(lo:hi)[sel] .* d.dx, (collect(ys) .- 1) .* d.dy
     n0 = case["plasma"]["density"]
-    fig = Figure(size = (1100, 700))
+    fig = Figure(size = (1100, 350 * length(codes)))
     side = Dict{String,Any}("x" => x, "y" => y, "t" => k * d.dt)
-    for (row, (M, code)) in enumerate(((A, "ParticleMesh"), (B, "Smilei")))
-        ax = Axis(fig[row, 1]; xlabel = "x (c/ω₀), lab frame", ylabel = "y (c/ω₀)", title = "$code: n_e/n₀ at t = $(round(k * d.dt; digits = 1))")
+    for (row, (a, c)) in enumerate(zip(maps, codes))
+        M = a.rho[((lo:hi) .- a.m0 .+ 1)[sel], ys]
+        ax = Axis(fig[row, 1]; xlabel = "x (c/ω₀), lab frame", ylabel = "y (c/ω₀)", title = "$(NAMES[c]): n_e/n₀ at t = $(round(k * d.dt; digits = 1))")
         hm = heatmap!(ax, x, y, -M ./ n0; colorrange = (0, 3), colormap = :viridis)
         Colorbar(fig[row, 2], hm)
-        side[code] = -M ./ n0
+        side[NAMES[c]] = -M ./ n0
     end
     save_plot(out, "density_maps", fig, side)
 end
 
-function plot_spectra(out, S)
+# PIConGPU's histogram covers its whole simulated domain, the hidden row of cold plasma
+# included, so its fractions in the hot bins are smaller than the other codes' by the ratio of
+# the electron weights the domains hold (scripts/lwfa/picongpu.jl).
+function plot_spectra(out, S, codes)
     edges = Float64.(S["pm-plasma"]["spectrum_edges"])
     mids = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
     fig = Figure(size = (700, 420))
     ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "fraction of the electron weight per bin", yscale = log10,
               title = "electron spectrum at the end (bins of $(round(edges[2] - edges[1]; digits = 3)) mₑc²)")
     side = Dict{String,Any}("ekin" => mids)
-    for (code, key) in (("ParticleMesh", "pm"), ("Smilei", "smilei"))
+    for key in codes
         h = Float64.(last(S["$key-plasma"]["outputs"])["spectrum"])
         isempty(h) && continue
         norm = sum(h)
         hn = norm > 0 ? h ./ norm : h
         ok = hn .> 0
-        any(ok) && scatterlines!(ax, mids[ok], hn[ok]; label = code, color = getfield(COLORS, Symbol(key)))
+        any(ok) && scatterlines!(ax, mids[ok], hn[ok]; label = NAMES[key], color = getfield(COLORS, Symbol(key)))
         side[key] = hn
     end
     axislegend(ax)
     save_plot(out, "spectrum", fig, side)
 end
+
+# --- PIConGPU -------------------------------------------------------------------------------------
+
+include(joinpath(@__DIR__, "picongpu.jl"))
 
 # --- command line ---------------------------------------------------------------------------------
 
@@ -563,9 +617,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
         run_pm(ARGS[2])
     elseif cmd == "summarize-smilei"
         summarize_smilei(ARGS[2])
+    elseif cmd == "summarize-picongpu"
+        summarize_picongpu(ARGS[2])
     elseif cmd == "compare"
         compare(ARGS[2], ARGS[3])
     else
-        error("usage: lwfa.jl prepare <case> <tag> | run-pm <dir> | summarize-smilei <dir> | compare <runs> <out>")
+        error("usage: lwfa.jl prepare <case> <tag> | run-pm <dir> | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out>")
     end
 end
