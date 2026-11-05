@@ -528,7 +528,7 @@ C = 1
 measured = { Float64 = 0.537 }
 status = "proposed"
 
-["T-511"]
+["T-561"]
 quantity = "the moving window's fields on CUDA against the CPU's, Float64, Reference, window_lwfa to 120 steps: max over the components of |CUDA − CPU|"
 scale = "eps(Float64)·max|field| on the CPU"
 C = 64
