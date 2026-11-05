@@ -244,3 +244,15 @@ end
         @test all(==((W, N)), values(maps))                                          # (x, y) as the other codes' maps
     end
 end
+
+# The window offsets (total cells, `gridGlobalOffset`) PIConGPU 0.8.0 wrote at the case's outputs on the
+# RTX 4080 SUPER: lwfa-2d in run lwfa-a5pic (commit 515e4c0), lwfa-2d-a2 in run lwfa-pic2 (commit eafe193).
+const PIC_WINDOW_OFFSETS = Dict(
+    "lwfa-2d.toml" => [0, 0, 0, 354, 1118, 1882, 2646, 3410, 4174, 4938, 5702, 6466, 7230, 7994],
+    "lwfa-2d-a2.toml" => [0, 0, 0, 242, 752, 1262, 1771, 2281, 2791, 3300, 3810, 4320, 4829, 5339])
+
+@testset "T-518 picongpu_window_back is the window PIConGPU wrote, to the cell, at every output [A5]" for file in CASE_FILES
+    case = TOML.parsefile(file)
+    j0 = picongpu_layout(case).j0
+    @test [picongpu_window_back(case, k) + j0 for k in output_steps(case)] == PIC_WINDOW_OFFSETS[basename(file)]
+end
