@@ -564,7 +564,7 @@ function summarize_picongpu(dir)
                                    "Ex_axis" => Ex[:, ja], "Ex_m0" => m0 + 1,                   # E_y at (j + ½): x = (m − ½)Δx with m = j + 1 + m0
                                    "Ey_axis" => (Ey[:, ja - 1] .+ Ey[:, ja]) ./ 2, "Ey_m0" => m0,   # E_x at y_c ∓ Δy/2
                                    "Ey_absmax" => maximum(abs, Ey))
-            out["Ey_envelope"] = running_envelope(out["Ey_axis"], 16)
+            out["Ey_envelope"] = running_envelope(out["Ey_axis"], envelope_halfwidth(case))
             if plasma
                 R = m["$(PIC_SPECIES)_all_chargeDensity"]
                 ρ = permutedims(Float64.(read(R)) .* (Float64(read_attribute(R, "unitSI")) / (PIConGPUDeck.QE_SI * u.density)))

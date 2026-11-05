@@ -63,6 +63,8 @@ end
     o = Dict("Ey_m0" => -3, "Ey_envelope" => [0.0, 0.1, 2.0, 0.5])
     @test peak_m(o) == -1
     @test running_envelope([0.0, 1.0, -3.0, 0.5, 0.0], 1) == [1.0, 3.0, 3.0, 3.0, 0.5]
+    # half a wavelength: 24 points at λ₀/48 (lwfa-2d), 16 at λ₀/32 (lwfa-2d-a2)
+    @test [envelope_halfwidth(TOML.parsefile(f)) for f in CASE_FILES] == [24, 16]
 end
 
 @testset "T-513 Smilei's dumps are read on the lab lattice: x_moved, the dual and primal axes, the axis rows [A5]" for file in CASE_FILES

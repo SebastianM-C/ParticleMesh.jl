@@ -101,6 +101,9 @@ end
 # A running max of |v| over ±h points: the envelope of a carrier with h about half a wavelength.
 running_envelope(v, h) = [maximum(abs, @view v[max(1, i - h):min(end, i + h)]) for i in eachindex(v)]
 
+"The envelope's half width in points: half a laser wavelength, π/Δx (16 at λ₀/32, 24 at λ₀/48)."
+envelope_halfwidth(case) = round(Int, π / derived(case).dx)
+
 # The kinetic-energy histogram of the alive electrons, weighted by the particle weights.
 function pm_spectrum(s, edges)
     alive = Array(s.status) .== ParticleMeshCore.ALIVE
@@ -129,7 +132,7 @@ function pm_output(st, case, k, ρbuf, keep_map)
                            "Ex_axis" => Ex[:, ja], "Ex_m0" => 1 + m0,
                            "Ey_axis" => (Ey[:, ja - 1] .+ Ey[:, ja]) ./ 2, "Ey_m0" => m0,      # Ey at y = (j − ½)Δy: rows around the axis
                            "Ey_absmax" => maximum(abs, Ey))
-    out["Ey_envelope"] = running_envelope(out["Ey_axis"], 16)
+    out["Ey_envelope"] = running_envelope(out["Ey_axis"], envelope_halfwidth(case))
     if !isempty(st.species)
         window_charge!(ρbuf, st)
         ρ = Array(ρbuf)[I, J]
@@ -310,7 +313,7 @@ function summarize_smilei(dir)
                                    "Ex_axis" => Ex[:, ja], "Ex_m0" => mx,  # dual index i (from 0) ↔ m = i + mx, at x = (m − ½)Δx
                                    "Ey_axis" => (Ey[:, ja] .+ Ey[:, ja + 1]) ./ 2, "Ey_m0" => mx,   # dual rows jaxis, jaxis + 1 at y_c ∓ Δy/2
                                    "Ey_absmax" => maximum(abs, Ey))
-            out["Ey_envelope"] = running_envelope(out["Ey_axis"], 16)
+            out["Ey_envelope"] = running_envelope(out["Ey_axis"], envelope_halfwidth(case))
             if plasma
                 ρ = _xfirst(read(grp["Rho_electron"]))                      # (nx + 1, ny + 1), primal
                 out["rho_axis"], out["rho_m0"] = ρ[:, ja], mx
@@ -482,6 +485,11 @@ function compare(runs, out)
     codes = present_codes(runs)
     kinds = ["$c-$m" for c in codes for m in ("vacuum", "plasma")]
     S = Dict(k => load_summary(joinpath(runs, k)) for k in kinds)
+    # the envelope again from Ey_axis with the case's half width, for summaries written with a fixed 16 points
+    h = envelope_halfwidth(case)
+    for k in kinds, o in S[k]["outputs"]
+        o["Ey_envelope"] = running_envelope(Float64.(o["Ey_axis"]), h)
+    end
     result = Dict{String,Any}("case" => case["name"], "dx" => d.dx, "dt" => d.dt, "lambda_p" => λp, "codes" => codes)
     for medium in ("vacuum", "plasma")
         result[medium] = compare_rows(S["pm-$medium"]["outputs"], S["smilei-$medium"]["outputs"], medium, d, λp)
