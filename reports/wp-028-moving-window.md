@@ -62,7 +62,7 @@ How the residual was found and removed, in the order the measurements showed it:
 - **T-471.** A cold plasma at rest stays what it is while the window renews it, 29 shifts of a 24-column window. The fields stay +0.0. The window holds exactly the particle set of a fresh load at its position. ρ = ρ₀(s) holds bit for bit in Reference mode and to roundoff with Fast mode's atomics. The plateau's nodes all carry the same bits.
 - **T-474.** The Reference step is bitwise across reruns and launch shapes 32 and 256 in all three types. Fast and Reference fields agree to 1.0 × 10⁻¹⁵ relative after 120 steps.
 - **T-475.** The field energy after 30 steps of a plasma drifting into the window, against the ramp length: ForwardDiff agrees with the finite differences to 1.0 × 10⁻⁸ relative, against an fd_scan floor of 3.7 × 10⁻⁷.
-- **T-476.** Exactly the particles that cross the back edge are retired, and Gauss's law does not change on nodes 3 … n₁ in those steps. A dilute plasma streaming forward at 0.5 c overflows a buffer with no headroom: 276 particles are counted as lost. With a headroom of 3/2 none is lost.
+- **T-476.** A plasma drifting backwards at 0.9 c crosses the back edge between shifts (36 particles in 20 steps). Exactly the particles that cross it are retired, and Gauss's law does not change on nodes 3 … n₁ in those steps. A dilute plasma streaming forward at 0.5 c overflows a buffer with no headroom: 228 particles are counted as lost. With a headroom of 3/2 none is lost.
 - **T-477.** The input checks.
 - **T-478.** The filter does not wrap along x. The allocation per window step is the same at 4 and 36 particles per cell and at 3 × 3 times the grid: 9856 bytes for three steps.
 
