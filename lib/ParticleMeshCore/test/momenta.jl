@@ -59,6 +59,27 @@ function body_T531(be = CPU())
         end
         @test all_finite(s)
         @test 0 < host == only(Array(exhausted))
+        # the same at N = 2, where each slot's momentum is the device function at its own counter
+        e2 = KernelAbstractions.zeros(backend, Int32, 1)
+        g = PeriodicGrid((8, 6), (basetype(T)(1 // 4), basetype(T)(1 // 3)), 2)
+        s2 = Species(backend, T, 48 * 6; q = -1, m = 1, N = 2)
+        load_quiet!(s2, g, ObliqueDensity(), oblique_params(T, g), (3, 2), dist; seed = 5, stream = 2, exhausted = e2)
+        misses = 0
+        for i in 1:(48 * 6)
+            L, k = (i - 1) ÷ 6 + 1, (i - 1) % 6 + 1
+            c1, c2 = (L - 1) % 8 + 1, (L - 1) ÷ 8 + 1
+            u, ok = ParticleMeshCore.draw(dist, T, (UInt32(c1), UInt32(c2), UInt32(0), UInt32(k) << 16), (UInt32(5), UInt32(2)))
+            misses += !ok
+            # within a few ulp: the kernel may contract to FMAs where the host does not (as in T-520)
+            @test (s2.cell[1][i], s2.cell[2][i]) == (c1, c2) &&
+                  all(d -> abs(s2.u[d][i] - u[d]) <= 8 * eps(T) * max(abs(u[d]), one(T)), 1:3)
+        end
+        @test 0 < misses == only(Array(e2))
+    end
+    # every particle of a load draws its own momentum: no two share one
+    for T in (Float32, Float64)
+        s = momenta_sample(T, MaxwellJuttner(T(0.3), T.((0.2, 0.0, 0.0))), 4096)
+        @test allunique(momenta64(s))
     end
 end
 
@@ -134,6 +155,7 @@ function body_T536(be = CPU())
         push!(get!(groups, join(f[1:3], '|'), Set{String}()), f[5])
     end
     @test all(g -> length(g) == 1, values(groups))          # the launch shape does not change a bit
+    be isa CPU && @test Set(filter(l -> split(l, '|')[4] == "default", runs[1])) == MOMENTA_PINNED   # and the recorded bits
     return runs[1]
 end
 
@@ -141,7 +163,7 @@ end
     body_T530()
 end
 
-@testset "T-531 every Maxwell–Jüttner γ is finite for θ from 1e-5 to 100 and drifts up to 0.99, no try runs out; a one-try sampler counts its misses [A4, A8, WP-033]" begin
+@testset "T-531 every Maxwell–Jüttner γ is finite for θ from 1e-5 to 100 and drifts up to 0.99, no try runs out; a one-try sampler counts its misses at N = 1 and 2, each slot holding its own counter's draw [A4, A8, WP-033]" begin
     body_T531()
 end
 
@@ -161,7 +183,7 @@ end
     body_T535()
 end
 
-@testset "T-536 the momentum loads are bitwise across reruns, launch shapes and thread counts [A4, A8, WP-033]" begin
+@testset "T-536 the momentum loads are bitwise across reruns, launch shapes and thread counts, and keep their recorded digests [A4, A8, WP-033]" begin
     inproc = body_T536()
     w1 = [chopprefix(l, "MOM ") for l in worker_lines(1) if startswith(l, "MOM ")]
     w4 = [chopprefix(l, "MOM ") for l in worker_lines(4) if startswith(l, "MOM ")]

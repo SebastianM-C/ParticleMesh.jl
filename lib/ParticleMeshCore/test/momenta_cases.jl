@@ -113,6 +113,26 @@ zscore(x, μ) = (n = length(x); m = sum(x) / n; (m - μ) / sqrt(sum(v -> (v - m)
 const MOMENTA_CASES = ((0.04, (0.3, -0.5, 0.2)), (2.5, (0.0, 0.0, 0.9)))
 const MOMENTA_WG = (nothing, 7, 64)
 
+# The recorded default-launch digests of `momenta_digests()` (WP-033, first recorded on the CPU at
+# this package's commit): a change of the draw layout (the counter, the draw indices of the tries
+# and of the direction) or of the sampler changes them, which the run-against-run checks cannot see.
+const MOMENTA_PINNED = Set(split("""
+mj1|Float32|0.04|default|ad7c6a1f3f34c8c9
+mj2|Float32|0.04|default|cb7cb03430d473f2
+mj1|Float32|2.5|default|32808955226b61
+mj2|Float32|2.5|default|9da3cec117842e2b
+mj1|Float64|0.04|default|3c90cd7b10d8d220
+mj2|Float64|0.04|default|5381d74169605483
+mj1|Float64|2.5|default|a5010122785ac42f
+mj2|Float64|2.5|default|49114a0d350c6d80
+mj1|Dual{Float32,3}|0.04|default|f58363d6cc217d3e
+mj2|Dual{Float32,3}|0.04|default|d6173ae4ec0312f2
+mj1|Dual{Float32,3}|2.5|default|8631a115ce54ab56
+mj2|Dual{Float32,3}|2.5|default|9592f7ca228cbdae
+gm1|Float32|-|default|d76316b584751b50
+gm1|Float64|-|default|4a0401727fedd013
+gm1|Dual{Float32,3}|-|default|87e030eee77f00b3"""))
+
 function momenta_digests(be = CPU(); wgs = MOMENTA_WG)
     lines = String[]
     for T in TYPES, (θ, β) in MOMENTA_CASES, w in wgs
