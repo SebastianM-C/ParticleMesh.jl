@@ -185,7 +185,7 @@ check_momenta_at(m::Symbol) = m in (:t0, :t_minus_half) ? m :
     throw(ArgumentError("momenta_at must be :t0 or :t_minus_half, got :$m"))
 
 """
-    initialize!(state, problem; momenta_at = :t0) -> state
+    initialize!(state, problem; momenta_at = :t0, density_at = :particle) -> state
 
 The state at t = 0 from the problem description: each species loaded by the engine's quiet
 start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
@@ -206,9 +206,17 @@ t = −Δt/2 (half-step centring, A2), and the kinetic energy density there.
   starts differ by O(Δt·E⁰) in the momenta.
 
 Positions, weights and fields are the same in both; anything else is an `ArgumentError`.
+
+`density_at` says where the loader evaluates the density profile (`load_quiet!`): `:particle`
+(the default) at each particle's position, `:cell_centre` at the centre of its cell, so the
+loaded profile is piecewise constant per cell, as Smilei and PIConGPU sample it, which lowers a
+cosine's amplitude by about sinc(kΔx/2) ≈ 1 − (kΔx)²/24 against the per-particle load (#226: a
+constant 1.00017 in the field-energy ratio of the 1D two-stream case). Positions and the momenta
+draws are the same in both; anything else is an `ArgumentError`.
 """
-function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol = :t0)
+function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
     check_momenta_at(momenta_at)
+    ParticleMeshCore.check_density_at(density_at)
     (; numerics, grid) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
@@ -216,7 +224,7 @@ function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol =
         fill!(s.status, ParticleMeshCore.FREE)
         k = 2 * T(π) * d.mode / problem.length
         load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k), d.ppc; vdrift = d.drift, vth = d.thermal,
-                    seed = problem.seed, stream = d.stream, workgroupsize = wgs)
+                    seed = problem.seed, stream = d.stream, density_at, workgroupsize = wgs)
         check_subluminal(s, d)
         launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end

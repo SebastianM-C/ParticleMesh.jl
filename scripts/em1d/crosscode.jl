@@ -21,6 +21,8 @@ using .EnsembleReport
 const CROSSCODE = joinpath(REPO, "scripts", "crosscode")
 "The time of the loaded momenta (`initialize!`'s `momenta_at`): −Δt/2, the reference codes' convention, recorded in the manifest."
 const MOMENTA_AT = :t_minus_half
+"Where the density profile is sampled (`initialize!`'s `density_at`): at cell centres, as Smilei and PIConGPU sample it, recorded in the manifest."
+const DENSITY_AT = :cell_centre
 
 "The seeds of a case: its `seeds` list, or its single `random_seed` (`scripts/crosscode/smilei.jl`)."
 case_seeds(case) = SmileiDeck.case_seeds(case)
@@ -31,13 +33,14 @@ case_seeds(case) = SmileiDeck.case_seeds(case)
 The module's state of a case file, initialized: `problem_from_case` (with `seed` as the Philox
 key of the velocity draws; default the case's first seed) and `numerics_from_case` in
 `Reference()` mode, Float64 (quadratic shape, Esirkepov current, relativistic Boris), with the
-loaded momenta taken at −Δt/2 as Smilei and PIConGPU take them (`MOMENTA_AT`).
+loaded momenta taken at −Δt/2 and the density profile sampled at cell centres, as Smilei and
+PIConGPU do (`MOMENTA_AT`, `DENSITY_AT`).
 """
 function build(case; seed = first(case_seeds(case)))
     @assert case["grid"]["boundaries"] == "periodic" && case["numerics"]["shape_order"] == 2
     prob = problem_from_case(case, Float64; seed)
     st = EMState(prob, numerics_from_case(case; mode = Reference()))
-    initialize!(st, prob; momenta_at = MOMENTA_AT)
+    initialize!(st, prob; momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     return st, params(prob), prob
 end
 
@@ -158,7 +161,8 @@ function run_case(name)
     inputs = joinpath.(CROSSCODE, ["ensemble.jl", "ensemble_report.jl", "smilei.jl", "read.jl"])
     dir = run_dir("pm-$name", @__FILE__, name; work_package = "WP-012", extra_inputs = inputs,
         params = Dict{String,Any}("case" => name, "seeds" => seeds, "element_type" => "Float64", "mode" => "Reference",
-                                  "module" => "ParticleMeshElectromagnetic", "momenta_at" => string(MOMENTA_AT)))
+                                  "module" => "ParticleMeshElectromagnetic", "momenta_at" => string(MOMENTA_AT),
+                                  "density_at" => string(DENSITY_AT)))
     cp(path, joinpath(dir, "case.toml"))
     if !seeded
         sim, r, result = run_one(dir, case; seed = only(seeds))

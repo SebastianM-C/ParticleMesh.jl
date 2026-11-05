@@ -43,7 +43,7 @@ function host_record()
 end
 
 """
-    run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing) -> dir
+    run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT) -> dir
 
 Run each of `seeds` (each one of the case's seeds) of the case in `case_file` into
 `dir/seed-<seed>/` with `run_one` (Reference mode, Float64), and write a copy of the case file
@@ -53,7 +53,7 @@ time of the steps and its ns per particle-step. A seed directory that exists alr
 before anything runs: a request starts from a fresh checkout, and a kept seed could come from
 another commit or size.
 """
-function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing)
+function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     case = TOML.parsefile(case_file)
     all_seeds = case_seeds(case)
     bad = setdiff(seeds, all_seeds)
@@ -74,11 +74,12 @@ function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing)
         "case_sha256" => RunManifest.file_hash(joinpath(dir, "case.toml")),
         "parameters" => Dict{String,Any}("case" => case["name"], "element_type" => "Float64", "mode" => "Reference",
             "module" => "ParticleMeshElectromagnetic", "current" => "Esirkepov",
+            "momenta_at" => string(momenta_at), "density_at" => string(density_at),
             "scaled" => ppc === nothing && cells === nothing ? "no" : "ppc = $ppc, cells = $cells")))
     record()
     for s in seeds
         sdir = joinpath(dir, "seed-$s")
-        sim, out = run_one(sdir, case, s; ppc, cells)
+        sim, out = run_one(sdir, case, s; ppc, cells, momenta_at, density_at)
         p = out["performance"]
         perf[string(s)] = Dict{String,Any}("wall_seconds" => p["wall_seconds"], "ns_per_particle_step" => p["ns_per_particle_step"],
             "particles" => p["particles"], "steps" => p["steps"], "finished" => string(now(UTC)) * "Z")
@@ -234,7 +235,9 @@ maxdiff(a, b) = (; max_abs_difference = maximum(abs.(Float64.(a) .- Float64.(b))
 
 Post-hoc checks, written to `out/checks.json`: (1) each of WP-023's four seeds, rerun in `ens`,
 against WP-023's committed run: every per-seed observable and the mode series E·k̂ (bitwise or
-the largest difference); (2) the box's Smilei run of one seed (`smilei_seed`, analysed by
+the largest difference; bitwise only for an ensemble run with WP-023's start, the defaults of
+`initialize!`, while `crosscode.jl` starts as the reference codes do; its manifest's `momenta_at` and
+`density_at` say which); (2) the box's Smilei run of one seed (`smilei_seed`, analysed by
 analyze.jl) against WP-025's committed run of the same seed; (3) the ns per particle-step of
 both codes on the box, normalized by the mobile electrons as WP-025's Smilei record is.
 """
