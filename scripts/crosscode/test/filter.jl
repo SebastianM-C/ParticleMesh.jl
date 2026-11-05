@@ -54,6 +54,8 @@ end
     end
     @test_throws ErrorException picongpu_parameters(load_case("landau-oblique-2d-filter2"))
     @test_throws ErrorException picongpu_parameters(with_passes(f1, -1))
+    @test_throws ErrorException picongpu_parameters(with_passes(f1, 1.0))
+    @test_throws ErrorException picongpu_parameters(with_passes(f1, 0.5))
 end
 
 # Fields that keep the filtered Gauss law exactly: for every mode, the E change of a node-centred
@@ -101,6 +103,22 @@ end
                             gauss_residual_nodes(f.E1..., f.ρ1, h, wrong), f.ρ1, passes)
         @test gw.deviation > 1e-2
     end
+    # a band-limited charge change: only the modes above the floor are listed, the deviation is
+    # unchanged by the floor
+    f = filtered_fields(rng, N, h, (1, 1), 1)
+    keepm = zeros(N...); keepm[1:3, 1:3] .= 1; keepm[end-1:end, 1:3] .= 1; keepm[1:3, end-1:end] .= 1; keepm[end-1:end, end-1:end] .= 1
+    band(a) = real.(conj.(dft2(conj.(dft2(a) .* keepm))) .* length(a))
+    ρ1 = f.ρ0 .+ band(f.ρ1 .- f.ρ0)
+    Δρ̂ = dft2(ρ1 .- f.ρ0) .* binomial_transfer_grid(N, 1)
+    sym(m, n, d) = (cis(2π * (m - 1) / n * 0) - cis(-2π * (m - 1) / n)) / h[d]
+    ΔÊx = [m1 == 1 && m2 == 1 ? 0.0im : conj(sym(m1, N[1], 1)) * Δρ̂[m1, m2] / (abs2(sym(m1, N[1], 1)) + abs2(sym(m2, N[2], 2))) for m1 in 1:N[1], m2 in 1:N[2]]
+    ΔÊy = [m1 == 1 && m2 == 1 ? 0.0im : conj(sym(m2, N[2], 2)) * Δρ̂[m1, m2] / (abs2(sym(m1, N[1], 1)) + abs2(sym(m2, N[2], 2))) for m1 in 1:N[1], m2 in 1:N[2]]
+    idft(Â) = real.(conj.(dft2(conj.(Â))) .* length(Â))
+    E1 = (f.E0[1] .+ idft(ΔÊx), f.E0[2] .+ idft(ΔÊy))
+    gb = filtered_gauss(gauss_residual_nodes(f.E0..., f.ρ0, h, (1, 1)), f.ρ0, gauss_residual_nodes(E1..., ρ1, h, (1, 1)), ρ1, 1)
+    @test gb.deviation < 1e-13
+    @test 0 < gb.modes <= count(!iszero, keepm) - 1 && length(gb.ratio) == gb.modes
+    @test maximum(abs, gb.ratio .- gb.one_minus_H) < 1e-10
     # an unchanged ρ gives no scale to compare against
     f = filtered_fields(rng, N, h, (0, 0), 1)
     r0 = gauss_residual_nodes(f.E0..., f.ρ0, h, (0, 0))
@@ -125,5 +143,25 @@ end
         ser = filtered_gauss_series((; fields, x, time = [0.0, 1.0]), case)
         @test length(ser.r) == 2 && ser.t == [0.0, 1.0]
         @test filtered_gauss(ser.r[1], ser.ρ[1], ser.r[2], ser.ρ[2], 1).deviation < 1e-13
+    end
+end
+
+# ParticleMesh's cross-code driver includes the electromagnetic module: a module of its own.
+module PMFilter
+include(joinpath(dirname(dirname(@__DIR__)), "em2d", "crosscode.jl"))
+end
+
+@testset "T-554 the ParticleMesh driver keeps the filtered Gauss law per mode, over all its steps [A2, A7, WP-038]" begin
+    for name in ("landau-oblique-2d-filter1", "landau-oblique-2d-filter2")
+        case = PMFilter.load_case(name)
+        case["time"]["t_end"] = 1.2                      # 41 steps, outputs every 10: the last chunk is short
+        sim = PMFilter.simulate(case, case["numerics"]["random_seed"]; ppc = (2, 2))
+        @test sim.nsteps == 41 && sim.passes == case["numerics"]["filter_passes"]
+        @test sim.gauss.t ≈ [0; 10:10:40; 41] .* sim.dt     # snapshots at t = 0, after each chunk and at the end
+        results, _, _ = PMFilter.observe(case, sim)
+        g = results["filtered_gauss"]
+        @test g["passes"] == sim.passes && g["within_tolerance"] && g["measured"] < 1e-12
+        @test all(>(1e-2), values(g["deviation_other_pass_counts"]))
+        @test g["outputs"] == 6 && g["t"] ≈ 41 * sim.dt
     end
 end
