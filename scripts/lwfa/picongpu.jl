@@ -15,7 +15,9 @@
 #   `plugins/openPMD/openPMDWriter.x.cpp`), which the reader turns into m.
 # - The window. PIConGPU keeps a hidden row of local domains ahead of the window, so the window
 #   is (devices along y − 1) local domains and needs at least two (`Simulation.hpp` refuses one).
-#   The run puts all of them on the one GPU (`-r`, ranks per device). The window's back moves at
+#   The run puts all of them on the one GPU (`-r`, ranks per device); two, because the plasma load
+#   crashed with five and seven ranks on the RTX 4080 SUPER (an illegal address, cause not found).
+#   The window's back moves at
 #   c from the step where a virtual photon, started `ceil(W(1 − movePoint))` cells into the box,
 #   passes the window (`MovingWindow::getCurrentSlideInfo`); `--windowMovePoint` is chosen so that
 #   the back is at lab x = c(t − start), the case's window. The data slides by a whole local
@@ -60,14 +62,14 @@ const HUYGENS = 16
 const PIC_ABSORBER = 12
 const PIC_SUPERCELL = 8
 const PIC_SPECIES = "e"
-"Local domains along y unless the case's `grid.picongpu_devices` says otherwise: a window of four, one hidden."
-const PIC_DEVICES_DEFAULT = 5
+"Local domains along y unless the case's `grid.picongpu_devices` says otherwise: the window and the hidden one. On the RTX 4080 SUPER the plasma load crashed with 5 and 7 ranks on the one GPU (cudaErrorIllegalAddress before the first step) and ran with 1 and 2."
+const PIC_DEVICES_DEFAULT = 2
 
 """
     picongpu_layout(case) -> NamedTuple
 
 PIConGPU's box for the case: `devices` local domains along y (the case's `grid.picongpu_devices`,
-default 5), all of `local_y` cells, the window `window` = (devices − 1)·local_y cells long, at
+default 2), all of `local_y` cells, the window `window` = (devices − 1)·local_y cells long, at
 least the case's window plus the j0 cells behind x = 0; `start_cell` and `move_point` place the
 window's back at lab x = c(t − start).
 """
