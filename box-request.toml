@@ -1,0 +1,6 @@
+timeout = 7200
+category = "test"
+outputs = []
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/crosscode/test/runtests.jl"]
