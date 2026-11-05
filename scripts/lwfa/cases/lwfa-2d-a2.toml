@@ -1,11 +1,8 @@
 # A 2D laser-wakefield case for the cross-code comparison of ParticleMesh with Smilei (A5).
 #
-# PROPOSED VALUES, not the owner's: A5 leaves a0, w0, tau, n0, ramp, box, resolution, particles
-# per cell, steps and diagnostics to the owner (questions/wp-017-lwfa-case.md). They are chosen
-# here to give a mildly nonlinear wake that both codes can run on the CPU box in minutes, with no
-# claim that they match a published experiment or simulation. The resonance and matching rules
-# they follow (c·tau_FWHM ≈ lambda_p/2, k_p·w0 ≈ 2·sqrt(a0)) are common LWFA rules of thumb,
-# not checked against a cited source here.
+# A5's first LWFA case (`lwfa-2d.toml`) on a coarser grid, λ₀/32 instead of λ₀/48: the input of
+# the first ParticleMesh–Smilei run (`reports/lwfa-2d-a2.md`), kept as its coarse-grid reference. At
+# this Δt, a₀·ω₀Δt = 0.36 is beyond the pusher rule of `reports/pushers.md` §5 (≤ 0.25).
 #
 # Units of A1 throughout: lengths c/ω₀, times 1/ω₀, densities n_c, fields mₑcω₀/e. The case's x
 # coordinate is the lab coordinate with x = 0 on the laser's injection plane: Smilei's xmin at

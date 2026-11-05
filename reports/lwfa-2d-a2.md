@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Goals | A5 (the 2D LWFA case run in ParticleMesh and Smilei), A1, A2, A3; on WP-028's moving window, WP-026's antenna |
-| Case | `scripts/lwfa/cases/lwfa-2d-a2.toml`, **proposed values, not the owner's** (`questions/lwfa-2d-a2-proposal.md`) |
+| Case | `scripts/lwfa/cases/lwfa-2d-a2.toml`: A5's first LWFA case (`scripts/lwfa/cases/lwfa-2d.toml`) on a coarser grid, λ₀/32 instead of λ₀/48, where a₀·ω₀Δt = 0.36 is beyond `reports/pushers.md` §5's rule; the same lengths, laser and plasma |
 | Commits | the generator and the case `905b93f` (the runs' code); the comparison `ae10436` |
 | Runs | CPU box request `runs/lwfa-a2-1` (request commit `2b57dd0` = `905b93f` plus the prepared run directories, which is why the box's manifests say `dirty = true`): `pm-vacuum`, `pm-plasma`, `smilei-vacuum`, `smilei-plasma`; the summaries and 2D maps stay on that branch, the comparison is `lwfa-2d-a2/lwfa-a2-1-compare/` (commit `ae10436`, `dirty = false`) |
 | Input hashes | each run's `manifest.toml` (copied as `lwfa-2d-a2/lwfa-a2-1-compare/manifest-<run>.toml`), the box's `box-status.toml` |
@@ -70,7 +70,7 @@ The 2D density at t ≈ 1201 has the same two wake buckets, the same curved cres
 
 ## 5. Verification status and open issues
 
-- **Not reviewed.** The case is a proposal, and the agreement is measured on one run of each code, with no seed or resolution scan. Nothing here is a validation claim, and the numbers stay in the repository until a fresh reviewer has looked at them.
+- **Not reviewed.** The agreement is measured on one run of each code, with no seed or resolution scan. Nothing here is a validation claim, and the numbers stay in the repository until a fresh reviewer has looked at them.
 - **What is shown.** On this case, ParticleMesh's moving window, antenna and 2D step reproduce Smilei's laser and wake to a few percent, with no tuning between the runs.
 - **What is not.**
   - injection and the spectrum (§4);
