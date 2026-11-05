@@ -113,7 +113,8 @@ end
 
 cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).captures[1])
 
-@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" begin
+@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     u = reference_units(CASE["lambda0_um"] * 1e-6)
     f = picongpu_param_files(CASE; plasma = true)
@@ -148,7 +149,8 @@ cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).c
     @test !occursin("energyHistogram", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
 end
 
-@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" begin
+@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
     @test lay.window == (lay.devices - 1) * lay.local_y && lay.cells[2] == lay.devices * lay.local_y
@@ -167,7 +169,8 @@ end
     @test all(k -> picongpu_window_back(CASE, k) + lay.window - 1 >= max(0.0, k * d.dt - start) / d.dx + d.nx - 2, 0:97:d.steps)
 end
 
-@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" begin
+@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
     P = CASE["plasma"]
@@ -175,19 +178,22 @@ end
     @test cnum(dens, "DENSITY") == P["density"] && cnum(dens, "VACUUM") == P["vacuum"] && cnum(dens, "RAMP") == P["ramp"]
     @test cnum(dens, "DX") == d.dx && cnum(dens, "J0") == lay.j0
     prob = pm_problem(CASE)
-    for j in (0, lay.j0, lay.j0 + 1320, lay.j0 + 1400, lay.j0 + 1600, lay.j0 + 1700, 5000)
+    # cells before, across and after the ramp (x = 260 to 320), and past the window
+    for j in (0, lay.j0, (lay.j0 .+ round.(Int, (250, 275, 300, 330) ./ d.dx))..., 4 * d.nx)
         x = (j + 0.5 - lay.j0) * d.dx                                         # lab x of the cell centre
         @test picongpu_density(CASE, j) ≈ P["density"] * ramp_factor(x + d.xa, prob.profile.vacuum, prob.profile.ramp) atol = 1e-15
     end
 end
 
-@testset "T-517 PIConGPU's dumps are read with the axes swapped back: the window offset, E_y as E_x, E_x as E_y, the axis columns [A5]" begin
+@testset "T-517 PIConGPU's dumps are read with the axes swapped back: the window offset, E_y as E_x, E_x as E_y, the axis columns [A5]" for file in CASE_FILES
+    CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
     u = reference_units(CASE["lambda0_um"] * 1e-6)
     W, N = lay.window, d.ny
     mktempdir() do dir
-        cp(joinpath(@__DIR__, "..", "cases", "lwfa-2d-a2.toml"), joinpath(dir, "case.toml"))
+        cp(file, joinpath(dir, "case.toml"))
+        bins = Int(CASE["diagnostics"]["spectrum_ekin"][3])
         write(joinpath(dir, "kind.txt"), "plasma\n")
         steps = output_steps(CASE)
         mkpath(joinpath(dir, "openPMD"))
@@ -213,7 +219,7 @@ end
         open(joinpath(dir, "e_energyHistogram_all.dat"), "w") do io
             println(io, "#step <0 header")
             for it in steps
-                println(io, join([it; 7.0; fill(Float64(it), 200); 3.0; 99.0], " "))
+                println(io, join([it; 7.0; fill(Float64(it), bins); 3.0; 99.0], " "))
             end
         end
         summarize_picongpu(dir)
@@ -227,7 +233,7 @@ end
         @test o["Ey_axis"][1] == 1000.0 * d.jaxis - 500                             # its E_x on columns jaxis − 1, jaxis
         @test o["Ey_absmax"] == 1000.0 * (N - 1) + W - 1
         @test o["rho_axis"][5] == 4.0 + 2000 * d.jaxis
-        @test o["spectrum"] ≈ fill(steps[3] / per_weight, 200) rtol = 1e-14
+        @test o["spectrum"] ≈ fill(steps[3] / per_weight, bins) rtol = 1e-14
         @test o["spectrum_under"] ≈ 7 / per_weight rtol = 1e-14
         maps = h5open(joinpath(dir, "maps.h5"), "r") do f
             Dict(k => size(read(f[k]["rho"])) for k in keys(f))
