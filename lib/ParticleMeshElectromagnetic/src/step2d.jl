@@ -187,7 +187,7 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
     for (i, (s, d)) in enumerate(zip(st.species, problem.species))
         fill!(s.status, ParticleMeshCore.FREE)
         k = ntuple(a -> 2 * T(π) * d.mode[a] / problem.length[a], Val(2))
-        window === nothing || (load_window_species!(window, i, s, grid, wgs); continue)
+        window === nothing || (load_window_species!(window, i, s, grid, wgs, d); continue)
         load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k[1], k[2]), d.ppc; vdrift = d.drift,
                     vth = d.thermal, seed = problem.seed, stream = d.stream, workgroupsize = wgs)
         launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))

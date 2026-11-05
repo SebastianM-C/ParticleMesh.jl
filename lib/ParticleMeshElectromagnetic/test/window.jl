@@ -1,4 +1,4 @@
-# WP-028: the moving window, T-470 to T-477. The box moves at c along axis 1 by whole cells,
+# WP-028: the moving window, T-470 to T-479. The box moves at c along axis 1 by whole cells,
 # its x edges are the undisturbed outside (zero fields, no current), the plasma of a longitudinal
 # profile enters through the front (loaded one column behind it) and leaves through the back. The
 # problems are in window_cases.jl.
@@ -216,6 +216,23 @@ end
         record!("T-473 warm $(nameof(typeof(mode)))", T, worst)
         @test worst <= C
     end
+    # a warm plasma streaming forward through a ramp: the front treatment with a drift and a profile
+    for T in TYPES, mode in (Reference(), Fast())
+        prob = window_plasma(T; cells = (24, 6), vacuum = 2, ramp = 4, drift = (T(3) / 10, zero(T), zero(T)),
+                             thermal = (T(1) / 10, T(1) / 10, T(1) / 10), nsteps = 60)
+        st = window_state(prob; mode)
+        p = params(prob)
+        worst = 0.0
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            r = window_gauss(st, window_shifts(st, k))
+            worst = max(worst, Float64(maximum(r.res[3:end, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
+        end
+        @info "T-473 warm, drift and ramp" T mode worst shifts = window_shifts(st, prob.nsteps)
+        @test window_shifts(st, prob.nsteps) > prob.cells[1]
+        record!("T-473 warm ramp $(nameof(typeof(mode)))", T, worst)
+        @test worst <= C
+    end
 end
 
 # --- T-474 ----------------------------------------------------------------------------------
@@ -391,5 +408,52 @@ end
     if Threads.nthreads() == 1
         @test more_particles <= small
         @test larger_grid <= small
+    end
+end
+
+# --- T-479 ----------------------------------------------------------------------------------
+
+# A hot plasma in the window (#257): the loader draws the thermal spread in velocity, so its
+# Gaussian tail passes c. The initial load refuses such a draw with an ArgumentError (thermal 0.2
+# and 0.3 c on T-473's warm box, where the draws at t = 0 reach c). A refill, which cannot raise
+# inside a step, loads such a particle at the drift velocity and counts it: on a small box at
+# thermal 0.3 c, the first seed whose initial load stays below c and whose refills reach c runs
+# with finite momenta, a positive count, and Gauss's law as T-473 off nodes 1 and 2.
+@testset "T-479 a drawn speed at or above c is refused in the window's initial load and replaced and counted in its refills [A2, A4, A8, WP-028]" begin
+    for th in (0.2, 0.3)
+        @test_throws ArgumentError window_state(window_plasma(Float64; cells = (24, 6), vacuum = -100, ramp = 1, thermal = (th, th, th)))
+    end
+    C = emC("T-473")
+    for T in TYPES
+        th = T(3) / 10
+        found = false
+        for seed in 1:40
+            prob = window_plasma(T; cells = (16, 6), ppc = (1, 1), vacuum = -100, ramp = 1, thermal = (th, th, th), nsteps = 150, seed)
+            st = try
+                window_state(prob)
+            catch err
+                err isa ArgumentError || rethrow()
+                continue
+            end
+            @test window_superluminal(st) == (0,)
+            p = params(prob)
+            worst = 0.0
+            for k in 1:prob.nsteps
+                step!(st, p, k)
+                k % 5 == 0 || continue
+                r = window_gauss(st, window_shifts(st, k))
+                worst = max(worst, Float64(maximum(r.res[3:end, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
+            end
+            window_superluminal(st)[1] > 0 || continue
+            s = st.species[1]
+            alive = Array(s.status) .== ParticleMeshCore.ALIVE
+            @info "T-479 refills at or above c" T seed fast = window_superluminal(st) worst
+            @test all(d -> all(x -> isfinite(value_of(x)), Array(s.u[d])[alive]), 1:3)
+            record!("T-479", T, worst)
+            @test worst <= C
+            found = true
+            break
+        end
+        @test found
     end
 end
