@@ -162,7 +162,8 @@ N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is
-`:open` (required then, refused otherwise), `nothing` for a periodic box.
+`:open` (required then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter
+passes together with either absorber until a test checks the two together.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     shape::S

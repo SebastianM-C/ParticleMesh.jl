@@ -366,6 +366,7 @@ end
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 8)))
     st = open_state(prob, PML(; cells = 7))
     @test st isa EMState{2} && st.aux.layer isa PMLFields
+    @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4), filter = BinomialFilter(1)))
     @test_throws ArgumentError step!(st, EMParams(prob.dt / 2, prob.kmode), 1)
     # the case file: [numerics.pml], exactly one absorber
     case = deepcopy(load_case("weibel-2d"))

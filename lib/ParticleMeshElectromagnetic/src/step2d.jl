@@ -105,7 +105,9 @@ used by `Fast()` on an element type without atomics). Throws an `ArgumentError` 
 current is `Esirkepov()` or [`NoCurrent`](@ref)`()` and unless `problem.dt` is below the
 Courant limit of the numerics' solver ([`check_courant`](@ref)), and unless the numerics'
 `absorber` is an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) exactly when the problem's axis 2 is
-`:open` (the absorber also checks its fit on the grid).
+`:open` (the absorber also checks its fit on the grid), and unless the numerics' `filter` has zero
+passes with an open axis 2 (the filter wraps the current across the open edge, and no test checks
+the two together yet).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -119,6 +121,8 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
         throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...) or PML(...), got $(numerics.absorber)"))
     !open_y && numerics.absorber !== nothing &&
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
+    open_y && numerics.filter.passes > 0 &&
+        throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with an open boundary (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
     layer = open_y ? place_absorber(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
     species = map(problem.species) do d
         Species(backend, T, prod(n) * prod(d.ppc); q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
