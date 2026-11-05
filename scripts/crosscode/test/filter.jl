@@ -101,6 +101,10 @@ end
                             gauss_residual_nodes(f.E1..., f.ρ1, h, wrong), f.ρ1, passes)
         @test gw.deviation > 1e-2
     end
+    # an unchanged ρ gives no scale to compare against
+    f = filtered_fields(rng, N, h, (0, 0), 1)
+    r0 = gauss_residual_nodes(f.E0..., f.ρ0, h, (0, 0))
+    @test_throws ErrorException filtered_gauss(r0, f.ρ0, r0, f.ρ0, 1)
 end
 
 @testset "T-553 the filtered Gauss series reads each code's staggers from the dump positions [A5, WP-038]" begin

@@ -511,12 +511,29 @@ function observable_series(obs, sc, fl, mode, lengths)
     error("unknown signal $sig")
 end
 
+"The element type of a run: its manifest's `precision` (PIConGPU's FP32 runs), Float64 otherwise (Smilei)."
+run_precision(dir) = isfile(joinpath(dir, "manifest.toml")) ? string(get(read_manifest(dir), "precision", "Float64")) : "Float64"
+
+"""
+    filtered_gauss_tolerance(obs, precision) -> Float64
+
+The pass bound of a `filtered_gauss` observable for a run's precision: `tolerance` for Float64,
+`tolerance_float32` for Float32 (the roundoff floor scales with eps); a precision the case gives
+no bound for is an error.
+"""
+function filtered_gauss_tolerance(obs, precision)
+    precision == "Float64" && return Float64(obs["tolerance"])
+    precision == "Float32" && haskey(obs, "tolerance_float32") && return Float64(obs["tolerance_float32"])
+    error("the filtered_gauss observable gives no tolerance for $precision")
+end
+
 """
     filtered_gauss_observable(dir, case, obs, fl) -> Dict
 
 The observable `signal = "filtered_gauss"` (WP-038): `filtered_gauss` between the first field
 output and every later one, for the case's `filter_passes`. `measured` is its deviation at
-the last output (theory 0, to roundoff; `tolerance` from the case), with the largest over the
+the last output (theory 0, to roundoff; the case's bound for the run's precision,
+`filtered_gauss_tolerance`), with the largest over the
 outputs, and the deviations for one pass fewer and one more at the last output, which show that
 the check tells the pass counts apart. Writes `filtered-gauss.png` with its sidecar: per mode
 |Δr̂|/|Δρ̂| against 1 − H(m) at the last output.
@@ -526,15 +543,16 @@ function filtered_gauss_observable(dir, case, obs, fl)
     s = filtered_gauss_series(fl, case)
     n = length(s.ρ)
     n >= 2 || error("filtered_gauss needs at least two field outputs")
-    per = [filtered_gauss(s.r[1], s.ρ[1], s.r[k], s.ρ[k], p; floor = obs["floor"]) for k in 2:n]
+    per = [filtered_gauss(s.r[1], s.ρ[1], s.r[k], s.ρ[k], p; floor = obs["floor"]) for k in 2:n if s.ρ[k] != s.ρ[1]]
+    isempty(per) && error("$dir: ρ never changed between the field outputs")
     last_ = per[end]
-    tol = Float64(obs["tolerance"])
+    tol = filtered_gauss_tolerance(obs, run_precision(dir))
     r = Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],
         "passes" => p, "measured" => last_.deviation, "t" => s.t[end],
         "measured_max_over_outputs" => maximum(x -> x.deviation, per),
         "deviation_other_pass_counts" => Dict(string(q) => v for (q, v) in last_.deviation_other),
         "charge_change_scale" => last_.charge_change_scale, "modes_above_floor" => last_.modes,
-        "tolerance" => tol, "within_tolerance" => last_.deviation <= tol, "outputs" => n)
+        "tolerance" => tol, "within_tolerance" => last_.deviation <= tol, "outputs" => n, "precision" => run_precision(dir))
     fig = Figure(size = (700, 600))
     ax = Axis(fig[1, 1]; xlabel = "1 − H(m), $p pass$(p == 1 ? "" : "es")", ylabel = "|Δr̂(m)| / |Δρ̂(m)|",
         title = "$(case["name"]) ($(code_label(dir))): Gauss residual change per mode, t = $(round(s.t[end]; digits = 2))")

@@ -216,7 +216,7 @@ over the snapshots, and the deviations for one pass fewer and one more.
 """
 function observe_filtered_gauss(obs, sim)
     S, p = sim.gauss.snaps, sim.passes
-    per = [filtered_gauss(S[1].r, S[1].ρ, S[k].r, S[k].ρ, p; floor = obs["floor"]) for k in 2:length(S)]
+    per = [filtered_gauss(S[1].r, S[1].ρ, S[k].r, S[k].ρ, p; floor = obs["floor"]) for k in 2:length(S) if S[k].ρ != S[1].ρ]
     g = per[end]
     tol = Float64(obs["tolerance"])
     return Dict{String,Any}("signal" => obs["signal"], "method" => obs["method"], "theory" => obs["theory"],

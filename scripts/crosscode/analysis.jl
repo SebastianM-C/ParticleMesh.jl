@@ -238,12 +238,16 @@ With the current filtered by F, D⁻·Eⁿ − Fρⁿ is constant, so for every 
 Δr̂(m) = (H(m) − 1) Δρ̂(m), with Δ the change between the outputs and H the transfer of F.
 `deviation(q)` is max_m |Δr̂ − (H_q − 1)Δρ̂| / max_m |Δρ̂| for q binomial passes: roundoff for
 the run's own count, of the order of the charge change's grid-scale content for any other.
+The roundoff floor scales with the element type's eps and, being relative to max|Δρ̂|, grows as
+the charge change shrinks (a cold or early-time run), so a tolerance fits one precision and one
+case. Two outputs with the same ρ are an error (there is no scale).
 Returns the deviations for q = passes − 1 (when ≥ 0), passes and passes + 1, and per mode with
 |Δρ̂| above `floor`·max|Δρ̂| (m ≠ 0): 1 − H_passes(m) and the measured |Δr̂|/|Δρ̂|.
 """
 function filtered_gauss(r0, ρ0, r, ρ, passes; floor = 1e-3)
     dr, dρ = dft2(r .- r0), dft2(ρ .- ρ0)
     scale = maximum(abs, dρ)
+    scale > 0 || error("filtered_gauss: the charge density did not change between the two outputs, so there is nothing to compare")
     dev(q) = maximum(abs.(dr .- (binomial_transfer_grid(size(ρ), q) .- 1) .* dρ)) / scale
     H = binomial_transfer_grid(size(ρ), passes)
     keep = [abs(dρ[I]) > floor * scale && I != CartesianIndex(1, 1) for I in CartesianIndices(dρ)]
