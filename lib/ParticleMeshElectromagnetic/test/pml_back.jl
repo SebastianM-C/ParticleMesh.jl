@@ -1,4 +1,4 @@
-# WP-034: the PML on the moving window's back edge (WP-028), T-570 to T-575. The window's x-guards
+# WP-034: the PML on the moving window's back edge (WP-028), T-570 to T-576. The window's x-guards
 # are its field-free outside, which reflects what reaches the back edge: in 2D the trailing field a
 # pulse leaves behind it (T-472). A `PML` as `back_absorber` absorbs it in the window's first
 # `cells` columns; its convolution fields move back with E and B at each shift.
@@ -29,7 +29,8 @@ end
 
 # A zero profile adds exactly zero: the window's laser–plasma run with a back-edge PML of σ = α = 0,
 # κ = 1 is the run without one bit for bit, fields and particles (120 steps, past the window's
-# start). Each correction on its own
+# start), and with an open y axis the y-PML's step and the matched layer's apply the same back-edge
+# corrections. Each correction on its own
 # changes only its two components on the layer columns, advancing its convolution fields only
 # where asked; a shift moves ψ one column back with the last column zero; step 1 zeroes ψ.
 @testset "T-571 a zero-profile back-edge PML is the window's step bit for bit; corrections, shift and reset [A2, A4, A8, WP-034]" begin
@@ -43,6 +44,18 @@ end
         @test all(c -> bits(Array(getfield(a.fields, c))) == bits(Array(getfield(b.fields, c))), keys(a.fields))
         @test particle_set(a.species[1]) == particle_set(b.species[1])
     end
+    # with an open y axis: the y-PML's step (zero profile) and the matched layer's (zero strength)
+    # apply the same back-edge corrections, bit for bit
+    warm = window_plasma(Float64; cells = (24, 16), thermal = (0.1, 0.1, 0.1), nsteps = 60, open_y = true)
+    edge = PML(; cells = 6, kappa_max = 2, alpha_max = 0.1)
+    a = back_state(warm; back = edge, absorber = PML(; cells = 4, sigma_max = 0, kappa_max = 1, alpha_max = 0))
+    b = back_state(warm; back = edge, absorber = AbsorbingLayer(; cells = 4, strength = 0))
+    run!(a, params(warm), warm.nsteps)
+    run!(b, params(warm), warm.nsteps)
+    @test window_shifts(a, warm.nsteps) > 0
+    @test all(c -> bits(Array(getfield(a.fields, c))) == bits(Array(getfield(b.fields, c))), keys(a.fields))
+    @test all(c -> getfield(a.aux.window.back, c) == getfield(b.aux.window.back, c), (:ψBy, :ψBz, :ψEy, :ψEz))
+    @test particle_set(a.species[1]) == particle_set(b.species[1])
     prob = back_lwfa(Float64; nsteps = 4)
     st = back_state(prob; back = PML(; cells = 6, kappa_max = 2, alpha_max = 0.1))
     foreach(a -> (a .= randn(Xoshiro(21), size(a)); fill_guards!(a, st.grid)), values(st.fields))
@@ -175,4 +188,38 @@ end
     @test maximum(still.w) <= maximum(bare.w)
     @test last(still.w) < last(bare.w) / 2
     @test maximum(moving.w[10:end]) < 0.05
+end
+
+# --- T-576 ----------------------------------------------------------------------------------
+
+# The back edge against its discrete theory: WP-027's slab packet turned on its side travels along
+# −x into the back-edge PML of a static window, whose zero x-guards reflect what the layer leaves,
+# and the energy that comes back matches `back_rt` (pml_back_cases.jl) at T-540's scale.
+# Cells are not square (8 per wavelength along x, 16 along y), the angles 0 and 0.4 rad, both
+# polarizations, PIConGPU's profile, Smilei's grading with α and κ with α. The theory first: a zero
+# profile reflects everything (|r| = 1), and at normal incidence TE and TM see the same |r|.
+@testset "T-576 the back edge's reflection of a slab packet against its discrete theory, both polarizations, κ and α [A2, A7, WP-034]" begin
+    zero_pml = PML(; cells = 8, sigma_max = 0, kappa_max = 1, alpha_max = 0)
+    mixed = PML(; cells = 8, sigma_max = 20, order = 2, kappa_max = 80, kappa_order = 4, alpha_max = 0.1)
+    for θ in (0.0, 0.4), pol in (:TE, :TM)
+        geo = back_slab_geometry(; theta = θ)
+        for (kx, _) in back_slab_modes(geo)[1:5:end]
+            @test abs(abs(back_rt(geo, zero_pml, pol, kx)) - 1) < 1e-12
+            θ == 0 && @test abs(abs(back_rt(geo, mixed, :TE, kx)) - abs(back_rt(geo, mixed, :TM, kx))) <= 1e-10 * abs(back_rt(geo, mixed, :TE, kx))
+        end
+    end
+    C = emC("T-576")
+    worst = 0.0
+    cfgs = [(0.0, PML(; cells = 8)), (0.4, PML(; cells = 8)), (0.4, mixed), (0.4, PML(; cells = 8, kappa_max = 4, alpha_max = 0.2))]
+    for (θ, pml) in cfgs, pol in (:TE, :TM)
+        geo = back_slab_geometry(; theta = θ)
+        r = back_slab_run(Float64, geo, pml, pol)
+        pred = back_prediction(geo, pml, pol)
+        e = abs(r.R - pred) / slab_scale(Float64, r.k, pred)
+        @info "T-576" θ pml.kappa_max pml.alpha_max pol R = r.R R_theory = pred ratio = e
+        worst = max(worst, e)
+        @test 0 < pred < 1e-3
+        @test e <= C
+    end
+    record!("T-576", Float64, worst)
 end

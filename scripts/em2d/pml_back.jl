@@ -12,6 +12,10 @@
 # 2. A long run (pml_back_long_run.png): random fields in the empty window with an 8-cell back
 #    edge, the field energy over the window against its start, in a window that never moves and in
 #    one that moves from t = 0, for α_max = 0, 0.2 and 1 and the bare back edge (T-575).
+# 3. Against the discrete theory (pml_back_theory.png): WP-027's slab packet turned on its side,
+#    along −x into the back edge of a static window (`back_slab_run`), the reflected energy R
+#    measured by the module's step and predicted by `back_rt` (pml_back_cases.jl), at 0 to 0.8 rad,
+#    8 and 16 cells, both polarizations, PIConGPU's profile (T-576).
 #   julia +1.13 --project=scripts -t 4 scripts/em2d/pml_back.jl
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 const ParticleMeshCore = ParticleMesh.ParticleMeshCore   # window_cases.jl names it; the scripts reach the engine through ParticleMesh
@@ -62,12 +66,29 @@ function long_rows(; nsteps = 12000, every = 50)
     return rows
 end
 
+const ANGLES = (0.0, 0.2, 0.4, 0.6, 0.8)
+
+function theory_rows()
+    rows = Dict{String,Any}[]
+    for cells in (8, 16), θ in ANGLES, pol in (:TE, :TM)
+        geo = back_slab_geometry(; theta = θ, cells, width = θ >= 0.8 ? 4 : 3)
+        pml = PML(; cells)
+        t = @elapsed r = back_slab_run(Float64, geo, pml, pol)
+        row = Dict{String,Any}("cells" => cells, "theta" => θ, "pol" => String(pol), "R" => r.R, "R_theory" => back_prediction(geo, pml, pol),
+                               "nx" => geo.nx, "ny" => geo.ny, "steps" => r.k, "seconds" => t)
+        println(row)
+        push!(rows, row)
+    end
+    return rows
+end
+
 function back_report()
     dir = run_dir("pml-back", @__FILE__; work_package = "WP-034", prefix = "em2d",
                   extra_inputs = [joinpath(EM_TEST, "window_cases.jl"), joinpath(EM_TEST, "pml_back_cases.jl")],
                   params = Dict{String,Any}("case" => "back_lwfa", "position" => BACK_POSITION, "cells" => collect(BACK_CELLS),
                                             "steps" => 200, "free_extra_columns" => 100, "type" => "Float64", "mode" => "Reference",
-                                            "long_run_steps" => 12000, "long_run_layer" => 8))
+                                            "long_run_steps" => 12000, "long_run_layer" => 8,
+                                            "theory_angles" => collect(ANGLES), "theory_cells" => [8, 16], "theory_ncx" => 8, "theory_ncy" => 16))
     rows = reflection_rows()
     fig = Figure(size = (720, 460))
     ax = Axis(fig[1, 1]; yscale = log10, xlabel = "step", ylabel = "max |ΔE, ΔB| / max |E, B| behind the layer",
@@ -90,7 +111,21 @@ function back_report()
         axislegend(ax2; position = frame == "static" ? :lt : :rt, labelsize = 10)
     end
     println("wrote ", save_plot(dir, "pml_back_long_run", fig2, Dict("runs" => lr)))
-    return rows, lr
+    tr = theory_rows()
+    fig3 = Figure(size = (1000, 430))
+    for (col, pol) in enumerate(("TE", "TM"))
+        ax3 = Axis(fig3[1, col]; yscale = log10, xlabel = "carrier angle θ from the normal (rad)", ylabel = "reflected energy fraction R",
+                   title = "$pol: back edge of a static window, PIConGPU's profile")
+        for (cells, color) in ((8, :royalblue), (16, :darkorange))
+            sel = filter(r -> r["pol"] == pol && r["cells"] == cells, tr)
+            scatter!(ax3, [r["theta"] for r in sel], [r["R_theory"] for r in sel]; color, markersize = 12, label = "theory, $cells cells")
+            scatter!(ax3, [r["theta"] for r in sel], [r["R"] for r in sel]; color = :black, marker = :xcross, markersize = 9,
+                     label = "measured (module's step)")
+        end
+        col == 1 && axislegend(ax3; position = :lb, labelsize = 10, merge = true, unique = true)
+    end
+    println("wrote ", save_plot(dir, "pml_back_theory", fig3, Dict("runs" => tr, "cpu" => cpu_model(), "threads" => Threads.nthreads())))
+    return rows, lr, tr
 end
 
 back_report()

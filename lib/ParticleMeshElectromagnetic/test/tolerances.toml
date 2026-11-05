@@ -552,6 +552,13 @@ C = 0.01
 measured = { Float64 = 0.00331 }
 status = "proposed"
 
+["T-576"]
+quantity = "the back-edge PML of a static window, a vacuum slab packet along −x: |R − R_theory| against the discrete frequency-domain theory of the layer with the window's zero x-guards behind it (back_rt), Float64; 8 cells, 0 and 0.4 rad, PIConGPU's profile, Smilei's grading with α, κ_max = 4 with α_max = 0.2, TE and TM, 8 cells per wavelength along x and 16 along y; the test takes T-540's C"
+scale = "as T-450"
+C = 10
+measured = { Float64 = 0.0089 }
+status = "proposed"
+
 ["T-572"]
 quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts with a back-edge PML of 6 cells (α_max = 0.2), off nodes 1 … 6 and the antenna's two columns, T-473's run, both modes; the test takes T-473's C"
 scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
