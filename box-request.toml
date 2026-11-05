@@ -1,0 +1,6 @@
+timeout = 7200
+category = "test"
+outputs = []
+[[steps]]
+kind = "julia"
+args = ["--project=lib/ParticleMeshCore", "-e", "using Pkg; Pkg.test()"]
