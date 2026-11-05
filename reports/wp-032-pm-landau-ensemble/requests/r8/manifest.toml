@@ -1,0 +1,92 @@
+backend = "KernelAbstractions CPU"
+case_sha256 = "431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
+commit = "f76ba1fc3ae54917f8c475ee181b7930bf1f9679"
+cpu = "AMD EPYC 9655 96-Core Processor"
+dirty = false
+julia = "1.13.3"
+run_id = "wp032-pm-landau-r8"
+seeds = [20289031, 20290031, 20291031, 20292031]
+threads = 16
+updated = "2026-11-04T10:04:07.873Z"
+work_package = "WP-032"
+
+[host]
+boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+boot_time = "2026-11-03T14:07:22Z"
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+threads = 16
+
+[inputs]
+"Manifest.toml" = "sha256:5944c96e8fd2e27dfa9a1f91680dfe7ba8dea6426f42f299ddc66191993128f3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:dce4248ecf9e4b68777ed754b9fd7f95f368b4ce5b98b89cb617d1376151575a"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:dd7cad3107b66eac383943886407fb4927539f8efb5cbb403430bcf03450b335"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:68dbc7529ce970ce10fefa16885de016c562687964c7da74d190c54b5374a35b"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:e7a8c6855b4c5f3689f42961c07a0c36fce45aaa287ecc55b47168c904eed427"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:0c3b40c633f04870a7952c205267232771e1f84826d8e61f435e9c50f395d052"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:7279d60dd3b0f3df02890782ff792b57de61141d993e1f13a1cfda8309732554"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"lib/ParticleMeshElectromagnetic/test/theory.jl" = "sha256:1cd32eff2bc011bd89ecf4d166449beeccb6b21c495ed5688e874873c642a5e2"
+"scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/cases/landau-oblique-2d.toml" = "sha256:431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
+"scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
+"scripts/crosscode/ensemble_report.jl" = "sha256:d7b7b1cd3456732bd08dd20fc3a1a64de16111d25f85c488424a09c300cd076f"
+"scripts/crosscode/theory.jl" = "sha256:1b1471479822c6e2c63c3648cb7e501b856de49e5f1ab59a23ccc07259adeee3"
+"scripts/em1d/common.jl" = "sha256:ee6ee04eac4e66552f12c17edc01299498bc7e1e286797fb2d2c297c0e1331df"
+"scripts/em2d/crosscode.jl" = "sha256:1bc41f64ce10168ac32598625e51d5ccd77b959992dd54429f466a807e0cafa4"
+"scripts/em2d/landau_ensemble.jl" = "sha256:8ae7b85216d105d4156340128bf8624a743c009b2cece3e352255cde72b420b4"
+
+[parameters]
+case = "landau-oblique-2d"
+current = "Esirkepov"
+element_type = "Float64"
+mode = "Reference"
+module = "ParticleMeshElectromagnetic"
+scaled = "no"
+
+[per_seed.20289031]
+finished = "2026-11-04T08:46:14.281Z"
+ns_per_particle_step = 27.328228335312353
+particles = 16777216
+steps = 3391
+wall_seconds = 1554.744980601
+
+[per_seed.20290031]
+finished = "2026-11-04T09:12:21.520Z"
+ns_per_particle_step = 27.514953969186543
+particles = 16777216
+steps = 3391
+wall_seconds = 1565.368089368
+
+[per_seed.20291031]
+finished = "2026-11-04T09:38:11.487Z"
+ns_per_particle_step = 27.211667820965072
+particles = 16777216
+steps = 3391
+wall_seconds = 1548.1136735
+
+[per_seed.20292031]
+finished = "2026-11-04T10:04:07.742Z"
+ns_per_particle_step = 27.32610614048067
+particles = 16777216
+steps = 3391
+wall_seconds = 1554.62424567

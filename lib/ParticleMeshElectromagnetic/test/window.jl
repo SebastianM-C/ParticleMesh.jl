@@ -374,6 +374,9 @@ end
     @test_throws ArgumentError window_plasma(Float64; start = 1.0, thermal = (0.01, 0.01, 0.01))
     @test_throws ArgumentError window_plasma(Float64; start = 1.0, drift = (0.0, 0.1, 0.0))
     @test window_plasma(Float64; start = 0, thermal = (0.01, 0.01, 0.01)) isa EMProblem{2}
+    # the window's loads evaluate the density at each particle only
+    wp = window_plasma(Float64)
+    @test_throws ArgumentError initialize!(EMState(wp, EMNumerics()), wp; density_at = :cell_centre)
 end
 
 # --- T-478 ----------------------------------------------------------------------------------

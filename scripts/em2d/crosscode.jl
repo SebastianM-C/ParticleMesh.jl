@@ -16,15 +16,24 @@ using .EnsembleReport
 using Statistics: mean, median, std
 
 const CROSSCODE = joinpath(REPO, "scripts", "crosscode")
+"The time of the loaded momenta (`initialize!`'s `momenta_at`): −Δt/2, the reference codes' convention, recorded in the manifest."
+const MOMENTA_AT = :t_minus_half
+"Where the density profile is sampled (`initialize!`'s `density_at`): at cell centres, as Smilei and PIConGPU sample it, recorded in the manifest."
+const DENSITY_AT = :cell_centre
 """
-The committed reference runs this script compares with: WP-019's single Smilei runs and WP-017's
-four-seed Landau ensembles of Smilei and PIConGPU (FP64). The two reference ensembles differ by
-1.5 combined errors (reports/crosscode-picongpu/), so their numbers are recorded, not thresholds.
+The committed reference runs this script compares with: WP-019's single Smilei runs and, for the
+seeded Landau case, the reference ensembles of Smilei and PIConGPU (FP64) on the same case file,
+chosen by the first 8 hex of its SHA-256: WP-017's four seeds (`bc8fd6af`) or WP-025's 32
+(`431f4192`). The reference ensembles' difference is recorded, not a threshold (A7).
 """
 const SMILEI = Dict("landau-oblique-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-landau-oblique-2d-c8709f77"),
-                                            ensembles = ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-bc8fd6af"),
-                                                         "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-bc8fd6af"))),
-                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = ()))
+                                            ensembles = Dict(h => ("smilei" => joinpath(REPO, "reports", "crosscode-picongpu", "smilei-landau-oblique-2d-$h"),
+                                                                   "picongpu" => joinpath(REPO, "reports", "crosscode-picongpu", "picongpu-landau-oblique-2d-fp64-$h"))
+                                                             for h in ("bc8fd6af", "431f4192"))),
+                    "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = Dict()))
+
+"The reference ensembles of a run's case file (`case.toml` in the run directory), by its hash; none for an unknown file."
+reference_ensembles(name, pmdir) = get(SMILEI[name].ensembles, RunManifest.file_hash(joinpath(pmdir, "case.toml"))[1:8], ())
 
 "The seeds of a case: its `seeds` list, or its single `random_seed`."
 case_seeds(case) = haskey(case["numerics"], "seeds") ? Int.(case["numerics"]["seeds"]) : [Int(case["numerics"]["random_seed"])]
@@ -67,17 +76,19 @@ function problem(case, seed; ppc = nothing, cells = nothing)
 end
 
 """
-    simulate(case, seed; ppc, cells) -> NamedTuple
+    simulate(case, seed; ppc, cells, momenta_at = MOMENTA_AT, density_at = DENSITY_AT) -> NamedTuple
 
-Run one seed of a case in Reference mode, Float64: the field energies at the scalar cadence, the
-mode coefficients at the field cadence (entry k of the histories is t = (k − 1)Δt, as Smilei's
-iteration k − 1), the total energy at integer times, Gauss's law and ∇·B before and after the
+Run one seed of a case in Reference mode, Float64, by default started as Smilei and PIConGPU start
+(the loaded momenta at −Δt/2, the density sampled at cell centres: `MOMENTA_AT`, `DENSITY_AT`;
+the keywords are `initialize!`'s, and its defaults are WP-023's start): the
+field energies at the scalar cadence, the mode coefficients at the field cadence (entry k of the
+histories is t = (k − 1)Δt, as Smilei's iteration k − 1), the total energy at integer times, Gauss's law and ∇·B before and after the
 run, the field of the case's projection at the first and last step, and the wall time of the steps.
 """
-function simulate(case, seed; ppc = nothing, cells = nothing)
+function simulate(case, seed; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     prob = problem(case, seed; ppc, cells)
     st = EMState(prob, numerics_from_case(case; mode = Reference()))
-    initialize!(st, prob)
+    initialize!(st, prob; momenta_at, density_at)
     first_check = gauss_2d(st)
     snap(c) = (g = guards(st.grid); n = ncells(st.grid); Array(getfield(st.fields, c))[(g + 1):(g + n[1]), (g + 1):(g + n[2])])
     comp = case["name"] == "weibel-2d" ? :Bx : :Ex
@@ -203,9 +214,9 @@ function standard_plots(dir, case, sim, results, fits, series)
 end
 
 "One seed of a case into `dir`: series, observables, checks and the standard plots."
-function run_one(dir, case, seed; ppc = nothing, cells = nothing)
+function run_one(dir, case, seed; ppc = nothing, cells = nothing, momenta_at = MOMENTA_AT, density_at = DENSITY_AT)
     mkpath(dir)
-    sim = simulate(case, seed; ppc, cells)
+    sim = simulate(case, seed; ppc, cells, momenta_at, density_at)
     results, fits, series = observe(case, sim)
     out = Dict{String,Any}("case" => case["name"], "code" => "particlemesh", "seed" => seed, "observables" => results,
         "checks" => Dict("gauss_relative_initial" => sim.checks.initial.gauss, "gauss_relative_final" => sim.checks.final.gauss,
@@ -235,6 +246,7 @@ function run_case(name; ppc = nothing, cells = nothing)
     dir = run_dir("pm-$name", @__FILE__, name; work_package = "WP-023", extra_inputs = inputs, prefix = "em2d",
         params = Dict{String,Any}("case" => name, "seeds" => seeds, "element_type" => "Float64", "mode" => "Reference",
                                   "module" => "ParticleMeshElectromagnetic", "current" => "Esirkepov",
+                                  "momenta_at" => string(MOMENTA_AT), "density_at" => string(DENSITY_AT),
                                   "scaled" => ppc === nothing && cells === nothing ? "no" : "ppc = $ppc, cells = $cells"))
     cp(joinpath(CASES, "$name.toml"), joinpath(dir, "case.toml"))
     coeffs, per_run, walls, tC, sims = Vector{ComplexF64}[], [], Float64[], nothing, nothing
@@ -273,7 +285,7 @@ fmt(x; d = 4) = x === nothing ? "none" : string(round(x; sigdigits = d))
 
 The ParticleMesh run against the committed reference runs of its case: every per-run observable
 against WP-019's single Smilei run (seed 20261031) and, for the seeded Landau case, against each
-reference ensemble of WP-017 (Smilei and PIConGPU FP64, same case file and seeds): the per-seed
+reference ensemble of the same case file and seeds (`reference_ensembles`): the per-seed
 observables (difference of the seed means in combined errors of the means) and the ensembles
 (`compare_ensembles`, in units of the reference's seed spread and of the combined jackknife
 error), with an overlay of the three ensembles. Writes `dir/compare/`. Measurements, not
@@ -303,7 +315,9 @@ function compare(pmdir)
                              (b - a) / hypot(s["measured_stderr"], o["measured_stderr"]))
     end
     side["single_run_seed_$(first_seed)"] = single
-    if seeded && !isempty(ref.ensembles)
+    ensembles = reference_ensembles(name, pmdir)
+    seeded && haskey(SMILEI[name].ensembles, "bc8fd6af") && isempty(ensembles) && error("compare: no reference ensembles for the case file of $pmdir")
+    if seeded && !isempty(ensembles)
         seeds = case_seeds(case)
         series(d) = JSON.parsefile(joinpath(d, "ensemble-series.json"))
         pm = series(pmdir)
@@ -312,9 +326,9 @@ function compare(pmdir)
         st(v) = length(ok(v)) >= 2 ? (mean(ok(v)), std(ok(v)), length(ok(v))) : nothing
         fig = Figure(size = (900, 550))
         ax = Axis(fig[1, 1]; yscale = log10, xlabel = "t [1/ω₀]", ylabel = "|⟨k̂·Ê⟩|² of mode $(case["wavevector"]["mode"]), seed mean",
-                  title = "$name: four-seed ensembles of three codes")
+                  title = "$name: $(length(seeds))-seed ensembles of three codes")
         overlay = Dict{String,Any}("plot" => "ensemble |⟨k̂·Ê⟩|² of each code versus time, log scale", "theory" => B.result["theory"])
-        for (code, dir) in ref.ensembles
+        for (code, dir) in ensembles
             per = Dict{String,Any}()
             for k in ("damping_rate_mode", "energy_ratio_mode")
                 sv = [JSON.parsefile(joinpath(dir, "seed-$s", "observables.json"))["observables"][k]["measured"] for s in seeds]

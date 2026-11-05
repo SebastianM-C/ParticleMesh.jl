@@ -1,0 +1,32 @@
+{
+  "case": "landau-oblique-2d",
+  "difference": 0.0026531001025928425,
+  "difference_in_units_of_combined_stderr": 0.5744594585425655,
+  "difference_in_units_of_reference_seed_spread": 0.13887340671048884,
+  "difference_relative": 0.018200476669655373,
+  "note": "a measurement, not a threshold (A7: thresholds rest on the Smilei–PIConGPU spread)",
+  "particlemesh": {
+    "M": 32,
+    "ensemble_floor": 2.7643485860327615e-10,
+    "fit_range": [
+      4.759454118125674,
+      15.92152643987421
+    ],
+    "maxima_used": 6,
+    "measured": 0.14842401318072154,
+    "measured_stderr": 0.0032619685901994436
+  },
+  "picongpu": {
+    "M": 32,
+    "ensemble_floor": 3.530280690415377e-10,
+    "fit_range": [
+      4.764174155826982,
+      15.912507324856426
+    ],
+    "maxima_used": 6,
+    "measured": 0.1457709130781287,
+    "measured_stderr": 0.003269471733178186
+  },
+  "reference_code": "picongpu",
+  "theory": 0.15335946690960509
+}
