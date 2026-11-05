@@ -1,0 +1,131 @@
+## step 0 (smilei): exit 0 after 4s
+
+## step 1 (smilei): exit 0 after 3s
+
+## step 2 (julia): exit 0 after 23s
+{
+  "build": "cpu",
+  "case": "landau-oblique-2d-filter1",
+  "checks": {
+    "gauss_residual_t0_relative": 2.720323087575904e-12,
+    "rho_max_deviation_t0": 0.048435124304206635,
+    "rho_mean_t0": -1.1144243080435379e-16,
+    "rho_mode_amplitude_t0": 0.04843643780510843,
+    "sensitivity_energy_ratio_t0_without_box_mean": 3.96157056080646
+  },
+  "code": "smilei",
+  "observables": {
+    "damping_rate_mode": {
+      "fit_points": 3,
+      "fit_range": [
+        4.881831174035921,
+        9.507607536899023
+      ],
+      "measured": 0.14638741624295534,
+      "measured_frequency": 1.3582985458662853,
+      "measured_stderr": 0.0027614887228286427,
+      "method": "peak_envelope",
+      "noise_floor": 1.6200718863439393e-8,
+      "relative_difference": -0.0955730658798671,
+      "signal": "mode_projection",
+      "theory": 0.16185654221517362,
+      "theory_frequency": 1.3974134154356355
+    },
+    "filtered_gauss": {
+      "charge_change_scale": 0.025469400792116202,
+      "deviation_other_pass_counts": {
+        "0": 0.06709506020549905,
+        "2": 0.04506446211108331
+      },
+      "measured": 5.428329884730863e-15,
+      "measured_max_over_outputs": 7.741562305619088e-14,
+      "method": "mode_by_mode",
+      "modes_above_floor": 1021,
+      "outputs": 62,
+      "passes": 1,
+      "signal": "filtered_gauss",
+      "t": 17.99091843759013,
+      "theory": 0.0,
+      "tolerance": 1.0e-9,
+      "within_tolerance": true
+    }
+  },
+  "performance": {
+    "build": "cpu",
+    "cells": 1024,
+    "mobile_particle_steps": 159907840,
+    "mobile_particles": 262144,
+    "ns_per_mobile_particle_step": 21.906368068007172,
+    "ns_per_mobile_particle_step_time_loop": 15.069304919633709,
+    "particle_steps": 160532480,
+    "particles": 263168,
+    "steps": 610,
+    "steps_source": "smilei.log (n_time)",
+    "time_loop_seconds": 2.4097,
+    "wall_seconds": 3.503
+  }
+}
+
+## step 3 (julia): exit 0 after 19s
+{
+  "build": "cpu",
+  "case": "landau-oblique-2d-filter2",
+  "checks": {
+    "gauss_residual_t0_relative": 2.720323087575904e-12,
+    "rho_max_deviation_t0": 0.048435124304206635,
+    "rho_mean_t0": -1.1144243080435379e-16,
+    "rho_mode_amplitude_t0": 0.04843643780510843,
+    "sensitivity_energy_ratio_t0_without_box_mean": 3.96157056080646
+  },
+  "code": "smilei",
+  "observables": {
+    "damping_rate_mode": {
+      "fit_points": 3,
+      "fit_range": [
+        4.9584767118588475,
+        9.642439934294469
+      ],
+      "measured": 0.14335692959801172,
+      "measured_frequency": 1.3414249875156754,
+      "measured_stderr": 0.025244626689637402,
+      "method": "peak_envelope",
+      "noise_floor": 2.540351091636171e-8,
+      "relative_difference": -0.15910383668906505,
+      "signal": "mode_projection",
+      "theory": 0.17048113174111745,
+      "theory_frequency": 1.379585753990268
+    },
+    "filtered_gauss": {
+      "charge_change_scale": 0.026657777894252912,
+      "deviation_other_pass_counts": {
+        "1": 0.045064462111073136,
+        "3": 0.04293282584524109
+      },
+      "measured": 4.997264506538069e-15,
+      "measured_max_over_outputs": 8.240770512855356e-14,
+      "method": "mode_by_mode",
+      "modes_above_floor": 1023,
+      "outputs": 62,
+      "passes": 2,
+      "signal": "filtered_gauss",
+      "t": 17.99091843759013,
+      "theory": 0.0,
+      "tolerance": 1.0e-9,
+      "within_tolerance": true
+    }
+  },
+  "performance": {
+    "build": "cpu",
+    "cells": 1024,
+    "mobile_particle_steps": 159907840,
+    "mobile_particles": 262144,
+    "ns_per_mobile_particle_step": 18.86711745965676,
+    "ns_per_mobile_particle_step_time_loop": 16.01109739209785,
+    "particle_steps": 160532480,
+    "particles": 263168,
+    "steps": 610,
+    "steps_source": "smilei.log (n_time)",
+    "time_loop_seconds": 2.5603,
+    "wall_seconds": 3.017
+  }
+}

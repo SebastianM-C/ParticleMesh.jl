@@ -1,0 +1,45 @@
+branch = "runs/wp038-smilei-filter-1"
+request_commit = "fd653632e9718796adbffaae226083384cf8a333"
+started = "2026-11-05T18:14:43Z"
+category = "crosscode"
+outputs = ["scripts/runs/smilei-landau-oblique-2d-filter1-32ca4bf5", "scripts/runs/smilei-landau-oblique-2d-filter2-7da4b2d2"]
+finished = "2026-11-05T18:15:32Z"
+ok = true
+files_returned = 42
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-05T18:14:43Z"
+exit = 0
+seconds = 4
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-05T18:14:47Z"
+exit = 0
+seconds = 3
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-05T18:14:50Z"
+exit = 0
+seconds = 23
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-05T18:15:13Z"
+exit = 0
+seconds = 19
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"
