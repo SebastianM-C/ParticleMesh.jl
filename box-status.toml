@@ -1,0 +1,20 @@
+branch = "runs/wp033-tests-3"
+request_commit = "47052001d98fcc6c144f6caf9efed307035e7247"
+started = "2026-11-05T18:18:48Z"
+category = "test"
+outputs = []
+finished = "2026-11-05T18:22:16Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-05T18:18:48Z"
+exit = 1
+seconds = 209
