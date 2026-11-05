@@ -156,7 +156,7 @@ function kinetic!(st::EMState{2})
 end
 
 """
-    initialize!(state::EMState{2}, problem::EMProblem{2}; momenta_at = :t0) -> state
+    initialize!(state::EMState{2}, problem::EMProblem{2}; momenta_at = :t0, density_at = :particle) -> state
 
 The 2D state at t = 0, as in 1D: each species loaded by the engine's 2D quiet start (weights
 `density·(1 + amplitude·cos(k·x))/prod(ppc)` with `k_d = 2π·mode_d/L_d`, so the parameters enter
@@ -168,10 +168,13 @@ and `E = G` from `gradient_periodic!`, so that the backward-difference divergenc
 added where nonzero; then the momenta at t = −Δt/2 (half-step centring, A2) and the kinetic
 energy there: with `momenta_at = :t0` (the default) the loaded momenta are u⁰ and are moved
 half a step back by the pusher with −Δt/2 in E⁰, B⁰; with `:t_minus_half` they are taken as
-u⁻¹ᐟ², the convention of Smilei and PIConGPU, and kept as loaded.
+u⁻¹ᐟ², the convention of Smilei and PIConGPU, and kept as loaded. `density_at` is the 1D
+method's: `:particle` (the default) evaluates the profile at each particle, `:cell_centre` at
+the centre of its cell, as the reference codes do.
 """
-function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol = :t0)
+function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
     check_momenta_at(momenta_at)
+    ParticleMeshCore.check_density_at(density_at)
     (; numerics, grid, aux) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
@@ -179,7 +182,7 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
         fill!(s.status, ParticleMeshCore.FREE)
         k = ntuple(a -> 2 * T(π) * d.mode[a] / problem.length[a], Val(2))
         load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k[1], k[2]), d.ppc; vdrift = d.drift,
-                    vth = d.thermal, seed = problem.seed, stream = d.stream, workgroupsize = wgs)
+                    vth = d.thermal, seed = problem.seed, stream = d.stream, density_at, workgroupsize = wgs)
         check_subluminal(s, d)
         launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end

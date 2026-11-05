@@ -5,14 +5,16 @@
 #   julia +1.13 --project=scripts -t auto scripts/em1d/case.jl two-stream [ppc=256]
 #   julia +1.13 --project=scripts -t auto scripts/em1d/case.jl weibel
 # `momenta_at=t_minus_half` takes the loaded momenta at −Δt/2 (Smilei's and PIConGPU's convention)
-# instead of at t = 0 with the half-step kick back (`initialize!`); the manifest records which.
+# instead of at t = 0 with the half-step kick back (`initialize!`), and `density_at=cell_centre`
+# samples the density profile at cell centres as they do instead of at each particle; the
+# manifest records both.
 include(joinpath(@__DIR__, "common.jl"))
 
 function parse_overrides(args)
     kw = Dict{Symbol,Any}()
     for a in args
         k, v = split(a, '='; limit = 2)
-        kw[Symbol(k)] = k == "mode" ? (v == "Fast" ? Fast() : Reference()) : k == "momenta_at" ? Symbol(v) :
+        kw[Symbol(k)] = k == "mode" ? (v == "Fast" ? Fast() : Reference()) : k in ("momenta_at", "density_at") ? Symbol(v) :
                         k == "ppc" ? parse(Int, v) : parse(Float64, v)
     end
     return kw
@@ -49,16 +51,17 @@ function main(args)
     kw = parse_overrides(args[2:end])
     mode = pop!(kw, :mode, Reference())
     momenta_at = pop!(kw, :momenta_at, :t0)
+    density_at = pop!(kw, :density_at, :particle)
     case = load_case(name)
     prob = problem_from_case(case, Float64; kw...)
     num = numerics_from_case(case; mode)
     params = Dict{String,Any}("case" => name, "overrides" => Dict(string(k) => v for (k, v) in kw), "mode" => string(mode),
-                              "momenta_at" => string(momenta_at),
+                              "momenta_at" => string(momenta_at), "density_at" => string(density_at),
                               "steps" => prob.nsteps, "dt" => prob.dt, "cells" => prob.cells,
                               "ppc" => [s.ppc for s in prob.species], "amplitude" => [s.amplitude for s in prob.species])
     dir = run_dir(name, @__FILE__, name; params)
     st = EMState(prob, num)
-    initialize!(st, prob; momenta_at)
+    initialize!(st, prob; momenta_at, density_at)
     p = ParticleMeshElectromagnetic.params(prob)
     comp = name == "weibel" ? 2 : 1
     chunk = 50

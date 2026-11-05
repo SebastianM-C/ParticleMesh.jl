@@ -8,6 +8,7 @@
 | Case file | `scripts/crosscode/cases/landau-oblique-2d.toml`, SHA-256 `431f4192…` (WP-025's 32 seeds), unchanged; a copy in the run directory |
 | References | WP-025's 32-seed runs on the same case file: Smilei v5.1 `reports/crosscode-picongpu/smilei-landau-oblique-2d-431f4192/`, PIConGPU 0.8.0 FP64 `picongpu-landau-oblique-2d-fp64-431f4192/` (their seed coefficients, per-seed observables and ensemble records); WP-023's four ParticleMesh seeds `reports/wp-023-em-step-2d/em2d-pm-landau-oblique-2d-20261102T163231/`. Theory: the case file's values (`scripts/crosscode/theory.jl`, T-160, T-273) |
 | Environment | the CPU box: AMD EPYC 9655, 16 cores, one boot for all eight requests (boot id `1186c900…`, booted 2026-11-03T14:07:22Z), one request at a time, so nothing else ran on it. ParticleMesh: Julia 1.13.3, KernelAbstractions CPU backend, 16 threads, Float64, `Reference()` mode. Smilei: image `localhost/particlemesh-smilei:e4f0148b8952fc87` (id `faf32c6a…`), 16 OpenMP threads, one MPI rank |
+| Start | the loaded momenta taken at t = 0 and kicked back half a step in E⁰ and the density profile evaluated at each particle (`initialize!`'s defaults; the manifests have no `momenta_at` or `density_at` key), while Smilei and PIConGPU take the loaded momenta at −Δt/2 and sample the profile at cell centres (#226); `scripts/em2d/crosscode.jl` takes both of their conventions (`scripts/crosscode/README.md`), so a rerun of these seeds through it starts otherwise |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review |
 
 ## 1. What was built
@@ -96,7 +97,7 @@ Eight requests of about 1 h 42 min each (6106 s to 6258 s for four ParticleMesh 
 ## 7. Open items
 
 - The rule's window depends on each code's late signal through the floor (§3), and at `floor_factor` ≤ 5 ParticleMesh and PIConGPU separate by 1.5 to 2.4 combined errors; comparing codes at a fixed number of maxima, as the post-hoc table does, would remove the window's dependence, but it is not the pre-registered observable.
-- ParticleMesh's 2D cross-code runs take the loaded momenta at t = 0 and kick them back half a step (A2), while Smilei and PIConGPU take them at −Δt/2 (#226); the 1D runs switched to the reference codes' convention (#282), the 2D runs here did not, so as to reproduce WP-023.
+- The 32 seeds here ran with WP-023's start (the Start row), not the reference codes'; the effect of the two starts on the 2D Landau rate is not measured.
 
 ## 8. Independent checks (the PR's breakers)
 

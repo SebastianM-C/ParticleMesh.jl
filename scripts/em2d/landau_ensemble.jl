@@ -74,6 +74,7 @@ function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing)
         "case_sha256" => RunManifest.file_hash(joinpath(dir, "case.toml")),
         "parameters" => Dict{String,Any}("case" => case["name"], "element_type" => "Float64", "mode" => "Reference",
             "module" => "ParticleMeshElectromagnetic", "current" => "Esirkepov",
+            "momenta_at" => string(MOMENTA_AT), "density_at" => string(DENSITY_AT),
             "scaled" => ppc === nothing && cells === nothing ? "no" : "ppc = $ppc, cells = $cells")))
     record()
     for s in seeds
@@ -234,7 +235,9 @@ maxdiff(a, b) = (; max_abs_difference = maximum(abs.(Float64.(a) .- Float64.(b))
 
 Post-hoc checks, written to `out/checks.json`: (1) each of WP-023's four seeds, rerun in `ens`,
 against WP-023's committed run: every per-seed observable and the mode series E·k̂ (bitwise or
-the largest difference); (2) the box's Smilei run of one seed (`smilei_seed`, analysed by
+the largest difference; bitwise only for an ensemble run with WP-023's start, the defaults of
+`initialize!`, while `crosscode.jl` starts as the reference codes do; its manifest's `momenta_at` and
+`density_at` say which); (2) the box's Smilei run of one seed (`smilei_seed`, analysed by
 analyze.jl) against WP-025's committed run of the same seed; (3) the ns per particle-step of
 both codes on the box, normalized by the mobile electrons as WP-025's Smilei record is.
 """

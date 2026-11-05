@@ -14,6 +14,7 @@ include("spectral_cases.jl")
     try
         include("transfers.jl")
         include("particles.jl")
+        include("density_at.jl")    # T-510, T-511: where load_quiet! evaluates the density (#226)
         include("allocations.jl")
         include("determinism.jl")
         include("engine.jl")
