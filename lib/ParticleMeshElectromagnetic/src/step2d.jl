@@ -167,7 +167,8 @@ end
 
 The 2D state at t = 0, as in 1D: each species loaded by the engine's 2D quiet start (weights
 `density·(1 + amplitude·cos(k·x))/prod(ppc)` with `k_d = 2π·mode_d/L_d`, so the parameters enter
-through the weights, A3), the velocities converted to momenta; the fields zero; Ex and Ey from
+through the weights, A3), the velocities converted to momenta (refused if a drawn speed reaches c,
+`check_subluminal`); the fields zero; Ex and Ey from
 the deposited charge by the engine's periodic solve, `φ` from `inverse_laplacian_periodic!` of ρ
 and `E = G` from `gradient_periodic!`, so that the backward-difference divergence of E is
 ρ − mean(ρ) to roundoff (the mean is the immobile background); the background fields `E0`, `B0`
@@ -190,6 +191,7 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
         window === nothing || (load_window_species!(window, i, s, grid, wgs, d); continue)
         load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k[1], k[2]), d.ppc; vdrift = d.drift,
                     vth = d.thermal, seed = problem.seed, stream = d.stream, workgroupsize = wgs)
+        check_subluminal(s, d)
         launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     foreach(a -> fill!(a, zero(T)), st.fields)

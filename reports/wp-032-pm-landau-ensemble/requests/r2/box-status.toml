@@ -1,0 +1,25 @@
+branch = "runs/wp032-pm-r2"
+request_commit = "984cfb4d88c5f8504ad056715d30a9c641add7df"
+started = "2026-11-03T22:02:48Z"
+category = "validation"
+outputs = ["scripts/runs/wp032-pm-landau-r2"]
+finished = "2026-11-03T23:44:45Z"
+ok = true
+files_returned = 42
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-03T22:02:48Z"
+exit = 0
+seconds = 6117
+
+[batch]
+name = "wp032-pm-landau"
+total = 8
+branch = "claude/epic-cerf-3g9o79"

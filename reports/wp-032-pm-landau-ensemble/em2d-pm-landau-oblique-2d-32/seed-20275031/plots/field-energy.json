@@ -1,0 +1,19 @@
+{
+  "damping_rate_energy": {
+    "final": 3.6836475119681364e-8,
+    "fit_points": 0,
+    "fit_range": null,
+    "initial": 4.923320279856676e-7,
+    "max": 4.926323177580169e-7,
+    "measured": null,
+    "measured_frequency": null,
+    "measured_stderr": null,
+    "method": "peak_envelope",
+    "noise_floor": 3.928404440412956e-8,
+    "relative_difference": null,
+    "signal": "scalar_sum",
+    "theory": 0.15335946690960509,
+    "theory_frequency": 1.4156618886045358
+  },
+  "plot": "field-energy versus time, log scale"
+}

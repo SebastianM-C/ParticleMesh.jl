@@ -1,0 +1,22 @@
+{
+  "damping_rate_mode": {
+    "final": 6.509326228406924e-11,
+    "fit_points": 6,
+    "fit_range": [
+      4.757833415232715,
+      15.850160842337754
+    ],
+    "initial": 9.97673261923969e-7,
+    "max": 9.97673261923969e-7,
+    "measured": 0.17206599949978257,
+    "measured_frequency": 1.4161106739028664,
+    "measured_stderr": 0.008001148468868987,
+    "method": "peak_envelope",
+    "noise_floor": 1.2727790618922668e-10,
+    "relative_difference": 0.12197833604366733,
+    "signal": "mode_projection",
+    "theory": 0.15335946690960509,
+    "theory_frequency": 1.4156618886045358
+  },
+  "plot": "mode-amplitude versus time, log scale"
+}

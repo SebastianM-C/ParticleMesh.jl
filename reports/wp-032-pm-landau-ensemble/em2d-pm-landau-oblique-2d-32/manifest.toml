@@ -1,0 +1,753 @@
+case_sha256 = "431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
+commit = "1e2b912aedfc63e1547cddda056accb29838429a"
+dirty = false
+merged_by = "scripts/em2d/landau_ensemble.jl merge"
+run_id = "em2d-pm-landau-oblique-2d-32"
+updated = "2026-11-04T14:02:32.928Z"
+work_package = "WP-032"
+
+[inputs]
+"Manifest.toml" = "sha256:5944c96e8fd2e27dfa9a1f91680dfe7ba8dea6426f42f299ddc66191993128f3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:dce4248ecf9e4b68777ed754b9fd7f95f368b4ce5b98b89cb617d1376151575a"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:62fc03589dd1a6ea07ecddf6a52739463f1acb07b90d3614cd005d5b1d453dfd"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:dd7cad3107b66eac383943886407fb4927539f8efb5cbb403430bcf03450b335"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:68dbc7529ce970ce10fefa16885de016c562687964c7da74d190c54b5374a35b"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:e7a8c6855b4c5f3689f42961c07a0c36fce45aaa287ecc55b47168c904eed427"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:0c3b40c633f04870a7952c205267232771e1f84826d8e61f435e9c50f395d052"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:7279d60dd3b0f3df02890782ff792b57de61141d993e1f13a1cfda8309732554"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"lib/ParticleMeshElectromagnetic/test/theory.jl" = "sha256:1cd32eff2bc011bd89ecf4d166449beeccb6b21c495ed5688e874873c642a5e2"
+"scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
+"scripts/crosscode/analysis.jl" = "sha256:cb24490dc681da36de4894687a980d11f3a22e1b5235d2e576a1200f6a202944"
+"scripts/crosscode/cases/landau-oblique-2d.toml" = "sha256:431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
+"scripts/crosscode/ensemble.jl" = "sha256:d6c96948fe8a01c92a6e5abe19097a96e1c7e83819b523e4766d65c097f9c8bb"
+"scripts/crosscode/ensemble_report.jl" = "sha256:d7b7b1cd3456732bd08dd20fc3a1a64de16111d25f85c488424a09c300cd076f"
+"scripts/crosscode/theory.jl" = "sha256:1b1471479822c6e2c63c3648cb7e501b856de49e5f1ab59a23ccc07259adeee3"
+"scripts/em1d/common.jl" = "sha256:ee6ee04eac4e66552f12c17edc01299498bc7e1e286797fb2d2c297c0e1331df"
+"scripts/em2d/crosscode.jl" = "sha256:1bc41f64ce10168ac32598625e51d5ccd77b959992dd54429f466a807e0cafa4"
+"scripts/em2d/landau_ensemble.jl" = "sha256:8ae7b85216d105d4156340128bf8624a743c009b2cece3e352255cde72b420b4"
+
+[observables]
+M = 32
+ensemble_floor = 2.7643485860327615e-10
+maxima_used = 6
+measured = 0.14842401318072154
+measured_stderr = 0.0032619685901994436
+observable = "damping_rate_mode_ensemble"
+observable_exists = true
+
+[outputs]
+"case.toml" = "sha256:431f419286f5a9bd6d583aa88a28669413680cf35a420be92a7fa0c157021038"
+"ensemble-series.json" = "sha256:e520858f817fd1f8884a64c23ef4f0dd5e734a8cd8d597dffc974969b49b6c01"
+"observables.json" = "sha256:a8141152797bd6f2836cb5ffbd8d68bee438f53170db7b7afc2883ae862d7fd0"
+"plots/ensemble-energy.json" = "sha256:33e1464e6e7fc8695d57d0d4ccf44dd591f9a54998f538153487d48c125bdda3"
+"plots/ensemble-energy.png" = "sha256:3ac1589aa4eecc1f9b147738346bc0550d1eda00550ec5d23e62fcb9ffd79156"
+"plots/per-seed-rates.json" = "sha256:7ee861e3203d57c89c831ae07c7954063da96e7d29dad6bca69b73b0a03257c8"
+"plots/per-seed-rates.png" = "sha256:a7f851f0c52863e253cd7048ccb7064739410fc08e0931dafcd90a45a8c85742"
+"seed-20261031/observables.json" = "sha256:8de33e793eaadc66a3da759ec1763473127616adb5f52d2579429b4e4cc425fe"
+"seed-20261031/plots/energy-conservation.json" = "sha256:81d1f816679682649b6ac6bfb2f8cfa1036cac634120a3c0fb52f679d765aef2"
+"seed-20261031/plots/energy-conservation.png" = "sha256:fae87f9ee366a24b113abc5eaa4b65a3fb80571d7f0ca81e909f335454a1f106"
+"seed-20261031/plots/field-energy.json" = "sha256:1bde5ba0634b71627b6add75e8077dd9c8961f33d1642448a16da6e4f9182a11"
+"seed-20261031/plots/field-energy.png" = "sha256:4400eee000a15e4098ecf721c9b894294a2f676dc4a408abbe5722405a1fcba1"
+"seed-20261031/plots/field-snapshots.json" = "sha256:7184068f0a30dcfe0ba1522368fc603319bab35bb3aec8c1afe226d3fe3760c2"
+"seed-20261031/plots/field-snapshots.png" = "sha256:5be9d19b2555db175b69bcda441c46e8113e0cd6a9de810ea57385fd34c8cf44"
+"seed-20261031/plots/mode-amplitude.json" = "sha256:a1aea668adbe4dcbe318eb1a72806b38df21a189d49242aad3dd0c3019b7eaac"
+"seed-20261031/plots/mode-amplitude.png" = "sha256:0c19e502cb0daebced500629639c867af061d9bd4e1e9a5d48efc2cf59f18cf5"
+"seed-20261031/series.json" = "sha256:db00f04accd93d54ffa11abb9b5a546e421921d0f945b4af2de72d03c52b24e8"
+"seed-20262031/observables.json" = "sha256:e4204ec4b1eda03f7527a1fadebff459ea84cda79673701fab48160241e38550"
+"seed-20262031/plots/energy-conservation.json" = "sha256:526e646074df5e9252ad7995e6107aac64984502da8cb11c36d0c2127b23b330"
+"seed-20262031/plots/energy-conservation.png" = "sha256:f3fa855685a2adde0ac76b1346757b97831a6f696264e59ddb43ce9b2438c51f"
+"seed-20262031/plots/field-energy.json" = "sha256:b22ba7f4a5359c5ddfa46bc8468744ca23f0dea5e6d4010856d3f47bf66ce484"
+"seed-20262031/plots/field-energy.png" = "sha256:89fbd820ca64dd27af70431c6837379a9a2d215835105f2ddcf270482fc4f34a"
+"seed-20262031/plots/field-snapshots.json" = "sha256:8a263038cad3549d2083db00e327261b3eecb9f753d0e2e6edc90eb79fb78aec"
+"seed-20262031/plots/field-snapshots.png" = "sha256:a2b92e404de638d3017dcac7d7289d3c3d047f347796a1608a25073e0cac126b"
+"seed-20262031/plots/mode-amplitude.json" = "sha256:2cf974f7dd6dfb4d9ede15c4db6307d4369c8fd0344bb258b0bde3ecb21615ec"
+"seed-20262031/plots/mode-amplitude.png" = "sha256:9f8b0011c6c22a565d497be5dcd0d7d97c029bf46283983414730f43fffb0d7d"
+"seed-20262031/series.json" = "sha256:2d1c615e249b9007dd17a167f8332cf70f572790914afb3a981a048699d7e783"
+"seed-20263031/observables.json" = "sha256:f6323ba8c6af38f755934939e673425822649564656a54207e47207fafa9af3a"
+"seed-20263031/plots/energy-conservation.json" = "sha256:14ba2105927c63a0294ade0cbd537394f6586d93a5a76b0847eaa7be52f9c043"
+"seed-20263031/plots/energy-conservation.png" = "sha256:1177f3badbb882fd9723d5a1cbc758b94c4c60f74671b70a44d908b7099caaaf"
+"seed-20263031/plots/field-energy.json" = "sha256:e4cec81d4f2d07a394606b955e6e1feede9fda3d67f22844a5aecad641a955e5"
+"seed-20263031/plots/field-energy.png" = "sha256:b9363590e8e1171ef47676313aa12c1283df0f026c8ddb5af088f56f55758125"
+"seed-20263031/plots/field-snapshots.json" = "sha256:f2d2bb12f772cbb4f28814ee1b57eee937b0c1bb4fb71471fd33959b6a1b06f3"
+"seed-20263031/plots/field-snapshots.png" = "sha256:82d7908360ea9ae6f302d6819e44f9ac6e0507f2c52c8072342c7d1e573d4193"
+"seed-20263031/plots/mode-amplitude.json" = "sha256:a7f406e03a8bb01c361a0a0a9a20278b573a8b0e3a9cbbcc4995490f29f0913b"
+"seed-20263031/plots/mode-amplitude.png" = "sha256:7e234cb605b40c83e4a6ad8b257b17b37d21098309e67bd3e092f07dfd21204f"
+"seed-20263031/series.json" = "sha256:00ef3a209b6dce77da9219c30f386c69ab9d34af03efdb60099c5eb3b862223d"
+"seed-20264031/observables.json" = "sha256:efe5c7670ebc0b383407f4610de9a633b88d7340b1e5f5752665bd8e531c251e"
+"seed-20264031/plots/energy-conservation.json" = "sha256:17c66d228c927e9b6c2e62b279edec1593c9707a3269cea773187efadae859bd"
+"seed-20264031/plots/energy-conservation.png" = "sha256:51affde85d6286cf6392a9f957719289688d29baff1726d1510de84ffadcc01d"
+"seed-20264031/plots/field-energy.json" = "sha256:ef5e64204db0c48f8a63b0c3d9a0c17cbfb6904a244596e4c29942427e824b6c"
+"seed-20264031/plots/field-energy.png" = "sha256:7ee1b94b229b3385fd94f81e3805a373c2cbcdd7f5d1bb60edb2b3d39ca5e553"
+"seed-20264031/plots/field-snapshots.json" = "sha256:17007cf533704338255c583cde3ccb3ebea4f5ed093ae60368c5f36786031c3a"
+"seed-20264031/plots/field-snapshots.png" = "sha256:f8181ff609ff5bf09cff3e79665cecce3ef2d9c695f2433995ed099e151726d4"
+"seed-20264031/plots/mode-amplitude.json" = "sha256:514392c8a1673d840c1d51a3f162f6a4f8c0e6c69f6dd1e610366528caaafa93"
+"seed-20264031/plots/mode-amplitude.png" = "sha256:c29e83884f2e08b70d7ce42fa385ba07bdef4314b49272b7db978610712e7a60"
+"seed-20264031/series.json" = "sha256:0c574b00562f4560481240ba13990aafd96b4815d415c0db944e93a341d6119b"
+"seed-20265031/observables.json" = "sha256:cbdcfd963f54fe7483a402223e28c64c65779dd10f60a8657df78fdf860088a1"
+"seed-20265031/plots/energy-conservation.json" = "sha256:3757daf7d9b25957c0dee437b91e17d747ac55f06ae98376b253fa2aae225672"
+"seed-20265031/plots/energy-conservation.png" = "sha256:961d16088510ed55e812c4d4f2ace311514ddaf8364dfd0ac6836ade3c494493"
+"seed-20265031/plots/field-energy.json" = "sha256:3ac39cd15e7292da32c3366feac2290b9e422a9aba7bc0d6fa6a957d904bb582"
+"seed-20265031/plots/field-energy.png" = "sha256:a2def740b9accac5b4c93f0c808ee3c9522b2fc8ab22fde3d047e466cde6c1df"
+"seed-20265031/plots/field-snapshots.json" = "sha256:b9324e8c5d5c02d165ecf74594bd0287e4c80cb5116a225c18403bab3acbfc85"
+"seed-20265031/plots/field-snapshots.png" = "sha256:927642611f28f2423c4b344d74a10b32a84048215205493af23b36d1cc1a7cc2"
+"seed-20265031/plots/mode-amplitude.json" = "sha256:41892ed94643c009ba0024a76bf0ae780ede79a2b63c9187306885b266f4506d"
+"seed-20265031/plots/mode-amplitude.png" = "sha256:56da2e63e8a080f349c9039e704114d68978a9fa9f036b418b754810124a64ab"
+"seed-20265031/series.json" = "sha256:3d482d67f8d5cc10294f4662030f7f742c2d7ee3734f4654fae278246c9ddb1b"
+"seed-20266031/observables.json" = "sha256:c350d3171b4c8ebb5eea0c845a43875b885c0e05abda4bd0b702980e7fc04ff3"
+"seed-20266031/plots/energy-conservation.json" = "sha256:bd8559ef11b9cf76944750475c1b361d94a868726ec68814c822aff41494c96b"
+"seed-20266031/plots/energy-conservation.png" = "sha256:7337c19bfce2d51eb0abbf6775799adbe6a8f72cb668b13220f8407f67e0fa0d"
+"seed-20266031/plots/field-energy.json" = "sha256:5b413df132b21448f17a2925abb11301a93ef21f89a66c39713c8a3056058115"
+"seed-20266031/plots/field-energy.png" = "sha256:240e391e9c765a352f7c797f2a990860d7ab76328f4b075e024311f72d57a2cf"
+"seed-20266031/plots/field-snapshots.json" = "sha256:4f493ac40669c92d22afe15f4779b767f6c0f86ef4548d3388640e7c833d5f65"
+"seed-20266031/plots/field-snapshots.png" = "sha256:f2f49704651921fa6f1ea9a670da7ba93663409bb1808eae324cca051ca5af41"
+"seed-20266031/plots/mode-amplitude.json" = "sha256:8b228d856be50e5b2acdb8f7b54f3563c3273e1bce570485e413424182193e43"
+"seed-20266031/plots/mode-amplitude.png" = "sha256:b4d4a3e57347eac540f732bc6a6c0570c81de72b8aa5d8417372a8b0f0c99b47"
+"seed-20266031/series.json" = "sha256:68b5bf2d4abbbca4be2b1f08b467ec3da1a37662da66ed1f430a7c21dd5c1540"
+"seed-20267031/observables.json" = "sha256:7612aad2602c9b254d7cc0e7bfbfc3b454e3ff70dd0a4d9abce56daeac8edf3f"
+"seed-20267031/plots/energy-conservation.json" = "sha256:98b0f5698db3c5f9c8a39f2ebb738f84cc35061d9f071f1dd903d68c118a59b5"
+"seed-20267031/plots/energy-conservation.png" = "sha256:350bf0169b15d19506b28bf5fd9f516ccdacd044cdfe6c1bd0f4db331986bfee"
+"seed-20267031/plots/field-energy.json" = "sha256:b768073a60f135cd7e7cc60c39d5ec99378c78ee19e9d5f8918a8ac1b8b14daa"
+"seed-20267031/plots/field-energy.png" = "sha256:ca60cc8cb901054c3ca28e3384d420fb79bee924c10426b5496b47d4143a35ce"
+"seed-20267031/plots/field-snapshots.json" = "sha256:135a972c47fe219e2d97cfffd249ce3d3f6350ce6532e503b31943cd28818b22"
+"seed-20267031/plots/field-snapshots.png" = "sha256:b68886918579901cc47b510dd2773cbf7a618787eade13b21dbb86396df10ce8"
+"seed-20267031/plots/mode-amplitude.json" = "sha256:cb739281e52b204f0a84687b9ac99ffd027fdaa5510ffe8ba4e35a45ec00de59"
+"seed-20267031/plots/mode-amplitude.png" = "sha256:a102b0577d6cede7b3c221437267bdb17216372852cfddd5f7a2e245b50d530b"
+"seed-20267031/series.json" = "sha256:18d4729264349957d140775848fe27627e5e35d6760ca9f20dd56e88e9857884"
+"seed-20268031/observables.json" = "sha256:14e5b069d53f3ac68e87f424b636bdee99dcdfa7711b35e339fdd2bde93546b5"
+"seed-20268031/plots/energy-conservation.json" = "sha256:d941d758a53e41a2003360c06be5a5876dd57c5ce92c20fe4d9ff373dfef0188"
+"seed-20268031/plots/energy-conservation.png" = "sha256:2d55c0a38ef4ddfdc4096f761293497ca05c6d96586a17e110387333e27abab9"
+"seed-20268031/plots/field-energy.json" = "sha256:22f89e17422a4bee95de75167eb5629f538ad1584302232226dd09fa68779ff7"
+"seed-20268031/plots/field-energy.png" = "sha256:e215a63835834867eb6dd96c2091d4c9d540bf2bd877e5bc017d1b1bd260b293"
+"seed-20268031/plots/field-snapshots.json" = "sha256:80b3a8f449c009330438bcf57b0e6b907adf1a9a6cc7fbfdb18b578e6cba73fe"
+"seed-20268031/plots/field-snapshots.png" = "sha256:a59abf98051d20720668a1f97e20379219c0c30aff2e26e0144f3013b9eb0a10"
+"seed-20268031/plots/mode-amplitude.json" = "sha256:41689e54d5358519b8333ca72c1aea7cf310e1a2032105f7cb7077427197be90"
+"seed-20268031/plots/mode-amplitude.png" = "sha256:d8dca178385f3f12d001700c6cf3f83cc18774cc38bc5abbc652bd2a2fc82db5"
+"seed-20268031/series.json" = "sha256:51199057608899caedac93d1af5f1cbda334fad431cb45499a6e24f1eed32fe1"
+"seed-20269031/observables.json" = "sha256:67f265acca7126e966661b6b99b511b4be429cf176c9bfe4311b922e401ee2f8"
+"seed-20269031/plots/energy-conservation.json" = "sha256:7f97b250bbb6370e40b5d2ad410a5e47700fe94776c3589b8d7ec888fddbf1ee"
+"seed-20269031/plots/energy-conservation.png" = "sha256:56543d821ab5b2552a3f80e25afffeba8eed40556bbc9473debbf6c4f7d4b83d"
+"seed-20269031/plots/field-energy.json" = "sha256:ceda6ca2676c7b7ab70f26d13f66bfabfa814532dd3565a7de8506725cb036a7"
+"seed-20269031/plots/field-energy.png" = "sha256:11472ad301aa67232e1f591070188569e7721bec9ef72d7927971e4cd1ce630e"
+"seed-20269031/plots/field-snapshots.json" = "sha256:b568279efbcd3c9dcbf310b2a32aa65c4db105a00adceb3cc01d6cbbc2b0266d"
+"seed-20269031/plots/field-snapshots.png" = "sha256:fb876f5f1e966c8165e491d90b3a2dfa527e8dacfba497f6eccfc0a3a3d0de82"
+"seed-20269031/plots/mode-amplitude.json" = "sha256:3c2ad6dde81b591c0b60fc5703625c02d240edd078d38fbac55df52a1c7954f4"
+"seed-20269031/plots/mode-amplitude.png" = "sha256:75fd6373ac0785f4266f14e2dea98c32db048d1c5e77a01a58cd66d69bf5dd35"
+"seed-20269031/series.json" = "sha256:48607b416306aa6cb979ae0807471eade319d2b1a880269544ae6f539c78b6c3"
+"seed-20270031/observables.json" = "sha256:3cefc56014d225b39226f2375290583647a9923c9fcae90626ec35f4b7fd7085"
+"seed-20270031/plots/energy-conservation.json" = "sha256:875d7d30ddef4462a62bf79d9b4afbb52ff1d3d7101b1bcce1704c5e5a11db8e"
+"seed-20270031/plots/energy-conservation.png" = "sha256:546e657be87cf9d91c82bc2e757d83f3b8bf8683798d39df041a0b395227579e"
+"seed-20270031/plots/field-energy.json" = "sha256:22321c4cee7afd1467f9f327f8d20112332dc9329c3b82b29c76542a0da22e71"
+"seed-20270031/plots/field-energy.png" = "sha256:cc5536d1bb7a1067bdde0a3e6cab1c586731b6b326fec3d5c47892e6ed19d36b"
+"seed-20270031/plots/field-snapshots.json" = "sha256:532189c19ea6dfd22a5c4ce9f9070aa557de94674a2af9310491c05973e0bcae"
+"seed-20270031/plots/field-snapshots.png" = "sha256:51cba71ac6370cf85c62b06362dac49fa8939f38f6d9b9173206e4c601275d3d"
+"seed-20270031/plots/mode-amplitude.json" = "sha256:e08c000b4a7c8a66ee7bc49a93e57c7dd290ed091ef15d299583fbd80e8a539f"
+"seed-20270031/plots/mode-amplitude.png" = "sha256:5b7a971532ebcfc53dcf0538f985d63b16daea63a68c6aca16d6dbf4ef5e5c17"
+"seed-20270031/series.json" = "sha256:3f3a9e4b0e8601febd17d90ed3c4fde7420694fd9451f1959c96a959efb568da"
+"seed-20271031/observables.json" = "sha256:80bd9b6292514ec93f9c89cc04b6e1818146c2631c4b012912932c502bd0f56a"
+"seed-20271031/plots/energy-conservation.json" = "sha256:277b32dcf34f2c1ea9da4b753c6ad56e03472ab4d161e5a23790b91f70f6288e"
+"seed-20271031/plots/energy-conservation.png" = "sha256:996bfe466e8f7b35872baa7955827a917fb4cf65ce8b5997efd0d1628132a7e8"
+"seed-20271031/plots/field-energy.json" = "sha256:856b65c3fb779a0d79a0319584f14544f05fd925de002ef1a2843132346059d0"
+"seed-20271031/plots/field-energy.png" = "sha256:98a66b4bc106728298ccb849a22e8adea05c329f9796acaa2b16b6eb56286998"
+"seed-20271031/plots/field-snapshots.json" = "sha256:7106af3eb55957f73736e885c866ac3deaf446870bb3e9fbdf93a67a8c51f9ee"
+"seed-20271031/plots/field-snapshots.png" = "sha256:3f0016737ec5b48d5d7168e707ea7caaa04cca22d7ff17ebe2d274a33e77f440"
+"seed-20271031/plots/mode-amplitude.json" = "sha256:007f025370a6028b86a35e340e5e098076c438531b7922cc222fd5579d1ceba8"
+"seed-20271031/plots/mode-amplitude.png" = "sha256:3bbac7469bb5af9a6ecf513cc6822ab59511fb38b69af7deeff894e3586af148"
+"seed-20271031/series.json" = "sha256:5d436d59b46cb1b79599825d71859e61d70ca0676744d54cd732dbd11155d8e1"
+"seed-20272031/observables.json" = "sha256:49660c967a52c11ddb48a6799ba4de067ab7c4a123c763a637e8f30e8a0a0a19"
+"seed-20272031/plots/energy-conservation.json" = "sha256:c11745de9989d460a1b9f07c792cde4e19c31bb4b4a2640783b68169edbcb6c7"
+"seed-20272031/plots/energy-conservation.png" = "sha256:6a806fceb15c52b4bebb1d5852dbcc335714738c3169de4c14822cfd8c984f28"
+"seed-20272031/plots/field-energy.json" = "sha256:6ef96ff96fc462878be6b7a4dc6d7d2a9f9803b8e08ab5d1bf8af183caff147d"
+"seed-20272031/plots/field-energy.png" = "sha256:c6b00befd3ca7559606f2cfa9276e0b74221dcfb3ec3f925e48fb367c623b519"
+"seed-20272031/plots/field-snapshots.json" = "sha256:7191197a7104ec215589de525dad9b1ab8d0e1fd73b9d90b92f7a9317a92655b"
+"seed-20272031/plots/field-snapshots.png" = "sha256:358f72664c544dc68cfd7beed3341703119d5b632d782873b0a773675ff2c05f"
+"seed-20272031/plots/mode-amplitude.json" = "sha256:95e72896a084cf26461185b7911650b3ec2336c742d8910df92c0ff9bf036827"
+"seed-20272031/plots/mode-amplitude.png" = "sha256:9af13894f8d8fd67dcedc4b2853e3eef95c029ba6dba4637e24afe4299a8a21b"
+"seed-20272031/series.json" = "sha256:3e3ceaa7efe641294210f1712c002f88deae93ab2668e6ca4472a227f2c12113"
+"seed-20273031/observables.json" = "sha256:5fc5abece4459fbbd61b0af98169b061dfa72e5243fae1bf7a34cedb7bb635cd"
+"seed-20273031/plots/energy-conservation.json" = "sha256:2e84cab85b6596d8e7040a09885b52eb6e6db1848b5b4c71e18a239e441fbbd3"
+"seed-20273031/plots/energy-conservation.png" = "sha256:4a5111f6cc390a822bc16f55dd3740babeb2b280a85211d49a28e52e30243c19"
+"seed-20273031/plots/field-energy.json" = "sha256:ec5f4be8a819933e0c56521105ad239b62df104f1092ef3a07c2dfb25b5dc001"
+"seed-20273031/plots/field-energy.png" = "sha256:b9eb4aea027893cade16cdddc033c142d7d54955e6ef980b7146d83905b437de"
+"seed-20273031/plots/field-snapshots.json" = "sha256:82f8b29280037e9b9ea7b66b8d3f35da2f1e8e729e36412a68039298df7c6997"
+"seed-20273031/plots/field-snapshots.png" = "sha256:a46fea50be58dd8b009a66d5c056c75da0a1e09b03670f6987de07e9fece8c8a"
+"seed-20273031/plots/mode-amplitude.json" = "sha256:c1573746fac3f865392534c1906ead8cfccb43f5d73c2ac36301d4aa245d1948"
+"seed-20273031/plots/mode-amplitude.png" = "sha256:c78c3f419d4808e23dc07eff5c87f1dd7975c713f55995f53dca51b8394f799e"
+"seed-20273031/series.json" = "sha256:8a66e9a58c4500b20b786818c62f1e10dcdeb49ad2966cd01781e8496fd4fe31"
+"seed-20274031/observables.json" = "sha256:e734c28fcd37649785cec3df06179c2f62880f063b5af5438e629150b22494d3"
+"seed-20274031/plots/energy-conservation.json" = "sha256:e29d18477951a53aa0715c84afb6cc1266a28bba5796d0d3a829f015c86cef19"
+"seed-20274031/plots/energy-conservation.png" = "sha256:91e915cf92e3941583e6449c85b4489a839a2697703c2bd161edbf7b92a4fc69"
+"seed-20274031/plots/field-energy.json" = "sha256:a309c9786937f69ce54895d7fe65d9583f9f796cfeceb6b6ea072d3b11ccd9ae"
+"seed-20274031/plots/field-energy.png" = "sha256:739088f976f8796d123375000e0cff5bf6bf8eef2c045878c725285aec10bd9e"
+"seed-20274031/plots/field-snapshots.json" = "sha256:0be407e19b78b236424842295226c753226f2ecc75a1cad6528c257ec04b7038"
+"seed-20274031/plots/field-snapshots.png" = "sha256:803961becb622088b8da28abd110f190e2719216e83422131b17908048d135ac"
+"seed-20274031/plots/mode-amplitude.json" = "sha256:9b581e523c38641e3575d5ecab64aed237cb6960e498fb4d6c1b2719d3da42fe"
+"seed-20274031/plots/mode-amplitude.png" = "sha256:e6181018616f748dcbadaccc5a601b043e58fec9f3e4e993ff706f14be125ca8"
+"seed-20274031/series.json" = "sha256:dab940b5811d79686d7dd527f245d7fd5213be9d773c8b2f587bd67cf9b0e92d"
+"seed-20275031/observables.json" = "sha256:b08c81cecfa0af31b824d73f928240db6ec35c41a99d91f450baff68eaf791b3"
+"seed-20275031/plots/energy-conservation.json" = "sha256:343c6f65e17ed33d76113e1fae0374f88f2d580820f9600587828b4470240864"
+"seed-20275031/plots/energy-conservation.png" = "sha256:201a4ae1aee5685be0b4f61becf6d5d5a6a1ab380386f37a5d8a3fed5a22019e"
+"seed-20275031/plots/field-energy.json" = "sha256:0282c896c742322c15119e8f1a3125544d9a814bf462f7226afbdcd354a4c814"
+"seed-20275031/plots/field-energy.png" = "sha256:7060e67bbfe798cf07503a3059a0d2605831ad0cd726d87635f8234e120bcc44"
+"seed-20275031/plots/field-snapshots.json" = "sha256:c08f54183f5ccbe0c73f22846175650852d15e3619841164ba83eb881dcd55e4"
+"seed-20275031/plots/field-snapshots.png" = "sha256:9037cb35252529080ef84c78359f22d9159017e478e23c9144838c7084e1f1a8"
+"seed-20275031/plots/mode-amplitude.json" = "sha256:6ddd12a7486d45841efe2aa5619183a527a89ab63bd838242cc395c777ee0027"
+"seed-20275031/plots/mode-amplitude.png" = "sha256:82c16da39c798c1c2a2eeada34c850e86bc1723c9b0723ea54cceadf9288bfde"
+"seed-20275031/series.json" = "sha256:c2f47265dcdb1509c2bb0dc4205dad252911352dd21f8d05bb01523be5c9768e"
+"seed-20276031/observables.json" = "sha256:ac94d7bf38c009706aed58561c8c46640b6587c1445fbcb170b71869af586666"
+"seed-20276031/plots/energy-conservation.json" = "sha256:c3d35d422787825bfd6758cb32e87cebc98cebab13d36930292d51521500eab9"
+"seed-20276031/plots/energy-conservation.png" = "sha256:ddfd9b9558301df7d373cd198201992f4c6cad086a71de6498cd7d44ccf31e1f"
+"seed-20276031/plots/field-energy.json" = "sha256:a5728780629dd0329d3cf1e93ea23c4399625ee038a604fdcf4b5b793b94b9ca"
+"seed-20276031/plots/field-energy.png" = "sha256:00a714e13b51a925be69d108d4de649468019a171ebe40730f982c544890cc20"
+"seed-20276031/plots/field-snapshots.json" = "sha256:702dfbca05fcc0f3645306675ef1dae01fd028ea276795080e4dd3dfb8812e13"
+"seed-20276031/plots/field-snapshots.png" = "sha256:8d1338d2f49031f63d6c7d673698bb15f374960dc2b801c2bf5da75e708a8fef"
+"seed-20276031/plots/mode-amplitude.json" = "sha256:3f6ac0bd65f952619f0b9736b3df256d4e16582c4bb009a2023529eea5ed16fa"
+"seed-20276031/plots/mode-amplitude.png" = "sha256:24d753266d5362edba0acb6c8f0deeb56dce0160844c8467af8e72c4b54f7a23"
+"seed-20276031/series.json" = "sha256:6dbc720157dc9b9ec96f0c625c1a745e3054897e4cb9e09ce65f4199588c5258"
+"seed-20277031/observables.json" = "sha256:2f8983e02c1a9c827706a4984dda6df265199559345bdbf56cbae33e3b916fc9"
+"seed-20277031/plots/energy-conservation.json" = "sha256:d597be7b60652c4997cee0cffe0a1fc2c105ef156a1a62b5e70b815b751b6ccc"
+"seed-20277031/plots/energy-conservation.png" = "sha256:03861609afce47f1fd3e8e8865976c9ed9e69a1814a094cc8d7750c59a1c0c00"
+"seed-20277031/plots/field-energy.json" = "sha256:605647735d920544fded738268e963ca838eae5e1319ffe878a1eafda0e45e3e"
+"seed-20277031/plots/field-energy.png" = "sha256:ff8f3bec6fc37936e23c87db083c98d1d7891a00b3b537683f47af41242a2ee0"
+"seed-20277031/plots/field-snapshots.json" = "sha256:28de54b5c9fb83951afee58d4bacac6aeb5c63390151f71e1e6cb60f206d5b89"
+"seed-20277031/plots/field-snapshots.png" = "sha256:31ba6c88371e85d70fb07e97b077d7279d3dd3fc96221f831d6ea735a15d199b"
+"seed-20277031/plots/mode-amplitude.json" = "sha256:8f31280c8b08c5786494ca44506f43d0f787d0d00f7ff5e736b55d34bcb6d771"
+"seed-20277031/plots/mode-amplitude.png" = "sha256:f37ecfa0afdc1164a80357650f1d913dc52d52576a07ea85de6c248e305a436c"
+"seed-20277031/series.json" = "sha256:f88141c087719c84c92f280b5e583d81028ffc6ca682ea1539b6ebe2f768e36d"
+"seed-20278031/observables.json" = "sha256:c8997608a27ec6a26563b71020477c616244da88fe303b4a711ff8f2db504f4b"
+"seed-20278031/plots/energy-conservation.json" = "sha256:7b454e4485a95e16345f91d22354167cfd02db087fab9541974eaa9ddab95ad3"
+"seed-20278031/plots/energy-conservation.png" = "sha256:32816edc899ebabd1641765b73b8a264c59015073b4ecb0270ff6aad2df7d9f6"
+"seed-20278031/plots/field-energy.json" = "sha256:32ea06d5a2ad7291f3065608ecae1336c9689bd3e9f4ca26642cab35b90ddf07"
+"seed-20278031/plots/field-energy.png" = "sha256:7052f5aa4591c4a6d7472539a46565e5843c74a048c36c49efbf77cac5e5b6af"
+"seed-20278031/plots/field-snapshots.json" = "sha256:86a57cfaff86bef2eb8bb290e62ce415943436581424b512938d49eea15306ae"
+"seed-20278031/plots/field-snapshots.png" = "sha256:da66963f938dd4bec6f61ec967546735701bccb7ebb8c0304a7ac01963e38321"
+"seed-20278031/plots/mode-amplitude.json" = "sha256:35f52b5c8f80661f78a0fe7cdf75b04f1145507cefb663c3114e1405bd252764"
+"seed-20278031/plots/mode-amplitude.png" = "sha256:87c22b634b9466790dc769c5a05c780094d46cbed4e74d05c6a2a4a3bc0a8254"
+"seed-20278031/series.json" = "sha256:bc3c7eda3a468b12d86d7dbaec95f376c523080d7e4db994cd0a75d3469ffa8d"
+"seed-20279031/observables.json" = "sha256:5200df4c35a082076287fa43c580ab212512bff3828433caa8c556fe9905d191"
+"seed-20279031/plots/energy-conservation.json" = "sha256:87889424bde8a7c9ce0a1ce55dde53f474dd1c9d48c884d16ab43f9f04851aa5"
+"seed-20279031/plots/energy-conservation.png" = "sha256:4e7930b8fc5d735c7e4defe9972e82e578f7c44210352d16407229227cdd13a2"
+"seed-20279031/plots/field-energy.json" = "sha256:1e75a739176b33fc18d34436bedf2bf242735d63211dd730287e49e36d90171c"
+"seed-20279031/plots/field-energy.png" = "sha256:6ff822cfff468ea32ffb98761379dcccfce5718aaf94d6938890b18946b8f431"
+"seed-20279031/plots/field-snapshots.json" = "sha256:a40a51ab28e2e15b811d38f2597afcf03b13693e68629524a9c220dfcbab3089"
+"seed-20279031/plots/field-snapshots.png" = "sha256:f125b55b22480aefa00c5de069c5ff13382b2886b195cf90710f0df240c77e92"
+"seed-20279031/plots/mode-amplitude.json" = "sha256:318d254adf4f76153fbb2ecf36730a412b2f99e7918d27796f2b4bf0fc7c6e91"
+"seed-20279031/plots/mode-amplitude.png" = "sha256:e034dc77e99286f49e42d6b05c6e9b8b26a29e152b65fe0643bd81aa3d4530f3"
+"seed-20279031/series.json" = "sha256:c5db5739c1cb7c566e4a512ced8dd79d7bd5d6a474c7e78801e75bb7f9500dc1"
+"seed-20280031/observables.json" = "sha256:77ea0007f60fcd88437c9f039d26f08173955e196aa223e868f18bd02e5c3f41"
+"seed-20280031/plots/energy-conservation.json" = "sha256:4c7f477524981930e42c6a5c4903dbc7123adcb9cdc5524221f4ca711aba09bd"
+"seed-20280031/plots/energy-conservation.png" = "sha256:d5a12723b79ed667ae2785632675f8c6911df9181d5d50c9fbbf0485674041ae"
+"seed-20280031/plots/field-energy.json" = "sha256:e701cf5c62896d5b6b48418867d3edd23b5ccb24920090c0325c9a4410235164"
+"seed-20280031/plots/field-energy.png" = "sha256:7ed58d1870375cda335664d0c4d37deba8557f14df4ab947cf42174d44bb1d12"
+"seed-20280031/plots/field-snapshots.json" = "sha256:e6cdabd2c19a9a8268e543c31722bca35ad44a40224b3a67878a972bcbee508e"
+"seed-20280031/plots/field-snapshots.png" = "sha256:f50bf207757f8e70b35f48bc403fae80bfad1fae26eb57c0dab3e499c269d6b8"
+"seed-20280031/plots/mode-amplitude.json" = "sha256:f56ed4669c3464035f4a881409bc9d5e51cd7c00e49167d1db8cca0c68db51e2"
+"seed-20280031/plots/mode-amplitude.png" = "sha256:52051f20c0f681a62cb606464c983a21f9e934fe45450ea8cad025b0c8d7e471"
+"seed-20280031/series.json" = "sha256:373a8d00a5082180f7d73330e810e7a58bdc79b447f2cba86a33612e10caa726"
+"seed-20281031/observables.json" = "sha256:93aa78a43f94e8be396e50de0990b3def837019ec2f29cb9aebf3293c5126234"
+"seed-20281031/plots/energy-conservation.json" = "sha256:22671ba9122a4e4449d91c63082bd3aa3595d19f9c60bb772da485b76368dfc1"
+"seed-20281031/plots/energy-conservation.png" = "sha256:7d5e07149b96b13b95b807d4a8857d143ad688bd061aec3167102d92ff9564f7"
+"seed-20281031/plots/field-energy.json" = "sha256:0f82ef63a3f2281ad5193773370ee478c24f3cb993bae165f04e3acaf52fa897"
+"seed-20281031/plots/field-energy.png" = "sha256:0fd73d0ab98d25e418fbbff422fb964dfebf37d7f0bfe018e532ee2c0babb510"
+"seed-20281031/plots/field-snapshots.json" = "sha256:82eda70331530507091a61555361425b700e99f266bea52a486e2768bcd1306c"
+"seed-20281031/plots/field-snapshots.png" = "sha256:4bcc952c08ea8b1c3cd155cdf3a78ef7092dcc78f0acf7de44572961a4cb3696"
+"seed-20281031/plots/mode-amplitude.json" = "sha256:ee05571b78bce2c73ee96590dc35445f74e01ebdcbca8ba458782b06d97c9b70"
+"seed-20281031/plots/mode-amplitude.png" = "sha256:81fa857406d3107adcd40e892b0035b80cb1ff345fdbb3a3999efd8bb01f3314"
+"seed-20281031/series.json" = "sha256:f8dc2c64d823b9f0f95ce621a3a25726d71b75a76c9620aff73b45c3efb1d1ce"
+"seed-20282031/observables.json" = "sha256:913eeb493da6e39085d515a0093f58b97068676f85dd87dc2dd00d2a5802daeb"
+"seed-20282031/plots/energy-conservation.json" = "sha256:69a75cd48366d44f21a3fa6df579c3b40a8819b888b34bdb66114f51e0a3e63a"
+"seed-20282031/plots/energy-conservation.png" = "sha256:4e96007fb1beef0c1e5d0fe1c99f10b6f0a6b5602dc3596fa80bf8d6413a2992"
+"seed-20282031/plots/field-energy.json" = "sha256:6f2cd07f33a1dfc6f2b128bddcc4b8472d27c4c46797dd28ffcba2d74de590bf"
+"seed-20282031/plots/field-energy.png" = "sha256:4e8b18f62da2dddec53a03ae7a09f63cd2cbdc324c92b1fd1371215940ec2213"
+"seed-20282031/plots/field-snapshots.json" = "sha256:334dcd47a6355ea81b26d4aa016556dbad4eb988c500ddecf52b88d04b455124"
+"seed-20282031/plots/field-snapshots.png" = "sha256:6fcf3027c4a10a0bc2d2cfaad2eac3e269cacecc5da98f9c3908e0a9a4e991fc"
+"seed-20282031/plots/mode-amplitude.json" = "sha256:bfc34f7410ccac8503940d56688f95e8ff5c28aed1f6f059ef37de46c48546eb"
+"seed-20282031/plots/mode-amplitude.png" = "sha256:b6503c3623878ca09c0d36b124b7774a47d1171ee2068878880ed45022db710d"
+"seed-20282031/series.json" = "sha256:3d2298407488d998f8ac4e50511e547942b954008780e7a1ee247520aeae479b"
+"seed-20283031/observables.json" = "sha256:0fb8d288f765c227645b2efc65da5bdec9e657ac8544f2645e27b183ff5dd7b0"
+"seed-20283031/plots/energy-conservation.json" = "sha256:ec9fd167efd66ffde7ffde8dc6e45db445f74cc45d62bb770438aab9c2ad4434"
+"seed-20283031/plots/energy-conservation.png" = "sha256:15d4de0e432d0e38b88932c95e7ca805d7f5b9245c0ac97f2cb7f8a088c9ac84"
+"seed-20283031/plots/field-energy.json" = "sha256:fb0dbbbe40dd56dc3b36888a8862e085925a71bf498a369a8dc1b88aab5ec2b3"
+"seed-20283031/plots/field-energy.png" = "sha256:39be95d38d48fe38cac95ce973df083f947ab858d50d4417c2e355392cae5bea"
+"seed-20283031/plots/field-snapshots.json" = "sha256:444a3645751f54f377687a12fc51607d12fe8b7a61e6ec1d70370250626f372c"
+"seed-20283031/plots/field-snapshots.png" = "sha256:48e035c7c7a373a4aac4d6a06cb9a9521b11db03c30c3c321988b70015abaef8"
+"seed-20283031/plots/mode-amplitude.json" = "sha256:b7725a8275007f283ff8f9584d34ea885987823a4a972301fdb3690ad6e79635"
+"seed-20283031/plots/mode-amplitude.png" = "sha256:2009576bb435f72a4e24a53672118b9a02130f3ec508873ccef28f06c18aa470"
+"seed-20283031/series.json" = "sha256:93994420dfa2dd7b60da5b70f55db409083e0ca55d7d262af3aafeb46edf10bc"
+"seed-20284031/observables.json" = "sha256:3944d48275bd5032a3d8203b60086064426d62200ed5846552dffa20b18bb928"
+"seed-20284031/plots/energy-conservation.json" = "sha256:edf7c652dc8e1f194a1cba780b77ca32f2b1e11c8a0913398bc88c791353ffa9"
+"seed-20284031/plots/energy-conservation.png" = "sha256:c122db4a8c436239383396282f2c9e4f8b22796748421fc7865d0b7444006f07"
+"seed-20284031/plots/field-energy.json" = "sha256:5d25d113f56aed843ecf2cb9b6a188df9822475065af82bc0248b7a461f4e402"
+"seed-20284031/plots/field-energy.png" = "sha256:8321e41513e1923a3469b96f0ed5be644f4601f8f12f0f79fe03a3de53d581f1"
+"seed-20284031/plots/field-snapshots.json" = "sha256:e3466475a956e5f72cfde98c08124025281c4566b784f939fde6c843670761bc"
+"seed-20284031/plots/field-snapshots.png" = "sha256:607103edf3a732619400efb09e266e39c8c1c5518ec56ac037033d653415165d"
+"seed-20284031/plots/mode-amplitude.json" = "sha256:01b7806ab0ee3f064051cd618de2f78a6437b4ab04f5e57f75905d0f7cd806de"
+"seed-20284031/plots/mode-amplitude.png" = "sha256:eca7e2b1b72a89cc09408f5a995a8938cdeeae5c9045455eefe699ea4519126f"
+"seed-20284031/series.json" = "sha256:aefdc1f084eef5ec4a9d0f5d7fcec458c47fab560dfed5ff1c5ffb8f775859f2"
+"seed-20285031/observables.json" = "sha256:4e1aeeb497f9146a340f792699af221a2e9b643c885102788b9115560f9fc513"
+"seed-20285031/plots/energy-conservation.json" = "sha256:8846b64c9d557e7557b606882239fab390ab814bdcde81a92ed42b7edb12855d"
+"seed-20285031/plots/energy-conservation.png" = "sha256:0763a3ad82960367e80329cb2235f9244f89b757803039ec3ee60a65cda189d8"
+"seed-20285031/plots/field-energy.json" = "sha256:f5e0c6c0900231b0b719032161ea274eb1c0696048c440318c37164f61c1079b"
+"seed-20285031/plots/field-energy.png" = "sha256:43108195d35756ab48e4c055d2581ec91b37d0399f38390057c7ba033c395af6"
+"seed-20285031/plots/field-snapshots.json" = "sha256:04cc32967ba0029036a119a846536d0a0ca6255de6f05f3f45c77e31ea60a6d6"
+"seed-20285031/plots/field-snapshots.png" = "sha256:2011a69a6667e148f780352521fd0a9d36ffcede2512bd4d9f5a0cedf9ed8008"
+"seed-20285031/plots/mode-amplitude.json" = "sha256:b1ae33142a2e4675533041be86c9cf546980ff65df79e8d759f1eb4113b93a6d"
+"seed-20285031/plots/mode-amplitude.png" = "sha256:0d770cfb9fa53cce78ac556dd0c9ccc2f65550fd40263836404d9256f838253e"
+"seed-20285031/series.json" = "sha256:03b9cbb55efe5df0731cdfd733aee7a9d193668abcd8595435a9d6adf3d0e339"
+"seed-20286031/observables.json" = "sha256:6e0210a503e58037e2e175074cb22835ee12f4a0d6793f78829a43d418189a5a"
+"seed-20286031/plots/energy-conservation.json" = "sha256:424f743c91f3ac5368be7867b0619c85d2d663a716ea6c393472ce84a2a8c220"
+"seed-20286031/plots/energy-conservation.png" = "sha256:af44064fd1bccdd4d802f80cf91ed82169a226585be890e5f64dcf1965ecd31a"
+"seed-20286031/plots/field-energy.json" = "sha256:97597c58d48f1b22926420e2b360e76d7119d8e4fb0af8684e5c68717a46d873"
+"seed-20286031/plots/field-energy.png" = "sha256:82611882133274bc04379e40e17a0f42fad53507546ab93d01d7f4d10b96c800"
+"seed-20286031/plots/field-snapshots.json" = "sha256:6629dbf1a89f2a67eeca27025b3b9808083b448c60c8e1c2e750e7f7d16fd76e"
+"seed-20286031/plots/field-snapshots.png" = "sha256:fe5a67e6ba02d04206a7c5ba65cb918ed4abc4f28a290f18ec0244f2af251343"
+"seed-20286031/plots/mode-amplitude.json" = "sha256:5283bab00771367d4f5594960bff23840e12d576eb107ecd567aa4d0282d24ca"
+"seed-20286031/plots/mode-amplitude.png" = "sha256:0240a0d8a2f79fe04d1d784daeefc71e793ca473168f06c1e44078b3e4ebe61a"
+"seed-20286031/series.json" = "sha256:fa59cdb60a46fca29af3061a90d7272c64fabb9c082db59870df96a6669b6042"
+"seed-20287031/observables.json" = "sha256:416bfaf7f14920ea74e6078872e47004258ea6f6e0c5f287cde5b48e56c1495e"
+"seed-20287031/plots/energy-conservation.json" = "sha256:4bdfea8eb86856b6c795b0edbacdcf18455d8c7767972a0152e0f25e4d183dce"
+"seed-20287031/plots/energy-conservation.png" = "sha256:3c9823ee94e189ab88b2a70f67c0512c2d9f75873766f50de740b4c4b223b5c9"
+"seed-20287031/plots/field-energy.json" = "sha256:f453c49d2fcfff860733ebbfad5fec7542252985a4df6ae6aada6287fd4c74d3"
+"seed-20287031/plots/field-energy.png" = "sha256:3e97e7f11d735c02d3de769ba768bef16eee106c71952edec3ba78831802aaf0"
+"seed-20287031/plots/field-snapshots.json" = "sha256:44d9cd8313738c88c450b86fdff7a9514f9b2d1e21ce9fe2a37bdcc2fe8868a9"
+"seed-20287031/plots/field-snapshots.png" = "sha256:da9e03e6bad8197c46053b83452f81f121d6aae583db3d92f89df74d5c98864f"
+"seed-20287031/plots/mode-amplitude.json" = "sha256:f2c7fc6943344f07abdabb224c2cfc8ecfcae890994b4cf50cbdb4852cf70e2c"
+"seed-20287031/plots/mode-amplitude.png" = "sha256:8523e14221dd6c496aeffd240b733efa7e8be4becb38a1cb9a0215acb578559e"
+"seed-20287031/series.json" = "sha256:501a12f66c14cdc5cfd1923500b1752d8bb0bbde7fc6619723cd6b9df780dcd5"
+"seed-20288031/observables.json" = "sha256:1192d0d99f3285af5bcbec99e7441c2053d0c8a8d070cadf8443121a0cc42353"
+"seed-20288031/plots/energy-conservation.json" = "sha256:c3ecd7edbbb1649d3b40aaf0939c373643fefe49bcbbdf8d331f982259cd36a5"
+"seed-20288031/plots/energy-conservation.png" = "sha256:50e7e80e38063232ffb1c13c6e11a6d0e1b4b0ce8b77df4515107d0f5a281ff0"
+"seed-20288031/plots/field-energy.json" = "sha256:68cabe9c982bf0e99687b409507bd0cf91ae4adef266d313811374d3e6956fbb"
+"seed-20288031/plots/field-energy.png" = "sha256:3d23873d8720c570827d73fa325d3b394f1c69383dc5ef4d6712949dea89ec10"
+"seed-20288031/plots/field-snapshots.json" = "sha256:8a1d2e440e0263673798c4f8cb6d6a7518824f24925038be740ebf6902589f0a"
+"seed-20288031/plots/field-snapshots.png" = "sha256:15c11347863e791c33afa2bd3be2b20aba09c2f571b5edfce4e2c83b8c5f23a6"
+"seed-20288031/plots/mode-amplitude.json" = "sha256:2265850ddbe046671d6fe21ad38b17fb3594da5d9c5b0bba1737d87b8f54ede1"
+"seed-20288031/plots/mode-amplitude.png" = "sha256:43f1232b85b791d2390804cc7bce7faa7e61d8ee85c33d97a315f821a122658b"
+"seed-20288031/series.json" = "sha256:61d720f3ae692162d5f1b058bbf41583bfca1f47814aba11159215281c6fce25"
+"seed-20289031/observables.json" = "sha256:c8b61210208a21cff6d3e9761313b2c7b841a2a28396c8e25f961dd52457ec1e"
+"seed-20289031/plots/energy-conservation.json" = "sha256:d5938231d75e3c755eaf1ebec87850471346ff9c0a16c5e685daf63314e164f6"
+"seed-20289031/plots/energy-conservation.png" = "sha256:5d5b728aacfc742f0b7b6dd8dfe650cc6221774205251815c7592c29047b0d6d"
+"seed-20289031/plots/field-energy.json" = "sha256:568530b633b74dfcc3814069de7c3ff8ac316c94e0858ee658310099a3a6dbbe"
+"seed-20289031/plots/field-energy.png" = "sha256:199d24df85ccfd546cc6da6c18e35a18d620a26ac1ce72a438822fdee57fcba0"
+"seed-20289031/plots/field-snapshots.json" = "sha256:ce7e4135a82c9d1413d330e612c9f372c1bae4b6d5e2103f0fdb1cbd008d9323"
+"seed-20289031/plots/field-snapshots.png" = "sha256:9ba9e2ecd59ca40cf35d7a1f8e684a0520a78cf5cf998525189c8022a393f4f4"
+"seed-20289031/plots/mode-amplitude.json" = "sha256:6c900234055252846f457d269d760035ec1913c45350394c436da11cbc003de9"
+"seed-20289031/plots/mode-amplitude.png" = "sha256:5b489e2a7b7dbdaf997d7ca79db4b2622f17b7841bfd6aa80d91510d8314adf9"
+"seed-20289031/series.json" = "sha256:d965c2f39231886773db84a222e35bf1dddfd39c290af62cec60e498df6a1838"
+"seed-20290031/observables.json" = "sha256:e7229c7fd9831580ed47cfde0c27a8cdceda647d47afedbd538bcd295cf1f49b"
+"seed-20290031/plots/energy-conservation.json" = "sha256:16216a76e6877b446322852139ba794b029ce0d16ba15a0c46cb3ec334bd7fc6"
+"seed-20290031/plots/energy-conservation.png" = "sha256:4ef80627795d082c3d74b901a448affdd619c8a80bc3589c5b65dbf9ec4542e8"
+"seed-20290031/plots/field-energy.json" = "sha256:8c65e4a935ee35b9af867ac88e169e56dbbbd4c7a7f841fd45d32342b6a90c20"
+"seed-20290031/plots/field-energy.png" = "sha256:db5a80635fe2ebf9bc8c4183b2ca84dd144828a4532b46993736c6359384d920"
+"seed-20290031/plots/field-snapshots.json" = "sha256:b9a45e8ed1166eafecdb7a697467e45061151c5f2cbcd7546180d5a2df70bf40"
+"seed-20290031/plots/field-snapshots.png" = "sha256:26e9286cbd198573b80ce8e5479f5af90412080d074b7a24ffdbbc905f15a3e7"
+"seed-20290031/plots/mode-amplitude.json" = "sha256:dbfbb1a32e7211cbcb9718ff94e87dd5a971c628adb1dd07965a86cbe2c39899"
+"seed-20290031/plots/mode-amplitude.png" = "sha256:d25e51c53aa4427b7078f5d5cd24f6f2916a1bb97d81c07b3120facb42c68ace"
+"seed-20290031/series.json" = "sha256:f07b1e36a168944bf79ec9a1cd506ca0979e630d39e63e78850a9048225678e3"
+"seed-20291031/observables.json" = "sha256:cdf1a6bab7771515910de85b3f846a25e4206a3e75615bd532d5203044167b73"
+"seed-20291031/plots/energy-conservation.json" = "sha256:d2350641e94efefa8d362cc9506e6ab64c1d14bd2058d504c04e7809a1783f0a"
+"seed-20291031/plots/energy-conservation.png" = "sha256:88acb8941fbf3fa4f430029f20a8d97ed5928be695b32450e377546589ad370a"
+"seed-20291031/plots/field-energy.json" = "sha256:8c9c457bec8a53d2f3937774202814a1a92efaf96222a49808bdb65f7e26dc84"
+"seed-20291031/plots/field-energy.png" = "sha256:0e54ce8dbebc891e141ded87dd73b09e0fd86a3d64700625ccc6b06cab5a4475"
+"seed-20291031/plots/field-snapshots.json" = "sha256:f303b00a1bbdc29238be4000ccd9915bb4c72d9dcd137c55592b8ff8cd377e5e"
+"seed-20291031/plots/field-snapshots.png" = "sha256:305858e383bf54beaffb9ff99a1b38ff49fce9304d27173f5f1f98318b48e787"
+"seed-20291031/plots/mode-amplitude.json" = "sha256:45ce91f94c620514f298ef2df8a3366b4d3145c34106fb4f33d2a56e92a9ad74"
+"seed-20291031/plots/mode-amplitude.png" = "sha256:47ae8a77d0b4dbcb85a18190fba1f84711e2d6ce07ce78de080037c9688fdc24"
+"seed-20291031/series.json" = "sha256:10dd35427d396342781813d1ca8770ff806aa30dbb02577de750345f529f63fd"
+"seed-20292031/observables.json" = "sha256:b957a63a0fa20a97b55ecd3102048bed4c93a9a09880a9fcadfdb95796373dba"
+"seed-20292031/plots/energy-conservation.json" = "sha256:8025bbafba5698821b393eb2c90a8655a21326a49024d12b27efb60ad648b744"
+"seed-20292031/plots/energy-conservation.png" = "sha256:1f824af57aade020b46e893e7b30af62c73dcf406e0ef63bd40925f489873ec3"
+"seed-20292031/plots/field-energy.json" = "sha256:5db80aab048fae606c939d3f9769dacf944ae4bdf38fcba92e9bc99009cb12fd"
+"seed-20292031/plots/field-energy.png" = "sha256:37f0671bb3f3d1ba3dd5292b639279f9813c95516ccd5dad59913e39c81f4b42"
+"seed-20292031/plots/field-snapshots.json" = "sha256:3d408033dc45e951c7a4cf3058a7c5d78e7243ba70a7f98ac2e1ef991c7b175a"
+"seed-20292031/plots/field-snapshots.png" = "sha256:b2db034d922ccd1388bab29eadb8a40083e8d1c52702088a3c36447d9ccf00fa"
+"seed-20292031/plots/mode-amplitude.json" = "sha256:470cde546a107169e3b56fe6c2afa05545c5261d5301a1e0a77da91d65f4c7ef"
+"seed-20292031/plots/mode-amplitude.png" = "sha256:428431e104a445b7a3fc34fcb7d32d636bf80bbf2726956328c3c862f0027410"
+"seed-20292031/series.json" = "sha256:9c7470f763cb0935bef51967a2241cc13439d4edb1863af95a94457a5a83a051"
+"seed-coefficients.json" = "sha256:1fab3d48570bb0913ea00467114cc3c1aed83b67bc310ec385fbfa449072732f"
+
+[parameters]
+case = "landau-oblique-2d"
+current = "Esirkepov"
+element_type = "Float64"
+mode = "Reference"
+module = "ParticleMeshElectromagnetic"
+scaled = "no"
+
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "897654b68fefd7a56a74aba08e9d9f201e2e2dbe"
+commit_source = "box-status.toml"
+directory = "scripts/runs/box-wp032-pm-r1/wp032-pm-landau-r1"
+seeds = [20261031, 20262031, 20263031, 20264031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r1"
+    category = "validation"
+    dumps_over_20MB = ["scripts/runs/wp032-smilei-timing/seed-20261031/Fields0.h5"]
+    files_returned = 127
+    finished = "2026-11-03T22:02:45Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r1", "scripts/runs/wp032-smilei-timing"]
+    request_commit = "897654b68fefd7a56a74aba08e9d9f201e2e2dbe"
+    started = "2026-11-03T20:07:45Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.image]
+        id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"
+        name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = 0
+        kind = "julia"
+        seconds = 6158
+        start = "2026-11-03T20:07:45Z"
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = 0
+        kind = "smilei"
+        seconds = 725
+        start = "2026-11-03T21:50:23Z"
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = 0
+        kind = "julia"
+        seconds = 17
+        start = "2026-11-03T22:02:28Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "984cfb4d88c5f8504ad056715d30a9c641add7df"
+commit_source = "box-status.toml"
+directory = "scripts/runs/box-wp032-pm-r2/wp032-pm-landau-r2"
+seeds = [20265031, 20266031, 20267031, 20268031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r2"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-03T23:44:45Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r2"]
+    request_commit = "984cfb4d88c5f8504ad056715d30a9c641add7df"
+    started = "2026-11-03T22:02:48Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = 0
+        kind = "julia"
+        seconds = 6117
+        start = "2026-11-03T22:02:48Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "f29fea3b00efbab2e3057074e417d8b90d747171"
+commit_source = "run manifest"
+directory = "scripts/runs/box-wp032-pm-r3/wp032-pm-landau-r3"
+seeds = [20269031, 20270031, 20271031, 20272031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r3"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-04T01:30:16Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r3"]
+    request_commit = "f29fea3b00efbab2e3057074e417d8b90d747171"
+    started = "2026-11-03T23:47:41Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.reconstructed]
+        ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."
+        reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = "unrecorded"
+        kind = "julia"
+        seconds = 6155
+        start = "2026-11-03T23:47:41Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "8b2a54e70c5192ca1d33054b5d105b2edb966395"
+commit_source = "run manifest"
+directory = "scripts/runs/box-wp032-pm-r4/wp032-pm-landau-r4"
+seeds = [20273031, 20274031, 20275031, 20276031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r4"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-04T03:12:03Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r4"]
+    request_commit = "8b2a54e70c5192ca1d33054b5d105b2edb966395"
+    started = "2026-11-04T01:30:17Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.reconstructed]
+        ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."
+        reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = "unrecorded"
+        kind = "julia"
+        seconds = 6106
+        start = "2026-11-04T01:30:17Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "5c53c3ad31608f0883c277ff5df816212642795e"
+commit_source = "run manifest"
+directory = "scripts/runs/box-wp032-pm-r5/wp032-pm-landau-r5"
+seeds = [20277031, 20278031, 20279031, 20280031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r5"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-04T04:54:58Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r5"]
+    request_commit = "5c53c3ad31608f0883c277ff5df816212642795e"
+    started = "2026-11-04T03:12:04Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.reconstructed]
+        ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."
+        reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = "unrecorded"
+        kind = "julia"
+        seconds = 6174
+        start = "2026-11-04T03:12:04Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "695849c4046f0fd60a8bbffedaf9efbe04467d0c"
+commit_source = "run manifest"
+directory = "scripts/runs/box-wp032-pm-r6/wp032-pm-landau-r6"
+seeds = [20281031, 20282031, 20283031, 20284031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r6"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-04T06:36:53Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r6"]
+    request_commit = "695849c4046f0fd60a8bbffedaf9efbe04467d0c"
+    started = "2026-11-04T04:54:59Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.reconstructed]
+        ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."
+        reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = "unrecorded"
+        kind = "julia"
+        seconds = 6114
+        start = "2026-11-04T04:54:59Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "459b15db3831488368e898cf69bc6a3f5a15edd0"
+commit_source = "run manifest"
+directory = "scripts/runs/box-wp032-pm-r7/wp032-pm-landau-r7"
+seeds = [20285031, 20286031, 20287031, 20288031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r7"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-04T08:19:49Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r7"]
+    request_commit = "459b15db3831488368e898cf69bc6a3f5a15edd0"
+    started = "2026-11-04T06:36:54Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.reconstructed]
+        ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."
+        reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = "unrecorded"
+        kind = "julia"
+        seconds = 6175
+        start = "2026-11-04T06:36:54Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16
+[[requests]]
+code_commit = "1ad212fe428c6ce0ef10bdc63085b72dd137606f"
+commit = "f76ba1fc3ae54917f8c475ee181b7930bf1f9679"
+commit_source = "run manifest"
+directory = "scripts/runs/box-wp032-pm-r8/wp032-pm-landau-r8"
+seeds = [20289031, 20290031, 20291031, 20292031]
+
+    [requests.box_status]
+    branch = "runs/wp032-pm-r8"
+    category = "validation"
+    dumps_over_20MB = []
+    files_returned = 42
+    finished = "2026-11-04T10:04:08Z"
+    ok = true
+    outputs = ["scripts/runs/wp032-pm-landau-r8"]
+    request_commit = "f76ba1fc3ae54917f8c475ee181b7930bf1f9679"
+    started = "2026-11-04T08:19:50Z"
+
+        [requests.box_status.batch]
+        branch = "claude/epic-cerf-3g9o79"
+        name = "wp032-pm-landau"
+        total = 8
+
+        [requests.box_status.hardware]
+        cpu = "AMD EPYC 9655 96-Core Processor"
+        cpus = 16
+
+        [requests.box_status.reconstructed]
+        ok_basis = "Inferred, since the step's exit code was not recorded: every seed of the request has its observables, and the run's manifest names them all and was updated when the step ended."
+        reason = "The poller crashed after this request's step ended and before it staged the result. This status was rebuilt on 2026-11-04 from the poller's log and the run's outputs, which stayed in the job directory and are returned unchanged. See issue 320."
+
+        [[requests.box_status.steps]]
+        class = "compute"
+        exit = "unrecorded"
+        kind = "julia"
+        seconds = 6258
+        start = "2026-11-04T08:19:50Z"
+
+    [requests.host]
+    boot_id = "1186c900-0ee4-4647-8a92-e6c2da9fe436"
+    boot_time = "2026-11-03T14:07:22Z"
+    cpu = "AMD EPYC 9655 96-Core Processor"
+    cpus = 16
+    threads = 16

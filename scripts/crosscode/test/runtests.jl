@@ -989,3 +989,4 @@ include(joinpath(@__DIR__, "gpu.jl"))
         @test c.commit != sha && occursin(r"^[0-9a-f]{40}$", c.commit)
     end
 end
+include(joinpath(@__DIR__, "pm_ensemble.jl"))
