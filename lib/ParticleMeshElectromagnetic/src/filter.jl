@@ -48,20 +48,25 @@ reads before writing. Each pass fills the guards of its source (periodic images)
 interior node once from its two neighbours along the axis, and alternates between `a` and
 `scratch`; on return the interior of `a` holds the filtered field and its guards the periodic
 images. Deterministic: every output is written by one work item from fixed inputs, so the bits do
-not depend on the launch shape. `passes = 0` returns `a` untouched.
+not depend on the launch shape. `passes = 0` returns `a` untouched. With `edges` a moving
+window's [`WindowFrame`](@ref) the x-guards are set to zero after every guard fill (the window's
+outside is field-free), so the filter does not wrap along axis 1; `nothing` (the default) changes
+nothing.
 """
-function binomial!(a, scratch, grid::PeriodicGrid{N}, passes::Integer; workgroupsize = nothing) where {N}
+function binomial!(a, scratch, grid::PeriodicGrid{N}, passes::Integer; workgroupsize = nothing, edges = nothing) where {N}
     passes == 0 && return a
     size(scratch) == size(a) || throw(DimensionMismatch("scratch of size $(size(scratch)) for a field of size $(size(a))"))
     src, dst = a, scratch
     launch = launcher(binomial_pass_kernel!, get_backend(a), workgroupsize)
     for _ in 1:passes, d in 1:N
         fill_guards!(src, grid; workgroupsize)
+        zero_x_edges!(edges, src; workgroupsize)
         launch(dst, src, CartesianIndex(ntuple(k -> k == d ? 1 : 0, Val(N))), guards(grid); ndrange = grid.n)
         src, dst = dst, src
     end
     src === a || copyto!(a, src)            # an odd number of axis passes ends in the scratch (N = 1)
     fill_guards!(a, grid; workgroupsize)
+    zero_x_edges!(edges, a; workgroupsize)
     return a
 end
 
@@ -72,11 +77,11 @@ The step's current filter: [`binomial!`](@ref) with `filter.passes` on Jx, Jy an
 (folded, guards zero), through `scratch`. With zero passes nothing is touched, so the step keeps
 its bits; otherwise the guards of the three components hold their periodic images on return.
 """
-function filter_current!(f::BinomialFilter, fields::NamedTuple, grid::PeriodicGrid, scratch; workgroupsize = nothing)
+function filter_current!(f::BinomialFilter, fields::NamedTuple, grid::PeriodicGrid, scratch; workgroupsize = nothing, edges = nothing)
     f.passes == 0 && return fields
-    binomial!(fields.Jx, scratch, grid, f.passes; workgroupsize)
-    binomial!(fields.Jy, scratch, grid, f.passes; workgroupsize)
-    binomial!(fields.Jz, scratch, grid, f.passes; workgroupsize)
+    binomial!(fields.Jx, scratch, grid, f.passes; workgroupsize, edges)
+    binomial!(fields.Jy, scratch, grid, f.passes; workgroupsize, edges)
+    binomial!(fields.Jz, scratch, grid, f.passes; workgroupsize, edges)
     return fields
 end
 

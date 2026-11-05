@@ -61,6 +61,17 @@ function body_T537(be)
             end
         end
     end
+    # the moving window loads and refills with the velocity draw only (#350): a thermal species there
+    # must ask for it, a cold one resolves to it by default
+    let T = Float64, th = (T(1 // 20), T(1 // 20), T(1 // 20)), ex = window_plasma(T)
+        hot(m) = SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), (1, 0), (2, 2), zero3(T), th, 1; momentum = m)
+        mk(d) = EMProblem("w", ex.length, ex.cells, ex.dt, 4, (d,), 5, (1, 0); boundaries = (:window, :periodic),
+                          window = ex.window, profile = ex.profile)
+        @test_throws ArgumentError mk(hot(:default))
+        @test_throws ArgumentError mk(hot(:gaussian_momentum))
+        @test mk(hot(:gaussian_velocity)) isa EMProblem{2}
+        @test only(ex.species).momentum === :gaussian_velocity
+    end
     # the case-file key, both schemas, and the keyword that replaces it
     lan = load_case("landau")
     @test all(s -> s.momentum === :gaussian_momentum, problem_from_case(lan, Float64).species)   # schema 1: spread along x only

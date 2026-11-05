@@ -97,7 +97,9 @@ histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux
 diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
 axis (written once), the diagnostics' per-row partial sums, the [`Antenna`](@ref)s of the
 problem's lasers, placed on the grid, the absorbing layer's [`LayerFactors`](@ref) (`layer`,
-`nothing` for a periodic box) and the time step `dt` that the antennas and the layer were made for.
+`nothing` for a periodic box), the moving window's [`WindowFrame`](@ref) (`window`, `nothing`
+without one; its species buffers then hold `(1 + numerics.headroom)` times the window's
+particles) and the time step `dt` that the antennas, the layer and the window were made for.
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
@@ -105,7 +107,8 @@ used by `Fast()` on an element type without atomics). Throws an `ArgumentError` 
 current is `Esirkepov()` or [`NoCurrent`](@ref)`()` and unless `problem.dt` is below the
 Courant limit of the numerics' solver ([`check_courant`](@ref)), and unless the numerics'
 `absorber` is an [`AbsorbingLayer`](@ref) exactly when the problem's axis 2 is `:open` (the layer
-also checks its fit on the grid).
+also checks its fit on the grid), and unless the numerics' `filter` has zero passes with an open
+axis 2 (the filter wraps the current across the open edge, and no test checks the two together yet).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -119,9 +122,16 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
         throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...), got $(numerics.absorber)"))
     !open_y && numerics.absorber !== nothing &&
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
+    open_y && numerics.filter.passes > 0 &&
+        throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with the absorbing layer (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
     layer = open_y ? LayerFactors(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
+    window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
+    antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers)
+    window === nothing || check_window_antennas(window, antennas)
     species = map(problem.species) do d
-        Species(backend, T, prod(n) * prod(d.ppc); q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
+        cap = prod(n) * prod(d.ppc)
+        window === nothing || (cap = ceil(Int, (1 + numerics.headroom) * cap))
+        Species(backend, T, cap; q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
     end
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
     ws = map(s -> Workspace(s, grid; flux), species)
@@ -137,7 +147,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            kmode = problem.kmode, khat = (k[1] / knorm, k[2] / knorm), tables = tables,
            partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]),
-           antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers), layer = layer, dt = problem.dt)
+           antennas = antennas, layer = layer, window = window, dt = problem.dt)
     return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), hist, aux)
 end
@@ -165,7 +175,9 @@ through the weights, A3), the momenta from the species' distribution as in 1D
 the deposited charge by the engine's periodic solve, `φ` from `inverse_laplacian_periodic!` of ρ
 and `E = G` from `gradient_periodic!`, so that the backward-difference divergence of E is
 ρ − mean(ρ) to roundoff (the mean is the immobile background); the background fields `E0`, `B0`
-added where nonzero; then the momenta at t = −Δt/2 (half-step centring, A2) and the kinetic
+added where nonzero (with a moving window the plasma starts neutral against its immobile
+background, so E⁰ = 0 and no solve is made; the charge in the x-guards is dropped); then the
+momenta at t = −Δt/2 (half-step centring, A2) and the kinetic
 energy there: with `momenta_at = :t0` (the default) the loaded momenta are u⁰ and are moved
 half a step back by the pusher with −Δt/2 in E⁰, B⁰; with `:t_minus_half` they are taken as
 u⁻¹ᐟ², the convention of Smilei and PIConGPU, and kept as loaded. `density_at` is the 1D
@@ -175,12 +187,16 @@ the centre of its cell, as the reference codes do.
 function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
     check_momenta_at(momenta_at)
     ParticleMeshCore.check_density_at(density_at)
+    st.aux.window === nothing || density_at === :particle ||
+        throw(ArgumentError("density_at = :$density_at: the moving window's loads and refills evaluate the density at each particle (:particle) only"))
     (; numerics, grid, aux) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
-    for (s, d) in zip(st.species, problem.species)
+    window = aux.window
+    for (i, (s, d)) in enumerate(zip(st.species, problem.species))
         fill!(s.status, ParticleMeshCore.FREE)
         k = ntuple(a -> 2 * T(π) * d.mode[a] / problem.length[a], Val(2))
+        window === nothing || (load_window_species!(window, i, s, grid, wgs, d); continue)
         load_species!(s, grid, (d.density, d.amplitude, k[1], k[2]), d, problem.seed; density_at, workgroupsize = wgs)
     end
     foreach(a -> fill!(a, zero(T)), st.fields)
@@ -191,9 +207,12 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
     for (s, ws) in zip(st.species, st.ws)
         deposit!(deposit_mode(st, s), st.ρ, s, numerics.shape, RHO_STAGGER_2D, grid, ws; workgroupsize = wgs)
     end
+    zero_x_edges!(window, st.ρ; workgroupsize = wgs)
     fold_guards!(st.ρ, grid; workgroupsize = wgs)
-    inverse_laplacian_periodic!(aux.φ, st.ρ, grid, aux.spectral; workgroupsize = wgs)
-    gradient_periodic!((st.fields.Ex, st.fields.Ey), aux.φ, grid; workgroupsize = wgs)
+    if window === nothing
+        inverse_laplacian_periodic!(aux.φ, st.ρ, grid, aux.spectral; workgroupsize = wgs)
+        gradient_periodic!((st.fields.Ex, st.fields.Ey), aux.φ, grid; workgroupsize = wgs)
+    end
     add_background!(st.fields, problem.E0, problem.B0)
     if momenta_at === :t0
         g = Int32(guards(grid))
@@ -211,8 +230,9 @@ current!(::NoCurrent, st::EMState{2}, p::EMParams) = st
 
 # Sort where the deposition mode needs it (the old positions in the extras follow the
 # particles), zero Jx, Jy, Jz, add every species' Esirkepov current from its old and new
-# positions (`q·w·u_z/γ` for Jz), fold the guards and apply the numerics' binomial filter
-# (through the scratch field ρ, which only initialize! reads otherwise).
+# positions (`q·w·u_z/γ` for Jz), fold the guards (with a moving window, the x-guards dropped
+# first) and apply the numerics' binomial filter (through the scratch field ρ, which only
+# initialize! and the window shift read otherwise).
 function current!(::Esirkepov, st::EMState{2}, p::EMParams)
     (; numerics, grid, fields) = st
     T = eltype(st.ρ)
@@ -227,10 +247,12 @@ function current!(::Esirkepov, st::EMState{2}, p::EMParams)
         deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER_2D, grid, ws;
                       dt = p.dt, quantity_z = CurrentZ(), workgroupsize = wgs)
     end
-    fold_guards!(fields.Jx, grid; workgroupsize = wgs)
-    fold_guards!(fields.Jy, grid; workgroupsize = wgs)
-    fold_guards!(fields.Jz, grid; workgroupsize = wgs)
-    filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs)
+    window = st.aux.window
+    for J in (fields.Jx, fields.Jy, fields.Jz)
+        zero_x_edges!(window, J; workgroupsize = wgs)
+        fold_guards!(J, grid; workgroupsize = wgs)
+    end
+    filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs, edges = window)
     return st
 end
 
@@ -247,7 +269,12 @@ n + 1/2; the mesh solve (Yee: B half step, E full step with J, B half step), wit
 total-field/scattered-field corrections between the sub-steps (time `(k − 1)·Δt` at the start of
 the step). With an open axis 2 the particles that crossed the box edge are retired after the
 current of their last move is deposited, and the absorbing layer damps the fields around each
-sub-step (WP-027). With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
+sub-step (WP-027). With a moving window (WP-028) the particles that crossed an x edge are
+retired before the current (their current would land at the opposite edge), the x-guards of the fields are zero after every sub-step, the antenna planes stay
+in the lab frame (their window columns move back with the shifts, and they stop once the window
+has passed them), and after the field solve the window shifts by the cells it moved in this
+step ([`window_shifts`](@ref)): E, B and the particles one column back, the back column dropped,
+the fresh plasma of the injection column loaded. With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
 after every step (T-360), off the antenna columns with lasers (T-406), and off the layer rows
 with an open boundary (T-451); with passes its filtered form does (T-441). `k` must lie within
 the allocated steps, `params.kmode` must be the state's diagnostic mode and `params.dt` the
@@ -268,9 +295,17 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
         launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
                                                        (p.dt / dx[1], p.dt / dx[2]), n; ndrange = capacity(s))
     end
+    retire_x!(st.aux.window, st)
     current!(numerics.current, st, p)
     retire!(st.aux.layer, st)
     kinetic!(st)
-    solve_fields!(numerics.solver, fields, grid, p.dt, st.aux.antennas, (k - 1) * p.dt, st.aux.layer; workgroupsize = wgs)
+    window = st.aux.window
+    if window === nothing
+        solve_fields!(numerics.solver, fields, grid, p.dt, st.aux.antennas, (k - 1) * p.dt, st.aux.layer; workgroupsize = wgs)
+    else
+        antennas = window_antennas(st.aux.antennas, window_shifts(window, k - 1))
+        solve_fields!(numerics.solver, fields, grid, p.dt, antennas, (k - 1) * p.dt, st.aux.layer, window; workgroupsize = wgs)
+        advance_window!(window, st, k)
+    end
     return st
 end

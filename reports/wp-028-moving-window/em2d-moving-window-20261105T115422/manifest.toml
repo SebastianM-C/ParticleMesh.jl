@@ -1,0 +1,53 @@
+backend = "KernelAbstractions CPU"
+commit = "c21573f499b3bb9373e772db350bd7013a6d6278"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = false
+julia = "1.13.3"
+run_id = "em2d-moving-window-20261105T115422"
+threads = 1
+updated = "2026-11-05T11:54:22.215Z"
+work_package = "WP-028"
+
+[inputs]
+"Manifest.toml" = "sha256:5944c96e8fd2e27dfa9a1f91680dfe7ba8dea6426f42f299ddc66191993128f3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:cf3cc81398bcda48337deb814503057393b12249944a3b7944d39c258cfe41f4"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:de43eeffcc4fb2514ef896063783b4fcceee09a5eda8978d54787fe82522f359"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:06bd97a4904cf385a3ebf7922dea76d8994daa7bf7bd7f901e099af687e5406d"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:95ccbc11944ee7ad2dde9afa5c19807e9d785958efad8b1155cd6eee258b2ea5"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:6ff4c310c3d9d8a08a31c6e0524dd8fdb25af2bcf7ca9d770cae9b4390093256"
+"lib/ParticleMeshElectromagnetic/src/boundaries.jl" = "sha256:fd3d833efc6059182b6a88311f7d28c300e6757d5f5c615e0b964c4b7b89a2b0"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/filter.jl" = "sha256:24970a85fe208b2eebdb8da06e47e30c765e8d924cba8fe7f49b2bb6ace159b3"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:409e2ea3c75481458f0ed68066086a186bdb72fb8aee5523962512f62a0adb4a"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:50c391cada652b88b75510f3f6baac43f26870b9a2686a92a3a7d86e9a91d665"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:97a409e4ea60c5464b2632b5b4c975cd65ef8702ed7c2c1d8800304d14955220"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/window.jl" = "sha256:71c047a0a28586ab6515c7c3faa9729881ff2915b6e526ad1cbf21179b4a2407"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"lib/ParticleMeshElectromagnetic/test/window_cases.jl" = "sha256:ed6545dcc3e041ae640e253159cac3f37f61ada654ad7ad18ef397544a4c909c"
+"scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
+"scripts/em2d/moving_window.jl" = "sha256:7e4aee279cfa2269335887ed249d0acc74394432b48b3cf8f96f2518a243d3c6"
+"scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
+
+[parameters]
+case = "window_lwfa"
+cells = [64, 16]
+cells_per_wavelength = 8
+courant = 0.95
+mode = "Reference"
+steps = 200
+type = "Float64"
