@@ -24,11 +24,11 @@ end
 @testset "T-490 seeds run in separate requests merge into the ensemble of one run, and the merge refuses an incomplete or mixed set [A4, A5, WP-032]" begin
     mktempdir() do tmp
         # the case with its first four seeds, at 32 × 32 cells and 4 × 4 electrons per cell, with a
-        # 10 % perturbation so that the ensemble fit finds its maxima above the noise of 16384 electrons
+        # 20 % perturbation so that the ensemble fit and every jackknife fit find their maxima above the noise of 16384 electrons (at 10 % the reference codes' start, momenta at −Δt/2 and the density at cell centres, left a leave-one-out fit without enough maxima)
         src = TOML.parsefile(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
         seeds = Int.(src["numerics"]["seeds"][1:4])[[2, 1, 4, 3]]     # not ascending: a sort shows
         src["numerics"]["seeds"] = seeds
-        src["species"][1]["perturbation"]["amplitude"] = 0.1
+        src["species"][1]["perturbation"]["amplitude"] = 0.2
         case_file = joinpath(tmp, "case.toml")
         open(io -> TOML.print(io, src; sorted = true), case_file, "w")
         sz = (; ppc = (4, 4), cells = (32, 32))
