@@ -45,7 +45,10 @@ from a call at draw index 65535, which also gives the uniform of Zenitani's flip
 component along β is reversed when −|β|·v′∥ > U, which supplies the flux factor (1 + β·v′), and
 the momentum is then boosted along β, u∥ = Γ(u′∥ + |β|γ′). A particle whose tries all fail keeps
 its last proposal (finite) and is counted (`load_quiet!`'s `exhausted`). The acceptance stays
-above about 0.8 at every θ, so with 32 tries that has a probability near 1e−22 per particle.
+above about 0.8 at every θ (lowest, 0.815, just above θ = 1), so with 32 tries that has a
+probability near 1e−22 per particle. In Float32 the boost factor Γ = 1/√(1 − |β|²) carries the
+rounding of 1 − |β|², which at |β| ≥ 0.999 and θ ~ 1e−5 shifts ⟨u∥⟩ by about 1e−5 relative (the
+rounding of β itself to Float32 shifts it more).
 """
 struct MaxwellJuttner{T}
     θ::T

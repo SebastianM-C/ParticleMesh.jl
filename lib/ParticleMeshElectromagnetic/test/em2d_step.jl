@@ -257,20 +257,22 @@ end
 
 # The case files of WP-019 scaled down to test size (a quarter of the cells per axis, Δt four
 # times the case's, so the Courant fraction 0.95 stays), fitted with the case's own rules on the
-# module's diagnostics at every step. Landau also uses 16 × 16 electrons per cell and a 5 %
-# perturbation, so that enough maxima clear the noise floor. At this size the thermal noise of
-# one seed spreads the fitted Landau rate by 27 % of theory (20 seeds, `scripts/em2d/landau_seeds.jl`,
-# whose seed mean agrees with theory), so T-364 bounds the rate by three seed standard deviations:
-# it checks that the wave damps at the right order, and the frequency (which every seed gives
-# within 5 %) and the longitudinal polarization more closely. The reference is the linear theory
+# module's diagnostics at every step. Landau also uses 16 × 16 electrons per cell and a 10 %
+# perturbation, so that enough maxima clear the noise floor. The reference is the linear theory
 # of the distribution the species loads, with the relativistic push (`landau_rate_relativistic`,
-# T-394; WP-033); the seed spread was measured with the velocity load, whose rate is 3 % higher.
-# The rate itself is established by the full-size runs against theory, Smilei and PIConGPU in
-# reports/wp-023-em-step-2d/ (the velocity load) and reports/wp-032-pm-landau-ensemble.md. The cold
+# T-394; WP-033: Maxwell–Jüttner by default). With that load every one of eight seeds (the case's
+# first four and 1 to 4) gives at least three maxima at 10 %, and their rates spread by 18 % of
+# theory (mean 0.1695 ± 0.0096 against 0.1486, the frequencies within 3 %); at 5 % four of the
+# eight give fewer than three maxima, the case's default seed among them (the physics breaker of
+# WP-033; the velocity load's 20 seeds at 5 % spread by 27 %, `scripts/em2d/landau_seeds.jl`).
+# So T-364 bounds the rate by about four seed standard deviations: it checks that the wave damps
+# at the right order, and the frequency and the longitudinal polarization more closely. The rate
+# itself is established by the full-size runs against theory, Smilei and PIConGPU in
+# reports/wp-023-em-step-2d/ and reports/wp-032-pm-landau-ensemble.md (both the velocity load). The cold
 # Weibel case has no seed noise.
 const PHYSICS_2D = Dict{String,Any}()
 
-"The isotropic load of `landau_rate_relativistic` (scripts/crosscode/theory.jl) that each momentum distribution draws."
+"The load of `landau_rate_relativistic` (scripts/crosscode/theory.jl, isotropic loads only) that each momentum distribution draws with an isotropic spread."
 const LANDAU_LOADS = Dict(:maxwell_juttner => :maxwell_juttner, :gaussian_momentum => :momentum_maxwellian,
                           :gaussian_velocity => :velocity_maxwellian)
 
@@ -286,7 +288,7 @@ function run_case_2d(name; be = CPU(), ppc, cells, amplitude = nothing, t_end = 
 end
 
 function body_T364(be)
-    r = run_case_2d("landau-oblique-2d"; be, ppc = (16, 16), cells = (32, 32), amplitude = 1 / 20, t_end = 18)
+    r = run_case_2d("landau-oblique-2d"; be, ppc = (16, 16), cells = (32, 32), amplitude = 1 / 10, t_end = 18)
     o = r.case["observables"]["damping_rate_mode"]
     e = r.case["species"][1]
     kλ = r.case["wavevector"]["magnitude"] * e["thermal_velocity"] / sqrt(e["density"])
