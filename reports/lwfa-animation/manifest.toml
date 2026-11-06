@@ -1,0 +1,16 @@
+T = "Float64"
+backend = "CUDABackend"
+commit = "dbb95de0f2da85a86b2d15f546e423ea73dd54c2"
+cpu = "Intel(R) Core(TM) i9-14900K"
+dirty = false
+frames = 200
+gpu = "NVIDIA GeForce RTX 4080 SUPER"
+julia = "1.13.3"
+mode = "fast"
+nsteps = 10777
+run_seconds = 324.43858790397644
+threads = 1
+updated = "2026-11-06T16:19:38.533Z"
+
+[inputs]
+"case.toml" = "sha256:3c189e041755de315bcff2c43b2a989ad4ebb1076c4f171b2f64fa5e0a2cf559"
