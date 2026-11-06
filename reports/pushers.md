@@ -259,7 +259,7 @@ The reference is the closed form, with η found from t by Newton's method.
 
 ### Applied to LWFA time steps
 
-A5's 2D LWFA case is not specified yet: it has no a₀, resolution or Δt. The steps below are therefore representative, not planned ones: 0.95 of the 2D Courant limit with Δy = 4Δx, for N_λ cells per laser wavelength along x. This gives ω₀Δt ≈ 5.79/N_λ.
+The steps below are 0.95 of the 2D Courant limit with Δy = 4Δx, for N_λ cells per laser wavelength along x. This gives ω₀Δt ≈ 5.79/N_λ. A5's first 2D LWFA case (`scripts/lwfa/cases/lwfa-2d.toml`) is the row N_λ = 48 at a₀ = 2: ω₀Δt = 0.121, a₀·ω₀Δt = 0.24, inside the rule of §5.
 
 | N_λ | ω₀Δt | a₀·ω₀Δt at a₀ = 1 | 2 | 3 | 5 | 10 |
 |---|---|---|---|---|---|---|
@@ -297,5 +297,5 @@ Proposed edit of A2: "Higuera–Cary with half-step momentum centring, Boris and
 
 - The journal version of Higuera and Cary (Phys. Plasmas 24, 052104) was not read. The figures our literature note cites from it (Figs. 3–4, δH ≈ 0.1) and the p_y,0 values are not in arXiv v1.
 - Gordon and Hafizi were read in arXiv:2006.10146v1. The arXiv record lists DOI 10.1016/j.cpc.2020.107628, which was not checked against the journal.
-- The LWFA application should be redone with A5's 2D case once it is specified, and checked in a focused, finite pulse against a high-order reference (a non-goal of WP-016).
+- The error at A5's LWFA step should be checked in a focused, finite pulse against a high-order reference (a non-goal of WP-016).
 - WP-016's results have not been independently reviewed.

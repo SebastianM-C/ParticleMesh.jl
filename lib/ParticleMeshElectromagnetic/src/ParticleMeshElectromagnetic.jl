@@ -3,7 +3,7 @@
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
 `N = 1` and `N = 2` (1D3V and 2D3V; periodic, and at `N = 2` with an open transverse axis
-through an absorbing layer, WP-027), with the current a choice of the numerics
+through an absorbing layer, WP-027, or a convolutional PML, WP-034, and a moving window along axis 1, WP-028), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields at `N = 2`). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
@@ -41,14 +41,15 @@ export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
-export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case
+export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
 export EMState, initialize!, step!, run!, params
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export state_partition, remake_reload, harness_state
 export GaussianLaser, Antenna, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
-export AbsorbingLayer, LayerFactors
+export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
+export MovingWindow, DensityRamp, WindowFrame, window_shifts, window_lost, window_superluminal, window_charge!, window_background!
 
 include("layout.jl")
 include("yee.jl")
@@ -60,6 +61,8 @@ include("step.jl")
 include("step2d.jl")
 include("antenna.jl")
 include("boundaries.jl")
+include("pml.jl")
+include("window.jl")
 include("diagnostics.jl")
 include("harness.jl")
 

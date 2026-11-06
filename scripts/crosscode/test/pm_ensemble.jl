@@ -31,6 +31,9 @@ end
         seeds = Int.(src["numerics"]["seeds"][1:4])[[2, 1, 4, 3]]     # not ascending: a sort shows
         src["numerics"]["seeds"] = seeds
         src["species"][1]["perturbation"]["amplitude"] = 0.1
+        # the velocity load of WP-032's runs, with which this size was calibrated (a Maxwell–Jüttner
+        # load, WP-033's default, fails this fit's conditions at this size: runs/wp033-tests-3)
+        src["species"][1]["momentum_distribution"] = "gaussian_velocity"
         case_file = joinpath(tmp, "case.toml")
         open(io -> TOML.print(io, src; sorted = true), case_file, "w")
         sz = (; ppc = (4, 4), cells = (32, 32), momenta_at = :t0, density_at = :particle)

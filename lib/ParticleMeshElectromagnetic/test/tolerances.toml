@@ -364,12 +364,12 @@ measured = { Float32 = 7.79, Float64 = 8.25 }
 status = "proposed; valid while the plasma's instability has not amplified the roundoff (the breaker measured exponential growth of the difference beyond about 100 steps)"
 
 ["T-364"]
-quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electrons per cell, 5 % perturbation, t = 18, the case's default seed): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|ê·Ê|/max|k̂·Ê| of mode (2, 1) (transverse)"
+quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electrons per cell, 10 % perturbation, t = 18, the case's default seed): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|ê·Ê|/max|k̂·Ê| of mode (2, 1) (transverse), γ_theory and ω_r the relativistic linear theory of the loaded distribution (landau_rate_relativistic, Maxwell–Jüttner: 0.14857, 1.4113)"
 rate = 0.8
 frequency = 0.08
 transverse = 0.05
-measured = { rate = -0.0110, frequency = 0.026, transverse = 0.00864 }
-status = "proposed; rate is three seed standard deviations at this size (20 seeds, scripts/em2d/landau_seeds.jl: std 0.266 of theory, seed mean −2.2 %, 0.36 standard errors from theory; 2 of 20 seeds give fewer than three maxima), so it is an order check; frequency covers the largest seed deviation, 4.6 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/"
+measured = { rate = 0.281, frequency = -0.0087, transverse = 0.00316 }
+status = "proposed; rate is about four seed standard deviations at this size (WP-033: eight seeds with the Maxwell–Jüttner load at 10 %, std 0.18 of theory, mean +14 %, 2.2 standard errors from theory, every seed with at least three maxima; the earlier 5 % perturbation left four of the eight without a fit), so it is an order check; frequency covers the largest seed deviation, 3.1 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/ and reports/wp-032-pm-landau-ensemble.md (velocity load)"
 
 ["T-365"]
 quantity = "2D Weibel at test size (64 × 64 cells, 4 × 4 per beam per cell): |γ − γ_theory|/γ_theory (rate) and max|k̂·B̂|/max|ê·B̂| of mode (2, 1) (longitudinal)"
@@ -495,4 +495,81 @@ quantity = "the reflection of T-450 at 8 cells, θ = 0.8, strength 4, TE, in eac
 scale = "as T-450"
 C = 10
 measured = { Float32 = 0.0228, Float64 = 0.23, "Dual{Float32,3}" = 0.0228 }
+status = "proposed"
+
+# WP-034: the convolutional PML. Measured on the CPU backend (Julia 1.13.3, 4 threads).
+["T-540"]
+quantity = "PML, vacuum slab packet: |R − R_theory| and |Tr − Tr_theory| against the discrete frequency-domain theory of the PML (pml_rt), Float64; 8 and 16 cells at 0, 0.4, 0.8 rad with PIConGPU's profile, and Smilei's grading with α and κ alone at 8 cells, 0.4 rad, TE and TM; also T-541 (16 cells, 1.2 rad) and T-546 (each element type)"
+scale = "as T-450"
+C = 10
+measured = { Float64 = 4.08, "T-541" = 0.0065, "T-546" = { Float32 = 0.0166, Float64 = 4.06, "Dual{Float32,3}" = 0.0166 } }
+note = "the largest ratios are the transmission of the profile with κ_max = 80 and α: theory 2·10⁻⁵², measured 3.4·10⁻²⁸ in Float64, the roundoff floor of the lower half; every R ratio is below 0.01"
+status = "proposed"
+
+["T-472"]
+quantity = "the moving window's E and B against its static twin's, on every column before it moves and on the columns 25 … n₁ after, relative to the twin's max |E, B| there, Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 1000
+measured = { Float64 = 64.8 }
+status = "proposed"
+
+["T-473"]
+quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts, off nodes 1, 2 and the antenna's two columns: a laser driving the plasma, a warm plasma (thermal 0.1 c) at rest and with a drift through a ramp, both modes; T-479's hot refill run (thermal 0.3 c, Reference) takes the same C"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.227, Float64 = 0.204, "Dual{Float32,3}" = 0.227 }
+measured_warm = { Float32 = 0.0588, Float64 = 0.0636, "Dual{Float32,3}" = 0.0602 }
+measured_warm_ramp = { Float32 = 0.061, Float64 = 0.0722, "Dual{Float32,3}" = 0.061 }
+measured_hot_refill_T479 = { Float32 = 0.0182, Float64 = 0.0195, "Dual{Float32,3}" = 0.0195 }
+status = "proposed"
+
+["T-474"]
+quantity = "the fields of Fast against Reference after 120 window steps (about 50 shifts), Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 32
+measured = { Float64 = 5.45 }
+status = "proposed"
+
+["T-475"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 window steps against the ramp length, Float64, Reference"
+scale = "the finite-difference floor (A7)"
+C = 1
+measured = { Float64 = 0.537 }
+status = "proposed"
+
+["T-561"]
+quantity = "the moving window's fields on CUDA against the CPU's, Float64, Reference, window_lwfa to 120 steps: max over the components of |CUDA − CPU|"
+scale = "eps(Float64)·max|field| on the CPU"
+C = 64
+measured = { Float64 = 6.02 }
+status = "proposed"
+
+# WP-034: the PML on the moving window's back edge. Measured on the CPU backend (Julia 1.13.3, 4 threads).
+["T-570"]
+quantity = "T-472's vacuum pulse in back_lwfa's window against free space (a static box with 100 more columns behind), with a back-edge PML of 8 cells (PIConGPU's profile): the largest difference on the eight columns behind the layer over the same without a back absorber (0.095 of the largest field), Float64; the test asks for less than 1/100, and against the static twin with the same back edge, before the move and from column 25 on, T-472's C"
+scale = "the difference without a back absorber"
+C = 0.01
+measured = { Float64 = 0.00331 }
+status = "proposed"
+
+["T-575"]
+quantity = "random fields in back_lwfa's empty window with PIConGPU's 8-cell back-edge PML, 4000 steps, Float64: in a static window the largest field energy and the final one over those of the same run without the layer, and in a window moving from t = 0 the largest energy over its start after 450 steps; the test asks for at most 1, below 1/2 and below 1/20"
+scale = "the run without the layer (static), the initial energy (moving)"
+C = { static_peak = 1, static_end = 0.5, moving = 0.05 }
+measured = { static_peak = 0.894, static_end = 0.391, moving = 0.0305 }
+note = "fixed bounds, not a theory: T-576 pins the layer against its discrete theory, this test only that a long run stays bounded; in the static window α_max > 0 grows a uniform Bz (#357), so the test uses the default α = 0"
+status = "proposed"
+
+["T-576"]
+quantity = "the back-edge PML of a static window, a vacuum slab packet along −x: |R − R_theory| against the discrete frequency-domain theory of the layer with the window's zero x-guards behind it (back_rt), Float64; 8 cells, 0 and 0.4 rad, PIConGPU's profile, Smilei's grading with α, κ_max = 4 with α_max = 0.2, TE and TM, 8 cells per wavelength along x and 16 along y; the test takes T-540's C"
+scale = "as T-450"
+C = 10
+measured = { Float64 = 0.0089 }
+status = "proposed"
+
+["T-572"]
+quantity = "Gauss's law D⁻·E − (ρ − ρ₀(s)) across window shifts with a back-edge PML of 6 cells (α_max = 0.2), off nodes 1 … 6 and the antenna's two columns, T-473's run, both modes; the test takes T-473's C"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.236, Float64 = 0.241, "Dual{Float32,3}" = 0.236 }
 status = "proposed"

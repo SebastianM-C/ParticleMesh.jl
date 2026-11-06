@@ -7,13 +7,6 @@
 using ForwardDiff: ForwardDiff, Partials
 using ParticleMeshElectromagnetic: RHO_STAGGER_2D, LayerFactors, retire!, absorb_b!, absorb_e!
 
-"""
-The spurious energy fraction of a slab run against its prediction, in units of the roundoff of the
-measurement: the fields carry an error of about eps(T)·√steps of the incident amplitude, so an
-energy fraction X is known to eps·√k·(2√X + eps·√k).
-"""
-slab_scale(T, k, X) = base_eps(T) * sqrt(k) * (2 * sqrt(X) + base_eps(T) * sqrt(k))
-
 # --- T-450 ----------------------------------------------------------------------------------
 
 # The reflection R and the transmission through the slab of both layers, Tr, of a slab packet at
@@ -92,42 +85,6 @@ end
 # free rows D⁻·E = ρ − ρ̄₀ to roundoff after every step, ρ̄₀ the mean charge at t = 0 (the
 # immobile background), with the scale of T-360; ∇·B likewise at the cell centres whose Bx and
 # By are undamped. Both are far from roundoff in the layer, which shows the check sees it.
-
-"""
-    open_residuals(st, ρ̄₀) -> (; free, layer, scale, divB, bscale, ρbar)
-
-Gauss's law `D⁻ₓEx + D⁻_yEy − (ρ − ρ̄₀)` on the free node rows and its maximum on the layer rows,
-ρ deposited now (the species sorted first in Reference mode, since retired particles stay in
-their segments until the next sort), `scale = (n₁ + n₂)·max|ρ|`; ∇·B on the free centre rows
-j₀ = cells … n₂ − cells − 1 with T-360's `bscale`; `ρbar` the current mean of ρ.
-"""
-function open_residuals(st, ρbar0)
-    (; grid, numerics) = st
-    T = eltype(st.ρ)
-    ρd = field(get_backend(st.ρ), T, grid)
-    for (s, ws) in zip(st.species, st.ws)
-        numerics.mode isa Reference && sort_by_cell!(s, grid, ws)
-        deposit!(numerics.mode, ρd, s, numerics.shape, RHO_STAGGER_2D, grid, ws)
-    end
-    fold_guards!(ρd, grid)
-    g, n, h = guards(grid), ncells(grid), cellsize(grid)
-    L = numerics.absorber.cells
-    I1 = (g + 1):(g + n[1])
-    free = (g + 1 + L + 1):(g + 1 + n[2] - L - 1)
-    lay = setdiff((g + 1):(g + n[2]), free)
-    cfree = (g + 1 + L):(g + 1 + n[2] - L - 1)
-    ρ, Ex, Ey, Bx, By = Array(ρd), Array(st.fields.Ex), Array(st.fields.Ey), Array(st.fields.Bx), Array(st.fields.By)
-    gauss(i, j) = absmax((Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2] - (ρ[i, j] - ρbar0))
-    res = maximum(gauss(i, j) for i in I1, j in free)
-    resl = maximum(gauss(i, j) for i in I1, j in lay)
-    divB = maximum(absmax((Bx[i + 1, j] - Bx[i, j]) / h[1] + (By[i, j + 1] - By[i, j]) / h[2]) for i in I1, j in cfree)
-    bmax = max(maximum(absmax, Bx[I1, cfree]), maximum(absmax, By[I1, cfree]))
-    hv = map(value_of, h)
-    return (; free = res, layer = resl, scale = sum(n) * maximum(absmax, ρ[I1, (g + 1):(g + n[2])]), divB,
-            bscale = (2 / hv[1] + 2 / hv[2]) * bmax, ρbar = sum(ρ[I1, (g + 1):(g + n[2])]) / prod(n))
-end
-
-alive_total(st) = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species)
 
 @testset "T-451 Gauss's law and ∇·B to roundoff off the absorbing layer with particles leaving, all three types, both modes [A2, A7, A8, WP-027]" begin
     C, CB = emC("T-451"), emC("T-451", "C_divB")
@@ -356,6 +313,10 @@ end
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = AbsorbingLayer(; cells = 2, strength = 1)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = AbsorbingLayer(; cells = 8, strength = 1)))
     @test EMState(prob, EMNumerics(; absorber = AbsorbingLayer(; cells = 7, strength = 1))) isa EMState{2}
+    # the binomial filter is refused with the layer (untested together), zero passes are not
+    @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = ab, filter = BinomialFilter(1)))
+    @test EMState(prob, EMNumerics(; absorber = ab, filter = BinomialFilter(0))) isa EMState{2}
+    @test EMState(pp, EMNumerics(; filter = BinomialFilter(1))) isa EMState{2}
     # boundaries: one per axis, :periodic or :open, axis 1 periodic; N = 1 periodic
     mk(b) = EMProblem("x", prob.length, prob.cells, prob.dt, 1, prob.species, 1, prob.kmode; boundaries = b)
     @test_throws ArgumentError mk((:open, :periodic))

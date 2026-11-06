@@ -6,7 +6,8 @@ structure-of-arrays species with module-declared extras, B-spline shapes of orde
 gather, the deposition of a module-supplied quantity and the charge-conserving flux
 deposition (Esirkepov), each in a deterministic `Reference` mode and an atomic `Fast` mode,
 the periodic fill/fold pair, a sort by cell, counter-based Philox4x32-10 draws, quiet-start
-loading, the zero-mean periodic prefix sum `cumsum_periodic!`, and the periodic spectral
+loading with a momentum distribution (a Gaussian in velocity or in momentum, or Maxwell–Jüttner,
+WP-033), the zero-mean periodic prefix sum `cumsum_periodic!`, and the periodic spectral
 inverse of the discrete Laplacian `inverse_laplacian_periodic!` with its forward-difference
 gradient `gradient_periodic!`.
 
@@ -34,10 +35,11 @@ export fill_guards!, fold_guards!
 export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
 export Workspace, sort_by_cell!, deposit!, gather!, ChargeWeight
 export cumsum_periodic!
+export GaussianVelocity, GaussianMomentum, MaxwellJuttner, draws_momentum
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
 export deposit_flux!, flux_guard_width, flux_extras
 export philox4x32, uniform_open, box_muller
-export load_quiet!
+export load_quiet!, quiet_particle_2d
 
 include("launch.jl")
 include("grid.jl")
@@ -46,6 +48,7 @@ include("shapes.jl")
 include("guards.jl")
 include("philox.jl")
 include("loading.jl")
+include("momenta.jl")
 include("sort.jl")
 include("transfers.jl")
 include("mesh_ops.jl")

@@ -11,6 +11,9 @@ include("em2d_cases.jl")       # WP-024: the 2D problems and digests of em2d.jl 
 include("antenna_cases.jl")    # WP-026: the antenna's runs and their analysis
 include("filter_cases.jl")     # WP-029: the filtered runs of filter.jl and the determinism worker
 include("boundaries_cases.jl") # WP-027: the open boundary's runs and the layer's discrete theory
+include("pml_cases.jl")        # WP-034: the PML's runs and its discrete theory
+include("window_cases.jl")     # WP-028: the moving window's problems
+include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, after window_cases.jl
 
 @testset "ParticleMeshElectromagnetic" begin
     try
@@ -22,7 +25,8 @@ include("boundaries_cases.jl") # WP-027: the open boundary's runs and the layer'
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
         include("initialize.jl")    # T-420, the time of the loaded momenta; T-522, where the density is sampled
-        include("subluminal.jl")    # T-480, T-481: a load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
+        include("subluminal.jl")    # T-480, T-481: a Gaussian-velocity load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
+        include("momenta.jl")       # WP-033: T-537, T-539, the momentum distributions in the module; after subluminal.jl (its helpers)
         include("physics.jl")
         include("determinism.jl")
         include("gradient.jl")
@@ -32,6 +36,9 @@ include("boundaries_cases.jl") # WP-027: the open boundary's runs and the layer'
         include("antenna.jl")       # WP-026: T-400 to T-409
         include("filter.jl")        # WP-029: T-440 to T-445, after em2d.jl and em2d_step.jl (their helpers)
         include("boundaries.jl")    # WP-027: T-450 to T-457, after em2d_step.jl (its helpers) and determinism.jl (T-454's worker runs)
+        include("pml.jl")           # WP-034: T-540 to T-549, after boundaries.jl (its helpers)
+        include("window.jl")        # WP-028: T-470 to T-479
+        include("pml_back.jl")      # WP-034: T-570 to T-576, the PML on the window's back edge, after window.jl
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET

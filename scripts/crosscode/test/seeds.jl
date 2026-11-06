@@ -212,7 +212,7 @@ end
     @test e.jackknife.stderr > 1e-4                    # not the trivial 0 = 0
 end
 
-@testset "T-394 Landau damping with a relativistic push: the non-relativistic limit, the loads, the T scaling [A5, A7, WP-025]" begin
+@testset "T-394 Landau damping with a relativistic push: the non-relativistic limit, the loads, the T scaling [A5, A7, WP-025, WP-033]" begin
     T, kλ = 0.0025, 0.5
     k = kλ / sqrt(T)
     root = landau_root(kλ)
@@ -222,9 +222,11 @@ end
     # the loads: normalized, and their mean kinetic energy ⟨γ − 1⟩ (3/2 T exactly for the
     # classical energy; the series 3T/2 (1 − 5T/4 + 35T²/8) for the Maxwellian in momentum)
     ps = range(1e-9, 14 * sqrt(T); length = 200_001)
-    # (for the Maxwellian in velocity, ⟨γ − 1⟩ = ⟨v²/2 + 3v⁴/8 + 5v⁶/16⟩ = 3T/2 (1 + 15T/4 + 175T²/8))
+    # (for the Maxwellian in velocity, ⟨γ − 1⟩ = ⟨v²/2 + 3v⁴/8 + 5v⁶/16⟩ = 3T/2 (1 + 15T/4 + 175T²/8);
+    # for Maxwell–Jüttner, ⟨γ⟩ = K₁(1/T)/K₂(1/T) + 3T, whose large-argument series of the Bessel
+    # functions gives ⟨γ − 1⟩ = 3T/2 (1 + 5T/4 − 5T²/4), WP-033)
     for (kind, ke) in ((:momentum_maxwellian, 1.5T * (1 - 1.25T + 4.375T^2)), (:classical_energy, 1.5T),
-                       (:velocity_maxwellian, 1.5T * (1 + 3.75T + 21.875T^2)))
+                       (:velocity_maxwellian, 1.5T * (1 + 3.75T + 21.875T^2)), (:maxwell_juttner, 1.5T * (1 + 1.25T - 1.25T^2)))
         f = thermal_load(kind, T)
         w = 4π .* ps .^ 2 .* f.(ps) .* step(ps)
         @test sum(w) ≈ 1 rtol = 1e-6
@@ -233,7 +235,8 @@ end
     pc = landau_rate_relativistic(k, T; load = :momentum_maxwellian)
     sm = landau_rate_relativistic(k, T; load = :classical_energy)
     pm = landau_rate_relativistic(k, T; load = :velocity_maxwellian)
-    @test pc.gamma < sm.gamma < pm.gamma < nr.gamma   # slower resonant electrons, less damping
+    mj = landau_rate_relativistic(k, T; load = :maxwell_juttner)
+    @test pc.gamma < sm.gamma < mj.gamma < pm.gamma < nr.gamma   # slower resonant electrons, less damping
     # a relativistic correction: the deficit scales with T at fixed kλ_D (here within 15 %)
     T4 = T / 4
     k4 = kλ / sqrt(T4)

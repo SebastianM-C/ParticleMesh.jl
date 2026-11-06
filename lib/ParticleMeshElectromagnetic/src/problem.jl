@@ -18,9 +18,21 @@ struct CosineProfile end
 
 One mobile species of the problem, in A1 units: `charge` (e), `mass` (mₑ), `density` (n_c),
 `amplitude` and `mode` of the cosine perturbation, `ppc` particles per cell (quiet start), the
-drift velocity `drift` and the thermal speeds `thermal` per component (v_th = √(T/m), in c; a
-velocity-space Maxwellian, converted to the momentum `u = γv` after loading), and the Philox
-`stream` of its velocity draws. At N = 1 `mode` and `ppc` are integers and
+drift velocity `drift` (β, in c) and the thermal speeds `thermal` per component (v_th = √(T/m),
+in c), the Philox `stream` of its momentum draws, and `momentum`, the distribution they are
+drawn from (WP-033, [`momentum_distribution`](@ref)):
+
+- `:maxwell_juttner`: Maxwell–Jüttner at θ = T/(mc²) = v_th², drifting with β = `drift`; it needs
+  an isotropic, nonzero `thermal`;
+- `:gaussian_momentum`: `u = Γβ + thermal·z` per component, Γ = 1/√(1 − β²), `z` standard normal;
+- `:gaussian_velocity`: `v = drift + thermal·z` per component, converted to `u = γv` after loading
+  (a load in which a drawn speed reaches c is refused, [`check_subluminal`](@ref)).
+
+The keyword `momentum = :default` (of the 10-argument constructor) picks `:maxwell_juttner` for an
+isotropic nonzero spread, `:gaussian_momentum` for any other nonzero spread, and
+`:gaussian_velocity` for a cold species, where all three load `u = Γβ` and that one keeps the
+bits of the cold loads; the first two always give a finite γ. Anything else, or
+`:maxwell_juttner` with a spread that is not isotropic and nonzero, is an `ArgumentError`. At N = 1 `mode` and `ppc` are integers and
 n(x) = density·(1 + amplitude·cos(2π·mode·x/L)); at N = 2 both are `NTuple{2,Int}`, one integer
 per axis, and n(x, y) = density·(1 + amplitude·cos(2π(mode₁·x/L₁ + mode₂·y/L₂))) on a lattice of
 `ppc₁ × ppc₂` particles per cell. A species of zero density is a set of test particles: zero
@@ -37,10 +49,42 @@ struct SpeciesDescription{T,M}
     drift::NTuple{3,T}
     thermal::NTuple{3,T}
     stream::Int
+    momentum::Symbol
 end
 
-SpeciesDescription{T}(name, charge, mass, density, amplitude, mode::M, ppc::M, drift, thermal, stream) where {T,M} =
-    SpeciesDescription{T,M}(name, charge, mass, density, amplitude, mode, ppc, drift, thermal, stream)
+const MOMENTUM_DISTRIBUTIONS = (:maxwell_juttner, :gaussian_momentum, :gaussian_velocity)
+
+function SpeciesDescription{T}(name, charge, mass, density, amplitude, mode::M, ppc::M, drift, thermal, stream;
+                               momentum::Symbol = :default) where {T,M}
+    th = T.(Tuple(thermal))
+    isotropic = th[1] == th[2] == th[3] && th[1] > 0
+    cold = all(iszero, th)
+    m = momentum === :default ? (cold ? :gaussian_velocity : isotropic ? :maxwell_juttner : :gaussian_momentum) : momentum
+    m in MOMENTUM_DISTRIBUTIONS ||
+        throw(ArgumentError("species $name: momentum = :$momentum, one of :default, :maxwell_juttner, :gaussian_momentum and :gaussian_velocity"))
+    m === :maxwell_juttner && !isotropic &&
+        throw(ArgumentError("species $name: a Maxwell–Jüttner load is isotropic and hot, so its thermal spread must be the same nonzero speed in every component, got $thermal"))
+    return SpeciesDescription{T,M}(name, charge, mass, density, amplitude, mode, ppc, drift, th, stream, m)
+end
+
+"""
+    momentum_distribution(d::SpeciesDescription{T}) -> GaussianVelocity, GaussianMomentum or MaxwellJuttner
+
+The engine's distribution object (`load_quiet!`'s `dist`) of a species' `momentum`:
+`MaxwellJuttner(thermal[1]², drift)`, `GaussianMomentum(Γ·drift, thermal)` or
+`GaussianVelocity(drift, thermal)`. For the two momentum draws a drift of |β| ≥ 1 (or NaN) or a
+thermal speed that is not finite is an `ArgumentError` (the velocity draw leaves both to
+[`check_subluminal`](@ref)).
+"""
+function momentum_distribution(d::SpeciesDescription{T}) where {T}
+    d.momentum === :gaussian_velocity && return GaussianVelocity(d.drift, d.thermal)
+    all(isfinite, d.thermal) || throw(ArgumentError("species $(d.name): the thermal speeds $(d.thermal) must be finite"))
+    b2 = d.drift[1]^2 + d.drift[2]^2 + d.drift[3]^2
+    b2 < 1 || throw(ArgumentError("species $(d.name): the drift speed $(sqrt(b2)) must be below c"))
+    d.momentum === :maxwell_juttner && return MaxwellJuttner{T}(d.thermal[1]^2, d.drift)
+    Γ = one(T) / sqrt(one(T) - b2)
+    return GaussianMomentum(map(b -> Γ * b, d.drift), d.thermal)
+end
 
 """
     EMProblem{N,T}
@@ -58,7 +102,15 @@ not differentiable parameters, A3: the addition tests them for zero on the host)
 the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
 at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
-[`AbsorbingLayer`](@ref) and particles that cross the box edge are retired. At N = 1
+[`AbsorbingLayer`](@ref) or [`PML`](@ref) and particles that cross the box edge are retired, or `:window` on
+axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box moves at c along
+axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
+[`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
+background of its own profile (so every species' `amplitude` is zero and `E0`, `B0` are zero) and
+is refilled behind the front, every species with `momentum = :gaussian_velocity` (the window's
+loads draw in velocity); a window that starts later than t = 0 takes only cold species at
+rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
+finished its pulse before the window passes it (checked by the state). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -68,9 +120,10 @@ any [`EMNumerics`](@ref).
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2), that the cells and the particles per cell are positive, at N = 2 that
 `kmode` is not the zero mode, that lasers are given only at N = 2, and that the boundaries are
-`:periodic` or `:open`, one per axis, with axis 1 periodic (an `ArgumentError` otherwise).
+`:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1 together with
+a `window` and the conditions above (an `ArgumentError` otherwise).
 """
-struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD}
+struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR}
     name::String
     length::L
     cells::C
@@ -83,11 +136,13 @@ struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD}
     B0::NTuple{3,T}
     lasers::LZ
     boundaries::BD
+    window::W
+    profile::PR
 end
 
 function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, seed::Integer, kmode;
                    E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = (),
-                   boundaries = nothing) where {T}
+                   boundaries = nothing, window = nothing, profile = nothing) where {T}
     N = cells isa Integer ? 1 : length(cells)
     N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
     M = N == 1 ? Int : NTuple{2,Int}
@@ -108,19 +163,41 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
     all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
     boundaries isa Union{Symbol,AbstractString} &&
-        throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic and :open per axis, a tuple of $N"))
+        throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic, :open and :window per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
-    length(bd) == N && all(in((:periodic, :open)), bd) ||
-        throw(ArgumentError("boundaries = $boundaries: one of :periodic and :open per axis, $N of them"))
-    first(bd) === :periodic ||
-        throw(ArgumentError("boundaries = $bd: axis 1 is periodic (the open transverse boundary is axis 2; the moving window is WP-028)"))
+    length(bd) == N && all(in((:periodic, :open, :window)), bd) ||
+        throw(ArgumentError("boundaries = $boundaries: one of :periodic, :open and :window per axis, $N of them"))
+    first(bd) in (:periodic, :window) && last(bd) !== :window ||
+        throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), axis 2 :periodic or :open (the open transverse boundary)"))
+    moving = first(bd) === :window
+    moving && N != 2 && throw(ArgumentError("the moving window is implemented at N = 2 only"))
+    moving == (window !== nothing) ||
+        throw(ArgumentError("boundaries = $bd with window = $window: a :window axis 1 and a MovingWindow come together"))
+    window === nothing || window isa MovingWindow || throw(ArgumentError("window must be a MovingWindow, got $window"))
+    profile === nothing || profile isa DensityRamp || throw(ArgumentError("profile must be a DensityRamp, got $profile"))
+    profile !== nothing && !moving && throw(ArgumentError("a density profile is implemented with the moving window only"))
+    if moving
+        for d in species
+            iszero(d.amplitude) ||
+                throw(ArgumentError("species $(d.name): a moving-window plasma starts neutral against its immobile background, so its amplitude must be zero, got $(d.amplitude)"))
+            d.momentum === :gaussian_velocity ||
+                throw(ArgumentError("species $(d.name): the moving window loads and refills with the Gaussian velocity draw only, got momentum = :$(d.momentum); pass momentum = :gaussian_velocity (a thermal spread in momentum in the window is #350)"))
+        end
+        all(iszero, E0) && all(iszero, B0) ||
+            throw(ArgumentError("a moving-window problem takes no background fields (the outside of the window is field-free)"))
+        if window isa MovingWindow && window.start > 0
+            for d in species
+                all(iszero, d.drift) && all(iszero, d.thermal) ||
+                    throw(ArgumentError("species $(d.name): before a moving window starts (start = $(window.start)) its front is a fixed edge, and a plasma with a drift or a thermal speed reaches it and leaves a residual of Gauss's law that the shifts carry into the box; start the window at 0 or load the species cold, got drift $(d.drift) and thermal $(d.thermal)"))
+            end
+        end
+    end
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode
-    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd)}(String(name), L, c, dt,
-                                                                                                    Int(nsteps), species,
-                                                                                                    Int(seed), k, T.(Tuple(E0)),
-                                                                                                    T.(Tuple(B0)), lasers, bd)
+    win = window === nothing ? nothing : MovingWindow(T(window.start))
+    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd),typeof(win),typeof(profile)}(
+        String(name), L, c, dt, Int(nsteps), species, Int(seed), k, T.(Tuple(E0)), T.(Tuple(B0)), lasers, bd, win, profile)
 end
 
 Base.eltype(::EMProblem{N,T}) where {N,T} = T
@@ -148,7 +225,7 @@ struct NoCurrent end
 
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
-               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing)
+               current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, back_absorber = nothing, headroom = 1/4)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
@@ -161,10 +238,17 @@ work-items, as PoCL reported it, #297), and a launch it does not fit stops the s
 N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
-problem: an [`AbsorbingLayer`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
-then, refused otherwise), `nothing` for a periodic box.
+problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
+then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
+with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
+the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
+back), or `nothing`, the window's field-free outside alone; a state refuses it without a
+window, and refuses a laser antenna that the layer reaches before its pulse is over. `headroom` sizes the particle buffers of
+a moving-window state, `(1 + headroom)·prod(cells)·prod(ppc)` slots per species, for particles
+that stay in the window longer than the plasma at rest (a refill that finds no free slot is
+counted, [`window_lost`](@ref)); other states ignore it.
 """
-struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
+struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     shape::S
     mode::M
     pusher::P
@@ -173,11 +257,16 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A}
     current::C
     filter::BinomialFilter
     absorber::A
+    back_absorber::K
+    headroom::Float64
 end
 
-EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing, current = Esirkepov(),
-           filter::BinomialFilter = BinomialFilter(0), absorber = nothing) =
-    EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber)
+function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
+                    current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, back_absorber = nothing,
+                    headroom::Real = 1 / 4)
+    headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
+    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom))
+end
 
 """
     EMParams(dt, kmode)
@@ -217,7 +306,7 @@ end
 
 """
     problem_from_case(case, T; ppc = nothing, cells = nothing, t_end = nothing, dt = nothing, amplitude = nothing,
-                      seed = nothing, transverse_thermal = false) -> EMProblem{1,T} or EMProblem{2,T}
+                      seed = nothing, transverse_thermal = false, momentum = nothing) -> EMProblem{1,T} or EMProblem{2,T}
 
 The problem description of a parsed case file (`scripts/crosscode/cases/<case>.toml`, in A1
 units): schema 1 gives an `EMProblem{1}` (with the per-species `transverse_drift = [v_y, v_z]`
@@ -240,10 +329,16 @@ The default seed is [`case_seed`](@ref)`(case)`: the first of a `seeds` list or 
 limit, which `EMState` requires), `amplitude`, which replaces the magnitude of every nonzero
 perturbation amplitude and keeps its sign (the parameter of the A3 gradient check, so it may be a
 `Dual`), and `seed`, the seed of the velocity draws (common random numbers on both sides of a
-gradient check, A7; one member of a seed ensemble).
+gradient check, A7; one member of a seed ensemble), and `momentum`, the distribution of every mobile
+species' momentum draws (a `Symbol` of [`SpeciesDescription`](@ref)'s `momentum`), which replaces
+each species' optional `momentum_distribution` key (`"maxwell_juttner"`, `"gaussian_momentum"` or
+`"gaussian_velocity"`; without it the species takes `SpeciesDescription`'s default, so an
+isotropic thermal species loads Maxwell–Jüttner and a schema-1 spread along x only a Gaussian in
+momentum).
 """
 function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells = nothing, t_end = nothing,
-                           dt = nothing, amplitude = nothing, seed = nothing, transverse_thermal::Bool = false) where {T}
+                           dt = nothing, amplitude = nothing, seed = nothing, transverse_thermal::Bool = false,
+                           momentum = nothing) where {T}
     schema = getnum(case, "schema", 1)
     schema in (1, 2) || throw(ArgumentError("case schema $schema: 1 and 2 are implemented"))
     grid = case["grid"]
@@ -256,7 +351,7 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
     tend = t_end === nothing ? case["time"]["t_end"] : t_end
     nsteps = round(Int, tend / dt_run)
     seed = seed === nothing ? case_seed(case) : Int(seed)
-    schema == 2 && return problem_from_case_2d(case, T, ppc, cells, dtT, nsteps, amplitude, seed)
+    schema == 2 && return problem_from_case_2d(case, T, ppc, cells, dtT, nsteps, amplitude, seed, momentum)
     L = T(grid["length"])
     n = cells === nothing ? Int(grid["cells"]) : Int(cells)
     species = SpeciesDescription{T,Int}[]
@@ -275,7 +370,8 @@ function problem_from_case(case::AbstractDict, ::Type{T}; ppc = nothing, cells =
                                              Int(pert["mode"]),
                                              ppc === nothing ? Int(s["particles_per_cell"]) : Int(ppc),
                                              (T(getnum(s, "drift", 0.0)), T(vt[1]), T(vt[2])),
-                                             transverse_thermal ? (vth, vth, vth) : (vth, zero(T), zero(T)), k))
+                                             transverse_thermal ? (vth, vth, vth) : (vth, zero(T), zero(T)), k;
+                                             momentum = case_momentum(s, momentum)))
     end
     isempty(species) && throw(ArgumentError("the case has no mobile species"))
     i = findfirst(s -> !iszero(s.amplitude), species)
@@ -286,9 +382,19 @@ end
 
 pair(v) = (Int(v[1]), Int(v[2]))
 
+# A species' momentum distribution: the keyword of `problem_from_case` for every species, else the
+# species' `momentum_distribution` key ("maxwell_juttner", "gaussian_momentum" or
+# "gaussian_velocity"), else the default of `SpeciesDescription`.
+function case_momentum(s, momentum)
+    momentum === nothing || return Symbol(momentum)
+    m = getnum(s, "momentum_distribution", "default")
+    m isa AbstractString || throw(ArgumentError("species $(s["name"]): momentum_distribution must be a string, got $(repr(m))"))
+    return Symbol(m)
+end
+
 # Schema 2 (WP-019's 2D cases): every per-axis entry is a pair, the drift has three components,
 # the thermal spread is isotropic.
-function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude, seed) where {T}
+function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude, seed, momentum) where {T}
     grid = case["grid"]
     L = (T(grid["length"][1]), T(grid["length"][2]))
     n = cells === nothing ? pair(grid["cells"]) : pair(cells)
@@ -309,7 +415,7 @@ function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude
         length(v) == 3 || throw(ArgumentError("species $(s["name"]): a schema-2 drift has three components, got $v"))
         push!(species, SpeciesDescription{T}(Symbol(s["name"]), T(s["charge"]), T(s["mass"]), T(s["density"]), a,
                                              pair(pert["mode"]), ppc === nothing ? pair(s["particles_per_cell"]) : pair(ppc),
-                                             (T(v[1]), T(v[2]), T(v[3])), (vth, vth, vth), k))
+                                             (T(v[1]), T(v[2]), T(v[3])), (vth, vth, vth), k; momentum = case_momentum(s, momentum)))
     end
     isempty(species) && throw(ArgumentError("the case has no mobile species"))
     kmode = pair(case["wavevector"]["mode"])
@@ -326,7 +432,9 @@ must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filt
 (default 0), a non-negative integer, is the pass count of the [`BinomialFilter`](@ref) (A2), and
 anything else is an `ArgumentError`. With an open boundary in `grid.boundaries`, the table
 `[numerics.absorbing_layer]` gives the layer's `cells`, `strength` and optional `order`
-([`AbsorbingLayer`](@ref), WP-027), which a periodic case must not have. The mode, the pusher
+([`AbsorbingLayer`](@ref), WP-027), or the table `[numerics.pml]` the PML's `cells` and optional
+`sigma_max`, `order`, `kappa_max`, `kappa_order`, `alpha_max` and `alpha_order` ([`PML`](@ref),
+WP-034), exactly one of the two; a periodic case must have neither. The mode, the pusher
 and the launch shape are not in the case.
 """
 function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
@@ -340,13 +448,24 @@ function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Bor
     bounds = getnum(case["grid"], "boundaries", "periodic")
     open_axis = any(==("open"), bounds isa AbstractVector ? bounds : [bounds])
     absorber = nothing
+    has_al, has_pml = haskey(num, "absorbing_layer"), haskey(num, "pml")
     if open_axis
-        haskey(num, "absorbing_layer") ||
-            throw(ArgumentError("an open boundary needs [numerics.absorbing_layer] with cells and strength"))
-        al = num["absorbing_layer"]
-        absorber = AbsorbingLayer(; cells = Int(al["cells"]), strength = Float64(al["strength"]), order = Int(getnum(al, "order", 2)))
+        has_al + has_pml == 1 ||
+            throw(ArgumentError("an open boundary needs exactly one of [numerics.absorbing_layer] (cells, strength) and [numerics.pml] (cells)"))
+        if has_al
+            al = num["absorbing_layer"]
+            absorber = AbsorbingLayer(; cells = Int(al["cells"]), strength = Float64(al["strength"]), order = Int(getnum(al, "order", 2)))
+        else
+            pl = num["pml"]
+            order = Int(getnum(pl, "order", 4))
+            sm = getnum(pl, "sigma_max", nothing)
+            absorber = PML(; cells = Int(pl["cells"]), sigma_max = sm === nothing ? nothing : Float64(sm), order,
+                           kappa_max = Float64(getnum(pl, "kappa_max", 1)), kappa_order = Int(getnum(pl, "kappa_order", order)),
+                           alpha_max = Float64(getnum(pl, "alpha_max", 0)), alpha_order = Int(getnum(pl, "alpha_order", 1)))
+        end
     else
-        haskey(num, "absorbing_layer") && throw(ArgumentError("[numerics.absorbing_layer] needs an open boundary"))
+        has_al && throw(ArgumentError("[numerics.absorbing_layer] needs an open boundary"))
+        has_pml && throw(ArgumentError("[numerics.pml] needs an open boundary"))
     end
     return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes),
                       absorber)

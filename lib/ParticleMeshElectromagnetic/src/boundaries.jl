@@ -96,6 +96,8 @@ type). Throws an `ArgumentError` unless `guards(grid) ≤ layer.cells` (so that 
 a layer row and the damping visits it with its interior image's factor) and `2·cells < n₂`
 (interior rows remain between the two layers).
 """
+place_absorber(l::AbsorbingLayer, grid, dt; backend, workgroupsize = nothing) = LayerFactors(l, grid, dt; backend, workgroupsize)
+
 function LayerFactors(l::AbsorbingLayer, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize = nothing) where {T}
     n, h, g = ncells(grid), cellsize(grid), guards(grid)
     g <= l.cells || throw(ArgumentError("the absorbing layer of $(l.cells) cells must be at least as thick as the $g guard cells"))
@@ -184,7 +186,8 @@ end
 end
 
 retire!(::Nothing, st) = nothing
-function retire!(::LayerFactors, st)
+retire!(::LayerFactors, st) = retire_open!(st)
+function retire_open!(st)
     wgs = st.numerics.workgroupsize
     for s in st.species
         launcher(retire_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))

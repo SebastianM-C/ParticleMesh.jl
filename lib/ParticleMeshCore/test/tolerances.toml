@@ -318,3 +318,31 @@ scale = "(Σ_d n_d)·max|reference| per output and component"
 C = 4
 measured = { primal = 0.0, partials = 0.604 }
 status = "proposed: the primal measured bitwise equal to the Float32 run, which is recorded and not asserted (A4); the largest partial ratio is that of G₂ along p₁ on 16 × 12; the constant parameter p₃, whose reference is the roundoff of a zero solve, stays below 0.18"
+
+["T-532"]
+quantity = "rest-frame Maxwell–Jüttner sample means of γ − 1 and u² against quadrature, 2^17 draws per θ (1e-5 to 100), largest |z| of the two"
+scale = "the standard error of the sample mean"
+z = 5
+measured = {}
+status = "proposed"
+
+["T-533"]
+quantity = "one-sample Kolmogorov–Smirnov √N·D of the rest-frame kinetic energy against the quadrature cdf, and of the direction cosine against uniform, 2^16 draws"
+scale = "√N·D; 1.95 is the 0.001 critical value of the Kolmogorov distribution"
+ks = 1.95
+measured = {}
+status = "proposed"
+
+["T-534"]
+quantity = "boosted Maxwell–Jüttner sample means of u∥, γ and u⊥² against 2D quadrature of the lab-frame density, and of a transverse component against 0, 2^17 draws, largest |z|"
+scale = "the standard error of the sample mean"
+z = 5
+measured = {}
+status = "proposed"
+
+["T-535"]
+quantity = "two-sample Kolmogorov–Smirnov √(NM/(N+M))·D per component, Maxwell–Jüttner at θ = 1e-4 against GaussianMomentum with u_th = √θ, 2^16 draws each"
+scale = "√(NM/(N+M))·D; 1.95 is the 0.001 critical value"
+ks = 1.95
+measured = {}
+status = "proposed"

@@ -89,12 +89,39 @@ refused too. Called by `initialize!` at N = 1 and 2, never inside `step!`.
 """
 function check_subluminal(s, d)
     T = eltype(s.w)
-    v2 = mapreduce((a, b, c, st) -> ifelse(st == ALIVE, a * a + b * b + c * c, zero(T)), max, s.u[1], s.u[2], s.u[3],
+    z = zero(T)   # a value, not the type, in the closure: a Type field is not isbits on the device
+    v2 = mapreduce((a, b, c, st) -> ifelse(st == ALIVE, a * a + b * b + c * c, z), max, s.u[1], s.u[2], s.u[3],
                    s.status; init = zero(T))
     v2 < one(T) ||
         throw(ArgumentError("species $(d.name): a loaded speed reaches c, the largest drawn |v| is $(sqrt(v2)) (in c); " *
                             "the thermal spread is drawn in velocity, drift + thermal·z with z standard normal, " *
                             "so its Gaussian tail can pass c: lower the thermal speed or the drift"))
+    return s
+end
+
+"""
+    load_species!(s, grid, p, d::SpeciesDescription, seed; density_at, workgroupsize) -> s
+
+The quiet start of species `d` into `s` with the [`CosineProfile`](@ref) parameters `p`, at N = 1
+and 2: `load_quiet!` with the species' [`momentum_distribution`](@ref), keyed by `seed` and the
+species' stream. A Gaussian-velocity load is checked ([`check_subluminal`](@ref)) and its
+velocities converted to `u = γv`; the two momentum draws write `u` directly and need neither. A
+Maxwell–Jüttner load counts the particles whose rejection tries all ran out (they keep their last,
+finite proposal), one device counter read once on the host, and warns when there are any; the
+probability is near 1e−22 per particle. Called by `initialize!`, never inside `step!`.
+"""
+function load_species!(s, grid, p, d::SpeciesDescription, seed; density_at, workgroupsize)
+    dist = momentum_distribution(d)
+    exhausted = dist isa MaxwellJuttner ? KernelAbstractions.zeros(get_backend(s), Int32, 1) : nothing
+    load_quiet!(s, grid, CosineProfile(), p, d.ppc, dist; seed, stream = d.stream, density_at, exhausted, workgroupsize)
+    if !draws_momentum(dist)
+        check_subluminal(s, d)
+        launcher(velocity_to_momentum_kernel!, get_backend(s), workgroupsize)(s; ndrange = capacity(s))
+    end
+    if exhausted !== nothing
+        n = Int(only(Array(exhausted)))
+        n > 0 && @warn "species $(d.name): $n Maxwell–Jüttner draws ran out of rejection tries and keep their last proposal"
+    end
     return s
 end
 
@@ -142,6 +169,8 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU())
     numerics.current isa Esirkepov ||
         throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
     numerics.absorber === nothing || throw(ArgumentError("the 1D box is periodic: EMNumerics takes no absorber at N = 1"))
+    numerics.back_absorber === nothing ||
+        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)
@@ -189,9 +218,10 @@ check_momenta_at(m::Symbol) = m in (:t0, :t_minus_half) ? m :
 
 The state at t = 0 from the problem description: each species loaded by the engine's quiet
 start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
-through the weights, A3; velocities `drift + thermal·z` from Philox draws keyed by the problem's
-seed and the species' stream), the velocities converted to momenta `u = γv` (a load in which a
-drawn speed reaches c is an `ArgumentError` naming the species, `check_subluminal`); the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
+through the weights, A3; momenta from the species' distribution, [`momentum_distribution`](@ref),
+by Philox draws keyed by the problem's seed and the species' stream, [`load_species!`](@ref): a
+Maxwell–Jüttner or Gaussian-momentum draw writes `u = γv` directly, a Gaussian-velocity draw is
+converted, and refused if a drawn speed reaches c, `check_subluminal`); the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
 ρ, so that (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ) to roundoff, the mean being the immobile
 neutralizing background; the background fields `E0` and `B0` of the problem added where they
 are nonzero (so a problem without them keeps the bits of the fields); then the momenta at
@@ -223,10 +253,7 @@ function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol =
     for (s, d) in zip(st.species, problem.species)
         fill!(s.status, ParticleMeshCore.FREE)
         k = 2 * T(π) * d.mode / problem.length
-        load_quiet!(s, grid, CosineProfile(), (d.density, d.amplitude, k), d.ppc; vdrift = d.drift, vth = d.thermal,
-                    seed = problem.seed, stream = d.stream, density_at, workgroupsize = wgs)
-        check_subluminal(s, d)
-        launcher(velocity_to_momentum_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
+        load_species!(s, grid, (d.density, d.amplitude, k), d, problem.seed; density_at, workgroupsize = wgs)
     end
     foreach(a -> fill!(a, zero(T)), st.fields)
     for (s, ws) in zip(st.species, st.ws)

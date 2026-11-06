@@ -28,7 +28,8 @@ const INPROCESS_DIGESTS = thread_digests()
 @testset "T-171 the engine holds no physics [A9, WP-011]" begin
     @test !isdefined(ParticleMeshCore, :Electrostatic)
     for name in names(ParticleMeshCore)
-        s = lowercase(string(name))
+        # "gaussian" names a sampling distribution (WP-033's GaussianVelocity and GaussianMomentum), not Gauss's law
+        s = replace(lowercase(string(name)), "gaussian" => "")
         @test !any(w -> occursin(w, s), ("gauss", "poisson", "electrostatic"))
     end
 end

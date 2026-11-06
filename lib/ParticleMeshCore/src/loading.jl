@@ -63,19 +63,24 @@ function load_quiet!(s::Species{1,T}, grid::PeriodicGrid{1}, density, p, ppc::In
     return s
 end
 
-# N = 2: the per-axis product lattice. Particle `i` is the in-cell index `k` (axis 1 fastest)
-# of linear cell `L`, so the loaded slots are already in sorted order.
-@kernel function load_quiet_2d_kernel!(s, density, p, dx, n1::Int32, ppc::NTuple{2,Int32}, first::Int32, vdrift, vth, key, at)
-    i = @index(Global, Linear)
-    T = eltype(s.w)
+"""
+    quiet_particle_2d(c1, c2, k, ppc, dx, density, p, vdrift, vth, key, at = Val(:particle)) -> (δ, u, w)
+
+One particle of the 2D quiet start (a device function): the in-cell index `k` (axis 1 fastest)
+of the cell `(c1, c2)` on the per-axis lattice `δ_d = (k_d − 1/2)/ppc_d`, its velocity
+`vdrift[d] + vth[d]·z_d` from Box–Muller over Philox4x32-10 with the counter
+`(c1, c2, 0, k << 16)` and `key`, and its weight `density(x, p)/prod(ppc)` at the position
+`x = ((c_d − 1 + δ_d)·dx_d)`, or with `at = Val(:cell_centre)` at the cell centre (`load_quiet!`'s
+`density_at`). The cell is the global one: `load_quiet!` passes the grid's cells,
+and a module that loads a part of a larger domain (the moving window's refill) passes the cell in
+that domain, so the draws and the weight of a cell do not depend on which call loads it (A3, A4).
+"""
+@inline function quiet_particle_2d(c1::Int32, c2::Int32, k::Int32, ppc::NTuple{2,Int32}, dx, density, p, vdrift, vth, key,
+                                   at = Val(:particle))
+    T = eltype(vth)
     K = ppc[1] * ppc[2]
-    L = Int32((i - 1) ÷ K + 1)
-    k = Int32((i - 1) % K + 1)
-    c1 = (L - Int32(1)) % n1 + Int32(1)
-    c2 = (L - Int32(1)) ÷ n1 + Int32(1)
     k1 = (k - Int32(1)) % ppc[1] + Int32(1)
     k2 = (k - Int32(1)) ÷ ppc[1] + Int32(1)
-    slot = first - Int32(1) + Int32(i)
     δ1 = (T(k1) - one(T) / 2) / T(ppc[1])
     δ2 = (T(k2) - one(T) / 2) / T(ppc[2])
     x = ((T(c1 - Int32(1)) + density_offset(at, δ1)) * dx[1], (T(c2 - Int32(1)) + density_offset(at, δ2)) * dx[2])
@@ -84,15 +89,30 @@ end
     r = philox4x32(ctr, key)
     z1, z2 = box_muller(T, r[1], r[2])
     z3, _ = box_muller(T, r[3], r[4])
+    u = (vdrift[1] + vth[1] * z1, vdrift[2] + vth[2] * z2, vdrift[3] + vth[3] * z3)
+    return (δ1, δ2), u, density(x, p) / T(K)
+end
+
+# N = 2: the per-axis product lattice. Particle `i` is the in-cell index `k` (axis 1 fastest)
+# of linear cell `L`, so the loaded slots are already in sorted order.
+@kernel function load_quiet_2d_kernel!(s, density, p, dx, n1::Int32, ppc::NTuple{2,Int32}, first::Int32, vdrift, vth, key, at)
+    i = @index(Global, Linear)
+    K = ppc[1] * ppc[2]
+    L = Int32((i - 1) ÷ K + 1)
+    k = Int32((i - 1) % K + 1)
+    c1 = (L - Int32(1)) % n1 + Int32(1)
+    c2 = (L - Int32(1)) ÷ n1 + Int32(1)
+    slot = first - Int32(1) + Int32(i)
+    δ, u, w = quiet_particle_2d(c1, c2, k, ppc, dx, density, p, vdrift, vth, key, at)
     @inbounds begin
         s.cell[1][slot] = c1
         s.cell[2][slot] = c2
-        s.offset[1][slot] = δ1
-        s.offset[2][slot] = δ2
-        s.u[1][slot] = vdrift[1] + vth[1] * z1
-        s.u[2][slot] = vdrift[2] + vth[2] * z2
-        s.u[3][slot] = vdrift[3] + vth[3] * z3
-        s.w[slot] = density(x, p) / T(K)
+        s.offset[1][slot] = δ[1]
+        s.offset[2][slot] = δ[2]
+        s.u[1][slot] = u[1]
+        s.u[2][slot] = u[2]
+        s.u[3][slot] = u[3]
+        s.w[slot] = w
         s.status[slot] = ALIVE
     end
 end
