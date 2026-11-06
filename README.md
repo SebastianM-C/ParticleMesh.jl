@@ -50,8 +50,10 @@ CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exi
 Not done yet: A5's LWFA case at λ₀/48 in all three codes and the injecting case after it;
 gradients through a full LWFA run (the element type and the SciML harness are in place, the
 optimization is not); AMD GPUs; performance work (WP-041); Reactant, which is parked (A9). The
-work packages and their state are in `trace/wp/`, the results in `reports/`. None of the
-results has had an independent review yet, so no number in them is a validated claim. The aims
+work packages and their state are in `trace/wp/`, the results in `reports/`. The cross-code
+comparisons on the linear cases have had a fresh reviewer (`reports/crosscode-*/review*.md`);
+the other reports, the LWFA comparison among them, have not, so their numbers are not validated
+claims. The aims
 and decisions in `docs/goals/` are binding for anyone, human or agent, who works here; the design
 record in `docs/plan/` (start with `overview.md`) says where the project is going.
 
