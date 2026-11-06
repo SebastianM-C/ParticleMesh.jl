@@ -93,7 +93,7 @@ function frame_figure(f, size)
               xticklabelcolor = :white, yticklabelcolor = :white, xtickcolor = :white, ytickcolor = :white,
               bottomspinecolor = :white, leftspinecolor = :white, topspinevisible = false, rightspinevisible = false)
     hm = heatmap!(ax, xs, y, ne; colorrange = (0, 3), colormap = :grays)
-    heatmap!(ax, xs, y, ey; colorrange = (-a0, a0), colormap = LASER_COLORS)
+    heatmap!(ax, xs, y .+ dy / 2, ey; colorrange = (-a0, a0), colormap = LASER_COLORS)    # E_y sits at y = (j − ½)Δy, half a cell above node row j
     Colorbar(fig[1, 2], hm; label = "n_e/n₀", labelcolor = :white, ticklabelcolor = :white, tickcolor = :white)
     function show!(i)
         g = fr(i)
