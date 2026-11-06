@@ -45,8 +45,8 @@ CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exi
   animation is its ParticleMesh run at λ₀/48 on an RTX 4080 SUPER: the electron density in grey,
   the laser's E_y in red and blue, a₀ = 2 into 0.01 n_c (`scripts/lwfa/animate.jl`, outputs and
   manifest in `reports/lwfa-animation/`). The same case on a coarser grid (λ₀/32), run in
-  ParticleMesh and in Smilei on the CPU, reproduces Smilei's laser and wake to a few percent
-  (`reports/lwfa-2d-a2.md`).
+  ParticleMesh and in Smilei on the CPU, reproduces Smilei's laser and wake field to a few percent, and its
+  electron density on the axis to 5 % to 17 % rms (`reports/lwfa-2d-a2.md`).
 
 ![A 2D laser wakefield in ParticleMesh: the laser pulse (red and blue) drives plasma wake buckets in the electron density (grey) as the window moves with it](reports/lwfa-animation/lwfa.gif)
 
