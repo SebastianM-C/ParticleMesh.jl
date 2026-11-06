@@ -364,12 +364,12 @@ measured = { Float32 = 7.79, Float64 = 8.25 }
 status = "proposed; valid while the plasma's instability has not amplified the roundoff (the breaker measured exponential growth of the difference beyond about 100 steps)"
 
 ["T-364"]
-quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electrons per cell, 5 % perturbation, t = 18, the case's default seed): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|ê·Ê|/max|k̂·Ê| of mode (2, 1) (transverse)"
+quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electrons per cell, 10 % perturbation, t = 18, the case's default seed): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|ê·Ê|/max|k̂·Ê| of mode (2, 1) (transverse), γ_theory and ω_r the relativistic linear theory of the loaded distribution (landau_rate_relativistic, Maxwell–Jüttner: 0.14857, 1.4113)"
 rate = 0.8
 frequency = 0.08
 transverse = 0.05
-measured = { rate = -0.0110, frequency = 0.026, transverse = 0.00864 }
-status = "proposed; rate is three seed standard deviations at this size (20 seeds, scripts/em2d/landau_seeds.jl: std 0.266 of theory, seed mean −2.2 %, 0.36 standard errors from theory; 2 of 20 seeds give fewer than three maxima), so it is an order check; frequency covers the largest seed deviation, 4.6 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/"
+measured = { rate = 0.281, frequency = -0.0087, transverse = 0.00316 }
+status = "proposed; rate is about four seed standard deviations at this size (WP-033: eight seeds with the Maxwell–Jüttner load at 10 %, std 0.18 of theory, mean +14 %, 2.2 standard errors from theory, every seed with at least three maxima; the earlier 5 % perturbation left four of the eight without a fit), so it is an order check; frequency covers the largest seed deviation, 3.1 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/ and reports/wp-032-pm-landau-ensemble.md (velocity load)"
 
 ["T-365"]
 quantity = "2D Weibel at test size (64 × 64 cells, 4 × 4 per beam per cell): |γ − γ_theory|/γ_theory (rate) and max|k̂·B̂|/max|ê·B̂| of mode (2, 1) (longitudinal)"

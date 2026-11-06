@@ -25,7 +25,8 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
         include("initialize.jl")    # T-420, the time of the loaded momenta; T-522, where the density is sampled
-        include("subluminal.jl")    # T-480, T-481: a load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
+        include("subluminal.jl")    # T-480, T-481: a Gaussian-velocity load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
+        include("momenta.jl")       # WP-033: T-537, T-539, the momentum distributions in the module; after subluminal.jl (its helpers)
         include("physics.jl")
         include("determinism.jl")
         include("gradient.jl")

@@ -4,12 +4,6 @@ Work package: WP-014. Files: `lib/ParticleMeshElectromagnetic/`, `scripts/crossc
 
 None of these blocked the work; each is the assumption I proceeded on, for the owner to confirm or change.
 
-## 1. Thermal loading: a velocity-space Maxwellian, converted to momentum
-
-The engine's `load_quiet!` draws velocities, `drift + v_th·z`. The module's `u` is the momentum `γv`, so after loading each particle's velocity is converted, `u = v/√(1 − v²)`. For the Landau case (v_th = 0.05 c) this is a nonrelativistic Maxwellian in velocity, which is what the linear theory of `scripts/crosscode/theory.jl` assumes. Smilei instead loads a Maxwell–Jüttner distribution in momentum (the caveat in `landau.toml`). The alternative is to treat the drawn values as momenta directly. The two agree to O(v_th²) and are identical for the cold cases.
-
-Assumption: velocity space, matching the theory.
-
 ## 2. The edge cases have no transverse thermal spread
 
 `landau.toml` says `velocity = "maxwellian"`, which Smilei loads isotropically in 3D. WP-014 requires the edge cases to run "with no transverse momenta or fields" (T-213), so `problem_from_case` puts the thermal spread along x only, unless it is called with `transverse_thermal = true`. The 1D linear theory sees only the x distribution, so the rate is unaffected. The kinetic energy differs from Smilei's by the two transverse thirds.

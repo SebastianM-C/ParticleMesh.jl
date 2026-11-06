@@ -17,7 +17,7 @@ function window_plasma(::Type{T}; cells = (24, 6), ppc = (2, 2), nsteps = 40, st
                        drift = ZERO3(T), thermal = ZERO3(T), density = one(T), seed = 5, open_y = false) where {T}
     L = (T(cells[1]) / 2, T(cells[2]) / 2)
     dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2))) / 10
-    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(density), zero(T), (1, 0), ppc, T.(drift), T.(thermal), 1)
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(density), zero(T), (1, 0), ppc, T.(drift), T.(thermal), 1; momentum = :gaussian_velocity)
     return EMProblem("window-plasma", L, cells, T(dt), nsteps, (e,), seed, (1, 0); boundaries = (:window, open_y ? :open : :periodic),
                      window = MovingWindow(; start = T(start)), profile = DensityRamp(; vacuum = T(vacuum), ramp = ramp isa T ? ramp : T(ramp)))
 end
