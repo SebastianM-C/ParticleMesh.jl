@@ -393,8 +393,8 @@ end
         @info "T-367 bytes per 2D step with current" mode small more_particles larger_grid threads = Threads.nthreads()
         # at more than one thread the Reference sort allocates per particle (#82, as T-220); CI runs one thread
         if Threads.nthreads() == 1 || mode isa Fast
-            @test more_particles <= small
-            @test larger_grid <= small
+            @test_alloc more_particles <= small
+            @test_alloc larger_grid <= small
         end
     end
 end

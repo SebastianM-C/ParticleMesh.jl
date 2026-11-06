@@ -396,9 +396,9 @@ end
         @info "T-445 bytes per step with two filter passes" N mode small more_particles larger_grid unfiltered more_passes threads = Threads.nthreads()
         # at more than one thread the Reference sort allocates per particle (#82, as T-367); CI runs one thread
         if Threads.nthreads() == 1 || mode isa Fast
-            @test more_particles <= small
-            @test larger_grid <= small
-            @test more_passes <= small       # the passes reuse the scratch and launch with fixed arguments
+            @test_alloc more_particles <= small
+            @test_alloc larger_grid <= small
+            @test_alloc more_passes <= small       # the passes reuse the scratch and launch with fixed arguments
         end
     end
 end

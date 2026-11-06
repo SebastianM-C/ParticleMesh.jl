@@ -36,8 +36,8 @@ end
         larger_grid = step_bytes(name, mode; ppc = 16, cells = 512)
         @info "T-220 bytes per step" name mode small more_particles larger_grid threads = Threads.nthreads()
         if Threads.nthreads() == 1 || mode isa Fast
-            @test more_particles <= small
-            @test larger_grid <= small
+            @test_alloc more_particles <= small
+            @test_alloc larger_grid <= small
         end
     end
 end

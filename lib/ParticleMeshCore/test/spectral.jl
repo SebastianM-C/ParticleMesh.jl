@@ -180,7 +180,7 @@ end
         end
         @info "T-315 bytes per call" T bytes
         for name in ("solve", "gradient")
-            @test bytes[(name, sizes[2])] <= bytes[(name, sizes[1])]
+            @test_alloc bytes[(name, sizes[2])] <= bytes[(name, sizes[1])]
         end
     end
 end

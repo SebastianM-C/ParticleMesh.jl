@@ -78,7 +78,11 @@ end
         e
     end
     @test engine_refusal(err, 2wmax, :fill_guards_kernel!)
-    @test occursin("exceeds the maximum", err.msg)   # KernelAbstractions' own message is kept
+    # KernelAbstractions' own message is kept. Which of its two checks refuses 2wmax depends on
+    # the backend's per-dimension limit: POCL builds report either 4096 per dimension ("exceeds
+    # the maximum of ... per dimension") or more ("has more than ... work-items, the maximum
+    # for this kernel"), and the CI pre-release job resolves a newer pocl_standalone_jll.
+    @test occursin(r"exceeds the maximum|the maximum for this kernel", err.msg)
     @test a == before                                # refused before the kernel ran
     b = copy(before)
     fill_guards!(a, grid; workgroupsize = 3)
