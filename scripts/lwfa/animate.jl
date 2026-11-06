@@ -98,7 +98,7 @@ function frame_figure(f, size)
     function show!(i)
         g = fr(i)
         t, x0 = read_attribute(g, "t"), read_attribute(g, "x0")
-        ne.val, ey.val = read(g["ne"]), read(g["Ey"])
+        ne[], ey[] = read(g["ne"]), read(g["Ey"])
         xs[] = x0 .+ xi
         title[] = "ParticleMesh: n_e/n₀ (grey) and E_y (red, blue), t = $(round(Int, t))/ω₀"
         limits!(ax, first(xs[]), last(xs[]), first(y), last(y))
