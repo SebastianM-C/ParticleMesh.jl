@@ -121,9 +121,10 @@ thermal speeds and Philox key of its refill, `lost`, one device counter per spec
 fresh particles that found no free slot (zero unless the buffers overflow; read with
 [`window_lost`](@ref) outside a step), `fast`, one device counter per species of the fresh
 particles of the refills whose drawn speed reached c (read with [`window_superluminal`](@ref)),
-and `flags`, per species the refill's scratch of one flag per fresh particle that `fast` sums.
+and `flags`, per species the refill's scratch of one flag per fresh particle that `fast` sums;
+`back`, the PML of the back edge placed on the grid ([`BackPMLFields`](@ref)), or `nothing`.
 """
-struct WindowFrame{W,T,P,L,F}
+struct WindowFrame{W,T,P,L,F,K}
     window::W
     dt::T
     dx1::T
@@ -134,6 +135,7 @@ struct WindowFrame{W,T,P,L,F}
     lost::L
     fast::L
     flags::F
+    back::K
 end
 
 """
@@ -177,7 +179,7 @@ on device data, §0.4). The initial load refuses such a draw instead, with an `A
 """
 window_superluminal(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.fast)
 
-function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Integer) where {T}
+function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Integer; back = nothing, workgroupsize = nothing) where {T}
     n1 = ncells(grid)[1]
     inj = window_injection_column(n1, shape, passes)
     inj >= 2 ||
@@ -189,7 +191,8 @@ function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Inte
     lost = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
     fast = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
     flags = map(d -> KernelAbstractions.zeros(backend, Int32, inj * ncells(grid)[2] * prod(d.ppc)), problem.species)
-    return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), loads, lost, fast, flags)
+    bk = back === nothing ? nothing : BackPMLFields(back, grid, problem.dt; backend, workgroupsize)
+    return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), loads, lost, fast, flags, bk)
 end
 
 # --- the x edges ------------------------------------------------------------------------------
@@ -244,16 +247,19 @@ function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas
     h = T(dt) / 2
     absorb_b!(layer, f, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
+    back_b!(window, f, grid, h, false, workgroupsize)
     antenna_b!(antennas, f, h, t, workgroupsize)
     absorb_b!(layer, f, workgroupsize)
     edges_b!(window, f, workgroupsize)
     absorb_e!(layer, f, workgroupsize)
     yee_e!(f, grid, dt; workgroupsize)
+    back_e!(window, f, grid, dt, workgroupsize)
     antenna_e!(antennas, f, dt, t + h, workgroupsize)
     absorb_e!(layer, f, workgroupsize)
     edges_e!(window, f, workgroupsize)
     absorb_b!(layer, f, workgroupsize)
     yee_b_half!(f, grid, h; workgroupsize)
+    back_b!(window, f, grid, h, true, workgroupsize)
     antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
     absorb_b!(layer, f, workgroupsize)
     edges_b!(window, f, workgroupsize)
@@ -292,14 +298,20 @@ window_antennas(antennas::Tuple, s::Integer) =
     map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht), antennas)
 
 # The window passes antenna a in the step after which it has moved ia − g − 1 cells; its pulse must
-# be over by then, six durations after its delay (the envelope below Float64 roundoff).
+# be over by then, six durations after its delay (the envelope below Float64 roundoff). With a PML
+# on the back edge (WP-034) the plane must also stay out of the layer's columns 1 … cells while it
+# emits: it reaches them after ia − cells − 1 shifts, and a plane inside them at the start is refused.
 function check_window_antennas(w::WindowFrame, antennas::Tuple)
+    cb = back_cells(w.back)
     for a in antennas
-        smax = a.ia - a.g - 2                     # the last window position at which it acts
-        t_off = w.window.start + (smax + 1) * w.dx1   # the window has moved smax + 1 cells after this time
+        edge = max(Int(a.g), cb)
+        s_off = a.ia - edge - 1                    # the shifts after which it no longer acts outside the layer
+        cb > 0 && s_off <= 0 &&
+            throw(ArgumentError("the antenna's columns $(a.ia - 1) and $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + 1)"))
+        t_off = w.window.start + s_off * w.dx1
         l = a.laser
         l.delay + 6 * l.duration <= t_off ||
-            throw(ArgumentError("laser of delay $(l.delay) and duration $(l.duration): the window passes its antenna (column $(a.ia)) at t ≈ $t_off, before six durations after the delay; place the plane further forward or start the window later"))
+            throw(ArgumentError("laser of delay $(l.delay) and duration $(l.duration): the window passes its antenna (column $(a.ia))$(cb > 0 ? " into the back-edge PML of $cb cells" : "") at t ≈ $t_off, before six durations after the delay; place the plane further forward or start the window later"))
     end
     return nothing
 end
@@ -445,6 +457,7 @@ function shift_window!(st::EMState{2}, s_new::Integer)
         launcher(shift_columns_kernel!, get_backend(a), wgs)(a, st.ρ, Int32(g + 1), Int32(g + n[1]), a === fields.Ex; ndrange = size(a))
     end
     shift_absorber!(aux.layer, wgs)
+    shift_absorber!(w.back, wgs)
     for (s, ws, load, lost, fast, flags) in zip(st.species, st.ws, w.loads, w.lost, w.fast, w.flags)
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
         sort_by_cell!(s, grid, ws; workgroupsize = wgs)

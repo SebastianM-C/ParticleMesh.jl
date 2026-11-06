@@ -48,7 +48,7 @@ export histories, field_energy, kinetic_energy_history, total_energy_history, mo
 export state_partition, remake_reload, harness_state
 export GaussianLaser, Antenna, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
-export AbsorbingLayer, LayerFactors, PML, PMLFields
+export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export MovingWindow, DensityRamp, WindowFrame, window_shifts, window_lost, window_superluminal, window_charge!, window_background!
 
 include("layout.jl")
