@@ -16,9 +16,9 @@
 
 include(joinpath(@__DIR__, "lwfa.jl"))
 
-backend_named(name) = name == "cpu" ? CPU() :
-    name == "cuda" ? (@eval(using CUDACore: CUDABackend); Base.invokelatest(CUDABackend)) :
-    error("backend $name: cpu or cuda")
+using CUDACore: CUDACore, CUDABackend
+
+backend_named(name) = name == "cpu" ? CPU() : name == "cuda" ? CUDABackend() : error("backend $name: cpu or cuda")
 
 "Step the case's plasma run on `backend` and write `frames` maps of n_e/n₀ and E_y into `out/frames.h5`."
 function run_frames(case_path, out; backend = "cuda", frames = 200, mode = "fast", stride = (3, 1))
@@ -73,7 +73,7 @@ function run_frames(case_path, out; backend = "cuda", frames = 200, mode = "fast
 end
 
 gpu_name(::CPU) = "none"
-gpu_name(be) = Base.invokelatest(() -> CUDACore.name(CUDACore.device()))
+gpu_name(::CUDABackend) = CUDACore.name(CUDACore.device())
 
 # Transparent at zero, blue and red for the two signs of E_y: drawn over the density.
 const LASER_COLORS = cgrad([RGBAf(0.15, 0.45, 1.0, 0.95), RGBAf(0.15, 0.45, 1.0, 0.0), RGBAf(1.0, 0.25, 0.15, 0.0),
