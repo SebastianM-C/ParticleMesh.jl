@@ -22,12 +22,38 @@ NVIDIA and AMD GPUs and, through Reactant, as a traced, raised and sharded progr
 
 ## Status
 
-Early. The engine core (`lib/ParticleMeshCore`) and the electromagnetic module
-(`lib/ParticleMeshElectromagnetic`) run one-dimensional periodic cases (Landau damping,
-two-stream, Weibel) on the KernelAbstractions CPU backend; GPU runs and the 2D laser-wakefield
-case are still to come. Results so far are in `reports/`, not independently reviewed. The design
-record in `docs/plan/` (start with `overview.md`) describes where the project is going; the aims
-and decisions in `docs/goals/` are binding for anyone, human or agent, who works here.
+The engine core (`lib/ParticleMeshCore`) and the electromagnetic module
+(`lib/ParticleMeshElectromagnetic`) run 1D and 2D electromagnetic particle-in-cell cases on the
+CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exists now:
+
+- **Engine.** Particle sets and structured grids at N = 1 and N = 2; deposition and gather with
+  shape functions, both as atomics (Fast mode) and as sort plus segmented reduction (Reference
+  mode, bitwise reproducible); Esirkepov charge-conserving current deposition; a periodic
+  Poisson solve; counter-based random numbers and quiet-start loading.
+- **Electromagnetic module.** The Yee solver in N dimensions; swappable relativistic pushers
+  (Boris, Vay, Higuera–Cary and a quadratic-unitary scheme) with a resolution rule in a₀·ω₀Δt;
+  a laser antenna; a binomial current filter; open transverse boundaries with particle
+  retirement; a convolutional PML (PIConGPU's scheme) on the transverse axis and on the moving
+  window's back edge; the moving window; Maxwell–Jüttner quiet starts for thermal species; and
+  the step as a SciML `DiscreteProblem`.
+- **Element types.** Every test runs in Float32, Float64 and `Dual{Float32,3}`; the CPU and CUDA
+  test suites pass, the GPU one on an RTX 4080 SUPER (`reports/gpu-cuda.md`).
+- **Cross-code checks.** Landau damping, two-stream and Weibel (1D and oblique 2D) against linear
+  theory and against Smilei, with PIConGPU on the 2D cases, including seed ensembles and a
+  resolution scan of the common offsets from theory.
+- **Laser wakefield.** The first 2D LWFA case, run with the moving window in ParticleMesh and in
+  Smilei on a coarser grid (λ₀/32) than A5's case, reproduces Smilei's laser and wake to a few
+  percent (`reports/lwfa-2d-a2.md`):
+
+![Electron density n_e/n₀ of a 2D laser wakefield (a₀ = 2, n₀ = 0.01 n_c) at t ≈ 1201/ω₀, ParticleMesh above and Smilei below](reports/lwfa-2d-a2/lwfa-a2-1-compare/density_maps.png)
+
+Not done yet: A5's LWFA case at λ₀/48 in all three codes and the injecting case after it;
+gradients through a full LWFA run (the element type and the SciML harness are in place, the
+optimization is not); AMD GPUs; performance work (WP-041); Reactant, which is parked (A9). The
+work packages and their state are in `trace/wp/`, the results in `reports/`. None of the
+results has had an independent review yet, so no number in them is a validated claim. The aims
+and decisions in `docs/goals/` are binding for anyone, human or agent, who works here; the design
+record in `docs/plan/` (start with `overview.md`) says where the project is going.
 
 ## Layout
 
