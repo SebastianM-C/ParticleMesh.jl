@@ -41,11 +41,14 @@ CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exi
 - **Cross-code checks.** Landau damping, two-stream and Weibel (1D and oblique 2D) against linear
   theory and against Smilei, with PIConGPU on the 2D cases, including seed ensembles and a
   resolution scan of the common offsets from theory.
-- **Laser wakefield.** The first 2D LWFA case, run with the moving window in ParticleMesh and in
-  Smilei on a coarser grid (λ₀/32) than A5's case, reproduces Smilei's laser and wake to a few
-  percent (`reports/lwfa-2d-a2.md`):
+- **Laser wakefield.** A5's first 2D LWFA case runs with the moving window on the GPU. The
+  animation is its ParticleMesh run at λ₀/48 on an RTX 4080 SUPER: the electron density in grey,
+  the laser's E_y in red and blue, a₀ = 2 into 0.01 n_c (`scripts/lwfa/animate.jl`, outputs and
+  manifest in `reports/lwfa-animation/`). The same case on a coarser grid (λ₀/32), run in
+  ParticleMesh and in Smilei on the CPU, reproduces Smilei's laser and wake to a few percent
+  (`reports/lwfa-2d-a2.md`).
 
-![Electron density n_e/n₀ of a 2D laser wakefield (a₀ = 2, n₀ = 0.01 n_c) at t ≈ 1201/ω₀, ParticleMesh above and Smilei below](reports/lwfa-2d-a2/lwfa-a2-1-compare/density_maps.png)
+![A 2D laser wakefield in ParticleMesh: the laser pulse (red and blue) drives plasma wake buckets in the electron density (grey) as the window moves with it](reports/lwfa-animation/lwfa.gif)
 
 Not done yet: A5's LWFA case at λ₀/48 in all three codes and the injecting case after it;
 gradients through a full LWFA run (the element type and the SciML harness are in place, the
