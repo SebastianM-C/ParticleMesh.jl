@@ -23,7 +23,7 @@ function window_plasma(::Type{T}; cells = (24, 6), ppc = (2, 2), nsteps = 40, st
 end
 
 """
-    window_lwfa(T; nsteps, a0, ramp, cells) -> EMProblem{2}
+    window_lwfa(T; nsteps, a0, ramp, cells, plasma, position, start, laser) -> EMProblem{2}
 
 A small laser–plasma run in the window: 8 cells per laser wavelength (Δx = π/4), 64 × 16
 cells, Δt at 0.95 of the Courant limit; a Gaussian pulse (a₀ = 1, waist 6, duration 3,
@@ -31,16 +31,18 @@ delay 18) launched by an antenna at x = 6, which stays in the lab frame; a cold 
 of 0.02 n_c behind a vacuum of 24 c/ω₀ and a ramp of 8; the window starts at t = 33, when the
 antenna has finished (six durations after the delay), and the box (50 c/ω₀) holds the pulse to
 six durations ahead of its peak, so the field at the front stays below Float64 roundoff and the
-plasma there at rest. `plasma = false` leaves the vacuum pulse alone.
+plasma there at rest. `plasma = false` leaves the vacuum pulse alone, `laser = false` the plasma;
+`position` moves the antenna (and the focus with it), `start` the window's start.
 """
-function window_lwfa(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (64, 16), seed = 1, plasma = true) where {T}
+function window_lwfa(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (64, 16), seed = 1, plasma = true, position = 6, start = 33,
+                     laser = true) where {T}
     h = 2 * T(π) / 8
     dt = T(95) / 100 * h / sqrt(T(2))
-    laser = GaussianLaser(; a0 = T(a0), waist = T(6), duration = T(3), delay = T(18), focus = T(6), position = T(6),
+    pulse = GaussianLaser(; a0 = T(a0), waist = T(6), duration = T(3), delay = T(18), focus = T(position), position = T(position),
                           center = cells[2] * h / 2)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(2) / 100, zero(T), (1, 0), (2, 2), ZERO3(T), ZERO3(T), 1)
-    return EMProblem("window-lwfa", (cells[1] * h, cells[2] * h), cells, dt, nsteps, plasma ? (e,) : (), seed, (1, 0); lasers = (laser,),
-                     boundaries = (:window, :periodic), window = MovingWindow(; start = T(33)),
+    return EMProblem("window-lwfa", (cells[1] * h, cells[2] * h), cells, dt, nsteps, plasma ? (e,) : (), seed, (1, 0);
+                     lasers = laser ? (pulse,) : (), boundaries = (:window, :periodic), window = MovingWindow(; start = T(start)),
                      profile = DensityRamp(; vacuum = T(24), ramp = ramp isa T ? ramp : T(ramp)))
 end
 

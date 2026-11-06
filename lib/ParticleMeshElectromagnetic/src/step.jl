@@ -169,6 +169,8 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU())
     numerics.current isa Esirkepov ||
         throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
     numerics.absorber === nothing || throw(ArgumentError("the 1D box is periodic: EMNumerics takes no absorber at N = 1"))
+    numerics.back_absorber === nothing ||
+        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)

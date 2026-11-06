@@ -96,8 +96,8 @@ kinetic-energy chunks `K` (one entry per [`KINETIC_CHUNK`](@ref) slots of each s
 histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
 diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
 axis (written once), the diagnostics' per-row partial sums, the [`Antenna`](@ref)s of the
-problem's lasers, placed on the grid, the absorbing layer's [`LayerFactors`](@ref) (`layer`,
-`nothing` for a periodic box), the moving window's [`WindowFrame`](@ref) (`window`, `nothing`
+problem's lasers, placed on the grid, the absorber placed on the grid (`layer`: the absorbing layer's
+[`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref), `nothing` for a periodic box), the moving window's [`WindowFrame`](@ref) (`window`, `nothing`
 without one; its species buffers then hold `(1 + numerics.headroom)` times the window's
 particles) and the time step `dt` that the antennas, the layer and the window were made for.
 
@@ -106,9 +106,10 @@ With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell 
 used by `Fast()` on an element type without atomics). Throws an `ArgumentError` unless the
 current is `Esirkepov()` or [`NoCurrent`](@ref)`()` and unless `problem.dt` is below the
 Courant limit of the numerics' solver ([`check_courant`](@ref)), and unless the numerics'
-`absorber` is an [`AbsorbingLayer`](@ref) exactly when the problem's axis 2 is `:open` (the layer
-also checks its fit on the grid), and unless the numerics' `filter` has zero passes with an open
-axis 2 (the filter wraps the current across the open edge, and no test checks the two together yet).
+`absorber` is an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) exactly when the problem's axis 2 is
+`:open` (the absorber also checks its fit on the grid), and unless the numerics' `filter` has zero
+passes with an open axis 2 (the filter wraps the current across the open edge, and no test checks
+the two together yet).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -118,14 +119,19 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)
     open_y = problem.boundaries[2] === :open
-    open_y && !(numerics.absorber isa AbsorbingLayer) &&
-        throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...), got $(numerics.absorber)"))
+    open_y && !(numerics.absorber isa Union{AbsorbingLayer,PML}) &&
+        throw(ArgumentError("axis 2 of the problem is open: EMNumerics needs absorber = AbsorbingLayer(...) or PML(...), got $(numerics.absorber)"))
     !open_y && numerics.absorber !== nothing &&
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
     open_y && numerics.filter.passes > 0 &&
-        throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with the absorbing layer (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
-    layer = open_y ? LayerFactors(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
-    window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
+        throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with an open boundary (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
+    layer = open_y ? place_absorber(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
+    numerics.back_absorber === nothing || numerics.back_absorber isa PML ||
+        throw(ArgumentError("back_absorber = $(numerics.back_absorber): the window's back edge takes a PML(...) or nothing"))
+    problem.window === nothing && numerics.back_absorber !== nothing &&
+        throw(ArgumentError("back_absorber = $(numerics.back_absorber) needs a moving window (boundaries = (:window, ·))"))
+    window = problem.window === nothing ? nothing :
+             WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes; back = numerics.back_absorber, workgroupsize = wgs)
     antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers)
     window === nothing || check_window_antennas(window, antennas)
     species = map(problem.species) do d
@@ -290,6 +296,7 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
     g = Int32(guards(grid))
     dx = cellsize(grid)
     p.dt == st.aux.dt || throw(ArgumentError("params.dt = $(p.dt) is not the time step $(st.aux.dt) the state's antennas and layer were made for"))
+    k == 1 && (reset_absorber!(st.aux.layer); reset_back!(st.aux.window))
     record_diagnostics!(st, k)
     for s in st.species
         launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
