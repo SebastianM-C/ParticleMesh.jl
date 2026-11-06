@@ -552,6 +552,14 @@ C = 0.01
 measured = { Float64 = 0.00331 }
 status = "proposed"
 
+["T-575"]
+quantity = "random fields in back_lwfa's empty window with PIConGPU's 8-cell back-edge PML, 4000 steps, Float64: in a static window the largest field energy and the final one over those of the same run without the layer, and in a window moving from t = 0 the largest energy over its start after 450 steps; the test asks for at most 1, below 1/2 and below 1/20"
+scale = "the run without the layer (static), the initial energy (moving)"
+C = { static_peak = 1, static_end = 0.5, moving = 0.05 }
+measured = { static_peak = 0.894, static_end = 0.391, moving = 0.0305 }
+note = "fixed bounds, not a theory: T-576 pins the layer against its discrete theory, this test only that a long run stays bounded; in the static window α_max > 0 grows a uniform Bz (#357), so the test uses the default α = 0"
+status = "proposed"
+
 ["T-576"]
 quantity = "the back-edge PML of a static window, a vacuum slab packet along −x: |R − R_theory| against the discrete frequency-domain theory of the layer with the window's zero x-guards behind it (back_rt), Float64; 8 cells, 0 and 0.4 rad, PIConGPU's profile, Smilei's grading with α, κ_max = 4 with α_max = 0.2, TE and TM, 8 cells per wavelength along x and 16 along y; the test takes T-540's C"
 scale = "as T-450"

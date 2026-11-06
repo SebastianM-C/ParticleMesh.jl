@@ -176,19 +176,25 @@ end
 
 # --- T-575 ----------------------------------------------------------------------------------
 
-# A long run: random fields in the empty window with PIConGPU's 8-cell back-edge PML, 4000 steps.
-# In a window that never moves the energy never exceeds that of the same run without the layer
-# (whose field-free outside reflects everything, about 1.17 of the start at its largest, the
-# staggered energy of random fields) and ends below half of it; in one that moves from t = 0 everything that does not travel with it leaves through
-# the layer, and less than 5 % of the energy stays.
+# A long run: random fields in the empty window with PIConGPU's 8-cell back-edge PML, 4000 steps
+# (the report script runs 12000). In a window that never moves the energy never exceeds that of the
+# same run without the layer (whose field-free outside reflects everything, about 1.19 of the start
+# at its largest, the staggered energy of random fields) and ends below half of it; in one that
+# moves from t = 0 everything that does not travel with it leaves through the back edge, and less
+# than 5 % of the energy stays after 450 steps. The bounds are tolerances.toml's, the ratios recorded.
 @testset "T-575 random fields with the back-edge PML stay bounded over 4000 steps, the window static and moving [A2, A7, WP-034]" begin
     bare = back_long_run(nothing; start = Inf, nsteps = 4000)
     still = back_long_run(PML(; cells = 8); start = Inf, nsteps = 4000)
     moving = back_long_run(PML(; cells = 8); start = 0, nsteps = 4000)
-    @info "T-575" bare = (maximum(bare.w), last(bare.w)) still = (maximum(still.w[2:end]), last(still.w)) moving = (maximum(moving.w[2:end]), last(moving.w))
-    @test maximum(still.w) <= maximum(bare.w)
-    @test last(still.w) < last(bare.w) / 2
-    @test maximum(moving.w[10:end]) < 0.05
+    peak, tail, left = maximum(still.w) / maximum(bare.w), last(still.w) / last(bare.w), maximum(moving.w[10:end])
+    @info "T-575" peak tail left
+    C = emC("T-575")
+    @test peak <= C["static_peak"]
+    @test tail < C["static_end"]
+    @test left < C["moving"]
+    record!("T-575 static peak", Float64, peak)
+    record!("T-575 static end", Float64, tail)
+    record!("T-575 moving", Float64, left)
 end
 
 # --- T-576 ----------------------------------------------------------------------------------

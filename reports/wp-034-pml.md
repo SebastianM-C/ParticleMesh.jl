@@ -174,6 +174,7 @@ Measured on the CPU backend at 2 threads. Every value is a proposal in `lib/Part
 | T-546 | as T-540, one run in each element type | 0.0166, 4.06, 0.0166 | 10 |
 | T-570 | back-edge difference against free space with 8 cells over the field-free outside's | —, 0.0033, — | 0.01 |
 | T-572 | Gauss's law off the back-edge layer across shifts, T-473's constant | 0.24, 0.24, 0.24 | 1 |
+| T-575 | long run: static peak and end over the bare window's, moving energy after 450 steps, Float64 | —, 0.894 / 0.391 / 0.0305, — | 1 / 0.5 / 0.05 |
 | T-576 | back edge of a static window, \|R − R_theory\| on T-450's scale, Float64 | —, 0.0089, — | 10 |
 
 The largest T-540 and T-546 ratios are a transmission at the roundoff floor: the profile with κ_max = 80 and α, theory 2·10⁻⁵², measured 3.4·10⁻²⁸. Every R ratio is below 0.01. The suite's other tests are exact or structural:
@@ -185,7 +186,6 @@ The largest T-540 and T-546 ratios are a transmission at the roundoff floor: the
 - T-548: allocation is flat, 384 B per Fast step at every size.
 - T-571: a zero-profile back-edge PML is the window's step bit for bit; with an open y axis the y-PML's step and the matched layer's apply the same back-edge corrections bit for bit; each x correction changes only its two components on the layer columns; the shift and the reset of its convolution fields.
 - T-573: the back edge's input checks (a PML only, a window only, none at N = 1, the guard width, fewer than half the columns, an antenna that the layer would reach while it emits).
-- T-575: random fields with the 8-cell back edge over 4000 steps: in a static window never above the field-free outside's energy and ending below half of it, in a moving one below 5 % after 450 steps.
 - T-574: the window's Reference step with the back-edge PML is bitwise across reruns and workgroup sizes 32 and 256.
 - T-549: in a moving window, a zero profile is the zero-strength matched layer bit for bit, the convolution fields shift with the fields, and Gauss's law holds off the layer across the shifts (T-473's constant; measured 0.036, 0.046 and 0.036 in Float32, Float64 and Dual).
 
