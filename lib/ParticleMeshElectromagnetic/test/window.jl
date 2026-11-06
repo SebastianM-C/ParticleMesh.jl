@@ -452,8 +452,8 @@ end
     larger_grid = step_bytes_window(; ppc = (2, 2), cells = (72, 18))
     @info "T-478 bytes per three window steps" small more_particles larger_grid threads = Threads.nthreads()
     if Threads.nthreads() == 1
-        @test more_particles <= small
-        @test larger_grid <= small
+        @test_alloc more_particles <= small
+        @test_alloc larger_grid <= small
     end
 end
 

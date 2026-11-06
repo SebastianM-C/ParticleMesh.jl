@@ -407,8 +407,8 @@ end
         larger_grid = step_bytes_pml(mode; ppc = (2, 2), cells = (64, 48))
         @info "T-548 bytes per PML step" mode small more_particles larger_grid threads = Threads.nthreads()
         if Threads.nthreads() == 1 || mode isa Fast
-            @test more_particles <= small
-            @test larger_grid <= small
+            @test_alloc more_particles <= small
+            @test_alloc larger_grid <= small
         end
     end
 end
