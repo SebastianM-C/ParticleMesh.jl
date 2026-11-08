@@ -1,0 +1,20 @@
+branch = "runs/wp044-em-tests"
+request_commit = "9351c5b00ef4ef43d12b50ca3283e7ebc88e6abd"
+started = "2026-11-08T22:18:39Z"
+category = "test"
+outputs = []
+finished = "2026-11-08T22:18:48Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-08T22:18:39Z"
+exit = 1
+seconds = 10
