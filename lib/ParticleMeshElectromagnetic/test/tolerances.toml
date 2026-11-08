@@ -590,16 +590,17 @@ measured = { "Dual{Float32,3}" = 1.49e-5 }
 status = "proposed"
 
 ["T-590"]
-quantity = "the spread of the second differences of the on-axis E_x over a nine-point a₀ scan (spacing 2⁻¹²) after 600 steps of the WP-043 case: the back node's and the first column past window_back_band's, each against the median over the band's end to the window's middle"
+quantity = "the spread of the second differences of the on-axis E_x over a nine-point a₀ scan (spacing 2⁻¹²) after 600 steps of the WP-043 case, with no filter passes and with two: the back node's, the first column past the r + P + 1 columns of the direct break, and the largest over the band's width past window_back_band, each against the median from the band's end to the window's middle"
 scale = "the interior's spread (the plasma's own non-smoothness at this spacing)"
-C = 3
+C = 4
 back_min = 100
-measured = { "back node" = 5250, "first past the band" = 1.27 }
-status = "proposed"
+next_min = 10
+measured = { "back node, P = 0" = 5250, "back node, P = 2" = 2.62e5, "past the direct break, P = 0" = 115, "past the direct break, P = 2" = 159, "past the band, P = 0" = 2.46, "past the band, P = 2" = 3.21 }
+status = "proposed; C sits just above the interior's own spread from column to column (up to about 3)"
 
 ["T-591"]
-quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per partial (a₀, focus, density): the WP-043 soft-maximum wake amplitude past window_back_band after 600 steps, Float64, Reference"
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per partial (a₀, focus, density): the WP-043 soft-maximum wake amplitude past window_back_band after 600 steps, Float64, Reference (below C); over every column, a₀'s (above C)"
 scale = "the finite-difference floor (A7)"
 C = 1
-measured = { a0 = 0.027, focus = 0.0692, density = 0.0237 }
+measured = { a0 = 0.027, focus = 0.0692, density = 0.0237, "a0, every column" = 3.02, "focus, every column" = 1.09, "density, every column" = 1.03 }
 status = "proposed"

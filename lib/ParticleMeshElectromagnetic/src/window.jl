@@ -165,9 +165,10 @@ The particles the back edge retires (at a shift, or when they cross it) take the
 without current, and whether a particle goes at this step or the next depends on the parameters,
 so the fields there jump between neighbouring parameter values: the derivative ForwardDiff
 carries through a fixed set of retirements is not the slope finite differences see (#370).
-The jumps are largest on the back node and fall by a factor of about 4 per column inward,
-so `r + P + 1` columns hold the direct break and as many again bring the tail to the level
-of the interior (measured, WP-044: T-590). Columns `window_back_band + 1 … n₁` are the ones to read.
+The jumps are largest on the back node and fall inward (in WP-043's case at 600 steps, with
+`r + P + 1 = 3`, to 5250, 2410, 701, 115, 8.5 and 1.1 times the interior's level on columns 1
+to 6), so `r + P + 1` columns hold the direct break and as many again bring the tail to the
+level of the interior (measured, WP-044: T-590, with no filter passes and with two). Columns `window_back_band + 1 … n₁` are the ones to read.
 """
 window_back_band(w::WindowFrame) = 2 * (w.n1 - w.inj)
 window_back_band(st::EMState) = window_back_band(st.aux.window)
