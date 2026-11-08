@@ -119,6 +119,7 @@ const T581_AD = Ref{Any}(nothing)
         get!(MEASURED, "T-581 rel/floor", Dict{String,Float64}())[LWFA_GRADIENT_NAMES[i]] = ratio
         @test isfinite(ad[i]) && ad[i] != 0
         @test r.rel[r.istar] <= emC("T-581") * r.floor_rel
+        @test r.floor_rel <= emC("T-581", "floor_max")    # a primal gone noisy at the FD scale would raise the floor
     end
 end
 
@@ -129,7 +130,7 @@ end
 # particle dynamics is not roundoff-close to Float64, so the scale is the measured relative
 # difference against a proposed bound (A7: measure, then propose).
 @testset "T-582 Dual{Float32,3} partials of the small LWFA run against the Float64 gradient [A7, A8, WP-043]" begin
-    ad = something(T581_AD[], ForwardDiff.gradient(x -> lwfa_wake_amplitude(x), collect(LWFA_GRADIENT_X0)))
+    ad = T581_AD[] === nothing ? ForwardDiff.gradient(x -> lwfa_wake_amplitude(x), collect(LWFA_GRADIENT_X0)) : T581_AD[]
     x0 = LWFA_GRADIENT_X0
     xd = (mkdual(x0[1], 1, 0, 0), mkdual(x0[2], 0, 1, 0), mkdual(x0[3], 0, 0, 0), mkdual(x0[4], 0, 0, 1), mkdual(x0[5], 0, 0, 0))
     S = lwfa_wake_amplitude(xd)
