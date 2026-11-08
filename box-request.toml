@@ -1,0 +1,6 @@
+timeout = 10800
+category = "test"
+outputs = []
+[[steps]]
+kind = "julia"
+args = ["--project=lib/ParticleMeshElectromagnetic", "-e", "using Pkg; Pkg.test()"]
