@@ -579,7 +579,7 @@ quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per
 scale = "the finite-difference floor (A7)"
 C = 1
 measured = { a0 = 0.0723, duration = 0.097, focus = 0.0774, density = 0.0443, ramp = 0.0886 }
-status = "proposed"
+status = "proposed; for the 350-step case only: at 600 steps the ratios reach 3.0 (a0), 1.09 (focus), 1.03 (density)"
 
 ["T-582"]
 quantity = "the Dual{Float32,3} partials (a₀, duration, density) of the WP-043 wake amplitude against the Float64 ForwardDiff gradient, and the Float32 primal against Float64: largest relative difference"

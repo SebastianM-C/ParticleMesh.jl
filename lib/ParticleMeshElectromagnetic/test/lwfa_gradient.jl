@@ -1,15 +1,29 @@
 # WP-043: a gradient through a small laser-wakefield run, T-580 to T-582. After window.jl and
 # window_cases.jl (`ZERO3`).
 #
-# The case: a Gaussian pulse launched by the antenna (a₀ = 2, waist 5, duration 5) into a cold
-# electron plasma of 0.1 n_c (ω_p ≈ 0.32, λ_p ≈ 20 c/ω₀) behind 64 c/ω₀ of vacuum and an 8 c/ω₀ sin²
-# ramp, immobile ions, inside a window moving at c from t = 72; 16 cells per laser wavelength,
-# Δy = 4Δx, 160 × 16 cells (63 × 25 c/ω₀, the pulse's waist five cells), Δt at 0.95 of the
-# Courant limit, 350 steps (t ≈ 127: the pulse drives about 40 c/ω₀, two plasma wavelengths, of
-# plateau). Every parameter of the gradient enters as A3 says: a₀, the duration and the focus
-# through the antenna, the density and the ramp length through the particle weights (in the
-# initial load and in the window's refill). The functional is the wake amplitude: the soft
-# maximum (log-sum-exp at temperature 1/β) of E_x on the axis's node row at the last step.
+# The case: a Gaussian pulse launched by the antenna (a₀ = 2 at the focus x = 70, waist 5,
+# duration 5) into a cold electron plasma of 0.1 n_c (ω_p ≈ 0.32, λ_p ≈ 20 c/ω₀) behind 64 c/ω₀
+# of vacuum and an 8 c/ω₀ sin² ramp, immobile ions, inside a window moving at c from t = 72;
+# 16 cells per laser wavelength, Δy = 4Δx, 160 × 16 cells (63 × 25 c/ω₀; the waist is 3.2 cells),
+# Δt at 0.95 of the Courant limit, 350 steps (t ≈ 127: the pulse peak ends about 19 c/ω₀, one
+# plasma wavelength, into the plateau, with one wake period behind it). It is a small case for
+# the derivatives, not an accurate laser: the pulse is about one cycle long (the antenna is exact
+# at the carrier only) and its waist is coarsely resolved, and its peak |E_y| at the end is
+# 0.82 in vacuum, against about 1.4 that the paraxial 2D beam would have 23 c/ω₀ past the focus
+# (measured, cause not checked; not the transverse resolution, since Δy = Δx gives 0.81).
+# Every parameter of the gradient enters as A3 says: a₀, the duration and the focus through the
+# antenna, the density and the ramp length through the particle weights (in the initial load
+# and in the window's refill; the initial window lies in the vacuum, so here all the plasma
+# comes from the refill, and the initial load's weight derivatives are T-219's and T-366's). The functional is a wake-amplitude proxy: the soft maximum
+# (log-sum-exp at temperature 1/β) of E_x on the axis's node row at the last step. At this
+# operating point its arg-max is the wake's crest about one λ_p behind the pulse; at other points
+# it can sit on the pulse instead, so it is not an objective for optimization, only a smooth
+# functional of the whole run.
+#
+# The horizon matters: at 600 steps (the wake decayed, the pulse depleted) the functional is no
+# longer smooth at the finite-difference scale (second differences in a₀ jitter by about 2·10⁻¹⁰,
+# about 10⁷ times roundoff), and three of the five partials exceed the floor (a₀ by 3×), so
+# T-581's C = 1 holds for this 350-step run, not in general (the WP-043 PR's physics breaker).
 
 "The parameters of the gradient case, in A1 units: a₀, duration, focus, density (n_c), ramp."
 const LWFA_GRADIENT_X0 = (2.0, 5.0, 70.0, 0.1, 8.0)
@@ -81,6 +95,8 @@ lwfa_wake_amplitude(x, mode = Reference(); kw...) =
     @test minimum(ex) < -maximum(ex) / 2              # an oscillating wake, not a ramp charge
     S = soft_maximum(ex, LWFA_GRADIENT_BETA)
     @test maximum(ex) <= S <= maximum(ex) + log(length(ex)) / LWFA_GRADIENT_BETA
+    β = big(LWFA_GRADIENT_BETA)                     # the definition, unshifted, in BigFloat
+    @test S ≈ Float64(log(sum(e -> exp(β * big(e)), ex)) / β) rtol = 1e-12
 end
 
 # --- T-581 ----------------------------------------------------------------------------------
@@ -123,6 +139,7 @@ end
     primal = abs(value(S) - lwfa_wake_amplitude(x0)) / abs(lwfa_wake_amplitude(x0))
     @info "T-582" partials = p ref rel primal
     get!(MEASURED, "T-582 rel", Dict{String,Float64}())["Dual{Float32,3}"] = rel
+    @test S isa D3                                  # the production element type, not a Float64 dual
     @test all(isfinite, p) && all(!iszero, p)
     @test rel <= emC("T-582")
     @test primal <= emC("T-582")
