@@ -39,6 +39,7 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("pml.jl")           # WP-034: T-540 to T-549, after boundaries.jl (its helpers)
         include("window.jl")        # WP-028: T-470 to T-479
         include("pml_back.jl")      # WP-034: T-570 to T-576, the PML on the window's back edge, after window.jl
+        include("lwfa_gradient.jl") # WP-043: T-580 to T-582, a gradient through a small LWFA run, after window.jl
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET

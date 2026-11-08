@@ -573,3 +573,17 @@ scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
 C = 1
 measured = { Float32 = 0.236, Float64 = 0.241, "Dual{Float32,3}" = 0.236 }
 status = "proposed"
+
+["T-581"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per partial: the soft-maximum wake amplitude of the WP-043 case against a₀, duration, focus, density and ramp length, Float64, Reference"
+scale = "the finite-difference floor (A7)"
+C = 1
+measured = { a0 = 0.0723, duration = 0.097, focus = 0.0774, density = 0.0443, ramp = 0.0886 }
+status = "proposed"
+
+["T-582"]
+quantity = "the Dual{Float32,3} partials (a₀, duration, density) of the WP-043 wake amplitude against the Float64 ForwardDiff gradient, and the Float32 primal against Float64: largest relative difference"
+scale = "relative (Float32 against Float64 after 350 steps; not a roundoff bound)"
+C = 1e-3
+measured = { "Dual{Float32,3}" = 1.49e-5 }
+status = "proposed"
