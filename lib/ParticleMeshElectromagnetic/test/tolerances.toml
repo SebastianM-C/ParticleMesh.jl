@@ -580,11 +580,26 @@ scale = "the finite-difference floor (A7); floor_max caps the floor itself (meas
 C = 1
 floor_max = 1e-4
 measured = { a0 = 0.0723, duration = 0.097, focus = 0.0774, density = 0.0443, ramp = 0.0886 }
-status = "proposed; for the 350-step case only: at 600 steps the ratios reach 3.0 (a0), 1.09 (focus), 1.03 (density)"
+status = "proposed; at 600 steps T-591 holds the same bound past the window's back band"
 
 ["T-582"]
 quantity = "the Dual{Float32,3} partials (a₀, duration, density) of the WP-043 wake amplitude against the Float64 ForwardDiff gradient, and the Float32 primal against Float64: largest relative difference"
 scale = "relative (Float32 against Float64 after 350 steps; not a roundoff bound)"
 C = 1e-4
 measured = { "Dual{Float32,3}" = 1.49e-5 }
+status = "proposed"
+
+["T-590"]
+quantity = "the spread of the second differences of the on-axis E_x over a nine-point a₀ scan (spacing 2⁻¹²) after 600 steps of the WP-043 case: the back node's and the first column past window_back_band's, each against the median over the band's end to the window's middle"
+scale = "the interior's spread (the plasma's own non-smoothness at this spacing)"
+C = 3
+back_min = 100
+measured = { "back node" = 5250, "first past the band" = 1.27 }
+status = "proposed"
+
+["T-591"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per partial (a₀, focus, density): the WP-043 soft-maximum wake amplitude past window_back_band after 600 steps, Float64, Reference"
+scale = "the finite-difference floor (A7)"
+C = 1
+measured = { a0 = 0.027, focus = 0.0692, density = 0.0237 }
 status = "proposed"

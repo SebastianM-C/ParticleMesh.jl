@@ -16,6 +16,9 @@
 #   the front. Retired first, it takes its charge out of the box with no current, which breaks
 #   Gauss's law only on the back nodes its stencil reached (nodes 1 and 2 for the quadratic shape),
 #   and those leave the box with the next shifts.
+#   Retirements recur at every shift once the plasma reaches the back edge, and which particle
+#   goes at which step depends on the parameters, so the back columns' fields are not smooth in
+#   them: an observable reads past [`window_back_band`](@ref) (#370, WP-044).
 # - The window moves by whole cells at the end of a step: after step k it has moved
 #   s(k) = max(0, floor((k·Δt − start)/Δx₁)) cells (c = 1), a host count fixed by k, Δt and Δx₁
 #   (static configuration, §0.4 rule 2). A shift copies every E and B component one column back
@@ -150,6 +153,24 @@ injection_column(w::WindowFrame) = w.inj
 
 "The injection column of a window of `n1` columns for `shape` and `passes` filter passes."
 window_injection_column(n1::Integer, shape, passes::Integer) = n1 - 1 - ParticleMeshCore.stencil_reach(shape, Node())[2] - passes
+
+"""
+    window_back_band(window::WindowFrame) -> Int
+    window_back_band(state::EMState) -> Int
+
+The number of window columns at the back edge that an observable should not read,
+`2·(r + P + 1)` for a shape whose stencil reaches `r` nodes past its cell and `P` filter passes
+(the same `r + P + 1` columns that [`injection_column`](@ref) keeps free at the front, twice).
+The particles the back edge retires (at a shift, or when they cross it) take their charge out
+without current, and whether a particle goes at this step or the next depends on the parameters,
+so the fields there jump between neighbouring parameter values: the derivative ForwardDiff
+carries through a fixed set of retirements is not the slope finite differences see (#370).
+The jumps are largest on the back node and fall by a factor of about 4 per column inward,
+so `r + P + 1` columns hold the direct break and as many again bring the tail to the level
+of the interior (measured, WP-044: T-590). Columns `window_back_band + 1 … n₁` are the ones to read.
+"""
+window_back_band(w::WindowFrame) = 2 * (w.n1 - w.inj)
+window_back_band(st::EMState) = window_back_band(st.aux.window)
 
 """
     window_shifts(window::WindowFrame, k) -> Int
