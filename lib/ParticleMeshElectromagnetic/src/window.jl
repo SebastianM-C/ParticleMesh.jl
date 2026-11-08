@@ -159,18 +159,22 @@ window_injection_column(n1::Integer, shape, passes::Integer) = n1 - 1 - Particle
     window_back_band(state::EMState) -> Int
 
 The number of window columns at the back edge that an observable should not read,
-`2·(r + P + 1)` for a shape whose stencil reaches `r` nodes past its cell and `P` filter passes
-(the same `r + P + 1` columns that [`injection_column`](@ref) keeps free at the front, twice).
+`3·(r + P + 1)` for a shape whose stencil reaches `r` nodes past its cell and `P` filter passes
+(the `r + P + 1` columns that [`injection_column`](@ref) keeps free at the front, three times).
 The particles the back edge retires (at a shift, or when they cross it) take their charge out
 without current, and whether a particle goes at this step or the next depends on the parameters,
 so the fields there jump between neighbouring parameter values: the derivative ForwardDiff
 carries through a fixed set of retirements is not the slope finite differences see (#370).
-The jumps are largest on the back node and fall inward (in WP-043's case at 600 steps, with
-`r + P + 1 = 3`, to 5250, 2410, 701, 115, 8.5 and 1.1 times the interior's level on columns 1
-to 6), so `r + P + 1` columns hold the direct break and as many again bring the tail to the
-level of the interior (measured, WP-044: T-590, with no filter passes and with two). Columns `window_back_band + 1 … n₁` are the ones to read.
+The jumps are largest on the back node and fall inward, not at a fixed rate: in WP-043's case
+(`r + P + 1 = 3`) at 600 steps, 5250, 2410, 701, 115, 8.5 and 1.1 times the interior's level on
+columns 1 to 6; at 750 steps the tail is longer (5 times on column 7, 0.6 on column 9). So
+`r + P + 1` columns hold the direct break, twice that brings the 600-step tail to the interior,
+and the third is margin for longer runs (measured, WP-044: T-590 with no filter passes and with
+two; the WP-044 PR's breakers at 450 to 750 steps). For the linear shape the interior itself is
+about 5000 times noisier at the finite-difference scale, so the band is not where its gradients
+part. Columns `window_back_band + 1 … n₁` are the ones to read.
 """
-window_back_band(w::WindowFrame) = 2 * (w.n1 - w.inj)
+window_back_band(w::WindowFrame) = 3 * (w.n1 - w.inj)
 window_back_band(st::EMState) = window_back_band(st.aux.window)
 
 """

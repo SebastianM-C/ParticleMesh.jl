@@ -180,16 +180,18 @@ end
 # The cause of #370, located: at 600 steps, over a scan of a₀ (spacing 2⁻¹²), the back node's E_x
 # jitters far above the plasma's interior; the column just past the r + P + 1 columns of the
 # direct break (the stencil of a retired particle and the filter) still does, which is why the
-# band is twice that; and the columns past the band, as far again as the band is wide, no more
-# than the interior does. Without filter passes and with two (band 6 and 10). The interior's level
-# is the median from the band's end to the middle of the window (the plasma behind the pulse;
-# the columns ahead of the wake hold no plasma field and would pull a median over the whole
-# window to roundoff); the filter lowers it about 30 times.
+# band is wider than that (three times: twice for this horizon, once more for longer ones); and
+# the columns past the band, as far again as the band is wide, no more than the interior does.
+# Without filter passes and with two (band 9 and 15). The interior's level is the median from the
+# band's end to the middle of the window (the plasma behind the pulse; the columns ahead of the
+# wake hold no plasma field and would pull a median over the whole window to roundoff); the
+# filter lowers it about 20 times. The measure is tuned to this horizon and spacing: at a spacing
+# of 2⁻⁸ the curvature swamps the jitter (the WP-044 PR's physics breaker).
 @testset "T-590 the jitter of the long LWFA run lies in the window's back band [A7, WP-044]" begin
     for passes in (0, 2)
         jit, st = column_jitter(LWFA_GRADIENT_X0, 1; nsteps = LWFA_LONG_STEPS, h = 2.0^-12, passes)
         b = window_back_band(st)
-        direct = b ÷ 2                                  # r + P + 1
+        direct = b ÷ 3                                  # r + P + 1
         n1 = length(jit)
         interior = median(jit[(b + 1):(n1 ÷ 2)])
         past = maximum(jit[(b + 1):(2b)]) / interior
