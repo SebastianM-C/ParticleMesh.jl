@@ -1,4 +1,4 @@
-# WP-043: a gradient through a small laser-wakefield run, T-580 to T-582. After window.jl and
+# WP-043: a gradient through a small laser-wakefield run, T-580 to T-582; WP-044, T-590 and T-591. After window.jl and
 # window_cases.jl (`ZERO3`).
 #
 # The case: a Gaussian pulse launched by the antenna (a₀ = 2 at the focus x = 70, waist 5,
@@ -15,15 +15,19 @@
 # antenna, the density and the ramp length through the particle weights (in the initial load
 # and in the window's refill; the initial window lies in the vacuum, so here all the plasma
 # comes from the refill, and the initial load's weight derivatives are T-219's and T-366's). The functional is a wake-amplitude proxy: the soft maximum
-# (log-sum-exp at temperature 1/β) of E_x on the axis's node row at the last step. At this
+# (log-sum-exp at temperature 1/β) of E_x on the axis's node row at the last step, past the window's back band. At this
 # operating point its arg-max is the wake's crest about one λ_p behind the pulse; at other points
 # it can sit on the pulse instead, so it is not an objective for optimization, only a smooth
 # functional of the whole run.
 #
-# The horizon matters: at 600 steps (the wake decayed, the pulse depleted) the functional is no
-# longer smooth at the finite-difference scale (second differences in a₀ jitter by about 2·10⁻¹⁰,
-# about 10⁷ times roundoff), and three of the five partials exceed the floor (a₀ by 3×), so
-# T-581's C = 1 holds for this 350-step run, not in general (the WP-043 PR's physics breaker).
+# The horizon (#370, WP-044): from about step 376 the window's back edge reaches the plasma, and
+# its retirements (charge out with no current, at a step that depends on the parameters) make
+# the back columns' fields jump between neighbouring parameter values. Read there, the soft
+# maximum is not smooth at the finite-difference scale at 600 steps (a₀'s partial at 3× the
+# floor); read past `window_back_band` (T-590), AD and FD agree again (T-591). The functional
+# below reads past it.
+
+using Statistics: median, std
 
 "The parameters of the gradient case, in A1 units: a₀, duration, focus, density (n_c), ramp."
 const LWFA_GRADIENT_X0 = (2.0, 5.0, 70.0, 0.1, 8.0)
@@ -61,11 +65,14 @@ function lwfa_gradient_run(x, mode; be = CPU(), kw...)
     return st, prob
 end
 
-"E_x on the axis's node row (y = L_y/2), interior columns."
-function axis_Ex(st)
+"E_x on the axis's node row (y = L_y/2), every interior column."
+function axis_Ex_all(st)
     g, n = guards(st.grid), ncells(st.grid)
     return Array(st.fields.Ex)[(g + 1):(g + n[1]), g + 1 + n[2] ÷ 2]
 end
+
+"E_x on the axis's node row, the interior columns past the window's back band (`window_back_band`)."
+axis_Ex(st) = axis_Ex_all(st)[(window_back_band(st) + 1):end]
 
 "The soft maximum (1/β)·log Σ exp(β·v), shifted by the primal maximum (constant in the parameters) against overflow."
 function soft_maximum(v, β)
@@ -144,4 +151,69 @@ end
     @test all(isfinite, p) && all(!iszero, p)
     @test rel <= emC("T-582")
     @test primal <= emC("T-582")
+end
+
+# --- T-590 ----------------------------------------------------------------------------------
+
+"The long horizon of WP-044: 600 steps, about 224 of them with the back edge in the plasma."
+const LWFA_LONG_STEPS = 600
+
+"""
+    column_jitter(x0, i; nsteps, h, npoints = 9) -> (jitter, state)
+
+Per interior column of the axis row, the spread (standard deviation) of the second differences
+of E_x over a scan of parameter `i` with spacing `h` and `npoints` points centred on `x0`: a
+column smooth in the parameter has nearly the same second difference at every point (its
+curvature), a column that jumps has a spread. Also the state of the central run.
+"""
+function column_jitter(x0, i; nsteps, h, npoints = 9)
+    m = npoints ÷ 2
+    runs = map(-m:m) do j
+        st, _ = lwfa_gradient_run(ntuple(k -> k == i ? x0[k] + j * h : x0[k], length(x0)), Reference(); nsteps)
+        (axis_Ex_all(st), st)
+    end
+    ex = reduce(hcat, first.(runs))
+    d2 = diff(diff(ex; dims = 2); dims = 2)
+    return vec(std(d2; dims = 2)), last(runs[m + 1])
+end
+
+# The cause of #370, located: at 600 steps, over a scan of a₀ (spacing 2⁻¹²), the back node's E_x
+# jitters far above the plasma's interior, and the first column past the band no more than the
+# interior does. The interior's level is the median over the band's end to the middle of the
+# window (the plasma behind the pulse; the columns ahead of the wake hold no plasma field and
+# would pull a median over the whole window to roundoff).
+@testset "T-590 the jitter of the long LWFA run lies in the window's back band [A7, WP-044]" begin
+    jit, st = column_jitter(LWFA_GRADIENT_X0, 1; nsteps = LWFA_LONG_STEPS, h = 2.0^-12)
+    b = window_back_band(st)
+    n1 = length(jit)
+    interior = median(jit[(b + 1):(n1 ÷ 2)])
+    @info "T-590" band = b interior back = jit[1] / interior past = jit[b + 1] / interior profile = jit[1:(b + 2)] ./ interior
+    get!(MEASURED, "T-590 jitter/interior", Dict{String,Float64}())["back node"] = jit[1] / interior
+    get!(MEASURED, "T-590 jitter/interior", Dict{String,Float64}())["first past the band"] = jit[b + 1] / interior
+    @test b == 2 * (ParticleMeshCore.stencil_reach(EMNumerics().shape, Node())[2] + 1)    # no filter passes here
+    @test jit[1] >= emC("T-590", "back_min") * interior
+    @test jit[b + 1] <= emC("T-590") * interior
+end
+
+# --- T-591 ----------------------------------------------------------------------------------
+
+# T-581 at the long horizon, on the functional past the band: the three partials that exceeded the
+# floor at 600 steps when the back band was read (a₀ at 3.0×, focus at 1.09×, density at 1.03×,
+# #370) against `fd_scan`'s floor, as in T-581.
+@testset "T-591 ForwardDiff through 600 steps of the small LWFA run against the finite-difference floor, past the back band [A3, A7, WP-044]" begin
+    x0 = collect(LWFA_GRADIENT_X0)
+    sel = (1, 3, 4)
+    g(y) = lwfa_wake_amplitude(ntuple(j -> (k = findfirst(==(j), sel); k === nothing ? x0[j] : y[k]), length(x0)); nsteps = LWFA_LONG_STEPS)
+    ad = ForwardDiff.gradient(g, x0[collect(sel)])
+    for (k, i) in enumerate(sel)
+        f(xi, mode, seed) = lwfa_wake_amplitude(ntuple(j -> j == i ? xi : x0[j], length(x0)), mode; nsteps = LWFA_LONG_STEPS)
+        hs = x0[i] .* 2.0 .^ (-4:-2:-14)
+        r = fd_scan(f, x0[i], hs; seed = 1, ad = ad[k])
+        ratio = r.rel[r.istar] / r.floor_rel
+        @info "T-591 $(LWFA_GRADIENT_NAMES[i])" ad = ad[k] fd = r.fd[r.istar] h = hs[r.istar] rel = r.rel[r.istar] floor = r.floor_rel ratio
+        get!(MEASURED, "T-591 rel/floor", Dict{String,Float64}())[LWFA_GRADIENT_NAMES[i]] = ratio
+        @test isfinite(ad[k]) && ad[k] != 0
+        @test r.rel[r.istar] <= emC("T-591") * r.floor_rel
+        @test r.floor_rel <= emC("T-581", "floor_max")
+    end
 end
