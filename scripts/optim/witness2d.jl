@@ -18,10 +18,10 @@ include(joinpath(@__DIR__, "maximize.jl"))
 using ForwardDiff: Dual, value, partials
 
 # The parameters, scaled to O(1) (A1): z = (τ/6, n₀/0.07, x_c/40) in the box τ ∈ [4, 9],
-# n₀ ∈ [0.04, 0.085] (denser, witnesses are lost; witness2d_case.jl), x_c ∈ [34, 50].
+# n₀ ∈ [0.04, 0.10], x_c ∈ [30, 50] (3 lengths inside the lattice, which starts at x = 24).
 # Steps are capped at 0.1 in z.
 const SCALE = (6.0, 0.07, 40.0)
-const BOX = ((4.0, 9.0), (0.04, 0.085), (34.0, 50.0))
+const BOX = ((4.0, 9.0), (0.04, 0.10), (30.0, 50.0))
 const LO = [BOX[i][1] / SCALE[i] for i in 1:3]
 const HI = [BOX[i][2] / SCALE[i] for i in 1:3]
 phys(z) = (z[1] * SCALE[1], z[2] * SCALE[2], z[3] * SCALE[3])
@@ -106,7 +106,7 @@ function main()
 
     # 2. The optimizer from two starts on opposite sides of the box.
     runs = Dict{String,Any}[]
-    for (name, zs) in (("start A", z0), ("start B", [8.5 / SCALE[1], 0.08 / SCALE[2], 47.0 / SCALE[3]]))
+    for (name, zs) in (("start A", z0), ("start B", [8.5 / SCALE[1], 0.095 / SCALE[2], 47.0 / SCALE[3]]))
         println("optimizing from $name")
         t = @elapsed r = maximize_box(fg, zs, LO, HI; maxiter = 40, gtol = 1e-4, xtol = 1e-5, maxstep = 0.1)
         push!(runs, Dict("name" => name, "start" => zs, "z" => r.z, "phys" => collect(phys(r.z)), "J" => r.f, "grad" => r.g,
@@ -123,8 +123,8 @@ function main()
     slack = [min(zb[i] - LO[i], HI[i] - zb[i]) / (HI[i] - LO[i]) for i in 1:3]
     check("the optimum is inside the box", all(>(0.02), slack), "distance to the nearest bound as a fraction of the box: $slack")
 
-    # 3. The brute-force grid scan over (τ, n₀), 6 × 6 runs, the centre maximized on a 0.25 grid from each run.
-    τs, ns = collect(range(4.0, 9.0; length = 6)), collect(range(0.04, 0.085; length = 6))
+    # 3. The brute-force grid scan over (τ, n₀), 6 × 7 runs, the centre maximized on a 0.25 grid from each run.
+    τs, ns = collect(range(4.0, 9.0; length = 6)), collect(range(0.04, 0.10; length = 7))
     grid = [best_over_center(τ, n) for τ in τs, n in ns]
     Jg = [g.J for g in grid]
     ib = argmax(Jg)

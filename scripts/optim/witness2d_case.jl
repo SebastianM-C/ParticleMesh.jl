@@ -17,19 +17,22 @@ Fixed parameters of the case (A1 units).
   vacuum, the ramp and the window's start are WP-045's (`wake2d_case.jl`). The focus is at
   x = 80, 8 c/ω₀ into the plasma.
 - `energy` is the laser energy per unit length in z, `laser_energy` = π·a₀²·w·τ/4·(1 + 1/(2w²)),
-  that of a₀ = 1.5 at τ = 6. At a₀ ≈ 1 (a third less energy) the duration optimum sits at the
-  shortest pulse the antenna launches well (τ = 4); at this energy it is inside the box.
+  that of a₀ = 1.5 at τ = 6. At 1/2.25 of it (a₀ = 1 at τ = 6) the duration optimum moves to the
+  shortest pulse the antenna launches well, τ = 4 (the run's `low_energy` slice).
 - The run is 830 steps (t ≈ 300). The witness is injected at t = 150, once the laser is about
   40 c/ω₀ into the plasma, and accelerated over about 150 c/ω₀, the order of the dephasing length.
 - The witness lattice is 2 × 1 points per cell on the two rows at the axis, over window
-  x ∈ `region` = (33, 56): the first wake bucket behind the laser (at x ≈ 56) for n₀ in the box.
-  A region reaching further back loses witnesses behind the window's back edge at n₀ ≳ 0.08.
-  The electrons start with u₀ = 10 along x, and a Gaussian of rms `length` = 2 sets the weights.
+  x ∈ `region` = (24, 56): the first wake bucket behind the laser (at x ≈ 56) and the decelerating
+  phase behind it, so that the Gaussian weights (rms `length` = 2) are not cut off by the lattice's
+  end for centres x_c ≥ 30. The best phase is at the bucket's rear (x ≈ 33 to 37).
+- The electrons start with u₀ = 30 along x. At u₀ = 10 the decelerated ones behind the bucket fall
+  behind the window's back edge (from x ≲ 34.5 at n₀ = 0.1), which `witness_energy_gain` refuses;
+  at u₀ = 30 none is lost over the box (n₀ ≤ 0.1, τ = 4 to 6).
 """
 const WCASE = (waist = 10.0, delay = 54.0, focus = 80.0, vacuum = 64.0, ramp = 8.0, start = 108.0,
                energy = π * 1.5^2 * 10.0 * 6.0 / 4 * (1 + 1 / (2 * 10.0^2)),
                cells = (224, 64), ppc = (2, 2), dy_cells = 4, nsteps = 830,
-               inject = 150.0, region = (34.0, 56.0), u0 = 10.0, length = 2.0)
+               inject = 150.0, region = (24.0, 56.0), u0 = 30.0, length = 2.0)
 
 """
     a0_at_energy(τ; energy, waist) -> a₀
