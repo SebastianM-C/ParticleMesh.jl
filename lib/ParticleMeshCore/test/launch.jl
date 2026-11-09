@@ -98,3 +98,17 @@ end
     r = try stub(ArgumentError(msg))(a; ndrange = 4) catch e e end
     @test engine_refusal(r, 7, :fill_guards_kernel!) && occursin(": $msg.", r.msg)
 end
+
+@testset "T-502 the tuned workgroupsize runs the Dual{Float64,2} 2D quadratic flux over 1024 cells with the bits of a small one [A4, A8]" begin
+    # #375: KernelAbstractions 0.10.4 and 0.10.5 tuned the CPU work-group without regard to the
+    # kernel's private memory, and the flux patch kernel's three NTuple{36,T} accumulators (2592 B
+    # per work-item at Dual{Float64,2}) times a work-group of 1024 overflowed the thread's stack:
+    # the process died with signal 11. 0.10.6 caps the tuned size; a regression kills this process.
+    D2 = Dual{Nothing,Float64,2}
+    st = (Node(), Node())
+    grid = grid2(D2, flux_g2(Quadratic, st); n = (32, 32))
+    tuned = flux2d(Reference(), flux_species_2d(D2, grid, 400), Quadratic, st, grid)
+    small = flux2d(Reference(), flux_species_2d(D2, grid, 400), Quadratic, st, grid; workgroupsize = 32)
+    @test same_bits.(tuned[1:3], small[1:3]) == (true, true, true)
+    @test any(!iszero, tuned[1])
+end

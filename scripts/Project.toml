@@ -20,5 +20,5 @@ ParticleMeshElectromagnetic = {path = "../lib/ParticleMeshElectromagnetic"}
 CUDACore = "6"
 ForwardDiff = "1"
 HDF5 = "0.17"
-KernelAbstractions = "0.10"
+KernelAbstractions = "0.10.6"
 SpecialFunctions = "2"
