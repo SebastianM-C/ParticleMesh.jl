@@ -1,11 +1,11 @@
 backend = "KernelAbstractions CPU"
-commit = "6766bfffa657eda2de74830aa59d2e888b1ce6db"
+commit = "a0f7fe52d47959b29192dd53e0585f40e43b526b"
 cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
 dirty = false
 julia = "1.13.3"
-run_id = "optim-bo_compare-20261109T123027"
+run_id = "optim-bo_compare-20261109T135950"
 threads = 4
-updated = "2026-11-09T12:30:28.026Z"
+updated = "2026-11-09T13:59:50.925Z"
 work_package = "WP-048"
 
 [inputs]
@@ -42,8 +42,8 @@ work_package = "WP-048"
 "lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
 "scripts/Manifest.toml" = "sha256:2d51fec69f6752724e70ab6261dfd6387f54e09528e47a98d70cee89af93a040"
 "scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
-"scripts/optim/bayes.jl" = "sha256:fbad27d5cd2384a117c7d3468190310acbc9d724b3e811b5c1934ef173effa9f"
-"scripts/optim/bo_compare.jl" = "sha256:5700a62490cc28589c18957d815ea5af6b1b93d4f3750758a42cb9b8df5ba0e0"
+"scripts/optim/bayes.jl" = "sha256:6cab292477c1d0d2dfe07b7b700ad59df6d1398b809f8ced3fa5044b81d1fef6"
+"scripts/optim/bo_compare.jl" = "sha256:b290304d91ce6cb4dfd83a0f30e93573c15b69acd8c30e264377079710315319"
 "scripts/optim/maximize.jl" = "sha256:f7d38d3ea9a8ee1afb2e93e1f7279f8757580f91837ba0758acfd89236ffebc6"
 "scripts/optim/wake2d_case.jl" = "sha256:8c9f7ee9d9617fe0ce61414d0e0d98474118c050db6b4217225d54f084ab4033"
 
