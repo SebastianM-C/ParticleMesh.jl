@@ -159,7 +159,7 @@ end
     end
 end
 
-@testset "T-303 the 2D Reference flux is bitwise across reruns, threads and launch shapes [A4, WP-020]" begin
+@testset "T-303 the 2D Reference flux is bitwise across reruns, threads and launch shapes, and equals recorded bits [A4, WP-020, WP-037]" begin
     groups = Dict{String,Vector{String}}()
     for l in INPROCESS_FLUX2D
         f = split(l, '|')
@@ -171,6 +171,9 @@ end
     for nt in (1, 4)
         @test f2d_worker(nt) == INPROCESS_FLUX2D
     end
+    # the bits recorded on a commit (recorded_2d.jl, WP-037)
+    @test length(F2D_RECORDED) == length(TYPES) * length(SHAPES) * length(FLUX2D_DIGEST_PAIRS)
+    @test recorded_2d_lines(INPROCESS_FLUX2D) == F2D_RECORDED
 end
 
 @testset "T-304 the 2D flux reduces to 1D [A7, WP-020]" begin

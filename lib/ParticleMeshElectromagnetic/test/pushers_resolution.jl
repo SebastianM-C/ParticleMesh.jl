@@ -136,7 +136,7 @@ end
     t241_assert(Float64)
 end
 
-@testset "T-242 quadratic-unitary in uniform E and in crossed fields [A2, A7, WP-016]" begin
+@testset "T-242 quadratic-unitary in uniform E and in crossed fields, second order in uniform E [A2, A7, WP-016, WP-037]" begin
     # T-233's setup: E = E₀ŷ, B = ẑ, started at E×B/B² (+ v∥ẑ)
     @testset "crossed fields, $(type_label(T))" for T in (Float32, Float64)
         dt = T(1) / 10
@@ -184,6 +184,10 @@ end
         record_named!("T-242 uniform E x error at Δt = 0.025", "QuadraticUnitary", xerrs[end])
         record_named!("T-242 uniform E x error order, smallest pair", "QuadraticUnitary", orders(xerrs)[end])
         @test all(isfinite, uerrs) && all(isfinite, xerrs)
+        # WP-037: second order in u and x (the docstring's claim), and the recorded error constants
+        @test abs(orders(uerrs)[end] - 2) <= EMTOL["T-242"]["order_tol"]
+        @test abs(orders(xerrs)[end] - 2) <= EMTOL["T-242"]["order_tol"]
+        @test uerrs[end] <= EMTOL["T-242"]["u_error"] && xerrs[end] <= EMTOL["T-242"]["x_error"]
     end
 end
 
