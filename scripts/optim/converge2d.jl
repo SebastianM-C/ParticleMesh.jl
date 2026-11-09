@@ -12,6 +12,8 @@
 #       maximize J over the WP-045 box from (τ0, focus0) with maximize.jl
 #   ... converge2d.jl tauscan <ppl>x<dy_cells> <a0> <waist> <focus> <τ>[,<τ>...] [rows]
 #       J of every window against τ at one focus (a plane wave: a large waist and a few rows)
+#   ... converge2d.jl plots <run dir> [<run dir> ...]
+#       the figures from earlier runs' results.json
 #
 # A first argument --group=<name> puts the run directories into scripts/runs/<name>/.
 # The resolution is ppl cells per λ₀ along x and Δy = dy_cells·Δx; the box stays 14 λ₀ × 16 λ₀.
@@ -146,6 +148,107 @@ function tauscan(r, a0, waist, f, τs, nrows)
                                        "optimum" => opt, "windows" => windows_dict(WINDOWS)))
 end
 
+# --- figures -----------------------------------------------------------------------------------
+
+kind_of(r) = haskey(r, "runs") ? "probe" : haskey(r, "scan") ? "tauscan" : haskey(r, "path") ? "optimize" : haskey(r, "tau_linear") ? "theory" : "other"
+
+"""
+    plots(dirs) -> dir
+
+The study's figures from the results of earlier runs (the directories that hold results.json):
+`readout` (WP-045's objective against its read-out time), `convergence` (J and its gradient at
+one point against Δx and Δy) and `tau_offset` (the optimal τ of the plane-wave and 2D runs
+against Δx, with the 1D theory).
+"""
+function plots(dirs)
+    res = [merge(JSON.parsefile(joinpath(d, "results.json")), Dict("dir" => relpath(d, REPO))) for d in dirs]
+    dir = newdir("plots", Dict{String,Any}("sources" => [r["dir"] for r in res]))
+    probes = [r for r in res if kind_of(r) == "probe"]
+    runs = reduce(vcat, [p["runs"] for p in probes]; init = Any[])
+
+    # 1. WP-045's objective against the read-out time, at the coarsest probed resolution.
+    base = runs[argmin([r["ppl"] * 100 + 8 ÷ r["dy_cells"] for r in runs])]
+    tb = Float64[b["t"] for b in base["box"]]
+    o = sortperm(tb)
+    fig = Figure(size = (1000, 400))
+    ax = Axis(fig[1, 1]; xlabel = "read-out time t (1/ω₀)", ylabel = "J / E₀",
+              title = "WP-045's objective against its read-out time ($(base["ppl"]) cells/λ₀, Δy = $(base["dy_cells"])Δx)")
+    scatterlines!(ax, tb[o], Float64[b["J"] for b in base["box"]][o]; label = "box RMS at t (WP-045)")
+    hlines!(ax, [base["slab"]["main"]["J"]]; color = :red, linestyle = :dash, label = "slab objective (any t)")
+    vlines!(ax, [tb[1]]; color = :gray, linestyle = :dot, label = "WP-045's read-out")
+    axislegend(ax; position = :rb)
+    ax2 = Axis(fig[1, 2]; xlabel = "read-out time t (1/ω₀)", ylabel = "∂J/∂z (z = τ/6, focus/90)", title = "Its gradient at (7.74, 113)")
+    for (i, name) in enumerate(("τ", "focus"))
+        scatterlines!(ax2, tb[o], Float64[b["grad"][i] for b in base["box"]][o]; label = "box, ∂/∂$name")
+        hlines!(ax2, [base["slab"]["main"]["grad"][i]]; linestyle = :dash, color = Cycled(i), label = "slab, ∂/∂$name")
+    end
+    hlines!(ax2, [0.0]; color = :black, linewidth = 0.5)
+    axislegend(ax2; position = :lt)
+    save_plot(dir, "readout", fig, Dict("resolution" => [base["ppl"], base["dy_cells"]], "t" => tb[o],
+                                        "box_J" => Float64[b["J"] for b in base["box"]][o], "box_grad" => [base["box"][i]["grad"] for i in o],
+                                        "slab" => base["slab"]["main"]))
+
+    # 2. Convergence at the probe point: Δx at Δy = λ₀/8, Δy at Δx = λ₀/32.
+    dyl(r) = r["ppl"] ÷ r["dy_cells"]                        # cells per λ₀ along y
+    sx = sort([r for r in runs if dyl(r) == 8]; by = r -> r["ppl"])
+    sy = sort([r for r in runs if r["ppl"] == 32]; by = dyl)
+    fig = Figure(size = (1100, 420))
+    sidecar = Dict{String,Any}()
+    for (col, (series, xl, xv)) in enumerate(((sx, "Δx (λ₀), Δy = λ₀/8", r -> 1 / r["ppl"]), (sy, "Δy (λ₀), Δx = λ₀/32", r -> 1 / dyl(r))))
+        isempty(series) && continue
+        x = Float64[xv(r) for r in series]
+        a = Axis(fig[1, col]; xlabel = xl, ylabel = "J / E₀ at (7.74, 113)", xscale = log2, xreversed = true)
+        scatterlines!(a, x, Float64[r["slab"]["main"]["J"] for r in series]; label = "slab objective")
+        scatterlines!(a, x, Float64[r["box"][1]["J"] for r in series]; label = "WP-045's objective")
+        axislegend(a; position = :rb)
+        b = Axis(fig[2, col]; xlabel = xl, ylabel = "∂J/∂z", xscale = log2, xreversed = true)
+        scatterlines!(b, x, Float64[r["slab"]["main"]["grad"][1] for r in series]; label = "∂/∂(τ/6)")
+        scatterlines!(b, x, Float64[r["slab"]["main"]["grad"][2] for r in series]; label = "∂/∂(focus/90)")
+        axislegend(b; position = :rb)
+        sidecar[xl] = Dict("x" => x, "J" => [r["slab"]["main"]["J"] for r in series], "grad" => [r["slab"]["main"]["grad"] for r in series],
+                           "box_J" => [r["box"][1]["J"] for r in series])
+    end
+    save_plot(dir, "convergence", fig, sidecar)
+
+    # 3. The optimal τ: plane-wave and 2D scans against Δx, with the 1D theory.
+    scans = [r for r in res if kind_of(r) == "tauscan"]
+    th = [r for r in res if kind_of(r) == "theory"]
+    opts = [r for r in res if kind_of(r) == "optimize"]
+    fig = Figure(size = (800, 480))
+    a = Axis(fig[1, 1]; xlabel = "Δx (λ₀)", ylabel = "optimal τ (1/ω₀)", xscale = log2, xreversed = true,
+             title = "Optimal duration of the slab objective")
+    side = Dict{String,Any}()
+    groups = Dict{Tuple{Float64,Bool},Vector{Any}}()
+    for r in scans
+        push!(get!(groups, (Float64(r["a0"]), r["waist"] > 1000), Any[]), r)
+    end
+    for ((a0, pw), g) in sort(collect(groups); by = first)
+        sort!(g; by = r -> r["resolution"][1])
+        x = Float64[1 / r["resolution"][1] for r in g]
+        y = Float64[r["optimum"]["main"]["tau"] for r in g]
+        lab = (pw ? "plane wave" : "2D, waist 10") * ", a₀ = $a0"
+        scatterlines!(a, x, y; label = lab, linestyle = pw ? :solid : :dash)
+        side[lab] = Dict("dx" => x, "tau" => y, "resolution" => [r["resolution"] for r in g])
+    end
+    for r in opts
+        scatter!(a, [1 / r["resolution"][1]], [r["phys"][1]]; marker = :star5, markersize = 16, label = "2D optimum, a₀ = 1 ($(r["resolution"][1])x$(r["resolution"][2]))")
+        side["2D optimum $(r["resolution"])"] = r["phys"]
+    end
+    kp = sqrt(CASE.density)
+    lines_th = Dict("1D linear 2/ω_p" => 2 / kp, "1D linear with dispersion" => golden_max(τ -> wake1d_dispersive(0.3, τ), 5.0, 9.0; tol = 1e-3)[1])
+    if !isempty(th)
+        lines_th["1D nonlinear (fixed driver), a₀ = 1"] = only(o["tau_J"] for o in th[1]["group_velocity"]["optimum"] if o["a0"] == 1.0)
+    end
+    for (i, (k, v)) in enumerate(sort(collect(lines_th); by = last))
+        hlines!(a, [v]; color = Cycled(i + 3), linestyle = :dot, label = "$k: $(round(v; digits = 2))")
+    end
+    side["theory"] = lines_th
+    Legend(fig[1, 2], a; framevisible = false)
+    save_plot(dir, "tau_offset", fig, side)
+    println("figures in ", dir)
+    return dir
+end
+
 if !isempty(ARGS) && abspath(PROGRAM_FILE) == @__FILE__
     if startswith(ARGS[1], "--group=")
         GROUP[] = ARGS[1][9:end]
@@ -161,6 +264,8 @@ if !isempty(ARGS) && abspath(PROGRAM_FILE) == @__FILE__
     elseif cmd == "tauscan"
         tauscan(parse_res(ARGS[2]), parse(Float64, ARGS[3]), parse(Float64, ARGS[4]), parse(Float64, ARGS[5]), parse.(Float64, split(ARGS[6], ",")),
                 length(ARGS) >= 7 ? parse(Int, ARGS[7]) : nothing)
+    elseif cmd == "plots"
+        plots(ARGS[2:end])
     else
         error("unknown command $cmd")
     end
