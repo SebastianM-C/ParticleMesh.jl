@@ -72,7 +72,6 @@ end
     y = [-(x[1] - 0.42)^2 for x in X]
     y = (y .- sum(y) / 4) ./ 0.05
     θ = fit_gp(X, y).θ
-    u1, _ = propose(X, y, θ, 1, 4)
     u2, _ = propose(X, y, θ, 2, 4; nrefine = 0)
     u3, _ = propose(X, y, θ, 3, 4; nrefine = 0)
     @test u2 != u3                                           # the candidates follow the seed
