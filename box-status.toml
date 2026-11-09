@@ -1,0 +1,55 @@
+branch = "runs/wp051-r1"
+request_commit = "d68649478fde2423dd2778ceebf184b2c7b4268c"
+started = "2026-11-09T14:36:47Z"
+category = "validation"
+outputs = ["scripts/runs/wp051-r1"]
+finished = "2026-11-09T14:45:12Z"
+ok = false
+files_returned = 12
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T14:36:47Z"
+exit = 0
+seconds = 22
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T14:37:09Z"
+exit = 0
+seconds = 96
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T14:38:45Z"
+exit = 0
+seconds = 162
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T14:41:27Z"
+exit = 0
+seconds = 68
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T14:42:35Z"
+exit = 0
+seconds = 142
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T14:44:57Z"
+exit = 1
+seconds = 14

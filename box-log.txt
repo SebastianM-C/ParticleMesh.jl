@@ -1,0 +1,134 @@
+## step 0 (julia): exit 0 after 22s
+group_velocity, a0 = 0.05: τ_opt(J) = 6.325045885192334 (J = 0.0010549389783232849), τ_opt(Emax) = 6.323248205835962 (Emax = 0.001055238431307247)
+group_velocity, a0 = 0.1: τ_opt(J) = 6.326565807812928 (J = 0.0042142311751730225), τ_opt(Emax) = 6.325773061767205 (Emax = 0.004214274192265154)
+group_velocity, a0 = 0.2: τ_opt(J) = 6.332489314044357 (J = 0.01676906945435833), τ_opt(Emax) = 6.333665910458321 (Emax = 0.0167511400263893)
+group_velocity, a0 = 0.3: τ_opt(J) = 6.341967654826919 (J = 0.03740531768454804), τ_opt(Emax) = 6.342114272620994 (Emax = 0.03729997308562058)
+group_velocity, a0 = 0.4: τ_opt(J) = 6.35454184386465 (J = 0.06570570925392279), τ_opt(Emax) = 6.354672982806354 (Emax = 0.0653664402473641)
+group_velocity, a0 = 0.5: τ_opt(J) = 6.369413222716328 (J = 0.10111698499254732), τ_opt(Emax) = 6.370524249659439 (Emax = 0.1003049785581614)
+group_velocity, a0 = 0.6: τ_opt(J) = 6.385648339937653 (J = 0.14297893105787668), τ_opt(Emax) = 6.385688864099264 (Emax = 0.14135940701412217)
+group_velocity, a0 = 0.7: τ_opt(J) = 6.402161213894757 (J = 0.19055537845384155), τ_opt(Emax) = 6.4029944841020905 (Emax = 0.18770750536276767)
+group_velocity, a0 = 0.8: τ_opt(J) = 6.417815772335285 (J = 0.24305907304286614), τ_opt(Emax) = 6.418567994219397 (Emax = 0.23850536867981545)
+group_velocity, a0 = 0.9: τ_opt(J) = 6.431510554772999 (J = 0.299662009856443), τ_opt(Emax) = 6.428364615899348 (Emax = 0.2929275965870574)
+group_velocity, a0 = 1.0: τ_opt(J) = 6.442483772866914 (J = 0.35948763310772475), τ_opt(Emax) = 6.437025165326946 (Emax = 0.3502004976166331)
+group_velocity, a0 = 1.2: τ_opt(J) = 6.455426333420515 (J = 0.48493565996367244), τ_opt(Emax) = 6.361429759245117 (Emax = 0.470605686832425)
+group_velocity, a0 = 1.4: τ_opt(J) = 6.463041425375854 (J = 0.6107698924696041), τ_opt(Emax) = 6.377306071407443 (Emax = 0.5952868906781481)
+group_velocity: linear check at a0 = 0.05, largest relative difference of the ODE from the formula 0.0008188809236940838
+quasistatic_c, a0 = 0.05: τ_opt(J) = 6.325045885192334 (J = 0.0009494708616754543), τ_opt(Emax) = 6.325323641928112 (Emax = 0.0009497531699512223)
+quasistatic_c, a0 = 0.1: τ_opt(J) = 6.3265407625036865 (J = 0.003793219892076105), τ_opt(Emax) = 6.329277805699855 (Emax = 0.003793460350662569)
+quasistatic_c, a0 = 0.2: τ_opt(J) = 6.332448789882746 (J = 0.01509870764692105), τ_opt(Emax) = 6.33328206009008 (Emax = 0.015085735432847124)
+quasistatic_c, a0 = 0.3: τ_opt(J) = 6.342114272620994 (J = 0.033697521302947564), τ_opt(Emax) = 6.342114272620994 (Emax = 0.03361814327229148)
+quasistatic_c, a0 = 0.4: τ_opt(J) = 6.355122402645447 (J = 0.05923669909434612), τ_opt(Emax) = 6.355677916117003 (Emax = 0.058977770348385215)
+quasistatic_c, a0 = 0.5: τ_opt(J) = 6.371014193660143 (J = 0.09124694934733642), τ_opt(Emax) = 6.372534116280736 (Emax = 0.09062279649764503)
+quasistatic_c, a0 = 0.6: τ_opt(J) = 6.389218653341156 (J = 0.12916596983443582), τ_opt(Emax) = 6.389774166812711 (Emax = 0.12791424799276055)
+quasistatic_c, a0 = 0.7: τ_opt(J) = 6.408983559804372 (J = 0.17236419383334048), τ_opt(Emax) = 6.40994796895341 (Emax = 0.17015099903656397)
+quasistatic_c, a0 = 0.8: τ_opt(J) = 6.429541212313311 (J = 0.22016774774932743), τ_opt(Emax) = 6.429369549209997 (Emax = 0.21660496992604997)
+quasistatic_c, a0 = 0.9: τ_opt(J) = 6.450098864822253 (J = 0.2718726695478694), τ_opt(Emax) = 6.448962792569899 (Emax = 0.2665534550217425)
+quasistatic_c, a0 = 1.0: τ_opt(J) = 6.470075958550395 (J = 0.3267464757737961), τ_opt(Emax) = 6.468106616090708 (Emax = 0.3193065452086642)
+quasistatic_c, a0 = 1.2: τ_opt(J) = 6.50714648501644 (J = 0.4428642241688489), τ_opt(Emax) = 6.494441157037005 (Emax = 0.43075035507431403)
+quasistatic_c, a0 = 1.4: τ_opt(J) = 6.542590995229426 (J = 0.5616831709008113), τ_opt(Emax) = 6.509181396946978 (Emax = 0.5467488136546542)
+quasistatic_c: linear check at a0 = 0.05, largest relative difference of the ODE from the formula 0.0007928240218697985
+results: /home/pm/jobs/wp051-r1/scripts/runs/wp051-r1/optim-converge2d-theory-20261109T143700
+
+## step 1 (julia): exit 0 after 96s
+a0 = 0.3, waist = 100000.0, τ = 4.5: (main = 0.031171600113332233, early = 0.031036239447458997, short = 0.03092279041982187, half = 0.035786776503336684) (15.8 s)
+a0 = 0.3, waist = 100000.0, τ = 5.0: (main = 0.03362113652151927, early = 0.033478768124483325, short = 0.033347040045653226, half = 0.0377431734620324) (17.5 s)
+a0 = 0.3, waist = 100000.0, τ = 5.5: (main = 0.03543194818802039, early = 0.03528384925968367, short = 0.03513858483310982, half = 0.038942509434909775) (0.8 s)
+a0 = 0.3, waist = 100000.0, τ = 6.0: (main = 0.036605079575694026, early = 0.036452971908475476, short = 0.036299071029489975, half = 0.03946229424790147) (0.8 s)
+a0 = 0.3, waist = 100000.0, τ = 6.5: (main = 0.037170975675970476, early = 0.037017209514594494, short = 0.03685948544970849, half = 0.03939270730834423) (0.7 s)
+a0 = 0.3, waist = 100000.0, τ = 7.0: (main = 0.037179195389714294, early = 0.037026616234979944, short = 0.03686957074263602, half = 0.0388214295493216) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 7.5: (main = 0.03669042349517857, early = 0.03654206179350315, short = 0.03638966610818027, half = 0.03782786623290421) (0.5 s)
+a0 = 0.3, waist = 100000.0, τ = 8.0: (main = 0.03577084903774662, early = 0.0356295726304828, short = 0.03548510138572126, half = 0.03648282063164904) (1.3 s)
+a0 = 0.3, waist = 100000.0, τ = 8.5: (main = 0.0344884270788848, early = 0.03435664958484094, short = 0.03422260171147055, half = 0.03485033819626854) (6.0 s)
+a0 = 0.3, waist = 100000.0, τ = 9.0: (main = 0.03291044349874809, early = 0.032789918782279534, short = 0.03266803101982317, half = 0.032989696263755884) (40.3 s)
+optimum: Dict{String, Any}("short" => Dict("J" => 0.036925880628140395, "tau" => 6.760291326784402), "early" => Dict("J" => 0.037083747588183696, "tau" => 6.75952172064499), "main" => Dict("J" => 0.0372372774565482, "tau" => 6.758269469350074), "half" => Dict("J" => 0.03950528030134914, "tau" => 6.190965155475904))
+results: /home/pm/jobs/wp051-r1/scripts/runs/wp051-r1/optim-converge2d-tauscan-20261109T143717
+
+## step 2 (julia): exit 0 after 162s
+a0 = 1.0, waist = 100000.0, τ = 4.5: (main = 0.3065024610202889, early = 0.2970328535240776, short = 0.28097065462366494, half = 0.35446784792141994) (13.8 s)
+a0 = 1.0, waist = 100000.0, τ = 5.0: (main = 0.33530541859973056, early = 0.32461539004030476, short = 0.3062825309671548, half = 0.3745761612126034) (0.7 s)
+a0 = 1.0, waist = 100000.0, τ = 5.5: (main = 0.35874721658975567, early = 0.3468897010209205, short = 0.3265232587044671, half = 0.38737284065007754) (60.4 s)
+a0 = 1.0, waist = 100000.0, τ = 6.0: (main = 0.37611151808565185, early = 0.3631914061836753, short = 0.34114726210417995, half = 0.3939616492954279) (0.5 s)
+a0 = 1.0, waist = 100000.0, τ = 6.5: (main = 0.3876515382817577, early = 0.37381952063183377, short = 0.3505566577169098, half = 0.3955446453709485) (0.5 s)
+a0 = 1.0, waist = 100000.0, τ = 7.0: (main = 0.39403257744744585, early = 0.3794768052819793, short = 0.35550621228039553, half = 0.3930869286642209) (0.5 s)
+a0 = 1.0, waist = 100000.0, τ = 7.5: (main = 0.39594482886134236, early = 0.38088757628652403, short = 0.3567248080371536, half = 0.3872368084219543) (0.5 s)
+a0 = 1.0, waist = 100000.0, τ = 8.0: (main = 0.39397010401360905, early = 0.3786572161066271, short = 0.3547911198373688, half = 0.3784267726479846) (0.5 s)
+a0 = 1.0, waist = 100000.0, τ = 8.5: (main = 0.38858099401771096, early = 0.3732686768374291, short = 0.3501413733395134, half = 0.3669677173189466) (0.5 s)
+a0 = 1.0, waist = 100000.0, τ = 9.0: (main = 0.3801779353250413, early = 0.3651209517815786, short = 0.34311587403967914, half = 0.35313091333060803) (68.5 s)
+optimum: Dict{String, Any}("short" => Dict("J" => 0.356745085287281, "tau" => 7.443287751604476), "early" => Dict("J" => 0.3809106366482059, "tau" => 7.443727022329335), "main" => Dict("J" => 0.39594495437439137, "tau" => 7.495981874493709), "half" => Dict("J" => 0.3955683149629206, "tau" => 6.445880796387595))
+results: /home/pm/jobs/wp051-r1/scripts/runs/wp051-r1/optim-converge2d-tauscan-20261109T143854
+
+## step 3 (julia): exit 0 after 68s
+a0 = 0.3, waist = 100000.0, τ = 4.5: (main = 0.03229611990000904, early = 0.03215019297223543, short = 0.03203666862411963, half = 0.037214074694284845) (16.0 s)
+a0 = 0.3, waist = 100000.0, τ = 5.0: (main = 0.034913463073342685, early = 0.034759250248667696, short = 0.03462524872405573, half = 0.03934599597433528) (1.7 s)
+a0 = 0.3, waist = 100000.0, τ = 5.5: (main = 0.036867917836525564, early = 0.036707136187904985, short = 0.03655778289992111, half = 0.040681473863575394) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 6.0: (main = 0.03815700874037232, early = 0.03799178021090757, short = 0.03783240563597706, half = 0.04129781389530871) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 6.5: (main = 0.03880913173412735, early = 0.03864218844533826, short = 0.03847801874601129, half = 0.041286945575601544) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 7.0: (main = 0.03887329395957642, early = 0.03870783920318962, short = 0.03854373734414006, half = 0.04073955721531956) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 7.5: (main = 0.038410981117952034, early = 0.038250363579365794, short = 0.03809060333113545, half = 0.039738754747553305) (1.4 s)
+a0 = 0.3, waist = 100000.0, τ = 8.0: (main = 0.03749027724763307, early = 0.037337629224909116, short = 0.03718573450656354, half = 0.03835937219765258) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 8.5: (main = 0.03618185792246174, early = 0.0360397915996642, short = 0.035898465652285674, half = 0.03666960743545411) (1.5 s)
+a0 = 0.3, waist = 100000.0, τ = 9.0: (main = 0.034556285974028066, early = 0.03442668275531512, short = 0.03429782941304452, half = 0.034732869009077585) (1.5 s)
+optimum: Dict{String, Any}("short" => Dict("J" => 0.038579896626290425, "tau" => 6.813330700008637), "early" => Dict("J" => 0.03874452410643965, "tau" => 6.812748467818744), "main" => Dict("J" => 0.03891093199864872, "tau" => 6.810935673369809), "half" => Dict("J" => 0.04137087494296974, "tau" => 6.241335957435672))
+results: /home/pm/jobs/wp051-r1/scripts/runs/wp051-r1/optim-converge2d-tauscan-20261109T144201
+
+## step 4 (julia): exit 0 after 142s
+a0 = 1.0, waist = 100000.0, τ = 4.5: (main = 0.314398970504189, early = 0.3036506535322753, short = 0.28672575981681964, half = 0.36743627542658225) (61.8 s)
+a0 = 1.0, waist = 100000.0, τ = 5.0: (main = 0.3445315506744658, early = 0.33238255428958546, short = 0.3129758147378337, half = 0.38926201540951794) (6.2 s)
+a0 = 1.0, waist = 100000.0, τ = 5.5: (main = 0.36943501513606775, early = 0.3559608498751139, short = 0.33433384507948277, half = 0.4034649311257449) (1.5 s)
+a0 = 1.0, waist = 100000.0, τ = 6.0: (main = 0.3882239633533659, early = 0.3735546676036071, short = 0.3500988691921267, half = 0.41114498492820667) (1.4 s)
+a0 = 1.0, waist = 100000.0, τ = 6.5: (main = 0.40104739813857176, early = 0.38536248249001803, short = 0.36058339196670963, half = 0.41355314123053044) (1.4 s)
+a0 = 1.0, waist = 100000.0, τ = 7.0: (main = 0.40852917493722285, early = 0.39204795900262707, short = 0.3665059867915382, half = 0.4117008517686286) (1.5 s)
+a0 = 1.0, waist = 100000.0, τ = 7.5: (main = 0.41135621184352034, early = 0.394331954129461, short = 0.3685894245485958, half = 0.40627475681719905) (1.4 s)
+a0 = 1.0, waist = 100000.0, τ = 8.0: (main = 0.4101118473348909, early = 0.392824688638567, short = 0.36741187198990455, half = 0.39770982400848814) (1.5 s)
+a0 = 1.0, waist = 100000.0, τ = 8.5: (main = 0.40526842096071203, early = 0.3880113801431763, short = 0.3634052539675644, half = 0.3863124496076809) (1.5 s)
+a0 = 1.0, waist = 100000.0, τ = 9.0: (main = 0.3972338192770897, early = 0.38029136674349673, short = 0.35689943947370145, half = 0.37236537109136475) (1.5 s)
+optimum: Dict{String, Any}("short" => Dict("J" => 0.36862088079014976, "tau" => 7.569448626847452), "early" => Dict("J" => 0.3943518455649286, "tau" => 7.5512184280017545), "main" => Dict("J" => 0.4114331157048406, "tau" => 7.5971822866609), "half" => Dict("J" => 0.4135622068295715, "tau" => 6.532617880333644))
+results: /home/pm/jobs/wp051-r1/scripts/runs/wp051-r1/optim-converge2d-tauscan-20261109T144244
+
+## step 5 (julia): exit 1 after 14s
+ERROR: LoadError: type `Nothing` is not a valid TOML type, pass a conversion function to `TOML.print`
+Stacktrace:
+   [1] error(s::String)
+     @ Base ./error.jl:44
+   [2] to_toml_value(f::Function, value::Nothing)
+     @ Base.TOML.Printer ./toml/printer.jl:63
+   [3] print_table(f::Function, io::IOStream, a::Dict{String, Any}, ks::Vector{String}; indent::Int64, first_block::Bool, sorted::Bool, inline_tables::IdSet{Dict{String}}, by::Function)
+     @ Base.TOML.Printer ./toml/printer.jl:205
+   [4] #invokelatest_gr#232
+     @ ./reflection.jl:1350 [inlined]
+   [5] invokelatest_gr
+     @ ./reflection.jl:1342 [inlined]
+   [6] print_table(f::Function, io::IOStream, a::Dict{String, Any}, ks::Vector{String}; indent::Int64, first_block::Bool, sorted::Bool, inline_tables::IdSet{Dict{String}}, by::Function)
+     @ Base.TOML.Printer ./toml/printer.jl:238
+ ┌ [7] print_table
+ │   @ ./toml/printer.jl:182 [inlined]
+ ╰──── repeated 2 times
+   [9] print
+     @ ./toml/printer.jl:268 [inlined]
+  [10] #3
+     @ ~/jobs/wp051-r1/scripts/crosscode/manifest.jl:66 [inlined]
+  [11] #open#324
+     @ ./io.jl:429 [inlined]
+  [12] open
+     @ ./io.jl:426 [inlined]
+  [13] write_manifest(dir::String; inputs::Vector{String}, extra::Dict{String, Any}, root::String)
+     @ Main.RunManifest ~/jobs/wp051-r1/scripts/crosscode/manifest.jl:66
+  [14] write_manifest
+     @ ~/jobs/wp051-r1/scripts/crosscode/manifest.jl:48 [inlined]
+  [15] run_dir(name::String, script::String; params::Dict{String, Any}, extra_inputs::Vector{String}, work_package::String, backend::String, extra::Dict{String, Any}, prefix::String)
+     @ Main ~/jobs/wp051-r1/scripts/engine2d/common.jl:47
+  [16] run_dir
+     @ ~/jobs/wp051-r1/scripts/engine2d/common.jl:41 [inlined]
+  [17] newdir(cmd::String, params::Dict{String, Any})
+     @ Main ~/jobs/wp051-r1/scripts/optim/converge2d.jl:39
+  [18] tauscan(r::@NamedTuple{ppl::Int64, dy_cells::Int64}, a0::Float64, waist::Float64, f::Float64, τs::Vector{Float64}, nrows::Nothing)
+     @ Main ~/jobs/wp051-r1/scripts/optim/converge2d.jl:122
+  [19] top-level scope
+     @ ~/jobs/wp051-r1/scripts/optim/converge2d.jl:162
+  [20] include(mod::Module, _path::String)
+     @ Base ./Base.jl:309
+  [21] exec_options(opts::Base.JLOptions)
+     @ Base ./client.jl:344
+  [22] _start()
+     @ Base ./client.jl:577
+in expression starting at /home/pm/jobs/wp051-r1/scripts/optim/converge2d.jl:149
