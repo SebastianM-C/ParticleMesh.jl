@@ -25,7 +25,7 @@ ParticleMeshCore = {path = "../ParticleMeshCore"}
 
 [compat]
 Adapt = "4"
-KernelAbstractions = "0.10"
+KernelAbstractions = "0.10.6"
 OrdinaryDiffEqCore = "4"
 ParticleMeshCore = "0.1"
 RecursiveArrayTools = "4"
