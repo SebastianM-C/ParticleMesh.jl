@@ -208,3 +208,26 @@ function golden_max(f, lo, hi; tol = 1e-4)
     x = (a + b) / 2
     return x, f(x)
 end
+
+"""
+    wake1d_dispersive(a0, τ; x1 = 72, x2 = 152, start = 68, n0 = CASE.density) -> J
+
+The linear 1D wake with the plasma's full dispersion k(ω) = √(ω² − n₀): the pulse of
+[`wake1d`](@ref) enters a uniform plasma at `start` (the ramp's middle) with the WKB transmission
+η(ω)^(-1/2), spreads and chirps as it goes, and drives (∂ₜ² + ω_p²)E = −ω_p²·∂ₓ⟨a²⟩/2 at each x.
+The wake amplitude behind the pulse at depth z = x − start is (derived here, for the envelope's
+spectrum Â(ω) = a0·τ·√π·exp(−(ω − 1)²τ²/4))
+E/E₀ = (1/8π)·|∫ Â(ω + ω_p)·Â(ω)·(η(ω + ω_p)·η(ω))^(-1/2)·Δk·exp(i·Δk·z) dω|, Δk = k(ω + ω_p) − k(ω),
+and J is its RMS over the slab x1 … x2, as the slab objective averages. Without dispersion
+(k linear in ω) it is the linear limit of [`wake1d`](@ref) at every z.
+"""
+function wake1d_dispersive(a0, τ; x1 = 72.0, x2 = 152.0, start = 68.0, n0 = CASE.density, nz = 41, dω = 0.002)
+    ωp = sqrt(n0)
+    k(ω) = sqrt(ω^2 - n0)
+    Â(ω) = a0 * τ * sqrt(π) * exp(-(ω - 1)^2 * τ^2 / 4)
+    ωs = (max(ωp + 1e-6, 1 - ωp - 12 / τ)):dω:(1 + 12 / τ)
+    zs = range(x1 - start, x2 - start; length = nz)
+    terms = [(Â(ω + ωp) * Â(ω) * sqrt(k(ω + ωp) / (ω + ωp) * k(ω) / ω)^(-1) * (k(ω + ωp) - k(ω)), k(ω + ωp) - k(ω)) for ω in ωs]
+    A(z) = abs(sum(c * cis(dk * z) for (c, dk) in terms) * dω) / (8π)
+    return sqrt(sum(z -> A(z)^2, zs) / nz)
+end
