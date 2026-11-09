@@ -47,19 +47,19 @@ function main(args)
         old = "    for s in st.species\n        launcher(push_2d_kernel!"
         occursin(old, s) || error("the push loop of step2d.jl has changed; update setup.jl")
         s = replace(s, old => "    foreach(st.species) do s\n        launcher(push_2d_kernel!")
-        kin_old = """    first = 1
-    for s in st.species
-        nc = cld(capacity(s), KINETIC_CHUNK)
-        launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);
-                                                             ndrange = nc)
-        first += nc
-    end"""
-        kin_new = """    firsts = cumsum((1, map(s -> cld(capacity(s), KINETIC_CHUNK), Base.front(st.species))...))
-    foreach(st.species, firsts) do s, first
-        nc = cld(capacity(s), KINETIC_CHUNK)
-        launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);
-                                                             ndrange = nc)
-    end"""
+        kin_old = join(["    first = 1",
+                        "    for s in st.species",
+                        "        nc = cld(capacity(s), KINETIC_CHUNK)",
+                        "        launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);",
+                        "                                                             ndrange = nc)",
+                        "        first += nc",
+                        "    end"], "\n")
+        kin_new = join(["    firsts = cumsum((1, map(s -> cld(capacity(s), KINETIC_CHUNK), Base.front(st.species))...))",
+                        "    foreach(st.species, firsts) do s, first",
+                        "        nc = cld(capacity(s), KINETIC_CHUNK)",
+                        "        launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);",
+                        "                                                             ndrange = nc)",
+                        "    end"], "\n")
         occursin(kin_old, s) || error("kinetic! of step2d.jl has changed; update setup.jl")
         s = replace(s, kin_old => kin_new)
         zip_old = "    for (s, ws) in zip(st.species, st.ws)\n"
