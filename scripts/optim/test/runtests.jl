@@ -2,7 +2,7 @@
 using Test
 include(joinpath(@__DIR__, "..", "maximize.jl"))
 
-@testset "T-600 the box-constrained maximizer finds interior and bound maxima of analytic objectives [WP-045]" begin
+@testset "T-600 the box-constrained maximizer finds interior and bound maxima of analytic objectives, with a capped step [WP-045, WP-052]" begin
     # An anisotropic concave quadratic with its maximum inside the box.
     A = [3.0 1.0; 1.0 0.5]
     c = [0.3, 0.7]
@@ -36,6 +36,13 @@ include(joinpath(@__DIR__, "..", "maximize.jl"))
     fb(z) = (e = exp(-sum(abs2, z .- [0.4, 0.6]) / 0.1); (e + 0.01z[1], e .* (-2 .* (z .- [0.4, 0.6]) ./ 0.1) .+ [0.01, 0.0]))
     r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 1e-12, maxiter = 100)
     @test maximum(abs, r.g) < 1e-8
+    # A capped step (WP-052): no accepted step is longer than maxstep in any coordinate, and the
+    # interior maximum is still reached; uncapped, the first step from this start is 0.6 long.
+    r = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; gtol = 1e-10, xtol = 1e-12, maxiter = 200, maxstep = 0.05)
+    @test all(i -> maximum(abs, r.path[i + 1][1] .- r.path[i][1]) <= 0.05 + 1e-15, 1:(length(r.path) - 1))
+    @test r.z ≈ c atol = 1e-8
+    r1 = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; maxiter = 1)
+    @test maximum(abs, r1.path[2][1] .- r1.path[1][1]) > 0.05
 end
 
 # Tests of the WP-052 fixed-energy case (witness2d_case.jl): two full runs of the case, about a minute.

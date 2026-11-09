@@ -29,7 +29,7 @@ Fixed parameters of the case (A1 units).
 const WCASE = (waist = 10.0, delay = 54.0, focus = 80.0, vacuum = 64.0, ramp = 8.0, start = 108.0,
                energy = π * 1.5^2 * 10.0 * 6.0 / 4 * (1 + 1 / (2 * 10.0^2)),
                cells = (224, 64), ppc = (2, 2), dy_cells = 4, nsteps = 830,
-               inject = 150.0, region = (33.0, 56.0), u0 = 10.0, length = 2.0)
+               inject = 150.0, region = (35.0, 56.0), u0 = 10.0, length = 2.0)
 
 """
     a0_at_energy(τ; energy, waist) -> a₀
