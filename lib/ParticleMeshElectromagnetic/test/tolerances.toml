@@ -677,3 +677,24 @@ scale = "relative (Float32 against Float64 after 350 steps; not a roundoff bound
 C = 1e-3
 measured = { "Dual{Float32,3}" = 1.61e-5 }
 status = "proposed"
+
+["T-610"]
+quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case on the CPU (primal and the partials in a₀, duration, density), Reference, against the values pinned here: largest relative difference"
+scale = "relative; a Reference run is bitwise on one backend (A4), C leaves room for another CPU's code generation"
+C = 1e-6
+pinned = [0.1020901, 0.08922723, 0.0069649457, 0.65158635]
+status = "proposed; measured 2.0e-8 (the decimals of the Float32 values) on the sandbox's Intel Xeon, 4 threads"
+
+["T-611"]
+quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case (primal and the partials in a₀, duration, density), Reference, on CUDA against the CPU: largest relative difference"
+scale = "relative (two backends' Float32 arithmetic after 350 steps, not a roundoff bound; on the CPU a one-ulp nudge of one input moves the result by up to 6.7e-6, and Float32 against Float64 is 1.5e-5)"
+C = 1e-4
+measured = { "RTX 4080 SUPER, 350 steps" = 7.78e-6, "RTX 4080 SUPER, refined, 1200 steps (T-612)" = 6.48e-6 }
+status = "proposed"
+
+["T-612"]
+quantity = "the Dual{Float32,3} log-mean-exp of the on-axis E_x past window_back_band (primal and three partials) of the WP-043 case at 600·r steps with Δx, Δy, Δt divided by r = 1, 2, 3, Reference, on CUDA: the largest ratio of the successive differences |c₃ − c₂| / |c₂ − c₁| over the four components"
+scale = "convergence with resolution (below 1 the differences shrink)"
+C = 0.5
+measured = { "RTX 4080 SUPER, Dual{Float32,3}" = 0.287, "CPU, Float64 duals" = 0.28 }
+status = "proposed; the largest ratio is the duration partial's (density 0.23, a₀ 0.19, the primal 0.19)"

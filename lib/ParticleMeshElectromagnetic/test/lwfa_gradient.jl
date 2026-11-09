@@ -1,4 +1,4 @@
-# WP-043: a gradient through a small laser-wakefield run, T-580 to T-582; WP-044, T-590 and T-591. After window.jl and
+# WP-043: a gradient through a small laser-wakefield run, T-580 to T-582; WP-044, T-590 and T-591; WP-046, T-610 (its CUDA tests are in gpu.jl). After window.jl and
 # window_cases.jl (`ZERO3`).
 #
 # The case: a Gaussian pulse launched by the antenna (a₀ = 2 at the focus x = 70, waist 5,
@@ -36,31 +36,34 @@ const LWFA_GRADIENT_NAMES = ("a0", "duration", "focus", "density", "ramp")
 const LWFA_GRADIENT_BETA = 200
 
 """
-    lwfa_gradient_problem(x; nsteps = 350, witness = nothing) -> EMProblem{2}
+    lwfa_gradient_problem(x; nsteps = 350, witness = nothing, refine = 1) -> EMProblem{2}
 
 The WP-043 case of element type `eltype(x)` with `x = (a0, duration, focus, density, ramp)`, and
 the witness bunch `witness` of WP-047 (none by default).
 The pulse's delay is fixed at 36, so the pulse starts below roundoff, and the window starts at
-72, after the antenna has finished (delay + 6·duration), for durations up to 6.
+72, after the antenna has finished (delay + 6·duration), for durations up to 6. `refine` divides
+both cell sizes and Δt by an integer (WP-046's larger case): the same box, antenna position and
+physical times, `refine²` times the cells and particles, `refine` times the steps for the same
+horizon (the caller scales `nsteps`).
 """
-function lwfa_gradient_problem(x; nsteps = 350, witness = nothing)
+function lwfa_gradient_problem(x; nsteps = 350, witness = nothing, refine::Integer = 1)
     T = promote_type(map(typeof, x)...)
     a0, duration, focus, density, ramp = map(T, x)
-    cells = (160, 16)
-    h = 2 * T(π) / 16
+    cells = (160 * refine, 16 * refine)
+    h = 2 * T(π) / (16 * refine)
     hy = 4h
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
-    pulse = GaussianLaser(; a0, waist = T(5), duration, delay = T(36), focus, position = 6h, center = cells[2] * hy / 2)
+    pulse = GaussianLaser(; a0, waist = T(5), duration, delay = T(36), focus, position = 6 * refine * h, center = cells[2] * hy / 2)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), density, zero(T), (1, 0), (2, 2), ZERO3(T), ZERO3(T), 1)
     return EMProblem("lwfa-gradient", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
                      lasers = (pulse,), boundaries = (:window, :periodic), window = MovingWindow(; start = T(72)),
                      profile = DensityRamp(; vacuum = T(64), ramp), witness)
 end
 
-"The state of the WP-043 case after its run, in `mode`, with `passes` binomial filter passes (none in WP-043)."
-function lwfa_gradient_run(x, mode; be = CPU(), passes = 0, kw...)
+"The state of the WP-043 case after its run, in `mode` on `be`, with `passes` binomial filter passes (none in WP-043)."
+function lwfa_gradient_run(x, mode; be = CPU(), passes = 0, workgroupsize = nothing, kw...)
     prob = lwfa_gradient_problem(x; kw...)
-    st = EMState(prob, EMNumerics(; mode, filter = BinomialFilter(passes)); backend = be)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, filter = BinomialFilter(passes)); backend = be)
     initialize!(st, prob)
     run!(st, params(prob), prob.nsteps)
     return st, prob
@@ -133,6 +136,15 @@ end
 
 # --- T-582 ----------------------------------------------------------------------------------
 
+"WP-043's parameters as `Dual{Float32,3}` seeded in a₀, the duration and the density (T-582, WP-046)."
+function lwfa_dual_x0()
+    x0 = LWFA_GRADIENT_X0
+    return (mkdual(x0[1], 1, 0, 0), mkdual(x0[2], 0, 1, 0), mkdual(x0[3], 0, 0, 0), mkdual(x0[4], 0, 0, 1), mkdual(x0[5], 0, 0, 0))
+end
+
+"T-582's CPU result, which T-611 compares the CUDA run against."
+const T582_S = Ref{Any}(nothing)
+
 # The production element type: `Dual{Float32,3}` seeded in a₀, the duration and the density, the
 # three partials of the functional against T-581's Float64 gradient. Float32 over 350 steps of
 # particle dynamics is not roundoff-close to Float64, so the scale is the measured relative
@@ -140,8 +152,8 @@ end
 @testset "T-582 Dual{Float32,3} partials of the small LWFA run against the Float64 gradient [A7, A8, WP-043]" begin
     ad = T581_AD[] === nothing ? ForwardDiff.gradient(x -> lwfa_wake_amplitude(x), collect(LWFA_GRADIENT_X0)) : T581_AD[]
     x0 = LWFA_GRADIENT_X0
-    xd = (mkdual(x0[1], 1, 0, 0), mkdual(x0[2], 0, 1, 0), mkdual(x0[3], 0, 0, 0), mkdual(x0[4], 0, 0, 1), mkdual(x0[5], 0, 0, 0))
-    S = lwfa_wake_amplitude(xd)
+    S = lwfa_wake_amplitude(lwfa_dual_x0())
+    T582_S[] = S
     p = Tuple(partials(S))
     ref = (ad[1], ad[2], ad[4])
     rel = maximum(abs.(p .- ref) ./ abs.(ref))
@@ -242,4 +254,47 @@ end
         end
     end
     @test soft_maximum(ex0[(b + 1):end], LWFA_GRADIENT_BETA) ≈ lwfa_wake_amplitude(LWFA_GRADIENT_X0; nsteps = LWFA_LONG_STEPS) rtol = 1e-14
+end
+
+# --- T-610 ----------------------------------------------------------------------------------
+
+# WP-046: T-582's dual run in both deposition modes on `be` (one body for the CPU and, through
+# T-613 in gpu.jl, for CUDA). The Reference run is bitwise across reruns and launch shapes (A4);
+# a `Dual`-valued array takes the sorted deposition in either mode (A8), so the Fast run has the
+# Reference run's bits, not only its values.
+function body_T610(be)
+    xd = lwfa_dual_x0()
+    digest(mode; kw...) = state_digest_2d(first(lwfa_gradient_run(xd, mode; be, kw...)))
+    first_bits = digest(Reference())
+    @test digest(Reference()) == first_bits
+    for wgs in (64, 256)
+        @test digest(Reference(); workgroupsize = wgs) == first_bits
+    end
+    @test digest(Fast()) == first_bits
+end
+
+"The WP-043 dual wake amplitude on the CPU (primal, then the partials in a₀, duration, density), pinned against a change of the case."
+const LWFA_DUAL_PINNED = Tuple(emC("T-610", "pinned"))
+
+@testset "T-610 the dual gradient case is bitwise across reruns, launch shapes and deposition modes [A4, A8, WP-046]" begin
+    body_T610(CPU())
+    # The case itself, pinned: T-581 and T-582 are built from the same problem, so a change of the
+    # case (an antenna one cell off moves the density partial by 43%, the PR's mutation breaker)
+    # moves both sides of their comparisons and passes them.
+    S = T582_S[] === nothing ? lwfa_wake_amplitude(lwfa_dual_x0()) : T582_S[]
+    rel = maximum(abs.(components(S) .- LWFA_DUAL_PINNED) ./ abs.(LWFA_DUAL_PINNED))
+    @info "T-610 against the pinned values" S rel
+    @test rel <= emC("T-610")
+    # `refine` keeps the physical case: the box, the antenna's position and the laser's centre, the
+    # window's start and the density profile are the same, Δx, Δy and Δt divide by `refine`.
+    x0 = LWFA_GRADIENT_X0
+    for r in (2, 3)
+        c, f = lwfa_gradient_problem(x0), lwfa_gradient_problem(x0; refine = r)
+        lc, lf = only(c.lasers), only(f.lasers)
+        @test all(f.length .≈ c.length) && f.cells == r .* c.cells
+        @test f.dt ≈ c.dt / r
+        @test lf.position ≈ lc.position && all(lf.center .≈ lc.center)
+        @test all(getfield(lf, k) == getfield(lc, k) for k in fieldnames(typeof(lc)) if !(k in (:position, :center)))
+        @test f.window == c.window && f.profile == c.profile
+    end
 end
