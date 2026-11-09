@@ -39,14 +39,14 @@ rate = 1e-8
 history = 1e-12
 total = 1e-13
 C_cumsum = 1
-measured = { rate = 3.2e-10, history = 4.8e-14, total = 1.8e-15, cumsum = 0.059 }
-status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/gpu-cuda.md, the largest of the three cases each, WP-013), which predates the load changes of #332 and #349, so not measured on the configuration it now asserts; to be confirmed by a GPU run. The Landau rate is the peak fit's sensitivity to roundoff-level differences of the histories, so its bound is the loosest"
+measured = { rate = 3.13e-11, history = 4.79e-14, total = 1.84e-15, cumsum = 0.0594 }
+status = "proposed (WP-037); measured on main bc6c454 with these bounds asserted (RTX 4080 SUPER, CUDACore 6.5.0, PM_TEST_GPU=1, the largest of the three cases each: Landau rate, two-stream history and total energy, cumsum at n = 64 in Float64). The Landau rate is the peak fit's sensitivity to roundoff-level differences of the histories, so its bound is the loosest. One device and driver so far"
 
 ["T-381"]
 quantity = "CPU against CUDA, the 2D runs of T-364 and T-365: relative difference of the fitted rates"
 rate = 1e-9
-measured = { landau = 2.4e-11, weibel = 2e-16 }
-status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/wp-023-em-step-2d.md), which predates T-364's load change in #349, so not measured on the configuration it now asserts; to be confirmed by a GPU run"
+measured = { landau = 0.0, weibel = 2.13e-16 }
+status = "proposed (WP-037); measured on main bc6c454 with this bound asserted (RTX 4080 SUPER, CUDACore 6.5.0, PM_TEST_GPU=1; the Landau rates are equal on the two backends). One device and driver so far"
 
 ["T-290"]
 quantity = "Fast against Reference histories of the module (WEx and K; Weibel WEy, WBz and K): max|h_Fast − h_Reference| over max|h_Reference|"
