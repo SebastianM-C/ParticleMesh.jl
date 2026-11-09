@@ -20,7 +20,9 @@ Fixed parameters of the case (A1 units).
   that of a₀ = 1.5 at τ = 6 (the run's `low_energy` slice repeats the duration scan at 1/2.25
   of it).
 - The run is 830 steps (t ≈ 300). The witness is injected at t = 150, once the laser is about
-  40 c/ω₀ into the plasma, and accelerated over about 150 c/ω₀, the order of the dephasing length.
+  40 c/ω₀ into the plasma, and accelerated over about 150 c/ω₀, about half the 1D linear dephasing
+  length π/(k_p·(1 − √(1 − n₀))) ≈ 320 at n₀ = 0.072. The injection time and the horizon are part
+  of the objective: the duration optimum moves with them (report §4).
 - The witness lattice is 2 × 1 points per cell on the two rows at the axis, over window
   x ∈ `region` = (24, 56): the first wake bucket behind the laser (at x ≈ 56) and the decelerating
   phase behind it, so that the Gaussian weights (rms `length` = 2) are not cut off by the lattice's
@@ -44,18 +46,22 @@ and ∂energy/∂τ = 0 through the coupling (the fixed-energy parametrization o
 a0_at_energy(τ; energy = WCASE.energy, waist = WCASE.waist) = sqrt(energy / (π * waist * τ / 4 * (1 + 1 / (2 * waist^2))))
 
 """
-    witness_problem(duration, density, center; nsteps, cells, ppc, dy_cells, energy, focus, inject) -> EMProblem{2}
+    witness_problem(duration, density, center; nsteps, t_end, ppl, cells, ppc, dy_cells, energy, focus, inject) -> EMProblem{2}
 
 The case at a pulse duration (1/e field half width), plasma density (n_c) and witness centre
-(window x, c/ω₀), with a₀ from the fixed energy; the element type follows the arguments.
+(window x, c/ω₀), with a₀ from the fixed energy; the element type follows the arguments. For
+resolution checks: `ppl` cells per λ₀ along x (with `cells` and `dy_cells` to keep the box and Δy),
+and `t_end`, which replaces `nsteps` by the steps that reach that time: Δt follows Δx and Δy, so
+a fixed step count would shorten the run when they shrink.
 """
-function witness_problem(duration, density, center; nsteps = WCASE.nsteps, cells = WCASE.cells, ppc = WCASE.ppc,
+function witness_problem(duration, density, center; nsteps = WCASE.nsteps, t_end = nothing, ppl = 16, cells = WCASE.cells, ppc = WCASE.ppc,
                          dy_cells = WCASE.dy_cells, energy = WCASE.energy, focus = WCASE.focus, inject = WCASE.inject)
     T = promote_type(typeof(duration), typeof(density), typeof(center), typeof(focus), typeof(energy))
     z3 = (zero(T), zero(T), zero(T))
-    h = 2 * T(π) / 16
+    h = 2 * T(π) / ppl
     hy = dy_cells * h
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
+    t_end === nothing || (nsteps = ceil(Int, t_end / Float64(value_of(dt))))
     a0 = a0_at_energy(T(duration); energy = T(energy))
     pulse = GaussianLaser(; a0, waist = T(WCASE.waist), duration = T(duration), delay = T(WCASE.delay), focus = T(focus),
                           position = 6h, center = cells[2] * hy / 2)

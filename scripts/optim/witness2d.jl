@@ -59,8 +59,11 @@ end
 The 1D linear-theory reference for the density (derived here, not from a source): at a fixed
 energy and duration the wake amplitude is ∝ n₀·exp(−n₀τ²/8) (E₀ = √n₀ times k_pτ·a₀²·exp(−k_p²τ²/8)
 with a₀²τ fixed); a witness at c slips against the wake's phase velocity √(1 − n₀) at the rate
-s = 1 − √(1 − n₀), so over a distance L its best gain is the amplitude times 2·sin(k_p·s·L/2)/(k_p·s)
-while k_p·s·L ≤ π, and 2/(k_p·s) past it (dephased). Returns the density that maximizes it.
+s = 1 − √(1 − n₀), so over a distance L, at the best injection phase, it gains the amplitude
+times 2·sin(k_p·s·L/2)/(k_p·s) (for k_p·s·L up to 2π; past a slip of π this falls again, which the
+`min` below misses, but the maximum lies below it). Returns the density that maximizes it. A rough
+scale only: the 2D group velocity's 1/(2w²) term moves it to about 0.091 and a nonlinear wake's
+slip of about 3n₀/2 to about 0.05 (physics breaker, WP-052).
 """
 function linear_density_optimum(τ, L)
     G(n) = (kp = sqrt(n); s = 1 - sqrt(1 - n); n * exp(-n * τ^2 / 8) * 2 * sin(min(kp * s * L / 2, π / 2)) / (kp * s))
@@ -185,6 +188,25 @@ function main()
     out["low_energy"] = Dict("energy" => WCASE.energy / 2.25, "tau" => τl, "J" => [r.J for r in low], "center" => [r.center for r in low])
     println("lower energy: J at τ = $τl: $([r.J for r in low])")
 
+    # 5b. Resolution: the best-centre objective at τ = 4, the optimum's τ and 6 (n₀ of the optimum)
+    #     with 4 × 4 particles per cell, Δy = 2Δx and Δx = λ₀/32 (the same box and end time), and
+    #     the vertex of the parabola through the three. Recorded, not asserted.
+    τr = [4.0, τb, 6.0]
+    res = Dict{String,Any}()
+    tend = WCASE.nsteps * Float64(witness_problem(τb, nb, cb).dt)
+    for (name, kw) in (("base", (;)), ("ppc 4x4", (; ppc = (4, 4))),
+                       ("dy = 2dx", (; dy_cells = 2, cells = (WCASE.cells[1], 2WCASE.cells[2]), t_end = tend)),
+                       ("dx = lambda/32", (; ppl = 32, dy_cells = 8, cells = (2WCASE.cells[1], WCASE.cells[2]), t_end = tend)))
+        vals = [best_over_center(τ, nb; kw...) for τ in τr]
+        Jr = [v.J for v in vals]
+        # vertex of the parabola through (τr, Jr)
+        M = hcat([τ^2 for τ in τr], τr, ones(3))
+        cf = M \ Jr
+        res[name] = Dict("tau" => τr, "J" => Jr, "center" => [v.center for v in vals], "tau_vertex" => -cf[2] / (2cf[1]))
+        println("resolution $name: J = $Jr, τ vertex $(-cf[2] / (2cf[1]))")
+    end
+    out["resolution"] = res
+
     # 6. The 1D linear-theory density for the duration found and the witness's acceleration distance
     #    (from its injection to the last step), recorded, not asserted.
     prob = witness_problem(τb, nb, cb)
@@ -217,7 +239,7 @@ function plot_results(dir, out)
     end
     Pf = reduce(hcat, Float64.(p["phys"]) for p in out["fixed_a0"]["optimizer"]["path"])
     scatterlines!(ax, Pf[1, :], Pf[2, :]; color = :white, linestyle = :dot, markersize = 5, label = "fixed a₀ (not this map)")
-    hlines!(ax, [out["theory"]["density_1d_linear"]]; color = :magenta, linestyle = :dash, label = "1D linear dephasing n₀")
+    hlines!(ax, [out["theory"]["density_1d_linear"]]; color = :magenta, linestyle = :dash, label = "1D linear dephasing n₀ (rough)")
     axislegend(ax; position = :rt)
     s = out["slices"]
     best = out["optimizer"][argmax([r["J"] for r in out["optimizer"]])]
