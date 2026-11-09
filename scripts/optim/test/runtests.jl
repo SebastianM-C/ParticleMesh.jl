@@ -17,6 +17,21 @@ include(joinpath(@__DIR__, "..", "maximize.jl"))
     @test r.z[1] == 0.5
     @test r.z[2] ≈ c[2] - A[2, 1] * (0.5 - c[1]) / A[2, 2] atol = 1e-8
     @test r.g[1] < 0                                                              # pointing out of the box
+    # The maximum outside the box's upper corner on z₁: held at the upper bound z₁ = 0.2, with the
+    # same constrained optimum formula for z₂, and the stop on the projected gradient.
+    c2 = [0.3, 0.7]
+    r = maximize_box(fq, [0.05, 0.1], [0.0, 0.0], [0.2, 1.0]; gtol = 1e-9, xtol = 0.0, maxiter = 200)
+    @test r.z[1] == 0.2
+    @test r.z[2] ≈ c2[2] - A[2, 1] * (0.2 - c2[1]) / A[2, 2] atol = 1e-8
+    @test r.g[1] > 0
+    @test r.reason == "gtol"
+    # The bound case above also stops on the projected gradient, not on a small step.
+    r = maximize_box(fq, [0.9, 0.1], [0.5, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 0.0, maxiter = 200)
+    @test r.reason == "gtol" && r.z[1] == 0.5
+    # A start outside the box is projected into it first.
+    r = maximize_box(fq, [3.0, -2.0], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 0.0, maxiter = 200)
+    @test all(p -> all(0 .<= p[1] .<= 1), r.path)
+    @test r.z ≈ c atol = 1e-8
     # A smooth non-quadratic objective (a Gaussian bump on a slope), maximum inside.
     fb(z) = (e = exp(-sum(abs2, z .- [0.4, 0.6]) / 0.1); (e + 0.01z[1], e .* (-2 .* (z .- [0.4, 0.6]) ./ 0.1) .+ [0.01, 0.0]))
     r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 1e-12, maxiter = 100)
