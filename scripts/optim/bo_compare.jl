@@ -83,10 +83,8 @@ function main(; nstarts = 3, budget = 30)
             best = max(best, c["J"]); sec += c["seconds"]
             push!(r["best_so_far"], best); push!(r["cum_seconds"], sec)
         end
-        r["reach"] = Dict(string(ε) => begin
-                              i = findfirst(b -> b >= Jstar * (1 - ε), r["best_so_far"])
-                              i === nothing ? nothing : Dict("calls" => i, "seconds" => r["cum_seconds"][i])
-                          end for ε in tols)
+        r["reach"] = Dict(string(ε) => (q = reach(r["best_so_far"], r["cum_seconds"], Jstar, ε);
+                                        q === nothing ? nothing : Dict("calls" => q.calls, "seconds" => q.seconds)) for ε in tols)
         r["best_phys"] = collect(phys(r["best_z"]))
         println(r["method"], " seed ", r["seed"], ": ", length(r["calls"]), " calls, best J = ", r["best_J"], " at ", r["best_phys"], ", reach = ", r["reach"])
     end

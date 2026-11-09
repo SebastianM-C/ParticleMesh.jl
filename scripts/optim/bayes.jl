@@ -157,3 +157,14 @@ function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ
     ib = argmax(y)
     return (; x = to_box.(U), y, best_x = to_box(U[ib]), best_y = y[ib], θ = θs, ei = eis)
 end
+
+"""
+    reach(best_so_far, cum_seconds, Jstar, ε) -> (; calls, seconds) or nothing
+
+The first call whose best value so far is within ε·|J*| of `Jstar`, and the summed seconds up to and
+including it; `nothing` if no call gets there.
+"""
+function reach(best_so_far, cum_seconds, Jstar, ε)
+    i = findfirst(b -> b >= Jstar - ε * abs(Jstar), best_so_far)
+    return i === nothing ? nothing : (; calls = i, seconds = cum_seconds[i])
+end

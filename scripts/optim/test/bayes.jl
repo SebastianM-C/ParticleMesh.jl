@@ -11,6 +11,7 @@ include(joinpath(@__DIR__, "..", "bayes.jl"))
             @test sort([floor(Int, p[j] * n) for p in P]) == 0:(n - 1)
         end
         @test latin_hypercube(n, d, seed) == P
+        d > 1 && @test length(unique([sortperm([p[j] for p in P]) for j in 1:d])) == d   # each coordinate has its own order
         @test latin_hypercube(n, d, seed + 1) != P
     end
 end
@@ -30,6 +31,12 @@ end
         @test s < 0.05
     end
     @test 0.03 < exp(fit.θ[1]) < 1.0
+    # The fit improves on every one of its fixed starts, and a good warm start is never lost.
+    for ℓ in (0.1, 0.3, 1.0)
+        @test fit.nll < gp_nll([log(ℓ); 0.0; log(1e-4)], X, y)
+    end
+    @test fit_gp(X, y; starts = [fit.θ]).nll <= fit.nll
+    @test fit_gp(X[1:4], y[1:4]; starts = [fit.θ]).nll <= gp_nll(clamp.(fit.θ, θbounds(1)...), X[1:4], y[1:4])
     μ, s = posterior([0.53], X, fit.θ, C, α)
     @test μ ≈ sin(4π * 0.53) atol = 0.05
     # Expected improvement is non-negative, ≈ 0 where the mean is far below the best with small spread,
@@ -58,4 +65,27 @@ const BRANIN_MIN = 5 / (4π)   # = 0.3978873577…
         seed == 1 && @test bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 12, seed).y == r.y[1:12]
     end
     println("Branin gaps after 40 evaluations, seeds 1 to 3: ", gaps)
+end
+
+@testset "T-623 the proposal depends on the seed, never repeats an evaluated point, and reach counts calls [WP-048]" begin
+    X = [[x] for x in (0.1, 0.4, 0.45, 0.9)]
+    y = [-(x[1] - 0.42)^2 for x in X]
+    y = (y .- sum(y) / 4) ./ 0.05
+    θ = fit_gp(X, y).θ
+    u1, _ = propose(X, y, θ, 1, 4)
+    u2, _ = propose(X, y, θ, 2, 4; nrefine = 0)
+    u3, _ = propose(X, y, θ, 3, 4; nrefine = 0)
+    @test u2 != u3                                           # the candidates follow the seed
+    # With ξ ≪ 0 expected improvement follows the posterior mean, whose maximum is the best data
+    # point of a symmetric sample: the refinement converges onto it and the guard must turn it away.
+    Xs = [[x] for x in (0.1, 0.3, 0.5, 0.7, 0.9)]
+    ys = [-(x[1] - 0.5)^2 for x in Xs]
+    ys = (ys .- sum(ys) / 5) ./ 0.05
+    us, _ = propose(Xs, ys, fit_gp(Xs, ys).θ, 1, 5; ξ = -10.0)
+    @test minimum(xi -> abs(us[1] - xi[1]), Xs) > 1e-6
+    # reach: the first index within ε·|J*|, and the time up to and including it.
+    @test reach([0.5, 0.9, 0.99, 1.0], [1.0, 2.0, 3.0, 4.0], 1.0, 0.05) == (; calls = 3, seconds = 3.0)
+    @test reach([0.5, 0.9, 0.99, 1.0], [1.0, 2.0, 3.0, 4.0], 1.0, 0.0) == (; calls = 4, seconds = 4.0)
+    @test reach([0.5, 0.9], [1.0, 2.0], 1.0, 0.05) === nothing
+    @test reach([-2.0, -1.04], [1.0, 2.0], -1.0, 0.05) == (; calls = 2, seconds = 2.0)
 end
