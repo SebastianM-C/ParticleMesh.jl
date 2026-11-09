@@ -119,7 +119,7 @@ function optimize(r, τ0, f0)
 end
 
 function tauscan(r, a0, waist, f, τs, nrows)
-    dir = newdir("tauscan", Dict{String,Any}("resolution" => collect(r), "a0" => a0, "waist" => waist, "focus" => f, "taus" => τs, "rows" => nrows))
+    dir = newdir("tauscan", Dict{String,Any}("resolution" => collect(r), "a0" => a0, "waist" => waist, "focus" => f, "taus" => τs, "rows" => something(nrows, 0)))
     cells = nrows === nothing ? (14r.ppl, 16r.ppl ÷ r.dy_cells) : (14r.ppl, nrows)
     rows = map(τs) do τ
         t = @elapsed o = wake_observe(τ, f; reskw(r)..., a0, waist, cells)
