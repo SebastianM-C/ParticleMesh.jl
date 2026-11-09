@@ -21,6 +21,8 @@ using ForwardDiff: Dual, value, partials
 
 # The WP-045 box and scaling: z = (τ/6, focus/90), τ ∈ [4, 9], focus ∈ [60, 130].
 const SCALE = (6.0, 90.0)
+# BO's exploration margins (standardized units): 0, the default, and 0.01, a common default elsewhere.
+const XIS = (0.0, 0.01)
 const LO = [4.0 / SCALE[1], 60.0 / SCALE[2]]
 const HI = [9.0 / SCALE[1], 130.0 / SCALE[2]]
 phys(z) = (z[1] * SCALE[1], z[2] * SCALE[2])
@@ -62,11 +64,13 @@ function main(; nstarts = 3, budget = 30)
     t0 = time()
     runs = Dict{String,Any}[]
     for seed in 1:nstarts
-        println("BO, seed $seed")
-        L = Logged()
-        r = bayesopt(L, LO, HI; budget, seed, verbose = true)
-        push!(runs, Dict("method" => "BO", "seed" => seed, "calls" => L.log, "best_z" => r.best_x, "best_J" => r.best_y,
-                         "lengthscales" => [exp.(θ[1:2]) for θ in r.θ], "ei" => r.ei))
+        for ξ in XIS
+            println("BO ξ = $ξ, seed $seed")
+            L = Logged()
+            r = bayesopt(L, LO, HI; budget, seed, ξ, verbose = true)
+            push!(runs, Dict("method" => "BO ξ=$ξ", "xi" => ξ, "seed" => seed, "calls" => L.log, "best_z" => r.best_x, "best_J" => r.best_y,
+                             "lengthscales" => [exp.(θ[1:2]) for θ in r.θ], "ei" => r.ei))
+        end
         println("BFGS, seed $seed")
         L = Logged()
         z0 = LO .+ latin_hypercube(2length(LO) + 1, length(LO), seed)[1] .* (HI .- LO)
@@ -92,6 +96,7 @@ function main(; nstarts = 3, budget = 30)
     tg = [c["seconds"] for r in runs for c in r["calls"] if c["kind"] == "gradient"]
     out = Dict{String,Any}("Jstar" => Jstar, "tolerances" => collect(tols), "runs" => runs, "box_tau" => [4.0, 9.0], "box_focus" => [60.0, 130.0],
                            "median_seconds_value" => median(tv), "median_seconds_gradient" => median(tg), "seconds" => time() - t0)
+    out["xis"] = collect(XIS)
     open(io -> JSON.print(io, out, 2), joinpath(dir, "results.json"), "w")
     plot_results(dir, out)
     println("J* = $Jstar; median call: value $(median(tv)) s, gradient $(median(tg)) s; done in $(round(out["seconds"]; digits = 1)) s: $dir")
@@ -105,7 +110,7 @@ function plot_results(dir, out)
     ax2 = Axis(fig[1, 2]; xlabel = "CPU wall time (s)", ylabel = "1 − best J / J*", yscale = log10, title = "… per second of simulation")
     ax3 = Axis(fig[1, 3]; xlabel = "pulse duration τ (1/ω₀)", ylabel = "focus x_f (c/ω₀)", title = "Evaluated points",
                limits = (out["box_tau"]..., out["box_focus"]...))
-    colors = Dict("BO" => :royalblue, "BFGS" => :orangered)
+    colors = Dict("BO ξ=0.0" => :royalblue, "BO ξ=0.01" => :seagreen, "BFGS" => :orangered)
     floor = 1e-6
     for r in out["runs"]
         c = colors[r["method"]]
@@ -113,7 +118,7 @@ function plot_results(dir, out)
         stairs!(ax1, 1:length(gap), gap; color = c, step = :post, label = r["method"])
         stairs!(ax2, Float64.(r["cum_seconds"]), gap; color = c, step = :post)
         P = reduce(hcat, [Float64(z[1]) * SCALE[1], Float64(z[2]) * SCALE[2]] for z in (cl["z"] for cl in r["calls"]))
-        scatter!(ax3, P[1, :], P[2, :]; color = (c, 0.6), marker = r["method"] == "BO" ? :circle : :utf8, markersize = 7)
+        scatter!(ax3, P[1, :], P[2, :]; color = (c, 0.6), marker = r["method"] == "BFGS" ? :utf8 : :circle, markersize = 7)
         r["method"] == "BFGS" && lines!(ax3, P[1, :], P[2, :]; color = (c, 0.4))
     end
     for ε in Float64.(out["tolerances"])

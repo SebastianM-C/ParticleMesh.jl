@@ -55,16 +55,16 @@ end
 branin(x) = (x[2] - 5.1 / (4π^2) * x[1]^2 + 5 / π * x[1] - 6)^2 + 10 * (1 - 1 / (8π)) * cos(x[1]) + 10
 const BRANIN_MIN = 5 / (4π)   # = 0.3978873577…
 
-@testset "T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations and repeats bit for bit [WP-048]" begin
+@testset "T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations from every seed tried and repeats bit for bit [WP-048]" begin
     gaps = Float64[]
-    for seed in 1:3
+    for seed in 1:6
         r = bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 40, seed)
         @test length(r.y) == 40
         push!(gaps, -r.best_y - BRANIN_MIN)
-        @test -r.best_y - BRANIN_MIN < 2e-2          # measured 0.0064, 0.0069, 0.0105 for seeds 1 to 3; Branin spans about 300 on the box
+        @test -r.best_y - BRANIN_MIN < 2e-4          # measured 7e-6 to 3.4e-5; Branin spans about 300 on the box. With ξ = 0.01, seeds 1 to 10 gave 0.006 to 0.13
         seed == 1 && @test bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 12, seed).y == r.y[1:12]
     end
-    println("Branin gaps after 40 evaluations, seeds 1 to 3: ", gaps)
+    println("Branin gaps after 40 evaluations, seeds 1 to 6: ", gaps)
 end
 
 @testset "T-623 the proposal depends on the seed, never repeats an evaluated point, and reach counts calls [WP-048]" begin

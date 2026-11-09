@@ -93,7 +93,7 @@ end
 normcdf(z) = erfc(-z / sqrt(2.0)) / 2
 normpdf(z) = exp(-z^2 / 2) / sqrt(2π)
 
-"Expected improvement over `ybest` (maximization) with exploration margin `ξ`."
+"Expected improvement over `ybest` (maximization) with exploration margin `ξ` (standardized units; ξ = 0.01, a common default, stalls this optimizer near 10⁻⁴ relative to the optimum in WP-048, so the default is 0)."
 function expected_improvement(μ, s, ybest, ξ)
     δ = μ - ybest - ξ
     z = δ / s
@@ -107,7 +107,7 @@ The next point in the unit box: expected improvement on `ncand` counter-based ca
 WP-045 maximizer with ForwardDiff gradients from the `nrefine` best of them. Points closer than
 1e-6 to an evaluated one are skipped.
 """
-function propose(X, y, θ, seed, iter; ξ = 0.01, ncand = 2048, nrefine = 5)
+function propose(X, y, θ, seed, iter; ξ = 0.0, ncand = 2048, nrefine = 5)
     d = length(X[1])
     C = cholesky(Symmetric(gram(X, θ)))
     α = C \ y
@@ -132,7 +132,7 @@ points, then one expected-improvement point at a time, refitting the GP's hyperp
 every evaluation. Values are standardized (mean 0, standard deviation 1) before each fit. `x` and
 `y` list every evaluation in order; `ei` holds the acquisition's maximum at each proposal.
 """
-function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ = 0.01, verbose = false)
+function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ = 0.0, verbose = false)
     d = length(lo)
     to_box(u) = lo .+ u .* (hi .- lo)
     U = latin_hypercube(n_init, d, seed)
