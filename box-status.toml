@@ -1,0 +1,83 @@
+branch = "runs/wp051-r3"
+request_commit = "f945f2ba9b537e22c210d63153a9af3e85cb6e1b"
+started = "2026-11-09T17:28:52Z"
+category = "validation"
+outputs = ["scripts/runs/wp051-r3"]
+finished = "2026-11-09T19:40:19Z"
+ok = true
+files_returned = 21
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T17:28:54Z"
+exit = 0
+seconds = 198
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T17:32:12Z"
+exit = 0
+seconds = 331
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T17:37:43Z"
+exit = 0
+seconds = 601
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T17:47:44Z"
+exit = 0
+seconds = 676
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T17:59:00Z"
+exit = 0
+seconds = 1142
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T18:18:02Z"
+exit = 0
+seconds = 1062
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T18:35:44Z"
+exit = 0
+seconds = 609
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T18:45:54Z"
+exit = 0
+seconds = 670
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T18:57:04Z"
+exit = 0
+seconds = 2117
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T19:32:20Z"
+exit = 0
+seconds = 479
