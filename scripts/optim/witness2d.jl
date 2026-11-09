@@ -240,7 +240,7 @@ function plot_results(dir, out)
     Pf = reduce(hcat, Float64.(p["phys"]) for p in out["fixed_a0"]["optimizer"]["path"])
     scatterlines!(ax, Pf[1, :], Pf[2, :]; color = :white, linestyle = :dot, markersize = 5, label = "fixed a₀ (not this map)")
     hlines!(ax, [out["theory"]["density_1d_linear"]]; color = :magenta, linestyle = :dash, label = "1D linear dephasing n₀ (rough)")
-    axislegend(ax; position = :rt)
+    axislegend(ax; position = :rb)
     s = out["slices"]
     best = out["optimizer"][argmax([r["J"] for r in out["optimizer"]])]
     τb, nb, cb = Float64.(best["phys"])
@@ -256,7 +256,7 @@ function plot_results(dir, out)
     scatterlines!(ax3, Float64.(out["fixed_a0"]["tau"]), Float64.(out["fixed_a0"]["J"]); label = "fixed a₀ = $(round(out["fixed_a0"]["a0"]; digits = 3))")
     scatterlines!(ax3, Float64.(out["low_energy"]["tau"]), Float64.(out["low_energy"]["J"]); label = "energy / 2.25")
     scatter!(ax3, [τb], [best["J"]]; color = :red, markersize = 12, label = "optimum")
-    axislegend(ax3; position = :lb)
+    axislegend(ax3; position = :rt)
     save_plot(dir, "witness2d", fig, out)
 end
 
