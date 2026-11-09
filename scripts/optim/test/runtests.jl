@@ -82,6 +82,8 @@ end
     @test witness_gains(st1).gain == witness_gains(st2).gain            # test particles: the centre does not move them
     @test gain_at_centers(st1, [38.0, 44.0]) ≈ [witness_energy_gain(st1), witness_energy_gain(st2)] rtol = 1e-13
     @test !(witness_energy_gain(st1) ≈ witness_energy_gain(st2))
+    # a centre far outside the lattice's region is refused, not returned as NaN
+    @test_throws ArgumentError gain_at_centers(st1, [500.0])
     # a lost witness is refused, as witness_energy_gain refuses it (last: this changes st1)
     s = ParticleMeshElectromagnetic.witness_frame(st1).species
     status = Array(s.status)
