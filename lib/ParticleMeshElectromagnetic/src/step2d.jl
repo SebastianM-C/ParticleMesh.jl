@@ -134,6 +134,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
              WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes; back = numerics.back_absorber, workgroupsize = wgs)
     antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers)
     window === nothing || check_window_antennas(window, antennas)
+    witness = problem.witness === nothing ? nothing : WitnessFrame(problem, grid, backend)
     species = map(problem.species) do d
         cap = prod(n) * prod(d.ppc)
         window === nothing || (cap = ceil(Int, (1 + numerics.headroom) * cap))
@@ -153,7 +154,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            kmode = problem.kmode, khat = (k[1] / knorm, k[2] / knorm), tables = tables,
            partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]),
-           antennas = antennas, layer = layer, window = window, dt = problem.dt)
+           antennas = antennas, layer = layer, window = window, witness = witness, dt = problem.dt)
     return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), hist, aux)
 end
@@ -205,6 +206,7 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
         window === nothing || (load_window_species!(window, i, s, grid, wgs, d); continue)
         load_species!(s, grid, (d.density, d.amplitude, k[1], k[2]), d, problem.seed; density_at, workgroupsize = wgs)
     end
+    clear_witness!(witness_frame(st))
     foreach(a -> fill!(a, zero(T)), st.fields)
     for (s, ws) in zip(st.species, st.ws)
         sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
@@ -280,7 +282,9 @@ retired before the current (their current would land at the opposite edge), the 
 in the lab frame (their window columns move back with the shifts, and they stop once the window
 has passed them), and after the field solve the window shifts by the cells it moved in this
 step ([`window_shifts`](@ref)): E, B and the particles one column back, the back column dropped,
-the fresh plasma of the injection column loaded. With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
+the fresh plasma of the injection column loaded. A witness bunch (WP-047, [`WitnessBunch`](@ref)) is
+injected at the start of its step, pushed with the species and moved and retired at the edges as
+they are, and deposits nothing. With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
 after every step (T-360), off the antenna columns with lasers (T-406), and off the layer rows
 with an open boundary (T-451); with passes its filtered form does (T-441). `k` must lie within
 the allocated steps, `params.kmode` must be the state's diagnostic mode and `params.dt` the
@@ -298,7 +302,8 @@ function step!(st::EMState{2}, p::EMParams, k::Integer)
     p.dt == st.aux.dt || throw(ArgumentError("params.dt = $(p.dt) is not the time step $(st.aux.dt) the state's antennas and layer were made for"))
     k == 1 && (reset_absorber!(st.aux.layer); reset_back!(st.aux.window))
     record_diagnostics!(st, k)
-    for s in st.species
+    inject_witness!(witness_frame(st), grid, k, wgs)
+    for s in (st.species..., witness_species(st)...)
         launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
                                                        (p.dt / dx[1], p.dt / dx[2]), n; ndrange = capacity(s))
     end

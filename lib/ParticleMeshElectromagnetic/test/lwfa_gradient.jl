@@ -36,13 +36,14 @@ const LWFA_GRADIENT_NAMES = ("a0", "duration", "focus", "density", "ramp")
 const LWFA_GRADIENT_BETA = 200
 
 """
-    lwfa_gradient_problem(x; nsteps = 350) -> EMProblem{2}
+    lwfa_gradient_problem(x; nsteps = 350, witness = nothing) -> EMProblem{2}
 
-The WP-043 case of element type `eltype(x)` with `x = (a0, duration, focus, density, ramp)`.
+The WP-043 case of element type `eltype(x)` with `x = (a0, duration, focus, density, ramp)`, and
+the witness bunch `witness` of WP-047 (none by default).
 The pulse's delay is fixed at 36, so the pulse starts below roundoff, and the window starts at
 72, after the antenna has finished (delay + 6·duration), for durations up to 6.
 """
-function lwfa_gradient_problem(x; nsteps = 350)
+function lwfa_gradient_problem(x; nsteps = 350, witness = nothing)
     T = promote_type(map(typeof, x)...)
     a0, duration, focus, density, ramp = map(T, x)
     cells = (160, 16)
@@ -53,7 +54,7 @@ function lwfa_gradient_problem(x; nsteps = 350)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), density, zero(T), (1, 0), (2, 2), ZERO3(T), ZERO3(T), 1)
     return EMProblem("lwfa-gradient", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
                      lasers = (pulse,), boundaries = (:window, :periodic), window = MovingWindow(; start = T(72)),
-                     profile = DensityRamp(; vacuum = T(64), ramp))
+                     profile = DensityRamp(; vacuum = T(64), ramp), witness)
 end
 
 "The state of the WP-043 case after its run, in `mode`, with `passes` binomial filter passes (none in WP-043)."
