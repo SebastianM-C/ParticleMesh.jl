@@ -1,0 +1,20 @@
+branch = "runs/grad-recheck-core-20261109"
+request_commit = "197853f236006998fc4967be405c7b616fc6edf4"
+started = "2026-11-09T10:17:19Z"
+category = "test"
+outputs = []
+finished = "2026-11-09T10:28:15Z"
+ok = true
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-09T10:17:19Z"
+exit = 0
+seconds = 656
