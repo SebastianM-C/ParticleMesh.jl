@@ -28,24 +28,30 @@ injection_step(inject, dt) = findfirst(k -> (k - 1) * dt >= inject, 1:10^6)
 
 A periodic 2D box (16 × 8 cells of 1/2, Δt at 0.9 of the Courant limit) with no plasma (one
 species of zero density) and a uniform background field `E0 = (Ex, 0, 0)`, and a witness bunch of
-2 × 1 points per cell on the cells with centres in ((2, 6), (1, 3)), injected at t = 5.5·Δt (step
-7) with u₀ = (3, 1/2, 0).
+2 × 1 points per cell on the cells with centres in ((2.1, 5.9), (1, 3)) (bounds off the cell edges,
+where a selection by the cell's centre and one by its whole extent differ), injected at t = 5.5·Δt
+(step 7) with u₀ = (3, 1/2, 1/4), of charge −2 and mass 4 (q/m = −1/2). `boundaries` and
+`absorber` make axis 2 open.
 """
-function witness_in_E(::Type{T}; nsteps = 40, Ex = -1 // 20, center = (T(4), T(2)), len = T(1), wid = T(3) / 2) where {T}
+function witness_in_E(::Type{T}; nsteps = 40, Ex = -1 // 20, center = (T(4), T(2)), len = T(1), wid = T(3) / 2,
+                      momentum = (T(3), T(1) / 2, T(1) / 4), region = ((2.1, 5.9), (1, 3)), boundaries = (:periodic, :periodic)) where {T}
     cells = (16, 8)
     L = (T(8), T(4))
     dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2))) / 10
     e = SpeciesDescription{T}(:electron, -one(T), one(T), zero(T), zero(T), (1, 0), (1, 1), ZERO3(T), ZERO3(T), 1)
-    wb = WitnessBunch(; inject = 5.5 * Float64(value_of(dt)), region = ((2, 6), (1, 3)), ppc = (2, 1),
-                      momentum = (T(3), T(1) / 2, zero(T)), center, length = len, width = wid)
-    return EMProblem("witness-E", L, cells, T(dt), nsteps, (e,), 1, (1, 0); E0 = (T(Ex), zero(T), zero(T)), witness = wb)
+    wb = WitnessBunch(; inject = 5.5 * Float64(value_of(dt)), region, ppc = (2, 1), momentum, center, length = len, width = wid,
+                      charge = -2, mass = 4)
+    return EMProblem("witness-E", L, cells, T(dt), nsteps, (e,), 1, (1, 0); E0 = (T(Ex), zero(T), zero(T)), witness = wb, boundaries)
 end
 
 # The witness's work in a prescribed field, an exact discrete identity: in a uniform E along x and
 # no B, Boris adds (q/m)·Ex·Δt to u_x in every push (two half kicks, no rotation) and leaves u_y,
 # u_z as they are, so after the injection at step k₀ and n − k₀ + 1 pushes every witness has
 # u_x = u₀ₓ + (n − k₀ + 1)·(q/m)·Ex·Δt and the gain m·(γ − γ₀) of that momentum (to roundoff over
-# the pushes); the bunch is empty before step k₀ and whole from it; the weights are the Gaussian of
+# the pushes; q/m = −1/2 and m = 4, so the bunch's own charge and mass are the ones used); the
+# bunch is empty before step k₀ and whole from it, and empty again after a second `initialize!`;
+# the injection step is the first whose start time reaches the injection time, a start time on it
+# included; the weighted mean counts the alive witnesses only; the weights are the Gaussian of
 # the lattice positions, computed here from the definition, and with the centre and the length
 # duals their partials are the closed forms ∂w/∂c = w·(x − c)/ℓ², ∂w/∂ℓ = w·(x − c)²/ℓ³, while
 # the positions carry none (A3).
@@ -73,15 +79,15 @@ function body_T640(be)
         @test witness_alive(st) == length(pts) == 8 * 4 * 2      # 8 cells × 4 rows × 2 points
         g = witness_gains(st)
         npush = prob.nsteps - k0 + 1
-        ux = 3 + npush * (-1) * (-1 / 20) * dt
-        gain = sqrt(1 + ux^2 + 1 / 4) - sqrt(1 + 9 + 1 / 4)
+        ux = 3 + npush * (-1 / 2) * (-1 / 20) * dt
+        gain = 4 * (sqrt(1 + ux^2 + 1 / 4 + 1 / 16) - sqrt(1 + 9 + 1 / 4 + 1 / 16))
         s = witness_frame(st).species
         err = maximum(abs, value_of.(Array(s.u[1])) .- ux) / (npush * base_eps(T) * ux)
         record!("T-640", T, err)
         @test err <= emC("T-640")
-        @test all(==(T(1) / 2), Array(s.u[2])) && all(iszero, Array(s.u[3]))
-        @test maximum(x -> abs(value_of(x) - gain), g.gain) <= emC("T-640") * npush * base_eps(T) * ux
-        @test abs(value_of(witness_energy_gain(st)) - gain) <= emC("T-640") * npush * base_eps(T) * ux
+        @test all(==(T(1) / 2), Array(s.u[2])) && all(==(T(1) / 4), Array(s.u[3]))
+        @test maximum(x -> abs(value_of(x) - gain), g.gain) <= emC("T-640") * 4 * npush * base_eps(T) * ux
+        @test abs(value_of(witness_energy_gain(st)) - gain) <= emC("T-640") * 4 * npush * base_eps(T) * ux
         # the weights from the definition, at the lattice (the lattice order is the slot order)
         c, ℓ, wd = (4.0, 2.0), 1.0, 1.5
         for (i, (x, y)) in enumerate(pts)
@@ -96,6 +102,51 @@ function body_T640(be)
             @test all(x -> all(iszero, partials(x)), Array(s.offset[1]))
             @test all(x -> all(iszero, partials(x)), Array(s.u[1]))   # the field carries no partials
         end
+        # the mean over the alive witnesses only: retire every third one and change one alive gain
+        st_ = Array(s.status)
+        st_[1:3:end] .= ParticleMeshCore.FREE
+        copyto!(s.status, st_)
+        u1 = Array(s.u[1])
+        u1[2] += one(T)
+        copyto!(s.u[1], u1)
+        g = witness_gains(st)
+        a = findall(g.alive)
+        @test length(a) == length(pts) - length(1:3:length(pts))
+        mean = sum(value_of(g.w[i]) * value_of(g.gain[i]) for i in a) / sum(value_of(g.w[i]) for i in a)
+        @test_throws ArgumentError witness_energy_gain(st)            # a retired witness is refused by default
+        @test value_of(witness_energy_gain(st; allow_lost = true)) ≈ mean rtol = 16 * base_eps(T)
+        @test !(value_of(witness_energy_gain(st; allow_lost = true)) ≈ sum(value_of.(g.w) .* value_of.(g.gain)) / sum(value_of.(g.w)))
+        # weights that underflow on every alive witness (the centre far outside the region) are refused, not a NaN
+        copyto!(s.w, zero(Array(s.w)))
+        @test_throws ArgumentError witness_energy_gain(st; allow_lost = true)
+        initialize!(st, prob)
+        @test witness_alive(st) == 0
+    end
+    # the injection step, on the host: a start time equal to the injection time is the injection
+    @test ParticleMeshElectromagnetic.witness_step(1.5, 0.25) == 7
+    @test ParticleMeshElectromagnetic.witness_step(1.6, 0.25) == 8
+    @test ParticleMeshElectromagnetic.witness_step(0.0, 0.25) == 1
+    # an open axis 2: witnesses of u₀ = (0, 3, 0) leave through the top edge and are retired, the
+    # ones whose straight orbit y₀ + n·v·Δt has passed L₂ after n pushes and no others
+    for T in TYPES
+        prob = witness_in_E(T; Ex = 0, momentum = (zero(T), T(3), zero(T)), region = ((2, 6), (2.6, 3.9)),
+                            boundaries = (:periodic, :open), nsteps = 10)
+        st = EMState(prob, EMNumerics(; current = NoCurrent(), absorber = AbsorbingLayer(; cells = 3, strength = 1.0)); backend = be)
+        initialize!(st, prob)
+        k0 = witness_frame(st).kinj
+        pts, _ = lattice(prob.witness, Float64.(value_of.(cellsize(st.grid))), ncells(st.grid))
+        v = 3 / sqrt(10)
+        dt = Float64(value_of(prob.dt))
+        p = params(prob)
+        counts, expected = Int[], Int[]
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            k >= k0 || continue
+            push!(counts, witness_alive(st))
+            push!(expected, count(q -> q[2] + (k - k0 + 1) * v * dt < 4, pts))
+        end
+        @test counts == expected
+        @test 0 < last(counts) < first(counts) < length(pts)       # the top row leaves in the first push, the bottom one stays
     end
 end
 
@@ -123,7 +174,7 @@ end
 # exactly zero); a bunch at rest moves one cell back with every shift and is retired when it falls
 # behind the back edge, so the alive count after each step is the number of lattice points whose
 # cell lies behind no more than the shifts since the injection, and once none is left the
-# objective is refused.
+# objective is refused; a bunch moving backwards leaves through the back edge between shifts.
 function body_T641(be)
     for T in TYPES
         prob = witness_in_window(T; momentum = T(10), region = ((4, 8), (1, 2)))
@@ -166,6 +217,30 @@ function body_T641(be)
         @test counts == expected
         @test first(counts) == length(pts) && last(counts) == 0
         @test_throws ArgumentError witness_energy_gain(st)
+
+        # a bunch moving backwards (u₀ = −3) crosses the back edge by its own motion between the
+        # shifts, and is retired there (not wrapped to the front): alive after step k are the
+        # witnesses whose window position, lattice point + (k − k₀ + 1)·v·Δt − cells moved, is ≥ 0
+        prob = witness_in_window(T; momentum = -3 * one(T), region = ((1, 3), (1, 2)), nsteps = 16)
+        st = EMState(prob, EMNumerics(); backend = be)
+        initialize!(st, prob)
+        w = st.aux.window
+        k0 = witness_frame(st).kinj
+        pts, _ = lattice(prob.witness, h, ncells(st.grid))
+        v = -3 / sqrt(10)
+        dt = Float64(value_of(prob.dt))
+        p = params(prob)
+        counts, expected = Int[], Int[]
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            k >= k0 || continue
+            push!(counts, witness_alive(st))
+            moved = window_shifts(w, k) - window_shifts(w, k0 - 1)
+            push!(expected, count(q -> q[1] + (k - k0 + 1) * v * dt - moved * h[1] >= 0, pts))
+        end
+        @test counts == expected
+        @test last(counts) == 0 && length(unique(counts)) > 2
+        @test all(<=(ncells(st.grid)[1] ÷ 2), Array(witness_frame(st).species.cell[1])[Array(witness_frame(st).species.status) .== 0x01])
     end
 end
 
@@ -196,12 +271,12 @@ const WITNESS_NAMES = (LWFA_GRADIENT_NAMES..., "center", "length")
 "The WP-047 objective at `x = (a0, duration, focus, density, ramp, center, length)`: the witness bunch's mean energy gain in the WP-043 case."
 function lwfa_witness_gain(x, mode = Reference(); kw...)
     st, _ = lwfa_gradient_run(x[1:5], mode; witness = lwfa_witness(x[6], x[7]), kw...)
-    witness_alive(st) == capacity(witness_frame(st).species) || error("a witness left the window")
-    return witness_energy_gain(st)
+    return witness_energy_gain(st)                   # refuses a run in which a witness left the window
 end
 
 # One ForwardDiff gradient in all seven parameters (chunk 7, Float64, Reference) against A7's
-# finite-difference floor on each partial, as T-581 does for the wake amplitude: the laser and
+# finite-difference floor on each partial, as T-581 does for the wake amplitude (the scan carried
+# on to 2⁻²⁰, since this objective is smooth enough that the quotients at 2⁻¹⁴ still converge): the laser and
 # plasma parameters reach the objective through the fields along the witnesses' orbits, the
 # bunch's through its weights alone.
 const T642_AD = Ref{Any}(nothing)
@@ -217,7 +292,7 @@ const T642_AD = Ref{Any}(nothing)
     T642_AD[] = ad
     for i in eachindex(x0)
         f(xi, mode, seed) = lwfa_witness_gain(ntuple(j -> j == i ? xi : x0[j], length(x0)), mode)
-        hs = x0[i] .* 2.0 .^ (-4:-2:-14)
+        hs = x0[i] .* 2.0 .^ (-4:-2:-20)                # to 2⁻²⁰, past where truncation gives way to roundoff
         r = fd_scan(f, x0[i], hs; seed = 1, ad = ad[i])
         ratio = r.rel[r.istar] / r.floor_rel
         @info "T-642 $(WITNESS_NAMES[i])" ad = ad[i] fd = r.fd[r.istar] h = hs[r.istar] rel = r.rel[r.istar] floor = r.floor_rel ratio

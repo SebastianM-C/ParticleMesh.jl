@@ -208,19 +208,28 @@ function witness_gains(st::EMState{2})
 end
 
 """
-    witness_energy_gain(state::EMState{2}) -> T
+    witness_energy_gain(state::EMState{2}; allow_lost = false) -> T
 
 The objective of WP-047: the weighted mean energy gain of the witness bunch's alive particles,
 `Σ wᵢ·gainᵢ / Σ wᵢ` over [`witness_gains`](@ref), in mₑc², summed on the host in lattice order
-(deterministic). Differentiable in every parameter of the run and of the bunch (A3) as long as no
-witness is retired ([`witness_alive`](@ref)). An `ArgumentError` if no witness is alive (before
-the injection, or all lost).
+(deterministic), the gain read at the end of the run so far (the horizon of the run is part of the
+objective). Differentiable in every parameter of the run and of the bunch (A3) as long as no
+witness is retired: a parameter step across a retirement makes it jump, so by default a retired
+witness is an `ArgumentError` (`allow_lost = true` averages over the alive ones, [`witness_alive`](@ref)).
+The weights are a Gaussian truncated to the lattice's region, so the region should cover the
+centre by several lengths and widths; if the weights of the alive witnesses vanish (the centre far
+outside the region), or none is alive (before the injection, or all lost), it is an
+`ArgumentError` too, never a NaN.
 """
-function witness_energy_gain(st::EMState{2})
+function witness_energy_gain(st::EMState{2}; allow_lost::Bool = false)
     g = witness_gains(st)
     any(g.alive) || throw(ArgumentError("no witness particle is alive: the bunch is not injected yet, or every particle left the box"))
+    allow_lost || all(g.alive) ||
+        throw(ArgumentError("$(count(!, g.alive)) of the $(length(g.alive)) witness particles left the box, so the mean jumps between neighbouring parameter values; widen the window, move the bunch, or pass allow_lost = true"))
     num = sum(g.w[i] * g.gain[i] for i in eachindex(g.w) if g.alive[i])
     den = sum(g.w[i] for i in eachindex(g.w) if g.alive[i])
+    den > 0 ||
+        throw(ArgumentError("the weights of the alive witnesses vanish (they underflow): the bunch's centre lies far outside the lattice's region"))
     return num / den
 end
 
