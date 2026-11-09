@@ -149,7 +149,7 @@ end
     end
 end
 
-@testset "T-232 uniform E, B = 0: exact u, recorded position error [A1, A2, A7, WP-015]" begin
+@testset "T-232 uniform E, B = 0: exact u, second-order position error [A1, A2, A7, WP-015, WP-037]" begin
     @testset "u exact, $(pname(P)), $(type_label(T))" for P in PUSHERS, T in TYPES
         V = basetype(T)
         qm = -one(V)
@@ -197,9 +197,30 @@ end
             @test all(isfinite, errs)
         end
     end
+
+    # WP-037: the module's own test-particle step, push_particle (drift, kick, drift, x and u at
+    # the same time), from x = 0 at t = 0. The loop above writes its drift inline, so only this
+    # one checks the module's drift: second order on every pair, and its error constant.
+    @testset "push_particle position error and its order, $(pname(P))" for P in PUSHERS
+        a, u0 = -1.0, 0.5
+        γ0 = sqrt(1 + u0^2)
+        xexact(t) = (sqrt(1 + (u0 + a * t)^2) - γ0) / a
+        errs = Float64[]
+        for dt in (0.2, 0.1, 0.05, 0.025)
+            N = round(Int, 10 / dt)
+            x, u = (0.0, 0.0, 0.0), (u0, 0.0, 0.0)
+            for n in 1:N
+                x, u = push_particle(P, x, u, (n - 1) * dt, dt, -1.0, (x, t) -> (1.0, 0.0, 0.0), (x, t) -> (0.0, 0.0, 0.0))
+            end
+            push!(errs, abs(x[1] - xexact(N * dt)))
+        end
+        record_named!("T-232 push_particle x error at Δt = 0.025", pname(P), errs[end])
+        @test all(o -> abs(o - 2) <= EMTOL["T-232"]["order_tol"], orders(errs))
+        @test errs[end] <= EMTOL["T-232"]["x_error_push_particle"]
+    end
 end
 
-@testset "T-233 crossed fields: the E×B drift [A2, A7, WP-015]" begin
+@testset "T-233 crossed fields: the E×B drift and its second-order error [A2, A7, WP-015, WP-037]" begin
     @testset "$(pname(P)), $(type_label(T))" for P in PUSHERS, T in (Float32, Float64)
         dt = T(1) / 10
         nsteps = 10_000
@@ -220,6 +241,7 @@ end
             rel = (vx / nsteps - Float64(E0)) / Float64(E0)
             record_named!("T-233 drift relative error $(type_label(T)) Δt=0.1", "$(pname(P)) E0=$(Float64(E0)) $(parallel ? "v∥" : "v⊥")", abs(rel))
             @test isfinite(rel)
+            @test abs(rel) <= pC("T-233", P, "drift_rel")
         end
         if P isa Vay || P isa HigueraCary
             record!("T-233 stays at E×B $(pname(P))", T, worst)
@@ -243,6 +265,7 @@ end
         @info "T-233 drift error at E0 = 0.1 against ΩΔt = 0.4, 0.2, 0.1 ($(pname(P)))" errs orders(errs)
         record_named!("T-233 drift error order in ΩΔt at E0 = 0.1", pname(P), orders(errs)[end])
         @test all(isfinite, errs)
+        @test all(o -> abs(o - 2) <= EMTOL["T-233"]["order_tol"], orders(errs))
     end
 end
 
@@ -425,7 +448,7 @@ function long_run(P, x::NTuple{3,T}, u::NTuple{3,T}, dt::T, nsteps, E, B, H, oth
     return (; maxrel, slope, others = omax)
 end
 
-@testset "T-236 long-run energy in static non-uniform fields [A2, A7, WP-015]" begin
+@testset "T-236 long-run energy in static non-uniform fields stays within its proposed bounds [A2, A7, WP-015, WP-037]" begin
     @testset "Higuera–Cary's integrable system, $(pname(P)), $(type_label(T))" for P in PUSHERS, T in (Float32, Float64)
         for py0 in (1.625, 1.775)
             x, u = hc_start(T(py0))
@@ -436,6 +459,11 @@ end
             record_named!("T-236 HC system p_y0=$py0: max |Δp_z|", key, r.others[1])
             record_named!("T-236 HC system p_y0=$py0: max |ΔI_y|", key, r.others[2])
             @test isfinite(r.maxrel) && isfinite(r.slope) && all(isfinite, r.others)
+            # WP-037: the bounds proposed in WP-015 (reports/pushers.md), now asserted
+            @test r.maxrel <= pC("T-236", P, "proposed_hc")
+            @test abs(r.slope) <= EMTOL["T-236"]["drift_rate"]
+            @test r.others[1] <= EMTOL["T-236"]["pz"]
+            P isa Vay || @test r.others[2] <= EMTOL["T-236"]["Iy"][type_label(T)]
         end
     end
     @testset "B = r ẑ, φ = 10⁻²/r, $(pname(P)), $(type_label(T))" for P in PUSHERS, T in (Float32, Float64)
@@ -444,6 +472,8 @@ end
             record_named!("T-236 max |ΔH/H| $label", "$(pname(P)) $(type_label(T))", r.maxrel)
             record_named!("T-236 drift rate |d(ΔH/H)/dt| $label", "$(pname(P)) $(type_label(T))", abs(r.slope))
             @test isfinite(r.maxrel) && isfinite(r.slope)
+            @test r.maxrel <= EMTOL["T-236"]["proposed_qin"]
+            @test abs(r.slope) <= EMTOL["T-236"]["drift_rate"]
         end
     end
 end

@@ -32,7 +32,7 @@ else
         rerun_module_on(GPU, (("T-360", body_T360), ("T-361", body_T361), ("T-364", body_T364), ("T-365", body_T365)))
     end
 
-    @testset "T-381 the 2D step with current on CUDA is bitwise across reruns and launch shapes, and its rates differ from the CPU's by a measured amount [A4, A7, WP-023]" begin
+    @testset "T-381 the 2D step with current on CUDA is bitwise across reruns and launch shapes, and its rates differ from the CPU's by less than a measured bound [A4, A7, WP-023, WP-037]" begin
         first = em2d_step_digests(; be = GPU)
         @test em2d_step_digests(; be = GPU) == first
         for wgs in (64, 256)
@@ -40,12 +40,15 @@ else
         end
         # CPU and CUDA: the 2D physics runs differ by a measured relative amount (as T-197)
         for name in ("landau-oblique-2d", "weibel-2d")
+            # both runs must exist (T-364, T-365 and T-380 store them), or the comparison would compare nothing
+            @test haskey(PHYSICS_2D, name) && haskey(PHYSICS_2D, physics_key(name, GPU))
             haskey(PHYSICS_2D, name) && haskey(PHYSICS_2D, physics_key(name, GPU)) || continue
             c, g = PHYSICS_2D[name], PHYSICS_2D[physics_key(name, GPU)]
             rate = abs(g.f.gamma - c.f.gamma) / abs(c.f.gamma)
             @info "T-381 CPU–CUDA 2D" name rate
             get!(MEASURED, "T-381 CPU-CUDA relative rate", Dict{String,Float64}())[name] = rate
             @test isfinite(rate)
+            @test rate <= emC("T-381", "rate")
         end
     end
 
@@ -111,8 +114,10 @@ else
         end
     end
 
-    @testset "T-197 CPU and CUDA Reference runs differ by a measured relative amount [A4, A7, WP-013]" begin
+    @testset "T-197 CPU and CUDA Reference runs differ by less than a measured bound [A4, A7, WP-013, WP-037]" begin
         for name in ("landau", "two-stream", "weibel")
+            # both runs must exist (physics.jl and T-195 store them), or the comparison would compare nothing (#184)
+            @test haskey(PHYSICS, name) && haskey(PHYSICS, physics_key(name, GPU))
             haskey(PHYSICS, name) && haskey(PHYSICS, physics_key(name, GPU)) || continue
             c, g = PHYSICS[name], PHYSICS[physics_key(name, GPU)]
             rate = abs(g.f.gamma - c.f.gamma) / abs(c.f.gamma)
@@ -123,6 +128,7 @@ else
             d = get!(MEASURED, "T-197 CPU-CUDA relative", Dict{String,Float64}())
             d["$name rate"], d["$name $W history"], d["$name total energy"] = rate, hist, total
             @test isfinite(rate) && isfinite(hist) && isfinite(total)
+            @test rate <= emC("T-197", "rate") && hist <= emC("T-197", "history") && total <= emC("T-197", "total")
         end
         # cumsum_periodic! alone: both backends run one association order, so the difference is
         # the backends' arithmetic only (on one tile and on three).
@@ -135,6 +141,7 @@ else
             record!("T-197 cumsum_periodic! CPU-CUDA n=$n", T, r, GPU)
             @info "T-197 cumsum_periodic! CPU–CUDA" T n bitwise = same_bits(oc, og) ratio = r
             @test isfinite(r)
+            @test r <= emC("T-197", "C_cumsum")
         end
     end
 

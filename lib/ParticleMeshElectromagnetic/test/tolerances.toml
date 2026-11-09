@@ -26,12 +26,36 @@ status = "proposed; the drift error is the unfinished gyration over the run, not
 
 ["T-212"]
 quantity = "discrete Gauss law residual after every step, |D⁻Ex − (ρ − mean ρ)|, from the cumsum_periodic! initial field, both modes"
-scale = "n·max|ρ|·√k after k steps (Landau 214 steps, two-stream 263 steps, 64 particles per cell)"
+scale = "n·max|ρ|·√k after k steps (Landau 214 steps, two-stream 263 steps, 64 particles per cell); Weibel (C_weibel): n·Σₛ max|ρₛ|·√k, 86 steps, since its net ρ is zero up to roundoff"
 C = 4
+C_weibel = 1
 measured = { Float32 = 1.31, Float64 = 1.14, "Dual{Float32,3}" = 1.31 }
-status = "proposed"
+measured_weibel = { Float32 = 0.156, Float64 = 0.101, "Dual{Float32,3}" = 0.156 }
+status = "proposed; C_weibel (WP-037) is six times the largest measured value, both modes, 4 threads"
 
-# Physics against linear theory (A5): relative errors recorded, no threshold asserted.
+["T-197"]
+quantity = "CPU against CUDA, Reference mode, Float64, the configurations of T-214 to T-216: relative difference of the fitted rate (rate), of the field-energy history WEx or WBz (history) and of the total-energy history (total), max |a − b| over max |b|; cumsum_periodic! alone in units of eps(T)·n·max|a|·Δx (C_cumsum)"
+rate = 1e-8
+history = 1e-12
+total = 1e-13
+C_cumsum = 1
+measured = { rate = 3.2e-10, history = 4.8e-14, total = 1.8e-15, cumsum = 0.059 }
+status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/gpu-cuda.md, the largest of the three cases each, WP-013), which predates the load changes of #332 and #349, so not measured on the configuration it now asserts; to be confirmed by a GPU run. The Landau rate is the peak fit's sensitivity to roundoff-level differences of the histories, so its bound is the loosest"
+
+["T-381"]
+quantity = "CPU against CUDA, the 2D runs of T-364 and T-365: relative difference of the fitted rates"
+rate = 1e-9
+measured = { landau = 2.4e-11, weibel = 2e-16 }
+status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/wp-023-em-step-2d.md), which predates T-364's load change in #349, so not measured on the configuration it now asserts; to be confirmed by a GPU run"
+
+["T-290"]
+quantity = "Fast against Reference histories of the module (WEx and K; Weibel WEy, WBz and K): max|h_Fast − h_Reference| over max|h_Reference|"
+scale = "eps(T)·steps, t = 1 (93 to 131 steps), 64 particles per cell, Float32 and Float64"
+C = 32
+measured = { landau = 0.142, two-stream = 10.8, weibel = 1.49 }
+status = "proposed (WP-037), valid for this configuration only (64 particles per cell, t = 1): the largest over Float32 and Float64, 1 to 4 threads and twelve repeats at 4 threads (the physics breaker); C is three times the largest, two-stream Float64. The ratio is not smooth in the configuration: at 32 particles per cell two-stream Float64 gives 29, at 128 Float32 up to 60 at 3 threads, so a change of the test's particle count needs a new C"
+
+# Physics against linear theory (A5): Landau recorded; two-stream and Weibel bounded (WP-037).
 ["T-214"]
 quantity = "Landau damping through the module, kλ_D = 1/2: (measured − theory)/theory"
 case = "landau.toml with 8192 particles per cell and amplitude 5 % (case: 400000 and 1 %), Δt = 0.0093266, 2681 steps, quadratic, Reference, Float64; the case's peak-envelope fit"
@@ -46,7 +70,8 @@ case = "two-stream.toml with 256 particles per cell per beam (case: 1000), Δt =
 theory = { gamma = 0.35087576924479724 }
 measured = { gamma = 0.3458435133298388 }
 relative_error = { gamma = -0.0143 }
-status = "proposed"
+bound = 0.005
+status = "proposed; bound (WP-037) on |relative error − relative_error.gamma|: the beams are cold and regularly loaded, so the run has no seed noise; the WP-037 physics breaker measured −0.0143 at 128, 256 and 512 particles per cell, in Float32 and in Fast mode, and the offset is the fit window's (#168, T-215.wp012). Centred, it catches a force error of 5 % either way (the mutation breaker: +5 % moved the rate by +0.018)"
 
 # WP-012: A5 expected values and noise floors on the cross-code cases (scripts/crosscode/cases/),
 # proposals only; the A7 agreement thresholds wait for the Smilei–PIConGPU spread (stage 2).
@@ -82,7 +107,8 @@ theory = { gamma = 0.2637254682112319 }
 measured = { gamma = 0.261130734463431 }
 relative_error = { gamma = -0.0098 }
 expected_value = { gamma = 0.2637254682112319, note = "the cold-fluid value is the proposed A5 expected value; the module measures it to 1 %" }
-status = "proposed"
+bound = 0.005
+status = "proposed; bound (WP-037) on |relative error − relative_error.gamma|, cold beams with no seed noise: the WP-037 physics breaker measured −0.00984 at 32, 64 and 128 particles per cell, in Float32 and in Fast mode. Centred, it catches a force error of 5 % (+0.018) and a γ that leaves out u_y in the move (+0.022)"
 
 ["T-217"]
 quantity = "largest relative change of the total energy (fields plus kinetic, at integer times) over the run, per case, in the configurations of T-214 to T-216"
@@ -126,14 +152,21 @@ scale = "steps·(|u₀| + E₀·nΔt), 200 steps of Δt = 1/10 from u₀ = 1/2 t
 C = { Boris = 1, Vay = 1, HigueraCary = 1, BorisExactRotation = 1 }
 measured = { Boris = 0.417, Vay = 0.179, HigueraCary = 0.417, BorisExactRotation = 0.417 }
 position = { error_at_dt_0_025_exact_start = 1.89e-5, error_at_dt_0_025_start_t0 = 3.73e-5, order_exact_start = 2.02, order_start_t0 = 2.0, note = "identical for the four pushers: in B = 0 they are the same map" }
-status = "proposed"
+order_tol = 0.1
+x_error_push_particle = 5e-5
+measured_push_particle = { x_error_at_dt_0_025 = 3.72e-5, orders = [2.0, 2.0, 2.0] }
+status = "proposed; since WP-037, push_particle's position from x = 0 at t = 0 over Δt = 0.2 → 0.025 (identical for the four pushers): |order − 2| ≤ order_tol on every pair, and its error at Δt = 0.025 ≤ x_error_push_particle (1.3 times the measured value, a truncation error). The inline-drift position errors above stay recorded: their drift is the test's own, and in B = 0 the u map is exact"
 
 ["T-233"]
 quantity = "crossed fields E = E₀ŷ, B = ẑ, E₀ ∈ {0.1, 0.5, 0.9, 0.99}, started at v = E×B/B² (+ v∥ẑ): |uⁿ − u⁰| for Vay and Higuera–Cary"
 scale = "steps·|u⁰|, 10⁴ steps of Δt = 1/10, Float32 and Float64"
 C = { Vay = 1, HigueraCary = 1 }
 measured = { Vay = 0.0781, HigueraCary = 0.142 }
-status = "proposed; the drift errors of Boris and BorisExactRotation are recorded in reports/pushers.md"
+drift_rel = { Boris = 5e-4, BorisExactRotation = 1.5e-3, Vay = 1e-6, HigueraCary = 1e-6 }
+measured_drift_rel = { Boris = 2.34e-4, BorisExactRotation = 8.13e-4, Vay = 1.2e-7, HigueraCary = 1.92e-7 }
+order_tol = 0.1
+measured_order = { Boris = 2.0, BorisExactRotation = 2.0 }
+status = "proposed; drift_rel (WP-037) bounds |mean vₓ − E₀|/E₀ over the eight starts and both types, about twice the largest measured value for Boris and the exact rotation, whose errors are O((ΩΔt)²) (reports/pushers.md), and the Float32 roundoff for Vay and Higuera–Cary, which hold the drift exactly; order_tol bounds |order − 2| of Boris's and the exact rotation's drift error at E₀ = 0.1 over ΩΔt = 0.4, 0.2, 0.1, both pairs"
 
 ["T-234"]
 quantity = "|det ∂u′/∂u − target|, target 1 (Boris, HigueraCary, BorisExactRotation) or J(u⁻)/J(u⁺) (Vay), the determinant in Float64 of the Jacobian computed in T"
@@ -150,14 +183,19 @@ measured = { invariants = 0.069, closure = 0.177 }
 status = "proposed; error constants in reports/pushers.md"
 
 ["T-236"]
-quantity = "long-run energy in static fields: max |ΔH/H| and |least-squares drift rate of ΔH/H| per unit time, Float64; recorded, not asserted (WP-015 asserts only finiteness until the owner accepts a bound)"
+quantity = "long-run energy in static fields: max |ΔH/H| and |least-squares drift rate of ΔH/H| per unit time, and in Higuera and Cary's system max |Δp_z| and max |ΔI_y|, Float32 and Float64"
 case = "Higuera and Cary's system (E = −x x̂, B = 2y x̂, H = 4, p_z = 0, Δt = 1/10, p_y,0 ∈ {1.625, 1.775}, 6.3·10⁵ steps); B = r ẑ, φ = 10⁻²/r (Δt = π/10, 2·10⁵ steps, two starts); setups in the header of test/pushers.jl"
 measured_hc = { Boris = 5.38e-4, Vay = 3.1e-2, HigueraCary = 5.38e-4, BorisExactRotation = 5.38e-4 }
 measured_hc_Iy = { Boris = 1.4e-13, Vay = 0.66, HigueraCary = 4.7e-13, BorisExactRotation = 2.7e-13 }
 measured_qin = { Boris = 5.88e-5, Vay = 8.81e-5, HigueraCary = 5.89e-5, BorisExactRotation = 5.9e-5 }
 proposed_hc = { Boris = 1e-3, Vay = 5e-2, HigueraCary = 1e-3, BorisExactRotation = 1e-3 }
 proposed_qin = 2e-4
-status = "proposed bounds for A7 (reports/pushers.md), not asserted; Vay's I_y loss is a property of the scheme, recorded"
+drift_rate = 2e-8
+pz = 0.05
+Iy = { Float32 = 1e-3, Float64 = 1e-11 }
+measured_32 = { hc = 5.48e-4, qin = 1.02e-4, drift_rate = 6.11e-9, pz = 2.13e-2, Iy_without_Vay = 1.87e-4 }
+measured_drift_rate = { Vay = 6.11e-9, others = 8.89e-10 }
+status = "proposed bounds for A7 (reports/pushers.md), asserted since WP-037 in Float32 and Float64: max |ΔH/H| (proposed_hc, proposed_qin), |drift rate| (drift_rate, three times Vay's largest, which is about seven times the others'), max |Δp_z| (pz, about twice Boris's largest) and, except for Vay, max |ΔI_y| (Iy, roundoff: B lies along x and the rotation about B keeps I_y); Vay's I_y loss (0.66) is a property of the scheme, recorded"
 
 ["T-237"]
 quantity = "figure-8 at a₀ = 2 with Vern9 through particle_problem: closure error and invariant error along the dense output, in units of the solver tolerance (abstol = reltol = 1e-12)"
@@ -184,7 +222,10 @@ scale = "eps(T)·|u⁰|·steps, 10⁴ steps of Δt = 1/10, Float32 and Float64"
 C_exb = 0.2
 measured = { exb = 0.0955 }
 uniform_E = { relative_u_error_at_dt_0_025 = 3.24e-7, u_order = 1.85, x_error_at_dt_0_025 = 1.02e-4, x_order = 2.0 }
-status = "proposed"
+order_tol = 0.2
+u_error = 5e-7
+x_error = 1.5e-4
+status = "proposed; in uniform E (WP-037) |order − 2| of the u and x errors on the smallest pair (order_tol; u reaches 1.85 there, still pre-asymptotic) and the errors at Δt = 0.025 (about 1.5 times the measured values) are asserted"
 
 ["T-243"]
 quantity = "figure-8 scan, five pushers, a₀ ∈ {1, 2, 5, 10}: |observed order − 2| of γ − u_z and u_x + qA_x over ω₀Δt ∈ {0.2, …, 0.025} on pairs with a₀·ω₀Δt ≤ 1/2 (order_tol), and of the drift and position errors over ω₀Δt down to 0.2/2⁷ on pairs with a₀·ω₀Δt ≤ 1/16 (order_tol_orbit)"
@@ -368,7 +409,10 @@ quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electr
 rate = 0.8
 frequency = 0.08
 transverse = 0.05
-measured = { rate = 0.281, frequency = -0.0087, transverse = 0.00316 }
+rate_ensemble = 0.15
+rate_ensemble_offset = 0.15
+measured = { rate = 0.281, frequency = -0.0087, transverse = 0.00316, rate_ensemble = 0.159 }
+rate_ensemble_note = "WP-037: the rate of the ensemble over the case's first four seeds (WP-032's damping_rate_mode_ensemble rule at test size), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. All 32 case seeds at test size give per-seed rates of +0.140 ± 0.106 (mean ± std) of theory and +0.153 as one ensemble; the eight disjoint four-seed groups +0.074 to +0.211; 20 000 random four-seed subsets +0.149 ± 0.050, outside the bound in 0.1 % of them (the WP-037 physics breaker). The offset is the test size's grid and step: WP-032's full-size 32-seed ensemble lies within 1.3 jackknife errors of theory (reports/wp-032-pm-landau-ensemble.md). The check fails for a rate about 13 % too high or too low"
 status = "proposed; rate is about four seed standard deviations at this size (WP-033: eight seeds with the Maxwell–Jüttner load at 10 %, std 0.18 of theory, mean +14 %, 2.2 standard errors from theory, every seed with at least three maxima; the earlier 5 % perturbation left four of the eight without a fit), so it is an order check; frequency covers the largest seed deviation, 3.1 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/ and reports/wp-032-pm-landau-ensemble.md (velocity load)"
 
 ["T-365"]

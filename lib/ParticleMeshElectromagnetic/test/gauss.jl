@@ -7,26 +7,33 @@
 # of each step adds up: the scale is n·max|ρ|·√k after k steps (a random walk of per-step
 # errors of order eps·n·max|ρ|, since Ex is a prefix sum over n cells); C is measured.
 
-const GAUSS_STEPS = 2   # t_end in 1/ω₀: 214 Landau steps, 263 two-stream steps
+#
+# Weibel (WP-037) runs the transverse current as well. Its two beams carry opposite
+# perturbations against an immobile ion background, so the net ρ is zero up to roundoff and
+# max|ρ| is no scale; its residual is taken relative to Σₛ max|ρₛ|, the species' own densities,
+# with its own constant C_weibel.
+
+const GAUSS_STEPS = 2   # t_end in 1/ω₀: 214 Landau steps, 263 two-stream steps, 86 Weibel steps
 
 function body_T212(be)
-    C = emC("T-212")
-    for name in ("landau", "two-stream"), mode in (Reference(), Fast()), T in TYPES
+    for name in ("landau", "two-stream", "weibel"), mode in (Reference(), Fast()), T in TYPES
+        C = name == "weibel" ? emC("T-212", "C_weibel") : emC("T-212")
+        scale(r) = name == "weibel" ? r.species_scale : r.scale
         amplitude = T === D3 ? seeded(T, name == "landau" ? 0.01 : 0.001) : nothing
         st, p, prob, _ = case_state(name, T; mode, ppc = 64, t_end = GAUSS_STEPS, amplitude, be)
         r0 = gauss_residual(st)
         n = ncells(st.grid)
-        worst = r0.res / (base_eps(T) * n * r0.scale)
+        worst = r0.res / (base_eps(T) * n * scale(r0))
         for k in 1:prob.nsteps
             step!(st, p, k)
             r = gauss_residual(st)
-            worst = max(worst, r.res / (base_eps(T) * n * r.scale * sqrt(k)))
+            worst = max(worst, r.res / (base_eps(T) * n * scale(r) * sqrt(k)))
         end
         record!("T-212 $name", T, worst, be)
         @test worst <= C
     end
 end
 
-@testset "T-212 discrete Gauss law after every step [A2, A7, A8, WP-014]" begin
+@testset "T-212 discrete Gauss law after every step, with the transverse current of Weibel [A2, A7, A8, WP-014, WP-037]" begin
     body_T212(CPU())
 end

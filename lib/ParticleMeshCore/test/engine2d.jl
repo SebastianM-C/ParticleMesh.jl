@@ -280,7 +280,7 @@ end
     body_T265(CPU())
 end
 
-@testset "T-266 2D sort and Reference determinism [A4, WP-018]" begin
+@testset "T-266 2D sort and Reference determinism, against recorded bits [A4, WP-018, WP-037]" begin
     for T in TYPES
         s, ws, grid = sorted_2d(T)
         n = Int32.(ncells(grid))
@@ -306,7 +306,7 @@ end
         @test all(same_bits.(before, species_arrays(s)))
         @test ws.perm == 1:capacity(s)
     end
-    # Reference results: one digest per case for reruns and the three launch shapes, in process and at 1 and 4 threads.
+    # Reference results: one digest per case for reruns and the three launch shapes, in process and at 1 and 4 threads,
     @test engine2d_digests() == INPROCESS_2D
     groups = Dict{String,Vector{String}}()
     for l in INPROCESS_2D
@@ -317,6 +317,9 @@ end
     for nt in (1, 4)
         @test e2d_worker(nt) == INPROCESS_2D
     end
+    # and the bits recorded on a commit (recorded_2d.jl, WP-037), so a change to them fails here
+    @test length(E2D_RECORDED) == 14 * length(TYPES)
+    @test recorded_2d_lines(INPROCESS_2D) == E2D_RECORDED
 end
 
 "T-267's load checks on `be` (the Dual-parameter and N = 1 counter checks are the CPU testset's)."
