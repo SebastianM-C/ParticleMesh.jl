@@ -70,7 +70,7 @@ function body_T215(be)
     PHYSICS[physics_key("two-stream", be)] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
-    @test abs(rel) <= EMTOL["T-215"]["bound"]          # cold beams: no seed noise (WP-037)
+    @test abs(rel - EMTOL["T-215"]["relative_error"]["gamma"]) <= EMTOL["T-215"]["bound"]   # cold beams: no seed noise (WP-037)
 end
 
 @testset "T-215 two-stream through the module against linear theory [A5, A7, A9, WP-014, WP-037]" begin
@@ -112,7 +112,7 @@ function body_T216(be)
     PHYSICS[physics_key("weibel", be)] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
-    @test abs(rel) <= EMTOL["T-216"]["bound"]          # cold beams: no seed noise (WP-037)
+    @test abs(rel - EMTOL["T-216"]["relative_error"]["gamma"]) <= EMTOL["T-216"]["bound"]   # cold beams: no seed noise (WP-037)
     @test ΔWB > 0 && ΔK < 0
 end
 

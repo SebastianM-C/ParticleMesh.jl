@@ -195,10 +195,28 @@ end
             record_named!("T-232 x error at Δt = 0.025 ($start)", pname(P), errs[end])
             record_named!("T-232 x order, smallest pair ($start)", pname(P), o[end])
             @test all(isfinite, errs)
-            # second order with either start, and the error constant of the shared B = 0 map (WP-037)
-            @test abs(o[end] - 2) <= EMTOL["T-232"]["order_tol"]
-            @test errs[end] <= EMTOL["T-232"]["x_error"][string(start)]
         end
+    end
+
+    # WP-037: the module's own test-particle step, push_particle (drift, kick, drift, x and u at
+    # the same time), from x = 0 at t = 0. The loop above writes its drift inline, so only this
+    # one checks the module's drift: second order on every pair, and its error constant.
+    @testset "push_particle position error and its order, $(pname(P))" for P in PUSHERS
+        a, u0 = -1.0, 0.5
+        γ0 = sqrt(1 + u0^2)
+        xexact(t) = (sqrt(1 + (u0 + a * t)^2) - γ0) / a
+        errs = Float64[]
+        for dt in (0.2, 0.1, 0.05, 0.025)
+            N = round(Int, 10 / dt)
+            x, u = (0.0, 0.0, 0.0), (u0, 0.0, 0.0)
+            for n in 1:N
+                x, u = push_particle(P, x, u, (n - 1) * dt, dt, -1.0, (x, t) -> (1.0, 0.0, 0.0), (x, t) -> (0.0, 0.0, 0.0))
+            end
+            push!(errs, abs(x[1] - xexact(N * dt)))
+        end
+        record_named!("T-232 push_particle x error at Δt = 0.025", pname(P), errs[end])
+        @test all(o -> abs(o - 2) <= EMTOL["T-232"]["order_tol"], orders(errs))
+        @test errs[end] <= EMTOL["T-232"]["x_error_push_particle"]
     end
 end
 
