@@ -1,0 +1,12 @@
+timeout = 43200
+category = "validation"
+outputs = ["scripts/runs/wp051-r5"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-t", "16", "scripts/optim/converge2d.jl", "--group=wp051-r5", "probe", "8.5192", "118.0394", "32x2"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-t", "16", "scripts/optim/converge2d.jl", "--group=wp051-r5", "probe", "8.2192", "121.0394", "32x2"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-t", "16", "scripts/optim/converge2d.jl", "--group=wp051-r5", "probe", "8.2192", "118.0394", "16x1,32x2,48x3,32x1"]
