@@ -37,3 +37,4 @@ include(joinpath(@__DIR__, "..", "maximize.jl"))
     r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 1e-12, maxiter = 100)
     @test maximum(abs, r.g) < 1e-8
 end
+include(joinpath(@__DIR__, "bayes.jl"))
