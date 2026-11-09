@@ -17,7 +17,11 @@
 # ForwardDiff gives the tangent dx/dα of the initialized state (a Dual{T,1} run of
 # `initialize!`) and df/dα of the whole run. The chain rule df/dα = ⟨∇f, dx/dα⟩ is an exact
 # identity of the two derivatives of the same code, so the two sides agree to roundoff when
-# both are right. The run writes `result.toml` and `manifest.toml` to
+# both are right. The α tangent is zero on several arrays (Bx, By, Bz, Ez, the offsets, u_z),
+# so a second forward pass seeds a random tangent on every array and checks ⟨∇f, v⟩ too. The
+# verdict is "pass" when both agree within 64·eps(T)·steps. Both checks compare two AD modes of
+# the same code: they do not see a physics defect (a sign in the push, a dropped current
+# component), which the test suite's T-tests guard. The run writes `result.toml` and `manifest.toml` to
 # `scripts/runs/enzyme-<stamp>/`.
 
 using ParticleMeshCore, ParticleMeshElectromagnetic, KernelAbstractions, ForwardDiff, Enzyme
@@ -92,6 +96,33 @@ contrib = Dict(k => sum(G[k] .* tangent[k]) for k in common)
 ad = sum(values(contrib))
 stray = [k for k in only_float if any(!iszero, G[k])]
 rel = abs(ad - fd) / abs(fd)
+# Which part of ∇f the α-direction tests: arrays with a nonzero tangent and a zero gradient
+# (the step overwrites or never reads them), and arrays with a nonzero gradient and a zero
+# tangent (untested by the α-direction).
+zero_grad = [k for k in common if all(iszero, G[k]) && any(!iszero, tangent[k])]
+untested = [k for k in common if any(!iszero, G[k]) && all(iszero, tangent[k])]
+
+# The second check covers every direction: a Dual state with a random tangent v on every
+# floating-point array (the initialized values, seeded counter-free from `seed`), whose
+# forward derivative must equal ⟨∇f, v⟩. It tests the gradient on the arrays the α tangent
+# leaves at zero (Bx, By, Bz, Ez, the offsets, u_z) and on those it never reads.
+using Random: Xoshiro
+rng = Xoshiro(seed)
+stv = initialized(probd)
+Lv = leaves(stv)
+V = Dict{String,Any}()
+for k in common
+    v = randn(rng, T, size(Lv[k]))
+    V[k] = v
+    Lv[k] .= ForwardDiff.Dual{:α}.(L[k], v)
+end
+# the scalars of the Dual state (q, m, Δt, Δx, khat) carry a zero tangent: none depends on α
+@assert all(k -> all(iszero, Lv[k]), setdiff(keys(Lv), keys(L)))
+fdv = ForwardDiff.partials(run_energy!(stv, params(probd), nsteps), 1)
+adv = sum(k -> sum(G[k] .* V[k]), common)
+relv = abs(adv - fdv) / abs(fdv)
+tol = 64 * eps(T) * max(nsteps, 1)
+verdict = rel <= tol && relv <= tol ? "pass" : "FAIL"
 
 # timings once compiled: the primal, one reverse pass, one forward pass
 st1 = deepcopy(st0); t_primal = @elapsed f0 = run_energy!(st1, p, nsteps)
@@ -105,6 +136,9 @@ ninputs = sum(k -> length(G[k]), keys(G))
 @printf("mode=%s steps=%d species=%d T=%s seed=%d\n", mode_name, nsteps, nspecies, T, seed)
 @printf("  f = %.17g\n  forward df/dα = %.17g\n  reverse ⟨∇f, dx/dα⟩ = %.17g\n  relative difference %.3e (eps(T) = %.3e)\n",
         f0, fd, ad, rel, eps(T))
+@printf("  random direction on every array: forward %.17g, reverse %.17g, relative difference %.3e\n", fdv, adv, relv)
+@printf("  verdict %s (tolerance 64·eps(T)·steps = %.3e)\n", verdict, tol)
+println("  nonzero tangent, zero gradient: ", zero_grad, "\n  nonzero gradient, zero α tangent: ", untested)
 @printf("  primal gap between the T and Dual initial states %.3e; Float64-only arrays with a gradient: %s\n", primal_gap, stray)
 @printf("  times: Enzyme first call %.1f s, reverse pass %.4f s, primal %.4f s, one forward (Dual) pass %.4f s; repeat bitwise equal: %s; %d gradient entries\n",
         t_first, t_rev, t_primal, t_fwd, same, ninputs)
@@ -119,6 +153,9 @@ mkpath(out)
 open(io -> TOML.print(io, Dict(
     "case" => Dict("mode" => mode_name, "steps" => nsteps, "species" => nspecies, "eltype" => string(T), "seed" => seed, "alpha" => Float64(α0)),
     "result" => Dict("f" => Float64(f0), "forward" => Float64(fd), "reverse" => Float64(ad), "relative_difference" => Float64(rel),
+                     "random_forward" => Float64(fdv), "random_reverse" => Float64(adv), "random_relative_difference" => Float64(relv),
+                     "tolerance" => Float64(tol), "verdict" => verdict, "zero_gradient_nonzero_tangent" => zero_grad,
+                     "untested_by_alpha" => untested,
                      "eps" => Float64(eps(T)), "primal_gap" => Float64(primal_gap), "stray_gradients" => stray,
                      "repeat_bitwise_equal" => same, "gradient_entries" => ninputs,
                      "contributions" => Dict(k => Float64(v) for (k, v) in contrib if v != 0)),
