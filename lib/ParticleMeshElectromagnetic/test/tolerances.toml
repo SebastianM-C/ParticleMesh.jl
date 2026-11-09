@@ -604,3 +604,32 @@ scale = "the finite-difference floor (A7)"
 C = 1
 measured = { a0 = 0.0267, focus = 0.071, density = 0.0223, "a0, every column" = 3.02, "focus, every column" = 1.09, "density, every column" = 1.03 }
 status = "proposed"
+
+["T-640"]
+quantity = "a witness in a uniform Ex: |u_x − (u₀ₓ + n·(q/m)·Ex·Δt)| after n pushes, the largest over the bunch (C); the gain and the weighted mean against m·(γ − γ₀) of that momentum, in the same units"
+scale = "n·eps(T)·u_x (40 steps, 34 pushes, u_x about 3.5)"
+C = 1
+measured = {}
+status = "proposed"
+
+["T-641"]
+quantity = "a witness of u₀ = 10 in an empty moving window: its window position against lattice point + n·v·Δt − cells moved since the injection, the largest over the bunch"
+scale = "n·eps(T)·L₁ (L₁ = 12, 60 steps)"
+C = 1
+measured = {}
+status = "proposed"
+
+["T-642"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per partial: the witness bunch's weighted mean energy gain in the WP-043 case against a₀, duration, focus, density, ramp length, bunch centre and bunch length, Float64, Reference"
+scale = "the finite-difference floor (A7); floor_max caps the floor itself"
+C = 1
+floor_max = 1e-4
+measured = {}
+status = "proposed"
+
+["T-643"]
+quantity = "the Dual{Float32,3} partials (a₀, density, bunch centre) of the witness bunch's mean energy gain in the WP-043 case against the Float64 ForwardDiff gradient, and the Float32 primal against Float64: largest relative difference"
+scale = "relative (Float32 against Float64 after 350 steps; not a roundoff bound)"
+C = 1e-3
+measured = {}
+status = "proposed"

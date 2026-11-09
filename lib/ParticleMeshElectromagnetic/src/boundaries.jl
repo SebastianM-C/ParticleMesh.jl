@@ -189,7 +189,7 @@ retire!(::Nothing, st) = nothing
 retire!(::LayerFactors, st) = retire_open!(st)
 function retire_open!(st)
     wgs = st.numerics.workgroupsize
-    for s in st.species
+    for s in (st.species..., witness_species(st)...)
         launcher(retire_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     return nothing
