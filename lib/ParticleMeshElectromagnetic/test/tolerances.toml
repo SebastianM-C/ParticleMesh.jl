@@ -40,20 +40,20 @@ history = 1e-12
 total = 1e-13
 C_cumsum = 1
 measured = { rate = 3.2e-10, history = 4.8e-14, total = 1.8e-15, cumsum = 0.059 }
-status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/gpu-cuda.md, the largest of the three cases each), not yet rerun on a GPU with these bounds; the Landau rate is the peak fit's sensitivity to roundoff-level differences of the histories, so its bound is the loosest"
+status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/gpu-cuda.md, the largest of the three cases each, WP-013), which predates the load changes of #332 and #349, so not measured on the configuration it now asserts; to be confirmed by a GPU run. The Landau rate is the peak fit's sensitivity to roundoff-level differences of the histories, so its bound is the loosest"
 
 ["T-381"]
 quantity = "CPU against CUDA, the 2D runs of T-364 and T-365: relative difference of the fitted rates"
 rate = 1e-9
 measured = { landau = 2.4e-11, weibel = 2e-16 }
-status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/wp-023-em-step-2d.md), not yet rerun on a GPU with this bound"
+status = "proposed (WP-037) from one RTX 4080 SUPER run (reports/wp-023-em-step-2d.md), which predates T-364's load change in #349, so not measured on the configuration it now asserts; to be confirmed by a GPU run"
 
 ["T-290"]
 quantity = "Fast against Reference histories of the module (WEx and K; Weibel WEy, WBz and K): max|h_Fast − h_Reference| over max|h_Reference|"
 scale = "eps(T)·steps, t = 1 (93 to 131 steps), 64 particles per cell, Float32 and Float64"
 C = 32
-measured = { landau = 0.0601, two-stream = 9.94, weibel = 1.44 }
-status = "proposed (WP-037); measured at 4 threads, the largest over Float32 and Float64; two-stream is the largest because the instability amplifies the roundoff, so C is about three times it"
+measured = { landau = 0.142, two-stream = 10.8, weibel = 1.49 }
+status = "proposed (WP-037), valid for this configuration only (64 particles per cell, t = 1): the largest over Float32 and Float64, 1 to 4 threads and twelve repeats at 4 threads (the physics breaker); C is three times the largest, two-stream Float64. The ratio is not smooth in the configuration: at 32 particles per cell two-stream Float64 gives 29, at 128 Float32 up to 60 at 3 threads, so a change of the test's particle count needs a new C"
 
 # Physics against linear theory (A5): Landau recorded; two-stream and Weibel bounded (WP-037).
 ["T-214"]
@@ -193,8 +193,8 @@ drift_rate = 2e-8
 pz = 0.05
 Iy = { Float32 = 1e-3, Float64 = 1e-11 }
 measured_32 = { hc = 5.48e-4, qin = 1.02e-4, drift_rate = 6.11e-9, pz = 2.13e-2, Iy_without_Vay = 1.87e-4 }
-measured_drift_rate = { Vay = 6.11e-9, others = 4.86e-10 }
-status = "proposed bounds for A7 (reports/pushers.md), asserted since WP-037 in Float32 and Float64: max |ΔH/H| (proposed_hc, proposed_qin), |drift rate| (drift_rate, three times Vay's largest, which is about ten times the others'), max |Δp_z| (pz, about twice Boris's largest) and, except for Vay, max |ΔI_y| (Iy, roundoff: B lies along x and the rotation about B keeps I_y); Vay's I_y loss (0.66) is a property of the scheme, recorded"
+measured_drift_rate = { Vay = 6.11e-9, others = 8.89e-10 }
+status = "proposed bounds for A7 (reports/pushers.md), asserted since WP-037 in Float32 and Float64: max |ΔH/H| (proposed_hc, proposed_qin), |drift rate| (drift_rate, three times Vay's largest, which is about seven times the others'), max |Δp_z| (pz, about twice Boris's largest) and, except for Vay, max |ΔI_y| (Iy, roundoff: B lies along x and the rotation about B keeps I_y); Vay's I_y loss (0.66) is a property of the scheme, recorded"
 
 ["T-237"]
 quantity = "figure-8 at a₀ = 2 with Vern9 through particle_problem: closure error and invariant error along the dense output, in units of the solver tolerance (abstol = reltol = 1e-12)"
@@ -408,9 +408,10 @@ quantity = "oblique Landau damping at test size (32 × 32 cells, 16 × 16 electr
 rate = 0.8
 frequency = 0.08
 transverse = 0.05
-rate_ensemble = 0.3
+rate_ensemble = 0.15
+rate_ensemble_offset = 0.15
 measured = { rate = 0.281, frequency = -0.0087, transverse = 0.00316, rate_ensemble = 0.159 }
-rate_ensemble_note = "WP-037: the rate of the ensemble over the case's first four seeds (WP-032's damping_rate_mode_ensemble rule at test size), relative to the same theory. Sixteen seeds at test size (the case's first eight and 1 to 8) give per-seed rates of +0.139 ± 0.146 (mean ± std) of theory, the sixteen-seed ensemble +0.145, and the four disjoint four-seed ensembles +0.159, +0.110, +0.086, +0.210 (std 0.054): the test size's grid and step put the rate about 14 % above the theory of the load, while WP-032's full-size 32-seed ensemble lies within 1.3 jackknife errors of it (reports/wp-032-pm-landau-ensemble.md). The bound 0.3 is 2.6 four-seed standard deviations above the measured +0.159 and far below the single-seed order check (0.8)"
+rate_ensemble_note = "WP-037: the rate of the ensemble over the case's first four seeds (WP-032's damping_rate_mode_ensemble rule at test size), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. All 32 case seeds at test size give per-seed rates of +0.140 ± 0.106 (mean ± std) of theory and +0.153 as one ensemble; the eight disjoint four-seed groups +0.074 to +0.211; 20 000 random four-seed subsets +0.149 ± 0.050, outside the bound in 0.1 % of them (the WP-037 physics breaker). The offset is the test size's grid and step: WP-032's full-size 32-seed ensemble lies within 1.3 jackknife errors of theory (reports/wp-032-pm-landau-ensemble.md). The check fails for a rate about 13 % too high or too low"
 status = "proposed; rate is about four seed standard deviations at this size (WP-033: eight seeds with the Maxwell–Jüttner load at 10 %, std 0.18 of theory, mean +14 %, 2.2 standard errors from theory, every seed with at least three maxima; the earlier 5 % perturbation left four of the eight without a fit), so it is an order check; frequency covers the largest seed deviation, 3.1 %. The rate is established by the full-size runs in reports/wp-023-em-step-2d/ and reports/wp-032-pm-landau-ensemble.md (velocity load)"
 
 ["T-365"]
