@@ -42,7 +42,7 @@ include(joinpath(@__DIR__, "..", "maximize.jl"))
     @test all(i -> maximum(abs, r.path[i + 1][1] .- r.path[i][1]) <= 0.05 + 1e-15, 1:(length(r.path) - 1))
     @test r.z ≈ c atol = 1e-8
     r1 = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; maxiter = 1)
-    @test maximum(abs, r1.path[2][1] .- r1.path[1][1]) > 0.05
+    @test maximum(abs, r1.path[2][1] .- r1.path[1][1]) ≈ 0.6 rtol = 1e-12   # the default is no cap (WP-045 relies on it)
 end
 
 # Tests of the WP-052 fixed-energy case (witness2d_case.jl): two full runs of the case, about a minute.
@@ -60,6 +60,13 @@ include(joinpath(@__DIR__, "..", "witness2d_case.jl"))
     @test abs(ForwardDiff.partials(laser_energy(l))[1]) <= 8eps() * WCASE.energy
     @test ForwardDiff.partials(l.a0)[1] ≈ -ForwardDiff.value(l.a0) / 12 rtol = 4eps()
     @test a0_at_energy(6.0) ≈ 1.5 rtol = 4eps()
+    # the keywords reach the problem
+    p = witness_problem(5.0, 0.07, 40.0; inject = 50.0, nsteps = 300, focus = 70.0)
+    @test p.witness.inject == 50.0 && p.nsteps == 300 && p.lasers[1].focus == 70.0
+    # the fixed-a₀ comparison of witness2d.jl: the energy that holds a₀ gives that a₀
+    for τ in (4.0, 7.5)
+        @test a0_at_energy(τ; energy = WCASE.energy * (1.65 / a0_at_energy(τ))^2) ≈ 1.65 rtol = 4eps()
+    end
 end
 
 @testset "T-681 the witness centre enters through the weights only: one run gives the objective at every centre [A3, WP-047, WP-052]" begin
@@ -75,4 +82,20 @@ end
     @test witness_gains(st1).gain == witness_gains(st2).gain            # test particles: the centre does not move them
     @test gain_at_centers(st1, [38.0, 44.0]) ≈ [witness_energy_gain(st1), witness_energy_gain(st2)] rtol = 1e-13
     @test !(witness_energy_gain(st1) ≈ witness_energy_gain(st2))
+    # a lost witness is refused, as witness_energy_gain refuses it (last: this changes st1)
+    s = ParticleMeshElectromagnetic.witness_frame(st1).species
+    status = Array(s.status)
+    status[1] = ParticleMeshElectromagnetic.ParticleMeshCore.FREE
+    copyto!(s.status, status)
+    @test_throws ArgumentError gain_at_centers(st1, [40.0])
+end
+
+@testset "T-682 the interior-maximum test of the run's slices refuses one-sided and flat slices [WP-052]" begin
+    xs = [0.9, 0.95, 1.0, 1.05, 1.1]
+    @test is_interior_max(xs, [1.0, 2.0, 3.0, 2.5, 1.0], 1.0, 3.0)
+    @test !is_interior_max(xs, [1.0, 2.0, 3.0, 3.5, 1.0], 1.0, 3.0)                 # higher on one side
+    @test !is_interior_max(xs, [1.0, 2.0, 3.0, 3.0, 1.0], 1.0, 3.0)                 # a tie
+    @test !is_interior_max([1.0, 1.05, 1.1], [3.0, 2.0, 1.0], 1.0, 3.0)             # one side only (cut by a bound)
+    @test !is_interior_max([0.9, 1.1], [1.0, 1.0], 1.0, 3.0)                        # the optimum not in the slice
+    @test !is_interior_max(xs, [1.0, 2.0, 2.9, 2.5, 1.0], 1.0, 3.0)                 # the slice's centre is not the optimum's value
 end

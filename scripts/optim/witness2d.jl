@@ -28,15 +28,23 @@ phys(z) = (z[1] * SCALE[1], z[2] * SCALE[2], z[3] * SCALE[3])
 
 J(z) = witness_gain(phys(z)...)
 
-"The objective and its gradient in z, in one run with a three-partial dual."
-function fg(z)
+"""
+The objective and its gradient in z, in one run with a three-partial dual. With `a0` given, the
+pulse keeps that a₀ instead of the case's energy (its energy then grows with τ: section 5).
+"""
+function fg(z; a0 = nothing)
     d = ntuple(i -> Dual{Nothing}(z[i], ntuple(j -> Float64(i == j), 3)...), 3)
-    v = witness_gain(phys(d)...)
+    τ, n, c = phys(d)
+    kw = a0 === nothing ? (;) : (; energy = energy_at_a0(a0, τ))
+    v = witness_gain(τ, n, c; kw...)
     f, g = value(v), collect(Tuple(partials(v)))
-    println("  (τ, n₀, x_c) = ", round.(phys(z); digits = 4), "  J = ", f, "  ∇J = ", g)
+    println("  (τ, n₀, x_c) = ", round.(phys(z); digits = 4), a0 === nothing ? "" : "  a₀ = $a0", "  J = ", f, "  ∇J = ", g)
     flush(stdout)
     return f, g
 end
+
+"The energy of a pulse of amplitude `a0` and duration `τ`: the energy keyword that holds a₀ fixed."
+energy_at_a0(a0, τ) = WCASE.energy * (a0 / a0_at_energy(τ))^2
 
 "The best of the objective over the centre box at (τ, n₀) from one run (the centre is free: weights only), on a 0.25 grid."
 function best_over_center(τ, n; kw...)
@@ -148,21 +156,30 @@ function main()
                          "density" => sn, "J_density" => [witness_gain(τb, n, cb) for n in sn],
                          "center" => sc, "J_center" => gain_at_centers(stb, sc))
     jc = best["J"]
+    s = out["slices"]
     check("gain_at_centers at the optimum's centre is witness_energy_gain", isapprox(gain_at_centers(stb, [cb])[1], jc; rtol = 1e-12),
           "$(gain_at_centers(stb, [cb])[1]) and $jc")
-    below(v) = all(x -> x < jc * (1 - 1e-9) || isapprox(x, jc; rtol = 1e-9), v) && count(x -> isapprox(x, jc; rtol = 1e-9), v) == 1
-    s = out["slices"]
-    check("the slices fall on both sides", below(s["J_tau"]) && below(s["J_density"]) && below(s["J_center"]),
+    check("the slices fall below the optimum on both sides",
+          is_interior_max(sτ, s["J_tau"], τb, jc) && is_interior_max(sn, s["J_density"], nb, jc) && is_interior_max(sc, s["J_center"], cb, jc),
           "centre $jc, τ slice $(s["J_tau"]), n₀ slice $(s["J_density"]), x_c slice $(s["J_center"])")
 
-    # 5. Why the energy is fixed: the same τ slice at fixed a₀ (the optimum's), where the energy grows
-    #    with τ, and at fixed energy a factor 2.25 lower (a₀ = 1 at τ = 6), the centre maximized.
+    # 5. Why the energy is fixed: the same problem at fixed a₀ (the optimum's), where the energy grows
+    #    with τ. A τ slice (the centre maximized) and the optimizer from start A, which should hold τ
+    #    at its upper bound; and the τ scan at a fixed energy a factor 2.25 lower (a₀ = 1 at τ = 6).
     τf = [τb * (1 + d) for d in (-0.2, 0.0, 0.2)]
     a0b = a0_at_energy(τb)
-    fixed_a0 = [best_over_center(τ, nb; energy = WCASE.energy * a0b^2 / a0_at_energy(τ)^2) for τ in τf]
-    out["fixed_a0"] = Dict("a0" => a0b, "tau" => τf, "J" => [r.J for r in fixed_a0], "center" => [r.center for r in fixed_a0])
-    check("at fixed a₀ the gain grows with τ (the optimum would run to the upper bound)", issorted([r.J for r in fixed_a0]),
-          "J at τ = $τf: $([r.J for r in fixed_a0])")
+    a0s = [witness_problem(τ, nb, cb; energy = energy_at_a0(a0b, τ)).lasers[1].a0 for τ in τf]
+    check("the fixed-a₀ problems have the optimum's a₀", all(a -> isapprox(a, a0b; rtol = 1e-14), a0s), "a₀ = $a0s, optimum's $a0b")
+    fixed_a0 = [best_over_center(τ, nb; energy = energy_at_a0(a0b, τ)) for τ in τf]
+    println("optimizing at fixed a₀ = $a0b from start A")
+    t = @elapsed r = maximize_box(z -> fg(z; a0 = a0b), z0, LO, HI; maxiter = 40, gtol = 1e-4, xtol = 1e-5, maxstep = 0.1)
+    println("fixed a₀: $(r.reason) after $(r.evals) evaluations, (τ, n₀, x_c) = $(phys(r.z)), J = $(r.f), ∇J = $(r.g)")
+    out["fixed_a0"] = Dict("a0" => a0b, "tau" => τf, "J" => [r.J for r in fixed_a0], "center" => [r.center for r in fixed_a0],
+                           "optimizer" => Dict("start" => z0, "z" => r.z, "phys" => collect(phys(r.z)), "J" => r.f, "grad" => r.g,
+                                               "reason" => r.reason, "evals" => r.evals, "seconds" => t,
+                                               "path" => [Dict("phys" => collect(phys(p[1])), "J" => p[2]) for p in r.path]))
+    check("at fixed a₀ the gain grows with τ", issorted([q.J for q in fixed_a0]), "J at τ = $τf: $([q.J for q in fixed_a0])")
+    check("at fixed a₀ the optimizer ends with τ on its upper bound", r.z[1] == HI[1] && r.g[1] > 0, "τ = $(phys(r.z)[1]), ∂J/∂z₁ = $(r.g[1])")
     τl = [4.0, 5.0, 6.0, 7.0]
     low = [best_over_center(τ, nb; energy = WCASE.energy / 2.25) for τ in τl]
     out["low_energy"] = Dict("energy" => WCASE.energy / 2.25, "tau" => τl, "J" => [r.J for r in low], "center" => [r.center for r in low])
@@ -198,6 +215,8 @@ function plot_results(dir, out)
         P = reduce(hcat, Float64.(p["phys"]) for p in r["path"])
         scatterlines!(ax, P[1, :], P[2, :]; color = (:red, :orange)[k], linewidth = 2, markersize = 7, label = r["name"])
     end
+    Pf = reduce(hcat, Float64.(p["phys"]) for p in out["fixed_a0"]["optimizer"]["path"])
+    scatterlines!(ax, Pf[1, :], Pf[2, :]; color = :white, linestyle = :dot, markersize = 5, label = "fixed a₀ (not this map)")
     hlines!(ax, [out["theory"]["density_1d_linear"]]; color = :magenta, linestyle = :dash, label = "1D linear dephasing n₀")
     axislegend(ax; position = :rt)
     s = out["slices"]

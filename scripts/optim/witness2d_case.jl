@@ -84,8 +84,8 @@ witness_gain(duration, density, center; kw...) = witness_energy_gain(witness_sta
     lattice_x(st) -> Vector{Float64}
 
 The window x of every witness lattice point at its injection, in lattice order (cells along axis 1
-fastest, then rows; within a cell axis 1 fastest), from the state's witness frame: the positions
-the averaging weights are a Gaussian of.
+fastest, then rows; within a cell axis 1 fastest, then axis 2), from the state's witness frame: the
+positions the averaging weights are a Gaussian of (only x: the case's weights do not depend on y).
 """
 function lattice_x(st)
     w = witness_frame(st)
@@ -112,4 +112,19 @@ function gain_at_centers(st, centers; length = WCASE.length)
         w = exp.(-((x0 .- c) ./ length) .^ 2 ./ 2)
         sum(w .* gains) / sum(w)
     end
+end
+
+"""
+    is_interior_max(xs, Js, x0, J0; rtol = 1e-9) -> Bool
+
+Whether a slice `Js` at `xs` through the point `(x0, J0)` shows a maximum there: `xs` holds `x0`
+once, with `J0` there, at least one point strictly on each side of it, and every other `J` below
+`J0` by more than `rtol`. A slice cut short by a bound, with points on one side only, fails.
+"""
+function is_interior_max(xs, Js, x0, J0; rtol = 1e-9)
+    at = [isapprox(x, x0; rtol = 1e-12) for x in xs]
+    count(at) == 1 || return false
+    isapprox(Js[findfirst(at)], J0; rtol) || return false
+    any(<(x0), xs[.!at]) && any(>(x0), xs[.!at]) || return false
+    return all(J -> J < J0 * (1 - rtol), Js[.!at])
 end
