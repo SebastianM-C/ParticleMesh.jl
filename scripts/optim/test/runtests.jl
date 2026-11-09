@@ -99,3 +99,4 @@ end
     @test !is_interior_max([0.9, 1.1], [1.0, 1.0], 1.0, 3.0)                        # the optimum not in the slice
     @test !is_interior_max(xs, [1.0, 2.0, 2.9, 2.5, 1.0], 1.0, 3.0)                 # the slice's centre is not the optimum's value
 end
+include(joinpath(@__DIR__, "bayes.jl"))

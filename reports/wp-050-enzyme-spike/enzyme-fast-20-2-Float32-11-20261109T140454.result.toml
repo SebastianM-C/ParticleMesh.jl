@@ -1,0 +1,42 @@
+[seconds]
+primal = 0.023161292
+forward = 0.016159702
+enzyme_first_call = 101.766007724
+reverse = 0.457352364
+
+[result]
+cancellation = 1.0854206085205078
+random_reverse = -86.61165618896484
+random_relative_difference = 8.808738272136907e-8
+relative_difference = 1.449491037419648e-6
+eps = 1.1920928955078125e-7
+untested_by_alpha = ["st.fields.Bx", "st.fields.By", "st.fields.Bz", "st.fields.Ez", "st.species.1.offset.1", "st.species.1.offset.2", "st.species.1.u.3", "st.species.2.offset.1", "st.species.2.offset.2", "st.species.2.u.3", "st.species.2.w"]
+random_forward = -86.61166381835938
+forward = 2.302780866622925
+tolerance = 0.0001656220410950482
+zero_gradient_nonzero_tangent = ["st.K", "st.aux.spectral.im.1", "st.aux.spectral.im.2", "st.aux.spectral.re.1", "st.aux.spectral.re.2", "st.aux.φ", "st.ρ"]
+stray_gradients = []
+workgroupsize = "nothing"
+reverse = 2.3027842044830322
+primal_gap = 3.566543909983011e-6
+f = 69.61063385009766
+verdict = "pass"
+repeat_bitwise_equal = true
+gradient_entries = 36598
+
+    [result.contributions]
+    "st.species.2.u.1" = 0.01292213425040245
+    "st.species.1.w" = 0.8434675931930542
+    "st.species.2.u.2" = 0.017311062663793564
+    "st.species.1.u.1" = -0.08927080780267715
+    "st.fields.Ex" = 0.8800598382949829
+    "st.species.1.u.2" = -0.00908187497407198
+    "st.fields.Ey" = 0.6473761796951294
+
+[case]
+eltype = "Float32"
+species = 2
+alpha = 0.10000000149011612
+steps = 20
+mode = "fast"
+seed = 11

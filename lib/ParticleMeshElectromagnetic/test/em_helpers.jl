@@ -19,25 +19,29 @@ function case_state(name, ::Type{T}; mode = Reference(), workgroupsize = nothing
 end
 
 """
-    gauss_residual(state) -> (; res, scale)
+    gauss_residual(state) -> (; res, scale, species_scale)
 
 The discrete Gauss law of the layout: `res = max_j |(Ex[j] − Ex[j−1])/Δx − (ρ[j] − mean ρ)|`
 with ρ deposited now in the state's mode (the species are sorted by their current cells after
-a step, as `deposit!`'s Reference mode needs), and `scale = max|ρ|`.
+a step, as `deposit!`'s Reference mode needs), `scale = max|ρ|` and `species_scale` the sum over
+the species of max|ρₛ| (the scale where the species' charges cancel, as in the Weibel case).
 """
 function gauss_residual(st::EMState)
     (; grid, numerics) = st
     T = eltype(st.ρ)
     ρd = field(get_backend(st.ρ), T, grid)
+    species_scale = 0.0
     for (s, ws) in zip(st.species, st.ws)
         deposit!(numerics.mode, ρd, s, numerics.shape, RHO_STAGGER, grid, ws)
+        ρs = fold_guards!(deposit!(numerics.mode, field(get_backend(st.ρ), T, grid), s, numerics.shape, RHO_STAGGER, grid, ws), grid)
+        species_scale += Float64(maximum(absmax, interior_view(Array(ρs), grid)))
     end
     fold_guards!(ρd, grid)
     ρ, Ex = Array(ρd), Array(st.fields.Ex)
     g, n, dx = guards(grid), ncells(grid), cellsize(grid)
     ρ̄ = sum(interior_view(ρ, grid)) / n
     res = maximum(j -> absmax((Ex[g + j] - Ex[g + j - 1]) / dx - (ρ[g + j] - ρ̄)), 1:n)
-    return (; res, scale = maximum(absmax, interior_view(ρ, grid)))
+    return (; res, scale = maximum(absmax, interior_view(ρ, grid)), species_scale)
 end
 
 bits(a::AbstractArray) = reinterpret(UInt8, vec(collect(a)))
