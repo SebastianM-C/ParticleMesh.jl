@@ -17,8 +17,8 @@ Fixed parameters of the case (A1 units).
   vacuum, the ramp and the window's start are WP-045's (`wake2d_case.jl`). The focus is at
   x = 80, 8 c/ω₀ into the plasma.
 - `energy` is the laser energy per unit length in z, `laser_energy` = π·a₀²·w·τ/4·(1 + 1/(2w²)),
-  that of a₀ = 1.5 at τ = 6. At 1/2.25 of it (a₀ = 1 at τ = 6) the duration optimum moves to the
-  shortest pulse the antenna launches well, τ = 4 (the run's `low_energy` slice).
+  that of a₀ = 1.5 at τ = 6 (the run's `low_energy` slice repeats the duration scan at 1/2.25
+  of it).
 - The run is 830 steps (t ≈ 300). The witness is injected at t = 150, once the laser is about
   40 c/ω₀ into the plasma, and accelerated over about 150 c/ω₀, the order of the dephasing length.
 - The witness lattice is 2 × 1 points per cell on the two rows at the axis, over window

@@ -117,7 +117,9 @@ function main()
     out["optimizer"] = runs
     Ja, Jb = runs[1]["J"], runs[2]["J"]
     check("both starts reach the same value", abs(Ja - Jb) <= 1e-4 * max(Ja, Jb), "J = $Ja and $Jb")
-    check("both starts stop on the gradient", all(r -> r["reason"] == "gtol", runs), join((r["reason"] for r in runs), ", "))
+    # a stop on a small step (xtol) is checked before the gradient of the new point is, so the gradient is checked here
+    check("both starts end with the gradient below gtol", all(r -> maximum(abs, r["grad"]) < 1e-4, runs),
+          join(("$(r["reason"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
     best = runs[argmax([r["J"] for r in runs])]
     zb = Float64.(best["z"])
     slack = [min(zb[i] - LO[i], HI[i] - zb[i]) / (HI[i] - LO[i]) for i in 1:3]
