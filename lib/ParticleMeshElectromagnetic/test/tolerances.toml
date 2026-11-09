@@ -607,29 +607,29 @@ status = "proposed"
 
 ["T-640"]
 quantity = "a witness in a uniform Ex: |u_x − (u₀ₓ + n·(q/m)·Ex·Δt)| after n pushes, the largest over the bunch (C); the gain and the weighted mean against m·(γ − γ₀) of that momentum, in the same units"
-scale = "n·eps(T)·u_x (40 steps, 34 pushes, u_x about 3.5)"
+scale = "n·eps(T)·u_x (40 steps, 34 pushes, u_x about 3.3); m·n·eps(T)·u_x for the gain (m = 4)"
 C = 1
-measured = {}
+measured = { Float32 = 0.317, Float64 = 0.45, "Dual{Float32,3}" = 0.317 }
 status = "proposed"
 
 ["T-641"]
 quantity = "a witness of u₀ = 10 in an empty moving window: its window position against lattice point + n·v·Δt − cells moved since the injection, the largest over the bunch"
 scale = "n·eps(T)·L₁ (L₁ = 12, 60 steps)"
 C = 1
-measured = {}
+measured = { Float32 = 0.00475, Float64 = 0.00333, "Dual{Float32,3}" = 0.00475 }
 status = "proposed"
 
 ["T-642"]
 quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, per partial: the witness bunch's weighted mean energy gain in the WP-043 case against a₀, duration, focus, density, ramp length, bunch centre and bunch length, Float64, Reference"
-scale = "the finite-difference floor (A7); floor_max caps the floor itself"
-C = 1
+scale = "the finite-difference floor (A7), the scan carried to 2⁻²⁰ of the parameter; floor_max caps the floor itself (measured 2.0e-10 to 3.8e-9)"
+C = 2
 floor_max = 1e-4
-measured = {}
-status = "proposed"
+measured = { a0 = 0.00501, duration = 0.0287, focus = 1.07, density = 0.73, ramp = 0.189, center = 0.018, length = 0.173 }
+status = "proposed; AD and FD agree to 1e-10 relative or better, so the floor is roundoff and the ratio sits near 1 where the scan reaches it (with the scan stopped at 2⁻¹⁴ every ratio was 0.05 to 0.07, the floor then truncation)"
 
 ["T-643"]
 quantity = "the Dual{Float32,3} partials (a₀, density, bunch centre) of the witness bunch's mean energy gain in the WP-043 case against the Float64 ForwardDiff gradient, and the Float32 primal against Float64: largest relative difference"
 scale = "relative (Float32 against Float64 after 350 steps; not a roundoff bound)"
 C = 1e-3
-measured = {}
+measured = { "Dual{Float32,3}" = 1.61e-5 }
 status = "proposed"
