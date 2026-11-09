@@ -9,8 +9,9 @@
 #
 #     julia +1.13 --startup=no scripts/enzyme/setup.jl <dir> [--foreach]
 #
-# `--foreach` rewrites the 2D step's push loop `for s in st.species` as `foreach(st.species)`,
-# which two species need (`reports/wp-050-enzyme-spike.md`, section 2). Then run
+# `--foreach` rewrites the 2D step's loops over the species tuple (the push, `kinetic!` and the
+# `zip(st.species, st.ws)` loops of `initialize!` and `current!`) as `foreach`, which two
+# species need: Enzyme fails on the `for` loops (#384; `reports/wp-050-enzyme-spike.md`). Then run
 #
 #     julia +1.13 --project=<dir>/env scripts/enzyme/chain_rule.jl ...
 
@@ -45,8 +46,26 @@ function main(args)
         s = read(f, String)
         old = "    for s in st.species\n        launcher(push_2d_kernel!"
         occursin(old, s) || error("the push loop of step2d.jl has changed; update setup.jl")
+        s = replace(s, old => "    foreach(st.species) do s\n        launcher(push_2d_kernel!")
+        kin_old = """    first = 1
+    for s in st.species
+        nc = cld(capacity(s), KINETIC_CHUNK)
+        launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);
+                                                             ndrange = nc)
+        first += nc
+    end"""
+        kin_new = """    firsts = cumsum((1, map(s -> cld(capacity(s), KINETIC_CHUNK), Base.front(st.species))...))
+    foreach(st.species, firsts) do s, first
+        nc = cld(capacity(s), KINETIC_CHUNK)
+        launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);
+                                                             ndrange = nc)
+    end"""
+        occursin(kin_old, s) || error("kinetic! of step2d.jl has changed; update setup.jl")
+        s = replace(s, kin_old => kin_new)
+        zip_old = "    for (s, ws) in zip(st.species, st.ws)\n"
+        s = replace(s, zip_old => "    foreach(st.species, st.ws) do s, ws\n")
         chmod(f, 0o644)
-        write(f, replace(s, old => "    foreach(st.species) do s\n        launcher(push_2d_kernel!"))
+        write(f, s)
     end
     env = joinpath(dir, "env")
     mkpath(env)

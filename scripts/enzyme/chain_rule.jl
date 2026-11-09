@@ -1,10 +1,13 @@
 # WP-050: Enzyme reverse mode through the 2D electromagnetic step, checked against ForwardDiff
 # by the chain rule. Runs only in the side environment of `setup.jl`.
 #
-#     julia +1.13 --project=<dir>/env scripts/enzyme/chain_rule.jl [mode] [steps] [species] [T] [seed]
+#     julia +1.13 --project=<dir>/env scripts/enzyme/chain_rule.jl [mode] [steps] [species] [T] [seed] [workgroupsize]
 #
 # mode `fast` or `reference`, `steps` steps (default 1), `species` 1 or 2 (2 needs the
-# `--foreach` environment), `T` Float64 or Float32, the load's `seed` (default 7).
+# `--foreach` environment), `T` Float64 or Float32, the load's `seed` (default 7), the
+# kernels' `workgroupsize` (default: KernelAbstractions', 1024 on the CPU in 0.9, which puts
+# each kernel of this case in one workgroup and so runs it serially; give 16 with
+# `julia -t 4` to run the kernels on several threads).
 #
 # The case is WP-023's `plasma_step_2d` (Esirkepov current, Quadratic shape, Boris, Yee,
 # 10 × 8 cells, 3 × 3 particles per cell) with the electrons' density perturbation amplitude α
@@ -19,7 +22,8 @@
 # identity of the two derivatives of the same code, so the two sides agree to roundoff when
 # both are right. The α tangent is zero on several arrays (Bx, By, Bz, Ez, the offsets, u_z),
 # so a second forward pass seeds a random tangent on every array and checks ⟨∇f, v⟩ too. The
-# verdict is "pass" when both agree within 64·eps(T)·steps. Both checks compare two AD modes of
+# verdict is "pass" when both agree within 64·eps(T)·steps·(Σ|c_k|/|Σc_k|), the cancellation
+# of the per-array contributions c_k. Both checks compare two AD modes of
 # the same code: they do not see a physics defect (a sign in the push, a dropped current
 # component), which the test suite's T-tests guard. The run writes `result.toml` and `manifest.toml` to
 # `scripts/runs/enzyme-<stamp>/`.
@@ -38,6 +42,7 @@ nsteps = parse(Int, get(ARGS, 2, "1"))
 nspecies = parse(Int, get(ARGS, 3, "1"))
 T = Dict("Float64" => Float64, "Float32" => Float32)[get(ARGS, 4, "Float64")]
 seed = parse(Int, get(ARGS, 5, "7"))
+wgs = length(ARGS) >= 6 ? parse(Int, ARGS[6]) : nothing
 mode = Dict("fast" => Fast(), "reference" => Reference())[mode_name]
 α0 = T(1) / 10
 
@@ -47,7 +52,7 @@ function problem(::Type{S}, α) where {S}
     return EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species[1:1], prob.seed, prob.kmode)
 end
 function initialized(prob)
-    st = EMState(prob, EMNumerics(; mode, current = Esirkepov()))
+    st = EMState(prob, EMNumerics(; mode, current = Esirkepov(), workgroupsize = wgs))
     initialize!(st, prob)
     return st
 end
@@ -121,7 +126,10 @@ end
 fdv = ForwardDiff.partials(run_energy!(stv, params(probd), nsteps), 1)
 adv = sum(k -> sum(G[k] .* V[k]), common)
 relv = abs(adv - fdv) / abs(fdv)
-tol = 64 * eps(T) * max(nsteps, 1)
+# Roundoff in the sum grows with the steps and with its cancellation (Σ|c_k|/|Σc_k|), so the
+# tolerance scales with both.
+cancel = sum(abs, values(contrib)) / abs(ad)
+tol = 64 * eps(T) * max(nsteps, 1) * max(cancel, 1)
 verdict = rel <= tol && relv <= tol ? "pass" : "FAIL"
 
 # timings once compiled: the primal, one reverse pass, one forward pass
@@ -137,7 +145,7 @@ ninputs = sum(k -> length(G[k]), keys(G))
 @printf("  f = %.17g\n  forward df/dα = %.17g\n  reverse ⟨∇f, dx/dα⟩ = %.17g\n  relative difference %.3e (eps(T) = %.3e)\n",
         f0, fd, ad, rel, eps(T))
 @printf("  random direction on every array: forward %.17g, reverse %.17g, relative difference %.3e\n", fdv, adv, relv)
-@printf("  verdict %s (tolerance 64·eps(T)·steps = %.3e)\n", verdict, tol)
+@printf("  verdict %s (tolerance 64·eps(T)·steps·cancellation = %.3e, cancellation %.2f)\n", verdict, tol, cancel)
 println("  nonzero tangent, zero gradient: ", zero_grad, "\n  nonzero gradient, zero α tangent: ", untested)
 @printf("  primal gap between the T and Dual initial states %.3e; Float64-only arrays with a gradient: %s\n", primal_gap, stray)
 @printf("  times: Enzyme first call %.1f s, reverse pass %.4f s, primal %.4f s, one forward (Dual) pass %.4f s; repeat bitwise equal: %s; %d gradient entries\n",
@@ -154,7 +162,7 @@ open(io -> TOML.print(io, Dict(
     "case" => Dict("mode" => mode_name, "steps" => nsteps, "species" => nspecies, "eltype" => string(T), "seed" => seed, "alpha" => Float64(α0)),
     "result" => Dict("f" => Float64(f0), "forward" => Float64(fd), "reverse" => Float64(ad), "relative_difference" => Float64(rel),
                      "random_forward" => Float64(fdv), "random_reverse" => Float64(adv), "random_relative_difference" => Float64(relv),
-                     "tolerance" => Float64(tol), "verdict" => verdict, "zero_gradient_nonzero_tangent" => zero_grad,
+                     "tolerance" => Float64(tol), "cancellation" => Float64(cancel), "workgroupsize" => string(wgs), "verdict" => verdict, "zero_gradient_nonzero_tangent" => zero_grad,
                      "untested_by_alpha" => untested,
                      "eps" => Float64(eps(T)), "primal_gap" => Float64(primal_gap), "stray_gradients" => stray,
                      "repeat_bitwise_equal" => same, "gradient_entries" => ninputs,
