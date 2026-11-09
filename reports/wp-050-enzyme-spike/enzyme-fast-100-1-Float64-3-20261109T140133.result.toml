@@ -1,0 +1,40 @@
+[seconds]
+primal = 0.060664693
+forward = 0.054109217
+enzyme_first_call = 101.917717172
+reverse = 1.662776405
+
+[result]
+cancellation = 21.434918335094668
+random_reverse = 356.37853935507053
+random_relative_difference = 6.380116935624214e-15
+relative_difference = 6.457159456160768e-13
+eps = 2.220446049250313e-16
+untested_by_alpha = ["st.fields.Bx", "st.fields.By", "st.fields.Bz", "st.fields.Ez", "st.species.1.offset.1", "st.species.1.offset.2", "st.species.1.u.3"]
+random_forward = 356.3785393550728
+forward = 0.5240632203729838
+tolerance = 3.046085102922499e-11
+zero_gradient_nonzero_tangent = ["st.K", "st.aux.spectral.im.1", "st.aux.spectral.im.2", "st.aux.spectral.re.1", "st.aux.spectral.re.2", "st.aux.φ", "st.ρ"]
+stray_gradients = []
+workgroupsize = "nothing"
+reverse = 0.5240632203726454
+primal_gap = 0.0
+f = 5.867653663648447
+verdict = "pass"
+repeat_bitwise_equal = true
+gradient_entries = 21715
+
+    [result.contributions]
+    "st.species.1.w" = 5.444155781821408
+    "st.species.1.u.1" = 0.4345019939221016
+    "st.fields.Ex" = -3.547950987366085
+    "st.species.1.u.2" = -0.12357868855792448
+    "st.fields.Ey" = -1.6830648794468543
+
+[case]
+eltype = "Float64"
+species = 1
+alpha = 0.1
+steps = 100
+mode = "fast"
+seed = 3

@@ -1,0 +1,21 @@
+julia = "1.13.3"
+commit = "31bddb0b4fcfe0aac235ec0ae56d533649777096"
+dirty = "false"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+threads = 4
+args = ["fast", "1", "1", "Float64"]
+
+[versions]
+Enzyme = "0.13.219"
+ForwardDiff = "1.4.7"
+KernelAbstractions = "0.9.45"
+
+[inputs]
+"scripts/enzyme/chain_rule.jl" = "9e9f209638bb72d91c9f67b9fdf799fcdf504d26d7e337a437611251270c196f"
+"scripts/enzyme/setup.jl" = "dba73e274a40ae0a5183f686c0b5e4530be50c33c90ae8c39d8b2398fb2ecc72"
+"lib/ParticleMeshElectromagnetic/test/em2d_cases.jl" = "c25a00ac011aae47f55a1855faa18493487052f216dbf0e68b3228cbad687c45"
+
+[side_environment]
+"Project.toml" = "2ccc23c0a3ab747319a3ce7a397a751cbe46c1befb88a6562e4336dbb806767e"
+"Manifest.toml" = "d90fc5cc48ac48a53bb58e3b429d2d3d2afd6d2fd6eadb28ba25250bab50914e"
+"step2d.jl" = "4afd5e465d2159a7406c9ea4630c49d113b0fc37dc6ee74b186d6972f1021f1e"
