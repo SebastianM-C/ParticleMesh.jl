@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -90,6 +90,10 @@ else
         slack = 3 * 1024 * (1 + log2(9) + 1)
         @test more_particles.host <= small.host + slack
         @test larger_grid.host <= small.host + slack
+    end
+
+    @testset "T-645 the witness bunch on CUDA passes T-640 and T-641 with the CPU's tolerances [A3, A7, A8, WP-047]" begin
+        rerun_module_on(GPU, (("T-640", body_T640), ("T-641", body_T641)))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin
