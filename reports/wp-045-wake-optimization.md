@@ -89,8 +89,8 @@ Particles per cell and box width leave the optimum in place: the values change b
 **Against theory.**
 - In 1D linear theory, a ponderomotive drive a² ∝ exp(−2t²/τ²) excites a wake ∝ τ·exp(−ω_p²τ²/8). That is largest at ω_p·τ = 2 (derived here, not taken from a source), which gives τ = 6.32 for n₀ = 0.1.
 - The optimum at a₀ = 1 is at 7.74, 22 % longer.
-- The physics review (below) found that at a₀ = 0.3 the optimum of the on-axis peak in the earlier 32-row box is τ ≈ 6.47. That agrees with 2/ω_p divided by the antenna's measured launch factor 0.974, which gives 6.49.
-- So the linear limit is reproduced, and the longer optimum at a₀ = 1 is attributed to nonlinearity, 2D diffraction and the unconverged Δy. These causes are not separated here.
+- The physics review (below) found that at a₀ = 0.3 the optimum of the on-axis peak in the earlier 32-row box is τ ≈ 6.47. That agrees with 2/ω_p divided by the antenna's measured launch factor 0.974, which gives 6.49. That run is not in this package's record or manifest, so the 6.47 is unverified here.
+- If it holds, the linear limit is reproduced, and the longer optimum at a₀ = 1 is attributed to nonlinearity, 2D diffraction and the unconverged Δy. These causes are not separated here.
 
 **Cost.** The run took 1465 s on 4 threads: 49 grid runs, 13 gradient evaluations, 7 FD and value runs, 10 slice runs and 9 resolution runs.
 
