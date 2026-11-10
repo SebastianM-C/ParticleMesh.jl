@@ -39,15 +39,90 @@ hann(u) = 0 < u < 1 ? sinpi(u)^2 : 0.0
 last_sample(windows) = maximum(w -> w.x2 + w.s2, windows)
 
 """
-    wake_observe(duration, focus; windows = WINDOWS, box_times = (), kw...) -> (; slab, coverage, box, nsteps, dt, dx)
+    box_weights(box_times, dt) -> Dict(step => [(index, weight), ...])
+
+The steps at which WP-045's box objective is read for each time in `box_times`, with the weights
+of a linear interpolation between the two steps around it (a single weight 1 on a step).
+"""
+function box_weights(box_times, dt)
+    ks = Dict{Int,Vector{Tuple{Int,Float64}}}()
+    for (i, tb) in enumerate(box_times)
+        r = tb / dt
+        kl = floor(Int, r + 1e-9)
+        w = r - kl
+        push!(get!(ks, kl, Tuple{Int,Float64}[]), (i, abs(w) < 1e-9 ? 1.0 : 1 - w))
+        abs(w) < 1e-9 || push!(get!(ks, kl + 1, Tuple{Int,Float64}[]), (i, w))
+    end
+    return ks
+end
+
+"The sums of the slab windows: Σw·E_x², Σw·(E_x² + (∂ₜE_x/ω_p)²), Σw, and Σw per lab column."
+struct SlabSums{T}
+    num::Vector{T}
+    nosc::Vector{T}
+    den::Vector{Float64}
+    cov::Vector{Dict{Int,Float64}}
+end
+SlabSums{T}(nw::Integer) where {T} = SlabSums{T}([zero(T) for _ in 1:nw], [zero(T) for _ in 1:nw], zeros(nw), [Dict{Int,Float64}() for _ in 1:nw])
+
+"""
+    accumulate_slab!(sums, windows, ex, prev, sh, shprev, band, t, dt, dx, ωp)
+
+Add one pair of steps to the windows' sums: `ex` the axis E_x of the window columns
+band + 1 … n₁ at time t after `sh` shifts, `prev` the same at t − Δt after `shprev` shifts. Each
+lab column (global column c, E_x at x = (c − ½)Δx) contributes E_x and its time derivative
+between the two steps, at t − Δt/2, with its Hann weight in s = t − Δt/2 − x.
+"""
+function accumulate_slab!(sums::SlabSums, windows, ex, prev, sh, shprev, band, t, dt, dx, ωp)
+    tm = t - dt / 2
+    for (iw, w) in enumerate(windows)
+        tm - w.s2 < w.x2 && tm - w.s1 > w.x1 || continue
+        for jj in eachindex(ex)
+            c = band + jj + sh                          # global column of this E_x
+            jp = jj + sh - shprev                       # the same column at the step before
+            1 <= jp <= length(prev) || continue
+            x = (c - 0.5) * dx
+            w.x1 <= x <= w.x2 || continue
+            wt = hann((tm - x - w.s1) / (w.s2 - w.s1))
+            wt > 0 || continue
+            em, ed = (ex[jj] + prev[jp]) / 2, (ex[jj] - prev[jp]) / dt
+            sums.num[iw] += wt * abs2(em)
+            sums.nosc[iw] += wt * (abs2(em) + abs2(ed / ωp))
+            sums.den[iw] += wt
+            sums.cov[iw][c] = get(sums.cov[iw], c, 0.0) + wt
+        end
+    end
+    return sums
+end
+
+"""
+    slab_values(sums, windows, dt, dx, E0) -> (; slab, osc, coverage)
+
+J = √(2·Σw E_x²/Σw)/E₀ and the oscillator amplitude √(Σw(E_x² + (∂ₜE_x/ω_p)²)/Σw)/E₀ per window,
+and per window the smallest and largest Σw of a slab column relative to the ideal (s2 − s1)/(2Δt).
+"""
+function slab_values(sums::SlabSums, windows, dt, dx, E0)
+    slab = map((a, b) -> sqrt(2 * a / b) / E0, sums.num, sums.den)
+    osc = map((a, b) -> sqrt(a / b) / E0, sums.nosc, sums.den)
+    coverage = map(enumerate(windows)) do (iw, w)
+        ideal = (w.s2 - w.s1) / (2dt)
+        cols = [c for c in ceil(Int, w.x1 / dx + 0.5):floor(Int, w.x2 / dx + 0.5)]
+        r = [get(sums.cov[iw], c, 0.0) / ideal for c in cols]
+        (minimum(r), maximum(r))
+    end
+    return (; slab, osc, coverage)
+end
+
+"""
+    wake_observe(duration, focus; windows = WINDOWS, box_times = (), kw...) -> (; slab, osc, coverage, box, nsteps, dt, dx)
 
 One run of the case (`kw` go to [`wake_problem`](@ref)), long enough for every window and box
-time. `slab` holds, per window, J = √(2·Σw E_x²/Σw)/E₀ over the window's samples; `coverage`, per
-window, the smallest and largest Σw of a slab column relative to the ideal (s2 − s1)/(2Δt) (a
-column the window's back band or the run's end cut short shows as a ratio below 1; the run refuses
-a ratio off by more than 1 %). `box` holds WP-045's objective, the RMS over the whole window past
-its back band, at each time in `box_times`, linearly interpolated between the two steps around it
-(exact at a step).
+time. `slab` holds, per window, J = √(2·Σw E_x²/Σw)/E₀ over the window's samples, `osc` the
+oscillator amplitude (E_x² + (∂ₜE_x/ω_p)² in place of 2E_x²); `coverage`, per window, the smallest
+and largest Σw of a slab column relative to the ideal (s2 − s1)/(2Δt) (a column the window's back
+band or the run's end cut short shows as a ratio below 1; the run refuses a ratio off by more
+than 1 %). `box` holds WP-045's objective, the RMS over the whole window past its back band, at
+each time in `box_times`, linearly interpolated between the two steps around it (exact at a step).
 """
 function wake_observe(duration, focus; windows = WINDOWS, box_times = (), kw...)
     T = promote_type(typeof(duration), typeof(focus))
@@ -64,19 +139,8 @@ function wake_observe(duration, focus; windows = WINDOWS, box_times = (), kw...)
     band = window_back_band(st)
     row = g + 1 + n[2] ÷ 2
     E0 = sqrt(T(CASE.density))
-    ks = Dict{Int,Vector{Tuple{Int,Float64}}}()         # step → (box time index, weight)
-    for (i, tb) in enumerate(box_times)
-        r = tb / dt
-        kl = floor(Int, r + 1e-9)
-        w = r - kl
-        push!(get!(ks, kl, Tuple{Int,Float64}[]), (i, abs(w) < 1e-9 ? 1.0 : 1 - w))
-        abs(w) < 1e-9 || push!(get!(ks, kl + 1, Tuple{Int,Float64}[]), (i, w))
-    end
-    nw = length(windows)
-    num = [zero(T) for _ in 1:nw]                         # Σw·E_x² (`rms`)
-    nosc = [zero(T) for _ in 1:nw]                        # Σw·(E_x² + (∂ₜE_x/ω_p)²) (`osc`)
-    den = zeros(nw)
-    cov = [Dict{Int,Float64}() for _ in 1:nw]            # lab column → Σw
+    ks = box_weights(box_times, dt)
+    sums = SlabSums{T}(length(windows))
     box = [zero(T) for _ in box_times]
     ωp = sqrt(CASE.density)
     tfirst = minimum(w -> w.x1 + w.s1, windows) - 2dt
@@ -94,43 +158,19 @@ function wake_observe(duration, focus; windows = WINDOWS, box_times = (), kw...)
                 box[i] += w * j
             end
         end
-        if prev !== nothing
-            tm = t - dt / 2                                     # E_x and its time derivative between the two steps
-            for (iw, w) in enumerate(windows)
-                tm - w.s2 < w.x2 && tm - w.s1 > w.x1 || continue
-                for jj in eachindex(ex)
-                    c = band + jj + sh                          # global column of this E_x
-                    jp = jj + sh - shprev                       # the same column at the step before
-                    1 <= jp <= length(prev) || continue
-                    x = (c - 0.5) * dx
-                    w.x1 <= x <= w.x2 || continue
-                    wt = hann((tm - x - w.s1) / (w.s2 - w.s1))
-                    wt > 0 || continue
-                    em, ed = (ex[jj] + prev[jp]) / 2, (ex[jj] - prev[jp]) / dt
-                    num[iw] += wt * abs2(em)
-                    nosc[iw] += wt * (abs2(em) + abs2(ed / ωp))
-                    den[iw] += wt
-                    cov[iw][c] = get(cov[iw], c, 0.0) + wt
-                end
-            end
-        end
+        prev === nothing || accumulate_slab!(sums, windows, ex, prev, sh, shprev, band, t, dt, dx, ωp)
         prev, shprev = ex, sh
     end
-    slab = map((a, b) -> sqrt(2 * a / b) / E0, num, den)
-    osc = map((a, b) -> sqrt(a / b) / E0, nosc, den)
-    coverage = map(enumerate(windows)) do (iw, w)
-        ideal = (w.s2 - w.s1) / (2dt)
-        cols = [c for c in ceil(Int, w.x1 / dx + 0.5):floor(Int, w.x2 / dx + 0.5)]
-        r = [get(cov[iw], c, 0.0) / ideal for c in cols]
-        (minimum(r), maximum(r))
-    end
-    for (iw, c) in enumerate(coverage)
+    v = slab_values(sums, windows, dt, dx, E0)
+    for (iw, c) in enumerate(v.coverage)
         abs(c[1] - 1) < 0.01 && abs(c[2] - 1) < 0.01 ||
             error("window $(windows[iw]) is not fully sampled: column weight ratios $(c) (back band $band columns, $nsteps steps)")
+        r = value_of(v.osc[iw]) / value_of(v.slab[iw])
+        abs(r - 1) < 0.15 || error("window $(windows[iw]): the oscillator amplitude is $(r) times J; a sampling error, not a wake")
     end
-    names = keys(windows) isa Tuple ? keys(windows) : Tuple(1:nw)
-    nt(v) = NamedTuple{Tuple(Symbol.(names))}(Tuple(v))
-    return (; slab = nt(slab), osc = nt(osc), coverage, box, nsteps, dt, dx)
+    names = keys(windows) isa Tuple ? keys(windows) : Tuple(1:length(windows))
+    nt(x) = NamedTuple{Tuple(Symbol.(names))}(Tuple(x))
+    return (; slab = nt(v.slab), osc = nt(v.osc), coverage = v.coverage, box, nsteps, dt, dx)
 end
 
 """

@@ -71,3 +71,80 @@ end
     @test maximum(φ -> abs(sum(sin.(ωp .* s .+ φ) .^ 2) / length(s) - 0.5), range(0, π; length = 7)) > 0.02
     @test hann(0.0) == 0 && hann(1.0) == 0 && hann(0.5) ≈ 1 && hann(-0.1) == 0 && hann(1.1) == 0
 end
+
+@testset "T-662 the case's resolution keywords keep WP-045's defaults and the antenna's place [WP-051]" begin
+    p = wake_problem(7.0, 110.0; nsteps = 1)
+    h = 2π / 16
+    @test p.cells == CASE.cells
+    @test p.dt == 0.95 / sqrt(1 / h^2 + 1 / (4h)^2)
+    @test p.lasers[1].position == 6 * (2π / 16)
+    @test p.lasers[1].a0 == CASE.a0 && p.lasers[1].waist == CASE.waist
+    q = wake_problem(7.0, 110.0; nsteps = 1, CONVERGED...)
+    @test q.cells == (14 * 32, 16 * 32 ÷ 2)
+    @test q.lasers[1].position == p.lasers[1].position                      # 3λ₀/8 at every ppl
+    @test q.length[1] ≈ p.length[1] && q.length[2] ≈ p.length[2]            # the same 14 λ₀ × 16 λ₀ box
+    @test wake_problem(7.0, 110.0; nsteps = 1, a0 = 0.3, waist = 1e5).lasers[1].a0 == 0.3
+end
+
+@testset "T-663 the slab sums of a synthetic ringing plasma in a moving window give its amplitude [WP-051]" begin
+    # E_x = A·cos(ω_p(t − x) + φ) at every lab column, read through a window of 224 columns that
+    # starts moving at t = 108 (one column per Δx of time), past a back band of 9 columns.
+    A, φ, ωp = 0.37, 0.4, sqrt(CASE.density)
+    dx = 2π / 16
+    dt = 0.95 / sqrt(1 / dx^2 + 1 / (4dx)^2)
+    n1, band = 224, 9
+    win = (main = WINDOWS.main, early = WINDOWS.early, short = WINDOWS.short)
+    sums = SlabSums{Float64}(length(win))
+    E(x, t) = A * cos(ωp * (t - x) + φ)
+    prev, shprev = nothing, 0
+    for k in 1:ceil(Int, last_sample(win) / dt) + 1
+        t = k * dt
+        sh = max(0, floor(Int, (t - 108) / dx))
+        ex = [E((band + jj + sh - 0.5) * dx, t) for jj in 1:(n1 - band)]
+        prev === nothing || accumulate_slab!(sums, win, ex, prev, sh, shprev, band, t, dt, dx, ωp)
+        prev, shprev = ex, sh
+    end
+    v = slab_values(sums, win, dt, dx, 1.0)
+    for i in 1:3
+        @test all(c -> abs(c - 1) < 0.01, v.coverage[i])
+        @test v.slab[i] ≈ A rtol = 2e-3
+        @test v.osc[i] ≈ A rtol = 2e-3
+    end
+    # A field that grows with the delay behind the light front: the early window reads less.
+    sums2 = SlabSums{Float64}(2)
+    G(x, t) = (1 + (t - x - 72) / 100) * E(x, t)
+    prev = nothing
+    for k in 1:ceil(Int, last_sample(win) / dt) + 1
+        t = k * dt
+        sh = max(0, floor(Int, (t - 108) / dx))
+        ex = [G((band + jj + sh - 0.5) * dx, t) for jj in 1:(n1 - band)]
+        prev === nothing || accumulate_slab!(sums2, (win.main, win.early), ex, prev, sh, shprev, band, t, dt, dx, ωp)
+        prev, shprev = ex, sh
+    end
+    w2 = slab_values(sums2, (win.main, win.early), dt, dx, 1.0)
+    @test w2.slab[2] < w2.slab[1]
+    @test w2.slab[1] ≈ A * 1.15 rtol = 0.01                                 # the growth at the window's middle, s = 87
+end
+
+@testset "T-664 the box read-out interpolates between the steps around its time [WP-051]" begin
+    dt = 0.3
+    w = box_weights((5dt, 7.25dt), dt)
+    @test w[5] == [(1, 1.0)]
+    @test only(w[7])[1] == 2 && only(w[7])[2] ≈ 0.75
+    @test only(w[8])[1] == 2 && only(w[8])[2] ≈ 0.25
+    @test !haskey(w, 6)
+end
+
+@testset "T-665 the dispersive 1D wake reduces to the linear limit where the pulse enters [WP-051]" begin
+    # At z = 0 the pulse has not spread yet: the linear limit with the 1/β² factor, to the
+    # spectral width's correction (+1.3 % at τ = 9, more at shorter pulses).
+    kp, β = sqrt(CASE.density), sqrt(1 - CASE.density)
+    lin(a0, τ) = sqrt(2π) / 8 * a0^2 * kp * τ * exp(-kp^2 * τ^2 / 8) / β^2
+    @test wake1d_dispersive(0.02, 9.0; x1 = 68.0, x2 = 68.0, nz = 1) ≈ lin(0.02, 9.0) rtol = 0.03
+    @test wake1d_dispersive(0.02, 9.0; x1 = 68.0, x2 = 68.0, nz = 1) > lin(0.02, 9.0)
+    # Deeper in, the spread pulse drives less, and the optimum over the slab is longer than 2/ω_p.
+    @test wake1d_dispersive(0.02, 6.0; x1 = 150.0, x2 = 150.0, nz = 1) < wake1d_dispersive(0.02, 6.0; x1 = 68.0, x2 = 68.0, nz = 1)
+    @test 6.6 < golden_max(τ -> wake1d_dispersive(0.02, τ), 5.0, 9.0; tol = 1e-3)[1] < 7.0
+    # The nonlinear wake1d at a0 = 1 on its default window (a stored value of this code, WP-051).
+    @test wake1d(1.0, 7.0).J ≈ 0.35761 rtol = 1e-4
+end
