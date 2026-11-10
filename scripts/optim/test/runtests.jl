@@ -91,6 +91,11 @@ end
     @test q.lasers[1].position == p.lasers[1].position                      # 3λ₀/8 at every ppl
     @test q.length[1] ≈ p.length[1] && q.length[2] ≈ p.length[2]            # the same 14 λ₀ × 16 λ₀ box
     @test wake_problem(7.0, 110.0; nsteps = 1, a0 = 0.3, waist = 1e5).lasers[1].a0 == 0.3
+    # The antenna is a cell edge only for ppl divisible by 8; a Δy that does not divide the box
+    # would shrink it silently. Both refuse.
+    @test_throws ArgumentError wake_problem(7.0, 110.0; nsteps = 1, ppl = 20)
+    @test_throws ArgumentError wake_problem(7.0, 110.0; nsteps = 1, dy_cells = 3)
+    @test wake_problem(7.0, 110.0; nsteps = 1, dy_cells = 3, cells = (224, 85)).cells == (224, 85)
 end
 
 @testset "T-663 the slab sums of a synthetic ringing plasma in a moving window give its amplitude [WP-051]" begin

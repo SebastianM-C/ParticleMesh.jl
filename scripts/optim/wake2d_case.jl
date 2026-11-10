@@ -27,7 +27,13 @@ resolution checks; the antenna stays at x = 3λ₀/8 at every `ppl` divisible by
 override the case's pulse (WP-051: low-a₀ and plane-wave comparisons).
 """
 function wake_problem(duration, focus; nsteps = CASE.nsteps, ppl = 16, dy_cells = CASE.dy_cells,
-                      cells = (14ppl, 16ppl ÷ dy_cells), ppc = CASE.ppc, a0 = CASE.a0, waist = CASE.waist)
+                      cells = nothing, ppc = CASE.ppc, a0 = CASE.a0, waist = CASE.waist)
+    ppl % 8 == 0 || throw(ArgumentError("ppl = $ppl: the antenna sits at 3λ₀/8, a cell edge only for ppl divisible by 8"))
+    if cells === nothing
+        (16ppl) % dy_cells == 0 ||
+            throw(ArgumentError("dy_cells = $dy_cells does not divide the 16 λ₀ box's $(16ppl) cells of Δx; pass `cells` explicitly"))
+        cells = (14ppl, 16ppl ÷ dy_cells)
+    end
     T = promote_type(typeof(duration), typeof(focus))
     z3 = (zero(T), zero(T), zero(T))
     h = 2 * T(π) / ppl
