@@ -15,10 +15,10 @@
 - **WP-045's optimum was set by its read-out time.** Its objective, the RMS of the on-axis E_x over the whole window at the last step, has a gradient at its optimum (7.74, 113) that changes sign within ±5 c/ω₀ of the read-out time t = 185.3 (figure `readout.png`). The new objective cannot depend on the read-out time: it averages the wake over a fixed lab-frame plasma slab, each column sampled at a fixed delay behind the light front.
 - **The optimum converges at Δx = λ₀/32, Δy = λ₀/16.** There the optimum is (τ, focus) = (8.22, 118.0), J = 0.3786 E₀. Refining further moves it by an estimated +0.05 in τ and −0.5 in focus, 0.6 % and 0.4 %. J itself converges at second order and is about 1.7 % below its limit at that grid. WP-045's grid (λ₀/16 × λ₀/4) puts the optimum at (7.89, 115.8), 4 % short in τ, and J 10 % low.
 - **The τ offset from 2/ω_p = 6.32 has three parts.**
-  - Group-velocity dispersion of the pulse in the plasma (n₀ = 0.1 n_c) takes it to 6.78 in an exact linear 1D model. A plane-wave run of the code at a₀ = 0.3 gives 6.82.
+  - In the linear plane wave the code's optimum is 6.82. Group-velocity dispersion of the pulse in the plasma (n₀ = 0.1 n_c) gives 6.78 in an exact linear 1D model. The physics breaker found two caveats. At n₀ = 0.2 the same model misses the code by 5 %. Near the plasma's entry the code's wake also exceeds the model by up to 24 %, depending on τ, for reasons not found. So dispersion is the leading candidate for this 8 %, not a proven account.
   - At a₀ = 1 the plane-wave optimum is 7.62. A 1D nonlinear cold-fluid wake with an unchanging driver moves the optimum by only 0.1, so most of this 12 % is the pulse's own evolution in the plasma. That attribution is not tested further here.
-  - The 2D geometry adds 2.6 % in the linear regime (6.99 against 6.82) and 8 % at a₀ = 1 (8.22 against 7.62).
-  - The three factors multiply to 6.32 · 1.077 · 1.12 · 1.08 = 8.2.
+  - The 2D geometry adds 2.6 % in the linear regime (6.99 against 6.82; 1.3 % to 3.9 % for focus 90 to 130) and 8 % at a₀ = 1 (8.22 against 7.62).
+  - The three factors multiply to 6.32 · 1.077 · 1.12 · 1.08 = 8.2. Each is measured; only the first has a model behind it, and that model has the caveats above.
 
 ## 2. The objective
 
@@ -28,7 +28,7 @@ J² = 2·Σ w·E_x² / Σ w, in units of E₀² = n₀,
 
 the mean squared wake amplitude over the slab, the first one and a half plasma periods after the pulse. More steps add no samples once the last column is read, so J is the same at every read-out time by construction.
 
-- **Timing.** The pulse's peak passes s = 51.6. At s = 72 a pulse of τ ≤ 9 has fallen below e⁻⁸ of its peak intensity, also after the group delay it gathers in the slab (≤ 4.3). The window's back band reaches s = 108 − band, which bounds s₂.
+- **Timing.** The pulse's peak passes s = 51.6. At s = 72 a pulse of τ ≤ 8 has fallen below e⁻⁸ of its peak intensity, even after the group delay it gathers by x = 152 (4.5 from the ramp's middle). At the optimum τ = 8.22 it is e⁻⁷·⁶, and at τ = 9 it is e⁻⁶·⁴. The Hann weight vanishes at s₁, so this tail enters with a weight near zero. The window's back band reaches s = 108 − band, which bounds s₂.
 - **The weight.** A Hann weight 1.5 plasma periods long has a spectral zero at 2ω_p, the ripple of E_x². T-661 checks that it averages sin² to ½ at every phase, at the case's Δt. Every run checks that each slab column received its full weight to 1 %, and refuses otherwise.
 - **The window is a choice, and the physics depends on it.** The local amplitude grows with the delay behind the pulse in 2D. At the WP-045 point, the window a quarter period earlier (`early`) gives 1.1 % less J, a one-period window (`short`) 7.8 % less, and the first half of the slab (`half`) 0.6 % less (probe at λ₀/16 × λ₀/4). In the plane wave the windows agree to 1 % in J and 0.1 in the optimal τ, because there the wake is stationary.
 - **The gradient.** AD against central FD at the WP-045 point (λ₀/16 × λ₀/4) has relative errors of 8 × 10⁻⁴ and 1.5 × 10⁻⁴ at h = 10⁻², and 8 × 10⁻⁶ and 2 × 10⁻⁶ at h = 10⁻³.
@@ -105,16 +105,27 @@ Both runs stopped on the projected gradient (gtol 10⁻⁴). The start of the fi
 | 2D, a₀ = 0.3 (focus 113 at λ₀/16 × λ₀/4; 118 at λ₀/32 × λ₀/16) | 6.945 | | 6.985 | | |
 | 2D, a₀ = 1 (the optimizer) | 7.894 | | 8.219 | | |
 
-The plane-wave values converge at second order in Δx. In the linear plane wave, the converged 6.82 agrees with the dispersive theory's 6.78 to 0.6 %, so dispersion accounts for the 8 % between 6.32 and the code.
+The plane-wave values converge at second order in Δx. In the linear plane wave, the converged 6.82 agrees with the dispersive theory's 6.78 to 0.6 %. That makes dispersion the leading candidate for the 8 % between 6.32 and the code. The breaker's checks below show the agreement is partly coincidental.
 
 **Not explained here.**
-- **The amplitude.** The linear plane-wave J is 8 % above the dispersive model, at both a₀ = 0.1 and 0.3 (λ₀/32: 0.00429 against 0.00399 at τ = 6.5 and a₀ = 0.1). A 4 % error in the launched a₀ or a factor the model misses would both do it. It does not move the optimal τ.
-- **The first half of the slab.** There the plane-wave optimum is 6.25, against the model's 6.51. A second effect that shortens the optimum near the plasma's start is not identified.
+- **The amplitude.** The linear plane-wave J is 8 % above the dispersive model, at both a₀ = 0.1 and 0.3 (λ₀/32: 0.00429 against 0.00399 at τ = 6.5 and a₀ = 0.1). The physics breaker narrowed this down:
+  - **What it is not.** The launched a₀ is right to 2 × 10⁻⁷ in vacuum. The WKB gain into the plasma is 1.060, against the theory's 1.054. The laser drive measured in the code agrees with the model at x = 74, 112 and 150. The wake rings at ω_p (0.3161 against 0.31623). J scales as a₀² to 0.1 %. ppc 4 × 4 changes J by 5 × 10⁻⁵. Ramps of 1, 8 and 16 c/ω₀ give the same excess. The excess is not a resolution effect: 1.08, 1.14 and 1.15 at λ₀/16, /32 and /64.
+  - **What it is.** The plasma's response to that drive is high, and the excess depends on depth and τ. Code over model:
+
+    | τ | at x = 74 | at x = 150 |
+    |---|---|---|
+    | 4.5 | 1.24 | 0.94 |
+    | 6.5 | 1.12 | 1.02 |
+    | 8.5 | 1.06 | 1.05 |
+
+  - **What follows.** A local linear response should not depend on depth like this. The mechanism is not identified (follow-up issue). Because the excess favours short pulses near the entry, it can move the optimal τ, so this report does not claim that it leaves τ in place.
+- **The first half of the slab.** There the plane-wave optimum is 6.25 at λ₀/64, against the model's 6.51. The entry excess above is the likely cause.
+- **Another density.** At n₀ = 0.2 (λ₀/32, a₀ = 0.1, a 1.5-period window), the code's optimum is 5.715, and 5.713 at λ₀/48. The dispersive model gives 5.443, a 5 % gap (physics breaker). The model's 0.6 % match at n₀ = 0.1 is therefore partly coincidental.
 - **The a₀ = 0.1 scan** has only four samples (τ = 6 … 7.5). Its 6.66 against 6.81 at a₀ = 0.3 is within what a parabola through four samples 0.5 apart resolves, so it is not read as a trend.
 
 **The nonlinear and 2D parts.**
 - **Nonlinearity.** In 1D, a₀ = 1 lengthens the optimum by 12 % (7.62 against 6.82), while the 1D theory with an unchanging driver gives 1.6 %. The rest is attributed to the pulse's evolution over the 80 c/ω₀ of plateau: relativistic self-phase modulation, and compression in the wake's density. This is an attribution; no run here separates it.
-- **2D.** The linear 2D optimum is 2.6 % longer than the plane wave's. At a₀ = 1 the 2D optimum is 8 % longer than the plane wave's, so diffraction and self-focusing add to the nonlinear lengthening. In the linear quasi-static theory the on-axis wake keeps the 1D time dependence, so 2D alone should not move the optimum. The 2.6 % is therefore read as finite-spot propagation, not the wake's geometry. This too is an attribution.
+- **2D.** The linear 2D optimum is 2.6 % longer than the plane wave's at focus 113 to 118. At λ₀/16 × λ₀/4 the physics breaker measured 1.3 %, 2.8 % and 3.9 % at focus 90, 113 and 130, so the factor grows with the focus depth. At a₀ = 1 the 2D optimum is 8 % longer than the plane wave's, so diffraction and self-focusing add to the nonlinear lengthening. In the linear quasi-static theory the on-axis wake keeps the 1D time dependence, so 2D alone should not move the optimum. The 2.6 % is therefore read as finite-spot propagation, not the wake's geometry. This too is an attribution.
 
 ## 5. Cost
 
@@ -132,7 +143,7 @@ The total is about 9.6 hours of the 16-core box, all compute. The local runs (sm
 
 ## 6. Open issues
 
-- **The amplitude and the slab's first half** disagree with the dispersive model (section 4).
+- **The plasma's linear response near its entry** exceeds the dispersive model by up to 24 %, depending on τ and depth. At n₀ = 0.2 the model misses the code's optimum by 5 %. Until this is understood, the dispersive account of the linear offset is a candidate (section 4; follow-up issue).
 - **The new objective's window** (slab [72, 152], delays [72, 102]) is a choice. Another window gives another optimum: the slab's first half prefers τ = 7.05 at the base grid (a₀ = 1, focus 113), where the full slab prefers 7.90. The witness-energy objective will replace it as the target.
 - **The fine-grid optimization** has one start and no grid scan. The base-grid run and the gradient probes support a single interior maximum, but the WP-045-style checks were not rerun at λ₀/32 × λ₀/16 because of cost.
 - **The box's speed** varied by up to five times between requests for the same work, so the run times above are not benchmarks.

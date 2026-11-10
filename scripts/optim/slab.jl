@@ -28,7 +28,8 @@ The windows of the study. `main` is the objective: the plateau from its start at
 plasma wavelengths, read 72 to 102 behind the light front (the pulse's peak passes at s = 51.6, so
 the drive of τ ≤ 9 has fallen below e⁻⁸ at s1 in vacuum, and s2 stays clear of the window's back
 band, which reaches s = 108 − band). The others test the read-out: `early` a quarter period
-earlier, `short` one plasma period long (no spectral zero at 2ω_p), `half` the first half of the slab.
+earlier, `short` one plasma period long (its Hann weight also has a zero at 2ω_p, at the second
+node), `half` the first half of the slab.
 """
 const WINDOWS = (main = SlabWindow(72, 152, 72, 102), early = SlabWindow(72, 152, 67, 97),
                  short = SlabWindow(72, 152, 72, 92), half = SlabWindow(72, 112, 72, 102))
