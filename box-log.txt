@@ -1,0 +1,30 @@
+## step 0 (julia): exit 0 after 44s
+Test Summary:                                                                                                                   | Pass  Total  Time
+T-600 the box-constrained maximizer finds interior and bound maxima of analytic objectives, with a capped step [WP-045, WP-052] |   17     17  2.1s
+Test Summary:                                                                              | Pass  Total  Time
+T-660 the 1D cold-fluid wake reproduces its linear limit and the optimum k_pτ = 2 [WP-051] |   10     10  0.2s
+Test Summary:                                                                                              | Pass  Total  Time
+T-661 the slab window's Hann weight averages E² of an oscillation to half its square at any phase [WP-051] |   16     16  0.3s
+Test Summary:                                                                                | Pass  Total  Time
+T-662 the case's resolution keywords keep WP-045's defaults and the antenna's place [WP-051] |   11     11  0.3s
+Test Summary:                                                                                    | Pass  Total  Time
+T-663 the slab sums of a synthetic ringing plasma in a moving window give its amplitude [WP-051] |   15     15  0.5s
+Test Summary:                                                                  | Pass  Total  Time
+T-664 the box read-out interpolates between the steps around its time [WP-051] |    4      4  0.1s
+Test Summary:                                                                            | Pass  Total  Time
+T-665 the dispersive 1D wake reduces to the linear limit where the pulse enters [WP-051] |    5      5  0.1s
+Test Summary:                                                                                       | Pass  Total  Time
+T-680 a₀ from the fixed energy inverts laser_energy, with no energy derivative along τ [A3, WP-052] |   18     18  0.4s
+Test Summary:                                                                                                              | Pass  Total   Time
+T-681 the witness centre enters through the weights only: one run gives the objective at every centre [A3, WP-047, WP-052] |    8      8  15.1s
+Test Summary:                                                                                  | Pass  Total  Time
+T-682 the interior-maximum test of the run's slices refuses one-sided and flat slices [WP-052] |    6      6  0.1s
+Test Summary:                                                                             | Pass  Total  Time
+T-620 the Latin hypercube puts one point in each stratum and repeats bit for bit [WP-048] |   13     13  0.4s
+Test Summary:                                                                                       | Pass  Total  Time
+T-621 the GP interpolates its data, fits a known length scale, and EI vanishes at the data [WP-048] |   41     41  2.8s
+Branin gaps after 40 evaluations, seeds 1 to 6: [3.323108467845337e-5, 1.3144080504678968e-5, 2.5214022832065197e-5, 6.606844196843653e-6, 2.5555326491177865e-5, 1.6468949229908603e-5]
+Test Summary:                                                                                                                       | Pass  Total  Time
+T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations from every seed tried and repeats bit for bit [WP-048] |   13     13  8.9s
+Test Summary:                                                                                             | Pass  Total  Time
+T-623 the proposal depends on the seed, never repeats an evaluated point, and reach counts calls [WP-048] |    6      6  0.5s

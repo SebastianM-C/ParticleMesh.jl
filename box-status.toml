@@ -1,0 +1,20 @@
+branch = "runs/wp051-optim-tests-d8af24f"
+request_commit = "c787f9c62a413df334d99cabc81fef4d9b374d2e"
+started = "2026-11-10T01:16:36Z"
+category = "test"
+outputs = []
+finished = "2026-11-10T01:17:20Z"
+ok = true
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-10T01:16:36Z"
+exit = 0
+seconds = 44
