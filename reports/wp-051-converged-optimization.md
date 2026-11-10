@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Work package | WP-051 (goals A0, A1, A3, A7), building on WP-045 |
-| Commits | code `38d3e9a` (objective, theory, driver), `90858a7` (the tauscan fix), `41a52b5` and `8443254` (figures; no change to the runs' code paths); this report in the commit after |
+| Commits | code `38d3e9a` (objective, theory, driver), `90858a7` (the tauscan fix), `41a52b5` (the dispersive model) and `8443254` (figures), neither touching what the runs execute; this report in the commit after |
 | Runs | CPU box (AMD EPYC 9655, 16 threads), each a branch: `runs/wp051-r1` (theory, plane-wave scans at 16 and 32 cells/λ₀; its fifth step failed on a TOML bug and was rerun in r3), `runs/wp051-r2` (probe at the WP-045 point, fine grids), `runs/wp051-r3` (plane-wave scans at 24, 48, 64 cells/λ₀, 2D scans, probe at the WP-045 point, optimization at the base grid), `runs/wp051-r4` (optimization at λ₀/32 × λ₀/16, 2D a₀ = 0.3 scan), `runs/wp051-r5` (Hessian and refinement at the optimum). One plane-wave scan at a₀ = 0.1 ran in the cloud session (4 vCPUs, commit `90858a7`, clean). Every run directory has its `manifest.toml` with the commit and the SHA-256 of its inputs |
 | Input hashes | the figure run's manifest: `wp-051-converged-optimization/manifest.toml`; the source runs' manifests are on the run branches |
 | Environment | Julia 1.13.3, KernelAbstractions 0.10.6 CPU backend, Float64, Reference mode |
