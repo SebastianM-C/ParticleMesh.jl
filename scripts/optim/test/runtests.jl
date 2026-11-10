@@ -124,6 +124,26 @@ end
     w2 = slab_values(sums2, (win.main, win.early), dt, dx, 1.0)
     @test w2.slab[2] < w2.slab[1]
     @test w2.slab[1] ≈ A * 1.15 rtol = 0.01                                 # the growth at the window's middle, s = 87
+    # Exact read-outs: a field that is the lab position (each column must be labelled by its own x)
+    # and one that is the delay s = t − x (each sample must sit at t − Δt/2): J² = 2·mean(x²) over
+    # the slab's columns, and 2·(87² + L²(1/12 − 1/(2π²))), the mean square of s under a Hann weight
+    # of length L = 30 centred on 87.
+    for (f, expect) in (((x, t) -> x, sqrt(2 * sum(c -> ((c - 0.5) * dx)^2, ceil(Int, 72 / dx + 0.5):floor(Int, 152 / dx + 0.5)) /
+                                             length(ceil(Int, 72 / dx + 0.5):floor(Int, 152 / dx + 0.5)))),
+                        ((x, t) -> t - x, sqrt(2 * (87^2 + 30^2 * (1 / 12 - 1 / (2π^2))))))
+        s3 = SlabSums{Float64}(1)
+        prev = nothing
+        for k in 1:ceil(Int, last_sample(win) / dt) + 1
+            t = k * dt
+            sh = max(0, floor(Int, (t - 108) / dx))
+            ex = [f((band + jj + sh - 0.5) * dx, t) for jj in 1:(n1 - band)]
+            prev === nothing || accumulate_slab!(s3, (win.main,), ex, prev, sh, shprev, band, t, dt, dx, ωp)
+            prev, shprev = ex, sh
+        end
+        v3 = slab_values(s3, (win.main,), dt, dx, 1.0)
+        @test v3.slab[1] ≈ expect rtol = 2e-5
+        @test all(c -> abs(c - 1) < 1e-4, v3.coverage[1])
+    end
 end
 
 @testset "T-664 the box read-out interpolates between the steps around its time [WP-051]" begin
