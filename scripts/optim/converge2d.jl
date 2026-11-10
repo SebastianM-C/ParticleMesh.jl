@@ -161,7 +161,7 @@ one point against Δx and Δy) and `tau_offset` (the optimal τ of the plane-wav
 against Δx, with the 1D theory).
 """
 function plots(dirs)
-    res = [merge(JSON.parsefile(joinpath(d, "results.json")), Dict("dir" => relpath(d, REPO))) for d in dirs]
+    res = [merge(JSON.parsefile(joinpath(d, "results.json")), Dict("dir" => relpath(abspath(d), REPO))) for d in dirs if isfile(joinpath(d, "results.json"))]
     dir = newdir("plots", Dict{String,Any}("sources" => [r["dir"] for r in res]))
     probes = [r for r in res if kind_of(r) == "probe"]
     runs = reduce(vcat, [p["runs"] for p in probes]; init = Any[])
@@ -188,27 +188,34 @@ function plots(dirs)
                                         "box_J" => Float64[b["J"] for b in base["box"]][o], "box_grad" => [base["box"][i]["grad"] for i in o],
                                         "slab" => base["slab"]["main"]))
 
-    # 2. Convergence at the probe point: Δx at Δy = λ₀/8, Δy at Δx = λ₀/32.
+    # 2. Convergence at each probed point: J and its gradient against Δx (one line per Δy) and
+    #    against Δy (one line per Δx).
     dyl(r) = r["ppl"] ÷ r["dy_cells"]                        # cells per λ₀ along y
-    sx = sort([r for r in runs if dyl(r) == 8]; by = r -> r["ppl"])
-    sy = sort([r for r in runs if r["ppl"] == 32]; by = dyl)
-    fig = Figure(size = (1100, 420))
-    sidecar = Dict{String,Any}()
-    for (col, (series, xl, xv)) in enumerate(((sx, "Δx (λ₀), Δy = λ₀/8", r -> 1 / r["ppl"]), (sy, "Δy (λ₀), Δx = λ₀/32", r -> 1 / dyl(r))))
-        isempty(series) && continue
-        x = Float64[xv(r) for r in series]
-        a = Axis(fig[1, col]; xlabel = xl, ylabel = "J / E₀ at (7.74, 113)", xscale = log2, xreversed = true)
-        scatterlines!(a, x, Float64[r["slab"]["main"]["J"] for r in series]; label = "slab objective")
-        scatterlines!(a, x, Float64[r["box"][1]["J"] for r in series]; label = "WP-045's objective")
-        axislegend(a; position = :rb)
-        b = Axis(fig[2, col]; xlabel = xl, ylabel = "∂J/∂z", xscale = log2, xreversed = true)
-        scatterlines!(b, x, Float64[r["slab"]["main"]["grad"][1] for r in series]; label = "∂/∂(τ/6)")
-        scatterlines!(b, x, Float64[r["slab"]["main"]["grad"][2] for r in series]; label = "∂/∂(focus/90)")
-        axislegend(b; position = :rb)
-        sidecar[xl] = Dict("x" => x, "J" => [r["slab"]["main"]["J"] for r in series], "grad" => [r["slab"]["main"]["grad"] for r in series],
-                           "box_J" => [r["box"][1]["J"] for r in series])
+    for p in probes
+        rs = p["runs"]
+        length(rs) >= 3 || continue
+        tag = "convergence-tau$(round(p["tau"]; digits = 2))-focus$(round(p["focus"]; digits = 1))"
+        fig = Figure(size = (1100, 640))
+        sidecar = Dict{String,Any}("tau" => p["tau"], "focus" => p["focus"], "runs" => rs)
+        for (col, (xl, key, xv, other, olab)) in enumerate((("Δx (λ₀)", dyl, r -> 1 / r["ppl"], dyl, "Δy = λ₀/"),
+                                                             ("Δy (λ₀)", r -> r["ppl"], r -> 1 / dyl(r), r -> r["ppl"], "Δx = λ₀/")))
+            a = Axis(fig[1, col]; xlabel = xl, ylabel = "J / E₀", xscale = log2, xreversed = true,
+                     title = "at (τ, focus) = ($(round(p["tau"]; digits = 2)), $(round(p["focus"]; digits = 1)))")
+            b = Axis(fig[2, col]; xlabel = xl, ylabel = "∂J/∂z (z = τ/6, focus/90)", xscale = log2, xreversed = true)
+            for g in sort(unique(key.(rs)))
+                series = sort([r for r in rs if key(r) == g]; by = xv, rev = true)
+                length(series) >= 2 || continue
+                x = Float64[xv(r) for r in series]
+                scatterlines!(a, x, Float64[r["slab"]["main"]["J"] for r in series]; label = "$olab$g")
+                scatterlines!(b, x, Float64[r["slab"]["main"]["grad"][1] for r in series]; label = "∂/∂(τ/6), $olab$g")
+                scatterlines!(b, x, Float64[r["slab"]["main"]["grad"][2] for r in series]; linestyle = :dash, label = "∂/∂(focus/90), $olab$g")
+            end
+            hlines!(b, [0.0]; color = :black, linewidth = 0.5)
+            axislegend(a; position = :rb)
+            axislegend(b; position = :lb, labelsize = 10)
+        end
+        save_plot(dir, tag, fig, sidecar)
     end
-    save_plot(dir, "convergence", fig, sidecar)
 
     # 3. The optimal τ: plane-wave and 2D scans against Δx, with the 1D theory.
     scans = [r for r in res if kind_of(r) == "tauscan"]

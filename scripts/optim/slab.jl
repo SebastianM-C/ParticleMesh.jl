@@ -133,6 +133,13 @@ function wake_observe(duration, focus; windows = WINDOWS, box_times = (), kw...)
     return (; slab = nt(slab), osc = nt(osc), coverage, box, nsteps, dt, dx)
 end
 
+"""
+The resolution at which WP-051 found the optimum converged: Δx = λ₀/32, Δy = 2Δx = λ₀/16
+(keywords of [`wake_problem`](@ref)). The optimum moves by an estimated 0.05 in τ and 0.5 in focus
+under further refinement; J itself is about 1.7 % below its limit (reports/wp-051-converged-optimization.md).
+"""
+const CONVERGED = (; ppl = 32, dy_cells = 2)
+
 "The objective of WP-051: J over the `main` window."
 slab_amplitude(duration, focus; kw...) = wake_observe(duration, focus; windows = (main = WINDOWS.main,), kw...).slab.main
 
