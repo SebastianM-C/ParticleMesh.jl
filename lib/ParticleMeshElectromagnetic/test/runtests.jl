@@ -24,6 +24,7 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("pushers_sciml.jl")
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
+        include("fast_reference.jl")   # WP-037: T-290, Fast against Reference histories
         include("initialize.jl")    # T-420, the time of the loaded momenta; T-522, where the density is sampled
         include("subluminal.jl")    # T-480, T-481: a Gaussian-velocity load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
         include("momenta.jl")       # WP-033: T-537, T-539, the momentum distributions in the module; after subluminal.jl (its helpers)
@@ -40,6 +41,7 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("window.jl")        # WP-028: T-470 to T-479
         include("pml_back.jl")      # WP-034: T-570 to T-576, the PML on the window's back edge, after window.jl
         include("lwfa_gradient.jl") # WP-043: T-580 to T-582, a gradient through a small LWFA run, after window.jl
+        include("witness.jl")       # WP-047: T-640 to T-645, the witness bunch and its mean energy gain, after lwfa_gradient.jl
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET

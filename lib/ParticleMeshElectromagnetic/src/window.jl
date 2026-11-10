@@ -305,7 +305,7 @@ end
 retire_x!(::Nothing, st) = nothing
 function retire_x!(::WindowFrame, st)
     wgs = st.numerics.workgroupsize
-    for s in st.species
+    for s in (st.species..., witness_species(st)...)
         launcher(retire_x_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     return nothing
@@ -488,6 +488,9 @@ function shift_window!(st::EMState{2}, s_new::Integer)
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
         sort_by_cell!(s, grid, ws; workgroupsize = wgs)
         load_window_columns!(s, grid, load, lost, injection_column(w), 1, s_new; fast, flags, workgroupsize = wgs)
+    end
+    for s in witness_species(st)                 # the bunch moves back with the window, unsorted and not refilled
+        launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     kinetic!(st)
     return st

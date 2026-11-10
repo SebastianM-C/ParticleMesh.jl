@@ -4,17 +4,19 @@
 using LinearAlgebra: I, dot, norm
 
 """
-    maximize_box(fg, z0, lo, hi; maxiter = 30, gtol = 1e-4, xtol = 1e-4, c1 = 1e-4, maxhalvings = 8) -> (; z, f, g, path, evals, reason)
+    maximize_box(fg, z0, lo, hi; maxiter = 30, gtol = 1e-4, xtol = 1e-4, c1 = 1e-4, maxhalvings = 8, maxstep = Inf) -> (; z, f, g, path, evals, reason)
 
 Maximize `f` over the box `lo ≤ z ≤ hi`, with `fg(z) -> (f, ∇f)`. Projected BFGS: the step is the
 ascent direction `H·g` restricted to the free coordinates (a coordinate on a bound whose gradient
 points out of the box is held), projected onto the box, with Armijo backtracking (halving) on the
 projected step. `H` is the inverse-Hessian estimate of the negated objective, updated only when the
-curvature condition holds, and reset when the set of held coordinates changes. Stops when the projected gradient's largest component is below `gtol`,
+curvature condition holds, and reset when the set of held coordinates changes. A trial step whose
+largest component exceeds `maxstep` is scaled down to it (WP-052: with the identity as the first
+inverse Hessian, a steep objective otherwise jumps straight to a corner of the box). Stops when the projected gradient's largest component is below `gtol`,
 when a step changes `z` by less than `xtol` in every coordinate, or after `maxiter` iterations.
 `path` holds `(z, f, g)` of every accepted iterate, `evals` the number of `fg` calls.
 """
-function maximize_box(fg, z0, lo, hi; maxiter = 30, gtol = 1e-4, xtol = 1e-4, c1 = 1e-4, maxhalvings = 8)
+function maximize_box(fg, z0, lo, hi; maxiter = 30, gtol = 1e-4, xtol = 1e-4, c1 = 1e-4, maxhalvings = 8, maxstep = Inf)
     n = length(z0)
     proj(z) = clamp.(z, lo, hi)
     held(z, g) = [(z[i] <= lo[i] && g[i] < 0) || (z[i] >= hi[i] && g[i] > 0) for i in 1:n]
@@ -38,6 +40,8 @@ function maximize_box(fg, z0, lo, hi; maxiter = 30, gtol = 1e-4, xtol = 1e-4, c1
         Hf = H[free, free]
         d[free] = Hf * g[free]
         dot(d, g) <= 0 && (H = Matrix{Float64}(I, n, n); d = pgrad(z, g))   # not an ascent direction: reset
+        dmax = maximum(abs, d)
+        dmax > maxstep && (d .*= maxstep / dmax)
         α = 1.0
         accepted = false
         local zn, fn, gn

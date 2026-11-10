@@ -1,7 +1,8 @@
 # The three 1D cases through the module (A5): T-213 to T-217. Rates are measured with the
 # observables of the case files (scripts/crosscode/analysis.jl, the same fits the Smilei runs
-# use) and recorded, not thresholded (A7: measure, then propose); only finiteness and sign are
-# asserted.
+# use). The cold cases, two-stream and Weibel, have no seed noise, and their rates are bounded
+# against theory (WP-037); Landau's single noise-limited run is recorded, with finiteness and
+# sign asserted (its rate is checked on ensembles: tolerances.toml's T-214.wp012).
 
 const PHYSICS = Dict{String,Any}()
 
@@ -69,9 +70,10 @@ function body_T215(be)
     PHYSICS[physics_key("two-stream", be)] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
+    @test abs(rel - EMTOL["T-215"]["relative_error"]["gamma"]) <= EMTOL["T-215"]["bound"]   # cold beams: no seed noise (WP-037)
 end
 
-@testset "T-215 two-stream through the module against linear theory [A5, A7, A9, WP-014]" begin
+@testset "T-215 two-stream through the module against linear theory [A5, A7, A9, WP-014, WP-037]" begin
     body_T215(CPU())
 end
 
@@ -110,10 +112,11 @@ function body_T216(be)
     PHYSICS[physics_key("weibel", be)] = (; r..., f, γth)
     @test isfinite(f.gamma)
     @test f.gamma > 0
+    @test abs(rel - EMTOL["T-216"]["relative_error"]["gamma"]) <= EMTOL["T-216"]["bound"]   # cold beams: no seed noise (WP-037)
     @test ΔWB > 0 && ΔK < 0
 end
 
-@testset "T-216 Weibel growth rate against the cold-fluid relation [A1, A5, A7, WP-014]" begin
+@testset "T-216 Weibel growth rate against the cold-fluid relation [A1, A5, A7, WP-014, WP-037]" begin
     body_T216(CPU())
 end
 
