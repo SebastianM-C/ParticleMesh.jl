@@ -215,6 +215,9 @@ end
 
 function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, workgroupsize)
     check_workspace(ws, s, grid)
+    ws.flux == (shape, st) ||
+        throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
+                            "shape and stagger, $((shape, st)); the workspace was built with flux = $(ws.flux)"))
     need = flux_patch_values(shape, st)
     size(ws.flux_patch) == (prod(ncells(grid)), need) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *

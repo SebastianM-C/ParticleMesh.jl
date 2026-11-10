@@ -41,6 +41,9 @@ f2d_worker(nt) = [chopprefix(l, "F2D ") for l in worker_lines(nt) if startswith(
     @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, g3, Workspace(s, g3); dt = 0.25, quantity_z = QZ2)
     @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, g3, Workspace(s, g3; flux = (Linear, st));
                                              dt = 0.25, quantity_z = QZ2)
+    # A workspace built for another stagger pair with the same patch size (90 values per cell at order 2).
+    @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, (Node(), Center()), g3,
+                                             Workspace(s, g3; flux = (Quadratic, (Center(), Node()))); dt = 0.25, quantity_z = QZ2)
     @test deposit_flux!(Fast(), J..., s, Quadratic, st, g3, Workspace(s, g3); dt = 0.25, quantity_z = QZ2) isa Tuple
     small = PeriodicGrid((16, 2), (0.25, 0.375), 1)
     s = flux_species_2d(Float64, small, 20)
