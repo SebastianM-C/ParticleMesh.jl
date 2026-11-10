@@ -1,0 +1,55 @@
+backend = "KernelAbstractions CPU"
+commit = "211160b418e67d292d9eb4441a5ff111e6175082"
+cpu = "AMD EPYC 9655 96-Core Processor"
+dirty = false
+julia = "1.13.3"
+run_id = "optim-converge2d-probe-20261109T212815"
+threads = 16
+updated = "2026-11-09T21:28:15.687Z"
+work_package = "WP-051"
+
+[inputs]
+"Manifest.toml" = "sha256:75269420c815aae0fabe0660891f799fd3146f0c4641206837d32fdba92bae27"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:1de5e8c8b389ccb2b1283cebcbaf5b2b44b26899d627229bade1c78c6e9f7468"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:ab80be57544d225097579c99a3ab45dec7906b7bfaee6aa1dafb53b5596e7d12"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:f12d293a2df8986f707b767af18a948a547f887edd8b183ef3cf4f0f1b2a2416"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:fcfea20a72f1804a2e715395f847a1a0e34db64a16f773d9b9c4c3c9e337651a"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/momenta.jl" = "sha256:4337198f17854d7227053b83b0b9a6e0ac3fc33a9782f156ee3d543b9df40633"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:dca391dd04e94b91b48774e55302c4244eecc5b7a4b3f15bff0fbe241155c40f"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:b019f2a1bb4ac56bed56a8951af7b276fd6359ca89b5be474c9d852a2d3ebd8a"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:6ff4c310c3d9d8a08a31c6e0524dd8fdb25af2bcf7ca9d770cae9b4390093256"
+"lib/ParticleMeshElectromagnetic/src/boundaries.jl" = "sha256:173b6cc6e871cbb498ba399e7808d52f06dfb80c48d5b1626263364ab742c3c3"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:350a55c61d31d12cda4ef288efaa6735283cde6542ed4964419485f51a78c26b"
+"lib/ParticleMeshElectromagnetic/src/filter.jl" = "sha256:24970a85fe208b2eebdb8da06e47e30c765e8d924cba8fe7f49b2bb6ace159b3"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c2bc74923a7b04bc19b8a0bf956de09f622fdc6be5f2556b054fe8b48ce6c3a8"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:0ff78978ffe5fa76d09fcd3481eadc44e88f6f8cdcc537835dadc3411e93f5be"
+"lib/ParticleMeshElectromagnetic/src/pml.jl" = "sha256:14cebaba34a495daffbcc33115df5514bccafcffc121466a1e4bc9efd8491514"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:c87c5b0f475bfb00c4334b173bd6952aa89f13e4b15423e27f64c89be3399459"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:2c749a8baf0e00d46c1a3c15e1c6f74447987c9859d61fc5d122638d2e66a491"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:4afd5e465d2159a7406c9ea4630c49d113b0fc37dc6ee74b186d6972f1021f1e"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/window.jl" = "sha256:399282e59ca06b6030ca162f264d2140a96aee1479870520ba8e4f6aeb51e368"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:b4b44816bd10b96049e9ebfa50e34c3a570ce4d50a20c832ef13a99bf2ac409d"
+"scripts/Manifest.toml" = "sha256:6dbd84ec1dd2e213634caac0fab3e0f41d3e4dc93f41d53b12470a1c73db79e6"
+"scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
+"scripts/optim/converge2d.jl" = "sha256:22b68328699af1ab77b886fe5fc89ac5d656b1f760cca2419c82f4b45ff7d7fb"
+"scripts/optim/maximize.jl" = "sha256:f7d38d3ea9a8ee1afb2e93e1f7279f8757580f91837ba0758acfd89236ffebc6"
+"scripts/optim/slab.jl" = "sha256:09d510636245a5396a795996ec7051f28fdefb8ecaa1779629de53643a0dd46e"
+"scripts/optim/wake2d_case.jl" = "sha256:de4fc10d02cfcdc2398929aa85e29610ee1acb3b4b33bcb4badce3553a4782c7"
+
+[parameters]
+args = ["probe", "8.2192", "118.0394", "16x1,32x2,48x3,32x1"]
+command = "probe"
+focus = 118.0394
+resolutions = [[16, 1], [32, 2], [48, 3], [32, 1]]
+tau = 8.2192
