@@ -116,7 +116,10 @@ function gain_at_centers(st, centers; length = WCASE.length)
     gains = Float64.(value_of.(g.gain))
     return map(centers) do c
         w = exp.(-((x0 .- c) ./ length) .^ 2 ./ 2)
-        sum(w .* gains) / sum(w)
+        den = sum(w)
+        den > 0 ||
+            throw(ArgumentError("the weights of the witnesses vanish (they underflow): the centre $c lies far outside the lattice's region"))
+        sum(w .* gains) / den
     end
 end
 
