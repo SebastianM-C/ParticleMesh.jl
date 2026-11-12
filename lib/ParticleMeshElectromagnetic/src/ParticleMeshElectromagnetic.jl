@@ -51,7 +51,7 @@ export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, pu
 export lorentz_rhs!, particle_problem, pusher_algorithm
 export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
 export EMParams, SpeciesParams, WitnessParams, params, check_params
-export EMState, initialize!, step!, run!
+export EMState, initialize!, step!, run!, check_setup, reset_convolution!
 export HistoryRecorder, observe!
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history

@@ -173,6 +173,18 @@ function check_aux_params(st::EMState{2}, p::EMParams)
         throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
     p.profile === nothing || window !== nothing ||
         throw(ArgumentError("a density profile is implemented with the moving window only"))
+    window === nothing || check_window_params(window, p)
+    return nothing
+end
+
+# What `EMProblem` requires of a moving-window plasma, of the parameters handed to its state.
+function check_window_params(w::WindowFrame, p::EMParams)
+    all(ps -> iszero(ps.amplitude), p.species) ||
+        throw(ArgumentError("a moving-window plasma starts neutral against its immobile background, so every species' amplitude must be zero"))
+    all(iszero, p.E0) && all(iszero, p.B0) ||
+        throw(ArgumentError("a moving-window run takes no background fields (the outside of the window is field-free)"))
+    w.window.start > 0 && !all(ps -> all(iszero, ps.drift) && all(iszero, ps.thermal), p.species) &&
+        throw(ArgumentError("before a moving window starts (start = $(w.window.start)) its front is a fixed edge that a plasma with a drift or a thermal speed reaches: start the window at 0 or keep the species cold"))
     return nothing
 end
 

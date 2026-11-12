@@ -423,7 +423,9 @@ reset_back!(w) = reset_absorber!(w.back)
     reset_convolution!(state) -> state
 
 Zero the convolution fields of the state's PMLs (the open axis' and the window's back edge's);
-nothing without one, and nothing at N = 1.
+nothing without one, and nothing at N = 1. `initialize!` calls it. A run restarted at t = 0 by
+other means, `copyto!(state, partition)` of a [`state_partition`](@ref) saved after
+`initialize!`, needs it too: the partition does not hold these fields.
 """
 reset_convolution!(st::EMState{1}) = st
 reset_convolution!(st::EMState{2}) = (reset_absorber!(st.aux.layer); reset_back!(st.aux.window); st)

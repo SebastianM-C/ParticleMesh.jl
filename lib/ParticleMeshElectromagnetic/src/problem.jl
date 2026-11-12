@@ -281,20 +281,30 @@ end
 """
     SpeciesParams{T,N}
 
-The parameters of one mobile species (A3): the `density` (n_c) and the relative `amplitude` and
-`wavevector` (ω₀/c, one component per axis) of its cosine perturbation, which enter through the
-particle weights in the initial load and, with a moving window, in every refill; the `drift`
-velocity (c) and the `thermal` speeds per component (c), which enter through the loaded momenta.
-`density`, `amplitude`, `drift` and `thermal` may be `Dual`s. The species' charge and mass are
-not here: they belong to the engine's `Species`, fixed when the state is built.
+The parameters of one mobile species (A3) of a problem of element type `T`: the `density` (n_c)
+and the relative `amplitude` and `wavevector` (ω₀/c, one component per axis) of its cosine
+perturbation, which enter through the particle weights in the initial load and, with a moving
+window, in every refill; the `drift` velocity (c) and the `thermal` speeds per component (c),
+which enter through the loaded momenta. `density`, `amplitude`, `drift` and `thermal` may be
+`Dual`s. The species' charge and mass are not here: they belong to the engine's `Species`, fixed
+when the state is built.
+
+`SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal)` converts every number to `T`.
+`params(problem)` keeps the four numbers of the description in the description's own type `S`
+(the third type parameter; `S = T` unless a `SpeciesDescription{S}` of another type was put into
+the problem), as the loader has always received them: a Float64 species in a Float32 problem
+loads from Float64 numbers.
 """
-struct SpeciesParams{T,N}
-    density::T
-    amplitude::T
+struct SpeciesParams{T,N,S}
+    density::S
+    amplitude::S
     wavevector::NTuple{N,T}
-    drift::NTuple{3,T}
-    thermal::NTuple{3,T}
+    drift::NTuple{3,S}
+    thermal::NTuple{3,S}
 end
+
+SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal) where {T,N} =
+    SpeciesParams{T,N,T}(T(density), T(amplitude), T.(Tuple(wavevector)), T.(Tuple(drift)), T.(Tuple(thermal)))
 
 """
     WitnessParams{T}
@@ -340,7 +350,10 @@ injection step are made from it, the last two as integers), the antenna plane's 
 nearest primal node to the laser's `position`, which is therefore not a differentiable
 parameter, A3), the window's start, and per species the charge, the mass, the Philox stream and
 the kind of its momentum distribution. [`check_params`](@ref) says whether parameters fit a state,
-and `initialize!` and `step!` ask it.
+and `initialize!` and `step!` ask it. A derivative with respect to a number of the configuration
+(a charge, a mass, the time step) is not carried by the parameters: it needs a state built from
+the dual problem, and `initialize!(state, problem)` refuses a problem whose configuration is not
+the state's ([`check_setup`](@ref)).
 
     EMParams{T}(; species, lasers = (), profile = nothing, witness = nothing, seed, E0 = zeros, B0 = zeros)
     EMParams(p::EMParams; lasers = p.lasers, species = p.species, ...)
@@ -382,13 +395,16 @@ The parameters of a problem description ([`EMParams`](@ref)), in its element typ
 wave vector `2π·mode/length` per axis, the lasers and the profile converted to `T`.
 """
 function params(problem::EMProblem{N,T}) where {N,T}
-    species = map(d -> SpeciesParams{T,N}(d.density, d.amplitude, wavevector(d.mode, problem.length), d.drift, d.thermal),
-                  problem.species)
+    species = map(d -> species_params(T, d, wavevector(d.mode, problem.length)), problem.species)
     b = problem.witness
     witness = b === nothing ? nothing : WitnessParams{T}(b.momentum, b.center, b.length, b.width)
     return EMParams{T}(; lasers = problem.lasers, species, profile = problem.profile, witness, seed = problem.seed,
                        E0 = problem.E0, B0 = problem.B0)
 end
+
+# The description's numbers in the description's own type, the wave vector in the problem's.
+species_params(::Type{T}, d::SpeciesDescription{S}, k::NTuple{N,T}) where {T,N,S} =
+    SpeciesParams{T,N,S}(d.density, d.amplitude, k, d.drift, d.thermal)
 
 "The loader's parameters of a species' [`CosineProfile`](@ref): density, amplitude and the wave vector."
 density_params(ps::SpeciesParams{T,1}) where {T} = (ps.density, ps.amplitude, ps.wavevector[1])

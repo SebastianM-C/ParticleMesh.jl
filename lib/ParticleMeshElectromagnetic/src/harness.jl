@@ -18,7 +18,8 @@ scratch `ρ` and the recorder with its histories are not in the partition: they 
 state's cache, and so does what a 2D run evolves next to the particles and the fields (a PML's
 convolution fields, the moving window's counters, the witness bunch's particles), so the
 partition is the whole evolved state only for a periodic run without a witness.
-`copyto!(state, u)` writes a partition back into the state's arrays.
+`copyto!(state, u)` writes a partition back into the state's arrays; to start a run again from
+a partition saved at t = 0 on a state with a PML, also call [`reset_convolution!`](@ref).
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """
@@ -38,7 +39,9 @@ witness bunch, and the densities, profile and seed of the moving window's refill
 change for a parameter that acts only during the steps (a laser's). It is not for one that also
 enters the initial load (a density, a drift, a thermal speed, the seed, the background fields),
 whose `u0` holds the old weights and momenta, nor for a `p′` of another configuration or element
-type, which the step refuses ([`check_params`](@ref)). `remake_reload` is for those.
+type: a problem of another configuration is refused at the first step ([`check_setup`](@ref)),
+parameters that do not fit by the step ([`check_params`](@ref)), while an `EMParams` cannot say
+what configuration it was made for. `remake_reload` is for those.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """

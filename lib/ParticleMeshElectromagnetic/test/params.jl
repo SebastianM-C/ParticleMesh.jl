@@ -20,16 +20,34 @@ finished for durations up to 3.15. Every entry of `x` may be a dual: a₀ and th
 through the antenna's source, the density and the ramp through the weights of the initial load
 and of the refill (A3).
 """
-function params_case(x; nsteps = 120, cells = (64, 16), position = 6, start = 33, plasma = true, witness = nothing, open_y = false)
+function params_case(x; nsteps = 120, cells = (64, 16), position = 6, start = 33, plasma = true, witness = nothing, open_y = false, polarization = 0)
     T = promote_type(map(typeof, x)...)
     a0, duration, density, ramp = map(T, x)
     h = 2 * T(π) / 8
     dt = T(95) / 100 * h / sqrt(T(2))
-    pulse = GaussianLaser(; a0, waist = T(6), duration, delay = T(18), focus = T(position), position = T(position), center = cells[2] * h / 2)
+    pulse = GaussianLaser(; a0, waist = T(6), duration, delay = T(18), focus = T(position), position = T(position), center = cells[2] * h / 2,
+                          polarization = T(polarization))
     e = SpeciesDescription{T}(:electron, -one(T), one(T), density, zero(T), (1, 0), (2, 2), ZERO3(T), ZERO3(T), 1)
     return EMProblem("params-case", (cells[1] * h, cells[2] * h), cells, dt, nsteps, plasma ? (e,) : (), 1, (1, 0);
                      lasers = (pulse,), boundaries = (:window, open_y ? :open : :periodic), window = MovingWindow(; start = T(start)),
                      profile = DensityRamp(; vacuum = T(24), ramp), witness)
+end
+
+"`window_plasma`'s cold plasma at rest with two species of the same lattice, the second of four times the density `n0` (a factor that is exact in binary arithmetic)."
+function cold_pair(::Type{T}, n0) where {T}
+    cells = (24, 6)
+    L = (T(cells[1]) / 2, T(cells[2]) / 2)
+    dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2))) / 10
+    sp(name, q, m, n, stream) = SpeciesDescription{T}(name, q, m, n, zero(T), (1, 0), (2, 2), ZERO3(T), ZERO3(T), stream; momentum = :gaussian_velocity)
+    return EMProblem("cold-pair", L, cells, T(dt), 40, (sp(:electron, -one(T), one(T), n0, 1), sp(:positive, one(T), 4 * one(T), 4 * n0, 2)), 5, (1, 0);
+                     boundaries = (:window, :periodic), window = MovingWindow(; start = zero(T)), profile = DensityRamp(; vacuum = T(4), ramp = T(4)))
+end
+
+"A vacuum box (56 × 16 cells of π/4, periodic) with the given lasers, each on its own plane, 50 steps."
+function laser_box(::Type{T}, lasers::Tuple) where {T}
+    cells = (56, 16)
+    h = 2 * T(π) / 8
+    return EMProblem("laser-box", (cells[1] * h, cells[2] * h), cells, T(95) / 100 * h / sqrt(T(2)), 50, (), 1, (1, 0); lasers)
 end
 
 "The alive particles' arrays of a species in slot order, with the status and the count: what a run evolves of it (a free slot keeps the data of whatever held it last, and the extras are the push's scratch)."
@@ -126,13 +144,16 @@ end
 # only receives weights (no current, T-471): in the window's initial load, and after 40 steps,
 # when every particle comes from a refill (29 shifts through 24 columns), the weights of
 # density → 2·density are twice the weights, the same particles alive: the initial load and the
-# refill read the density from the parameters. Every parameter of a static load is read from them
+# refill read the density from the parameters, with its partials (∂w/∂n = w/n), and each species
+# its own (a second species of four times the density has four times the weights). Every parameter of a static load is read from them
 # too: a state built for one plasma and handed another's seed, background fields, density and
 # perturbation or thermal speed (at N = 2), amplitude and seed (at N = 1), is the state built for
 # that other plasma, bit for bit over the first steps, and the background fields are in the
-# components no charge feeds, exactly, at N = 2 and N = 1. The witness bunch's centre enters the
-# weights at the injection step and nothing else: two centres on one state give the same gains
-# and other weights.
+# components no charge feeds, exactly, at N = 2 and N = 1; at N = 1 two seeds are two loads. With
+# two lasers each acts on its own plane: with the amplitude of one set to zero, the fields are,
+# in value, those of the other alone on a state with one plane. The witness bunch's centre enters
+# the weights at the injection step and nothing else: two centres on one state give the same
+# gains and other weights.
 function body_T721(be)
     for T in TYPES
         a0 = seeded(T, 1)
@@ -165,7 +186,17 @@ function body_T721(be)
             @test !isempty(a[end]) && any(!iszero, a[end])
             @test same_bits(b[end], 2 .* a[end])                        # the weights
             @test all(map(same_bits, a[1:(end - 1)], b[1:(end - 1)]))   # the same particles at the same places
+            if T === D3      # n₀ = 1 with the partials (1, 2, 3)/8, and ∂w/∂n₀ = w/n₀
+                @test all(w -> all(i -> isapprox(partials(w)[i], value(w) * i / 8; rtol = 8 * eps(Float32)), 1:3), filter(w -> value(w) != 0, a[end]))
+            end
         end
+        pair = cold_pair(T, n0)
+        st = EMState(pair, EMNumerics(); backend = be)
+        initialize!(st, pair)
+        run!(st, params(pair), pair.nsteps)
+        w1, w2 = particle_arrays(st.species[1]), particle_arrays(st.species[2])
+        @test window_shifts(st, pair.nsteps) > ncells(st.grid)[1] && any(!iszero, w1[end])
+        @test same_bits(w2[end], 4 .* w1[end]) && all(map(same_bits, w1[1:(end - 1)], w2[1:(end - 1)]))
 
         base = plasma_2d(T)
         st = state_2d(base; be, current = Esirkepov())
@@ -188,12 +219,32 @@ function body_T721(be)
         st1, _, _, _ = case_state("landau", T; ppc = 16, t_end = 1, be)
         ref1, q1, _, _ = case_state("landau", T; ppc = 16, t_end = 1, be, amplitude = seeded(T, 1) / 50, seed = 7)
         run!(ref1, q1, 5)
+        @test !same_run(st1, ref1)
         initialize!(st1, q1)
         run!(st1, q1, 5)
         @test same_run(st1, ref1)
+        seed7, _, _, _ = case_state("landau", T; ppc = 16, t_end = 1, be, seed = 7)
+        seed8, q8, _, _ = case_state("landau", T; ppc = 16, t_end = 1, be, seed = 8)
+        @test !same_run(seed7, seed8)                          # a thermal load: the seed alone makes another one
+        initialize!(seed7, q8)
+        @test same_run(seed7, seed8)
         initialize!(st1, EMParams(q1; E0 = (zero(T), T(1) / 4, zero(T)), B0 = (T(1) / 8, zero(T), -T(1) / 2)))
         @test all(==(T(1) / 4), Array(st1.fields.Ey)) && all(==(T(1) / 8), Array(st1.fields.Bx)) && all(==(-T(1) / 2), Array(st1.fields.Bz))
         @test all_plus_zero(st1.fields.Ez) && all_plus_zero(st1.fields.By)
+    end
+    for T in (Float32, Float64)
+        yc = T(16 * 2π / 8 / 2)
+        la(a0) = GaussianLaser(; a0 = T(a0), waist = T(4), duration = T(2), delay = T(12), focus = T(12), position = 6.0, center = yc)
+        lb(a0) = GaussianLaser(; a0 = T(a0), waist = T(3), duration = T(3) / 2, delay = T(10), focus = T(20), position = 14.0, center = yc / 2,
+                               polarization = T(1), chirp = T(1) / 20, envelope = WavefrontTime())
+        box(lasers) = (q = laser_box(T, lasers); s = EMState(q, EMNumerics(); backend = be); initialize!(s, q); run!(s, params(q), q.nsteps);
+                       map(Array, s.fields))
+        only_a, only_b = box((la(1),)), box((lb(1 // 2),))
+        a_zero_b, zero_a_b = box((la(1), lb(0))), box((la(0), lb(1 // 2)))
+        @test maximum(abs, only_a.Ey) > 1 // 10 && maximum(abs, only_b.Ez) > 1 // 100
+        @test all(c -> a_zero_b[c] == only_a[c], (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
+        @test all(c -> zero_a_b[c] == only_b[c], (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
+        @test only_a.Ey != only_b.Ey
     end
     bunch(c) = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (5.0, 7.0)), momentum = 3.0, center = (c, 6.0), length = 2.0)
     prob1, prob2 = map(c -> params_case((1.0, 3.0, 0.02, 8.0); witness = bunch(c), nsteps = 100), (24.0, 27.0))
@@ -276,6 +327,9 @@ end
     @test all(map(same_bits, values(histories(rh1)), values(histories(st1)))) && histories(rh1).WEx[1] != histories(rh1).WEx[2]
     @test all(map(same_bits, values(histories(r1)), values(histories(ref1))))
     @test same_bits(histories(st1).WEx, histories(ref1).WEx) && !same_bits(histories(st1).Ex_re, histories(r1).Ex_re)
+    quiet1, _, _, _ = case_state("landau", T; ppc = 16, t_end = 1)
+    run!(quiet1, p1, prob1.nsteps; observer = nothing)
+    @test all(h -> all(iszero, h), histories(quiet1)) && same_bits(Array(quiet1.fields.Ex), Array(st1.fields.Ex))
     @test_throws ArgumentError observe!(r1, plain, 1)             # a 1D recorder, a 2D state
     @test_throws ArgumentError observe!(plain.recorder, st1, 1)
 end
@@ -288,8 +342,12 @@ end
 # pass while it emits; a problem of another configuration (cells, cell sizes, time step, a species'
 # particles per cell, stream, momentum distribution, charge or mass, the boundaries, the window's
 # start, the witness's placement, charge or mass) is not this state's, while one that differs in
-# parameters only is. A laser moved within its plane's half cell
-# is the same run: the position only chooses the column (A3).
+# parameters only is, and neither is one of another diagnostic mode (the state's recorder is of
+# the state's). Parameters an `EMProblem` would refuse are refused: a Maxwell–Jüttner species
+# with an anisotropic or zero spread, and in a window an amplitude, background fields, or a drift
+# before the window starts. A laser moved within its plane's half cell (0.4 cells is, 0.6 is not)
+# is the same run: the position only chooses the column (A3). A species described in another
+# element type than the problem's keeps its numbers in that type, as the loader takes them.
 @testset "T-723 the parameters are the problem's numbers, and a state refuses the ones that do not fit it [A3, A10, WP-055]" begin
     T = Float64
     x = (1.0, 3.0, 0.02, 8.0)
@@ -297,7 +355,11 @@ end
     prob = params_case(x; witness = wb)
     p = params(prob)
     @test p isa EMParams{T} && eltype(p) === T
-    @test p.lasers[1] === ParticleMeshElectromagnetic.convert_laser(T, prob.lasers[1])
+    l0 = p.lasers[1]
+    @test (l0.a0, l0.waist, l0.duration, l0.delay, l0.focus, l0.chirp, l0.polarization, l0.phase, l0.position, l0.center) ===
+          (1.0, 6.0, 3.0, 18.0, 6.0, 0.0, 0.0, 0.0, 6.0, 16 * (2π / 8) / 2) && l0.envelope === AxisTime()
+    l32 = params(params_case(Float32.(x))).lasers[1]
+    @test l32 isa GaussianLaser{Float32,Float32} && l32.duration === 3.0f0 && l32.position === 6.0f0
     e = prob.species[1]
     @test p.species[1] === SpeciesParams{T,2}(e.density, e.amplitude, (2π * e.mode[1] / prob.length[1], 2π * e.mode[2] / prob.length[2]), e.drift, e.thermal)
     @test p.profile === prob.profile && p.seed == prob.seed && p.E0 === prob.E0 && p.B0 === prob.B0
@@ -306,6 +368,7 @@ end
     magnetized = plasma_2d(T; E0 = (T(1) / 10, T(2) / 10, T(3) / 10), B0 = (T(4) / 10, T(5) / 10, T(6) / 10), seed = 11)
     pm = params(magnetized)
     @test pm.E0 === magnetized.E0 && pm.B0 === magnetized.B0 && pm.seed == 11 && pm.profile === nothing && pm.witness === nothing
+    @test EMParams(pm) === pm && EMParams(pm; seed = 3).E0 === pm.E0 && EMParams(pm; seed = 3).B0 === pm.B0
     em = magnetized.species[1]
     @test (pm.species[1].density, pm.species[1].amplitude, pm.species[1].drift, pm.species[1].thermal) === (em.density, em.amplitude, em.drift, em.thermal)
     landau = problem_from_case(load_case("landau"), T)
@@ -323,18 +386,39 @@ end
     refused(params(params_case(x; witness = wb, position = 10)))                     # the laser on another column
     refused(EMParams(p; lasers = (GaussianLaser(; a0 = 1.0, waist = 6.0, duration = 4.0, delay = 18.0, focus = 6.0, position = 6.0, center = 6.0),)))   # still emitting when the window passes
     @test_throws ArgumentError check_params(EMState(params_case(x), EMNumerics()), p)   # a bunch for a state without one
-    static = plasma_step_2d(T; nsteps = 2)
+    static = plasma_step_2d(T; nsteps = 2)                     # modes (2, 1) and (1, −1) on a box of 2π × 3π/2
+    @test params(static).species[1].wavevector === (2 * T(π) * 2 / static.length[1], 2 * T(π) * 1 / static.length[2])
+    @test params(static).species[2].wavevector === (2 * T(π) * 1 / static.length[1], 2 * T(π) * -1 / static.length[2])
     @test_throws ArgumentError check_params(EMState(static, EMNumerics()), EMParams(params(static); profile = prob.profile))
     st1, q1, _, _ = case_state("landau", T; ppc = 4, t_end = 1)
     @test_throws ArgumentError check_params(st1, EMParams(q1; lasers = prob.lasers))
     @test_throws ArgumentError step!(st1, EMParams(q1; lasers = prob.lasers), 1)                 # the 1D step refuses too
     @test_throws ArgumentError initialize!(st1, EMParams(q1; lasers = prob.lasers))
     @test_throws ArgumentError step!(st1, EMParams(q1; species = ()), 1)
+    @test_throws ArgumentError check_params(st1, EMParams(q1; witness = p.witness))
+    @test_throws ArgumentError check_params(st1, EMParams(q1; profile = prob.profile))
+    # what an EMProblem refuses of the same numbers
+    sp = p.species[1]
+    with(; amplitude = sp.amplitude, drift = sp.drift, thermal = sp.thermal) =
+        EMParams(p; species = (SpeciesParams{T,2}(sp.density, amplitude, sp.wavevector, drift, thermal),))
+    @test check_params(st, with()) isa EMParams
+    refused(with(; amplitude = T(1) / 10))                                           # a perturbation in a window
+    refused(with(; drift = (T(3) / 10, zero(T), zero(T))))                           # a drift before the window starts
+    refused(with(; thermal = (T(1) / 100, T(1) / 100, T(1) / 100)))
+    refused(EMParams(p; E0 = (zero(T), T(1) / 10, zero(T))))                         # background fields in a window
+    refused(EMParams(p; B0 = (zero(T), zero(T), T(1) / 10)))
+    hot = plasma_2d(T)
+    sh, ph = EMState(hot, EMNumerics(; current = NoCurrent())), params(hot)
+    sph = ph.species[1]
+    spread(th) = EMParams(ph; species = (SpeciesParams{T,2}(sph.density, sph.amplitude, sph.wavevector, sph.drift, th),))
+    @test sh.setup[1].momentum === :maxwell_juttner && check_params(sh, spread(sph.thermal)) isa EMParams
+    @test_throws ArgumentError check_params(sh, spread((sph.thermal[1], 2 * sph.thermal[1], sph.thermal[1])))   # not isotropic
+    @test_throws ArgumentError initialize!(sh, spread((zero(T), zero(T), zero(T))))                             # cold
     # a problem of another configuration is not this state's
     e2(; ppc = (2, 2), stream = 1, charge = -one(T), mass = one(T)) =
         (SpeciesDescription{T}(:electron, charge, mass, e.density, zero(T), (1, 0), ppc, ZERO3(T), ZERO3(T), stream),)
-    like(; dt = prob.dt, species = prob.species, cells = prob.cells, box = prob.length, window = prob.window, witness = prob.witness) =
-        EMProblem(prob.name, box, cells, dt, prob.nsteps, species, prob.seed, prob.kmode; lasers = prob.lasers,
+    like(; dt = prob.dt, species = prob.species, cells = prob.cells, box = prob.length, window = prob.window, witness = prob.witness, kmode = prob.kmode) =
+        EMProblem(prob.name, box, cells, dt, prob.nsteps, species, prob.seed, kmode; lasers = prob.lasers,
                   boundaries = prob.boundaries, window, profile = prob.profile, witness)
     bunch(; kw...) = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (5.0, 7.0)), momentum = 3.0, center = (25.0, 6.0), length = 2.0, kw...)
     @test check_setup(st, like()) isa EMProblem
@@ -343,10 +427,17 @@ end
               like(; box = (prob.length[1], 2 * prob.length[2])), like(; species = e2(; charge = -2 * one(T))), like(; species = e2(; mass = 2 * one(T))),
               like(; window = MovingWindow(; start = 34.0)), like(; witness = nothing), like(; witness = bunch(; inject = 41.0)),
               like(; witness = bunch(; region = ((20.0, 31.0), (5.0, 7.0)))), like(; witness = bunch(; ppc = (2, 1))), like(; witness = bunch(; mass = 2.0)),
-              like(; witness = bunch(; charge = 1.0)))
+              like(; witness = bunch(; charge = 1.0)), like(; kmode = (1, 1)))
         @test_throws ArgumentError check_setup(st, q)
         @test_throws ArgumentError initialize!(st, q)
     end
+    # each line of the check on its own: half the columns of the same size, and the same columns of half the size
+    @test_throws "cells (32, 16) against (64, 16)" check_setup(st, like(; cells = (32, 16), box = (prob.length[1] / 2, prob.length[2])))
+    @test_throws "cell sizes" check_setup(st, like(; box = (prob.length[1] / 2, prob.length[2])))
+    @test_throws "diagnostic mode" check_setup(st, like(; kmode = (1, 1)))
+    alt1 = problem_from_case(load_case("landau"), T; ppc = 4, t_end = 1)
+    @test check_setup(st1, alt1) isa EMProblem
+    @test_throws "diagnostic mode" check_setup(st1, EMProblem(alt1.name, alt1.length, alt1.cells, alt1.dt, alt1.nsteps, alt1.species, alt1.seed, 3 * alt1.kmode))
     @test_throws ArgumentError check_setup(EMState(static, EMNumerics()), plasma_step_2d(T; nsteps = 2, momentum = :gaussian_velocity))
     @test_throws ArgumentError check_setup(st1, static)                                           # N = 2 against N = 1
     open2, ab = open_plasma_2d(T; nsteps = 2)
@@ -363,20 +454,41 @@ end
     initialize!(b, q)
     run!(b, q, 60)
     @test same_run(a, b) && any(!iszero, Array(a.fields.Ey))
+    h1 = cellsize(st.grid)[1]
+    at(pos) = EMParams(p; lasers = (GaussianLaser(; a0 = l.a0, waist = l.waist, duration = l.duration, delay = l.delay, focus = l.focus, position = pos, center = l.center),))
+    @test st.aux.antennas[1].ia == 9                           # the plane at x = 8Δx
+    @test check_params(st, at(8.4 * h1)) isa EMParams && check_params(st, at(7.6 * h1)) isa EMParams
+    @test_throws ArgumentError check_params(st, at(8.6 * h1))
+    @test_throws ArgumentError check_params(st, at(7.4 * h1))
+    # a Float64 species in a Float32 problem: the loader gets its Float64 numbers (the engine's load with them), not their Float32 values
+    d64 = SpeciesDescription{Float64}(:electron, -1.0, 1.0, 0.7123, 0.0517, (2, 1), (3, 3), ZERO3(Float64), (0.05, 0.05, 0.05), 1)
+    d32 = SpeciesDescription{Float32}(:electron, -1.0f0, 1.0f0, 0.7123f0, 0.0517f0, (2, 1), (3, 3), ZERO3(Float32), (0.05f0, 0.05f0, 0.05f0), 1)
+    mixed(d) = EMProblem("mixed", (2 * Float32(π), 2 * Float32(π)), (10, 8), plasma_2d(Float32).dt, 2, (d,), 1, (2, 1))
+    loaded(d) = (s = EMState(mixed(d), EMNumerics(; current = NoCurrent())); initialize!(s, mixed(d); momenta_at = :t_minus_half); s)
+    pmx = params(mixed(d64))
+    @test pmx isa EMParams{Float32} && pmx.species[1].density === 0.7123 && pmx.species[1].thermal === (0.05, 0.05, 0.05)
+    @test pmx.species[1].wavevector === (2.0f0, 1.0f0) && check_params(loaded(d64), pmx) === pmx
+    sx = loaded(d64)
+    byengine = Species(backend, Float32, capacity(sx.species[1]); q = -1.0f0, m = 1.0f0, N = 2)
+    load_quiet!(byengine, sx.grid, CosineProfile(), (0.7123, 0.0517, 2.0f0, 1.0f0), (3, 3), momentum_distribution(d64); seed = 1, stream = 1,
+                exhausted = KernelAbstractions.zeros(backend, Int32, 1))
+    @test particle_set(sx.species[1]) == particle_set(byengine)
+    @test !same_bits(Array(sx.species[1].w), Array(loaded(d32).species[1].w))
 end
 
 # --- T-724 ----------------------------------------------------------------------------------
 
 # `initialize!` starts everything a run evolves, so a state that has run (other parameters, to the
 # end) is a new state after it, bit for bit over the whole next run: with a PML on the open axis and
-# on the window's back edge (convolution fields), a witness bunch (injected and partly retired)
-# and a laser in a plasma; and with a buffer too small for the refill, whose `lost` counter counts
+# on the window's back edge (all eight convolution fields excited: the pulse is polarized between
+# y and z), a witness bunch (injected) and a laser in a plasma; and with a buffer too small for the refill, whose `lost` counter counts
 # one run, not two.
 function body_T724(be)
     for T in TYPES
         yc = 16 * 2π / 8 / 2
         wb = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (yc - 1, yc + 1)), ppc = (2, 1), momentum = T(3), center = (T(25), T(yc)), length = T(2))
-        case(a0, n0) = params_case((seeded(T, a0), T(3), seeded(T, n0), T(8)); nsteps = 100, cells = (72, 16), position = 10, witness = wb, open_y = true)
+        case(a0, n0) = params_case((seeded(T, a0), T(3), seeded(T, n0), T(8)); nsteps = 100, cells = (72, 16), position = 10, witness = wb, open_y = true,
+                                       polarization = 1)
         prob, first = case(1, 2 // 100), case(3 // 2, 1 // 100)
         num = EMNumerics(; back_absorber = PML(; cells = 6), absorber = PML(; cells = 4, alpha_max = 0.2))
         fresh = EMState(prob, num; backend = be)
@@ -386,10 +498,11 @@ function body_T724(be)
         initialize!(used, first)
         run!(used, params(first), first.nsteps)
         @test !same_run(fresh, used)
-        @test any(!iszero, Array(used.aux.layer.ψEx)) && any(!iszero, Array(used.aux.window.back.ψEy))
+        psis(s) = (L = s.aux.layer; B = s.aux.window.back; (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
+        @test all(ψ -> any(!iszero, Array(ψ)), psis(used))
         @test witness_alive(used) > 0
         initialize!(used, prob)
-        @test all(iszero, Array(used.aux.layer.ψEx)) && all(iszero, Array(used.aux.window.back.ψEy)) && witness_alive(used) == 0
+        @test all(ψ -> all(iszero, Array(ψ)), psis(used)) && witness_alive(used) == 0
         run!(used, params(prob), prob.nsteps)
         @test same_run(fresh, used)
     end
@@ -413,10 +526,12 @@ end
 # The harness follows. Its map takes the step's parameters from the problem's `p`: a plain
 # `remake(prob; p = p′)` with another laser, as a problem description or as its `EMParams`, gives
 # that laser's run (in vacuum, twice a₀ gives twice the fields bit for bit) with no new cache,
-# where it used to need `remake_reload`; a `p′` that does not fit the cache is refused by the
-# step. A solve starts from `u0` without `initialize!`, so the map zeroes at step 1 what the
-# partition does not hold of the fields, a PML's convolution fields: a second solve of a problem
-# with a PML is the first, and both are the loop.
+# where it used to need `remake_reload`; a `p′` that does not fit the cache is refused: parameters
+# by the step, a problem of another configuration (another time step) at the first step. A solve
+# starts from `u0` without `initialize!`, so the map zeroes at step 1 what the partition does not
+# hold of the fields, a PML's convolution fields: a second solve of a problem with a PML, on the
+# open axis or on a window's back edge, is the first, and both are the loop; and a state set back
+# to a partition saved at t = 0 runs again as it did once `reset_convolution!` has done the same.
 @testset "T-725 the harness: remake(p) changes the step's parameters with no new cache, and a second solve with a PML is the first [A3, A9, WP-055, WP-008]" begin
     T = Float64
     prob1 = params_case((1.0, 3.0, 0.02, 8.0); plasma = false, nsteps = 80)
@@ -433,6 +548,20 @@ end
     @test partition_bits(solve(dprob, FunctionMap()).u[end]) == map(bits, F1)    # and back
     @test_throws ArgumentError solve(remake(dprob; p = params_case((1.0, 3.0, 0.02, 8.0); plasma = false, nsteps = 80, position = 10)), FunctionMap())
     @test_throws ArgumentError solve(remake(dprob; p = params(params_case((1.0f0, 3.0f0, 0.02f0, 8.0f0); plasma = false, nsteps = 80))), FunctionMap())
+    half = EMProblem(prob1.name, prob1.length, prob1.cells, prob1.dt / 2, prob1.nsteps, prob1.species, prob1.seed, prob1.kmode;
+                     lasers = prob1.lasers, boundaries = prob1.boundaries, window = prob1.window, profile = prob1.profile)
+    @test_throws ArgumentError solve(remake(dprob; p = half), FunctionMap())         # another time step is another configuration
+    wprob = params_case((1.0, 3.0, 0.02, 8.0); nsteps = 100, cells = (72, 16), position = 10, polarization = 1)
+    wnum = EMNumerics(; back_absorber = PML(; cells = 6))
+    wd = DiscreteProblem(wprob, wnum; backend, save_everystep = false)
+    wa = solve(wd, FunctionMap())
+    wua, wha = partition_bits(wa.u[end]), history_bits(harness_state(wa))
+    back = harness_state(wa).aux.window.back
+    @test all(ψ -> any(!iszero, Array(ψ)), (back.ψBy, back.ψBz, back.ψEy, back.ψEz))
+    wb = solve(wd, FunctionMap())
+    wref = loop_state(wprob, wnum)
+    @test partition_bits(wb.u[end]) == wua == state_bits(wref)
+    @test history_bits(harness_state(wb)) == wha == history_bits(wref)
     # a PML's convolution fields are outside the partition: a second solve starts them at zero as the first did
     for T in TYPES
         prob, _ = open_plasma_2d(T; nsteps = 20)
@@ -445,5 +574,13 @@ end
         ref = loop_state(prob, num)
         @test partition_bits(b.u[end]) == ua == state_bits(ref)
         @test history_bits(harness_state(b)) == ha == history_bits(ref)
+        again = EMState(prob, num)
+        initialize!(again, prob)
+        saved = copy(state_partition(again))
+        run!(again, params(prob), prob.nsteps)
+        copyto!(again, saved)
+        reset_convolution!(again)
+        run!(again, params(prob), prob.nsteps)
+        @test state_bits(again) == ua
     end
 end

@@ -240,7 +240,10 @@ Whether `params` fit `state` (an `ArgumentError` naming the misfit otherwise): t
 type, one [`SpeciesParams`](@ref) per species, and at N = 2 one laser per antenna plane, each
 within half a cell of its plane's column (the column is fixed when the state is built), with a
 moving window every pulse over before the window passes its plane, a witness's parameters exactly
-when the state has a bunch, and a profile only with a window. `initialize!` and `step!` call it
+when the state has a bunch, and a profile only with a window; and what an [`EMProblem`](@ref)
+refuses of the same numbers: a thermal spread that is not isotropic and positive for a species
+the state loads as Maxwell–Jüttner, and in a moving window a perturbation amplitude, background
+fields, or, when the window starts later than t = 0, a drift or a thermal speed. `initialize!` and `step!` call it
 first, so parameters that were made for another state stop the run instead of giving another
 run silently. The checks are host comparisons of host scalars and of types (no device data,
 §0.4 rule 2), a few per step; a compiler that traces the parameters would hoist them out of the
@@ -253,8 +256,18 @@ function check_params(st::EMState{N,T}, p::EMParams) where {N,T}
         throw(ArgumentError("$(length(p.species)) species in the parameters, $(length(st.species)) in the state"))
     all(ps -> ps isa SpeciesParams{T,N}, p.species) ||
         throw(ArgumentError("the species' parameters must be SpeciesParams{$T,$N}, got $(map(typeof, p.species))"))
+    foreach(check_species_params, p.species, st.setup)
     check_aux_params(st, p)
     return p
+end
+
+# A species the state loads as Maxwell–Jüttner takes one positive thermal speed (the loader reads
+# the first component only), as `SpeciesDescription` requires.
+function check_species_params(ps::SpeciesParams, setup)
+    th = ps.thermal
+    setup.momentum === :maxwell_juttner && !(th[1] == th[2] == th[3] && th[1] > 0) &&
+        throw(ArgumentError("species $(setup.name): the state loads it as Maxwell–Jüttner, which takes the same nonzero thermal speed in every component, got $th"))
+    return nothing
 end
 
 function check_aux_params(::EMState{1}, p::EMParams)
@@ -271,13 +284,16 @@ Whether `state` has the configuration of `problem` (an `ArgumentError` otherwise
 takes from the problem it is built for besides the parameters: the cells and the cell sizes, the
 time step, per species the name, the particles per cell, the Philox stream, the kind of momentum
 distribution, the charge and the mass, and at N = 2 which boundaries are open or a window, the
-window's start and the witness bunch's placement, charge and mass. Called by
+window's start and the witness bunch's placement, charge and mass; and the diagnostic mode of
+the state's own recorder, whose histories would otherwise be of another mode than the problem's. Called by
 `initialize!(state, problem)`; the problem's parameters are checked by [`check_params`](@ref)
 (the lasers' planes among them).
 """
 function check_setup(st::EMState{N}, problem::EMProblem{M}) where {N,M}
     wrong(what) = throw(ArgumentError("the problem \"$(problem.name)\" does not have the configuration the state was built for ($what): build a new EMState for it"))
     N == M || wrong("N = $M against $N")
+    st.recorder.kmode == problem.kmode ||
+        throw(ArgumentError("the problem \"$(problem.name)\" has the diagnostic mode $(problem.kmode), the state's recorder $(st.recorder.kmode): the state's histories would be of another mode; observe with HistoryRecorder(problem, state), or build a new EMState"))
     ncells(st.grid) == problem.cells || wrong("cells $(problem.cells) against $(ncells(st.grid))")
     cellsize(st.grid) == problem.length ./ problem.cells || wrong("cell sizes $(problem.length ./ problem.cells) against $(cellsize(st.grid))")
     st.dt == problem.dt || wrong("dt $(problem.dt) against $(st.dt)")

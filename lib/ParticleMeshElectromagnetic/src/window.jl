@@ -121,8 +121,8 @@ profile), the particles per cell `ppc`, the drift `vdrift` and thermal speeds `v
 Philox `key` (the parameters' seed, the species' stream), from the state's `setup` of the species
 (configuration) and the parameters. The second form is that of species `i` of a state.
 """
-window_load(setup, ps::SpeciesParams, p::EMParams) =
-    (p = window_density_params(ps, p.profile), ppc = Int32.(setup.ppc), vdrift = ps.drift, vth = ps.thermal,
+window_load(setup, ps::SpeciesParams{T}, p::EMParams) where {T} =
+    (p = window_density_params(ps, p.profile), ppc = Int32.(setup.ppc), vdrift = T.(ps.drift), vth = T.(ps.thermal),
      key = (UInt32(p.seed), UInt32(setup.stream)))
 window_load(st::EMState, p::EMParams, i::Integer) = window_load(st.setup[i], p.species[i], p)
 
