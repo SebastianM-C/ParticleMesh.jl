@@ -8,7 +8,7 @@ using ParticleMeshElectromagnetic: Antenna, antenna_dy, yee_b_half!
 """
     antenna_problem(T; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10, focus = 28,
                     polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95//100, phase = 0,
-                    center = nothing) -> EMProblem{2}
+                    center = nothing, envelope = AxisTime()) -> EMProblem{2}
 
 A box of `length` (c/ω₀) with `ncx` cells per laser wavelength 2π along x and `ncy` along y,
 Δt at `courant` of the Yee limit, `round(tend/Δt)` steps, and one [`GaussianLaser`](@ref) whose
@@ -18,14 +18,14 @@ be a dual (A3).
 """
 function antenna_problem(::Type{T}; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10,
                          focus = 28, polarization = 0, chirp = 0, a0 = 1, tend = 160, species = (), courant = 95 // 100,
-                         phase = 0, center = nothing) where {T}
+                         phase = 0, center = nothing, envelope = AxisTime()) where {T}
     h = (2π / ncx, 2π / ncy)
     n = (round(Int, length[1] / h[1]), round(Int, length[2] / h[2]))
     L = (T(n[1] * h[1]), T(n[2] * h[2]))
     dt = T(courant) / sqrt(1 / (L[1] / n[1])^2 + 1 / (L[2] / n[2])^2)
     laser = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = 6 * T(duration), focus = T(focus),
                           position = Float64(position), center = isnothing(center) ? Float64(value_of(L[2])) / 2 : center * Float64(value_of(h[2])), chirp = T(chirp),
-                          polarization = T(polarization), phase = T(phase))
+                          polarization = T(polarization), phase = T(phase), envelope)
     return EMProblem("antenna", L, n, dt, round(Int, tend / value_of(dt)), species, 1, (1, 0); lasers = (laser,))
 end
 

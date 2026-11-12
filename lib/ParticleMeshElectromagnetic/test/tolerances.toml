@@ -431,7 +431,7 @@ status = "proposed; not bitwise (A4)"
 
 # WP-026: the laser antenna
 ["T-401"]
-quantity = "energy behind the antenna plane (the wrapped leak included, measured where it is) over the pulse's energy, the A8 runs (C, waist 4, duration 5) and the physics runs (C_main, waist 6, duration 8); a0·∂E/∂a0 − E over eps(T)·max|E|·√steps (C_linear)"
+quantity = "energy behind the antenna plane (the wrapped leak included, measured where it is) over the pulse's energy, the A8 runs (C, waist 4, duration 5) and the physics runs (C_main, waist 6, duration 8); a0·∂E/∂a0 − E over eps(T)·max|E|·√steps (C_linear); T-697's runs with envelope = WavefrontTime() take C and C_main (measured 9.8e-4 and 1.9e-5)"
 scale = "fraction (C, C_main); see quantity (C_linear); 16 × 8 cells per wavelength"
 C = 3e-3
 C_main = 1e-4
@@ -465,7 +465,7 @@ measured = { C = 6.9e-8 }
 status = "proposed"
 
 ["T-405"]
-quantity = "|W/Φ − 1|, the conserved energy of the pulse's window against the discrete Poynting flux of the incident field (C); |Φ/laser_energy − 1| (C_flux)"
+quantity = "|W/Φ − 1|, the conserved energy of the pulse's window against the discrete Poynting flux of the incident field (C); |Φ/laser_energy − 1| (C_flux); T-697's WavefrontTime run takes both (measured 0.0243 and 0.124)"
 scale = "1/w0⁴ (C); Δt² + Δx² (C_flux) (waist 6, Float64)"
 C = 0.2
 C_flux = 0.25
