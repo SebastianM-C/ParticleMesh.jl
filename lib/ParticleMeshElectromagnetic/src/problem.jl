@@ -301,6 +301,10 @@ struct SpeciesParams{T,N,S}
     wavevector::NTuple{N,T}
     drift::NTuple{3,S}
     thermal::NTuple{3,S}
+    # written out so that no constructor without type parameters exists: its `NTuple{N,T}`
+    # argument would leave `T` unbound for an empty tuple
+    SpeciesParams{T,N,S}(density, amplitude, wavevector, drift, thermal) where {T,N,S} =
+        new{T,N,S}(density, amplitude, wavevector, drift, thermal)
 end
 
 SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal) where {T,N} =
