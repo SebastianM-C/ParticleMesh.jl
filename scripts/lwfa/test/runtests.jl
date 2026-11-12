@@ -24,8 +24,13 @@ const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml
     @test las.back == 2 * d.dx && las.focus == CASE["laser"]["focus"] + 2 * d.dx
     @test occursin("focus = [$(repr(las.focus)), $(repr(d.yc))]", nl)
     @test num("center") == las.center && num("duration") == 2 * las.center && num("phase_offset") == las.phase_offset
-    # the amplitude given to Smilei is the case's over what its boundary condition launches per unit (T-710)
-    @test num("a0") == las.a0 == CASE["laser"]["a0"] / smilei_launch_factor(d)
+    # the amplitude given to Smilei is the case's over what its boundary condition launches per unit (T-710),
+    # and waist and amplitude are those of the narrower beam that the condition's 1 − k_y²/4 turns into the
+    # case's (T-698, T-712): waist² − 1, and the same a0·waist
+    w0 = CASE["laser"]["waist"]
+    @test num("waist") == las.waist == sqrt(w0^2 - 1)
+    @test num("a0") == las.a0 == CASE["laser"]["a0"] / smilei_launch_factor(d) * w0 / sqrt(w0^2 - 1)
+    @test las.a0 * las.waist ≈ CASE["laser"]["a0"] * w0 / smilei_launch_factor(d) rtol = 1e-14
     @test 1.001 < smilei_launch_factor(d) < 1.005
     # tgaussian (v5.1): exp(−(t − center)²/σ), σ = (fwhm/2)²/ln 2: the envelope exp(−(t − center)²/τ²)
     fwhm, τ = num("fwhm"), CASE["laser"]["duration"]
@@ -636,16 +641,36 @@ end
     d, L = derived(case), case["laser"]
     nl = smilei_namelist(case; plasma = false)
     las = smilei_laser(case)
-    # ParticleMesh's pulse with the envelope along the wavefront, whatever the case file selects
-    l = GaussianLaser(; a0 = L["a0"], waist = L["waist"], duration = L["duration"], delay = L["delay"], focus = L["focus"],
-                      position = 0.0, center = 0.0, envelope = WavefrontTime())
+    # ParticleMesh's pulse with the envelope along the wavefront, whatever the case file selects: the case's
+    # (l), and the narrower beam of the same focus and the same a0·waist that Smilei is given (ls)
+    w0 = Float64(L["waist"])
+    mk(a0, waist) = GaussianLaser(; a0, waist, duration = L["duration"], delay = L["delay"], focus = L["focus"],
+                                  position = 0.0, center = 0.0, envelope = WavefrontTime())
+    l, ls = mk(L["a0"], w0), mk(L["a0"] * w0 / sqrt(w0^2 - 1), sqrt(w0^2 - 1))
     # on the node at x = −2Δx the pulse of the lab plane x = 0 is 2Δx earlier and 2Δx further from the focus
     ξ, worst = -(L["focus"] + las.back), 0.0
-    for y in (0.0, 3.3, -17.0, 40.0, 75.0), t in (L["delay"] .+ (-60.0, -26.0, -3.1, 0.0, 0.4, 11.0, 50.0))
-        # what the namelist prescribes, times what the boundary condition launches of it
-        worst = max(worst, abs(smilei_node_field(nl, y, t) * smilei_launch_factor(d) - laser_field(l, ξ, y, t + las.back - L["delay"])[1]))
+    ys, ts = (0.0, 3.3, -17.0, 40.0, 75.0), L["delay"] .+ (-60.0, -26.0, -3.1, 0.0, 0.4, 11.0, 50.0)
+    # what the namelist prescribes, times the plane-wave factor of the boundary condition
+    given(y, t) = smilei_node_field(nl, y, t) * smilei_launch_factor(d)
+    for y in ys, t in ts
+        worst = max(worst, abs(given(y, t) - laser_field(ls, ξ, y, t + las.back - L["delay"])[1]))
     end
-    @test worst <= 1e-12 * L["a0"]
+    @test worst <= 1e-12 * L["a0"]                       # the namelist's profile is that narrower beam, Gouy phase and all
+    # what the condition launches of it: the transverse spectrum times 2cos α/(1 + cos α) = 1 − k_y²/4 − k_y⁴/8,
+    # in y the operator 1 + ¼∂² − ⅛∂⁴, here by central differences. That is the case's pulse; without the
+    # operator the narrower beam is not, and the case's own beam put through the operator is not either.
+    h = 0.25
+    d2(f, y, t) = (f(y + h, t) - 2 * f(y, t) + f(y - h, t)) / h^2
+    d4(f, y, t) = (f(y + 2h, t) - 4 * f(y + h, t) + 6 * f(y, t) - 4 * f(y - h, t) + f(y - 2h, t)) / h^4
+    launched(f, y, t) = f(y, t) + d2(f, y, t) / 4 - d4(f, y, t) / 8
+    target(y, t) = laser_field(l, ξ, y, t + las.back - L["delay"])[1]
+    through = maximum(abs(launched(given, y, t) - target(y, t)) for y in ys, t in ts)
+    bare = maximum(abs(given(y, t) - target(y, t)) for y in ys, t in ts)
+    uncorrected = maximum(abs(launched(target, y, t) - target(y, t)) for y in ys, t in ts)
+    @test through <= 2e-5 * L["a0"]
+    @test bare >= 10 * through && uncorrected >= 10 * through
+    wn = w0 * sqrt(1 + (ξ / (w0^2 / 2))^2)               # the beam radius on the node: the deficit there is 1/(2w²)
+    @test uncorrected ≈ L["a0"] * sqrt(w0 / wn) / (2 * wn^2) rtol = 0.3
     # the envelope starts as low as the other codes': the cut of tgaussian is where the envelope is e^−16 or less
     @test las.center >= L["delay"] && las.center - L["delay"] < 2π
     @test smilei_node_field(nl, 0.0, 0.0) == 0 || abs(smilei_node_field(nl, 0.0, 0.0)) <= exp(-15.5) * L["a0"]
@@ -1202,4 +1227,112 @@ end
         @test !haskey(first_row, "picongpu_plasma") && !haskey(first_row, "smilei_picongpu_plasma")
         @test length(rows["rows"]) == length(case["diagnostics"]["map_outputs"]) && !haskey(rows["rows"][2], "plasma")
     end
+end
+
+# --- oblique components at the launch ------------------------------------------------------------------
+
+"""
+    oblique_launch(kind, ky, dx, dy, dt; ...) -> ComplexF64
+
+One transverse Fourier component exp(i·k_y·y) of the 2D Yee scheme for (E_x, E_y, B_z), which is a 1D
+problem in x (∂_y becomes i·(2/Δy)·sin(k_yΔy/2)): what a launch condition makes of the prescribed
+wave exp(−i·t) of that component. Returns the complex amplitude of E_y `probe` cells ahead of the
+launch plane, relative to the grid's own wave exp(i(k_x·(x − x_plane) − t)), k_x from the scheme's
+dispersion relation. E_y sits on the nodes i·Δx, B_z and E_x on (i − ½)·Δx; behind node 0 B_z stays
+zero (the edge of the box).
+
+- `:silver_muller`: Smilei's update of B_z on its ghost point at xmin, `ElectroMagnBC2D_SM.cpp:245`,
+  which has no transverse term: B₀(1 + r) = −2E₀ − (1 − r)B₁ + 4b, r = Δt/Δx.
+- `:plane_wave_b`: a total-field/scattered-field surface with E node `surface` the first of the total
+  field, the incident field the paraxial one, exp(i((k − k_y²/2)(x − x_plane) − t)) with k the grid's
+  axial wavenumber, and B_inc = E_inc at B's place and time: PIConGPU 0.8.0's `ApproximateIncidentB`
+  (`fields/incidentField/Functors.hpp:544` to `579`), B = k̂ × E.
+- `:grid_b`: the same with B_inc = E_inc times the grid's B_z/E_y of the oblique wave.
+
+`absorber` > 0 damps the first cells as PIConGPU's exponential absorber does
+(`fields/absorber/exponential/Exponential.kernel:106` to `121`, once per step for E and once for B,
+`fields/MaxwellSolver/FDTD/FDTDBase.hpp:153` to `178`): cell c, counted from the edge, times
+exp(−strength·(absorber − c)).
+"""
+function oblique_launch(kind, ky, dx, dy, dt; probe = 300, t0 = 300.0, periods = 10, surface = 1500, absorber = 0, strength = 1.0e-3)
+    K = 2 / dy * sin(ky * dy / 2)
+    kx(kyv) = 2 / dx * asin(dx * sqrt((sin(dt / 2) / dt)^2 - (sin(kyv * dy / 2) / dy)^2))
+    k0, kxo = kx(0.0), kx(ky)
+    steps = ceil(Int, (t0 + periods * 2π) / dt)
+    ia = kind == :silver_muller ? 0 : surface
+    n = ceil(Int, steps * dt / dx) + probe + ia + 60            # the far end is never reached
+    Ey = zeros(ComplexF64, n + 1)                               # Ey[i + 1] at i·Δx
+    Bz = zeros(ComplexF64, n + 2)                               # Bz[j + 1] at (j − ½)·Δx
+    Ex = zeros(ComplexF64, n + 2)                               # with B_z
+    r = dt / dx
+    ramp(t) = t > 0 ? 1 - exp(-(t / 40)^4) : 0.0
+    xa = ia * dx
+    incident(x, t) = ramp(t) * cis((k0 - ky^2 / 2) * (x - xa) - t)
+    ratio = kind == :grid_b ? sin(dt / 2) / (r * sin(kxo * dx / 2)) : 1.0
+    acc, cnt = 0.0 + 0.0im, 0
+    for it in 1:steps
+        t = it * dt                                              # E is advanced to t, B to t + Δt/2
+        @views @. Ey[1:(n + 1)] -= r * (Bz[2:(n + 2)] - Bz[1:(n + 1)])
+        @. Ex += dt * im * K * Bz
+        kind == :silver_muller || (Ey[ia + 1] += r * ratio * incident(xa - dx / 2, t - dt / 2))
+        @views @. Bz[2:(n + 1)] += dt * im * K * Ex[2:(n + 1)] - r * (Ey[2:(n + 1)] - Ey[1:n])
+        if kind == :silver_muller
+            f = 1 / (1 + r)
+            Bz[1] = -2f * Ey[1] - (1 - r) * f * Bz[2] + 4f * ramp(t + dt / 2) * cis(-(t + dt / 2))
+        else
+            Bz[ia + 1] += r * incident(xa, t)
+        end
+        for c in 0:(absorber - 1)
+            a = exp(-strength * (absorber - c))
+            Ey[c + 1] *= a; Bz[c + 2] *= a; Ex[c + 2] *= a
+        end
+        if t >= t0
+            acc += Ey[ia + probe + 1] * cis(t - kxo * probe * dx); cnt += 1
+        end
+    end
+    return acc / cnt
+end
+
+@testset "T-712 Smilei's Silver–Müller condition launches an oblique component with 2cos α/(1 + cos α) of what it launches at normal incidence: its update for one k_y on the Yee grid [A5]" begin
+    for file in CASE_FILES
+        case = TOML.parsefile(file)
+        d = derived(case)
+        normal = oblique_launch(:silver_muller, 0.0, d.dx, d.dy, d.dt)
+        @test abs(normal) ≈ smilei_launch_factor(d) rtol = 1e-8        # T-710's factor, by another route
+        @test abs(angle(normal)) <= 1e-8
+        for ky in (0.02, 1 / case["laser"]["waist"], 0.1)
+            T = oblique_launch(:silver_muller, ky, d.dx, d.dy, d.dt) / normal
+            ca = sqrt(1 - ky^2)
+            @test abs(T - 2ca / (1 + ca)) <= 0.01 * ky^2                # the continuum's, to the grid's corrections
+            @test 0.25 <= real(1 - T) / ky^2 <= 0.26                     # 1 − k_y²/4
+            @test abs(imag(T)) <= 1e-6 * ky^2                            # and no phase: the focus stays where it is
+            # times a Gaussian spectrum of waist² − 1 this is the Gaussian of the waist, to 2 % of the effect
+            @test abs(real(T) * exp(ky^2 / 4) - 1) <= 0.02 * ky^2 / 4
+        end
+    end
+end
+
+@testset "T-713 a Huygens surface with B = k̂ × E launches (1 + cos α)/2 forward and sends the rest back; behind PIConGPU's 12-cell exponential absorber most of that returns, as 0.83 of 1/4 and a focus 0.44 c/ω₀ further out [A5]" begin
+    d = derived(TOML.parsefile(CASE_FILES[1]))
+    ky = 1 / 28                                                          # the beam's rms transverse wavenumber, 1/waist
+    coefficient(kind; kw...) = (1 - oblique_launch(kind, ky, d.dx, d.dy, d.dt; kw...) / oblique_launch(kind, 0.0, d.dx, d.dy, d.dt; kw...)) / ky^2
+    # with nothing behind the surface in reach: the continuum's (1 + cos α)/2 = 1 − k_y²/4 in the amplitude, with
+    # a phase of the grid's (the two source planes are half a cell apart): 0.016·k_y², a focus 0.03 further out;
+    # and the grid's own B gives 1
+    free = coefficient(:plane_wave_b)
+    @test abs(real(free) - (1 - (1 + sqrt(1 - ky^2)) / 2) / ky^2) <= 0.002 && -0.02 <= imag(free) <= -0.01
+    @test abs(coefficient(:grid_b)) <= 1e-3
+    @test oblique_launch(:plane_wave_b, 0.0, d.dx, d.dy, d.dt) ≈ 1 atol = 1e-9
+    # PIConGPU's layout in the A5 runs: the surface at 16.75 cells (the first total-field E node is 17), its
+    # default absorber of 12 cells and strength 10⁻³ behind it, the edge of the box behind that
+    pic = coefficient(:plane_wave_b; surface = 17, absorber = 12)
+    @test 0.80 <= real(pic) / 0.25 <= 0.86                               # measured against ParticleMesh in the runs: 0.82
+    @test 0.42 <= -2 * imag(pic) <= 0.47                                 # a focus further out by this; measured 0.42 to 0.47
+    # the absorber and the edge return more than eight tenths of what the surface sends back, and what
+    # comes of it depends on the distance
+    @test 0.80 <= abs(1 - pic / free) <= 0.90
+    @test real(coefficient(:plane_wave_b; surface = 16, absorber = 12)) < real(pic) < real(coefficient(:plane_wave_b; surface = 18, absorber = 12))
+    # an absorber that absorbed would leave the continuum's value: 60 cells of ten times the strength
+    strong = coefficient(:plane_wave_b; surface = 65, absorber = 60, strength = 1.0e-2)
+    @test abs(strong - free) <= 0.02
 end

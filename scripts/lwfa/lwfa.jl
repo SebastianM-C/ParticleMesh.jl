@@ -70,9 +70,19 @@
 #     is 2/(cos(kΔx/2) + cos(ω₀Δt/2)) times the prescribed one, k the Yee wavenumber of ω₀: 1.00198
 #     at λ₀/48 and this Δt (`smilei_launch_factor`; T-710 runs that update on a 1D Yee grid). The
 #     matched runs measured Smilei 0.13 % to 0.22 % above the other two codes
-#     (reports/lwfa-2d-a5.md). `smilei_laser` divides a₀ by it. Not corrected: the condition is the
-#     normal-incidence one, so a component of the beam at angle α is launched with E_y lower by
-#     α²/4, 3 × 10⁻⁴ of the amplitude for ⟨α²⟩ = 1/waist².
+#     (reports/lwfa-2d-a5.md). `smilei_laser` divides a₀ by it.
+#     And the condition is the normal-incidence one. The update of B_z has no transverse term
+#     (`ElectroMagnBC2D_SM.cpp:245` to `247`; those of lines 227 to 231 are the other polarization's),
+#     so it sets B_z + E_y = 2b on the boundary whatever the direction of the wave, and a component of
+#     the beam at transverse wavenumber k_y, for which E_y = B_z·cos α, is launched with E_y =
+#     b·2cos α/(1 + cos α) = b·(1 − k_y²/4 − …) (T-712 runs the update for one k_y on the Yee grid).
+#     A Gaussian spectrum exp(−k_y²w²/4) times 1 − k_y²/4 is, to that order, exp(−k_y²(w² + 1)/4):
+#     the beam of waist √(w² + 1) with the same focus and the same a₀·w. With the case's waist the
+#     launched pulse is therefore lower on the axis by 1/(2w(ξ)²), 0.064 % at the focus, and its
+#     carrier is off by ξ/(4(z_R² + ξ²)), up to 0.32 mrad; the runs with only the amplitude factor
+#     corrected measured both against ParticleMesh (reports/lwfa-2d-a5.md). `smilei_laser` gives
+#     Smilei the waist √(waist² − 1), a₀ times waist/√(waist² − 1) and the Gouy constant of that
+#     narrower beam, so that what the condition launches is the case's beam (T-698).
 #   `tgaussian(start, duration, fwhm, center)` is exp(−(t − center)²/σ) with σ = (fwhm/2)²/ln 2
 #   (`pyprofiles.py`), cut to zero outside [start, start + duration]; the cut is at e^−16 of the
 #   peak, where ParticleMesh's antenna and PIConGPU's pulse (zero before its start) also begin.
@@ -316,7 +326,7 @@ function smilei_launch_factor(d)
 end
 
 """
-    smilei_laser(case) -> (; a0, focus, center, duration, fwhm, phase_offset, back)
+    smilei_laser(case) -> (; a0, waist, focus, center, duration, fwhm, phase_offset, back)
 
 The parameters of Smilei's `LaserGaussian2D` and its `tgaussian` that put the case's pulse on the
 lab plane x = 0 (header, "The laser"). Smilei's amplitude on its injection node, `back` =
@@ -325,17 +335,23 @@ lab plane x = 0 (header, "The laser"). Smilei's amplitude on its injection node,
 the sine the case's cosine with its Gouy phase at the envelope's peak (the least n with center ≥
 the case's delay, so that the envelope starts as low as the other codes'), and `phase_offset` =
 center − (delay − back) puts the peak on the node at t = delay − back. `a0` is the case's divided
-by `smilei_launch_factor`, so that the launched wave has the case's amplitude.
+by `smilei_launch_factor`, so that the launched wave has the case's amplitude. `waist` is
+√(w₀² − 1) for the case's w₀, `a0` carries the factor w₀/√(w₀² − 1) and z_R above is that waist's:
+Smilei's boundary condition multiplies the transverse spectrum of E_y by 1 − k_y²/4, which turns
+this narrower Gaussian beam into the case's (header).
 """
 function smilei_laser(case)
     d, L = derived(case), case["laser"]
     back = SMILEI_GHOST * d.dx
     focus = Float64(L["focus"]) + back
-    zR = Float64(L["waist"])^2 / 2
+    w0 = Float64(L["waist"])
+    w0 > 1 || error("the waist must exceed c/ω₀ for the correction of Smilei's boundary condition")
+    waist = sqrt(w0^2 - 1)
+    zR = waist^2 / 2
     c0 = π / 2 - atan(focus / zR) / 2
     delay = Float64(L["delay"])
     center = c0 + 2π * ceil((delay - c0) / (2π))
-    return (; a0 = Float64(L["a0"]) / smilei_launch_factor(d), focus, center, duration = 2 * center,
+    return (; a0 = Float64(L["a0"]) / smilei_launch_factor(d) * w0 / waist, waist, focus, center, duration = 2 * center,
               fwhm = 2 * Float64(L["duration"]) * sqrt(log(2)), phase_offset = center - (delay - back), back)
 end
 
@@ -376,15 +392,16 @@ function smilei_namelist(case; plasma = true)
     )
 
     # The laser is applied $(SMILEI_GHOST) cells behind xmin, as sin(t) of the run's time: focus, center and
-    # phase_offset put the case's pulse (a cosine from the envelope's peak, with the Gouy phase) on x = 0,
-    # and a0 is the case's $(pyf(L["a0"])) over the boundary condition's launch factor (smilei_laser in
-    # scripts/lwfa/lwfa.jl).
+    # phase_offset put the case's pulse (a cosine from the envelope's peak, with the Gouy phase) on x = 0.
+    # a0 and waist are not the case's $(pyf(L["a0"])) and $(pyf(L["waist"])): a0 is divided by the boundary condition's
+    # launch factor, and the beam is the narrower one (waist² − 1, the same a0·waist) that the condition's
+    # response to oblique components, 1 − k_y²/4, turns into the case's (smilei_laser in scripts/lwfa/lwfa.jl).
     LaserGaussian2D(
         box_side = "xmin",
         a0 = $(pyf(las.a0)),
         omega = 1.0,
         focus = [$(pyf(las.focus)), $(pyf(d.yc))],
-        waist = $(pyf(L["waist"])),
+        waist = $(pyf(las.waist)),
         polarization_phi = $(pyf(polarization_angle(case))),
         time_envelope = tgaussian(start = 0.0, duration = $(pyf(las.duration)), fwhm = $(pyf(las.fwhm)), center = $(pyf(las.center))),
         phase_offset = $(pyf(las.phase_offset)),
@@ -1032,7 +1049,9 @@ function compare(runs, out)
     end
     write_manifest(out; root = REPO,
                    extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"],
-                                            "summaries" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "summary.json")) for k in kinds)))
+                                            "summaries" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "summary.json")) for k in kinds),
+                                            "maps" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "maps.h5")) for k in kinds
+                                                           if endswith(k, "plasma") && isfile(joinpath(runs, k, "maps.h5")))))
     return result
 end
 
