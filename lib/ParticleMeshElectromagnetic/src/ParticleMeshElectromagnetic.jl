@@ -47,7 +47,7 @@ export EMState, initialize!, step!, run!, params
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export state_partition, remake_reload, harness_state
-export GaussianLaser, Antenna, laser_energy, laser_field
+export GaussianLaser, AxisTime, WavefrontTime, Antenna, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive

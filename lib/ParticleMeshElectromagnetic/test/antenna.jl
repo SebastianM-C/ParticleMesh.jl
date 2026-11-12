@@ -1,4 +1,4 @@
-# WP-026: the laser antenna, T-400 to T-409. The physics runs (T-401 to T-405) launch a Gaussian
+# WP-026: the laser antenna, T-400 to T-409, and the envelope along the wavefront, T-695 to T-697. The physics runs (T-401 to T-405) launch a Gaussian
 # beam of waist 6 c/ω₀ (about one wavelength, so that the effects of focusing are large against
 # their tolerances) in vacuum, Float64, 16 cells per wavelength along x and 8 along y, and read it
 # on probe columns from the antenna plane to two Rayleigh lengths past the focus.
@@ -481,4 +481,202 @@ end
             end
         end
     end
+end
+
+# --- the envelope along the curved wavefront: T-695 to T-697 -----------------------------------
+
+# `envelope = WavefrontTime()` is the pulse of Smilei's and PIConGPU's Gaussian lasers (the default,
+# AxisTime, is T-400's and is not touched). The field off the axis is the field on the axis at the
+# time σ = s − y²/(2R), R = ξ·(1 + z_R²/ξ²), times exp(−y²/w²): envelope, chirp and carrier share one
+# time along the wavefront. For a pulse so long that its envelope is 1 over the wavefront's delays
+# it is the beam of T-400, to roundoff the same numbers as AxisTime. Its B is E ∓ ½∂²E/∂y², the
+# derivative of the whole field, and the flux ∫∫ E·B dy dt of a host quadrature is laser_energy,
+# which has the pulse's bandwidth on the curved part of the plane.
+@testset "T-695 with WavefrontTime the incident pulse follows the curved wavefront: the field, its B and laser_energy [A2, A3, A5, WP-026]" begin
+    kw = (; a0 = 0.7, waist = 5.0, delay = 30.0, focus = 3.0, position = 0.0, center = 0.0, polarization = 0.3)
+    l = GaussianLaser(; kw..., duration = 6.0, chirp = 0.004, phase = 0.2, envelope = WavefrontTime())
+    @test GaussianLaser(; kw..., duration = 6.0).envelope === AxisTime()               # the default
+    @test isbits(l) && l.envelope === WavefrontTime()
+    @test_throws TypeError GaussianLaser(; kw..., duration = 6.0, envelope = :wavefront)
+    zR = l.waist^2 / 2
+    worst_b = worst_front = worst_beam = 0.0
+    long = (; kw..., duration = 1.0e9, phase = 0.2)
+    for ξ in (-2zR, -0.7zR, 0.0, 0.4zR, 1.5zR), y in (0.0, 1.3, -4.0, 7.5)
+        w = l.waist * sqrt(1 + (ξ / zR)^2)
+        front = ξ == 0 ? 0.0 : y^2 / (2 * ξ * (1 + (zR / ξ)^2))          # y²/(2R): negative ahead of the focus
+        for s in (-7.0, -0.3, 0.0, 2.2)
+            e, bp, bs = laser_field(l, ξ, y, s)
+            e2 = ForwardDiff.derivative(yy -> ForwardDiff.derivative(z -> laser_field(l, ξ, z, s)[1], yy), y)
+            worst_b = max(worst_b, abs(bp - (e - e2 / 2)) / l.a0, abs(bs - (e + e2 / 2)) / l.a0)
+            worst_front = max(worst_front, abs(e - exp(-y^2 / w^2) * laser_field(l, ξ, 0.0, s - front)[1]) / l.a0)
+            # a pulse without end: the two conventions are one beam
+            fw = laser_field(GaussianLaser(; long..., envelope = WavefrontTime()), ξ, y, s)
+            fa = laser_field(GaussianLaser(; long...), ξ, y, s)
+            worst_beam = max(worst_beam, maximum(abs.(fw .- fa)) / l.a0)
+        end
+    end
+    @test worst_b <= 100 * eps()
+    @test worst_front <= 100 * eps()
+    @test worst_beam <= 100 * eps()
+    # on the axis the two conventions are the same field on every plane; off it they are not
+    la = GaussianLaser(; kw..., duration = 6.0, chirp = 0.004, phase = 0.2)
+    @test all(laser_field(l, ξ, 0.0, s)[1] ≈ laser_field(la, ξ, 0.0, s)[1] for ξ in (-2zR, 0.4zR), s in (-7.0, 0.0, 2.2))
+    @test abs(laser_field(l, -2zR, 7.5, 2.2)[1] - laser_field(la, -2zR, 7.5, 2.2)[1]) > 1e-3 * l.a0
+    # at the focus the wavefront is flat and the two are one field (to roundoff: the two methods order their sums differently)
+    @test all(all(isapprox.(laser_field(l, 0.0, y, 2.2), laser_field(la, 0.0, y, 2.2); rtol = 1e-13, atol = 1e-15)) for y in (0.0, 1.3, -4.0))
+    # ahead of the focus the pulse reaches the plane off the axis earlier than on it: the envelope
+    # (the modulus of the field and its quadrature) peaks y²/(2|R|) before s = 0
+    let ξ = -2zR, y = 7.5, R = ξ * (1 + (zR / ξ)^2)
+        base = (; a0 = 1.0, waist = l.waist, duration = l.duration, delay = 0.0, focus = 0.0, position = 0.0, center = 0.0, envelope = WavefrontTime())
+        envelope(s) = hypot(laser_field(GaussianLaser(; base...), ξ, y, s)[1], laser_field(GaussianLaser(; base..., phase = -π / 2), ξ, y, s)[1])
+        speak = y^2 / (2R)
+        @test speak < 0
+        @test ForwardDiff.derivative(envelope, speak) ≈ 0 atol = 100 * eps()
+        @test envelope(speak) > envelope(0.0)
+    end
+    # The flux through a plane a Rayleigh length ahead of the focus, polarization by polarization,
+    # without and with chirp (duration 8 and steps of a quarter, as in T-400).
+    hy, ht = 0.25, 0.25
+    for θ in (0.0, π / 2, 0.6), chirp in (0.0, 0.004)
+        lθ = GaussianLaser(; a0 = l.a0, waist = l.waist, duration = 8.0, delay = l.delay, focus = zR, position = 0.0,
+                           center = 0.0, chirp, polarization = θ, phase = l.phase, envelope = WavefrontTime())
+        Φ = 0.0
+        for y in -40:hy:40, s in -72:ht:72
+            e, bp, bs = laser_field(lθ, lθ.position - lθ.focus, y, s)
+            Φ += e * (bp * cos(θ)^2 + bs * sin(θ)^2)
+        end
+        Φ *= hy * ht
+        @test Φ / laser_energy(lθ) - 1 ≈ 0 atol = 1e-12
+        # the polarization term: the plain π·a0²·w0·τ/4 is off by cos(2θ)·⟨k_y²⟩/2, the beam's 1/w0² and, on
+        # this plane (ξ² = z_R²), half the pulse's 1/τ² + chirp²·τ² more of it, which AxisTime's energy lacks
+        ky2 = (1 + (1 / lθ.duration^2 + chirp^2 * lθ.duration^2) / 2) / l.waist^2
+        if θ == 0
+            @test abs(Φ / (π * l.a0^2 * l.waist * lθ.duration / 4) - 1 - ky2 / 2) <= 1e-12
+            axis = GaussianLaser(; a0 = l.a0, waist = l.waist, duration = 8.0, delay = l.delay, focus = zR, position = 0.0,
+                                 center = 0.0, chirp, polarization = θ, phase = l.phase)
+            @test laser_energy(lθ) / laser_energy(axis) - 1 > 1e-4
+        end
+    end
+end
+
+# What the two conventions mean past the plane, on A5's laser (waist 28, duration 26, the plane 320
+# ahead of the focus: beam radius w = 36.1, wavefront radius |R| = 800.2). The incident field on
+# the plane is propagated to the axis a distance L on by the paraxial (Fresnel) integral, frequency
+# by frequency (a host quadrature of `laser_field`), and compared with the Gaussian beam each
+# frequency launches. With X = 1 − L/|R| and Y = 2L/w²: WavefrontTime gives every ω the beam radius
+# w and the wavefront radius R on the plane, so the on-axis amplitude is the plane's times
+# (X + iY/ω)^(−1/2); AxisTime gives the wavefront radius ω·R, and (1 + (X − 1 + iY)/ω)^(−1/2). Their
+# group delays at ω₀ = 1 are ½·XY/(X² + Y²) and ½·Y/(X² + Y²): the AxisTime pulse arrives later by
+# (w²/(4|R|))/(1 + κ²w⁴), κ = (1/L − 1/|R|)/2, at most w²/(4|R|) = 0.408 at L = |R|. The centroid in
+# time of |F|² on the axis is the spectrum's mean of the group delay, within the bandwidth
+# (1/duration = 4 % of ω₀) of the carrier's.
+function onaxis_spectrum(F, ys, ss, L)
+    hy, hs = step(ys), step(ss)
+    iaxis = findfirst(iszero, ys)
+    Ωs = range(-0.3, 0.3; length = 61)                       # the envelope's band, 1/26 wide; period 2π/0.01 beyond the windows
+    plane = [sum(F[iaxis, is] * cis((1 + Ω) * ss[is]) for is in eachindex(ss)) * hs for Ω in Ωs]
+    a = map(Ωs) do Ω
+        ω = 1 + Ω
+        sum(F[iy, is] * cis(ω * ss[is]) * cis(ω * ys[iy]^2 / (2L)) for iy in eachindex(ys), is in eachindex(ss)) * hy * hs * sqrt(ω / (2π * im * L))
+    end
+    return (; Ωs, plane, a)
+end
+
+function centroid_in_time(sp)
+    ts = range(-100, 100; length = 801)                      # ±7.7 standard deviations of |F|²
+    P = [abs2(sum(sp.a[m] * cis(-(1 + sp.Ωs[m]) * t) for m in eachindex(sp.Ωs))) for t in ts]
+    return sum(ts .* P) / sum(P)
+end
+
+@testset "T-696 past the plane each frequency of the pulse is its Gaussian beam: WavefrontTime keeps the wavefront radius, AxisTime arrives later on the axis by the closed form [A2, A5, WP-026]" begin
+    kw = (; a0 = 1.0, waist = 28.0, duration = 26.0, delay = 0.0, focus = 320.0, position = 0.0, center = 0.0)
+    ξ = kw.position - kw.focus
+    zR = kw.waist^2 / 2
+    w = kw.waist * sqrt(1 + (ξ / zR)^2)
+    R = ξ * (1 + (zR / ξ)^2)
+    @test w ≈ 36.1 atol = 0.05
+    @test R ≈ -800.2 atol = 0.05
+    ys, ss = -180.0:0.5:180.0, -130.0:2.0:130.0
+    # the complex field on the plane: the field and its quadrature
+    field(env) = [complex(laser_field(GaussianLaser(; kw..., envelope = env), ξ, y, s)[1],
+                          laser_field(GaussianLaser(; kw..., envelope = env, phase = -π / 2), ξ, y, s)[1]) for y in ys, s in ss]
+    front, axis = field(WavefrontTime()), field(AxisTime())
+    iaxis, ilate = findfirst(iszero, ys), findfirst(==(26.0), ss)
+    @test front[iaxis, :] ≈ axis[iaxis, :] rtol = 1e-13                      # the same on the axis
+    @test maximum(abs, front[:, ilate] .- axis[:, ilate]) > 1e-3             # two pulses off it
+    worst_front = worst_axis = 0.0
+    for L in (200.0, 400.0, -R, 1200.0)
+        X, Y = 1 + L / R, 2L / w^2
+        sf, sa = onaxis_spectrum(front, ys, ss, L), onaxis_spectrum(axis, ys, ss, L)
+        for (m, Ω) in enumerate(sf.Ωs)
+            abs(Ω) <= 0.1 || continue                                        # where the spectrum is above 3·10⁻³ of its peak
+            ω = 1 + Ω
+            worst_front = max(worst_front, abs(sf.a[m] / sf.plane[m] - (X + im * Y / ω)^(-1 / 2)))
+            worst_axis = max(worst_axis, abs(sa.a[m] / sa.plane[m] - (1 + (X - 1 + im * Y) / ω)^(-1 / 2)))
+        end
+        # the arrival on the axis: the group delays at the carrier, and their difference in the closed form
+        beams, alone = X * Y / (X^2 + Y^2) / 2, Y / (X^2 + Y^2) / 2
+        κ = (1 / L + 1 / R) / 2
+        lag = w^2 / (4 * abs(R)) / (1 + κ^2 * w^4)
+        @test alone - beams ≈ lag rtol = 1e-12
+        cf, ca = centroid_in_time(sf), centroid_in_time(sa)
+        tol = max(abs(beams), abs(alone)) / kw.duration
+        @test cf ≈ beams atol = tol
+        @test ca ≈ alone atol = tol
+        @test ca - cf ≈ lag rtol = 1 / kw.duration
+        @test ca > cf                                                        # AxisTime later
+    end
+    @test worst_front <= 1e-6
+    @test worst_axis <= 1e-6
+    # at L = |R| the two pulses differ on the axis by w²/(4|R|): the lag of ParticleMesh's default pulse behind
+    # Smilei's and PIConGPU's in A5's first vacuum runs, 0.40 c/ω₀ (reports/lwfa-2d-a5.md)
+    @test w^2 / (4 * abs(R)) ≈ 0.408 atol = 5e-4
+end
+
+# The antenna launches the WavefrontTime pulse as it launches the default one: one way, to the
+# leak T-401 allows (its A8 runs: waist 4, duration 5, a0, focus and chirp seeded in the dual), and
+# with the energy of the incident field's flux, T-405's measure on its physics run (waist 6,
+# duration 8, the plane a Rayleigh length ahead of the focus). The run differs from the default's.
+@testset "T-697 the antenna launches the WavefrontTime pulse one way and with its flux's energy, over the A8 matrix [A2, A3, A8, WP-026]" begin
+    C = emC("T-401")
+    for T in TYPES
+        D = T === D3
+        a0 = D ? mkdual(1, 1, 0, 0) : one(T)
+        focus = D ? mkdual(14, 0, 1, 0) : T(14)
+        chirp = D ? mkdual(1 // 100, 0, 0, 1) : T(1 // 100)
+        prob = antenna_problem(T; length = (150, 50), waist = 4, duration = 5, position = 8, focus, chirp, a0, tend = 66,
+                               envelope = WavefrontTime())
+        @test only(prob.lasers).envelope === WavefrontTime()
+        r = antenna_run(prob)
+        @test run_antenna(r).laser.envelope === WavefrontTime() && isbits(run_antenna(r))
+        fwd, back = forward_window(r, 80)
+        f = map(Array, r.st.fields)
+        frac = Float64(value_of(plain_energy(f, r.st.grid; cols = back) / conserved_energy(f, r.st.grid, prob.dt; cols = fwd)))
+        record!("T-697", T, frac / C)
+        @test frac <= C
+        if D
+            @test any(x -> !iszero(ForwardDiff.partials(x)[2]), Array(r.st.fields.Ey))   # focus and chirp enter through the antenna
+            @test any(x -> !iszero(ForwardDiff.partials(x)[3]), Array(r.st.fields.Ey))
+        end
+    end
+    Cm, Cw, Cf = emC("T-401", "C_main"), emC("T-405"), emC("T-405", "C_flux")
+    prob = antenna_problem(Float64; envelope = WavefrontTime())
+    r = antenna_run(prob; snaps = round(Int, 100 / prob.dt):round(Int, 4 / prob.dt):round(Int, 140 / prob.dt))   # antenna_main's
+    fwd, back = forward_window(r, 160)
+    f = r.shots[end].f
+    frac = plain_energy(f, r.st.grid; cols = back) / conserved_energy(f, r.st.grid, prob.dt; cols = fwd)
+    record!("T-697 main", Float64, frac / Cm)
+    @test frac <= Cm
+    a = run_antenna(r)
+    W, Φ = conserved_energy(f, r.st.grid, prob.dt; cols = fwd), incident_flux(r)
+    record!("T-697 energy", Float64, abs(W / Φ - 1) / k4(6))
+    @test abs(W / Φ - 1) <= Cw * k4(6)
+    relf = abs(Φ / laser_energy(a.laser) - 1) / (prob.dt^2 + a.dx[1]^2)
+    record!("T-697 flux", Float64, relf)
+    @test relf <= Cf
+    # not the default's run: the fields at t = 140 differ from T-401's main run by far more than roundoff
+    main = antenna_main(0.0)
+    fa = main.shots[end].f
+    @test r.shots[end].t == main.shots[end].t
+    @test maximum(abs, f.Ey .- fa.Ey) > 1e-3 * maximum(abs, fa.Ey)
 end
