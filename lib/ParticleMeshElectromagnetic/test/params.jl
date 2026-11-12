@@ -628,7 +628,7 @@ end
     wd = DiscreteProblem(wprob, wnum; backend, save_everystep = false)
     wa = solve(wd, FunctionMap())
     wua, wha = partition_bits(wa.u[end]), history_bits(harness_state(wa))
-    back = harness_state(wa, wa.u[end]).aux.window.back      # the convolution fields are the solution's (WP-056)
+    back = harness_state(wa).aux.window.back
     @test all(ψ -> any(!iszero, Array(ψ)), (back.ψBy, back.ψBz, back.ψEy, back.ψEz))
     wb = solve(wd, FunctionMap())
     wref = loop_state(wprob, wnum)
@@ -641,7 +641,7 @@ end
         dp = DiscreteProblem(prob, num; backend, save_everystep = false)
         a = solve(dp, FunctionMap())
         ua, ha = partition_bits(a.u[end]), history_bits(harness_state(a))
-        @test any(!iszero, Array(harness_state(a, a.u[end]).aux.layer.ψEx))
+        @test any(!iszero, Array(harness_state(a).aux.layer.ψEx))
         b = solve(dp, FunctionMap())
         ref = loop_state(prob, num)
         @test partition_bits(b.u[end]) == ua == state_bits(ref)

@@ -1,6 +1,7 @@
 # The closed state (WP-056): what a run evolves as one flat tuple of arrays in a fixed order
 # (`evolved`), a state over other arrays of that layout (`on_evolved`, the SciML harness's view of
-# an integrator's state), and the restart built on the two: `snapshot` copies the evolved arrays
+# an integrator's state; `state_view`, the same with a cache of its own, for a state handed out),
+# and the restart built on the two: `snapshot` copies the evolved arrays
 # after a step, `restore!` writes them into a state of the same configuration, and the run
 # continues from the next step with the bits of the uninterrupted run (Reference mode, A4).
 #
@@ -117,16 +118,18 @@ function aux_on(st::EMState{2}, a::Tuple)
 end
 
 """
-    on_evolved(state, arrays::Tuple) -> EMState
+    on_evolved(state, arrays::Tuple, K, recorder) -> EMState
 
-An `EMState` with the configuration, the scratch, the cache `K` and the recorder of `state`, whose
-evolved arrays are `arrays`: as many arrays as [`evolved`](@ref)`(state)`, each of the type of its
-place there (an `ArgumentError` otherwise; a comparison of types, so nothing is converted and
-nothing copied). The sizes are the caller's to check where the arrays come from outside
-(`check_evolved`). `K` is the cache of whatever was stepped or refreshed last through either state
-([`refresh_caches!`](@ref)).
+An `EMState` with the configuration and the scratch of `state`, whose evolved arrays are `arrays`:
+as many arrays as [`evolved`](@ref)`(state)`, each of the type of its place there (an
+`ArgumentError` otherwise; a comparison of types, so nothing is converted and nothing copied),
+with the kinetic-energy cache `K` and the `recorder` given. The cache belongs to the arrays: `K`
+is valid for them once [`refresh_caches!`](@ref) or a step has written it through this state, so
+a caller hands every set of arrays a buffer of its own (the harness: one for the integrator's
+state, apart from its cache state's; [`state_view`](@ref) allocates one). The sizes are the
+caller's to check where the arrays come from outside (`check_evolved`).
 """
-function on_evolved(st::EMState, a::Tuple)
+function on_evolved(st::EMState, a::Tuple, K, recorder)
     a isa typeof(evolved(st)) ||
         throw(ArgumentError("the arrays are not of the types of the state's evolved arrays (`evolved`): $(length(a)) arrays " *
                             "against $(length(evolved(st))), or another array or element type"))
@@ -134,7 +137,24 @@ function on_evolved(st::EMState, a::Tuple)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, st.K, st.recorder, st.setup, aux)
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, aux)
+end
+
+"""
+    state_view(state, arrays::Tuple, recorder = empty_recorder(state.recorder)) -> EMState
+
+A state to hand out over `arrays` (the layout of [`evolved`](@ref)`(state)`, checked: number,
+array types and sizes), consistent on its own: its kinetic-energy cache `K` is a new buffer
+computed from `arrays` ([`refresh_caches!`](@ref)), and its recorder is its own, empty and of
+the state's mode and length, unless one is given. So an observation of it reads the kinetic
+energy of its own particles, and a run continued from it records into its own histories. It
+shares the configuration and the scratch (workspaces, extras, `ρ`) with `state`: use one of them
+at a time. No copy of `arrays`; at N = 1 in a mode that sorts they are sorted, the identity for a
+state saved from such a mode.
+"""
+function state_view(st::EMState, a::Tuple, recorder = empty_recorder(st.recorder))
+    check_evolved(st, a)
+    return refresh_caches!(on_evolved(st, a, similar(st.K), recorder))
 end
 
 # --- the cache ------------------------------------------------------------------------------------
@@ -204,12 +224,14 @@ function check_evolved(st::EMState, src::Tuple)
     return nothing
 end
 
-# copyto! over two tuples of arrays, unrolled (a foreach over a heterogeneous tuple dispatches
-# dynamically and allocates)
-copy_arrays!(::Tuple{}, ::Tuple{}) = nothing
-@inline function copy_arrays!(dst::Tuple, src::Tuple)
-    copyto!(first(dst), first(src))
-    return copy_arrays!(Base.tail(dst), Base.tail(src))
+# copyto! over two tuples of as many arrays, one call per pair written out for the tuples' length
+# (a foreach over a heterogeneous tuple dispatches dynamically and allocates, and so does a
+# recursion over the tail past 32 arrays, where inference stops unrolling it; T-742)
+@generated function copy_arrays!(dst::NTuple{N,Any}, src::NTuple{N,Any}) where {N}
+    return quote
+        Base.Cartesian.@nexprs $N i -> copyto!(dst[i], src[i])
+        return nothing
+    end
 end
 
 """

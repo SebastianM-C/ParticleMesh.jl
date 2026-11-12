@@ -178,7 +178,8 @@ end
 # A zero profile adds exactly zero: a vacuum slab packet through the open box with a PML of
 # σ = α = 0, κ = 1 is the periodic box's bit for bit. A real PML: its coefficients are the closed
 # form of the profile at the layer rows (exactly b = 1, c = 0, q = 0 at the rows whose depth is
-# zero), its convolution fields start at zero and are zero again at step 1 of a new run, every guard
+# zero), its convolution fields start at zero and are zero again at the start of a new run (a
+# snapshot of the start, or `reset_convolution!`; no step zeroes them, WP-056), every guard
 # is its interior image after a solve, and only the layer rows of Bx, Bz, Ex, Ez change against the
 # plain solve.
 @testset "T-544 a zero-profile PML is the periodic step bit for bit; coefficients, rows and guards [A2, A4, A8, WP-034]" begin

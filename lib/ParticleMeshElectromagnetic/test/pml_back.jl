@@ -32,7 +32,8 @@ end
 # start), and with an open y axis the y-PML's step and the matched layer's apply the same back-edge
 # corrections. Each correction on its own
 # changes only its two components on the layer columns, advancing its convolution fields only
-# where asked; a shift moves ψ one column back with the last column zero; step 1 zeroes ψ.
+# where asked; a shift moves ψ one column back with the last column zero; no step zeroes ψ (they
+# are part of what a run evolves, WP-056), a snapshot of the start or `reset_convolution!` does.
 @testset "T-571 a zero-profile back-edge PML is the window's step bit for bit; corrections, shift and reset [A2, A4, A8, WP-034]" begin
     for T in TYPES
         prob = back_lwfa(T; nsteps = 120)
@@ -88,13 +89,27 @@ end
     for (c, o) in zip((:ψBy, :ψBz, :ψEy, :ψEz), old)
         @test getfield(L, c)[1:5, :] == o[2:6, :] && all(iszero, getfield(L, c)[6, :])
     end
-    # step 1 zeroes the convolution fields: a state with stale ψ takes the fresh state's first step
+    # the convolution fields are part of what a run evolves (WP-056), so no step zeroes them: a state
+    # with stale ψ takes another first step than the fresh state, and the fresh state's after
+    # reset_convolution!, or after restore! of a snapshot of the start, which holds them (zero there)
     fresh = back_state(prob; back = pml)
     used = back_state(prob; back = pml)
-    foreach(c -> (getfield(used.aux.window.back, c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
+    start = snapshot(used, 0)
+    stale!() = foreach(c -> (getfield(used.aux.window.back, c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
+    same_fields() = all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
     step!(fresh, params(prob), 1)
+    stale!()
     step!(used, params(prob), 1)
-    @test all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
+    @test !same_fields()
+    restore!(used, start)
+    stale!()
+    reset_convolution!(used)
+    step!(used, params(prob), 1)
+    @test same_fields()
+    stale!()
+    restore!(used, start)
+    step!(used, params(prob), 1)
+    @test same_fields()
 end
 
 # --- T-572 ----------------------------------------------------------------------------------

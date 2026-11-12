@@ -6,7 +6,7 @@
 # stale data. After window_cases.jl, boundaries_cases.jl, em2d_cases.jl, harness.jl (its helpers)
 # and params.jl (`params_case`, `cold_pair`, `particle_arrays`).
 
-using ParticleMeshElectromagnetic: on_evolved, refresh_caches!, witness_frame, witness_species
+using ParticleMeshElectromagnetic: on_evolved, state_view, empty_recorder, copy_arrays!, refresh_caches!, witness_frame, witness_species
 using SciMLBase: SciMLBase, DiscreteProblem, ReturnCode, remake, solve
 using OrdinaryDiffEqFunctionMap: FunctionMap
 
@@ -268,6 +268,9 @@ end
 
 # --- T-742 ----------------------------------------------------------------------------------
 
+"Bytes allocated by a copy of one tuple of arrays into another (behind a function, so the tuples' types are known)."
+copy_allocations(dst, src) = @allocated copy_arrays!(dst, src)
+
 "Fill every array of `x` (arrays, tuples and named tuples of arrays) with a value that would show: NaN for floats, 2 for integers."
 junk!(a::AbstractArray{<:Integer}) = fill!(a, eltype(a)(2))
 junk!(a::AbstractArray) = fill!(a, eltype(a)(NaN))
@@ -313,8 +316,10 @@ end
 
 # The evolved set is the whole evolved state. `evolved` is the hand-written list of the state's
 # arrays, in the documented order, at N = 1 and N = 2 with one and two species; the harness's
-# partition is the same arrays; `on_evolved` puts a state on other arrays of that layout and shares
-# everything else. And nothing else in a state carries a run: a restored state whose every
+# partition is the same arrays; `on_evolved` puts a state on other arrays of that layout, with the
+# cache and the recorder it is given, and shares everything else; `state_view` gives such a state a
+# cache computed from its own arrays and a recorder of its own, so that it is consistent on its
+# own; the copy of the arrays allocates nothing at any count. And nothing else in a state carries a run: a restored state whose every
 # scratch buffer, cache, extra and free slot was overwritten with NaN and 2 before the
 # continuation gives the uninterrupted run's bits, at N = 2 with everything at once and at N = 1.
 function body_T742(be)
@@ -330,19 +335,29 @@ function body_T742(be)
     @test same_arrays(state_partition(st).x, expected)
     @test all(a -> count(x -> x === a, expected) == 1, expected)            # no array twice
     copies = map(copy, expected)
-    v = @inferred on_evolved(st, copies)
+    K2, rec2 = similar(st.K), empty_recorder(st.recorder)
+    v = @inferred on_evolved(st, copies, K2, rec2)
     @test typeof(v) === typeof(st) && same_arrays(evolved(v), copies)
-    @test v.ws === st.ws && v.K === st.K && v.ρ === st.ρ && v.recorder === st.recorder && v.numerics === st.numerics && v.grid === st.grid && v.dt === st.dt && v.setup === st.setup
+    @test v.K === K2 && v.recorder === rec2 && v.K !== st.K && v.recorder !== st.recorder
+    @test v.ws === st.ws && v.ρ === st.ρ && v.numerics === st.numerics && v.grid === st.grid && v.dt === st.dt && v.setup === st.setup
     @test all(map((a, c) -> a.extras === c.extras && a.q === c.q && a.m === c.m, (v.species..., v.aux.witness.species), (st.species..., st.aux.witness.species)))
     @test v.aux.antennas === st.aux.antennas && v.aux.spectral === st.aux.spectral && v.aux.φ === st.aux.φ && v.aux.layer.scratch === L.scratch &&
           v.aux.layer.node === L.node && v.aux.layer.center === L.center && v.aux.window.flags === w.flags && v.aux.window.back.scratch === b.scratch &&
           v.aux.window.back.node === b.node && v.aux.window.back.center === b.center &&
           (v.aux.window.window, v.aux.window.dt, v.aux.window.dx1, v.aux.window.n1, v.aux.window.inj, v.aux.window.g) === (w.window, w.dt, w.dx1, w.n1, w.inj, w.g) &&
           (v.aux.witness.kinj, v.aux.witness.c0, v.aux.witness.nc, v.aux.witness.ppc) === (st.aux.witness.kinj, st.aux.witness.c0, st.aux.witness.nc, st.aux.witness.ppc)
-    @test_throws ArgumentError on_evolved(st, copies[1:(end - 1)])
-    @test_throws ArgumentError on_evolved(st, (copies..., copies[end]))
-    @test_throws ArgumentError on_evolved(st, (copies[1], copies[3], copies[2], copies[4:end]...))       # an offset where a cell belongs: nothing is converted
-    @test_throws ArgumentError on_evolved(st, map(a -> eltype(a) === T ? Float32.(a) : a, copies))
+    @test_throws ArgumentError on_evolved(st, copies[1:(end - 1)], K2, rec2)
+    @test_throws ArgumentError on_evolved(st, (copies..., copies[end]), K2, rec2)
+    @test_throws ArgumentError on_evolved(st, (copies[1], copies[3], copies[2], copies[4:end]...), K2, rec2)       # an offset where a cell belongs: nothing is converted
+    @test_throws ArgumentError on_evolved(st, map(a -> eltype(a) === T ? Float32.(a) : a, copies), K2, rec2)
+    # the copy of the evolved arrays, pair by pair, allocates nothing: at 51 arrays and at 39 (one species)
+    st39 = EMState(restart_full(T)...; backend = be)
+    for s in (st, st39)
+        src = map(a -> fill!(similar(a), one(eltype(a))), evolved(s))
+        copy_arrays!(evolved(s), src)
+        @test length(src) in (39, 51) && all(map(same_bits, evolved(s), src))
+        be isa CPU && @test copy_allocations(evolved(s), src) == 0
+    end
     # without absorbers, window and witness bunch: the species and the fields; with an absorbing layer nothing more; at N = 1 the same
     plain = EMState(plasma_step_2d(T), EMNumerics(; current = Esirkepov()); backend = be)
     @test same_arrays(evolved(plain), (sp(plain.species[1])..., sp(plain.species[2])..., values(plain.fields)...))
@@ -352,7 +367,31 @@ function body_T742(be)
     one_d = EMState(lprob, lnum; backend = be)
     sp1(s) = (s.cell[1], s.offset[1], s.u[1], s.u[2], s.u[3], s.w, s.status, s.count)
     @test same_arrays(@inferred(evolved(one_d)), (mapreduce(sp1, (x, y) -> (x..., y...), one_d.species)..., values(one_d.fields)...))
-    @test same_arrays(evolved(@inferred(on_evolved(one_d, evolved(one_d)))), evolved(one_d))
+    @test same_arrays(evolved(@inferred(on_evolved(one_d, evolved(one_d), one_d.K, one_d.recorder))), evolved(one_d))
+    # a state view is consistent on its own: over the arrays of a state that has run, its kinetic energy is that
+    # state's, in a buffer of its own, and its recorder is its own and empty; stepping it leaves the other state's
+    # cache and histories alone and records what the other state records when it takes the same step
+    for S in TYPES, (qprob, qnum) in (restart_full(S), case_problem("landau", S; HARNESS_KW...))
+        p = params(qprob)
+        k = 80
+        ran = EMState(qprob, qnum; backend = be)
+        initialize!(ran, qprob)
+        run!(ran, p, k)
+        sv = state_view(ran, map(copy, evolved(ran)))
+        @test sv.K !== ran.K && same_bits(Array(sv.K), Array(ran.K)) && any(!iszero, Array(ran.K))
+        @test sv.recorder !== ran.recorder && sv.recorder.kmode == ran.recorder.kmode && length(sv.recorder) == length(ran.recorder)
+        @test all(h -> all(iszero, Array(h)), values(sv.recorder.hist)) && !any(map(===, values(sv.recorder.hist), values(ran.recorder.hist)))
+        ndims(ran) == 2 && @test sv.recorder.aux.tables === ran.recorder.aux.tables && sv.recorder.aux.partials !== ran.recorder.aux.partials
+        @test sv.ws === ran.ws && sv.ρ === ran.ρ
+        K0, h0, e0 = Array(ran.K), map(Array, values(ran.recorder.hist)), map(Array, evolved(ran))
+        step!(sv, p, k + 1)
+        @test same_bits(Array(ran.K), K0) && all(map(same_bits, map(Array, values(ran.recorder.hist)), h0)) && all(map(same_bits, map(Array, evolved(ran)), e0))
+        step!(ran, p, k + 1)
+        @test differences(ran, sv, k) == String[]
+        @test all(map((a, b) -> same_bits(Array(a)[(k + 1):(k + 1)], Array(b)[(k + 1):(k + 1)]) && any(!iszero, Array(a)[(k + 1):(k + 1)]),
+                      (sv.recorder.hist.K, sv.recorder.hist.WEx), (ran.recorder.hist.K, ran.recorder.hist.WEx)))
+        @test_throws ArgumentError state_view(ran, evolved(ran)[1:(end - 1)])
+    end
     # nothing else carries the run
     for S in TYPES, (name, (qprob, qnum)) in (("full", restart_full(S; species = 2)), ("landau", case_problem("landau", S; HARNESS_KW...)))
         k = name == "full" ? witness_frame(EMState(qprob, qnum)).kinj + 3 : 40
@@ -376,7 +415,12 @@ end
 # The harness's partition is the evolved set, so a solve is the run of its `u0` with nothing kept
 # on the side: a solve of the full case (window, both PMLs, witness bunch) is the loop bit for bit
 # in every evolved array and history, a second solve is the first, each state saved by `saveat`
-# restarts the run in a new state, and the read-outs of a solution take the solution's arrays. A
+# restarts the run in a new state. The states the harness hands out are consistent on their own:
+# `harness_state(sol)` is the state the loop leaves (the last saved arrays, their kinetic energy,
+# the solve's histories, so every read-out of the run: the bunch, the counters), the problem's
+# cache keeps `u0` with its own kinetic energy, and a state over another saved state has the
+# kinetic energy of its own arrays and a recorder of its own, so a run continued from it gives the
+# loop's histories and leaves the solve's alone. A
 # window whose refill overflows counts its lost particles once per solve (#423: twice in the
 # second, when the counters were the cache's), a `Dual` problem without species solves (#424: its
 # empty `K` was in the partition), and a solve from a `u0` whose convolution fields are not zero
@@ -396,13 +440,37 @@ end
         @test partition_bits(sol.u[end]) == state_bits(ref) && history_bits(harness_state(sol)) == history_bits(ref)
         again = solve(dprob, FunctionMap())
         @test partition_bits(again.u[end]) == state_bits(ref) && history_bits(harness_state(again)) == history_bits(ref)
-        # the cache's own evolved arrays stay the problem's u0; a read-out takes the saved state
-        @test witness_alive(harness_state(sol)) == 0 && all(ψ -> all(iszero, Array(ψ)), psis(harness_state(sol)))
-        last_state = harness_state(sol, sol.u[end])
-        @test all(map(===, evolved(last_state), sol.u[end].x)) && last_state.recorder === harness_state(sol).recorder
+        # the problem's cache stays the problem's u0, with the kinetic energy of u0, after two solves
+        cache = harness_state(dprob)
+        start = initialize!(EMState(prob, num; backend), prob)
+        @test cache === harness_state(dprob) && witness_alive(cache) == 0 && all(ψ -> all(iszero, Array(ψ)), psis(cache))
+        @test partition_bits(dprob.u0) == state_bits(start) && same_bits(Array(cache.K), Array(start.K))
+        # the solution's state is the state the loop leaves: the last saved arrays, their kinetic energy, the solve's histories
+        last_state = harness_state(sol)
+        @test all(map(===, evolved(last_state), sol.u[end].x)) && last_state.recorder === cache.recorder
+        @test last_state.K !== cache.K && same_bits(Array(last_state.K), Array(ref.K)) && !same_bits(Array(ref.K), Array(start.K))
         @test witness_alive(last_state) == witness_alive(ref) > 0
+        @test window_lost(last_state) == window_lost(ref) && window_superluminal(last_state) == window_superluminal(ref)
         @test same_bits([witness_energy_gain(last_state, p; allow_lost = true)], [witness_energy_gain(ref, p; allow_lost = true)])
         @test all(ψ -> any(!iszero, Array(ψ)), psis(last_state))
+        # an observer of it sees what it sees of the loop's state, the kinetic energy included
+        seen = map((cache, last_state, ref)) do s
+            rec = HistoryRecorder(prob, s)
+            observe!(rec, s, 1)
+            map(h -> Array(h)[1:1], values(rec.hist))
+        end
+        @test all(map(same_bits, seen[2], seen[3])) && !same_bits(seen[1][7], seen[2][7]) && keys(ref.recorder.hist)[7] === :K
+        # a state over another saved state: its own kinetic energy and recorder; the run continued from it is the
+        # loop's from that step, in its arrays and in its own histories, and the solve's histories stay
+        hsol = history_bits(last_state)
+        for (i, k) in ((2, steps[2]), (3, steps[3]))
+            v = harness_state(sol, copy(sol.u[i]))
+            @test v.recorder !== cache.recorder && all(h -> all(iszero, Array(h)), values(v.recorder.hist))
+            @test same_bits(Array(v.K), Array(loop_state(prob, num, k).K)) && v.K !== cache.K && v.K !== last_state.K
+            run!(v, p, prob.nsteps - k; first = k + 1)
+            @test differences(ref, v, k) == String[]
+            @test history_bits(harness_state(sol)) == hsol == history_bits(ref) && same_bits(Array(cache.K), Array(start.K))
+        end
         # every saved state is a restart of its step, through copyto! and through restore!
         for (i, k) in enumerate(steps[1:3])
             st = EMState(prob, num; backend)
@@ -418,9 +486,14 @@ end
     dp = DiscreteProblem(fwd, tight; backend, save_everystep = false)
     for _ in 1:2
         sol = solve(dp, FunctionMap())
-        @test window_lost(harness_state(sol, sol.u[end])) == lost && lost[1] > 0
+        @test window_lost(harness_state(sol)) == window_lost(harness_state(sol, sol.u[end])) == lost && lost[1] > 0
         @test window_lost(harness_state(dp)) == (0,)
     end
+    # and the refills' superluminal draws
+    hot = window_plasma(Float64; cells = (16, 6), ppc = (1, 1), vacuum = -100, ramp = 1, thermal = (0.3, 0.3, 0.3), nsteps = 150, seed = 6)
+    fast = window_superluminal(loop_state(hot, EMNumerics()))
+    hot_sol = solve(DiscreteProblem(hot, EMNumerics(); backend, save_everystep = false), FunctionMap())
+    @test window_superluminal(harness_state(hot_sol)) == fast && fast[1] > 0
     # #424: a problem without species, in every element type
     for T in TYPES
         vac = EMProblem("vacuum", (T(6), T(3)), (12, 6), T(3) / 10, 4, (), 1, (1, 0))
@@ -569,6 +642,9 @@ end
         @test_throws ArgumentError solve(remake(dp; u0 = state_partition(st)), FunctionMap())
     end
     @test solve(remake(dp; u0 = state_partition(states.dt)), FunctionMap()).retcode == ReturnCode.Success       # the arrays alone: its own layout
+    for st in (states.cells, states.transposed, states.one, states.eltype)                    # and so does a state handed out over such arrays
+        @test_throws ArgumentError harness_state(dp, state_partition(st))
+    end
     other_dt = EMState(variants.dt...)
     @test_throws ArgumentError restore!(other_dt, load_snapshot(IOBuffer(bytes), other_dt))      # another time step: read, then refused by its units
 end

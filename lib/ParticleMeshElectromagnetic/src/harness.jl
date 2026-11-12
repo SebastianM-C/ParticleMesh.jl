@@ -44,17 +44,28 @@ Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 function remake_reload end
 
 """
-    harness_state(prob_or_sol) -> EMState
+    harness_state(sol) -> EMState
+    harness_state(prob) -> EMState
     harness_state(prob_or_sol, u) -> EMState
 
-The cache of a harness problem, or of a solution of one: the `EMState` whose workspaces and
-diagnostic histories the steps use. Read the histories with `histories(harness_state(sol))`.
-Its evolved arrays ([`evolved`](@ref): particles, fields, a PML's convolution fields, the
-window's counters, the witness bunch) hold the problem's `u0`, not the solution.
+Of a solution: the state at the end of the solve, as the plain loop leaves it. Its evolved arrays
+([`evolved`](@ref): particles, fields, a PML's convolution fields, the window's counters, the
+witness bunch) are those of the last saved state `sol.u[end]` (no copy), its kinetic energy `K` is
+computed from them, and its recorder is the solve's: `histories(harness_state(sol))`,
+`witness_energy_gain(harness_state(sol), params)`, `window_lost(harness_state(sol))`. The recorder
+is the cache's, one per problem, so it holds the histories of the last solve of that problem.
 
-With a saved state `u` of the solution (`sol.u[end]`), the same cache over the arrays of `u`, with
-no copy: the state to hand to a read-out, `witness_energy_gain(harness_state(sol, sol.u[end]), params)`
-or `window_lost(harness_state(sol, sol.u[end]))`. Its `K` is that of the last step taken.
+Of a problem: its cache, the `EMState` whose workspaces and recorder the steps use. Its evolved
+arrays are the problem's `u0`, with their own `K`, whatever has been solved since.
+
+With a saved state `u` (`sol.u[i]`): a state over the arrays of `u` with a `K` computed from them
+and an empty recorder of its own, so observing it or running on from it
+(`run!(state, params, n; first = k + 1)`) touches neither the solve's histories nor its cache.
+There is no copy: a run continued from it advances the arrays of `u`, so hand it `copy(u)` to
+keep the solution's saved state.
+
+The states of one problem share their scratch (workspaces, extras, `ρ`): use one at a time, and
+not while an integrator of the problem is between two steps.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """
