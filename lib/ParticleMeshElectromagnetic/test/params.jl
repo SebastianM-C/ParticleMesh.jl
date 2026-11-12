@@ -1,4 +1,4 @@
-# WP-055: the step as a function of the state and the parameters, T-720 to T-725. The parameters
+# WP-055: the step as a function of the state and the parameters, T-730 to T-735. The parameters
 # (`EMParams`: the lasers, the densities and the profile, the witness bunch, the seed) reach
 # `initialize!` and `step!` as an argument, and the state keeps no copy of them: one state gives
 # the run of whichever parameters it is handed, and the diagnostics belong to an observer. After
@@ -87,7 +87,7 @@ same_run(a, b) = (x = run_arrays(a); y = run_arrays(b); length(x) == length(y) &
 "A `Dual{Float64,4}` with the given value and partials."
 mkdual4(v, ps...) = Dual{Nothing}(Float64(v), Float64.(ps)...)
 
-# --- T-720 ----------------------------------------------------------------------------------
+# --- T-730 ----------------------------------------------------------------------------------
 
 # The derivative through the parameters is the derivative of the state rebuilt from the dual
 # problem, bit for bit (value and partials, A4: one element type, one backend): path A builds the
@@ -98,7 +98,7 @@ mkdual4(v, ps...) = Dual{Nothing}(Float64(v), Float64.(ps)...)
 # ramp through the weights of the initial load and of the refill (38 shifts in 120 steps). The
 # comparison is not empty: every seeded parameter has reached E, and the plasma's two the weights
 # (the loaded positions carry none, A3).
-function body_T720(be)
+function body_T730(be)
     x0 = (1.0, 3.0, 0.02, 8.0)
     base0 = (0.5, 2.5, 0.05, 6.0)
     seeds3 = ((1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0))                 # a₀, the duration, the density
@@ -131,11 +131,11 @@ function body_T720(be)
     end
 end
 
-@testset "T-720 dual laser and density parameters handed to a state built from other values give the bits of the state rebuilt from the dual problem [A3, A4, A8, WP-055]" begin
-    body_T720(CPU())
+@testset "T-730 dual laser and density parameters handed to a state built from other values give the bits of the state rebuilt from the dual problem [A3, A4, A8, WP-055]" begin
+    body_T730(CPU())
 end
 
-# --- T-721 ----------------------------------------------------------------------------------
+# --- T-731 ----------------------------------------------------------------------------------
 
 # One state, two parameter sets, two runs, each an exact discrete identity. In vacuum the scheme
 # is linear in the antenna's source and a factor 2 is exact in binary arithmetic, so the fields of
@@ -154,7 +154,7 @@ end
 # in value, those of the other alone on a state with one plane. The witness bunch's centre enters
 # the weights at the injection step and nothing else: two centres on one state give the same
 # gains and other weights.
-function body_T721(be)
+function body_T731(be)
     for T in TYPES
         a0 = seeded(T, 1)
         prob1 = params_case((a0, T(3), T(2) / 100, T(8)); plasma = false, nsteps = 80)
@@ -289,11 +289,11 @@ function body_T721(be)
     @test witness_alive(st) == capacity(witness_frame(st).species)
 end
 
-@testset "T-721 one state run with two parameter sets gives each one's run: fields exactly linear in a₀, refilled weights in the density [A3, A4, A8, WP-055]" begin
-    body_T721(CPU())
+@testset "T-731 one state run with two parameter sets gives each one's run: fields exactly linear in a₀, refilled weights in the density [A3, A4, A8, WP-055]" begin
+    body_T731(CPU())
 end
 
-# --- T-722 ----------------------------------------------------------------------------------
+# --- T-732 ----------------------------------------------------------------------------------
 
 # The diagnostics are the observer's. A step with `observer = nothing` writes no history, takes
 # any `k`, and leaves the state the default observer leaves (observing changes nothing); a second
@@ -303,7 +303,7 @@ end
 # the step's observer records at step k is what a recorder shown the state by hand before that
 # step records (the observation is of the start of the step); a recorder refuses a step past its
 # length, a state of another dimension or of another grid.
-@testset "T-722 the histories and the diagnostic mode belong to the observer: none, another mode next to the default, a function [A4, A10, WP-055]" begin
+@testset "T-732 the histories and the diagnostic mode belong to the observer: none, another mode next to the default, a function [A4, A10, WP-055]" begin
     T = Float64
     # N = 2
     prob = plasma_step_2d(T; nsteps = 6)
@@ -365,7 +365,7 @@ end
     @test_throws ArgumentError observe!(plain.recorder, st1, 1)
 end
 
-# --- T-723 ----------------------------------------------------------------------------------
+# --- T-733 ----------------------------------------------------------------------------------
 
 # `params(problem)` holds the problem's numbers and nothing else, and what fits a state is checked
 # where the parameters are read (`initialize!`, `step!`, and so `run!`): parameters of another element type,
@@ -379,7 +379,7 @@ end
 # before the window starts. A laser moved within its plane's half cell (0.4 cells is, 0.6 is not)
 # is the same run: the position only chooses the column (A3). A species described in another
 # element type than the problem's keeps its numbers in that type, as the loader takes them.
-@testset "T-723 the parameters are the problem's numbers, and a state refuses the ones that do not fit it [A3, A10, WP-055]" begin
+@testset "T-733 the parameters are the problem's numbers, and a state refuses the ones that do not fit it [A3, A10, WP-055]" begin
     T = Float64
     x = (1.0, 3.0, 0.02, 8.0)
     wb = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (5.0, 7.0)), momentum = 3.0, center = (25.0, 6.0), length = 2.0)
@@ -548,14 +548,14 @@ end
     @test !same_bits(Array(sx.species[1].w), Array(loaded(d32).species[1].w))
 end
 
-# --- T-724 ----------------------------------------------------------------------------------
+# --- T-734 ----------------------------------------------------------------------------------
 
 # `initialize!` starts everything a run evolves, so a state that has run (other parameters, to the
 # end) is a new state after it, bit for bit over the whole next run: with a PML on the open axis and
 # on the window's back edge (all eight convolution fields excited: the pulse is polarized between
 # y and z), a witness bunch (injected) and a laser in a plasma; and with a buffer too small for the refill, whose `lost` counter counts
 # one run, not two.
-function body_T724(be)
+function body_T734(be)
     for T in TYPES
         yc = 16 * 2π / 8 / 2
         wb = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (yc - 1, yc + 1)), ppc = (2, 1), momentum = T(3), center = (T(25), T(yc)), length = T(2))
@@ -589,11 +589,11 @@ function body_T724(be)
     @test window_lost(tight) == lost
 end
 
-@testset "T-724 initialize! starts everything a run evolves: a state that ran other parameters runs as a new one, bitwise [A4, A8, WP-055]" begin
-    body_T724(CPU())
+@testset "T-734 initialize! starts everything a run evolves: a state that ran other parameters runs as a new one, bitwise [A4, A8, WP-055]" begin
+    body_T734(CPU())
 end
 
-# --- T-725 ----------------------------------------------------------------------------------
+# --- T-735 ----------------------------------------------------------------------------------
 
 # The harness follows. Its map takes the step's parameters from the problem's `p`: a plain
 # `remake(prob; p = p′)` with another laser, as a problem description or as its `EMParams`, gives
@@ -604,7 +604,7 @@ end
 # fields, a PML's convolution fields: a second solve of a problem with a PML, on the
 # open axis or on a window's back edge, is the first, and both are the loop; and a state that
 # has run, set back to a partition saved at t = 0, runs again as it did, with no call by hand.
-@testset "T-725 the harness: remake(p) changes the step's parameters with no new cache, and a second solve with a PML is the first [A3, A9, WP-055, WP-008]" begin
+@testset "T-735 the harness: remake(p) changes the step's parameters with no new cache, and a second solve with a PML is the first [A3, A9, WP-055, WP-008]" begin
     T = Float64
     prob1 = params_case((1.0, 3.0, 0.02, 8.0); plasma = false, nsteps = 80)
     prob2 = params_case((2.0, 3.0, 0.02, 8.0); plasma = false, nsteps = 80)

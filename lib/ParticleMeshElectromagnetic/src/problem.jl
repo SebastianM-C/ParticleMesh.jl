@@ -340,8 +340,8 @@ and [`step!`](@ref) read as numbers, in the state's element type `T`:
 
 `params(problem)` builds them from an [`EMProblem`](@ref). A state holds no copy of any of them:
 the same state initialized or stepped with other parameters gives the run of those parameters
-(T-721), and a `Dual` parameter reaches the antenna's source and the refill's weights in the step
-with no new state (T-720), as long as the state's element type is the parameters'.
+(T-731), and a `Dual` parameter reaches the antenna's source and the refill's weights in the step
+with no new state (T-730), as long as the state's element type is the parameters'.
 
 What stays in the state is configuration, fixed when it is built from a problem and its numerics:
 every size (cells, particles per cell, the witness lattice), the time step (the absorbers'

@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-726. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -158,8 +158,8 @@ else
         @test cpu_rel <= emC("T-611")      # the refined, longer run on CUDA is the CPU's too
     end
 
-    @testset "T-726 the parameters handed to a state on CUDA: T-720, T-721 and T-724 with the CPU's assertions [A3, A4, A8, WP-055]" begin
-        rerun_module_on(GPU, (("T-720", body_T720), ("T-721", body_T721), ("T-724", body_T724)))
+    @testset "T-736 the parameters handed to a state on CUDA: T-730, T-731 and T-734 with the CPU's assertions [A3, A4, A8, WP-055]" begin
+        rerun_module_on(GPU, (("T-730", body_T730), ("T-731", body_T731), ("T-734", body_T734)))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin
