@@ -8,6 +8,7 @@
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare-pair <dir a> <dir b> <out dir>  # two runs of one case and medium, the same measures
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare-scan <out dir> <runs dir …>  # one case on several grids, coarse to fine: each code's change with Δ, the distances against Δ
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl back-columns <runs dir> <out.json>   # the maps' columns nearest the back of the shared ones, pair by pair
+#   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl table <comparison.json | scan.json>  # the pairs' largest distances as the Markdown table the reports carry
 #
 # A prepared run has six directories: `smilei-vacuum`, `smilei-plasma`, `pm-vacuum`, `pm-plasma`,
 # `picongpu-vacuum`, `picongpu-plasma` (with `vacuum`, the three vacuum ones). The vacuum runs check
@@ -1680,6 +1681,55 @@ function scan_distances(per, cells; from = (; vacuum = 150.0, plasma = 150.0, bu
     return out
 end
 
+"The rows of `distances_table`: medium, key of `scan_distances`' entries, label with its unit, factor to that unit."
+const TABLE_ROWS = (("vacuum", "carrier_phase", "vacuum: carrier phase (mrad)", 1e3), ("vacuum", "centroid_x", "vacuum: centroid (10⁻³ c/ω₀)", 1e3),
+                    ("vacuum", "amplitude_relrms", "vacuum: amplitude, relative rms (%)", 1e2),
+                    ("plasma", "carrier_phase", "plasma: carrier phase (mrad)", 1e3), ("plasma", "centroid_x", "plasma: centroid (10⁻³ c/ω₀)", 1e3),
+                    ("plasma", "amplitude_relrms", "plasma: amplitude, relative rms (%)", 1e2),
+                    ("plasma", "wake_Ex_relrms", "wake E_x over $(WAKE_LENGTH) λ_p, relative rms (%)", 1e2),
+                    ("plasma", "wake_Ex_min", "wake minimum, relative difference (%)", 1e2), ("plasma", "wake_Ex_max", "wake maximum, relative difference (%)", 1e2),
+                    ("plasma", "maps_all", "maps of E_y, all rows, relative rms (%)", 1e2), ("plasma", "maps_flank", "maps of E_y, flank, relative rms (%)", 1e2),
+                    ("plasma", "maps_wing", "maps of E_y, far wing, relative rms (%)", 1e2),
+                    ("plasma", "bunch_weight", "bunch weight, relative difference (%)", 1e2), ("plasma", "top", "highest occupied bin, difference (mₑc²)", 1.0))
+
+"""
+    distances_table(d, cells) -> String
+
+`scan_distances`' result `d` as a Markdown table: for each observable of `TABLE_ROWS` and each pair
+of codes the largest magnitude over the counted outputs (`max`), in the unit of the row's label and
+to two significant digits, one value per grid of `cells`, coarse to fine, separated by " / ". A
+pair without the observable has "–". Reports take their tables from here (reports/README.md).
+"""
+function distances_table(d, cells)
+    name = Dict("pm" => "ParticleMesh", "smilei" => "Smilei", "picongpu" => "PIConGPU")
+    pairs = [p for p in PAIRS if haskey(d, p[1] * "vacuum") || haskey(d, p[1] * "plasma")]
+    entry(p, medium, key) = get(get(d, p[1] * medium, Dict{String,Any}()), key, nothing)
+    cell(p, medium, key, f) = (e = entry(p, medium, key); e === nothing ? "–" : join((iszero(v) ? "0" : string(round(f * v; sigdigits = 2)) for v in e["max"]), " / "))
+    io = IOBuffer()
+    println(io, "| Largest over the run, at ", join(("λ₀/$c" for c in cells), " / "), " | ", join(("$(name[a])–$(name[b])" for (_, a, b) in pairs), " | "), " |")
+    println(io, "|---|", repeat("---|", length(pairs)))
+    for (medium, key, label, f) in TABLE_ROWS
+        any(p -> entry(p, medium, key) !== nothing, pairs) || continue
+        println(io, "| ", label, " | ", join((cell(p, medium, key, f) for p in pairs), " | "), " |")
+    end
+    return String(take!(io))
+end
+
+"""
+    distances_table_of(path) -> String
+
+`distances_table` of a `scan.json` (its `distances` and `cells`), or of one `comparison.json`,
+whose distances are counted as `compare_scan` counts them: from `scan_from` of its case, read from
+`scripts/lwfa/cases/<case>.toml` (the laser's delay and the vacuum in front of the plasma).
+"""
+function distances_table_of(path)
+    r = JSON.parsefile(path)
+    haskey(r, "distances") && return distances_table(r["distances"], r["cells"])
+    case = TOML.parsefile(joinpath(@__DIR__, "cases", r["case"] * ".toml"))
+    cells = [round(Int, 2π / r["dx"])]
+    return distances_table(scan_distances([r], cells; from = scan_from(case)), cells)
+end
+
 "The derivatives along ξ of `launch_fit`'s two amplitude shapes, 1/(2w₀²(1 + ξ²/z_R²)) and −ξ/(2(z_R² + ξ²))."
 amplitude_slopes(ξ, w0, zR) = (-ξ / (w0^2 * zR^2 * (1 + (ξ / zR)^2)^2), -(zR^2 - ξ^2) / (2 * (zR^2 + ξ^2)^2))
 
@@ -1690,7 +1740,7 @@ What two codes' launches differ by, from the vacuum rows of a pair a–b (`compa
 functions of ξ, the distance of the pulse (a's centroid) from its focus. A launch that multiplies
 the transverse spectrum of E_y by 1 − c·k_y²/4 lowers the beam on the axis by c/(2w(ξ)²) and moves
 its carrier by c·ξ/(4(z_R² + ξ²)); a focus δ further out changes the amplitude by −δ·ξ/(2(z_R² + ξ²))
-and the carrier by δ·z_R/(2(z_R² + ξ²)) (reports/lwfa-2d-a5.md §3.3). Least squares of the peak
+and the carrier by δ·z_R/(2(z_R² + ξ²)) (the laser's lines in this file's header). Least squares of the peak
 amplitude's a/b − 1 on the first pair of shapes, and of the carrier phase a − b on the second pair
 and a constant: `oblique` is c of b's launch over a's, `focus` the δ of b's focus beyond a's
 (c/ω₀), each as [from the amplitude, from the phase]; `phase_constant` (rad), the largest
@@ -1941,6 +1991,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     elseif cmd == "back-columns"
         length(ARGS) == 3 || error("back-columns <runs> <out.json>")
         open(io -> JSON.print(io, Dict{String,Any}("runs" => relpath(abspath(ARGS[2]), REPO), "back_columns" => back_columns(ARGS[2])), 2), ARGS[3], "w")
+    elseif cmd == "table"
+        length(ARGS) == 2 || error("table <comparison.json | scan.json>")
+        print(distances_table_of(ARGS[2]))
     elseif cmd == "compare-scan"
         length(ARGS) >= 4 || error("compare-scan <out> <runs, coarse to fine …>")
         compare_scan(ARGS[2], ARGS[3:end])
