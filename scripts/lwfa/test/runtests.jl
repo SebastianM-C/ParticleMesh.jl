@@ -304,3 +304,226 @@ end
     @test hot.hist[2] == s.w[electron]                                       # bins of 0.2: [0.2, 0.4)
     @test sum(hot.hist) ≈ sum(w) rtol = length(w) * eps()
 end
+
+# --- the comparison of any pair of codes, the spectra in one unit (lwfa.jl's compare) ----------------
+
+@testset "T-691 the lattice's analytic signal gives a carrier's amplitude and phase, whatever the phase [A5]" begin
+    d = derived(TOML.parsefile(CASE_FILES[1]))
+    q = quarter_wave(d)
+    @test [quarter_wave(derived(TOML.parsefile(f))) for f in CASE_FILES] == [12, 8]
+    m0, n = -7, 400
+    x = (m0 .+ (0:(n - 1))) .* d.dx
+    for φ in (0.0, 0.7, 1.98, -2.5)
+        s = carrier_signal(1.3 .* cos.(x .+ φ), m0, q)
+        @test s.m0 == m0 + q && length(s.z) == n - 2q
+        xs = (s.m0 .+ (0:(length(s.z) - 1))) .* d.dx
+        @test maximum(abs, abs.(s.z) .- 1.3) < 1e-13                         # a quarter wavelength is q points exactly
+        @test maximum(abs, s.z .- 1.3 .* cis.(xs .+ φ)) < 1e-12
+    end
+    # under a Gaussian envelope of half width τ the amplitude is right to (qΔx/τ)², at every carrier phase
+    τ, x0 = 26.0, x[n ÷ 2]
+    A = exp.(-(x .- x0) .^ 2 ./ τ^2)
+    for φ in (0.0, 1.98)
+        s = carrier_signal(A .* cos.(x .+ φ), m0, q)
+        @test maximum(abs, abs.(s.z) .- A[(q + 1):(n - q)]) < (q * d.dx / τ)^2
+    end
+    # the phase of a minus that of b, on lineouts that start at different points of the one lattice
+    xb = (m0 + 5 .+ (0:(n - 1))) .* d.dx
+    a = carrier_signal(A .* cos.(x .+ 0.3), m0, q)
+    b = carrier_signal(exp.(-(xb .- x0) .^ 2 ./ τ^2) .* cos.(xb .+ 1.5), m0 + 5, q)
+    @test carrier_phase(a, b) ≈ 0.3 - 1.5 atol = 1e-4
+    @test carrier_phase(b, a) ≈ 1.5 - 0.3 atol = 1e-4
+    @test carrier_phase(a, carrier_signal(zeros(n), m0, q)) === nothing
+    @test carrier_phase(a, carrier_signal(A, m0 + 2n, q)) === nothing        # no common point
+end
+
+# A synthetic output on the lab lattice: a laser of the case's duration with its envelope peak at
+# x0 and carrier phase φ, behind it a wake −w·sin(k_p(x − x0)) and its density, and a narrow dip of
+# depth 1 in E_x three plasma wavelengths behind the peak.
+function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, plasma = true, bunch = 1.0e-3)
+    d = derived(case)
+    kp = sqrt(case["plasma"]["density"])
+    τ = case["laser"]["duration"]
+    x = (m0 .+ (0:(n - 1))) .* d.dx
+    Ey = @. a0 * exp(-(x - x0)^2 / τ^2) * cos(x + φ)
+    o = Dict{String,Any}("step" => step, "t" => step * d.dt, "Ey_axis" => Ey, "Ey_m0" => m0, "Ey_absmax" => maximum(abs, Ey),
+                         "Ey_envelope" => running_envelope(Ey, envelope_halfwidth(case)))
+    plasma || return o
+    xe = x .+ d.dx / 2                                                       # E_x's points, first at m = m0 + 1
+    o["Ex_axis"] = @. ifelse(xe < x0, -w * sin(kp * (xe - x0)), 0.0) - exp(-(xe - (x0 - 6π / kp))^2 / 4)
+    o["Ex_m0"] = m0 + 1
+    o["rho_axis"] = @. -case["plasma"]["density"] * (1 + ifelse(x < x0, 0.5 * cos(kp * (x - x0)), 0.0))
+    o["rho_m0"] = m0
+    h = zeros(Int(case["diagnostics"]["spectrum_ekin"][3]))
+    h[1], h[6], h[40] = 5.0, 0.02, bunch                                     # the cold plasma, a warm bin, the bunch
+    o["spectrum"] = h
+    return o
+end
+
+@testset "T-692 compare_rows takes any two codes: pairs in the order a, b; the carrier phase apart from the amplitude, the wake on the anchor's window and its whole-cell shift [A5, A7]" begin
+    case = TOML.parsefile(CASE_FILES[1])
+    d = derived(case)
+    λp = 2π / sqrt(case["plasma"]["density"])
+    n, x0 = 3200, 300.0
+    mk(; kw...) = [synthetic_output(case, 829; m0 = 10, n, kw...)]
+    a = mk(; x0)
+    b = mk(; x0, φ = 1.2, a0 = 1.1)                                          # the same pulse, another carrier phase, 10 % higher
+    c = mk(; x0 = x0 + 3 * d.dx)                                             # the same pulse and wake three cells ahead
+    ab, ba = only(compare_rows(a, b, "plasma", d, λp)), only(compare_rows(b, a, "plasma", d, λp))
+    @test ab["Ey_absmax"] == [a[1]["Ey_absmax"], b[1]["Ey_absmax"]] == reverse(ba["Ey_absmax"])
+    @test ab["centroid_x"] == reverse(ba["centroid_x"]) && ab["peak_x"] == reverse(ba["peak_x"])
+    @test ab["carrier_phase"] ≈ -1.2 atol = 1e-4
+    @test ba["carrier_phase"] ≈ 1.2 atol = 1e-4
+    # relative to b's rms: a against b is 1 − 1/1.1, b against a is 1.1 − 1, in the amplitude; the
+    # running-max envelope adds the carrier phase's crest positions to it
+    @test ab["amplitude_relrms"] ≈ 1 - 1 / 1.1 rtol = 2e-2
+    @test ba["amplitude_relrms"] ≈ 0.1 rtol = 2e-2
+    same = only(compare_rows(a, mk(; x0, φ = 1.2), "plasma", d, λp))
+    @test same["amplitude_relrms"] < (quarter_wave(d) * d.dx / case["laser"]["duration"])^2
+    @test same["envelope_relrms"] > 5 * same["amplitude_relrms"]
+    # the two differences measured between Smilei and the other codes on this case (reports/lwfa-2d-a5.md §3):
+    # a lag of two cells is δ/τ in the amplitude (a Gaussian against itself displaced), and with a carrier
+    # phase of 1.979 rad the running-max envelope reads 5 %
+    lag = only(compare_rows(a, mk(; x0 = x0 - 2 * d.dx), "plasma", d, λp))
+    @test lag["amplitude_relrms"] ≈ 2 * d.dx / case["laser"]["duration"] rtol = 1e-2
+    @test lag["envelope_relrms"] ≈ lag["amplitude_relrms"] rtol = 0.1
+    both = only(compare_rows(a, mk(; x0 = x0 - 2 * d.dx, φ = 1.979), "plasma", d, λp))
+    @test both["envelope_relrms"] ≈ 0.050 rtol = 2e-2
+    @test both["amplitude_relrms"] ≈ 2 * d.dx / case["laser"]["duration"] rtol = 3e-2
+    # c against a: the centroid 3 cells ahead; the wake differs by 2·sin(k_p·3Δx/2) relative rms (a sine
+    # over whole periods against itself shifted), and the shift of 3 cells removes the difference
+    ac = only(compare_rows(a, c, "plasma", d, λp))
+    @test ac["centroid_x"][2] - ac["centroid_x"][1] ≈ 3 * d.dx rtol = 1e-9
+    @test ac["wake_Ex_relrms"] ≈ 2 * sin(3 * d.dx * 2π / λp / 2) rtol = 2e-2
+    @test ac["wake_Ex_shift"] == 3 && ac["wake_Ex_relrms_shifted"] < 1e-12
+    @test only(compare_rows(c, a, "plasma", d, λp))["wake_Ex_shift"] == -3
+    @test ac["wake_Ex_min"][1] ≈ -0.05 rtol = 1e-3                           # two wavelengths behind a's peak: the wake, not the dip
+    @test ac["wake_rho_relrms"] > 0
+    # the anchor places the window: 1.5 wavelengths further back it holds the dip three wavelengths behind
+    back = mk(; x0 = x0 - 1.5λp)
+    anchored = only(compare_rows(a, c, "plasma", d, λp; anchor = back))
+    @test anchored["wake_Ex_min"][1] < -0.9 && anchored["Ey_absmax"] == ac["Ey_absmax"]
+    @test !haskey(ac, "ekin_max_pm")
+    a[1]["ekin_max"] = 7.0
+    @test only(compare_rows(a, c, "plasma", d, λp))["ekin_max_pm"] == 7.0
+    vac = only(compare_rows(mk(; x0, plasma = false), mk(; x0, plasma = false, φ = 0.4), "vacuum", d, λp))
+    @test !haskey(vac, "wake_Ex_relrms")
+    @test vac["carrier_phase"] ≈ -0.4 atol = 1e-4
+    # an output only one code holds is no row
+    @test isempty(compare_rows(a, [synthetic_output(case, 1658; m0 = 10, n, x0)], "plasma", d, λp))
+end
+
+@testset "T-693 the spectra in one unit: ParticleMesh's weights times Δx·Δy are ∫n dA, thresholds and the highest occupied bin [A3, A5]" begin
+    case = small_window_case()
+    d = derived(case)
+    st, prob = small_window_state(case)
+    s = only(st.species)
+    alive = s.status .== ParticleMeshCore.ALIVE
+    # the load's total against the profile's integral over the loaded columns: n0·L_y·(∫ sin² over the ramp + the plateau)
+    P = case["plasma"]
+    front = maximum(s.cell[1][alive]) * d.dx - d.xa                          # lab x of the loaded front
+    r = P["ramp"]
+    exact = P["density"] * d.ny * d.dy * (r / 2 + (front - P["vacuum"] - r))
+    @test front > P["vacuum"] + r
+    @test sum(s.w[alive]) * spectrum_scale("pm", d) ≈ exact rtol = 1e-4       # the load is a midpoint rule of the ramp
+    @test spectrum_scale("smilei", d) == 1 && spectrum_scale("picongpu", d) == 1
+    # one bunch of 1e-3 in the bin [7.8, 8.0), seen through each code's unit; PIConGPU's domain holds more cold plasma
+    big = TOML.parsefile(CASE_FILES[1])
+    D = derived(big)
+    out(code, cold) = (o = synthetic_output(big, 829; m0 = 0, n = 400, x0 = 20.0); o["spectrum"][1] = cold; o["spectrum"] ./= spectrum_scale(code, D); o)
+    S = Dict("pm-plasma" => Dict("outputs" => [out("pm", 5.0)], "spectrum_edges" => spectrum_edges(big)),
+             "smilei-plasma" => Dict("outputs" => [out("smilei", 5.0)]), "picongpu-plasma" => Dict("outputs" => [out("picongpu", 11.0)]))
+    S["picongpu-plasma"]["outputs"][1]["spectrum_over"] = 0.0
+    sp = spectrum_rows(S, D, ["pm", "smilei", "picongpu"])
+    @test sp["thresholds"] ≈ [1.0, 5.0, 10.0, 20.0, 40.0] atol = 1e-12
+    rows = [only(sp["rows"][c]) for c in ("pm", "smilei", "picongpu")]
+    @test [r["total"] for r in rows] ≈ [5.021, 5.021, 11.021] rtol = 1e-12
+    for r in rows
+        @test r["above"] ≈ [0.021, 1e-3, 0.0, 0.0, 0.0] atol = 1e-15          # the warm bin [1.0, 1.2) and the bunch; the bunch alone above 5
+        @test r["top"] ≈ 8.0 atol = 1e-12                                     # bin 40 of 0.2: [7.8, 8.0)
+    end
+    @test rows[3]["over"] == 0 && !haskey(rows[1], "over")
+    empty = spectrum_rows(Dict("pm-plasma" => Dict("outputs" => [Dict("step" => 0, "t" => 0.0, "spectrum" => zeros(500))], "spectrum_edges" => spectrum_edges(big))), D, ["pm"])
+    @test only(empty["rows"]["pm"])["top"] === nothing
+    # a case whose histogram ends at 20 mₑc² has no threshold beyond it
+    a2 = TOML.parsefile(CASE_FILES[2])
+    S2 = Dict("pm-plasma" => Dict("outputs" => [synthetic_output(a2, 553; m0 = 0, n = 400, x0 = 20.0)], "spectrum_edges" => spectrum_edges(a2)))
+    @test spectrum_rows(S2, derived(a2), ["pm"])["thresholds"] ≈ [1.0, 5.0, 10.0] atol = 1e-12
+end
+
+@testset "T-694 compare writes all three pairs, keeps the two-code keys, and copes with a run that has no map [A5, A7]" begin
+    file = CASE_FILES[2]
+    case = TOML.parsefile(file)
+    d = derived(case)
+    steps = output_steps(case)
+    kmap = steps[Int.(case["diagnostics"]["map_outputs"])][end]
+    # three codes: Smilei's carrier 1.98 rad off and its pulse two cells behind, PIConGPU 5 % higher
+    variant = Dict("pm" => (; φ = 0.0, lag = 0, a0 = 1.0, bunch = 1.0e-3), "smilei" => (; φ = -1.98, lag = 2, a0 = 1.0, bunch = 1.1e-3),
+                   "picongpu" => (; φ = 0.0, lag = 0, a0 = 1.05, bunch = 1.2e-3))
+    function write_code(root, code; with_map = false)
+        v = variant[code]
+        for medium in ("vacuum", "plasma")
+            dir = joinpath(root, "$code-$medium")
+            mkpath(dir)
+            cp(file, joinpath(dir, "case.toml"); force = true)
+            outs = map(steps) do k
+                t = k * d.dt
+                m0 = max(0, floor(Int, (t - case["window"]["start"]) / d.dx)) + (code == "smilei" ? 3 : 0)
+                o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"] - v.lag * d.dx, φ = v.φ, a0 = v.a0,
+                                     plasma = medium == "plasma", bunch = v.bunch)
+                medium == "plasma" && (o["spectrum"] ./= spectrum_scale(code, d))
+                with_map && medium == "plasma" && k == kmap && (o["map"] = (rho = fill(-0.01, d.nx, d.ny), Ey = zeros(d.nx, d.ny), m0 = m0))
+                o
+            end
+            write_summary(dir, outs; code, extra = Dict{String,Any}("seconds" => 1.5, "spectrum_edges" => spectrum_edges(case)))
+            with_map || rm(joinpath(dir, "maps.h5"))
+        end
+    end
+    mktempdir() do root
+        runs = joinpath(root, "runs")
+        write_code(runs, "pm"); write_code(runs, "smilei")
+        two = compare(runs, joinpath(root, "two"))
+        @test two["codes"] == ["pm", "smilei"]
+        @test two["pairs"] == Dict("vacuum" => ["pm", "smilei"], "plasma" => ["pm", "smilei"])
+        @test !any(k -> occursin("picongpu", k), keys(two))
+        @test !isfile(joinpath(root, "two", "density_maps.png"))             # no run has a map: no figure, no error
+        write_code(runs, "picongpu"; with_map = true)
+        out = joinpath(root, "three")
+        res = compare(runs, out)
+        @test res["codes"] == ["pm", "smilei", "picongpu"]
+        @test res["pairs"]["smilei_picongpu_plasma"] == ["smilei", "picongpu"] && res["pairs"]["picongpu_vacuum"] == ["pm", "picongpu"]
+        # the keys a two-code comparison had are the same rows
+        @test res["vacuum"] == two["vacuum"] && res["plasma"] == two["plasma"]
+        on_disk = JSON.parsefile(joinpath(out, "comparison.json"))
+        for key in ("vacuum", "plasma", "picongpu_vacuum", "picongpu_plasma", "smilei_picongpu_vacuum", "smilei_picongpu_plasma")
+            @test length(on_disk[key]) == length(steps)
+        end
+        late = findfirst(>=(500.0), steps .* d.dt)                           # the pulse well inside every window
+        sp, pp, ps = res["smilei_picongpu_vacuum"][late], res["picongpu_vacuum"][late], res["vacuum"][late]
+        @test pp["Ey_absmax"][2] / pp["Ey_absmax"][1] ≈ 1.05 rtol = 1e-12    # [ParticleMesh, PIConGPU], the same crests
+        @test sp["Ey_absmax"] == [ps["Ey_absmax"][2], pp["Ey_absmax"][2]]    # [Smilei, PIConGPU]
+        @test sp["carrier_phase"] ≈ -1.98 atol = 1e-3                        # the synthetic lag moves the envelope, not the carrier
+        @test ps["carrier_phase"] ≈ 1.98 atol = 1e-3
+        @test abs(pp["carrier_phase"]) < 1e-6
+        @test sp["centroid_x"][1] - sp["centroid_x"][2] ≈ -2 * d.dx rtol = 1e-6
+        @test pp["amplitude_relrms"] ≈ 1 - 1 / 1.05 rtol = 1e-6
+        # the wakes on ParticleMesh's window: Smilei's two cells behind PIConGPU's
+        w = res["smilei_picongpu_plasma"][late]
+        @test w["wake_Ex_shift"] == 2 && w["wake_Ex_relrms_shifted"] < 1e-12
+        @test res["picongpu_plasma"][late]["wake_Ex_shift"] == 0
+        # the spectra: each code's bunch in the one unit, whatever its histogram's own
+        @test res["spectrum"]["thresholds"] ≈ [1.0, 5.0, 10.0] atol = 1e-12                    # this case's histogram ends at 20
+        @test [res["spectrum"]["rows"][c][late]["above"][1] for c in res["codes"]] ≈ [1.0e-3, 1.1e-3, 1.2e-3] rtol = 1e-12
+        @test all(c -> res["spectrum"]["rows"][c][late]["top"] ≈ 4.0, res["codes"])   # bin 40 of 0.1
+        maps = JSON.parsefile(joinpath(out, "density_maps.json"))
+        @test maps["codes"] == ["picongpu"] && maps["no_map"] == ["pm", "smilei"]
+        for name in ("laser_amplitude", "wake_axis", "spectrum", "pair_distances", "density_maps")
+            @test isfile(joinpath(out, "$name.png")) && isfile(joinpath(out, "$name.json"))
+        end
+        spec = JSON.parsefile(joinpath(out, "spectrum.json"))
+        @test [spec["pm"][40], spec["smilei"][40], spec["picongpu"][40]] ≈ [1.0e-3, 1.1e-3, 1.2e-3] rtol = 1e-12
+        man = TOML.parsefile(joinpath(out, "manifest.toml"))
+        @test sort(collect(keys(man["summaries"]))) == sort(["$c-$m" for c in res["codes"] for m in ("vacuum", "plasma")])
+        @test man["summaries"]["pm-plasma"] == "sha256:" * RunManifest.file_hash(joinpath(runs, "pm-plasma", "summary.json"))
+    end
+end

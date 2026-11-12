@@ -36,8 +36,11 @@
 #   delay)`: v5.1's tgaussian is exp(−(t − center)²/σ) with σ = (fwhm/2)²/ln 2 (`pyprofiles.py`), so
 #   the same envelope, cut to zero after 2·delay (ParticleMesh's continues at e^−16 of the peak).
 #   v5.1's normal-incidence LaserGaussian2D has no Gouy phase at the boundary, so the carriers can
-#   differ by a constant phase; the comparison uses the envelope (a running max of |E_y| over one
-#   wavelength) and the box maximum of |E_y|, not the carrier.
+#   differ by a constant phase (measured on A5's case: 1.98 rad, more than that Gouy phase's 0.34,
+#   reports/lwfa-2d-a5.md §3). The comparison therefore measures the laser by the box maximum of
+#   |E_y|, the centroid of E_y² and the carrier-free amplitude of `carrier_signal`, and reports the
+#   carrier phase by itself; the running max of |E_y| over one wavelength (`envelope_relrms`) snaps
+#   to the crests, so a carrier phase alone moves it by percents.
 # - The plasma. Electrons of n0·sin²((x − vacuum)/ramp·π/2) (then n0), regular, 2 × 2 per cell,
 #   cold; ions immobile (ParticleMesh's neutralizing background, Smilei's frozen ions on the same
 #   positions). Smilei's regular load sits at 0.975·(k + ½)/n of a cell
@@ -435,33 +438,96 @@ function centroid_x(o, dx)
     return sum(e) > 0 ? sum(m .* e) / sum(e) * dx : nothing
 end
 
-# The rows of one medium's comparison of ParticleMesh (`pm`) with another code (`other`), per output both hold.
-function compare_rows(pm, other, medium, d, λp)
-    bystep = Dict(o["step"] => o for o in other)
+"A quarter of the laser wavelength in points, π/(2Δx): 12 at λ₀/48, 8 at λ₀/32."
+quarter_wave(d) = round(Int, π / (2 * d.dx))
+
+"""
+    carrier_signal(v, m0, q) -> (; z, m0)
+
+The analytic signal of a lineout `v` of the laser field (first point at lattice m `m0`) from the
+lattice itself, `q` points being a quarter wavelength: for E = A·cos(x − t + φ),
+z(m) = E(m) − i·(E(m + q) − E(m − q))/2 = A·exp(i(x − t + φ)). `abs(z)` is the amplitude whatever
+the carrier phase is, and `angle(z)` the phase, which the running-max envelope cannot separate (it
+snaps to the crests). The quadrature carries (A(m + q) + A(m − q))/2 for A, a relative ripple of
+order (qΔx/τ)² that is the same in every code. The first and last `q` points have no neighbour
+and are left out, so the returned `m0` is `m0 + q`.
+"""
+function carrier_signal(v, m0, q)
+    n = length(v)
+    return (; z = ComplexF64[complex(v[i], -(v[i + q] - v[i - q]) / 2) for i in (q + 1):(n - q)], m0 = m0 + q)
+end
+
+# The carrier phase of `a` minus that of `b` (rad, E ∝ cos(x − t + φ)), amplitude weighted over the points both hold.
+function carrier_phase(za, zb)
+    lo, hi = max(za.m0, zb.m0), min(za.m0 + length(za.z), zb.m0 + length(zb.z)) - 1
+    lo <= hi || return nothing
+    m = lo:hi
+    s = sum(za.z[m .- za.m0 .+ 1] .* conj.(zb.z[m .- zb.m0 .+ 1]))
+    return iszero(s) ? nothing : angle(s)
+end
+
+# The whole-cell shift s, |s| ≤ smax, for which b(m + s) is closest to a(m) on the lattice range
+# [mlo, mhi], and the relative rms difference there: s > 0 says b's wake is s cells ahead of a's.
+function best_shift(a, a0, b, b0; mlo, mhi, smax)
+    best = (shift = 0, relrms = Inf)
+    for s in -smax:smax
+        c = common_points(a, a0, b, b0 - s; mlo, mhi)
+        isempty(c.m) && continue
+        r = relrms(c.a, c.b)
+        r < best.relrms && (best = (shift = s, relrms = r))
+    end
+    return best
+end
+
+"""
+    compare_rows(a, b, medium, d, λp; anchor = a) -> rows
+
+The comparison of the outputs of code `a` with those of code `b` in one medium, a row per output
+both hold; every pair of numbers is [a, b], and every relative rms difference is relative to b's
+rms. The laser: the box maximum of |E_y|, the envelope's peak, the centroid of E_y², the relative
+rms difference of the running-max envelopes (`envelope_relrms`, which a carrier phase between
+the codes inflates) and of the carrier-free amplitudes (`amplitude_relrms`), and the carrier
+phase of a minus b. In plasma, the wake on the axis from the laser's peak back two plasma
+wavelengths: E_x (relative rms difference, extrema, and the same after the whole-cell shift of b
+that fits best) and ρ_e. The wake's window is placed at the envelope peak of `anchor`'s output, so
+that with one anchor several pairs are compared on the same lattice points.
+"""
+function compare_rows(a, b, medium, d, λp; anchor = a)
+    bystep = Dict(o["step"] => o for o in b)
+    anchors = Dict(o["step"] => o for o in anchor)
+    q = quarter_wave(d)
     rows = Dict{String,Any}[]
-    for o in pm
+    for o in a
         s = get(bystep, o["step"], nothing)
         s === nothing && continue
         env = common_points(o["Ey_envelope"], o["Ey_m0"], s["Ey_envelope"], s["Ey_m0"])
+        za, zb = carrier_signal(Float64.(o["Ey_axis"]), o["Ey_m0"], q), carrier_signal(Float64.(s["Ey_axis"]), s["Ey_m0"], q)
+        amp = common_points(abs.(za.z), za.m0, abs.(zb.z), zb.m0)
         r = Dict{String,Any}("step" => o["step"], "t" => o["t"],
                              "Ey_absmax" => [o["Ey_absmax"], s["Ey_absmax"]],
                              "peak_x" => [peak_m(o) * d.dx, peak_m(s) * d.dx],
                              "centroid_x" => Any[centroid_x(o, d.dx), centroid_x(s, d.dx)],
-                             "envelope_relrms" => isempty(env.m) ? nothing : relrms(env.a, env.b))
+                             "envelope_relrms" => isempty(env.m) ? nothing : relrms(env.a, env.b),
+                             "amplitude_relrms" => isempty(amp.m) ? nothing : relrms(amp.a, amp.b),
+                             "carrier_phase" => carrier_phase(za, zb))
         if medium == "plasma"
             # the wake: from the laser's peak back two plasma wavelengths, on the axis
-            mp = peak_m(o)
-            wake = common_points(o["Ex_axis"], o["Ex_m0"], s["Ex_axis"], s["Ex_m0"];
-                                 mlo = mp - round(Int, 2λp / d.dx), mhi = mp)
-            rho = common_points(o["rho_axis"], o["rho_m0"], s["rho_axis"], s["rho_m0"];
-                                mlo = mp - round(Int, 2λp / d.dx), mhi = mp)
+            mp = peak_m(get(anchors, o["step"], o))
+            mlo = mp - round(Int, 2λp / d.dx)
+            wake = common_points(o["Ex_axis"], o["Ex_m0"], s["Ex_axis"], s["Ex_m0"]; mlo, mhi = mp)
+            rho = common_points(o["rho_axis"], o["rho_m0"], s["rho_axis"], s["rho_m0"]; mlo, mhi = mp)
             if !isempty(wake.m)
                 r["wake_Ex_relrms"] = relrms(wake.a, wake.b)
                 r["wake_Ex_min"] = [minimum(wake.a), minimum(wake.b)]
                 r["wake_Ex_max"] = [maximum(wake.a), maximum(wake.b)]
                 r["wake_rho_relrms"] = relrms(rho.a, rho.b)
+                fit = best_shift(o["Ex_axis"], o["Ex_m0"], s["Ex_axis"], s["Ex_m0"]; mlo, mhi = mp, smax = q)
+                r["wake_Ex_shift"] = fit.shift
+                r["wake_Ex_relrms_shifted"] = fit.relrms
             end
-            r["ekin_max_pm"] = get(o, "ekin_max", nothing)
+            # ParticleMesh's own maximum, as its summary has it: over every alive particle in summaries
+            # written before #362 was fixed, zero weights included; `spectrum` below has the comparable one
+            haskey(o, "ekin_max") && (r["ekin_max_pm"] = o["ekin_max"])
         end
         push!(rows, r)
     end
@@ -475,11 +541,61 @@ function present_codes(runs)
     return codes
 end
 
+# The pairs `compare` writes, each [a, b], and the prefix of their keys in comparison.json.
+const PAIRS = (("", "pm", "smilei"), ("picongpu_", "pm", "picongpu"), ("smilei_picongpu_", "smilei", "picongpu"))
+
+# --- the spectra in one unit ----------------------------------------------------------------------
+
+# The factor that brings a code's histogram to electrons per unit depth in A1's units, n_c·(c/ω₀)².
+# ParticleMesh's weights are density per particle of a cell (`quiet_particle_2d`: n/ppc), so their
+# sum over a region is ∫n dA/(Δx·Δy); Smilei's ParticleBinning of "weight" and the PIConGPU reader
+# give ∫n dA already (at t = 0 each total is the profile's integral over the code's domain, T-693
+# and reports/lwfa-2d-a5.md §5).
+spectrum_scale(code, d) = code == "pm" ? d.dx * d.dy : 1.0
+
+# The region each code's histogram covers.
+const SPECTRUM_COVERS = Dict(
+    "pm" => "its window: the case's window and the antenna_cells columns behind it",
+    "smilei" => "its window, whose back leads the case's by less than a patch",
+    "picongpu" => "its whole simulated domain: the local domains it holds, which reach behind the window's back and ahead of its front")
+
+"""
+    spectrum_rows(S, d, codes; thresholds) -> Dict
+
+The electron spectra of the plasma runs in one unit (electrons per unit depth, n_c·(c/ω₀)²): per
+code and output the total, the weight above each threshold (mₑc², moved to the nearest bin edge)
+and `top`, the upper edge of the highest occupied bin, the maximum energy that compares across
+the codes (each has it from its own weighted histogram). The histograms cover different regions
+(`covers`), so totals and the weight at low energies compare only where the regions agree.
+"""
+function spectrum_rows(S, d, codes; thresholds = (1.0, 5.0, 10.0, 20.0, 40.0))
+    edges = Float64.(S["pm-plasma"]["spectrum_edges"])
+    cut = unique(argmin(abs.(edges .- t)) for t in thresholds if t < last(edges))
+    rows = Dict{String,Any}()
+    for c in codes
+        f = spectrum_scale(c, d)
+        rows[c] = map(S["$c-plasma"]["outputs"]) do o
+            h = Float64.(get(o, "spectrum", Float64[])) .* f
+            top = findlast(>(0), h)
+            r = Dict{String,Any}("step" => o["step"], "t" => o["t"], "total" => sum(h),
+                                 "above" => isempty(h) ? nothing : [sum(@view h[i:end]) for i in cut],
+                                 "top" => top === nothing ? nothing : edges[top + 1])
+            haskey(o, "spectrum_over") && (r["over"] = o["spectrum_over"] * f)
+            r
+        end
+    end
+    return Dict{String,Any}("unit" => "electrons per unit depth, n_c (c/ω₀)²", "thresholds" => edges[cut],
+                            "covers" => Dict(c => SPECTRUM_COVERS[c] for c in codes), "rows" => rows)
+end
+
 """
 Compare the summaries under `runs` (pm-*, smilei-*, and picongpu-* when present) and write the
 figures, sidecars and `comparison.json` into `out`. `comparison.json` keeps ParticleMesh against
-Smilei under `vacuum` and `plasma`, and ParticleMesh against PIConGPU under `picongpu_vacuum` and
-`picongpu_plasma`; each pair is [ParticleMesh, other].
+Smilei under `vacuum` and `plasma`, ParticleMesh against PIConGPU under `picongpu_vacuum` and
+`picongpu_plasma`, and Smilei against PIConGPU, the spread A7 measures ParticleMesh's distances
+by, under `smilei_picongpu_vacuum` and `smilei_picongpu_plasma` (`pairs` names the two codes of
+each key); the rows are `compare_rows`', every wake window placed at ParticleMesh's envelope
+peak. `spectrum` holds the spectra in one unit (`spectrum_rows`).
 """
 function compare(runs, out)
     mkpath(out)
@@ -495,18 +611,23 @@ function compare(runs, out)
         o["Ey_envelope"] = running_envelope(Float64.(o["Ey_axis"]), h)
     end
     result = Dict{String,Any}("case" => case["name"], "dx" => d.dx, "dt" => d.dt, "lambda_p" => λp, "codes" => codes)
-    for medium in ("vacuum", "plasma")
-        result[medium] = compare_rows(S["pm-$medium"]["outputs"], S["smilei-$medium"]["outputs"], medium, d, λp)
-        "picongpu" in codes &&
-            (result["picongpu_$medium"] = compare_rows(S["pm-$medium"]["outputs"], S["picongpu-$medium"]["outputs"], medium, d, λp))
+    pairs = [p for p in PAIRS if p[2] in codes && p[3] in codes]
+    result["pairs"] = Dict(prefix * medium => [a, b] for (prefix, a, b) in pairs for medium in ("vacuum", "plasma"))
+    for medium in ("vacuum", "plasma"), (prefix, a, b) in pairs
+        result[prefix * medium] = compare_rows(S["$a-$medium"]["outputs"], S["$b-$medium"]["outputs"], medium, d, λp;
+                                               anchor = S["pm-$medium"]["outputs"])
     end
+    result["spectrum"] = spectrum_rows(S, d, codes)
     result["seconds"] = Dict(k => get(S[k], "seconds", nothing) for k in kinds)
     open(io -> JSON.print(io, result, 2), joinpath(out, "comparison.json"), "w")
     plot_laser(out, S, d, codes)
     plot_wake(out, S, case, d, λp, codes)
     plot_maps(out, runs, case, d, codes)
-    plot_spectra(out, S, codes)
-    write_manifest(out; root = REPO, extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"]))
+    plot_spectra(out, S, d, codes)
+    plot_pairs(out, result, pairs)
+    write_manifest(out; root = REPO,
+                   extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"],
+                                            "summaries" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "summary.json")) for k in kinds)))
     return result
 end
 
@@ -569,10 +690,15 @@ function plot_maps(out, runs, case, d, codes)
     stride = Int.(case["diagnostics"]["map_stride"])
     steps = output_steps(case)[Int.(case["diagnostics"]["map_outputs"])]
     k = last(steps)
+    # a run's map can be missing: the CPU box does not return a maps.h5 above its size limit
+    has_map(code) = (p = joinpath(runs, "$code-plasma", "maps.h5"); isfile(p) && h5open(f -> haskey(f, "step$k"), p, "r"))
     read_map(code) = h5open(joinpath(runs, "$code-plasma", "maps.h5"), "r") do f
         g = f["step$k"]
         (rho = read(g["rho"]), m0 = read_attribute(g, "m0"))
     end
+    missing_maps = [c for c in codes if !has_map(c)]
+    codes = [c for c in codes if has_map(c)]
+    isempty(codes) && return nothing
     maps = [read_map(c) for c in codes]
     lo, hi = maximum(a.m0 for a in maps), minimum(a.m0 + size(a.rho, 1) for a in maps) - 1
     n = length(lo:hi)
@@ -581,7 +707,7 @@ function plot_maps(out, runs, case, d, codes)
     x, y = collect(lo:hi)[sel] .* d.dx, (collect(ys) .- 1) .* d.dy
     n0 = case["plasma"]["density"]
     fig = Figure(size = (1100, 350 * length(codes)))
-    side = Dict{String,Any}("x" => x, "y" => y, "t" => k * d.dt)
+    side = Dict{String,Any}("x" => x, "y" => y, "t" => k * d.dt, "codes" => codes, "no_map" => missing_maps)
     for (row, (a, c)) in enumerate(zip(maps, codes))
         M = a.rho[((lo:hi) .- a.m0 .+ 1)[sel], ys]
         ax = Axis(fig[row, 1]; xlabel = "x (c/ω₀), lab frame", ylabel = "y (c/ω₀)", title = "$(NAMES[c]): n_e/n₀ at t = $(round(k * d.dt; digits = 1))")
@@ -592,27 +718,64 @@ function plot_maps(out, runs, case, d, codes)
     save_plot(out, "density_maps", fig, side)
 end
 
-# PIConGPU's histogram covers its whole simulated domain, the hidden row of cold plasma
-# included, so its fractions in the hot bins are smaller than the other codes' by the ratio of
-# the electron weights the domains hold (scripts/lwfa/picongpu.jl).
-function plot_spectra(out, S, codes)
+# The spectra at the end in one unit (`spectrum_scale`), not each divided by its own sum: the
+# histograms cover different regions (`SPECTRUM_COVERS`; PIConGPU's holds the plasma of its whole
+# simulated domain), so their sums differ and the bins compare where the regions agree, at the
+# energies only the wake's electrons reach.
+function plot_spectra(out, S, d, codes)
     edges = Float64.(S["pm-plasma"]["spectrum_edges"])
     mids = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
-    fig = Figure(size = (700, 420))
-    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "fraction of the electron weight per bin", yscale = log10,
+    fig = Figure(size = (900, 420))
+    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "electrons per unit depth and bin (n_c (c/ω₀)²)", yscale = log10,
               title = "electron spectrum at the end (bins of $(round(edges[2] - edges[1]; digits = 3)) mₑc²)")
-    side = Dict{String,Any}("ekin" => mids)
+    side = Dict{String,Any}("ekin" => mids, "unit" => "electrons per unit depth and bin, n_c (c/ω₀)²",
+                            "covers" => Dict(c => SPECTRUM_COVERS[c] for c in codes))
+    markers = Dict("pm" => :circle, "smilei" => :utriangle, "picongpu" => :xcross)
     for key in codes
-        h = Float64.(last(S["$key-plasma"]["outputs"])["spectrum"])
+        h = Float64.(last(S["$key-plasma"]["outputs"])["spectrum"]) .* spectrum_scale(key, d)
         isempty(h) && continue
-        norm = sum(h)
-        hn = norm > 0 ? h ./ norm : h
-        ok = hn .> 0
-        any(ok) && scatterlines!(ax, mids[ok], hn[ok]; label = NAMES[key], color = getfield(COLORS, Symbol(key)))
-        side[key] = hn
+        ok = h .> 0
+        any(ok) && scatter!(ax, mids[ok], h[ok]; label = NAMES[key], color = getfield(COLORS, Symbol(key)), marker = markers[key], markersize = 9)
+        side[key] = h
     end
     axislegend(ax)
     save_plot(out, "spectrum", fig, side)
+end
+
+# The distances of the pairs against time, the numbers of comparison.json's rows: the laser in
+# vacuum (carrier-free amplitude, centroid) and the wake in plasma (E_x as it is and after the
+# best whole-cell shift, ρ_e), from the first output where the measure exists.
+function plot_pairs(out, result, pairs)
+    colors = Dict("pm-smilei" => "#d62728", "pm-picongpu" => "#2ca02c", "smilei-picongpu" => "#7f7f7f")
+    markers = Dict("pm-smilei" => :circle, "pm-picongpu" => :utriangle, "smilei-picongpu" => :rect)
+    panels = (("vacuum", "amplitude_relrms", "laser amplitude on the axis, vacuum", "relative rms difference"),
+              ("vacuum", "centroid_x", "laser centroid on the axis, vacuum", "a − b (c/ω₀)"),
+              ("plasma", "centroid_x", "laser centroid on the axis, plasma", "a − b (c/ω₀)"),
+              ("plasma", "wake_Ex_relrms", "wake E_x on the axis, plasma", "relative rms difference"),
+              ("plasma", "wake_Ex_relrms_shifted", "wake E_x after the best whole-cell shift", "relative rms difference"),
+              ("plasma", "wake_rho_relrms", "ρ_e on the axis, plasma", "relative rms difference"))
+    fig = Figure(size = (1300, 800))
+    side = Dict{String,Any}()
+    local ax
+    for (i, (medium, key, title, ylabel)) in enumerate(panels)
+        ax = Axis(fig[(i - 1) ÷ 3 + 1, (i - 1) % 3 + 1]; xlabel = "t (1/ω₀)", ylabel, title)
+        for (prefix, a, b) in pairs
+            t, v = Float64[], Float64[]
+            for r in result[prefix * medium]
+                x = get(r, key, nothing)
+                x isa AbstractVector && (x = any(isnothing, x) ? nothing : x[1] - x[2])
+                x === nothing && continue
+                # the wake's measures start once there is a wake: before, E_x is zero in the window and so is its relative rms
+                startswith(key, "wake") && maximum(r["wake_Ex_max"]) - minimum(r["wake_Ex_min"]) < 1e-6 && continue
+                push!(t, r["t"]); push!(v, x)
+            end
+            name = "$a-$b"
+            scatterlines!(ax, t, v; label = "$(NAMES[a]) − $(NAMES[b])", color = colors[name], marker = markers[name])
+            side["$(medium)_$(key)_$name"] = Dict("t" => t, "value" => v)
+        end
+    end
+    Legend(fig[3, 1:3], ax; orientation = :horizontal, framevisible = false)
+    save_plot(out, "pair_distances", fig, side)
 end
 
 # --- PIConGPU -------------------------------------------------------------------------------------
