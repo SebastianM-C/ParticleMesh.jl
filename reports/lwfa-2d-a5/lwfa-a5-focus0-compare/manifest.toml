@@ -1,8 +1,8 @@
 case = "lwfa-2d-focus0"
-commit = "fb1e656c19aee1a06c21505ec2e1efdf74a1690e"
+commit = "680de8b907fff8ea92923d7a8ab2f779eca85c0b"
 dirty = false
 runs = "scripts/runs/lwfa-a5-focus0-three"
-updated = "2026-11-12T03:54:41.414Z"
+updated = "2026-11-12T04:38:15.486Z"
 
 [inputs]
 
