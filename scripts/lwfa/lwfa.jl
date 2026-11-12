@@ -1423,7 +1423,7 @@ the finest", which has one per coarser grid:
 - `carrier_phase`, against the finest, on the shared nodes (in vacuum `axis_sampling_phase` holds
   what the lineout's rows add to each grid's phase);
 - in plasma, the wake on the axis from the finest grid's centroid (on a shared node) back
-  `WAKE_LENGTH` plasma wavelengths, the same interval for the three: `wake_Ex_min`, `wake_Ex_max`
+  `WAKE_LENGTH` plasma wavelengths (`wake_anchor_x`), the same interval for the three: `wake_Ex_min`, `wake_Ex_max`
   with their places relative to that anchor (`…_x`), each on its own dual lattice and refined by a
   parabola, and `wake_Ex_relrms` against the finest on the shared nodes after `dual_to_primal`;
 - in plasma, the spectrum's `bunch_weight` and `top` in the one unit.
@@ -1473,6 +1473,7 @@ function scan_self(outs, cases, medium, code)
         if medium == "plasma" && !any(isnothing, cen)
             ja = round(Int, cen[R] / λ16)                             # the anchor: the finest grid's centroid, on a shared node
             xa = ja * λ16
+            row["wake_anchor_x"] = xa
             ex = [wake_extrema(Float64.(o[r]["Ex_axis"]), o[r]["Ex_m0"], D[r].dx, xa - nwake * λ16, xa) for r in 1:R]
             floor_Ex = WAKE_FLOOR * 2π / λp
             if !any(isnothing, ex) && all(e -> max(abs(e["min"]), abs(e["max"])) >= floor_Ex, ex)
@@ -1543,13 +1544,43 @@ function scan_distances(per, cells)
 end
 
 """
+    launch_fit(rows, case) -> Dict
+
+What two codes' launches differ by, from the vacuum rows of a pair a–b (`compare_rows`) taken as
+functions of ξ, the distance of the pulse (a's centroid) from its focus. A launch that multiplies
+the transverse spectrum of E_y by 1 − c·k_y²/4 lowers the beam on the axis by c/(2w(ξ)²) and moves
+its carrier by c·ξ/(4(z_R² + ξ²)); a focus δ further out changes the amplitude by −δ·ξ/(2(z_R² + ξ²))
+and the carrier by δ·z_R/(2(z_R² + ξ²)) (reports/lwfa-2d-a5.md §3.3). Least squares of the peak
+amplitude's a/b − 1 on the first pair of shapes, and of the carrier phase a − b on the second pair
+and a constant: `oblique` is c of b's launch over a's, `focus` the δ of b's focus beyond a's
+(c/ω₀), each as [from the amplitude, from the phase]; `phase_constant` (rad), the largest
+residuals `residual` = [amplitude, phase] and the number of `outputs` used (t > 150).
+"""
+function launch_fit(rows, case)
+    L = case["laser"]
+    w0, focus = Float64(L["waist"]), Float64(L["focus"])
+    zR = w0^2 / 2
+    use = [r for r in rows if r["t"] > 150 && get(r, "carrier_phase", nothing) !== nothing && !any(isnothing, r["centroid_x"]) && all(>(0), r["amplitude_max"])]
+    length(use) >= 4 || return nothing
+    ξ = [r["centroid_x"][1] - focus for r in use]
+    amp = [r["amplitude_max"][1] / r["amplitude_max"][2] - 1 for r in use]
+    ph = [Float64(r["carrier_phase"]) for r in use]
+    A = hcat(@.(1 / (2 * w0^2 * (1 + (ξ / zR)^2))), @.(-ξ / (2 * (zR^2 + ξ^2))))
+    P = hcat(@.(-ξ / (4 * (zR^2 + ξ^2))), @.(-zR / (2 * (zR^2 + ξ^2))), ones(length(ξ)))
+    ca, cp = A \ amp, P \ ph
+    return Dict{String,Any}("oblique" => [ca[1], cp[1]], "focus" => [ca[2], cp[2]], "phase_constant" => cp[3],
+                            "residual" => [maximum(abs, amp .- A * ca), maximum(abs, ph .- P * cp)], "outputs" => length(use))
+end
+
+"""
     compare_scan(out, runs) -> Dict
 
 The resolution scan: `runs` holds one directory of run summaries per grid, coarse to fine (each as
 `compare` takes it). Runs `compare` on each into `out`/r<cells>, and writes `scan.json` with each
-code's own change with the grid (`self`: `scan_self` per code and medium) and the code-to-code
-distances at each resolution (`distances`: `scan_distances`), two figures with their sidecars and a
-manifest with the summaries' hashes.
+code's own change with the grid (`self`: `scan_self` per code and medium), the code-to-code
+distances at each resolution (`distances`: `scan_distances`) and what the launches of each pair
+differ by on each grid (`launch`: `launch_fit` of the vacuum rows), two figures with their sidecars
+and a manifest with the summaries' hashes.
 """
 function compare_scan(out, runs)
     mkpath(out)
@@ -1565,6 +1596,8 @@ function compare_scan(out, runs)
     result["self"] = Dict(code => Dict(medium => scan_self([load_summary(joinpath(r, "$code-$medium"))["outputs"] for r in runs], cases, medium, code)
                                        for medium in media) for code in codes)
     result["distances"] = scan_distances(per, cells)
+    "vacuum" in media && (result["launch"] = Dict(prefix * "vacuum" => [launch_fit(c[prefix * "vacuum"], case) for (c, case) in zip(per, cases)]
+                                                  for (prefix, a, b) in PAIRS if all(c -> haskey(c, prefix * "vacuum"), per)))
     open(io -> JSON.print(io, result, 2), joinpath(out, "scan.json"), "w")
     plot_scan(out, result)
     write_manifest(out; root = REPO,

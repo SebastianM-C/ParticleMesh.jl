@@ -1471,10 +1471,11 @@ end
     cases = TOML.parsefile.(SCAN_FILES)
     D = derived.(cases)
     kp = sqrt(cases[1]["plasma"]["density"])
-    # the same fields on the three lattices but for what is planted: amplitude and wake second order, the pulse's place and the
+    # the same fields on the three lattices but for what is planted: amplitude and wake second order, the pulse's place (four
+    # cells behind, so a shared node further back on the coarsest grid than on the finest) and the
     # bunch first order, the carrier second order; Smilei's amplitude a second-order term away from ParticleMesh's, its carrier 1 mrad
     planted(code, d) = (; a0 = (1 + 0.5 * d.dx^2) * (code == "smilei" ? 1 + 0.2 * d.dx^2 : 1.0), φ = 0.8 * d.dx^2 + (code == "smilei" ? 1e-3 : 0.0),
-                          lag = 0.3 * d.dx, w = 0.05 * (1 + 2 * d.dx^2), bunch = 1e-3 * (1 + d.dx))
+                          lag = 4 * d.dx, w = 0.05 * (1 + 2 * d.dx^2), bunch = 1e-3 * (1 + d.dx))
     mktempdir() do root
         runs = map(zip(SCAN_FILES, cases, D)) do (file, case, d)
             dir = joinpath(root, case["name"])
@@ -1513,7 +1514,7 @@ end
         @test rv["order"]["amplitude"]["limit"] ≈ 1 atol = 2e-4
         @test rv["carrier_phase"] ≈ 0.8 .* (dx[1:2] .^ 2 .- dx[3]^2) atol = 1e-6
         @test rv["order"]["carrier_phase"]["order"] ≈ 2 atol = 0.01
-        @test rv["centroid_x"][1:2] .- rv["centroid_x"][3] ≈ -0.3 .* (dx[1:2] .- dx[3]) atol = 1e-6
+        @test rv["centroid_x"][1:2] .- rv["centroid_x"][3] ≈ -4 .* (dx[1:2] .- dx[3]) atol = 1e-6
         @test rv["order"]["centroid_x"]["order"] ≈ 1 atol = 0.01
         @test haskey(rv, "amplitude_on_axis") && rv["amplitude_on_axis"][1] > rv["amplitude"][1] && !haskey(rp, "amplitude_on_axis")
         @test !haskey(rv, "wake_Ex_max")
@@ -1521,12 +1522,14 @@ end
         @test rp["wake_Ex_min"] ≈ -0.05 .* (1 .+ 2 .* dx .^ 2) rtol = 1e-5
         @test rp["order"]["wake_Ex_max"]["order"] ≈ 2 atol = 0.02
         # the maximum a quarter of a plasma wavelength behind the pulse (or a whole wavelength further: the synthetic wake
-        # has both in the window, equal), and the pulse is 0.3Δx behind on each grid
-        @test rp["wake_Ex_max_x"][1:2] .- rp["wake_Ex_max_x"][3] ≈ -0.3 .* (dx[1:2] .- dx[3]) atol = 1e-5
-        behind = -rp["wake_Ex_max_x"][3] - (π / 2) / kp                           # 0 or λ_p, but for the lag and the anchor's node
-        @test minimum(abs, behind .- (0.0, 2π / kp)) <= 0.3 * dx[3] + π / 16
+        # has both in the window, equal), and the pulse is 4Δx behind on each grid. The places are counted from one anchor, the
+        # shared node nearest the finest grid's centroid: the coarsest grid's centroid is a node further back
+        @test rp["wake_Ex_max_x"][1:2] .- rp["wake_Ex_max_x"][3] ≈ -4 .* (dx[1:2] .- dx[3]) atol = 1e-5
+        @test rp["wake_anchor_x"] ≈ round(rp["centroid_x"][3] / (π / 8)) * π / 8 && abs(rp["wake_anchor_x"] - rp["centroid_x"][1]) > π / 16
+        behind = -rp["wake_Ex_max_x"][3] - (π / 2) / kp                           # 0 or λ_p, but for the anchor's node
+        @test minimum(abs, behind .- (0.0, 2π / kp)) <= π / 16 + 1e-6
         @test rp["order"]["wake_Ex_max_x"]["order"] ≈ 1 atol = 0.05
-        @test rp["wake_Ex_relrms"][1] > 2 * rp["wake_Ex_relrms"][2] > 0 && 1.7 <= rp["order"]["wake_Ex_relrms"]["order"] <= 2.2
+        @test rp["wake_Ex_relrms"][1] > 2 * rp["wake_Ex_relrms"][2] > 0 && 1.2 <= rp["order"]["wake_Ex_relrms"]["order"] <= 2.2   # amplitude second order, place first
         @test rp["bunch_weight"] ≈ 1e-3 .* (1 .+ dx) rtol = 1e-12
         @test rp["order"]["bunch_weight"]["order"] ≈ 1 atol = 1e-6
         @test rp["top"] == fill(spectrum_edges(cases[1])[41], 3)
@@ -1539,10 +1542,43 @@ end
         @test dv["carrier_phase"]["max"] ≈ fill(1e-3, 3) rtol = 1e-3
         @test dv["carrier_phase"]["order"]["order"] === nothing
         @test haskey(res["distances"]["plasma"], "wake_Ex_relrms") && !haskey(res["distances"], "picongpu_vacuum")
+        # the launches of the pair on each grid: the synthetic pulses have no focus in them, so only the shape of the entry
+        @test length(res["launch"]["vacuum"]) == 3 && all(f -> f["outputs"] == 12 && length(f["oblique"]) == 2, res["launch"]["vacuum"])
         # the file is what was returned
         saved = JSON.parsefile(joinpath(out, "scan.json"))
         @test saved["cells"] == [32, 48, 64] && saved["self"]["pm"]["vacuum"][late]["order"]["centroid_x"]["order"] ≈ rv["order"]["centroid_x"]["order"]
         # grids that are not one case are refused
         @test_throws ErrorException compare_scan(joinpath(root, "bad"), [runs[2], runs[1], runs[3]])
+    end
+end
+
+@testset "T-718 launch_fit recovers what two launches differ by from a pair's vacuum rows: the oblique term and the focus, from the amplitude and from the phase [A5, WP-054]" begin
+    case = TOML.parsefile(SCAN_FILES[2])
+    w0, zR, focus = 28.0, 392.0, 320.0
+    # b launches 0.82 of the oblique term more than a and focuses 0.45 further out, 0.04 mrad apart besides
+    rows = map(0:13) do k
+        t = 99.89 * k
+        x = t - 104.0
+        ξ = x - focus
+        amp = 0.82 / (2 * w0^2 * (1 + (ξ / zR)^2)) - 0.45 * ξ / (2 * (zR^2 + ξ^2))
+        ph = -0.82 * ξ / (4 * (zR^2 + ξ^2)) - 0.45 * zR / (2 * (zR^2 + ξ^2)) - 4e-5
+        Dict{String,Any}("t" => t, "centroid_x" => Any[x, x + 1e-3], "amplitude_max" => [2.0 * (1 + amp), 2.0], "carrier_phase" => k == 0 ? nothing : ph)
+    end
+    f = launch_fit(rows, case)
+    @test f["outputs"] == 12                                                  # t > 150, with a phase
+    @test f["oblique"] ≈ [0.82, 0.82] rtol = 1e-9
+    @test f["focus"] ≈ [0.45, 0.45] rtol = 1e-9
+    @test f["phase_constant"] ≈ -4e-5 rtol = 1e-9
+    @test maximum(f["residual"]) <= 1e-15
+    @test launch_fit(rows[1:5], case) === nothing                             # three outputs past t = 150: too few to fit
+    # where the report's data is in the tree: its third runs, 1.00 of the term for Smilei against ParticleMesh, and 0.82 of it
+    # with a focus 0.47 further out for PIConGPU, from the amplitude and from the phase
+    old = joinpath(@__DIR__, "..", "..", "..", "reports", "lwfa-2d-a5", "lwfa-a5-3-compare", "comparison.json")
+    if isfile(old)
+        third, a5 = JSON.parsefile(old), TOML.parsefile(CASE_FILES[1])
+        g, h = launch_fit(third["picongpu_vacuum"], a5), launch_fit(third["vacuum"], a5)
+        @test g["oblique"] ≈ [0.82, 0.83] atol = 0.02
+        @test g["focus"] ≈ [0.47, 0.47] atol = 0.02
+        @test h["oblique"] ≈ [1.0, 0.99] atol = 0.02
     end
 end
