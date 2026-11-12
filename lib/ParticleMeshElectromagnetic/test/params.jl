@@ -178,6 +178,8 @@ function body_T721(be)
         run!(st, params(cold1), cold1.nsteps)
         @test window_shifts(st, cold1.nsteps) > ncells(st.grid)[1]
         s1 = particle_arrays(st.species[1])                    # refills only
+        # ... of the window's position: the plasma is the fresh load of the columns the window now covers
+        @test particle_set(st.species[1]) == particle_set(fresh_window_load(st, params(cold1), window_shifts(st, cold1.nsteps)))
         initialize!(st, params(cold2))
         l2 = particle_arrays(st.species[1])
         run!(st, params(cold2), cold2.nsteps)
@@ -246,6 +248,18 @@ function body_T721(be)
         @test all(c -> zero_a_b[c] == only_b[c], (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
         @test only_a.Ey != only_b.Ey
     end
+    # a thermal plasma in the window: the seed of the parameters is the seed of the initial load and of the refill
+    hotwin(seed) = window_plasma(Float64; thermal = (0.05, 0.05, 0.05), seed)
+    s5, s6 = map((5, 6)) do seed
+        s = EMState(hotwin(seed), EMNumerics(); backend = be)
+        initialize!(s, hotwin(seed))
+        run!(s, params(hotwin(seed)), 40)
+        s
+    end
+    @test !same_run(s5, s6)
+    initialize!(s5, params(hotwin(6)))
+    run!(s5, params(hotwin(6)), 40)
+    @test same_run(s5, s6)
     bunch(c) = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (5.0, 7.0)), momentum = 3.0, center = (c, 6.0), length = 2.0)
     prob1, prob2 = map(c -> params_case((1.0, 3.0, 0.02, 8.0); witness = bunch(c), nsteps = 100), (24.0, 27.0))
     st = EMState(prob1, EMNumerics(); backend = be)
@@ -257,6 +271,13 @@ function body_T721(be)
     @test all(g[1].alive) && any(!iszero, g[1].gain)
     @test same_bits(g[1].gain, g[2].gain)
     @test !same_bits(g[1].w, g[2].w)
+    k0 = witness_frame(st).kinj                                # the first step that starts at or after t = 40
+    @test k0 == 77
+    initialize!(st, params(prob1))
+    run!(st, params(prob1), k0 - 1)
+    @test witness_alive(st) == 0
+    step!(st, params(prob1), k0)
+    @test witness_alive(st) == capacity(witness_frame(st).species)
 end
 
 @testset "T-721 one state run with two parameter sets gives each one's run: fields exactly linear in a₀, refilled weights in the density [A3, A4, A8, WP-055]" begin
@@ -294,6 +315,7 @@ end
     run!(both, p, prob.nsteps; observer = (both.recorder, r2, (s, k) -> (push!(seen, k); @test s === both)))
     @test seen == 1:prob.nsteps
     @test r2.kmode == (1, 2) && both.recorder.kmode == prob.kmode
+    @test collect(r2.aux.khat) ≈ [3, 8] ./ sqrt(73) rtol = 4eps()     # k = 2π·(1/2π, 2/(3π/2)) = (1, 8/3)
     @test all(map(same_bits, values(histories(both)), values(histories(plain))))
     @test all(map(same_bits, values(histories(r2)), values(histories(ref))))
     @test !same_bits(histories(r2).Ex_re, histories(both).Ex_re)
@@ -377,6 +399,18 @@ end
     st = EMState(prob, EMNumerics())
     @test check_params(st, p) === p
     @test st.aux.antennas[1] isa AntennaPlane{T} && isbits(st.aux.antennas[1])
+    # what the step makes of them, spelled out: the antenna of the laser on the state's plane, and the refill's load
+    h1 = cellsize(st.grid)[1]
+    a1 = Antenna(p.lasers[1], st.aux.antennas[1])
+    @test a1.laser === p.lasers[1] && (a1.ia, a1.g, a1.n2) == (9, guards(st.grid), 16) && a1.xa === 8 * h1
+    @test a1.dx === cellsize(st.grid) && a1.ly === 16 * cellsize(st.grid)[2] && a1.hx === h1 / 2
+    @test a1.ht ≈ asin(h1 / prob.dt * sin(prob.dt / 2)) rtol = 4eps()      # the Yee wavenumber's half cell,
+    @test a1.ht != a1.hx                                                    # not c·Δx/2
+    wl = window_load(st, EMParams(p; seed = 9), 1)
+    @test wl.p === (e.density, e.amplitude, p.species[1].wavevector..., 24.0, 8.0) && wl.ppc === Int32.((2, 2)) && wl.key === (UInt32(9), UInt32(1))
+    hotw = window_plasma(T; thermal = (T(1) / 10, T(1) / 20, T(1) / 30), drift = (T(1) / 50, zero(T), zero(T)), vacuum = 14, ramp = 3)
+    wh = window_load(EMState(hotw, EMNumerics()), params(hotw), 1)
+    @test wh.vdrift === (T(1) / 50, zero(T), zero(T)) && wh.vth === (T(1) / 10, T(1) / 20, T(1) / 30) && wh.p[5:6] === (14.0, 3.0) && wh.key === (UInt32(5), UInt32(1))
     refused(q) = (@test_throws ArgumentError check_params(st, q); @test_throws ArgumentError initialize!(st, q);
                   @test_throws ArgumentError step!(st, q, 1); @test_throws ArgumentError run!(st, q, 1))
     refused(params(params_case(Float32.(x); witness = wb)))                          # another element type
@@ -454,12 +488,22 @@ end
     initialize!(b, q)
     run!(b, q, 60)
     @test same_run(a, b) && any(!iszero, Array(a.fields.Ey))
-    h1 = cellsize(st.grid)[1]
     at(pos) = EMParams(p; lasers = (GaussianLaser(; a0 = l.a0, waist = l.waist, duration = l.duration, delay = l.delay, focus = l.focus, position = pos, center = l.center),))
     @test st.aux.antennas[1].ia == 9                           # the plane at x = 8Δx
     @test check_params(st, at(8.4 * h1)) isa EMParams && check_params(st, at(7.6 * h1)) isa EMParams
     @test_throws ArgumentError check_params(st, at(8.6 * h1))
     @test_throws ArgumentError check_params(st, at(7.4 * h1))
+    # each species of a static load takes its own parameters and its own stream: the engine's load with the description's numbers
+    ss = EMState(static, EMNumerics())
+    initialize!(ss, static; momenta_at = :t_minus_half)
+    for (i, d) in enumerate(static.species)
+        byengine = Species(backend, T, capacity(ss.species[i]); q = d.charge, m = d.mass, N = 2)
+        k = (2 * T(π) * d.mode[1] / static.length[1], 2 * T(π) * d.mode[2] / static.length[2])
+        load_quiet!(byengine, ss.grid, CosineProfile(), (d.density, d.amplitude, k...), d.ppc, momentum_distribution(d); seed = static.seed, stream = d.stream,
+                    exhausted = KernelAbstractions.zeros(backend, Int32, 1))
+        @test particle_set(ss.species[i]) == particle_set(byengine)
+    end
+    @test particle_set(ss.species[1]) != particle_set(ss.species[2])
     # a Float64 species in a Float32 problem: the loader gets its Float64 numbers (the engine's load with them), not their Float32 values
     d64 = SpeciesDescription{Float64}(:electron, -1.0, 1.0, 0.7123, 0.0517, (2, 1), (3, 3), ZERO3(Float64), (0.05, 0.05, 0.05), 1)
     d32 = SpeciesDescription{Float32}(:electron, -1.0f0, 1.0f0, 0.7123f0, 0.0517f0, (2, 1), (3, 3), ZERO3(Float32), (0.05f0, 0.05f0, 0.05f0), 1)
