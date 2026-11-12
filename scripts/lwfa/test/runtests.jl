@@ -373,7 +373,7 @@ end
 # A synthetic output on the lab lattice: a laser of the case's duration with its envelope peak at
 # x0 and carrier phase φ, behind it a wake −w·sin(k_p(x − x0)) and its density, and a narrow dip of
 # depth 1 in E_x three plasma wavelengths behind the peak.
-function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, plasma = true, bunch = 1.0e-3, feature = nothing)
+function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, plasma = true, bunch = 1.0e-3, feature = nothing, bunch_bin = 40)
     d = derived(case)
     kp = sqrt(case["plasma"]["density"])
     τ = case["laser"]["duration"]
@@ -390,7 +390,7 @@ function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, p
     o["rho_axis"] = @. -case["plasma"]["density"] * (1 + ifelse(x < x0, 0.5 * cos(kp * (x - x0)), 0.0))
     o["rho_m0"] = m0
     h = zeros(Int(case["diagnostics"]["spectrum_ekin"][3]))
-    h[1], h[6], h[40] = 5.0, 0.02, bunch                                     # the cold plasma, a warm bin, the bunch
+    h[1], h[6], h[bunch_bin] = 5.0, 0.02, bunch                              # the cold plasma, a warm bin, the bunch
     o["spectrum"] = h
     return o
 end
@@ -1523,6 +1523,8 @@ end
     @test back["relrms"] ≈ 0.02 atol = 2e-3
     @test back["relrms_at_lag"] ≈ 0.02 rtol = 1e-4
     @test 0.5 < back["explained"] < 1
+    @test back["explained"] ≈ 1 - (back["relrms"] / back["relrms_0"])^2 rtol = 1e-12       # of the squared difference
+    @test back["relrms_0"] ≈ sqrt(sum(abs2, 1.02 .* f.(xs .+ 0.37) .- f.(xs)) / sum(abs2, f.(xs))) rtol = 1e-6
     # 5 % higher in place: over a stretch that is no whole number of periods a small displacement still fits a little better
     higher = wake_displacement([1.05 * f(x) for x in xs], xs, fine, n0, h, 0.0)
     @test abs(higher["shift"]) <= 0.05
@@ -1603,7 +1605,8 @@ end
                     early = code == "smilei" && medium == "plasma" && t < 364 ? 4e-3 : 0.0
                     heavy = code == "smilei" ? (t < 750 ? 1.10 : 1.02) : 1.0
                     o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"] - v.lag, φ = v.φ + early, a0 = v.a0 * (1 + v.grow * growth(t)), w = v.w,
-                                         plasma = medium == "plasma", bunch = v.bunch * heavy, feature = (v.dip * v.w, 1.25 * λp, 6.0))
+                                         plasma = medium == "plasma", bunch = v.bunch * heavy, feature = (v.dip * v.w, 1.25 * λp, 6.0),
+                                         bunch_bin = code == "smilei" ? 41 : 40)        # Smilei's bunch one bin higher
                     medium == "plasma" && (o["spectrum"] ./= spectrum_scale(code, d); o["spectrum_region"] = collect(spectrum_region(case, k)))
                     o
                 end
@@ -1710,7 +1713,9 @@ end
         @test dp["wake_Ex_max"]["max"] ≈ fill(1 - 1 / 1.01, 3) rtol = 1e-9
         @test dp["bunch_weight"]["max"] ≈ fill(1 - 1 / 1.02, 3) rtol = 1e-9          # ParticleMesh over Smilei
         @test dp["bunch_weight"]["orders"]["count"] == 0 && dp["bunch_weight"]["orders"]["of"] == 6
-        @test dp["top"]["max"] == zeros(3)
+        # the highest occupied bins are one bin apart, 8.0 and 8.2 mₑc²: by their difference, not by their ratio
+        @test dp["top"]["max"] ≈ fill(0.2, 3) rtol = 1e-12
+        @test dp["top"]["orders"]["count"] == 0 && dp["top"]["orders"]["of"] == 10
         @test !haskey(dp, "maps_all")                                            # these synthetic runs keep no maps
         # the launches of the pair on each grid: the synthetic pulses have no focus in them, so only the shape of the entry
         @test length(res["launch"]["vacuum"]) == 3 && all(f -> f["outputs"] == 12 && length(f["oblique"]) == 2, res["launch"]["vacuum"])
