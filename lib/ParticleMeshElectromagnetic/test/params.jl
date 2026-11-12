@@ -513,6 +513,25 @@ end
         @test particle_set(ss.species[i]) == particle_set(byengine)
     end
     @test particle_set(ss.species[1]) != particle_set(ss.species[2])
+    # a charge and a mass that are not exact in the problem's element type: the state holds their converted values, and the
+    # problem is still the state's own, in the loop and in the harness, at N = 2 and N = 1
+    for S in (Float32, D3)
+        ion2 = SpeciesDescription{Float64}(:ion, 0.3, 1836.15267343, 0.7123, 0.0517, (2, 1), (3, 3), ZERO3(Float64), (0.05, 0.05, 0.05), 1)
+        ion1 = SpeciesDescription{Float64}(:ion, 0.3, 0.1, 0.9, 0.05, 1, 16, (0.1, 0.0, 0.0), (0.05, 0.0, 0.0), 1)
+        heavy2 = EMProblem("inexact-mass-2d", (2 * S(π), 2 * S(π)), (10, 8), plasma_2d(S).dt, 2, (ion2,), 1, (2, 1))
+        heavy1 = EMProblem("inexact-mass-1d", 2 * S(π), 32, S(15) / 100, 2, (ion1,), 1, one(S))
+        for (q, num, m) in ((heavy2, EMNumerics(; current = NoCurrent()), 1836.15267343), (heavy1, EMNumerics(), 0.1))
+            s = EMState(q, num)
+            @test s.species[1].m == S(m) && value_of(s.species[1].m) != m && value_of(s.species[1].q) != 0.3      # rounded
+            @test check_setup(s, q) isa EMProblem
+            initialize!(s, q)
+            run!(s, params(q), q.nsteps)
+            @test all(isfinite, value_of.(Array(s.fields.Ex)))
+            @test DiscreteProblem(q, num; backend) isa DiscreteProblem
+        end
+        other2 = EMProblem(heavy2.name, heavy2.length, heavy2.cells, heavy2.dt, 2, (SpeciesDescription{Float64}(:ion, 0.3, 1836.0, 0.7123, 0.0517, (2, 1), (3, 3), ZERO3(Float64), (0.05, 0.05, 0.05), 1),), 1, (2, 1))
+        @test_throws ArgumentError check_setup(EMState(heavy2, EMNumerics(; current = NoCurrent())), other2)   # another mass is still refused
+    end
     # a Float64 species in a Float32 problem: the loader gets its Float64 numbers (the engine's load with them), not their Float32 values
     d64 = SpeciesDescription{Float64}(:electron, -1.0, 1.0, 0.7123, 0.0517, (2, 1), (3, 3), ZERO3(Float64), (0.05, 0.05, 0.05), 1)
     d32 = SpeciesDescription{Float32}(:electron, -1.0f0, 1.0f0, 0.7123f0, 0.0517f0, (2, 1), (3, 3), ZERO3(Float32), (0.05f0, 0.05f0, 0.05f0), 1)
@@ -581,10 +600,10 @@ end
 # that laser's run (in vacuum, twice a₀ gives twice the fields bit for bit) with no new cache,
 # where it used to need `remake_reload`; a `p′` that does not fit the cache is refused: parameters
 # by the step, a problem of another configuration (another time step) at the first step. A solve
-# starts from `u0` without `initialize!`, so the map zeroes at step 1 what the partition does not
-# hold of the fields, a PML's convolution fields: a second solve of a problem with a PML, on the
-# open axis or on a window's back edge, is the first, and both are the loop; and a state set back
-# to a partition saved at t = 0 runs again as it did once `reset_convolution!` has done the same.
+# starts from `u0` without `initialize!`, and step 1 zeroes what the partition does not hold of the
+# fields, a PML's convolution fields: a second solve of a problem with a PML, on the
+# open axis or on a window's back edge, is the first, and both are the loop; and a state that
+# has run, set back to a partition saved at t = 0, runs again as it did, with no call by hand.
 @testset "T-725 the harness: remake(p) changes the step's parameters with no new cache, and a second solve with a PML is the first [A3, A9, WP-055, WP-008]" begin
     T = Float64
     prob1 = params_case((1.0, 3.0, 0.02, 8.0); plasma = false, nsteps = 80)
@@ -632,7 +651,6 @@ end
         saved = copy(state_partition(again))
         run!(again, params(prob), prob.nsteps)
         copyto!(again, saved)
-        reset_convolution!(again)
         run!(again, params(prob), prob.nsteps)
         @test state_bits(again) == ua
     end

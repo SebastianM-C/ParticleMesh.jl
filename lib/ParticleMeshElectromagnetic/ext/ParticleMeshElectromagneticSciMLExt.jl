@@ -20,7 +20,7 @@ the same bits as `initialize!` plus `run!` in `Reference()` mode (T-100).
 module ParticleMeshElectromagneticSciMLExt
 
 using ParticleMeshElectromagnetic
-using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!, reset_convolution!
+using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!
 import ParticleMeshElectromagnetic: state_partition, remake_reload, harness_state
 using ParticleMeshCore: Species
 using KernelAbstractions: CPU
@@ -107,9 +107,9 @@ end of the step). `p` gives the parameters of the step: the `params` of an `EMPr
 of the state it stepped (a reference, so `===` cannot match a later array at a reused address):
 a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and only the same
 integrator's state may continue, so that the histories and the state are those of `run!`. Step 1
-starts from `u0` without `initialize!`, so the map does there what `initialize!` does besides
-loading: it zeroes the fields outside the partition, a PML's convolution fields, and checks that
-a problem given as `p` has the cache's configuration ([`check_setup`](@ref)).
+starts from `u0` without `initialize!`: the step itself zeroes there the fields outside the
+partition, a PML's convolution fields, and the map checks that a problem given as `p` has the
+cache's configuration ([`check_setup`](@ref)).
 """
 struct EMMap{S<:EMState,B}
     state::S
@@ -131,7 +131,7 @@ function (m::EMMap)(u, uprev, p, t)
     (k == t && (k == 1 || (k == m.done[] + 1 && a === m.owner[]))) ||
         throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1) on one integrator; got t = $t after step $(m.done[])"))
     pk = step_params(p)
-    k == 1 && (check_fit(m.state, p); reset_convolution!(m.state))
+    k == 1 && check_fit(m.state, p)
     step!(state_on(m.state, u), pk, k)
     m.done[] = k
     m.owner[] = a

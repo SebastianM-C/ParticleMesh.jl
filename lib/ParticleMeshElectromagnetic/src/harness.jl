@@ -18,8 +18,8 @@ scratch `ρ` and the recorder with its histories are not in the partition: they 
 state's cache, and so does what a 2D run evolves next to the particles and the fields (a PML's
 convolution fields, the moving window's counters, the witness bunch's particles), so the
 partition is the whole evolved state only for a periodic run without a witness.
-`copyto!(state, u)` writes a partition back into the state's arrays; to start a run again from
-a partition saved at t = 0 on a state with a PML, also call [`reset_convolution!`](@ref).
+`copyto!(state, u)` writes a partition back into the state's arrays; a run from step 1 on
+them is the run of that partition, since step 1 zeroes a PML's convolution fields.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """

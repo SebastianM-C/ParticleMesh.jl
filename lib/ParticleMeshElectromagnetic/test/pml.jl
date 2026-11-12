@@ -216,16 +216,14 @@ end
         for c in (:Ex, :Ez, :Bx, :Bz)
             @test Array(getfield(sl.fields, c))[inner, (g + 1):(g + 8)] != Array(getfield(plain, c))[inner, (g + 1):(g + 8)]
         end
-        # initialize! starts the convolution fields at zero: a state that ran before, initialized
-        # again and set to the initial fields, takes the fresh state's first step bit for bit
+        # step 1 starts the convolution fields at zero: a state that ran before, set back to the
+        # initial fields, takes the fresh state's first step bit for bit
         mk() = (s = EMState(prob, EMNumerics(; current = NoCurrent(), absorber = PML(; cells = 8, kappa_max = 3, alpha_max = 0.1)));
                 initialize!(s, prob); slab_init!(s, geo, :TM); s)
         fresh, used = mk(), mk()
         init = map(copy, used.fields)
         run!(used, params(prob), 5)
         @test any(!iszero, Array(used.aux.layer.ψEx))
-        initialize!(used, prob)
-        @test all(iszero, Array(used.aux.layer.ψEx))
         foreach(copyto!, values(used.fields), values(init))
         step!(fresh, params(prob), 1)
         step!(used, params(prob), 1)

@@ -88,11 +88,10 @@ end
     for (c, o) in zip((:ψBy, :ψBz, :ψEy, :ψEz), old)
         @test getfield(L, c)[1:5, :] == o[2:6, :] && all(iszero, getfield(L, c)[6, :])
     end
-    # initialize! zeroes the convolution fields: a state with stale ψ, initialized, takes the fresh state's first step
+    # step 1 zeroes the convolution fields: a state with stale ψ takes the fresh state's first step
     fresh = back_state(prob; back = pml)
     used = back_state(prob; back = pml)
     foreach(c -> (getfield(used.aux.window.back, c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
-    initialize!(used, prob)
     step!(fresh, params(prob), 1)
     step!(used, params(prob), 1)
     @test all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))

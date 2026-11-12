@@ -138,7 +138,7 @@ The PML placed on a grid by the state: per stagger along y (`node` for E's y-dif
 `center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row,
 and the convolution fields ψ of the four y-difference terms (`ψBx`,
 `ψBz` on Center() rows, `ψEx`, `ψEz` on Node() rows), each of n₁ columns by 2·cells layer rows
-(the first `cells` interior rows and the last `cells`), zeroed by `initialize!`, and a scratch array of
+(the first `cells` interior rows and the last `cells`), zero at t = 0, and a scratch array of
 their size for the moving window's shift. `dt` is the time step the coefficients were made for,
 `sigma_max` the σ_max they use.
 """
@@ -280,10 +280,11 @@ end
 
 retire!(::PMLFields, st) = retire_open!(st)
 
-# The convolution fields are field state: `initialize!` starts them at zero with the fields (so
-# the first B half step reads ψ_B = 0, not c·D⁺_y E⁰; zero for fields that start at zero in the
-# layer), through `reset_convolution!`. Whoever starts a run from saved particle and field arrays
-# without `initialize!` (the SciML harness, whose state partition does not hold them) calls it too.
+# The convolution fields are part of the field state but not of the state's partition: step 1
+# starts them at zero (so its first B half step reads ψ_B = 0, not c·D⁺_y E⁰; zero for fields
+# that start at zero in the layer), so every run from step 1 (`run!`, a solve of the harness,
+# which takes the steps in order on one integrator, or a run from a partition copied back into a
+# state that has run) is the same run. `initialize!` zeroes them too, with the fields.
 reset_absorber!(::Any) = nothing
 reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBx, L.ψBz, L.ψEx, L.ψEz)); nothing)
 
@@ -307,7 +308,7 @@ reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.�
 The PML of the moving window's back edge placed on a grid ([`WindowFrame`](@ref)'s `back`): per
 stagger along x (`node` for E's x-differences, `center` for B's) the coefficients b, c (τ = Δt)
 and q = 1/κ − 1 per layer column, the convolution fields `ψBy`, `ψBz` (Center() columns) and
-`ψEy`, `ψEz` (Node() columns), each `cells` columns by n₂ rows, zeroed by `initialize!`, and a scratch of
+`ψEy`, `ψEz` (Node() columns), each `cells` columns by n₂ rows, zero at t = 0, and a scratch of
 their size for the shift. `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁).
 """
 struct BackPMLFields{V,M,T}
@@ -423,9 +424,9 @@ reset_back!(w) = reset_absorber!(w.back)
     reset_convolution!(state) -> state
 
 Zero the convolution fields of the state's PMLs (the open axis' and the window's back edge's);
-nothing without one, and nothing at N = 1. `initialize!` calls it. A run restarted at t = 0 by
-other means, `copyto!(state, partition)` of a [`state_partition`](@ref) saved after
-`initialize!`, needs it too: the partition does not hold these fields.
+nothing without one, and nothing at N = 1. `initialize!` calls it, and so does `step!` at
+step 1, because the state's partition ([`state_partition`](@ref)) does not hold these fields: a
+run from step 1 needs no call by hand.
 """
 reset_convolution!(st::EMState{1}) = st
 reset_convolution!(st::EMState{2}) = (reset_absorber!(st.aux.layer); reset_back!(st.aux.window); st)

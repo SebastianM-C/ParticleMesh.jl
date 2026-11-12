@@ -283,7 +283,9 @@ end
 Whether `state` has the configuration of `problem` (an `ArgumentError` otherwise), what a state
 takes from the problem it is built for besides the parameters: the cells and the cell sizes, the
 time step, per species the name, the particles per cell, the Philox stream, the kind of momentum
-distribution, the charge and the mass, and at N = 2 which boundaries are open or a window, the
+distribution, the charge and the mass (as the state holds them, converted to its element type:
+a description in another type than the problem's is the state's own problem), and at N = 2 which
+boundaries are open or a window, the
 window's start and the witness bunch's placement, charge and mass; and the diagnostic mode of
 the state's own recorder, whose histories would otherwise be of another mode than the problem's. Called by
 `initialize!(state, problem)`; the problem's parameters are checked by [`check_params`](@ref)
@@ -299,7 +301,8 @@ function check_setup(st::EMState{N}, problem::EMProblem{M}) where {N,M}
     st.dt == problem.dt || wrong("dt $(problem.dt) against $(st.dt)")
     map(species_setup, problem.species) == st.setup ||
         wrong("the species' names, particles per cell, streams or momentum distributions $(map(species_setup, problem.species)) against $(st.setup)")
-    all(map((s, d) -> s.q == d.charge && s.m == d.mass, st.species, problem.species)) || wrong("a species' charge or mass")
+    all(map((s, d) -> s.q == oftype(s.q, d.charge) && s.m == oftype(s.m, d.mass), st.species, problem.species)) ||
+        wrong("a species' charge or mass")
     check_aux_setup(st, problem, wrong)
     return problem
 end

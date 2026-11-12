@@ -158,7 +158,7 @@ function check_aux_setup(st::EMState{2}, problem, wrong)
     w = witness_frame(st)
     b = problem.witness
     (b === nothing) == (w === nothing) || wrong("the witness bunch")
-    b === nothing || (witness_placement(b, st.grid, st.dt) == (w.kinj, w.c0, w.nc, w.ppc) && w.species.q == b.charge && w.species.m == b.mass) ||
+    b === nothing || (witness_placement(b, st.grid, st.dt) == (w.kinj, w.c0, w.nc, w.ppc) && w.species.q == oftype(w.species.q, b.charge) && w.species.m == oftype(w.species.m, b.mass)) ||
         wrong("the witness bunch's injection step, lattice, charge or mass")
     return nothing
 end
@@ -311,7 +311,10 @@ after every step (T-360), off the antenna columns with lasers (T-406), and off t
 with an open boundary (T-451); with passes its filtered form does (T-441). Parameters that do
 not fit the state are refused first ([`check_params`](@ref): a laser off its plane, a pulse the
 window would pass while it emits, another element type); the default observer refuses a `k`
-outside the steps it was allocated for.
+outside the steps it was allocated for. Step 1 zeroes a PML's convolution fields
+([`reset_convolution!`](@ref)): they are field state outside the state's partition, so every run
+from step 1 is the same run, also one that starts from particle and field arrays copied back
+into a state that has run (`copyto!(state, partition)`, a solve of the harness).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer; observer = st.recorder)
     check_params(st, p)
@@ -320,6 +323,7 @@ function step!(st::EMState{2}, p::EMParams, k::Integer; observer = st.recorder)
     n = Int32.(ncells(grid))
     g = Int32(guards(grid))
     dx = cellsize(grid)
+    k == 1 && reset_convolution!(st)
     observe!(observer, st, k)
     inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
     for s in (st.species..., witness_species(st)...)
