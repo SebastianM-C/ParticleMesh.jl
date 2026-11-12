@@ -178,8 +178,17 @@ function body_T721(be)
         run!(st, params(cold1), cold1.nsteps)
         @test window_shifts(st, cold1.nsteps) > ncells(st.grid)[1]
         s1 = particle_arrays(st.species[1])                    # refills only
-        # ... of the window's position: the plasma is the fresh load of the columns the window now covers
+        # ... of the window's position: the plasma is the fresh load of the columns the window now covers,
+        # also while the ramp (here from x = 14 to 18) passes through the injection column, where one column off shows
         @test particle_set(st.species[1]) == particle_set(fresh_window_load(st, params(cold1), window_shifts(st, cold1.nsteps)))
+        ramped = window_plasma(T; vacuum = 14, ramp = 4, nsteps = 16)
+        sr = EMState(ramped, EMNumerics(); backend = be)
+        initialize!(sr, ramped)
+        run!(sr, params(ramped), ramped.nsteps)
+        moved = window_shifts(sr, ramped.nsteps)
+        wr = particle_arrays(sr.species[1])[end]
+        @test 8 <= moved <= 12 && any(!iszero, wr) && !all(==(first(filter(!iszero, wr))), filter(!iszero, wr))   # on the ramp: weights differ
+        @test particle_set(sr.species[1]) == particle_set(fresh_window_load(sr, params(ramped), moved))
         initialize!(st, params(cold2))
         l2 = particle_arrays(st.species[1])
         run!(st, params(cold2), cold2.nsteps)
