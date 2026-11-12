@@ -49,16 +49,21 @@
 #   inside the absorber's offset; HUYGENS = 16 leaves 4 cells.
 # - Numerics. Yee, Esirkepov, TSC, Boris, no current filter (`--currentInterpolation none`),
 #   Float64 by default (`precision64Bit`), supercells of 8 × 8.
-# - Diagnostics. openPMD (HDF5) dumps of E, the electron charge density and (plasma) the electrons
-#   of the window every `fields_every` steps; the field energies; the electron energy histogram
-#   (`plugins/BinEnergyParticles.x.cpp`, in keV, real electrons per bin, with one underflow and one
-#   overflow column). That histogram covers the whole simulated domain: the local domains, which
-#   slide by a whole one at a time, so it reaches up to a local domain behind the window's back,
-#   where the electrons the other codes have dropped still are, and ahead of its front. The
-#   reader therefore bins the dumped electrons itself over `spectrum_region` (lwfa.jl), the cells
-#   all three codes hold, with the kinetic energy (γ − 1)·mₑc²; the plugin's histogram is kept as
-#   `spectrum_plugin`, and is the spectrum when a run has no particle dump. About 0.25 GB per
-#   output for A5's case (3.6 million electrons of the window, eight doubles each).
+# - Diagnostics. openPMD (HDF5) dumps of E and the electron charge density every `fields_every`
+#   steps; the field energies; the electron energy histogram (`plugins/BinEnergyParticles.x.cpp`,
+#   in keV, real electrons per bin, with one underflow and one overflow column). That histogram
+#   covers the whole simulated domain: the local domains, which slide by a whole one at a time,
+#   so it reaches up to a local domain behind the window's back, where the electrons the other
+#   codes have dropped still are, and ahead of its front. It is the spectrum of a PIConGPU summary
+#   (`spectrum_covers` says so), and compares with the other codes' only in what does not depend
+#   on the region: the highest energy group and the highest occupied bin.
+#   The reader can bin an electron dump over `spectrum_region` (lwfa.jl) instead, with the kinetic
+#   energy (γ − 1)·mₑc², and the plasma deck asks openPMD for the species; but `fileOutput.param`
+#   lists no particles, so none are written. With every species listed
+#   (`FileOutputParticles = VectorAllSpecies`) the plasma run of A5's case on the RTX 4080 SUPER
+#   computed its 10 777 steps and then did not exit, and left a file that cannot be read (two
+#   devices along the window axis, HDF5 backend; the commit that reverted it has the details). So
+#   that reader has met synthetic files only (T-704, T-705).
 
 include(joinpath(REPO, "scripts", "crosscode", "picongpu.jl"))
 using .PIConGPUDeck: reference_units

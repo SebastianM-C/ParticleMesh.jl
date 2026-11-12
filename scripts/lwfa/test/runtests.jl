@@ -159,7 +159,8 @@ cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).c
     vac = picongpu_param_files(CASE; plasma = false)
     @test occursin("InitPipeline = pmacc::mp_list<>", vac["speciesInitialization.param"])
     @test !occursin("energyHistogram", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
-    # the plasma run dumps the window's electrons too, for the reader's spectrum over the common region
+    # the plasma run asks openPMD for the species too; the deck lists no particles, so none are written (picongpu.jl's header)
+    @test occursin("using FileOutputParticles = MakeSeq_t<>;", f["fileOutput.param"])
     @test occursin("--openPMD.source species_all,fields_all ", args)
     @test occursin("--openPMD.source fields_all ", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
 end
@@ -1024,4 +1025,65 @@ end
     end
     @test backend_named("cpu") isa CPU
     @test_throws ErrorException backend_named("metal")
+end
+
+# --- one pair of runs (lwfa.jl's compare_pair) ------------------------------------------------------
+
+@testset "T-708 compare_pair: two runs of one case with compare's measures, the lineouts' largest difference, each run's spectrum [A4, A5]" begin
+    file = CASE_FILES[2]
+    case = TOML.parsefile(file)
+    d = derived(case)
+    steps = output_steps(case)[[1, 6, 9, 14]]
+    function write_run(dir, medium; scale = 1.0, ahead = 0, code = "ParticleMesh", bunch = 1.0e-3)
+        mkpath(dir)
+        cp(file, joinpath(dir, "case.toml"))
+        write(joinpath(dir, "kind.txt"), medium * "\n")
+        outs = map(steps) do k
+            t = k * d.dt
+            m0 = max(0, floor(Int, (t - case["window"]["start"]) / d.dx))
+            o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"], a0 = scale, plasma = medium == "plasma", bunch)
+            if medium == "plasma"
+                o["Ex_m0"] += ahead                                          # the same wake, `ahead` cells on
+                o["spectrum"] ./= spectrum_scale(code == "ParticleMesh" ? "pm" : "smilei", d)
+            end
+            o
+        end
+        write_summary(dir, outs; code, extra = Dict{String,Any}("seconds" => 2.5, "backend" => "test", "spectrum_edges" => spectrum_edges(case)))
+        return dir
+    end
+    mktempdir() do root
+        a = write_run(joinpath(root, "a"), "plasma")
+        same = compare_pair(a, write_run(joinpath(root, "same"), "plasma"), joinpath(root, "out-same"))
+        @test same["medium"] == "plasma" && same["a"]["code"] == "ParticleMesh" && same["a"]["backend"] == "test" && same["a"]["seconds"] == 2.5
+        @test length(same["rows"]) == length(steps)
+        late = same["rows"][end]
+        @test late["amplitude_relrms"] == 0 && late["carrier_phase"] == 0 && late["wake_Ex_relrms"] == 0 && late["wake_Ex_shift"] == 0
+        @test late["Ey_axis_maxdiff"] == 0 && late["Ex_axis_maxdiff"] == 0 && late["rho_axis_maxdiff"] == 0
+        @test !haskey(same["rows"][1], "wake_Ex_relrms")                        # no wake at t = 0
+        # b: the laser a part in 10⁶ higher, the wake one cell ahead, a bunch 2 % heavier, in Smilei's unit
+        b = write_run(joinpath(root, "b"), "plasma"; scale = 1 + 1e-6, ahead = 1, code = "Smilei", bunch = 1.02e-3)
+        out = joinpath(root, "out")
+        res = compare_pair(a, b, out)
+        late = res["rows"][end]
+        @test late["amplitude_relrms"] ≈ 1e-6 rtol = 1e-3
+        @test late["Ey_axis_maxdiff"] ≈ 1e-6 * late["Ey_absmax"][1] rtol = 1e-3
+        @test late["wake_Ex_shift"] == 1 && late["wake_Ex_relrms_shifted"] < 1e-12 && late["wake_Ex_relrms"] > 1e-3
+        @test late["Ex_axis_maxdiff"] > 1e-4 && late["rho_axis_maxdiff"] == 0
+        @test res["spectrum"]["a"][end]["bunch"]["weight"] ≈ 1.0e-3 rtol = 1e-12
+        @test res["spectrum"]["b"][end]["bunch"]["weight"] ≈ 1.02e-3 rtol = 1e-12  # each in the one unit, whatever its code's
+        @test res["wake"]["anchor"] == "a"
+        on_disk = JSON.parsefile(joinpath(out, "pair.json"))
+        @test on_disk["rows"][end]["wake_Ex_shift"] == 1 && on_disk["b"]["code"] == "Smilei"
+        man = TOML.parsefile(joinpath(out, "manifest.toml"))
+        @test man["summaries"]["b"] == "sha256:" * RunManifest.file_hash(joinpath(b, "summary.json"))
+        # a vacuum pair has the laser's measures only; runs of different media or cases are refused
+        va, vb = write_run(joinpath(root, "va"), "vacuum"), write_run(joinpath(root, "vb"), "vacuum"; scale = 1.5)
+        vac = compare_pair(va, vb, joinpath(root, "out-vac"))
+        @test vac["medium"] == "vacuum" && !haskey(vac, "spectrum") && !haskey(vac["rows"][end], "Ex_axis_maxdiff")
+        @test vac["rows"][end]["amplitude_relrms"] ≈ 1 / 3 rtol = 1e-9
+        @test_throws ErrorException compare_pair(a, va, joinpath(root, "out-x"))
+        other = write_run(joinpath(root, "other"), "plasma")
+        cp(CASE_FILES[1], joinpath(other, "case.toml"); force = true)
+        @test_throws ErrorException compare_pair(a, other, joinpath(root, "out-y"))
+    end
 end

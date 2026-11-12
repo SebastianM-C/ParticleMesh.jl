@@ -5,6 +5,7 @@
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-smilei <dir>              # Smilei's dumps into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-picongpu <dir>            # PIConGPU's dumps into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare <runs dir> <out dir>        # the comparison, figures and sidecars
+#   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare-pair <dir a> <dir b> <out dir>  # two runs of one case and medium, the same measures
 #
 # A prepared run has six directories: `smilei-vacuum`, `smilei-plasma`, `pm-vacuum`, `pm-plasma`,
 # `picongpu-vacuum`, `picongpu-plasma` (with `vacuum`, the three vacuum ones). The vacuum runs check
@@ -81,7 +82,10 @@
 #   at the output (`spectrum_region`: from the foremost window back, Smilei's, to ParticleMesh's
 #   injection column), in one unit (`spectrum_scale`). ParticleMesh bins its particles of that
 #   region; Smilei's window histogram has the strips outside it taken off (two more
-#   DiagParticleBinning with a `moving_x` axis); PIConGPU's is binned from its particle dump.
+#   DiagParticleBinning with a `moving_x` axis). PIConGPU's would be binned from an electron dump,
+#   which its runs do not write (picongpu.jl's header, "Diagnostics"): its histogram is the
+#   plugin's, over its whole simulated domain, and compares in the highest energy group and the
+#   highest occupied bin only.
 # - Numerics. Yee, Esirkepov, quadratic shapes, Boris, no current filter, Float64, Reference mode
 #   in ParticleMesh. Transverse boundaries periodic in all codes (the box is 7.2 waists wide);
 #   along x Smilei has Silver–Müller boundaries, ParticleMesh its field-free outside, which
@@ -826,6 +830,19 @@ function bunch_group(h, edges; macro_weight = nothing)
     return r
 end
 
+# One output's spectrum in the one unit (its histogram times `f`): the total, the weight from each bin of `cut` up, the top, the bunch.
+function spectrum_row(o, edges, cut, f; macro_weight = nothing)
+    h = Float64.(get(o, "spectrum", Float64[])) .* f
+    top = findlast(>(0), h)
+    r = Dict{String,Any}("step" => o["step"], "t" => o["t"], "total" => sum(h),
+                         "above" => isempty(h) ? nothing : [sum(@view h[i:end]) for i in cut],
+                         "top" => top === nothing ? nothing : edges[top + 1],
+                         "bunch" => isempty(h) ? nothing : bunch_group(h, edges; macro_weight),
+                         "region" => get(o, "spectrum_region", nothing))
+    haskey(o, "spectrum_over") && (r["over"] = o["spectrum_over"] * f)
+    return r
+end
+
 """
     spectrum_rows(S, d, codes; macro_weight = nothing, thresholds) -> Dict
 
@@ -840,21 +857,7 @@ and low energies compare only where those agree.
 function spectrum_rows(S, d, codes; macro_weight = nothing, thresholds = (1.0, 5.0, 10.0, 20.0, 40.0))
     edges = Float64.(S["pm-plasma"]["spectrum_edges"])
     cut = unique(argmin(abs.(edges .- t)) for t in thresholds if t < last(edges))
-    rows = Dict{String,Any}()
-    for c in codes
-        f = spectrum_scale(c, d)
-        rows[c] = map(S["$c-plasma"]["outputs"]) do o
-            h = Float64.(get(o, "spectrum", Float64[])) .* f
-            top = findlast(>(0), h)
-            r = Dict{String,Any}("step" => o["step"], "t" => o["t"], "total" => sum(h),
-                                 "above" => isempty(h) ? nothing : [sum(@view h[i:end]) for i in cut],
-                                 "top" => top === nothing ? nothing : edges[top + 1],
-                                 "bunch" => isempty(h) ? nothing : bunch_group(h, edges; macro_weight),
-                                 "region" => get(o, "spectrum_region", nothing))
-            haskey(o, "spectrum_over") && (r["over"] = o["spectrum_over"] * f)
-            r
-        end
-    end
+    rows = Dict{String,Any}(c => [spectrum_row(o, edges, cut, spectrum_scale(c, d); macro_weight) for o in S["$c-plasma"]["outputs"]] for c in codes)
     regions = [[r["region"] for r in rows[c]] for c in codes]
     common = all(r -> !any(isnothing, r) && r == regions[1], regions)
     return Dict{String,Any}("unit" => "electrons per unit depth, n_c (c/ω₀)²", "thresholds" => edges[cut],
@@ -917,6 +920,64 @@ function compare(runs, out)
     write_manifest(out; root = REPO,
                    extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"],
                                             "summaries" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "summary.json")) for k in kinds)))
+    return result
+end
+
+# The key of a summary's code in this file's tables.
+code_key(summary) = Dict("ParticleMesh" => "pm", "Smilei" => "smilei", "PIConGPU" => "picongpu")[summary["code"]]
+
+"""
+    compare_pair(dir_a, dir_b, out) -> Dict
+
+Two runs of one case and medium (the same `case.toml` and `kind.txt`), compared with the measures
+of `compare`: `rows` are `compare_rows(a, b)`, with the largest absolute difference of the axis
+lineouts on the points both hold added per output (`Ey_axis_maxdiff`, and in plasma
+`Ex_axis_maxdiff`, `rho_axis_maxdiff`), and in plasma `spectrum` has each run's rows of
+`spectrum_rows`. Written as `pair.json` with a manifest that has the two summaries' hashes. For
+one code on two backends this is what roundoff and the order of the reductions do to the
+observables; for two codes, one pair of `compare`.
+"""
+function compare_pair(dir_a, dir_b, out)
+    mkpath(out)
+    read(joinpath(dir_a, "case.toml")) == read(joinpath(dir_b, "case.toml")) || error("$dir_a and $dir_b have different case files")
+    medium = strip(read(joinpath(dir_a, "kind.txt"), String))
+    medium == strip(read(joinpath(dir_b, "kind.txt"), String)) || error("$dir_a is a $medium run, $dir_b is not")
+    case = TOML.parsefile(joinpath(dir_a, "case.toml"))
+    d = derived(case)
+    λp = 2π / sqrt(case["plasma"]["density"])
+    A, B = load_summary(dir_a), load_summary(dir_b)
+    h = envelope_halfwidth(case)
+    for s in (A, B), o in s["outputs"]
+        o["Ey_envelope"] = running_envelope(Float64.(o["Ey_axis"]), h)
+    end
+    rows = compare_rows(A["outputs"], B["outputs"], medium, d, λp)
+    bystep = Dict(o["step"] => o for o in B["outputs"])
+    lineouts = medium == "plasma" ? (("Ey_axis", "Ey_m0"), ("Ex_axis", "Ex_m0"), ("rho_axis", "rho_m0")) : (("Ey_axis", "Ey_m0"),)
+    for (r, o) in zip(rows, (o for o in A["outputs"] if haskey(bystep, o["step"])))
+        s = bystep[o["step"]]
+        for (key, m0) in lineouts
+            c = common_points(o[key], o[m0], s[key], s[m0])
+            r[key * "_maxdiff"] = isempty(c.m) ? nothing : maximum(abs, c.a .- c.b)
+        end
+    end
+    about(s, dir) = Dict{String,Any}("dir" => relpath(abspath(dir), REPO), "code" => s["code"],
+                                     (k => s[k] for k in ("backend", "cpu", "gpu", "threads", "seconds", "spectrum_covers") if haskey(s, k))...)
+    result = Dict{String,Any}("case" => case["name"], "medium" => medium, "a" => about(A, dir_a), "b" => about(B, dir_b), "rows" => rows)
+    if medium == "plasma"
+        P = case["plasma"]
+        edges = spectrum_edges(case)
+        cut = unique(argmin(abs.(edges .- t)) for t in (1.0, 5.0, 10.0, 20.0, 40.0) if t < last(edges))
+        macro_weight = P["density"] * d.dx * d.dy / prod(Int.(P["particles_per_cell"]))
+        result["wake"] = Dict{String,Any}("length" => 2.0, "anchor" => "a", "floor" => WAKE_FLOOR * 2π / λp)
+        result["spectrum"] = Dict{String,Any}("unit" => "electrons per unit depth, n_c (c/ω₀)²", "thresholds" => edges[cut], "macro_weight" => macro_weight,
+                                              "a" => [spectrum_row(o, edges, cut, spectrum_scale(code_key(A), d); macro_weight) for o in A["outputs"]],
+                                              "b" => [spectrum_row(o, edges, cut, spectrum_scale(code_key(B), d); macro_weight) for o in B["outputs"]])
+    end
+    open(io -> JSON.print(io, result, 2), joinpath(out, "pair.json"), "w")
+    write_manifest(out; root = REPO,
+                   extra = Dict{String,Any}("case" => case["name"],
+                                            "summaries" => Dict("a" => "sha256:" * RunManifest.file_hash(joinpath(dir_a, "summary.json")),
+                                                                "b" => "sha256:" * RunManifest.file_hash(joinpath(dir_b, "summary.json")))))
     return result
 end
 
@@ -1095,7 +1156,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
         summarize_picongpu(ARGS[2])
     elseif cmd == "compare"
         compare(ARGS[2], ARGS[3])
+    elseif cmd == "compare-pair"
+        compare_pair(ARGS[2], ARGS[3], ARGS[4])
     else
-        error("usage: lwfa.jl prepare <case> <tag> [vacuum] | run-pm <dir> [cpu|cuda] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out>")
+        error("usage: lwfa.jl prepare <case> <tag> [vacuum] | run-pm <dir> [cpu|cuda] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out> | compare-pair <dir a> <dir b> <out>")
     end
 end
