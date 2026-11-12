@@ -1,4 +1,4 @@
-# WP-026: the laser antenna, T-400 to T-409, and the envelope along the wavefront, T-695 to T-697. The physics runs (T-401 to T-405) launch a Gaussian
+# WP-026: the laser antenna, T-400 to T-409, and the envelope along the wavefront, T-695 to T-697 and T-709.
 # beam of waist 6 c/ω₀ (about one wavelength, so that the effects of focusing are large against
 # their tolerances) in vacuum, Float64, 16 cells per wavelength along x and 8 along y, and read it
 # on probe columns from the antenna plane to two Rayleigh lengths past the focus.
@@ -679,4 +679,54 @@ end
     fa = main.shots[end].f
     @test r.shots[end].t == main.shots[end].t
     @test maximum(abs, f.Ey .- fa.Ey) > 1e-3 * maximum(abs, fa.Ey)
+end
+
+# --- T-709: the two envelopes in a launched run ---------------------------------------------------
+
+# T-696 propagates the incident field by a quadrature; this is the antenna and the Yee step doing
+# it. The physics runs' beam (waist 6, duration 8, the plane a Rayleigh length ahead of the focus:
+# beam radius w = 6√2, wavefront radius |R| = 36) launched with each envelope, the centroid of E_y²
+# on the axis read at t = 100 to 140, when the pulse is 50 to 90 past the plane. The AxisTime
+# pulse is behind the WavefrontTime one by (w²/(4|R|))/(1 + κ²w⁴), κ = (1/L − 1/|R|)/2, L the
+# distance from the plane: 0.46 falling to 0.37 c/ω₀ here, a cell and more. The closed form is the
+# paraxial, narrow-band one (the squares of the bandwidth 1/duration and of the beam's k_y/k =
+# 1/waist are a few percent); the launched pulses keep to it within 3 %, measured 0.7 %.
+function axis_centroid(r, shot)
+    a = run_antenna(r)
+    g, n, h = guards(r.st.grid), ncells(r.st.grid), cellsize(r.st.grid)
+    row = argmin([abs((j - 1 / 2) * h[2] - a.laser.center) for j in 1:n[2]])     # the Ey row on the axis
+    cols = forward_window(r, 160)[1]
+    e2 = abs2.(shot.f.Ey[g .+ cols, g + row])
+    return sum((cols .- 1) .* h[1] .* e2) / sum(e2)
+end
+
+@testset "T-709 launched, the AxisTime pulse is behind the WavefrontTime pulse on the axis by the closed form [A2, A5, WP-026, WP-053]" begin
+    snaps(prob) = round(Int, 100 / prob.dt):round(Int, 8 / prob.dt):round(Int, 140 / prob.dt)
+    front = let prob = antenna_problem(Float64; envelope = WavefrontTime())
+        antenna_run(prob; snaps = snaps(prob))
+    end
+    axis = let prob = antenna_problem(Float64)
+        antenna_run(prob; snaps = snaps(prob))
+    end
+    a = run_antenna(front)
+    ξ = Float64(a.xa - a.laser.focus)
+    zR = Float64(a.laser.waist)^2 / 2
+    w, R = Float64(a.laser.waist) * sqrt(1 + (ξ / zR)^2), abs(ξ * (1 + (zR / ξ)^2))
+    @test w ≈ 6 * sqrt(2) rtol = 0.02
+    @test R ≈ 36 rtol = 0.02                            # the plane sits on the node nearest to x = 10
+    @test length(front.shots) == length(axis.shots) >= 5
+    worst = 0.0
+    for (sf, sa) in zip(front.shots, axis.shots)
+        @test sf.t == sa.t
+        cf, ca = axis_centroid(front, sf), axis_centroid(axis, sa)
+        L = (cf + ca) / 2 - Float64(a.xa)
+        lag = w^2 / (4R) / (1 + ((1 / L - 1 / R) / 2)^2 * w^4)
+        @test 40 < L < 100 && lag > 0.3
+        @test ca < cf                                    # AxisTime behind
+        worst = max(worst, abs((cf - ca) / lag - 1))
+    end
+    record!("T-709", Float64, worst)
+    @test worst <= 0.03
+    # on the plane's axis the two are one field, so the difference is made on the way
+    @test laser_field(run_antenna(front).laser, ξ, 0.0, 1.3)[1] ≈ laser_field(run_antenna(axis).laser, ξ, 0.0, 1.3)[1] rtol = 1e-13
 end
