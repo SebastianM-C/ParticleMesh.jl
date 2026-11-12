@@ -1,0 +1,18 @@
+## step 0 (julia): exit 0 after 80s
+pm pm-vacuum: step 829 of 10777, 4.4 s
+pm pm-vacuum: step 1658 of 10777, 6.9 s
+pm pm-vacuum: step 2487 of 10777, 11.7 s
+pm pm-vacuum: step 3316 of 10777, 16.5 s
+pm pm-vacuum: step 4145 of 10777, 21.2 s
+pm pm-vacuum: step 4974 of 10777, 25.6 s
+pm pm-vacuum: step 5803 of 10777, 30.1 s
+pm pm-vacuum: step 6632 of 10777, 34.6 s
+pm pm-vacuum: step 7461 of 10777, 39.4 s
+pm pm-vacuum: step 8290 of 10777, 44.4 s
+pm pm-vacuum: step 9119 of 10777, 50.2 s
+pm pm-vacuum: step 9948 of 10777, 57.2 s
+pm pm-vacuum: step 10777 of 10777, 63.1 s
+
+## step 1 (smilei): exit 0 after 46s
+
+## step 2 (julia): exit 0 after 7s
