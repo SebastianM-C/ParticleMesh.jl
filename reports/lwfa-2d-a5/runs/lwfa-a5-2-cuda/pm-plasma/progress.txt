@@ -1,0 +1,13 @@
+pm lwfa-a5-2-cuda-pm-plasma: step 829 of 10777, 25.3 s
+pm lwfa-a5-2-cuda-pm-plasma: step 1658 of 10777, 49.4 s
+pm lwfa-a5-2-cuda-pm-plasma: step 2487 of 10777, 79.4 s
+pm lwfa-a5-2-cuda-pm-plasma: step 3316 of 10777, 114.2 s
+pm lwfa-a5-2-cuda-pm-plasma: step 4145 of 10777, 149.0 s
+pm lwfa-a5-2-cuda-pm-plasma: step 4974 of 10777, 181.1 s
+pm lwfa-a5-2-cuda-pm-plasma: step 5803 of 10777, 211.8 s
+pm lwfa-a5-2-cuda-pm-plasma: step 6632 of 10777, 242.5 s
+pm lwfa-a5-2-cuda-pm-plasma: step 7461 of 10777, 273.1 s
+pm lwfa-a5-2-cuda-pm-plasma: step 8290 of 10777, 303.7 s
+pm lwfa-a5-2-cuda-pm-plasma: step 9119 of 10777, 334.0 s
+pm lwfa-a5-2-cuda-pm-plasma: step 9948 of 10777, 364.0 s
+pm lwfa-a5-2-cuda-pm-plasma: step 10777 of 10777, 393.8 s
