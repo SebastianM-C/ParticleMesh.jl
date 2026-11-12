@@ -120,6 +120,18 @@ end
                                         sp, shape, Node(), grid, ws; dt = 0.25f0, quantity_y = ChargeUy(), quantity_z = ChargeUz())
         @test all(same_bits.(J(Fast(), s, Workspace(s, grid)), J(Reference(), c, wc)))
     end
+    # deposit_flux! at N = 2, never sorted: without the fallback sort it deposited zero, silently
+    for shape in SHAPES, st in ((Node(), Node()), (Center(), Node()))
+        g = PeriodicGrid((16, 12), (0.5f0, 0.25f0), maximum(flux_guard_width(shape, st)))
+        s = flux_species_2d(D3, g, 300)
+        c = deepcopy(s)
+        wc = Workspace(c, g; flux = (shape, st))
+        sort_by_cell!(c, g, wc)
+        J2(mode, sp, ws) = deposit_flux!(mode, fields3(D3, g)..., sp, shape, st, g, ws; dt = 0.25f0, quantity_z = QZ2)
+        got = J2(Fast(), s, Workspace(s, g; flux = (shape, st)))
+        @test all(same_bits.(got, J2(Reference(), c, wc)))
+        @test all(J -> any(x -> !iszero(value_of(x)), J), got)
+    end
     # The fallback sort moves the species' extras with the particles; an array the caller keeps
     # outside the species follows by indexing it with ws.perm (slot i now holds the particle of slot ws.perm[i])
     grid = PeriodicGrid(n, 0.5f0, 2)
