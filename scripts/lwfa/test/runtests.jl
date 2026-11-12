@@ -423,7 +423,7 @@ end
         @test same["amplitude_relrms"] < 4.5 * (quarter_wave(d) * d.dx / case["laser"]["duration"])^4
         @test same["envelope_relrms"] > 0.02
     end
-    # the two differences measured between Smilei and the other codes on this case (reports/lwfa-2d-a5.md §3):
+    # the two differences measured between Smilei and the other codes on this case (the laser's lines in lwfa.jl's header):
     # a lag of two cells is δ/τ in the amplitude (a Gaussian against itself displaced), and with a carrier
     # phase of 1.979 rad the running-max envelope reads 5 %
     lag = only(compare_rows(a, mk(; x0 = x0 - 2 * d.dx), "plasma", d, λp))
@@ -1789,5 +1789,64 @@ end
         @test g["oblique"] ≈ [0.82, 0.83] atol = 0.02
         @test g["focus"] ≈ [0.47, 0.47] atol = 0.02
         @test h["oblique"] ≈ [1.0, 0.99] atol = 0.02
+    end
+end
+
+@testset "T-720 distances_table: the pairs' largest distances as a Markdown table, in each row's unit, per grid, from a scan and from one comparison counted from the scan's times [A5, A7, WP-054]" begin
+    e(v...) = Dict{String,Any}("max" => collect(v))
+    d = Dict{String,Any}("vacuum" => Dict{String,Any}("carrier_phase" => e(1.2e-4, 5.2e-5), "amplitude_relrms" => e(4.04e-5, 3.76e-5)),
+                         "plasma" => Dict{String,Any}("wake_Ex_relrms" => e(0.00182, 0.00154), "wake_Ex_min" => e(0.0012, 0.00097), "top" => e(0.2, 0.0)),
+                         "picongpu_plasma" => Dict{String,Any}("wake_Ex_relrms" => e(0.004, 0.00022), "maps_wing" => e(0.0096, 0.002), "bunch_weight" => e(0.0092, 0.014)),
+                         "smilei_picongpu_vacuum" => Dict{String,Any}("carrier_phase" => e(7.0e-4, 1.7e-4)))
+    @test distances_table(d, [32, 64]) == """
+        | Largest over the run, at λ₀/32 / λ₀/64 | ParticleMesh–Smilei | ParticleMesh–PIConGPU | Smilei–PIConGPU |
+        |---|---|---|---|
+        | vacuum: carrier phase (mrad) | 0.12 / 0.052 | – | 0.7 / 0.17 |
+        | vacuum: amplitude, relative rms (%) | 0.004 / 0.0038 | – | – |
+        | wake E_x over 1.5 λ_p, relative rms (%) | 0.18 / 0.15 | 0.4 / 0.022 | – |
+        | wake minimum, relative difference (%) | 0.12 / 0.097 | – | – |
+        | maps of E_y, far wing, relative rms (%) | – | 0.96 / 0.2 | – |
+        | bunch weight, relative difference (%) | – | 0.92 / 1.4 | – |
+        | highest occupied bin, difference (mₑc²) | 0.2 / 0 | – | – |
+        """
+    # one comparison: the outputs before the scan's times are not counted (vacuum 150; plasma delay + vacuum = 364 for
+    # A5's case; the bunch 750), a signed phase by its magnitude, a centroid by the difference of the two codes'
+    # values, the wake's extrema and the bunch by the two codes' ratio, the maps at every output they have
+    mktempdir() do dir
+        row(t, φ, x, a) = Dict{String,Any}("t" => t, "carrier_phase" => φ, "centroid_x" => x, "amplitude_relrms" => a)
+        wake = Dict{String,Any}("wake_Ex_relrms" => 0.0015, "wake_Ex_min" => [-0.5, -0.5005], "wake_Ex_max" => [0.4, 0.4008])
+        spec(t, w, top) = Dict{String,Any}("t" => t, "bunch" => Dict{String,Any}("weight" => w), "top" => top)
+        c = Dict{String,Any}("case" => "lwfa-2d", "dx" => 2π / 48,
+                             "vacuum" => [row(100.0, 0.5, [1.0, 2.0], 0.5), row(200.0, -1.0e-4, [1.0, 1.0005], 2.0e-5), row(300.0, 5.0e-5, [3.0, 3.002], 1.0e-5)],
+                             "plasma" => [row(300.0, 0.5, [1.0, 2.0], 0.5), merge(row(400.0, 2.0e-4, [5.0, 5.001], 3.0e-4), wake)],
+                             "maps" => Dict{String,Any}("rows" => [Dict{String,Any}("t" => 300.0, "plasma" => [0.001, 0.002, 0.003]), Dict{String,Any}("t" => 700.0, "plasma" => [0.0005, 0.0025, 0.001])]),
+                             "spectrum" => Dict{String,Any}("rows" => Dict{String,Any}("pm" => [spec(700.0, 1.0, 10.0), spec(800.0, 1.0, 10.2)],
+                                                                                       "smilei" => [spec(700.0, 2.0, 10.0), spec(800.0, 1.01, 10.0)])))
+        open(io -> JSON.print(io, c), joinpath(dir, "comparison.json"), "w")
+        @test distances_table_of(joinpath(dir, "comparison.json")) == """
+            | Largest over the run, at λ₀/48 | ParticleMesh–Smilei |
+            |---|---|
+            | vacuum: carrier phase (mrad) | 0.1 |
+            | vacuum: centroid (10⁻³ c/ω₀) | 2.0 |
+            | vacuum: amplitude, relative rms (%) | 0.002 |
+            | plasma: carrier phase (mrad) | 0.2 |
+            | plasma: centroid (10⁻³ c/ω₀) | 1.0 |
+            | plasma: amplitude, relative rms (%) | 0.03 |
+            | wake E_x over 1.5 λ_p, relative rms (%) | 0.15 |
+            | wake minimum, relative difference (%) | 0.1 |
+            | wake maximum, relative difference (%) | 0.2 |
+            | maps of E_y, all rows, relative rms (%) | 0.1 |
+            | maps of E_y, flank, relative rms (%) | 0.25 |
+            | maps of E_y, far wing, relative rms (%) | 0.3 |
+            | bunch weight, relative difference (%) | 0.99 |
+            | highest occupied bin, difference (mₑc²) | 0.2 |
+            """
+        open(io -> JSON.print(io, Dict{String,Any}("cells" => [32, 64], "distances" => d)), joinpath(dir, "scan.json"), "w")
+        @test distances_table_of(joinpath(dir, "scan.json")) == distances_table(d, [32, 64])
+    end
+    # the tables the two reports carry are this function's, of the committed comparison and scan
+    for (report, data) in (("lwfa-2d-a5.md", "lwfa-2d-a5/lwfa-a5-4-compare/comparison.json"), ("wp-054-lwfa-resolution-scan.md", "wp-054-lwfa-resolution-scan/scan/scan.json"))
+        reports = joinpath(REPO, "reports")
+        @test occursin(distances_table_of(joinpath(reports, data)), read(joinpath(reports, report), String))
     end
 end
