@@ -1507,38 +1507,66 @@ function scan_self(outs, cases, medium, code)
     return rows
 end
 
-"The observables of `compare`'s rows whose largest magnitude over a run `scan_distances` follows: key, how a pair of values becomes one number, the first time counted."
+"The observables of `compare`'s rows whose largest magnitude over a run `scan_distances` follows: medium, key, how a pair of values becomes one number."
 const SCAN_DISTANCES = (("vacuum", "carrier_phase", :value), ("vacuum", "centroid_x", :difference), ("vacuum", "amplitude_relrms", :value),
                         ("plasma", "carrier_phase", :value), ("plasma", "centroid_x", :difference), ("plasma", "amplitude_relrms", :value),
                         ("plasma", "wake_Ex_relrms", :value), ("plasma", "wake_Ex_min", :ratio), ("plasma", "wake_Ex_max", :ratio))
 
 """
-    scan_distances(per, cells) -> Dict
+    scan_from(case) -> (; vacuum, plasma, bunch)
+
+The time after which `scan_distances` counts an output: in the vacuum runs 150, the whole pulse past
+the antenna; in the plasma runs the time the pulse's peak reaches the plasma, delay + the vacuum in
+front of it (364 here, so the outputs from t = 400, which are the ones `reports/lwfa-2d-a5.md`
+counts: before it a plasma run repeats its vacuum run); for the bunch 750, since the highest group
+of the spectrum stands clear of the bulk from t = 800 in these runs (at t = 700 one empty bin
+separates it).
+"""
+scan_from(case) = (; vacuum = 150.0, plasma = Float64(case["laser"]["delay"]) + Float64(case["plasma"]["vacuum"]), bunch = 750.0)
+
+"""
+    scan_distances(per, cells; from) -> Dict
 
 The code-to-code distances at each resolution: for every pair of `compare`'s results `per` (one per
-grid) and every observable of `SCAN_DISTANCES`, the largest magnitude over the outputs from t = 150
-at each resolution (`max`) and `observed_order` of the three (`order`): a distance that falls with
-an order is discretization, one that stays is a difference of what is solved (differences of the
-three below a thousandth of the largest count as staying). The maps' rows
-(`maps_all`, `maps_flank`) and the bunch's weight are added where every resolution has them.
+grid) and every observable of `SCAN_DISTANCES`, the largest magnitude over the outputs after
+`from`'s time for the medium (`scan_from`) at each resolution (`max`) and `observed_order` of the
+three (`order`): a distance that falls with an order is discretization, one that stays is a
+difference of what is solved (differences of the three below a thousandth of the largest count as
+staying). Added where every resolution has them: the maps' rows (`maps_all`, `maps_flank`,
+`maps_wing`), the bunch's weight (`bunch_weight`, |a/b − 1| over the outputs after `from.bunch` at
+which both spectra have a highest group) and the highest occupied bin (`top`, |a − b| in mₑc² over
+the plasma runs' outputs after `from.plasma`).
 """
-function scan_distances(per, cells)
+function scan_distances(per, cells; from = (; vacuum = 150.0, plasma = 150.0, bunch = 150.0))
     out = Dict{String,Any}()
+    entry(mx) = Dict{String,Any}("max" => mx, "order" => length(mx) == 3 ? order_dict(mx; cells, rel = 1e-3) : nothing)
     one(v, how) = v === nothing ? nothing : how == :value ? abs(v) : (any(isnothing, v) ? nothing : how == :difference ? abs(v[1] - v[2]) : abs(v[1] / v[2] - 1))
     for (medium, key, how) in SCAN_DISTANCES, (prefix, a, b) in PAIRS
         all(c -> haskey(c, prefix * medium), per) || continue
         mx = map(per) do c
-            v = [one(get(r, key, nothing), how) for r in c[prefix * medium] if r["t"] > 150]
+            v = [one(get(r, key, nothing), how) for r in c[prefix * medium] if r["t"] > from[Symbol(medium)]]
             v = filter(!isnothing, v)
             isempty(v) ? nothing : maximum(v)
         end
         any(isnothing, mx) && continue
-        get!(out, prefix * medium, Dict{String,Any}())[key] = Dict{String,Any}("max" => mx, "order" => length(mx) == 3 ? order_dict(mx; cells, rel = 1e-3) : nothing)
+        get!(out, prefix * medium, Dict{String,Any}())[key] = entry(mx)
     end
-    for (prefix, a, b) in PAIRS, (band, name) in ((1, "maps_all"), (2, "maps_flank"))
+    for (prefix, a, b) in PAIRS, (band, name) in ((1, "maps_all"), (2, "maps_flank"), (3, "maps_wing"))
         all(c -> haskey(c, "maps") && any(r -> haskey(r, prefix * "plasma"), c["maps"]["rows"]), per) || continue
         mx = [maximum(r[prefix * "plasma"][band] for r in c["maps"]["rows"] if haskey(r, prefix * "plasma") && r[prefix * "plasma"][band] !== nothing; init = 0.0) for c in per]
-        get!(out, prefix * "plasma", Dict{String,Any}())[name] = Dict{String,Any}("max" => mx, "order" => length(mx) == 3 ? order_dict(mx; cells, rel = 1e-3) : nothing)
+        get!(out, prefix * "plasma", Dict{String,Any}())[name] = entry(mx)
+    end
+    for (prefix, a, b) in PAIRS
+        all(c -> haskey(c, "spectrum") && haskey(c["spectrum"]["rows"], a) && haskey(c["spectrum"]["rows"], b), per) || continue
+        over(f, t0) = map(per) do c
+            v = [f(x, y) for (x, y) in zip(c["spectrum"]["rows"][a], c["spectrum"]["rows"][b]) if x["t"] > t0]
+            v = filter(!isnothing, v)
+            isempty(v) ? nothing : maximum(v)
+        end
+        bunch = over((x, y) -> x["bunch"] === nothing || y["bunch"] === nothing ? nothing : abs(x["bunch"]["weight"] / y["bunch"]["weight"] - 1), from.bunch)
+        top = over((x, y) -> x["top"] === nothing || y["top"] === nothing ? nothing : abs(x["top"] - y["top"]), from.plasma)
+        any(isnothing, bunch) || (get!(out, prefix * "plasma", Dict{String,Any}())["bunch_weight"] = entry(bunch))
+        any(isnothing, top) || (get!(out, prefix * "plasma", Dict{String,Any}())["top"] = entry(top))
     end
     return out
 end
@@ -1578,7 +1606,7 @@ end
 The resolution scan: `runs` holds one directory of run summaries per grid, coarse to fine (each as
 `compare` takes it). Runs `compare` on each into `out`/r<cells>, and writes `scan.json` with each
 code's own change with the grid (`self`: `scan_self` per code and medium), the code-to-code
-distances at each resolution (`distances`: `scan_distances`) and what the launches of each pair
+distances at each resolution (`distances`: `scan_distances`, counted from the times `from`: `scan_from`) and what the launches of each pair
 differ by on each grid (`launch`: `launch_fit` of the vacuum rows), two figures with their sidecars
 and a manifest with the summaries' hashes.
 """
@@ -1595,7 +1623,9 @@ function compare_scan(out, runs)
                               "wake_length" => WAKE_LENGTH, "order_range" => collect(ORDER_RANGE))
     result["self"] = Dict(code => Dict(medium => scan_self([load_summary(joinpath(r, "$code-$medium"))["outputs"] for r in runs], cases, medium, code)
                                        for medium in media) for code in codes)
-    result["distances"] = scan_distances(per, cells)
+    from = scan_from(cases[1])
+    result["from"] = Dict{String,Any}(string(k) => v for (k, v) in pairs(from))
+    result["distances"] = scan_distances(per, cells; from)
     "vacuum" in media && (result["launch"] = Dict(prefix * "vacuum" => [launch_fit(c[prefix * "vacuum"], case) for (c, case) in zip(per, cases)]
                                                   for (prefix, a, b) in PAIRS if all(c -> haskey(c, prefix * "vacuum"), per)))
     open(io -> JSON.print(io, result, 2), joinpath(out, "scan.json"), "w")

@@ -1488,8 +1488,12 @@ end
                 outs = map(output_steps(case)) do k
                     t = k * d.dt
                     m0 = st * 8 * max(0, floor(Int, (t - case["window"]["start"]) / (π)))        # the window's back on a shared node, the same place on every grid
-                    o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"] - v.lag, φ = v.φ, a0 = v.a0, w = v.w,
-                                         plasma = medium == "plasma", bunch = v.bunch)
+                    # what only the outputs a distance does not count hold: Smilei's carrier 4 mrad further off in its plasma run before
+                    # the pulse reaches the plasma (t = 364), and its bunch 10 % heavier up to t = 750, 2 % after
+                    early = code == "smilei" && medium == "plasma" && t < 364 ? 4e-3 : 0.0
+                    heavy = code == "smilei" ? (t < 750 ? 1.10 : 1.02) : 1.0
+                    o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"] - v.lag, φ = v.φ + early, a0 = v.a0, w = v.w,
+                                         plasma = medium == "plasma", bunch = v.bunch * heavy)
                     medium == "plasma" && (o["spectrum"] ./= spectrum_scale(code, d); o["spectrum_region"] = collect(spectrum_region(case, k)))
                     o
                 end
@@ -1542,6 +1546,14 @@ end
         @test dv["carrier_phase"]["max"] ≈ fill(1e-3, 3) rtol = 1e-3
         @test dv["carrier_phase"]["order"]["order"] === nothing
         @test haskey(res["distances"]["plasma"], "wake_Ex_relrms") && !haskey(res["distances"], "picongpu_vacuum")
+        # a plasma run counts from the pulse's arrival at the plasma, the bunch from t = 750: the 5 mrad and the 10 % planted before are not in them
+        dp = res["distances"]["plasma"]
+        @test res["from"] == Dict("vacuum" => 150.0, "plasma" => 364.0, "bunch" => 750.0)
+        @test dp["carrier_phase"]["max"] ≈ fill(1e-3, 3) rtol = 1e-3
+        @test dp["bunch_weight"]["max"] ≈ fill(1 - 1 / 1.02, 3) rtol = 1e-9          # ParticleMesh over Smilei
+        @test dp["bunch_weight"]["order"]["order"] === nothing
+        @test dp["top"]["max"] == zeros(3)
+        @test !haskey(dp, "maps_all")                                            # these synthetic runs keep no maps
         # the launches of the pair on each grid: the synthetic pulses have no focus in them, so only the shape of the entry
         @test length(res["launch"]["vacuum"]) == 3 && all(f -> f["outputs"] == 12 && length(f["oblique"]) == 2, res["launch"]["vacuum"])
         # the file is what was returned
@@ -1550,6 +1562,13 @@ end
         # grids that are not one case are refused
         @test_throws ErrorException compare_scan(joinpath(root, "bad"), [runs[2], runs[1], runs[3]])
     end
+    # the maps' rows, from hand-made results of `compare` on the three grids: per band the largest over the maps' outputs, a
+    # band a map does not reach left out; second order planted
+    maps(f) = Dict{String,Any}("maps" => Dict{String,Any}("rows" => [Dict{String,Any}("plasma" => Any[1f, 2f, 3f]), Dict{String,Any}("plasma" => Any[4f, 0.5f, nothing])]))
+    dm = scan_distances([maps((64 / n)^2) for n in (32, 48, 64)], [32, 48, 64])["plasma"]
+    @test dm["maps_all"]["max"] ≈ 4 .* [4, 16 / 9, 1] && dm["maps_flank"]["max"] ≈ 2 .* [4, 16 / 9, 1] && dm["maps_wing"]["max"] ≈ 3 .* [4, 16 / 9, 1]
+    @test dm["maps_all"]["order"]["order"] ≈ 2 atol = 1e-6
+    @test !haskey(dm, "bunch_weight") && !haskey(dm, "carrier_phase")
 end
 
 @testset "T-718 launch_fit recovers what two launches differ by from a pair's vacuum rows: the oblique term and the focus, from the amplitude and from the phase [A5, WP-054]" begin
