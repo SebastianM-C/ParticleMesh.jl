@@ -1,0 +1,60 @@
+# A5's first 2D laser-wakefield case (`lwfa-2d.toml`) at λ₀/64: one of the three grids of the resolution
+# scan (`lwfa-2d-r32.toml`, `lwfa-2d-r48.toml`, `lwfa-2d-r64.toml`; `trace/wp/WP-054-lwfa-resolution-scan.md`).
+#
+# Everything physical is `lwfa-2d.toml`'s, in c/ω₀ and 1/ω₀: the laser, the plasma, the box
+# (96π × 64π ahead of the injection plane), the antenna's offset (2.5π behind the plane), the window's
+# start, Smilei's patch length (1.5π), the spectrum's bins, the maps' spacing (λ₀/8 along x, λ₀/4
+# along y). Δx = λ₀/64, Δy = 4Δx and Δt = 0.95 of Yee's 2D limit, so the three grids' Δt are as
+# 1/32 : 1/48 : 1/64, and the output cadences 552 : 828 : 1104 put the 13 outputs on the same times,
+# k·34.5π·0.95/√(17/16) = k·99.89. (`lwfa-2d.toml` itself has a cadence of 829 steps, which no cadence
+# at λ₀/32 or λ₀/64 matches; so the scan runs λ₀/48 again, with 828.) The primal nodes of the three
+# lattices coincide every λ₀/16: 4 cells here.
+#
+# Units of A1 throughout: lengths c/ω₀, times 1/ω₀, densities n_c, fields mₑcω₀/e. The case's x
+# coordinate is the lab coordinate with x = 0 on the laser's injection plane: Smilei's xmin at
+# t = 0 and ParticleMesh's antenna plane, which ParticleMesh places `antenna_cells` columns into
+# its box (its grid starts at x = −antenna_cells·dx). Both windows have the same front.
+
+schema = "lwfa-proposal-1"
+name = "lwfa-2d-r64"
+description = "2D Cartesian LWFA (A5), resolution scan: a0 = 2, w0 = 28, tau = 26 (1/e field), n0 = 0.01 n_c behind a 260 vacuum and a 60 sin² ramp, dx = λ0/64, moving window from t = 256, periodic in y"
+lambda0_um = 0.8                  # only for the SI numbers of reports, and PIConGPU's SI input
+
+[grid]
+dx = 0.09817477042468103          # λ₀/64 = 2π/64
+dy = 0.39269908169872414          # 4·dx
+cells = [3072, 512]               # 96π × 64π c/ω₀ ahead of the injection plane; multiples of 8 (PIConGPU's supercell)
+antenna_cells = 80                # ParticleMesh only: 2.5π = 7.85 c/ω₀ behind the antenna plane
+transverse = "periodic"           # all codes; the box is 7.2 waists wide
+smilei_patches = [64, 8]          # 48 × 64 cells per patch, 1.5π × 8π c/ω₀; Smilei's window moves by a patch
+picongpu_devices = 2              # PIConGPU: local domains along y on the one GPU, the window and the hidden one (scripts/lwfa/picongpu.jl)
+
+[time]
+courant = 0.95                    # dt = courant / sqrt(1/dx² + 1/dy²) = 0.0905, Yee's 2D limit; a0·dt = 0.181
+steps = 14352                     # 13 outputs of 1104 steps, t_end = 1298.6
+fields_every = 1104                # 99.89/ω₀, the same time at the three resolutions
+
+[laser]
+a0 = 2.0                          # peak field at the focus
+waist = 28.0                      # 1/e field radius at the focus (k_p·w0 = 2.8)
+duration = 26.0                   # 1/e half width of the field envelope (intensity FWHM 30.6, about 13 fs at 0.8 µm)
+delay = 104.0                     # envelope peak on the injection plane at t = 4·duration
+focus = 320.0                     # the start of the density plateau
+polarization = "y"                # E along y, in the simulation plane
+envelope = "wavefront"            # envelope and carrier on one time along the curved wavefront, t − delay − (y − y_c)²/(2R): the pulse
+                                  # Smilei and PIConGPU launch; ParticleMesh's WavefrontTime (its default has the envelope in t − delay alone)
+
+[window]
+start = 256.0                     # the antenna plane is passed at 256 + 2.5π = 263.9, after delay + 6·duration = 260
+
+[plasma]
+density = 0.01                    # n0 in n_c: ω_p = 0.1 ω₀, λ_p = 20π = 62.8 c/ω₀ (640 cells)
+vacuum = 260.0                    # zero density up to x = 260
+ramp = 60.0                       # sin² up-ramp over 60 c/ω₀, then the plateau
+particles_per_cell = [2, 2]       # 4 electrons per cell on a regular 2 × 2 lattice; ions immobile
+seed = 1                          # unused by a cold load, recorded
+
+[diagnostics]
+spectrum_ekin = [0.0, 100.0, 500] # electron kinetic-energy histogram, mₑc² units: min, max, bins, 0.2 wide
+map_stride = [8, 4]               # the 2D maps keep every 8th column and 4th row: λ₀/8 and λ₀/4, the same columns at the three resolutions
+map_outputs = [4, 8, 13]          # which outputs (1-based, of 13) keep a 2D map

@@ -1,0 +1,53 @@
+# CPU box request: the resolution scan of A5's first LWFA case (WP-054), Smilei at λ₀/32, λ₀/48 and λ₀/64,
+# vacuum and plasma (scripts/lwfa/lwfa.jl prepare; cases scripts/lwfa/cases/lwfa-2d-r32.toml, -r48, -r64)
+timeout = 7200
+category = "crosscode"
+outputs = ["scripts/runs/lwfa-scan-r32/smilei-vacuum", "scripts/runs/lwfa-scan-r32/smilei-plasma", "scripts/runs/lwfa-scan-r48/smilei-vacuum", "scripts/runs/lwfa-scan-r48/smilei-plasma", "scripts/runs/lwfa-scan-r64/smilei-vacuum", "scripts/runs/lwfa-scan-r64/smilei-plasma"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-scan-r32/smilei-vacuum"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-scan-r32/smilei-vacuum"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-scan-r32/smilei-plasma"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-scan-r32/smilei-plasma"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-scan-r48/smilei-vacuum"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-scan-r48/smilei-vacuum"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-scan-r48/smilei-plasma"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-scan-r48/smilei-plasma"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-scan-r64/smilei-vacuum"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-scan-r64/smilei-vacuum"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-scan-r64/smilei-plasma"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-scan-r64/smilei-plasma"]
