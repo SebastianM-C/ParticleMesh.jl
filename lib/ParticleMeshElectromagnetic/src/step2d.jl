@@ -177,8 +177,9 @@ function check_aux_params(st::EMState{2}, p::EMParams)
     return nothing
 end
 
-# What `EMProblem` requires of a moving-window plasma, of the parameters handed to its state.
-function check_window_params(w::WindowFrame, p::EMParams)
+# What `EMProblem` requires of a moving-window plasma, of the parameters handed to the state of
+# the `WindowFrame` `w`.
+function check_window_params(w, p::EMParams)
     all(ps -> iszero(ps.amplitude), p.species) ||
         throw(ArgumentError("a moving-window plasma starts neutral against its immobile background, so every species' amplitude must be zero"))
     all(iszero, p.E0) && all(iszero, p.B0) ||
