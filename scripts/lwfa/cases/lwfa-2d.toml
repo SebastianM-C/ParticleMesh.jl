@@ -36,6 +36,8 @@ duration = 26.0                   # 1/e half width of the field envelope (intens
 delay = 104.0                     # envelope peak on the injection plane at t = 4·duration
 focus = 320.0                     # the start of the density plateau
 polarization = "y"                # E along y, in the simulation plane
+envelope = "wavefront"            # envelope and carrier on one time along the curved wavefront, t − delay − (y − y_c)²/(2R): the pulse
+                                  # Smilei and PIConGPU launch; ParticleMesh's WavefrontTime (its default has the envelope in t − delay alone)
 
 [window]
 start = 256.0                     # the antenna plane is passed at 256 + 60·dx = 263.9, after delay + 6·duration = 260

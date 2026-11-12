@@ -28,9 +28,14 @@
 #   counted from PULSE_INIT·PULSE_DURATION/2 (`GaussianPulse.hpp`), so PULSE_DURATION = τ/2 and
 #   PULSE_INIT puts the envelope's peak on x = 0 at t = delay, as in the other two codes; it is
 #   zero before t' = 0 there, e^−16 of the peak, where ParticleMesh's antenna starts too. W0 is the
-#   1/e field radius at the focus (the case's waist), the 2D amplitude falls as √(w0/w) and the
-#   Gouy phase is halved in 2D. The focus is on the axis (`Origin::Center` along x). The transverse
-#   axis is periodic, so the Huygens surface is made contiguous across it
+#   1/e field radius at the focus (the case's waist), the 2D amplitude falls as √(w0/w)
+#   (`GaussianPulse.hpp:292`) and the Gouy phase is halved in 2D (265 to 267). The carrier is a
+#   cosine of the time from the envelope's centre with that Gouy phase and the wavefront's phase
+#   −k·r, r = ½·ρ²·R_inv (242, 262, 270, 276 to 280), and the envelope is taken at time − r/c (284,
+#   286): the pulse follows the curved wavefront, the case's `envelope = "wavefront"`, which
+#   ParticleMesh's `WavefrontTime` and the corrected Smilei namelist also launch (lwfa.jl's
+#   header). The focus is on the axis (`Origin::Center` along x). The transverse axis is periodic,
+#   so the Huygens surface is made contiguous across it
 #   (`MakePeriodicTransversalHuygensSurfaceContiguous`).
 # - The plasma. Electrons only: PIConGPU solves no Poisson equation and immobile ions deposit no
 #   current, so frozen ions would enter nothing but the charge-density output; the reader reads the
@@ -44,12 +49,16 @@
 #   inside the absorber's offset; HUYGENS = 16 leaves 4 cells.
 # - Numerics. Yee, Esirkepov, TSC, Boris, no current filter (`--currentInterpolation none`),
 #   Float64 by default (`precision64Bit`), supercells of 8 × 8.
-# - Diagnostics. openPMD (HDF5) dumps of E and the electron charge density every `fields_every`
-#   steps; the field energies; the electron energy histogram (`plugins/BinEnergyParticles.x.cpp`,
-#   in keV, real electrons per bin, with one underflow and one overflow column). The histogram
-#   covers the whole simulated domain, hidden row included, while ParticleMesh's and Smilei's
-#   cover their windows; the hidden row holds cold plasma only, which adds to the first bins.
-#   Its energy is the kinetic energy of `algorithms/KinEnergy.hpp`, p²/2m below γ = 1.005.
+# - Diagnostics. openPMD (HDF5) dumps of E, the electron charge density and (plasma) the electrons
+#   of the window every `fields_every` steps; the field energies; the electron energy histogram
+#   (`plugins/BinEnergyParticles.x.cpp`, in keV, real electrons per bin, with one underflow and one
+#   overflow column). That histogram covers the whole simulated domain: the local domains, which
+#   slide by a whole one at a time, so it reaches up to a local domain behind the window's back,
+#   where the electrons the other codes have dropped still are, and ahead of its front. The
+#   reader therefore bins the dumped electrons itself over `spectrum_region` (lwfa.jl), the cells
+#   all three codes hold, with the kinetic energy (γ − 1)·mₑc²; the plugin's histogram is kept as
+#   `spectrum_plugin`, and is the spectrum when a run has no particle dump. About 0.25 GB per
+#   output for A5's case (3.6 million electrons of the window, eight doubles each).
 
 include(joinpath(REPO, "scripts", "crosscode", "picongpu.jl"))
 using .PIConGPUDeck: reference_units
@@ -440,7 +449,8 @@ end
 
 The command line: the devices along y on one GPU, the grid, the steps, periodic along x only, the
 moving window with its move point, no grid adjustment (the layout is exact), the exponential
-absorber, no current filter, the openPMD dumps, the field energies and (plasma) the histogram.
+absorber, no current filter, the openPMD dumps (the fields, and in plasma the window's electrons
+for the reader's spectrum), the field energies and (plasma) the histogram.
 """
 function picongpu_arguments(p)
     lay, h = p.layout, p.histogram
@@ -448,7 +458,7 @@ function picongpu_arguments(p)
          "--periodic 1 0", "-m", "--windowMovePoint $(PIConGPUDeck.cfloat(lay.move_point))", "--autoAdjustGrid 0",
          "--fieldAbsorber exponential", "--currentInterpolation none",
          "--openPMD.period $(p.every)", "--openPMD.file simData", "--openPMD.ext h5", "--openPMD.infix NULL",
-         "--openPMD.source fields_all", "--fields_energy.period $(p.every)"]
+         "--openPMD.source $(p.plasma ? "species_all,fields_all" : "fields_all")", "--fields_energy.period $(p.every)"]
     p.plasma && push!(a, "--$(PIC_SPECIES)_energyHistogram.period $(p.every)", "--$(PIC_SPECIES)_energyHistogram.filter all",
                       "--$(PIC_SPECIES)_energyHistogram.binCount $(h.bins)",
                       "--$(PIC_SPECIES)_energyHistogram.minEnergy $(PIConGPUDeck.cfloat(h.min_keV))",
@@ -525,11 +535,63 @@ function read_energy_histogram(file)
     return out
 end
 
+pic_attribute(obj, name, default) = haskey(HDF5.attributes(obj), name) ? read_attribute(obj, name) : default
+
+"""
+    picongpu_electrons(species, case, units, jw) -> (; m, ekin, weight, offset)
+
+The electrons of one openPMD iteration (the group of the species): the lattice cell m of each
+along the case's x (PIConGPU's y), its kinetic energy in mₑc² and its weighting, the real electrons
+it stands for. The momentum is that of the macro-particle when its record says `macroWeighted`,
+and is divided by weighting^`weightingPower` (PIConGPU writes it so). `positionOffset` is in cells;
+whether it counts from the window's first cell, from the first cell of the data the domain holds,
+or over every slide (as the fields' `gridGlobalOffset` does) is read off the data: the plasma
+fills the window to its front, so the largest offset must be the window's last cell, at total cell
+`jw` + window − 1, in exactly one of the three (`offset` names it); otherwise an error.
+"""
+function picongpu_electrons(sp, case, u, jw)
+    d, lay = derived(case), picongpu_layout(case)
+    w = Float64.(vec(read(sp["weighting"])))
+    mom = sp["momentum"]
+    per = Int(pic_attribute(mom, "macroWeighted", 1)) == 1 ? w .^ Float64(pic_attribute(mom, "weightingPower", 1.0)) : ones(length(w))
+    p2 = zeros(length(w))
+    for c in ("x", "y", "z")
+        haskey(mom, c) || continue
+        scale = Float64(pic_attribute(mom[c], "unitSI", 1.0)) / (PIConGPUDeck.ME_SI * PIConGPUDeck.C_SI)
+        p2 .+= (Float64.(vec(read(mom[c]))) .* scale ./ per) .^ 2
+    end
+    off = sp["positionOffset"]["y"]
+    cell = round.(Int, Float64.(vec(read(off))) .* (Float64(pic_attribute(off, "unitSI", d.dx * u.length)) / (d.dx * u.length)))
+    isempty(cell) && return (; m = Int[], ekin = Float64[], weight = w, offset = "none")
+    # the total cell of the window's first cell under each reading of positionOffset
+    shifts = ("the window" => jw, "the domain's data" => (jw ÷ lay.local_y) * lay.local_y, "every slide" => 0)
+    front = jw + lay.window - 1
+    name, shift = shifts[argmin([abs(maximum(cell) + s - front) for (_, s) in shifts])]
+    abs(maximum(cell) + shift - front) <= 2 && minimum(cell) + shift >= jw ||
+        error("positionOffset runs from $(minimum(cell)) to $(maximum(cell)) cells; the window is the total cells $jw to $front, which none of the three readings gives")
+    return (; m = cell .+ (shift - lay.j0), ekin = sqrt.(1 .+ p2) .- 1, weight = w, offset = name)
+end
+
+# The histogram of the electrons whose lattice cell is in lo ≤ m < hi, weighted, as `pm_spectrum`'s.
+function picongpu_histogram(el, edges, lo, hi)
+    h = zeros(length(edges) - 1)
+    for i in eachindex(el.m)
+        lo <= el.m[i] < hi || continue
+        b = searchsortedlast(edges, el.ekin[i])
+        1 <= b < length(edges) && (h[b] += el.weight[i])
+    end
+    return h
+end
+
 """
 Read PIConGPU's dumps in `dir` into the summary format of `pm_output`, with the case's axes and
 names: `Ex_axis` from PIConGPU's E_y on the axis column, `Ey_axis` from its E_x on the two
 columns around the axis, `rho_axis` from the electron charge density, each with the lab m of its
-first point, and the spectrum in electrons per unit depth in the units of A1 (n_c (c/ω₀)²).
+first point, and the spectrum in electrons per unit depth in the units of A1 (n_c (c/ω₀)²): over
+`spectrum_region` from the dumped electrons (`spectrum`, with `spectrum_window` over the whole
+window), next to the plugin's histogram of the whole simulated domain (`spectrum_plugin`), which
+is the spectrum when the run dumped no electrons or they cannot be read (`spectrum_failed` says
+why).
 """
 function summarize_picongpu(dir)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
@@ -542,9 +604,12 @@ function summarize_picongpu(dir)
     hist = plasma ? read_energy_histogram(joinpath(dir, "$(PIC_SPECIES)_energyHistogram_all.dat")) : Dict{Int,Any}()
     per_weight = u.density * u.length^2 * p.cell_SI[3]       # real electrons per unit of A1's weight per unit depth
     outs = Any[]
+    edges = spectrum_edges(case)
+    failed = String[]
     h5open(joinpath(dir, "openPMD", "simData.h5"), "r") do f
         data = f["data"]
         mp = rstrip(haskey(HDF5.attributes(f), "meshesPath") ? read_attribute(f, "meshesPath") : "meshes/", '/')
+        pp = rstrip(pic_attribute(f, "particlesPath", "particles/"), '/')
         for key in sort(collect(keys(data)); by = k -> parse(Int, k))
             it = parse(Int, key)
             m = data[key][mp]
@@ -572,10 +637,23 @@ function summarize_picongpu(dir)
                 h = get(hist, it, nothing)
                 if h !== nothing
                     length(h.bins) == p.histogram.bins || error("iteration $it: $(length(h.bins)) histogram bins, expected $(p.histogram.bins)")
-                    out["spectrum"] = h.bins ./ per_weight
+                    out["spectrum"] = out["spectrum_plugin"] = h.bins ./ per_weight
                     out["spectrum_under"], out["spectrum_over"] = h.under / per_weight, h.over / per_weight
                 else
                     out["spectrum"] = Float64[]
+                end
+                if haskey(data[key], pp) && haskey(data[key][pp], PIC_SPECIES)
+                    # an electron dump that cannot be read must not cost the summary: the plugin's histogram
+                    # stays as the spectrum, without a `spectrum_region`, and the summary says why
+                    try
+                        el = picongpu_electrons(data[key][pp][PIC_SPECIES], case, u, jw)
+                        lo, hi = spectrum_region(case, it)
+                        out["spectrum"] = picongpu_histogram(el, edges, lo, hi) ./ per_weight
+                        out["spectrum_window"] = picongpu_histogram(el, edges, typemin(Int), typemax(Int)) ./ per_weight
+                        out["spectrum_region"], out["position_offset"] = [lo, hi], el.offset
+                    catch err
+                        push!(failed, "step $it: " * sprint(showerror, err))
+                    end
                 end
                 it in maps_at && (out["map"] = (rho = ρ, Ey = Ey, m0 = m0))
             end
@@ -589,8 +667,11 @@ function summarize_picongpu(dir)
     catch
         nothing
     end
-    write_summary(dir, outs; code = "PIConGPU", extra = Dict{String,Any}("seconds" => secs, "spectrum_edges" => spectrum_edges(case),
-                  "spectrum_domain" => "the whole simulated domain, hidden row included",
+    region = plasma && isempty(failed) && all(o -> haskey(o, "spectrum_region"), outs)
+    write_summary(dir, outs; code = "PIConGPU", stride = Int.(case["diagnostics"]["map_stride"]),
+                  extra = Dict{String,Any}("seconds" => secs, "spectrum_edges" => edges,
+                  "spectrum_covers" => region ? "region" : "the whole simulated domain (the plugin's histogram)", "spectrum_failed" => failed,
+                  "spectrum_domain" => "spectrum_plugin: the whole simulated domain, the local domains behind and ahead of the window included",
                   "devices_y" => lay.devices, "window_cells" => lay.window))
     return dir
 end
