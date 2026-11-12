@@ -129,7 +129,8 @@ end
 # refill read the density from the parameters. Every parameter of a static load is read from them
 # too: a state built for one plasma and handed another's seed, background fields, density and
 # perturbation or thermal speed (at N = 2), amplitude and seed (at N = 1), is the state built for
-# that other plasma, bit for bit over the first steps. The witness bunch's centre enters the
+# that other plasma, bit for bit over the first steps, and the background fields are in the
+# components no charge feeds, exactly, at N = 2 and N = 1. The witness bunch's centre enters the
 # weights at the injection step and nothing else: two centres on one state give the same gains
 # and other weights.
 function body_T721(be)
@@ -177,6 +178,10 @@ function body_T721(be)
             run!(ref, params(other), 3)
             @test !same_run(st, ref)
             initialize!(st, params(other))
+            if haskey(kw, :E0)       # the components no charge feeds are the background, exactly
+                @test all(==(kw.E0[3]), Array(st.fields.Ez)) && all(==(kw.B0[2]), Array(st.fields.By)) && all(==(kw.B0[3]), Array(st.fields.Bz))
+                @test all_plus_zero(st.fields.Bx)
+            end
             run!(st, params(other), 3)
             @test same_run(st, ref)
         end
@@ -186,6 +191,9 @@ function body_T721(be)
         initialize!(st1, q1)
         run!(st1, q1, 5)
         @test same_run(st1, ref1)
+        initialize!(st1, EMParams(q1; E0 = (zero(T), T(1) / 4, zero(T)), B0 = (T(1) / 8, zero(T), -T(1) / 2)))
+        @test all(==(T(1) / 4), Array(st1.fields.Ey)) && all(==(T(1) / 8), Array(st1.fields.Bx)) && all(==(-T(1) / 2), Array(st1.fields.Bz))
+        @test all_plus_zero(st1.fields.Ez) && all_plus_zero(st1.fields.By)
     end
     bunch(c) = WitnessBunch(; inject = 40.0, region = ((20.0, 30.0), (5.0, 7.0)), momentum = 3.0, center = (c, 6.0), length = 2.0)
     prob1, prob2 = map(c -> params_case((1.0, 3.0, 0.02, 8.0); witness = bunch(c), nsteps = 100), (24.0, 27.0))
@@ -319,6 +327,9 @@ end
     @test_throws ArgumentError check_params(EMState(static, EMNumerics()), EMParams(params(static); profile = prob.profile))
     st1, q1, _, _ = case_state("landau", T; ppc = 4, t_end = 1)
     @test_throws ArgumentError check_params(st1, EMParams(q1; lasers = prob.lasers))
+    @test_throws ArgumentError step!(st1, EMParams(q1; lasers = prob.lasers), 1)                 # the 1D step refuses too
+    @test_throws ArgumentError initialize!(st1, EMParams(q1; lasers = prob.lasers))
+    @test_throws ArgumentError step!(st1, EMParams(q1; species = ()), 1)
     # a problem of another configuration is not this state's
     e2(; ppc = (2, 2), stream = 1, charge = -one(T), mass = one(T)) =
         (SpeciesDescription{T}(:electron, charge, mass, e.density, zero(T), (1, 0), ppc, ZERO3(T), ZERO3(T), stream),)
