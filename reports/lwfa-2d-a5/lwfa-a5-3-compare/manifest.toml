@@ -1,10 +1,15 @@
 case = "lwfa-2d"
-commit = "df75c5c27c163a8197f6d7d8f41f4e2dacd9e604"
+commit = "3e4f2311d2a0eb5ceecbeb8fd73e2436b149d432"
 dirty = false
 runs = "scripts/runs/lwfa-a5-3-three"
-updated = "2026-11-12T05:04:08.078Z"
+updated = "2026-11-12T05:54:31.178Z"
 
 [inputs]
+
+[maps]
+picongpu-plasma = "sha256:392b431085a9c916178c0967968fd73213d2c92ddaaea5104a46de06ff10b66e"
+pm-plasma = "sha256:70875c2acec3da934d2a5b53aacaf0f8f5c787aed3f553e6f6ca42c2fa68d030"
+smilei-plasma = "sha256:51571ba501eca280c89034f8e8ed39863e7ac2db4df74b97ef299b7d9de22f0d"
 
 [summaries]
 picongpu-plasma = "sha256:d239c46ed96dec7170b8bad1806c809f6fcaed947f3aecd2801556faa03c4e23"

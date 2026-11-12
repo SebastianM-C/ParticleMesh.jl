@@ -4,13 +4,13 @@
 |---|---|
 | Work package | WP-053 (`trace/wp/WP-053-lwfa-three-codes.md`); goals A5, A7, and A3 for #362. Follows PR #336, which brought the PIConGPU column |
 | Case | `scripts/lwfa/cases/lwfa-2d.toml`, λ₀/48, with `laser.envelope = "wavefront"` (sha256 `e7bc9e3f…`, in the run manifests), and `scripts/lwfa/cases/lwfa-2d-focus0.toml`, the same with the focus on the injection plane, in vacuum only |
-| Commits | ParticleMesh's and PIConGPU's runs of §4 used the code of `6ead5bd` (the box requests `5b729a7` and `9f8a388` are that commit plus the prepared run directories); Smilei's runs of §4 the request `e79e5b7`, which is `df75c5c` plus its run directories. The comparisons: the commit in each `manifest.toml` under `lwfa-2d-a5/` (`dirty = false`) |
-| Runs | ParticleMesh: CPU box requests `runs/lwfa-a5-2` (result `ab315a6`) and `runs/lwfa-a5-focus0` (result `e86a2b8`). Smilei: CPU box request `runs/lwfa-a5-3-smilei` (result `088fd90`), with the amplitude it is given corrected for its boundary condition; its runs on the two earlier requests, without the correction, are history (§3.2). The summaries stay on those branches. PIConGPU: gpu-run jobs `a5-2-pic-vacuum`, `a5-2-pic-plasma` and the focus-0 vacuum run; ParticleMesh on CUDA: `lwfa-a5-2-cuda-pm-plasma`. The summaries of these four are on no branch and are in `lwfa-2d-a5/runs/`. First runs (§3.1): `runs/lwfa-a5-1` and `lwfa-a5pic` |
-| Input hashes | each run's `manifest.toml` as `manifest-<run>.toml` next to its comparison; the boxes' `box-status.toml` (`lwfa-a5-2-compare/`, `lwfa-a5-focus0-compare/`) and `box-status-smilei.toml` (`lwfa-a5-3-compare/`); the sha256 of the summaries compared under `summaries` in each comparison's `manifest.toml` |
+| Commits | ParticleMesh's and PIConGPU's runs of §4 used the code of `6ead5bd` (the box requests `5b729a7` and `9f8a388` are that commit plus the prepared run directories); Smilei's runs of §4 the request `e79e5b7`, which is `df75c5c` plus its run directories. These commits and the others cited below are commits of the PR branch `worktree-wp-053-lwfa-three-codes`; a squash merge does not keep them reachable from `main`. The comparisons: the commit in each `manifest.toml` under `lwfa-2d-a5/` (`dirty = false`) |
+| Runs | ParticleMesh: CPU box requests `runs/lwfa-a5-2` (result `ab315a6`) and `runs/lwfa-a5-focus0` (result `e86a2b8`). Smilei: CPU box request `runs/lwfa-a5-3-smilei` (result `088fd90`), with the amplitude it is given corrected for its boundary condition; its runs on the two earlier requests, without the correction, are history (§3.2). The summaries stay on those branches. A further correction of Smilei's launch (§4.1) is in `smilei_laser` and prepared as a request, not run. PIConGPU: gpu-run jobs `a5-2-pic-vacuum`, `a5-2-pic-plasma` and the focus-0 vacuum run; ParticleMesh on CUDA: `lwfa-a5-2-cuda-pm-plasma`. The summaries of these four are on no branch and are in `lwfa-2d-a5/runs/`, with the maps of PIConGPU's plasma run (`runs/lwfa-a5-2/picongpu-plasma/maps.h5`), which the off-axis rows read. First runs (§3.1): `runs/lwfa-a5-1` and `lwfa-a5pic` |
+| Input hashes | each run's `manifest.toml` as `manifest-<run>.toml` next to its comparison; the boxes' `box-status.toml` (`lwfa-a5-2-compare/`, `lwfa-a5-focus0-compare/`) and `box-status-smilei.toml` (`lwfa-a5-3-compare/`); the sha256 of the summaries compared under `summaries`, and of the plasma runs' `maps.h5` under `maps`, in each comparison's `manifest.toml` |
 | Environment | ParticleMesh: Julia 1.13.3, Float64, Reference mode; 16 threads on an AMD EPYC 9655 (the CPU box), and CUDA on an RTX 4080 SUPER. Smilei v5.1 (`438d43d`, image `particlemesh-smilei:e4f0148b8952fc87`), 16 OpenMP threads, the same box. PIConGPU 0.8.0 (`6bb3470e`), CUDA, Float64, the RTX 4080 SUPER |
-| Figures | `lwfa-2d-a5/lwfa-a5-3-compare/` (A5's case), `lwfa-a5-3-focus0-compare/` (focus on the plane), each PNG with its JSON sidecar; `lwfa-a5-2-cuda-pair/pair.json` (ParticleMesh on two backends); `lwfa-a5-smilei-pair/pair.json` (Smilei with and without the correction). History: `lwfa-a5-2-compare/comparison.json` and `lwfa-a5-focus0-compare/comparison.json` (Smilei uncorrected), `lwfa-a5-three-compare/comparison.json` (first runs); their figures are in this file's history, at `df75c5c` and `c9de0de`. The measured values below are keys of the `comparison.json` or `pair.json` named with them; ranges, largest values, counts and ratios are computed from those keys, the wall times and the box's step times are from the runs' summaries and the box status files, and the few numbers computed from the summaries or the maps directly say so where they stand |
-| Status | measured; reviewed twice, the present version not yet. No number here is to leave the repository before the review of this version |
-| Review | Two independent reviews by fresh numerics-reviewer subagents (claude-fable-5-2, 2026-11-12). The first, on the unmatched first runs, found that the three codes had launched three different pulses and that the spectra covered different regions (§3.1, §4.4). The second, on `c9de0de`, reproduced every table of the runs with Smilei uncorrected and found two wrong numbers, a hypothesis stated as fact, the wake's measure ending on a bucket's edge, and the pulse compared on the axis only; `df75c5c` answered those and derived Smilei's amplitude factor. Neither has seen the runs with Smilei corrected (§4) or §6. A third pass follows this commit |
+| Figures | `lwfa-2d-a5/lwfa-a5-3-compare/` (A5's case), `lwfa-a5-3-focus0-compare/` (focus on the plane), each PNG with its JSON sidecar; `lwfa-a5-2-cuda-pair/pair.json` (ParticleMesh on two backends); `lwfa-a5-smilei-pair/pair.json` (Smilei with and without the correction). History: `lwfa-a5-2-compare/comparison.json` and `lwfa-a5-focus0-compare/comparison.json` (Smilei uncorrected), `lwfa-a5-three-compare/comparison.json` (first runs); their figures are in the commits `df75c5c` and `c9de0de` of the PR branch. The measured values below are keys of the `comparison.json` or `pair.json` named with them; ranges, largest values, counts and ratios are computed from those keys, the wall times and the box's step times are from the runs' summaries and the box status files, and the few numbers computed from the summaries or the maps directly say so where they stand |
+| Status | measured; reviewed three times, the present version not yet. No number here is to leave the repository before the review of this version |
+| Review | Three independent reviews by fresh numerics-reviewer subagents (claude-fable-5-2, 2026-11-12); their findings are in `lwfa-2d-a5/review.md`. The first, on the unmatched first runs, found that the three codes had launched three different pulses and that the spectra covered different regions (§3.1, §4.4). The second, on `c9de0de`, reproduced every table of the runs with Smilei uncorrected and found two wrong numbers, a hypothesis stated as fact, the wake's measure ending on a bucket's edge, and the pulse compared on the axis only. The third, on `2ee80a5`, reproduced the tables of §4 and §6 (732 cells) and found one more term in Smilei's launch, its boundary condition's response to oblique components (§4.1), and sentences of §4 to §6 that were wrong or attributed a difference to the wrong pair; this version answers those |
 
 `pm-plasma`'s manifest says `dirty = true`: the step before it on the box, `pm-vacuum` (same commit, `dirty = false`), rewrites its own tracked `manifest.toml`. This is inferred from the two manifests, not recorded by the run.
 
@@ -18,7 +18,7 @@
 
 The case, in A1's units: a₀ = 2, waist 28, τ = 26 (1/e half width of the field), focus at x = 320; electrons of 0.01 n_c (λ_p = 62.8) behind 260 of vacuum and a 60 sin² ramp, 2 × 2 per cell, cold, ions immobile; Δx = λ₀/48, Δy = 4Δx, Δt at 0.95 of Yee's 2D limit; a window of 2304 × 384 cells moving at c from t = 256; 10 777 steps, 14 outputs 829 steps apart (t ≈ 0, 100, …, 1300). Yee, Esirkepov, quadratic shapes, Boris, no current filter, Float64 in all three.
 
-One pulse on the lab plane x = 0 in all three codes: a cosine carrier counted from the envelope's peak, the 2D Gouy phase, envelope and carrier on one time along the curved wavefront, and one amplitude. How each code is made to launch it, with the source lines read, is in the headers of `scripts/lwfa/lwfa.jl` and `scripts/lwfa/picongpu.jl`: PIConGPU's `GaussianPulse` is that pulse; ParticleMesh launches it with `GaussianLaser(envelope = WavefrontTime())`; Smilei's namelist gets a focus counted from its ghost node, an envelope centre, a phase offset, and the case's a₀ divided by what its boundary condition launches per unit (`smilei_laser`, §3.2). The three share Δx, Δy and Δt, so their grids are one lattice in the lab frame and every comparison matches nodes by index, with nothing interpolated.
+One pulse on the lab plane x = 0 in all three codes: a cosine carrier counted from the envelope's peak, the 2D Gouy phase, envelope and carrier on one time along the curved wavefront, and one amplitude. How each code is made to launch it, with the source lines read, is in the headers of `scripts/lwfa/lwfa.jl` and `scripts/lwfa/picongpu.jl`: PIConGPU's `GaussianPulse` is that pulse; ParticleMesh launches it with `GaussianLaser(envelope = WavefrontTime())`; Smilei's namelist gets a focus counted from its ghost node, an envelope centre, a phase offset, and the case's a₀ divided by what its boundary condition launches per unit (`smilei_laser`, §3.2). `smilei_laser` now also narrows the waist to undo that condition's response to oblique components; the runs of §4 were made before that (§4.1). The three share Δx, Δy and Δt, so their grids are one lattice in the lab frame and every comparison matches nodes by index, with nothing interpolated.
 
 ## 2. Measures
 
@@ -36,7 +36,7 @@ In `comparison.json` for reference, not counted: the box maximum of |E_y| (sampl
 
 ### 3.1 The first runs: three different pulses
 
-The runs of 5 November (`lwfa-2d-a5/lwfa-a5-three-compare/comparison.json`) compared three pulses, and this is the record of what the mismatch was. The first version of this report, with their tables, is in this file's history (`1080c9a`); their figures and PIConGPU's first-run summaries are in the history at `c9de0de`.
+The runs of 5 November (`lwfa-2d-a5/lwfa-a5-three-compare/comparison.json`) compared three pulses, and this is the record of what the mismatch was. The first version of this report, with their tables, is commit `1080c9a` of the PR branch; their figures and PIConGPU's first-run summaries are in its commit `c9de0de`.
 
 | on the axis in vacuum, t = 200 to 1300 | PM–S | PM–P | S–P |
 |---|---|---|---|
@@ -50,7 +50,7 @@ The runs of 5 November (`lwfa-2d-a5/lwfa-a5-three-compare/comparison.json`) comp
 
 ### 3.2 The second runs: Smilei's amplitude
 
-With carrier and envelope matched (`lwfa-a5-2-compare/comparison.json`, `lwfa-a5-focus0-compare/comparison.json`; the tables are in this file's history at `df75c5c`), the three carriers agreed to 0.7 mrad and the centroids to 0.002 c/ω₀ in vacuum, and Smilei's amplitude was above the other two at every output: its peak 0.166 % to 0.214 % above PIConGPU's with the focus ahead, 0.164 % to 0.186 % with it on the plane.
+With carrier and envelope matched (`lwfa-a5-2-compare/comparison.json`, `lwfa-a5-focus0-compare/comparison.json`; the tables are in the PR branch's commit `df75c5c`), the three carriers agreed to 0.7 mrad and the centroids to 0.002 c/ω₀ in vacuum, and Smilei's amplitude was above the other two at every output: its peak 0.166 % to 0.214 % above PIConGPU's with the focus ahead, 0.164 % to 0.186 % with it on the plane.
 
 **The factor is Smilei's boundary condition.** Its Silver–Müller update at xmin (`ElectroMagnBC2D_SM.cpp:63` to `66` and `245`) is, at normal incidence, (B₀ + B₁)/2 + (E₀ half a step before + E₀ half a step after)/2 = 2b: the mean of the new B_z over the two points either side of the boundary node plus the mean of that node's E_y over the step around the new B's time, set to twice the profile b the namelist prescribes at that time. For the grid's own right-going plane wave those two means are cos(kΔx/2) and cos(ω₀Δt/2) of the wave, k the Yee wavenumber, so the wave launched is
 
@@ -118,8 +118,22 @@ Amplitude: relative rms difference and the peak's ratio a/b − 1, in percent (`
 | 1300 | 0.009 | 0.014 | 0.023 | +0.008 | −0.013 | −0.022 |
 
 - **The prediction held.** Smilei's peak amplitude is within 0.033 % of PIConGPU's (+0.016 % to −0.033 %) and within 0.064 % of ParticleMesh's; it was 0.166 % to 0.214 % above PIConGPU's. At t = 200 the difference to PIConGPU went from +0.214 % to +0.016 %, the factor's 0.198 %. The phases and centroids are those of the second runs to the digits shown, as a change of amplitude leaves them in vacuum.
-- **One pulse, to these numbers.** The three carriers agree to 0.70 mrad, the centroids to 0.002 c/ω₀ (a sixty-fifth of a cell), the amplitudes to 0.07 %. No pair stands apart: Smilei–PIConGPU is the closest in amplitude (0.03 %), ParticleMesh–Smilei in phase and centroid.
-- **From t = 500 Smilei is 0.02 % to 0.03 % below PIConGPU.** The estimate made before the run for what the plane-wave factor leaves out was of this sign and size: the condition is the normal-incidence one and launches a component at angle α with E_y lower by about α²/4, 0.03 % for ⟨α²⟩ = 1/waist². The estimate was not checked beyond that agreement.
+- **To these numbers:** the three carriers agree to 0.70 mrad, the centroids to 0.002 c/ω₀ (a sixty-fifth of a cell), the amplitudes to 0.07 %. Smilei–PIConGPU is the closest pair in amplitude (0.03 %) and ParticleMesh–Smilei in phase and centroid. The amplitudes and phases that are left are not scatter: they are smooth functions of where the pulse is, and the next paragraphs say what they are.
+
+**What the launches still differ by: oblique components.** Take the 24 vacuum outputs of the two sets (this one and §4.2's) as functions of ξ, the distance of the pulse from its focus. Where their ranges of ξ overlap the two sets fall on one curve for each pair, to 0.001 % in the peak amplitude and 0.007 mrad in the phase. Least squares of each pair's a/b − 1 on two shapes, 1/(2w(ξ)²) and the change of the on-axis amplitude per unit of displacement of b's focus, ξ/(2(z_R² + ξ²)), with w(ξ) the beam radius and z_R = 392; and of its phase on the corresponding two, ξ/(4(z_R² + ξ²)) and z_R/(2(z_R² + ξ²)), and a constant (computed from the two `comparison.json`, not keys; the phase coefficients with the sign for which Smilei's term counts as it does in the amplitude):
+
+| pair | amplitude: times 1/(2w²) | b's focus further out by (c/ω₀) | largest residual (%) | phase: times ξ/(4(z_R² + ξ²)) | b's focus further out by | constant (mrad) | largest residual (mrad) |
+|---|---|---|---|---|---|---|---|
+| PM–S | 1.00 | 0.05 | 0.008 | 0.99 | 0.01 | −0.04 | 0.03 |
+| PM–P | 0.82 | 0.47 | 0.004 | 0.83 | 0.47 | 0.00 | 0.06 |
+| S–P | −0.18 | 0.42 | 0.004 | −0.16 | 0.46 | +0.04 | 0.06 |
+
+Without the last two outputs of the focus-0 set, where the pulse is near the end of its run, the residuals are 0.0006 %, 0.0008 % and 0.0013 %, and 0.011, 0.015 and 0.004 mrad, and the coefficients change in the third digit. Amplitude and phase give the same two numbers for each pair, independently.
+
+- **Smilei: its boundary condition, derived.** The update of B_z at xmin has no transverse term (`ElectroMagnBC2D_SM.cpp:245` to `247`), so it sets B_z + E_y = 2b on the boundary whatever the wave's direction. A component of the beam at transverse wavenumber k_y travels at an angle α with E_y = B_z·cos α, and is launched with E_y = b·2cos α/(1 + cos α) = b·(1 − k_y²/4 − …); Smilei's update run for one k_y on the Yee grid gives that factor to 0.01·k_y², with no phase (T-712). A Gaussian spectrum exp(−k_y²w₀²/4) times 1 − k_y²/4 is, to that order, exp(−k_y²(w₀² + 1)/4): Smilei launches the beam of waist √(w₀² + 1) with the same focus and the same a₀·w₀. On the axis that beam is lower than the case's by 1/(2w(ξ)²), 0.064 % at the focus, and its carrier differs by ξ/(4(z_R² + ξ²)), at most 0.32 mrad. These are the two shapes fitted, and ParticleMesh–Smilei has them with coefficients 1.00 and 0.99: subtracting the closed forms leaves 0.003 % or less in amplitude at 22 of the 24 outputs (0.010 % at the last output of the focus-0 set) and a constant −0.03 to −0.07 mrad in phase. The closed forms are the third review's; they are derived again here and checked against the data as above. The estimate of the previous version, 0.03 %, was half the effect, and was set against the wrong pair.
+- **The correction, made and not yet run.** `smilei_laser` gives Smilei the waist √(w₀² − 1) = 27.98214, a₀ times w₀/√(w₀² − 1) and the Gouy constant of that narrower beam, so that the condition launches the case's beam: the namelist's profile, put through the condition's response 1 + ¼∂_y² − ⅛∂_y⁴, is the case's pulse on the node to 2 × 10⁻⁵ a₀, where the uncorrected one leaves 1/(2w²) of the amplitude (T-698). The focus position does not move, since the response is real. A Smilei-only request with it is prepared (§6).
+- **PIConGPU: read and modelled, not corrected.** Its incident B is `ApproximateIncidentB`, B = k̂ × E/c (`fields/incidentField/Functors.hpp:544` to `579`, selected for `GaussianPulse` at `profiles/GaussianPulse.hpp:407` to `409`): the plane-wave relation, exact at normal incidence only. A Huygens surface fed so launches (1 + cos α)/2 of an oblique component forward, the same 1 − k_y²/4, and sends (cos α − 1)/2 of it backward, into the region behind the surface. There PIConGPU has its default exponential absorber, 12 cells of strength 10⁻³ (`param/fieldAbsorber.param`; `fields/absorber/exponential/Exponential.kernel:106` to `121`, applied once a step to E and once to B, `fields/MaxwellSolver/FDTD/FDTDBase.hpp:153` to `178`), and behind it the edge of the box. That layout in the 1D reduction of T-712 (the surface's first total-field node at cell 17, B zero behind the first node) returns more than eight tenths of the backward part, and the forward wave comes out as 1 − (0.208 − 0.222i)·k_y²: 0.83 of the 1/4, and a phase that is a focus 0.44 c/ω₀ further out (T-713). The runs measure 0.82 and 0.42 to 0.47. This is a model: how PIConGPU treats the fields at the edge of the box was assumed, not read, and no PIConGPU run has tested it; a run with a thicker or a different absorber would. Nothing was found in `GaussianPulse.hpp` itself that displaces the focus.
+- **So Smilei–PIConGPU is close in amplitude because both launch low**, by 1 and by 0.82 of the same term, and not because they agree on the prescribed pulse; and ParticleMesh's distance to each of them in the vacuum amplitude and phase is, to the residuals above, the other code's launch.
 
 ### 4.2 The focus on the injection plane
 
@@ -140,7 +154,7 @@ Amplitude: relative rms difference and the peak's ratio a/b − 1, in percent (`
 | 1200 | −0.27 | −0.25 | +0.02 | −0.48 | +1.24 | +1.73 | 0.005 | 0.018 | 0.022 |
 | 1300 | −0.22 | −0.15 | +0.07 | +0.65 | +2.17 | +1.52 | 0.005 | 0.020 | 0.017 |
 
-The same sizes as with the focus 320 ahead: phases within 0.7 mrad, centroids within 0.0022 c/ω₀, amplitudes within 0.06 %, Smilei's peak 0.013 % to 0.034 % below PIConGPU's. What the three launches still differ by does not come from the wavefront's curvature.
+The same sizes as with the focus 320 ahead: phases within 0.7 mrad, centroids within 0.0022 c/ω₀, amplitudes within 0.06 %, Smilei's peak 0.013 % to 0.034 % below PIConGPU's. What the three launches still differ by does not come from the wavefront's curvature on the plane; it depends on where the pulse is relative to its focus, the same for both sets (§4.1).
 
 ### 4.3 The laser and the wake in plasma
 
@@ -206,7 +220,7 @@ The wake's extrema in the 1.5 λ_p window, m_ecω₀/e (`wake_Ex_min`, `wake_Ex_
 | 1200 | −0.07980 | −0.07980 | −0.07980 | +0.003 | −0.001 | −0.004 | 0.08933 | 0.08930 | 0.08933 | +0.042 | +0.008 | −0.034 |
 | 1300 | −0.07699 | −0.07695 | −0.07698 | +0.051 | +0.011 | −0.040 | 0.08476 | 0.08474 | 0.08476 | +0.024 | +0.001 | −0.023 |
 
-The wake's difference against the laser's, per output: `wake_Ex_relrms` over `amplitude_relrms` of the same pair.
+The wake's difference against the laser's, per output: `wake_Ex_relrms` over `amplitude_relrms` of the same pair. The ratio sets an amplitude difference on the axis at one instant against a wake that the whole pulse made, so it is a rough guide only; the 4.30 of Smilei–PIConGPU at t = 400 is where that pair's amplitude difference changes sign (0.008 %).
 
 | t | PM–S | PM–P | S–P |
 |---|---|---|---|
@@ -223,9 +237,9 @@ The wake's difference against the laser's, per output: `wake_Ex_relrms` over `am
 
 - **The wake is the same in the three codes to 0.23 %** in E_x over 1.5 λ_p and to 0.16 % in its extrema, and no pair is displaced by a cell. With Smilei uncorrected the pairs with it were 0.17 % to 0.57 % apart; they are 0.04 % to 0.23 % now.
 - **The pairs with Smilei are still the further ones from t = 700**: 0.07 % to 0.23 %, where ParticleMesh–PIConGPU is 0.02 % to 0.07 %. Before t = 700 ParticleMesh–PIConGPU (0.06 % to 0.12 %) is no closer than Smilei–PIConGPU (0.04 % to 0.13 %).
-- **Not all of what is left is amplitude.** One code's wake changes by 2.5 to 3.0 times a change of its laser's amplitude (§3.2). ParticleMesh–PIConGPU's wake difference is 2.6 to 4.0 times its amplitude difference from t = 500; the two pairs with Smilei are at 2.9 to 5.2 and 3.5 to 5.2. At t = 800, Smilei–PIConGPU's 0.046 % of amplitude would account for 0.13 % of wake at a ratio of 2.9, and 0.21 % is measured. What the rest is was not determined.
+- **What is left for the pairs with Smilei is of the size its launch gives.** One code's wake changes by 2.5 to 3.0 times a uniform change of its laser's amplitude (§3.2). Smilei launches low on the axis by 1/(2w²), 0.064 % at the focus (§4.1), which at that response is 0.16 % to 0.19 % of wake; ParticleMesh–Smilei measures 0.18 % to 0.23 % at t = 500 to 800. The comparison is crude: Smilei's deficit is not a uniform change of a₀, it falls off away from the focus and comes with a phase term, and the ratios of the table above are 2.9 to 5.2 for the pairs with Smilei where ParticleMesh–PIConGPU is at 2.6 to 4.0. Whether the wake difference goes with the launch is what the run with the fourth correction tests (§6).
 - **The wake's maximum at t = 700** is the one extremum where a code stands out: Smilei's is 0.13 % and 0.16 % below the others', where every other entry of the pairs with Smilei is within 0.12 %.
-- **The laser in plasma.** Phases within 0.61 mrad, centroids within 0.0021 c/ω₀, amplitudes within 0.064 %, for all three pairs. Smilei's carrier, which drifted 3.4 mrad from PIConGPU's in the second runs, now keeps the offset it has in vacuum (−0.40 to −0.56 mrad). ParticleMesh's carrier moves by 0.6 mrad against both other codes over the run (+0.01 to +0.61 against Smilei, −0.55 to +0.07 against PIConGPU); in vacuum it moves against both by 0.5 mrad as well (§4.1).
+- **The laser in plasma.** Phases within 0.61 mrad, centroids within 0.0021 c/ω₀, amplitudes within 0.064 %, for all three pairs. Smilei's carrier, which drifted 3.4 mrad from PIConGPU's in the second runs, now stays −0.40 to −0.56 mrad from it. In vacuum the same pair goes from −0.55 mrad at t = 400 to −0.03 at t = 1300 (§4.1), so in plasma it ends 0.5 mrad from where it ends in vacuum; ParticleMesh–Smilei ends 0.9 mrad from its vacuum value (+0.61 against −0.27) and ParticleMesh–PIConGPU 0.4 (+0.07 against −0.30). One code's carrier moves by 3.9 mrad for 0.198 % of amplitude over this run (§3.2); at that response the 0.02 % to 0.05 % by which the launched amplitudes differ on the axis give 0.4 to 1.0 mrad, the size of these three. Like the wake's, that reading is a hypothesis until the fourth correction is run.
 
 Off the axis: the 2D maps of E_y, relative rms difference in percent on the lattice points two maps share, without the 48 cells at the back of the shared columns (`maps`). t = 300 is before the pulse reaches the plasma.
 
@@ -284,7 +298,7 @@ The plasma case in Reference mode, Float64, on the CPU box and on CUDA (`lwfa-a5
 | over the outputs with the measure | largest CPU–CUDA difference |
 |---|---|
 | carrier phase (rad) | 1.6 × 10⁻¹⁶ |
-| centroid (c/ω₀) | 3.4 × 10⁻¹³ |
+| centroid (c/ω₀) | 10⁻¹³ to 10⁻¹²: 3.4 × 10⁻¹³ as `compare-pair` sums the measure; the third reviewer's order of summation gave 1.8 × 10⁻¹², so this is roundoff of the sum, not of the runs |
 | amplitude, relative rms | 3.5 × 10⁻¹³ |
 | E_y, E_x, ρ_e on the axis, largest pointwise difference | 3.6 × 10⁻¹², 2.8 × 10⁻¹², 2.4 × 10⁻¹¹ |
 | wake E_x, relative rms | 1.7 × 10⁻¹³ |
@@ -307,33 +321,36 @@ Single runs. No performance conclusion is drawn: ParticleMesh ran in Reference m
 
 ## 5. Verification status and open issues
 
-- **Reviewed twice, this version not** (the Review row). One run of each code at one resolution. Nothing here is a validation claim.
-- **What is shown.** With carrier, envelope and amplitude matched, the three codes agree on this case to 0.7 mrad, 0.002 c/ω₀ and 0.07 % in the laser in vacuum, to 0.23 % in the wake's E_x over 1.5 λ_p and 0.16 % in its extrema, to 0.10 % in the maps of E_y over all rows, and to one bin of 0.2 mₑc² in the maximum energy. The trapped bunch's weight agrees to 0.14 % between ParticleMesh and PIConGPU and to 1.4 % with Smilei. The three launch mismatches that separated the earlier runs are understood from the sources, and each correction was measured in a run (§3, §4.1).
-- **Settled by the corrected Smilei run** (§3.2, §4):
-  - Smilei's amplitude: the launch factor 1.001984 of its boundary condition, predicted and found.
-  - Smilei's carrier drift in plasma (3.4 mrad): its amplitude.
-  - Smilei's wake excess (0.17 % to 0.57 % in E_x) and its wake maximum at t = 800: its amplitude, for the larger part; 0.04 % to 0.23 % is left.
-- **Refuted by it.** That Smilei's heavier bunch was its stronger laser: the excess stays with the amplitude matched (§4.4).
+- **Reviewed three times, this version not** (the Review row). One run of each code at one resolution. Nothing here is a validation claim.
+- **What is shown.** With carrier, envelope and plane-wave amplitude matched, the three codes agree on this case to 0.7 mrad, 0.002 c/ω₀ and 0.07 % in the laser in vacuum, to 0.23 % in the wake's E_x over 1.5 λ_p and 0.16 % in its extrema, to 0.10 % in the maps of E_y over all rows, and to one bin of 0.2 mₑc² in the maximum energy. The trapped bunch's weight agrees to 0.14 % between ParticleMesh and PIConGPU; Smilei's is heavier, by 1.3 % to 1.4 % by the group from t = 1000, by 2.7 % to 2.8 % at t = 800 and 900 where the gap rule gives it a wider group, and by 2.1 % to 3.3 % by the weight above 20 and 10 mₑc². The launches are not yet equivalent at the size of these laser and wake numbers: Smilei's and PIConGPU's treat oblique components differently from ParticleMesh's (§4.1).
+- **Settled** (§3, §4.1):
+  - The three launch mismatches of the earlier runs (carrier and Gouy phase, the envelope's convention, Smilei's plane-wave factor), each understood from the sources and its correction measured in a run.
+  - Smilei's carrier drift in plasma (3.4 mrad), most of its wake excess (0.17 % to 0.57 % in E_x) and its wake maximum at t = 800 in the second runs: its amplitude.
+  - ParticleMesh against Smilei in the vacuum amplitude and phase: Smilei's boundary condition and oblique components, derived, and equal to the measured differences to 0.003 % and a constant 0.03 to 0.07 mrad. The correction is made in `smilei_laser` and not yet run.
+- **Refuted.** That Smilei's heavier bunch was its stronger laser: the excess stays with the amplitude matched (§4.4).
+- **Modelled, not verified.** ParticleMesh against PIConGPU in the vacuum amplitude and phase (0.82 of Smilei's term and a focus 0.42 to 0.47 c/ω₀ further out): PIConGPU's B = k̂ × E on its Huygens surface with its default absorber behind it gives 0.83 and 0.44 in a 1D model (§4.1, T-713). No PIConGPU run has tested this, and PIConGPU was not changed.
+- **Hypotheses the fourth correction tests.** That what is left of the wake's difference for the pairs with Smilei (0.07 % to 0.23 % from t = 700, against 0.02 % to 0.07 % for ParticleMesh–PIConGPU), and the 0.5 to 0.9 mrad by which their carrier phases in plasma end away from their vacuum values, are Smilei's launch deficit (§4.3).
 - **Unexplained**, each with its numbers above:
-  - Smilei's bunch, 1.3 % heavier than the other two by the group and 2.1 % to 3.2 % heavier than ParticleMesh's by the weight above 20 and 10 mₑc² over the shared region. Its load rule at the ramp's foot is the candidate, untested.
-  - What is left of the wake's difference for the pairs with Smilei from t = 700 (0.07 % to 0.23 %, against 0.02 % to 0.07 % for ParticleMesh–PIConGPU), more than their amplitude differences account for at the measured response; and Smilei's wake maximum at t = 700, 0.13 % and 0.16 % below the others'.
-  - Smilei's amplitude 0.01 % to 0.04 % below PIConGPU's from t = 500 after the correction. The oblique-incidence estimate has this sign and size and was not checked.
+  - Smilei's bunch, heavier than the other two as given under "What is shown". Its load rule at the ramp's foot is the candidate, untested.
+  - Smilei's wake maximum at t = 700, 0.13 % and 0.16 % below the others'.
+  - The constant −0.03 to −0.07 mrad left between ParticleMesh's and Smilei's carriers in vacuum after Smilei's term.
   - The far wing of the maps: 0.29 % to 0.69 % between every pair, where the rest of each map agrees to 0.14 %.
   - Smilei's E_y in the 12 to 18 cells at the back of its window, different from both other codes' by 20 % to 40 % of the field there, unchanged by the amplitude correction. The cause proposed, its boundary acting on the wake's field, was not tested.
-  - ParticleMesh's carrier phase, moving by 0.5 to 0.6 mrad against both other codes in vacuum and in plasma, and its centroid, up to 0.0016 c/ω₀ from PIConGPU's with the focus ahead and 0.0022 with it on the plane; and ParticleMesh's amplitude 0.05 % to 0.07 % above both others at t = 200 to 400, falling to 0.01 % by the end.
   - The weight above 1 mₑc² over the shared region, ParticleMesh against Smilei: 1.5 % to 3.6 % at t = 700 to 1000 where it is within 0.5 % at the other outputs.
 - **Not done.**
+  - The Smilei runs with the fourth correction: prepared, not submitted (§6).
+  - A PIConGPU run that would test the model of its launch (another absorber, or an incident B with the oblique term), and any correction of PIConGPU's side.
   - PIConGPU's spectrum over the common region (§4.4, #412), and with it the reader of its electron dump on a real file.
   - A second resolution (§6).
   - Float32, and the Fast mode, for ParticleMesh; A5's performance comparison.
   - The engine on `main` after `6ead5bd`: ParticleMesh's runs are that commit's.
-- **The tests.** `scripts/lwfa/test/runtests.jl` (T-510 to T-518, T-690 to T-694, T-698 to T-708, T-710, T-711): the generators, the readers and the measures on synthetic data, Smilei's boundary update on a 1D grid, and a small ParticleMesh run end to end. `lib/ParticleMeshElectromagnetic/test/antenna.jl` (T-695 to T-697, T-709): the wavefront envelope, as a function and launched through the antenna. They do not test the physics of the case.
+- **The tests.** `scripts/lwfa/test/runtests.jl` (T-510 to T-518, T-690 to T-694, T-698 to T-708, T-710 to T-713): the generators, the readers and the measures on synthetic data, Smilei's boundary update at normal incidence and for an oblique component, the model of PIConGPU's launch, and a small ParticleMesh run end to end. `lib/ParticleMeshElectromagnetic/test/antenna.jl` (T-695 to T-697, T-709): the wavefront envelope, as a function and launched through the antenna. They do not test the physics of the case.
 
-## 6. Proposed for A7
+## 6. For A7: what these runs give, and what waits for one more run
 
-A7 bases the benchmark thresholds on the measured Smilei–PIConGPU spread for equivalent inputs and asks that ParticleMesh agree with each of them to within it. It has accepted thresholds for the thermal and cold cases and none for LWFA. What follows is measured on the runs of §4, the first whose inputs are equivalent as far as is known; nothing is accepted, and the owner sets A7.
+A7 bases the benchmark thresholds on the measured Smilei–PIConGPU spread for equivalent inputs and asks that ParticleMesh agree with each of them to within it. It has accepted thresholds for the thermal and cold cases and none for LWFA. Nothing here is accepted, the owner sets A7, and this version proposes no threshold number: at the size of the distances below the three launches are not yet equivalent (§4.1), and one more Smilei run changes the table.
 
-### 6.1 The spread and ParticleMesh's distances
+### 6.1 The distances of the present runs
 
 The counted observables over the outputs where they exist (vacuum: t = 200 to 1300, 12 outputs; plasma: t = 400 to 1300, 10 outputs; maps: t = 300, 700, 1200). Each entry is the range of the magnitude; "outside" counts the outputs where ParticleMesh's distance exceeds the Smilei–PIConGPU distance at the same output, with the largest excess; the last two columns are ParticleMesh's largest distance over the run divided by the largest Smilei–PIConGPU distance over the run.
 
@@ -351,74 +368,56 @@ The counted observables over the outputs where they exist (vacuum: t = 200 to 13
 | wake E_x over 1.5 λ_p, relative rms (%) | 0.04 to 0.21 | 0.08 to 0.23 | 0.02 to 0.12 | 10 (0.101 at t = 500) | 2 (0.044 at t = 500) | 1.10 | 0.58 |
 | wake minimum, \|a/b − 1\| (%) | 0.00 to 0.10 | 0.00 to 0.11 | 0.00 to 0.10 | 8 (0.099 at t = 400) | 3 (0.099 at t = 400) | 1.16 | 1.02 |
 | wake maximum, \|a/b − 1\| (%) | 0.00 to 0.13 | 0.01 to 0.16 | 0.00 to 0.04 | 9 (0.043 at t = 600) | 4 (0.020 at t = 400) | 1.24 | 0.32 |
-| maps of E_y, all rows, relative rms (%) | 0.05 to 0.10 | 0.06 to 0.10 | 0.06 to 0.07 | 3 of 3 (0.006 at t = 700) | 1 (0.016 at t = 300) | 1.01 | 0.68 |
+| maps of E_y, all rows, relative rms (%) | 0.05 to 0.10 | 0.06 to 0.10 | 0.06 to 0.07 | 3 of 3 (0.006 at t = 700) | 1 (0.016 at t = 300) | 1.01 | 0.67 |
 | maps of E_y, flank, relative rms (%) | 0.09 to 0.14 | 0.10 to 0.14 | 0.07 to 0.13 | 1 (0.008 at t = 300) | 1 (0.030 at t = 300) | 0.97 | 0.90 |
 | bunch weight, \|a/b − 1\| (%), t = 1000 to 1300 | 1.26 | 1.39 | 0.14 | 4 of 4 (0.12) | 0 | 1.10 | 0.11 |
 | highest occupied bin, \|a − b\| (mₑc²), t = 800 to 1300 | 0 | 0 to 0.2 | 0 to 0.2 | 1 (0.2 at t = 1100) | 1 (0.2 at t = 1100) | no ratio | no ratio |
 
 How these read:
 
-- **With the inputs equivalent, the three distances are of one size.** The Smilei–PIConGPU spread is no larger than ParticleMesh's distance to either code: in the amplitude it is the smallest of the three, in the wake's E_x it lies between them, in the plasma centroid it is the largest. In the second runs it looked as if ParticleMesh were close to PIConGPU and Smilei the code apart; that was Smilei's amplitude.
-- **So "within the spread, output by output" is decided by hundredths of a percent and by signs.** ParticleMesh is outside at some output in every row, against Smilei at all ten outputs in the wake's E_x and in the plasma amplitude (by at most 0.10 % and 0.055 %), and in the maximum energy because the two reference codes happen to fill the same bin at t = 1100 and ParticleMesh the next one.
+- **The three distances are of one size in most rows.** ParticleMesh's largest distance is 0.58 to 1.94 of the largest Smilei–PIConGPU distance, within a factor of two, except in the centroids against Smilei (0.37 to 0.43), the wake's maximum against PIConGPU (0.32) and the bunch against PIConGPU (0.11). A pair with ParticleMesh is the largest of the three in 13 of the 16 rows; the Smilei–PIConGPU spread is the smallest of the three in 5. In the second runs it looked as if ParticleMesh were close to PIConGPU and Smilei the code apart; that was Smilei's amplitude.
+- **Part of this table is launch, not agreement.** The vacuum amplitude rows, where ParticleMesh is furthest outside (1.88 and 1.94), are Smilei's and PIConGPU's response to oblique components: both launch the beam low on the axis, by 1 and by 0.82 of the same term, so their mutual distance is small and ParticleMesh's distance to each is that term (§4.1). The same holds for part of the vacuum phase rows, and by the hypotheses of §5 for part of the wake and plasma rows.
+- **"Within the spread, output by output" is decided by hundredths of a percent and by signs.** ParticleMesh is outside at some output in every row, against Smilei at all ten outputs in the wake's E_x and in the plasma amplitude (by at most 0.10 % and 0.055 %), and in the maximum energy because the two reference codes happen to fill the same bin at t = 1100 and ParticleMesh the next one.
 - **The laser's phase and centroid are signed and cross zero**, so the distance of two codes at a single output can be arbitrarily small (0.02 mrad) while every pair stays below 0.7 mrad and 0.0022 c/ω₀. An output-by-output comparison of such a quantity with the spread does not measure agreement.
 
-### 6.2 What a rule should be able to reject
+### 6.2 The run that is prepared, and its two outcomes
+
+Smilei alone, with the waist and amplitude that undo its boundary condition's response to oblique components (§4.1), in the three sets: the focus on the plane in vacuum, A5's case in vacuum, A5's case in plasma (`scripts/runs/lwfa-a5-4/` and `lwfa-a5-4-focus0/`, one CPU box request, not submitted). ParticleMesh's and PIConGPU's runs stay, and `compare` is run again with the new Smilei summaries. The prediction, the third review's, which the closed forms' fit to the present runs supports: ParticleMesh–Smilei within about 0.003 % in the vacuum amplitude and a constant of about 0.05 mrad in the vacuum phase.
+
+- *It holds.* ParticleMesh and Smilei then launch one beam to a few thousandths of a percent, and their distances in plasma are the first between two of these codes with equivalent inputs at that level. The hypotheses of §5 are read off: the wake's difference and the plasma phase of that pair either come down to what is then left in the launch or they do not, and what stays is the two implementations'. Both pairs with PIConGPU will carry PIConGPU's launch (0.82 of the oblique term and the displaced focus), so the Smilei–PIConGPU spread will then be a known difference of the inputs, of measured form and size, and not a spread for equivalent inputs. Whether A7's spread should include it, or PIConGPU's launch should be matched first (its incident B, or its absorber, if the model of §4.1 is right), is a decision for the owner; this report does not make it.
+- *It does not hold.* Then the reduction to one transverse component (T-712) does not describe what Smilei's boundary does in the 2D run, the agreement of the closed forms with the present runs to 0.003 % was a coincidence of form, and the table above stands with an oblique term of unknown origin in it.
+
+### 6.3 What a rule should be able to reject
 
 Two sets of runs with a known mismatch of the inputs exist to try a rule on, besides the matched ones:
 
 - the first runs (§3.1): a carrier 1.98 rad off, a centroid 0.26 to 0.41 c/ω₀ off;
-- Smilei uncorrected (§3.2): 0.198 % more amplitude than the other two and nothing else. Its largest distances to PIConGPU over the run (`lwfa-a5-2-compare/comparison.json`): amplitude 0.215 % in vacuum and 0.218 % in plasma, plasma phase 3.37 mrad, plasma centroid 0.0046 c/ω₀, wake E_x 0.568 %, wake minimum 0.335 % and maximum 0.435 %, maps over all rows 0.356 %, bunch 1.68 %, highest bin 0.2 mₑc².
+- Smilei uncorrected (§3.2): 0.198 % more amplitude than the other two and nothing else. Its largest distances to PIConGPU over the run (`lwfa-a5-2-compare/comparison.json`): amplitude 0.215 % in vacuum and 0.218 % in plasma, plasma phase 3.37 mrad, plasma centroid 0.0046 c/ω₀, wake E_x 0.568 %, wake minimum 0.335 % and maximum 0.435 %, maps over all rows 0.356 %, bunch 1.68 %, highest bin 0.2 mₑc². Over the largest Smilei–PIConGPU distances of §6.1 these are 6.3 and 4.7 (amplitude; 5.3 with the focus on the plane), 6.0 (plasma phase), 2.2 (plasma centroid), 2.7 (wake E_x), 3.4 and 3.3 (wake minimum and maximum), 3.5 (maps; 2.1 in the flank) and 1.3 (bunch).
 
-A mismatch of 0.2 % in a₀ is a small one; whether a rule for this case should reject it is the owner's choice, and the options below differ in exactly that.
+A mismatch of 0.2 % in a₀ is a small one, and the oblique term of §4.1 is a third of it; whether a rule for this case should reject either is the owner's choice.
 
-### 6.3 Three options
+### 6.4 The forms a rule could take, and what the evidence says so far
 
-Each is a rule for the counted observables of §6.1. In all three the signed quantities (phase, centroid) are held on the run's largest magnitude, not output by output, and the spread is the matched runs', stored with the rule, not the spread of whichever runs are being judged: against the first runs' own Smilei–PIConGPU centroid spread of 0.264 c/ω₀, ParticleMesh's first-run centroid distance of 0.405 c/ω₀ is 1.5 of it.
+In every form the signed quantities (phase, centroid) are held on the run's largest magnitude, not output by output, and the spread is a stored one from matched runs, not the spread of whichever runs are being judged: against the first runs' own Smilei–PIConGPU centroid spread of 0.264 c/ω₀, ParticleMesh's first-run centroid distance of 0.405 c/ω₀ is 1.5 of it.
 
-**Option 1: A7's sentence as it stands, output by output.** |ParticleMesh − each code| ≤ |Smilei − PIConGPU| at the same output, for every counted observable.
+1. **A7's sentence as it stands, output by output**: |ParticleMesh − each code| ≤ |Smilei − PIConGPU| at the same output, for every counted observable. The evidence is against it. On the present runs ParticleMesh fails it in every row, by the "outside" entries, which in the laser and wake rows are hundredths of a percent and less; either reference code put in ParticleMesh's place fails rows too, since whichever of three distances of one size is largest at an output is outside; and for the signed quantities the comparison does not measure agreement.
+2. **A stated multiple of the stored spread's largest value over the run, per observable.** ParticleMesh's ratios are the last two columns of §6.1, the largest 1.94, then 1.88, 1.74, 1.41 and 1.38; Smilei uncorrected has the ratios of §6.3; the first runs are at 200 in the centroid. The row that binds, the vacuum amplitude against PIConGPU, is the launch term of §4.1: a multiple of 2 would pass ParticleMesh there with a margin of 3 %, on a spread that is small because the two reference codes share a bias. The maximum energy has no ratio (the spread is zero) and would need a floor of one bin.
+3. **Fixed thresholds per observable, set once from matched runs.** A7's accepted number for the cold two-stream growth rate is of this form (1 × 10⁻⁵ relative of each reference code, `docs/goals/A7-acceptance.md` on `main`). They read more plainly than a multiple, do not move when a reference run is repeated, need no floor, and can be asked of ParticleMesh against one reference code where the other is not available; they are tied to one case, one resolution and one set of windows.
 
-- On the matched runs: ParticleMesh fails every row of §6.1, by the "outside" entries.
-- It would also fail either reference code put in ParticleMesh's place in some rows: the three distances are of one size, and whichever is largest at an output is outside.
-- Not proposed; listed because it is what A7 says today.
+The evidence does not yet choose between forms 2 and 3, and no number is proposed for either. Both would be judged here on the data they were set from: one matched set, which still has a known launch difference in it, and two mismatched ones; there is no held-out case. After the run of §6.2 the table of §6.1 changes in the rows that bind, and numbers set before it would be numbers about the oblique term.
 
-**Option 2: a stated multiple of the stored spread's largest value over the run, per observable**, the form A7 accepted for the cold two-stream. ParticleMesh's largest distance over the largest spread is in the last two columns of §6.1; the largest of all is 1.94 (vacuum amplitude against PIConGPU), then 1.88, 1.74, 1.41 and 1.38.
-
-| multiple | ParticleMesh on the matched runs | Smilei uncorrected, against PIConGPU | first runs |
-|---|---|---|---|
-| 1 | fails 12 of the 15 rows with a ratio (largest 1.94) | rejected in every row but the vacuum phase and centroid | rejected |
-| 2 | passes every row with a ratio; the closest is 1.94 | rejected in the amplitude (6.3, 5.3 and 4.7 times the spread in the two vacuum sets and in plasma), the plasma phase (6.0), the wake's E_x (2.7), minimum (3.4) and maximum (3.3), the plasma centroid (2.2) and the maps (3.5 over all rows, 2.1 in the flank) | rejected (centroid 200 times) |
-| 3 | passes, the closest at 0.65 of the bound | rejected in the amplitude, the plasma phase, the wake's extrema and the maps over all rows; passes the wake's E_x, the plasma centroid and the maps' flank | rejected |
-| 5 | passes, the closest at 0.39 of the bound | rejected in the vacuum amplitude (6.3, and 5.3 with the focus on the plane) and the plasma phase (6.0) only | rejected |
-
-The maximum energy has no multiple: the spread is zero, so this form needs a floor of one bin there. The bunch's weight passes at a multiple of 2 or more both for ParticleMesh (1.10) and for Smilei uncorrected (1.3), so it does not tell the matched runs from the mismatched ones.
-
-**Option 3: fixed thresholds per observable, set once from the matched runs.** Round numbers at about one and a half to two times the largest distance of any of the three pairs, in either vacuum set or in plasma:
-
-| Observable | threshold | largest distance of any pair on the matched runs | Smilei uncorrected, against PIConGPU |
-|---|---|---|---|
-| carrier phase, run's largest magnitude | 1 mrad | 0.70 (PM–P, vacuum) | 3.37 in plasma: rejected (0.55 in vacuum: passes, as it should) |
-| centroid, run's largest magnitude | 0.004 c/ω₀ | 0.0022 (PM–P, focus on the plane) | 0.0046 in plasma: rejected |
-| amplitude on the axis, relative rms | 0.1 % | 0.066 (PM–P, vacuum) | 0.215: rejected |
-| wake E_x over 1.5 λ_p, relative rms | 0.4 % | 0.232 (PM–S) | 0.568: rejected |
-| wake extrema, \|a/b − 1\| | 0.25 % | 0.162 (PM–S, maximum at t = 700) | 0.335 and 0.435: rejected |
-| maps of E_y over all rows, relative rms, back 48 cells left out | 0.2 % | 0.104 (PM–S) | 0.356: rejected |
-| highest occupied bin | one bin, 0.2 mₑc² | 0.2 (PM against both, t = 1100) | 0.2: passes |
-| bunch weight | not counted (or 3 %) | 1.39 from t = 1000; 2.77 at t = 800 and 900 | 1.68 |
-
-ParticleMesh passes all of them against both codes, with its distance at 0.52 to 0.70 of the threshold in the rows where it is the largest; the first runs fail the first two by factors of 60 and more; Smilei uncorrected fails every laser and wake row. They read more plainly than a multiple, do not move when a reference run is repeated, need no floor, and can be asked of ParticleMesh against one reference code where the other is not available. They are tied to this case, this resolution and these windows, and the factor of one and a half to two over the measured distances is a choice with nothing behind it but the wish to reject a 0.2 % mismatch of a₀.
-
-Common to options 2 and 3, as part of the rule's statement:
+Whichever form, as part of the rule's statement:
 
 - the wake's measure on a window that ends inside a bucket, with its length (§4.3);
 - a measure off the axis among the counted ones, with the cells at the back of the windows left out (§4.3);
-- the bunch's weight not counted, or counted loosely: on this case it is 7 macro-particle weights carried by 35 or more particles from the ramp's foot, the gap rule that defines it gives Smilei a different group at two outputs, and the 1.3 % that separates Smilei from the other two is not understood (§4.4).
+- the bunch's weight not counted, or counted loosely: on this case it is 7 macro-particle weights carried by 35 or more particles from the ramp's foot, the gap rule that defines it gives Smilei a different group at two outputs, and what makes Smilei's heavier is not understood (§4.4).
 
-### 6.4 What the spread means, and what a second resolution would add
+### 6.5 What the spread means, and what a second resolution would add
 
-Each code ran once at one resolution, and the runs are deterministic (cold regular loads, no seeds), so no difference here is noise and none can be averaged away: every number of §6.1 is a systematic difference of three implementations of one scheme at λ₀/48, with launches matched as far as the sources were read. Three things limit what it means.
+Each code ran once at one resolution. For ParticleMesh it is measured that a second run differs at 10⁻¹¹ and below (§4.5, on another backend); for Smilei and PIConGPU it is inferred, from their cold regular loads without seeds, and no run of either was repeated. On that footing no difference here is noise and none can be averaged away: every number of §6.1 is a systematic difference of three implementations of one scheme at λ₀/48, with launches matched as far as §4.1 says. Three things limit what it means.
 
-- **It is one point.** A spread from one run per code has no error bar. The history of this report is the caution: the Smilei–PIConGPU "spread" in the wake's E_x was 6 % in the first runs (over two plasma wavelengths), 0.57 % in the second and is 0.21 % now (over one and a half), each time because a mismatch of the inputs was found and removed. Nothing shows that the present one is the last; the unexplained items of §5 are where another could be.
+- **It is one point.** A spread from one run per code has no error bar. The history of this report is the caution: the Smilei–PIConGPU "spread" in the wake's E_x was 6 % in the first runs (over two plasma wavelengths), 0.57 % in the second and is 0.21 % now (over one and a half), each time because a mismatch of the inputs was found and removed, and a fourth is found and not yet removed. Nothing shows that it is the last; the unexplained items of §5 are where another could be.
 - **It does not say how close any code is to the equations.** The three share the scheme, so they share its errors: at λ₀/48 the observables are converged to some percent that these runs do not measure, and a threshold of a few tenths of a percent is a statement about three codes sharing an error, not about any of them being right.
-- **Its dependence on the grid is unknown, except for one part.** Smilei's launch factor is discretization of a known size, (Δx² + Δt²)/16 above 1: 0.198 % at λ₀/48, 0.447 % at λ₀/32. For the rest, one resolution cannot say whether a difference shrinks as the grid is refined or stays (a load rule would stay).
+- **Its dependence on the grid is unknown, except for two parts.** Smilei's plane-wave launch factor is discretization of a known size, (Δx² + Δt²)/16 above 1: 0.198 % at λ₀/48, 0.447 % at λ₀/32. The oblique term does not depend on the grid to leading order: 1/(2w²) is a property of the boundary condition and the beam. For the rest, one resolution cannot say whether a difference shrinks as the grid is refined or stays (a load rule would stay).
 
-A second resolution in all three codes, λ₀/32 (the grid of `lwfa-2d-a2.toml`) or λ₀/64, would give the spread's dependence on Δ, and each code's own change with resolution, which is the scale a threshold has to be compared with. It would also show whether thresholds set at one resolution (option 3) hold at another, or whether the rule has to be the relative one (option 2).
+A second resolution in all three codes, λ₀/32 (the grid of `lwfa-2d-a2.toml`) or λ₀/64, would give the spread's dependence on Δ, and each code's own change with resolution, which is the scale a threshold has to be compared with. It would also show whether thresholds set at one resolution hold at another, or whether the rule has to be a relative one.

@@ -1,10 +1,12 @@
 case = "lwfa-2d-focus0"
-commit = "df75c5c27c163a8197f6d7d8f41f4e2dacd9e604"
+commit = "3e4f2311d2a0eb5ceecbeb8fd73e2436b149d432"
 dirty = false
 runs = "scripts/runs/lwfa-a5-3-focus0-three"
-updated = "2026-11-12T05:04:21.185Z"
+updated = "2026-11-12T05:54:44.221Z"
 
 [inputs]
+
+[maps]
 
 [summaries]
 picongpu-vacuum = "sha256:bc72188ff8bcfc3e27224f4e2a3b8b1090917d4ecbc1438541538adae7cbe88e"
