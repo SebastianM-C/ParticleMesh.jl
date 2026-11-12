@@ -256,3 +256,51 @@ const PIC_WINDOW_OFFSETS = Dict(
     j0 = picongpu_layout(case).j0
     @test [picongpu_window_back(case, k) + j0 for k in output_steps(case)] == PIC_WINDOW_OFFSETS[basename(file)]
 end
+
+# --- the particles ParticleMesh loads: zero weights in the vacuum, the weight unit (lwfa.jl's pm_spectrum) -----
+
+# A small window problem of the case: 96 × 16 cells and 8 antenna columns, 4 c/ω₀ of vacuum and a
+# 5 c/ω₀ ramp ahead of the injection plane, so that the first load holds vacuum, ramp and plateau.
+function small_window_case()
+    case = TOML.parsefile(CASE_FILES[1])
+    case["grid"]["cells"], case["grid"]["antenna_cells"] = [96, 16], 8
+    case["plasma"]["vacuum"], case["plasma"]["ramp"] = 4.0, 5.0
+    case["window"]["start"] = 260.0                       # the antenna, 8 columns in, is passed after delay + 6·duration
+    return case
+end
+
+function small_window_state(case)
+    prob = pm_problem(case)
+    st = EMState(prob, EMNumerics(; mode = Reference()))
+    initialize!(st, prob)
+    return st, prob
+end
+
+@testset "T-690 ParticleMesh's ekin_max is taken over the electrons of positive weight: the window's vacuum is loaded with zero weights [A3, A5]" begin
+    case = small_window_case()
+    d = derived(case)
+    st, prob = small_window_state(case)
+    s = only(st.species)
+    alive = findall(==(ParticleMeshCore.ALIVE), s.status)
+    x = [(s.cell[1][i] - 1 + s.offset[1][i]) * d.dx for i in alive]       # in the box's coordinate, x_a behind the lab's
+    w = s.w[alive]
+    # the loader fills every plasma column, the vacuum's with zero weight (#362's cause)
+    ncol = maximum(s.cell[1][alive])
+    @test length(alive) == ncol * d.ny * prod(case["plasma"]["particles_per_cell"])
+    @test count(iszero, w) == count(<=(prob.profile.vacuum), x) > 0
+    @test all(>(0), w[x .> prob.profile.vacuum])
+    edges = spectrum_edges(case)
+    cold = pm_spectrum(s, edges)
+    @test cold.ekin_max == 0 && cold.alive == length(alive)
+    @test sum(cold.hist) ≈ sum(w) rtol = length(w) * eps()    # two summation orders
+    # a zero-weight particle that quivers is no electron: neither the maximum nor the histogram sees it
+    ghost, electron = alive[findfirst(iszero, w)], alive[findlast(>(0), w)]
+    s.u[2][ghost] = 3.0
+    quiver = pm_spectrum(s, edges)
+    @test quiver.ekin_max == 0 && quiver.hist == cold.hist
+    s.u[1][electron] = 0.75                                                  # γ − 1 = 0.25
+    hot = pm_spectrum(s, edges)
+    @test hot.ekin_max ≈ 0.25 rtol = 1e-15
+    @test hot.hist[2] == s.w[electron]                                       # bins of 0.2: [0.2, 0.4)
+    @test sum(hot.hist) ≈ sum(w) rtol = length(w) * eps()
+end

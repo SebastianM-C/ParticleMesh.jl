@@ -104,7 +104,11 @@ running_envelope(v, h) = [maximum(abs, @view v[max(1, i - h):min(end, i + h)]) f
 "The envelope's half width in points: half a laser wavelength, π/Δx (16 at λ₀/32, 24 at λ₀/48)."
 envelope_halfwidth(case) = round(Int, π / derived(case).dx)
 
-# The kinetic-energy histogram of the alive electrons, weighted by the particle weights.
+# The kinetic-energy histogram of the alive electrons, weighted by the particle weights, and the
+# largest kinetic energy among the electrons of positive weight. The density enters through the
+# weights (A3), so the loader fills the window's vacuum and the foot of the ramp with particles of
+# zero weight; the laser makes them quiver, and they are no electrons (#362). `alive` counts the
+# slots, those included.
 function pm_spectrum(s, edges)
     alive = Array(s.status) .== ParticleMeshCore.ALIVE
     u1, u2, u3, w = Array(s.u[1])[alive], Array(s.u[2])[alive], Array(s.u[3])[alive], Array(s.w)[alive]
@@ -114,7 +118,7 @@ function pm_spectrum(s, edges)
         b = searchsortedlast(edges, e)
         1 <= b < length(edges) && (h[b] += wi)
     end
-    return (; hist = h, ekin_max = isempty(ek) ? 0.0 : maximum(ek), alive = count(alive))
+    return (; hist = h, ekin_max = maximum(ek[w .> 0]; init = 0.0), alive = count(alive))
 end
 
 spectrum_edges(case) = (s = case["diagnostics"]["spectrum_ekin"]; collect(range(Float64(s[1]), Float64(s[2]); length = Int(s[3]) + 1)))
