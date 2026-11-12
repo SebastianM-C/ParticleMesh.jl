@@ -1,0 +1,235 @@
+                    _            _
+  ___           _  | |        _  \ \   Version : 5.1-HEAD
+ / __|  _ __   (_) | |  ___  (_)  | |   
+ \__ \ | '  \   _  | | / -_)  _   | |
+ |___/ |_|_|_| |_| |_| \___| |_|  | |  
+                                 /_/    
+ 
+ 
+
+ Reading the simulation parameters
+ -------------------------------------------------------------------------------
+ HDF5 version 1.10.10
+ Python version 3.12.3
+	 Parsing pyinit.py
+	 Parsing 5.1-HEAD
+	 Parsing pyprofiles.py
+	 Parsing namelist.py
+	 Parsing pycontrol.py
+	 Check for function preprocess()
+	 python preprocess function does not exist
+	 Calling python _smilei_check
+	 Calling python _prepare_checkpoint_dir
+	 Calling python _keep_python_running() :
+[1;36mCAREFUL: Patches distribution: hilbertian
+[0m
+	 Smilei will run on CPU devices
+[;33m
+[WARNING](0) src/Params/Params.cpp:1170 (compute) simulation_time has been redefined from 1298.633452 to 1298.588211 to match timestep.[0m
+[;33m
+[WARNING](0) src/Params/Params.cpp:1262 (compute) Particles cluster width `cluster_width` set to : 24[0m
+ 
+
+ Geometry: 2Dcartesian
+ -------------------------------------------------------------------------------
+	 Interpolation order : 2
+	 Maxwell solver : Yee
+	 simulation duration = 1298.588211,   total number of iterations = 14352
+	 timestep = 0.090481 = 0.950000 x CFL,   time resolution = 11.052002
+	 Grid length: 301.593, 201.062
+	 Cell length: 0.0981748, 0.392699, 0
+	 Number of cells: 3072, 512
+	 Spatial resolution: 10.1859, 2.54648
+ 
+
+ Electromagnetic boundary conditions
+ -------------------------------------------------------------------------------
+	 xmin silver-muller, absorbing vector [1, 0]
+	 xmax silver-muller, absorbing vector [-1, -0]
+	 ymin periodic
+	 ymax periodic
+ 
+
+ Vectorization: 
+ -------------------------------------------------------------------------------
+	 Mode: off
+	 Calling python writeInfo
+ 
+
+ Initializing MPI
+ -------------------------------------------------------------------------------
+	 applied topology for periodic BCs in y-direction
+	 MPI_THREAD_MULTIPLE enabled
+	 Number of MPI processes: 1
+	 Number of threads per MPI process : 16
+	 OpenMP task parallelization not activated
+ 
+	 Number of patches: 64 x 8
+	 Number of cells in one patch: 48 x 64
+	 Dynamic load balancing: never
+ 
+
+ Initializing the restart environment
+ -------------------------------------------------------------------------------
+ 
+
+ Initializing moving window
+ -------------------------------------------------------------------------------
+	 Moving window is active:
+		 velocity_x : 1.000000
+		 time_start : 256.000000
+ 
+ 
+ 
+
+ Initializing laser parameters
+ -------------------------------------------------------------------------------
+ 		Laser #0: separable profile
+			omega              : 1
+			chirp_profile      : 1D built-in profile `tconstant` (0.000000)
+			time envelope      : 1D built-in profile `tgaussian` (start: 0.000000, duration: 216.084350, sigma: 676.000000, center: 108.042175, order: 2.000000)
+			space envelope (y) : 1D user-defined function
+			space envelope (z) : 1D user-defined function
+			phase          (y) : 1D user-defined function
+			phase          (z) : 1D user-defined function
+		delay phase      (y) : 0
+		delay phase      (z) : 0
+ 
+
+ Initializing Patches
+ -------------------------------------------------------------------------------
+	 First patch created
+		 Approximately 10% of patches created
+		 Approximately 20% of patches created
+		 Approximately 30% of patches created
+		 Approximately 40% of patches created
+		 Approximately 50% of patches created
+		 Approximately 60% of patches created
+		 Approximately 70% of patches created
+		 Approximately 80% of patches created
+		 Approximately 90% of patches created
+	 All patches created
+ 
+
+ Creating Diagnostics, antennas, and external fields
+ -------------------------------------------------------------------------------
+	 Diagnostic Fields #0  :
+		 Ex Ey 
+ 
+
+ Finalize MPI environment
+ -------------------------------------------------------------------------------
+	 Done creating diagnostics, antennas, and external fields
+ 
+
+ Minimum memory consumption (does not include all temporary buffers)
+ -------------------------------------------------------------------------------
+              Particles: Master 0 MB;   Max 0 MB;   Global 0 GB
+                 Fields: Master 185 MB;   Max 185 MB;   Global 0.181 GB
+            scalars.txt: Master 0 MB;   Max 0 MB;   Global 0 GB
+             Fields0.h5: Master 0 MB;   Max 0 MB;   Global 0 GB
+ 
+
+ Initial fields setup
+ -------------------------------------------------------------------------------
+	 Applying external fields at time t = 0
+	 Applying prescribed fields at time t = 0
+	 Applying antennas at time t = 0
+ 
+
+ Open files & initialize diagnostics
+ -------------------------------------------------------------------------------
+ 
+
+ Running diags at time t = 0
+ -------------------------------------------------------------------------------
+ 
+
+ Species creation summary
+ -------------------------------------------------------------------------------
+ 
+
+ Expected disk usage (approximate)
+ -------------------------------------------------------------------------------
+	 WARNING: disk usage by non-uniform particles maybe strongly underestimated,
+	    especially when particles are created at runtime (ionization, pair generation, etc.)
+	 
+	 Expected disk usage for diagnostics:
+		 File Fields0.h5: 312.77 M
+		 File scalars.txt: 169.63 K
+	 Total disk usage for diagnostics: 312.94 M
+	 
+ 
+
+ Keeping or closing the python runtime environment
+ -------------------------------------------------------------------------------
+	 Checking for cleanup() function:
+	 python cleanup function does not exist
+	 Closing Python
+ 
+
+ Time-Loop started: number of time-steps n_time = 14352
+ -------------------------------------------------------------------------------
+[1;36mCAREFUL: The following `push time` assumes a global number of 16 cores (hyperthreading is unknown)
+[0m
+      timestep       sim time   cpu time [s]   (    diff [s] )   push time [ns]
+     500/14352     4.5286e+01     3.9453e+00   (  3.9453e+00 )    ?? 
+    1000/14352     9.0527e+01     8.1762e+00   (  4.2310e+00 )    ?? 
+    1500/14352     1.3577e+02     1.2226e+01   (  4.0497e+00 )    ?? 
+    2000/14352     1.8101e+02     1.6154e+01   (  3.9281e+00 )    ?? 
+    2500/14352     2.2625e+02     2.0139e+01   (  3.9852e+00 )    ?? 
+ >>> Window starts moving
+    3000/14352     2.7149e+02     2.4042e+01   (  3.9031e+00 )    ?? 
+    3500/14352     3.1673e+02     2.8066e+01   (  4.0232e+00 )    ?? 
+    4000/14352     3.6197e+02     3.2138e+01   (  4.0729e+00 )    ?? 
+    4500/14352     4.0721e+02     3.6067e+01   (  3.9284e+00 )    ?? 
+    5000/14352     4.5245e+02     3.9912e+01   (  3.8447e+00 )    ?? 
+    5500/14352     4.9769e+02     4.3751e+01   (  3.8391e+00 )    ?? 
+    6000/14352     5.4293e+02     4.7634e+01   (  3.8829e+00 )    ?? 
+    6500/14352     5.8817e+02     5.1449e+01   (  3.8155e+00 )    ?? 
+    7000/14352     6.3341e+02     5.5589e+01   (  4.1404e+00 )    ?? 
+    7500/14352     6.7866e+02     5.9387e+01   (  3.7974e+00 )    ?? 
+    8000/14352     7.2390e+02     6.3236e+01   (  3.8488e+00 )    ?? 
+    8500/14352     7.6914e+02     6.7031e+01   (  3.7957e+00 )    ?? 
+    9000/14352     8.1438e+02     7.0888e+01   (  3.8567e+00 )    ?? 
+    9500/14352     8.5962e+02     7.4923e+01   (  4.0348e+00 )    ?? 
+   10000/14352     9.0486e+02     7.8963e+01   (  4.0403e+00 )    ?? 
+   10500/14352     9.5010e+02     8.2758e+01   (  3.7953e+00 )    ?? 
+   11000/14352     9.9534e+02     8.6542e+01   (  3.7835e+00 )    ?? 
+   11500/14352     1.0406e+03     9.0388e+01   (  3.8458e+00 )    ?? 
+   12000/14352     1.0858e+03     9.4183e+01   (  3.7953e+00 )    ?? 
+   12500/14352     1.1311e+03     9.8119e+01   (  3.9356e+00 )    ?? 
+   13000/14352     1.1763e+03     1.0211e+02   (  3.9932e+00 )    ?? 
+   13500/14352     1.2215e+03     1.0595e+02   (  3.8366e+00 )    ?? 
+   14000/14352     1.2668e+03     1.0973e+02   (  3.7848e+00 )    ?? 
+ 
+
+ End time loop, time dual = 1.2986e+03
+ -------------------------------------------------------------------------------
+ 
+
+ Time profiling : (print time > 0.001%)
+ -------------------------------------------------------------------------------
+ Time_in_time_loop	1.1246e+02	9.9516e+01% coverage
+ 	           Particles	1.806428e+01	1.6e+01%
+ 	             Maxwell	6.445627e+01	5.7e+01%
+ 	          Maxwell_BC	2.054626e+01	1.8e+01%
+ 	         Diagnostics	2.853899e+00	2.5e+00%
+ 	          Collisions	1.518866e-01	    <1%
+ 	          Mov window	3.161113e-01	    <1%
+ 	      Sync Particles	2.188144e-01	    <1%
+ 	         Sync Fields	2.176946e+00	1.9e+00%
+ 	      Sync Densities	1.723090e-01	    <1%
+ 	        Part Merging	1.602953e-01	    <1%
+ 	      Part Injection	1.936725e-01	    <1%
+ 
+	 Printed times are averaged per MPI process
+ 		 See advanced metrics in profil.txt
+ 
+	Diagnostics profile :
+ 		         scalars.txt	1.5e+00
+ 		          Fields0.h5	8.8e-01
+ 
+
+ END
+ -------------------------------------------------------------------------------
