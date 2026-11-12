@@ -24,6 +24,9 @@ const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml
     @test las.back == 2 * d.dx && las.focus == CASE["laser"]["focus"] + 2 * d.dx
     @test occursin("focus = [$(repr(las.focus)), $(repr(d.yc))]", nl)
     @test num("center") == las.center && num("duration") == 2 * las.center && num("phase_offset") == las.phase_offset
+    # the amplitude given to Smilei is the case's over what its boundary condition launches per unit (T-710)
+    @test num("a0") == las.a0 == CASE["laser"]["a0"] / smilei_launch_factor(d)
+    @test 1.001 < smilei_launch_factor(d) < 1.005
     # tgaussian (v5.1): exp(−(t − center)²/σ), σ = (fwhm/2)²/ln 2: the envelope exp(−(t − center)²/τ²)
     fwhm, τ = num("fwhm"), CASE["laser"]["duration"]
     σ = (fwhm / 2)^2 / log(2)
@@ -426,10 +429,14 @@ end
     @test ac["wake_Ex_relrms"] ≈ 2 * sin(3 * d.dx * 2π / λp / 2) rtol = 2e-2
     @test ac["wake_Ex_shift"] == 3 && ac["wake_Ex_relrms_shifted"] < 1e-12
     @test only(compare_rows(c, a, "plasma", d, λp))["wake_Ex_shift"] == -3
-    @test ac["wake_Ex_min"][1] ≈ -0.05 rtol = 1e-3                           # two wavelengths behind a's peak: the wake, not the dip
+    @test ac["wake_Ex_min"][1] ≈ -0.05 rtol = 1e-3                           # one and a half wavelengths behind a's peak: the wake, not the dip
+    @test WAKE_LENGTH == 1.5
+    # the window moved back by the anchor's offset: 1.6 wavelengths further on, it reaches the dip
+    @test only(compare_rows(a, c, "plasma", d, λp; anchor_offset = -round(Int, 1.6λp / d.dx)))["wake_Ex_min"][1] < -0.9
+    @test only(compare_rows(a, c, "plasma", d, λp; anchor_offset = -24))["wake_Ex_min"][1] ≈ -0.05 rtol = 1e-3
     @test ac["wake_rho_relrms"] > 0
-    # the anchor places the window: 1.5 wavelengths further back it holds the dip three wavelengths behind
-    back = mk(; x0 = x0 - 1.5λp)
+    # the anchor places the window: two wavelengths further back it holds the dip three wavelengths behind
+    back = mk(; x0 = x0 - 2λp)
     anchored = only(compare_rows(a, c, "plasma", d, λp; anchor = back))
     @test anchored["wake_Ex_min"][1] < -0.9 && anchored["Ey_absmax"] == ac["Ey_absmax"]
     # the window's length: three and a half wavelengths from a's own peak reach the dip too, one does not
@@ -551,8 +558,16 @@ end
         @test pp["amplitude_max"][2] / pp["amplitude_max"][1] ≈ 1.05 rtol = 1e-6
         # no wake before the pulse is in the window: those rows have no wake keys, here or in the sensitivity rows
         @test !haskey(res["plasma"][1], "wake_Ex_relrms") && haskey(res["plasma"][late], "wake_Ex_relrms")
-        @test res["wake"]["length"] == 2.0 && res["wake"]["anchor"] == "pm" && res["wake"]["floor"] ≈ 1e-3 * sqrt(case["plasma"]["density"])
-        @test sort(collect(keys(res["wake_sensitivity"]))) == ["1.0", "1.5", "2.5"]
+        @test res["wake"]["length"] == 1.5 && res["wake"]["anchor"] == "pm" && res["wake"]["floor"] ≈ 1e-3 * sqrt(case["plasma"]["density"])
+        @test sort(collect(keys(res["wake_sensitivity"]))) == ["1.0", "2.0", "2.5"]
+        # the window moved by the anchor's step, half a laser wavelength of this case's grid, either way
+        hw = envelope_halfwidth(case)
+        @test sort(collect(keys(res["wake_anchor_sensitivity"]))) == sort(["$(-hw)", "$hw"])
+        moved = res["wake_anchor_sensitivity"]["$hw"]["smilei_picongpu_plasma"]
+        @test length(moved) == length(steps) && moved[late]["wake_Ex_shift"] == 2 && haskey(moved[late], "wake_Ex_min")
+        # the maps off the axis: only PIConGPU's run has one here, so no pair has a row's entry
+        @test res["maps"]["field"] == "Ey" && length(res["maps"]["bands"]) == 3 && res["maps"]["bands"][1] == [0.0, nothing]
+        @test all(r -> !haskey(r, "picongpu_plasma") && haskey(r, "t"), res["maps"]["rows"])
         sens = res["wake_sensitivity"]["1.0"]["smilei_picongpu_plasma"]
         @test length(sens) == length(steps) && !haskey(sens[1], "wake_Ex_relrms") && sens[late]["wake_Ex_shift"] == 2
         @test sens[late]["wake_Ex_relrms"] ≈ res["smilei_picongpu_plasma"][late]["wake_Ex_relrms"] rtol = 0.05   # a sine: any whole number of wavelengths
@@ -627,7 +642,8 @@ end
     # on the node at x = −2Δx the pulse of the lab plane x = 0 is 2Δx earlier and 2Δx further from the focus
     ξ, worst = -(L["focus"] + las.back), 0.0
     for y in (0.0, 3.3, -17.0, 40.0, 75.0), t in (L["delay"] .+ (-60.0, -26.0, -3.1, 0.0, 0.4, 11.0, 50.0))
-        worst = max(worst, abs(smilei_node_field(nl, y, t) - laser_field(l, ξ, y, t + las.back - L["delay"])[1]))
+        # what the namelist prescribes, times what the boundary condition launches of it
+        worst = max(worst, abs(smilei_node_field(nl, y, t) * smilei_launch_factor(d) - laser_field(l, ξ, y, t + las.back - L["delay"])[1]))
     end
     @test worst <= 1e-12 * L["a0"]
     # the envelope starts as low as the other codes': the cut of tgaussian is where the envelope is e^−16 or less
@@ -1071,7 +1087,7 @@ end
         @test late["Ex_axis_maxdiff"] > 1e-4 && late["rho_axis_maxdiff"] == 0
         @test res["spectrum"]["a"][end]["bunch"]["weight"] ≈ 1.0e-3 rtol = 1e-12
         @test res["spectrum"]["b"][end]["bunch"]["weight"] ≈ 1.02e-3 rtol = 1e-12  # each in the one unit, whatever its code's
-        @test res["wake"]["anchor"] == "a"
+        @test res["wake"]["anchor"] == "a" && res["wake"]["length"] == WAKE_LENGTH
         on_disk = JSON.parsefile(joinpath(out, "pair.json"))
         @test on_disk["rows"][end]["wake_Ex_shift"] == 1 && on_disk["b"]["code"] == "Smilei"
         man = TOML.parsefile(joinpath(out, "manifest.toml"))
@@ -1085,5 +1101,105 @@ end
         other = write_run(joinpath(root, "other"), "plasma")
         cp(CASE_FILES[1], joinpath(other, "case.toml"); force = true)
         @test_throws ErrorException compare_pair(a, other, joinpath(root, "out-y"))
+    end
+end
+
+# --- Smilei's launched amplitude, and the maps off the axis ------------------------------------------
+
+# Smilei's Silver–Müller update at xmin as its source has it (ElectroMagnBC2D_SM.cpp:63 to 66 and 245:
+# factor = 1/(k0 + Δt/Δx) with k0 = 1 at normal incidence, B_z[0] = −2·factor·E_y[0] −
+# (1 − Δt/Δx)·factor·B_z[1] + 4·factor·b, b the laser's profile at the new B's time), on a 1D Yee grid in
+# vacuum: E_y on the nodes i·Δx, B_z on the dual points (j − ½)·Δx, E advanced to n·Δt and B to
+# (n + ½)·Δt as Smilei does. Returns the amplitude of E_y at a node 300 cells in for b = sin(t), by a
+# least-squares fit of a·cos t + b·sin t over 30 periods after the start has passed.
+function silver_muller_amplitude(dx, dt; probe = 300, t0 = 400.0, periods = 30)
+    steps = ceil(Int, (t0 + periods * 2π) / dt)
+    n = ceil(Int, steps * dt / dx) + probe + 50          # the far end is never reached
+    r = dt / dx
+    factor = 1 / (1 + r)
+    α, β, γ = 2 * factor, -(1 - r) * factor, 4 * factor
+    Ey, Bz = zeros(n + 1), zeros(n + 2)
+    cc = ss = cs = ec = es = 0.0
+    for it in 1:steps
+        tdual = (it + 0.5) * dt
+        @views @. Ey = Ey - r * (Bz[2:end] - Bz[1:(end - 1)])
+        @views @. Bz[2:(end - 1)] = Bz[2:(end - 1)] - r * (Ey[2:end] - Ey[1:(end - 1)])
+        Bz[1] = -α * Ey[1] + β * Bz[2] + γ * (1 - exp(-(tdual / 50)^4)) * sin(tdual)
+        t = it * dt
+        if t >= t0
+            c, s = cos(t), sin(t)
+            cc += c * c; ss += s * s; cs += c * s; ec += Ey[probe + 1] * c; es += Ey[probe + 1] * s
+        end
+    end
+    det = cc * ss - cs^2
+    return hypot((ec * ss - es * cs) / det, (es * cc - ec * cs) / det)
+end
+
+@testset "T-710 Smilei's Silver–Müller condition launches 2/(cos(kΔx/2) + cos(Δt/2)) of the amplitude it is given: its update run on a 1D Yee grid [A5]" begin
+    for file in CASE_FILES
+        d = derived(TOML.parsefile(file))
+        @test silver_muller_amplitude(d.dx, d.dt) ≈ smilei_launch_factor(d) rtol = 1e-10
+    end
+    a5 = derived(TOML.parsefile(CASE_FILES[1]))
+    @test smilei_launch_factor(a5) ≈ 1.001984 atol = 1e-6                    # λ₀/48: 0.198 %
+    @test smilei_launch_factor(derived(TOML.parsefile(CASE_FILES[2]))) ≈ 1.004474 atol = 1e-6   # λ₀/32: 0.447 %
+    # other cells and steps, where the two cosines weigh differently; it is not 1/cos(Δt/2)
+    for (dx, dt) in ((0.3, 0.25), (0.3, 0.1), (2π / 48, 0.05))
+        @test silver_muller_amplitude(dx, dt) ≈ smilei_launch_factor((; dx, dt)) rtol = 1e-10
+    end
+    @test abs(smilei_launch_factor(a5) - 1 / cos(a5.dt / 2)) > 1e-4
+    @test abs(smilei_launch_factor((; dx = 0.3, dt = 0.1)) - 1 / cos(0.05)) > 5e-3
+    # to second order (Δx² + Δt²)/16 above 1
+    @test smilei_launch_factor(a5) - 1 ≈ (a5.dx^2 + a5.dt^2) / 16 rtol = 2e-3
+end
+
+@testset "T-711 the maps off the axis: the relative rms difference of E_y by band of the distance from the axis, on the columns two maps share [A5, A7]" begin
+    case = TOML.parsefile(CASE_FILES[1])
+    d = derived(case)
+    w0 = case["laser"]["waist"]
+    stride = Int.(case["diagnostics"]["map_stride"])
+    k = output_steps(case)[Int.(case["diagnostics"]["map_outputs"])][1]
+    nrow = cld(d.ny, stride[2])
+    y(j) = (1 + (j - 1) * stride[2] - 0.5) * d.dy - d.yc                     # E_y's rows of a map kept at the stride
+    # a field that is 1 on the axis band, 2 on the flank, 3 in the wing; b differs by 1 %, 5 % and 20 % there
+    level(v) = 0.9w0 <= abs(v) < 1.6w0 ? 2.0 : 2.15w0 <= abs(v) < 2.85w0 ? 3.0 : 1.0
+    excess(v) = 0.9w0 <= abs(v) < 1.6w0 ? 0.05 : 2.15w0 <= abs(v) < 2.85w0 ? 0.20 : 0.01
+    A = [level(y(j)) * cos(0.3 * i) for i in 1:50, j in 1:nrow]
+    B = [(1 + excess(y(j))) * level(y(j)) * cos(0.3 * i) for i in 1:50, j in 1:nrow]
+    bands = [(lo * w0, hi * w0) for (lo, hi) in MAP_BANDS]
+    r = map_relrms(A, B, d, d.yc, stride, bands)
+    @test r[2] ≈ 0.05 / 1.05 rtol = 1e-12                                     # relative to b's rms
+    @test r[3] ≈ 0.20 / 1.20 rtol = 1e-12
+    @test 0.01 / 1.01 < r[1] < 0.20 / 1.20                                    # everything: between the bands'
+    @test map_relrms(A, A, d, d.yc, stride, bands) == [0.0, 0.0, 0.0]
+    @test map_relrms(A, B, d, d.yc, stride, [(10.0 * w0, 11.0 * w0)]) == [nothing]   # a band beyond the box
+    @test_throws ErrorException map_relrms(A, B[1:40, :], d, d.yc, stride, bands)
+    # through the files: two codes' maps that start on different columns are compared on the columns they share
+    mktempdir() do runs
+        full(scale, m0, n) = (m = m0 .+ (0:(n - 1)); (rho = zeros(n, d.ny), Ey = [scale(( jj - 0.5) * d.dy - d.yc) * cos(0.05 * mm) for mm in m, jj in 1:d.ny], m0 = m0))
+        one(v) = level(v)
+        other(v) = (1 + excess(v)) * level(v)
+        # the sign of Smilei's map is wrong in its first three columns, as a field at the back of a window may be
+        edge(mm, v) = mm < 31 + 3 * stride[1] ? -other(v) : other(v)
+        for (code, scale, m0) in (("pm", one, 7), ("smilei", other, 31), ("picongpu", other, 31))
+            dir = joinpath(runs, "$code-plasma")
+            mkpath(dir)
+            code == "picongpu" && continue                                    # no map for this one
+            M = full(scale, m0, 600)
+            code == "smilei" && (M = (; M..., Ey = [edge(mm, (jj - 0.5) * d.dy - d.yc) * cos(0.05 * mm) for mm in m0 .+ (0:599), jj in 1:d.ny]))
+            write_summary(dir, [Dict{String,Any}("step" => k, "t" => k * d.dt, "map" => M)]; code, stride)
+        end
+        rows = map_rows(runs, case, d, [p for p in PAIRS])
+        @test rows["field"] == "Ey" && rows["bands"] == [[0.0, nothing], [0.9w0, 1.6w0], [2.15w0, 2.85w0]]
+        first_row = rows["rows"][1]
+        @test first_row["step"] == k && first_row["t"] == k * d.dt
+        @test first_row["plasma"][2] ≈ 0.05 / 1.05 rtol = 1e-12                # ParticleMesh against Smilei
+        @test first_row["plasma"][3] ≈ 0.20 / 1.20 rtol = 1e-12
+        # the back of the shared columns, a laser wavelength of cells, is left out of that and kept in this
+        @test rows["back_margin"] == round(Int, 2π / d.dx) && rows["back_margin"] >= 3 * stride[1]
+        @test first_row["plasma_with_back"][2] > 2 * first_row["plasma"][2]
+        @test first_row["plasma_with_back"][3] > first_row["plasma"][3]
+        @test !haskey(first_row, "picongpu_plasma") && !haskey(first_row, "smilei_picongpu_plasma")
+        @test length(rows["rows"]) == length(case["diagnostics"]["map_outputs"]) && !haskey(rows["rows"][2], "plasma")
     end
 end

@@ -1,6 +1,6 @@
 # A 2D LWFA case in ParticleMesh, Smilei and PIConGPU, matched through one case file (A5).
 #
-#   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl prepare <case.toml> <tag> [vacuum]  # scripts/runs/lwfa-<tag>/ and box-request.toml
+#   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl prepare <case.toml> <tag> [vacuum|plasma] [pm|smilei|picongpu …]  # scripts/runs/lwfa-<tag>/ and box-request.toml
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl run-pm <dir> [cpu|cuda]             # ParticleMesh into <dir>/summary.json, maps.h5
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-smilei <dir>              # Smilei's dumps into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-picongpu <dir>            # PIConGPU's dumps into the same format
@@ -50,18 +50,29 @@
 #     time − r/c (284, 286). So it is this pulse as it is.
 #   * Smilei v5.1, `LaserGaussian2D` (`Python/pyprofiles.py:507`) through `LaserProfileSeparable`
 #     (`ElectroMagn/Laser.cpp:460`): amplitude = envelope(t − φ(y)/ω)·space(y)·sin(ω·t − φ(y)), with
-#     φ(y) = −(y − y_c)²/(2|R|) − phase_offset at normal incidence (`pyprofiles.py:531` to `536`, `563`).
+#     φ(y) = −(y − y_c)²/(2|R|) − phase_offset at normal incidence (`pyprofiles.py:531` to `536`, `567`).
 #     So the envelope is along the wavefront too, but the carrier is a sine of the time since the
 #     start of the run, there is no Gouy phase, and `phase_offset` moves envelope and carrier
 #     together. And the Silver–Müller condition applies the laser on the outermost ghost node
 #     (`ElectroMagnBC2D_SM.cpp:28` to `31`: index 0 of arrays that hold `oversize` =
-#     interpolation_order = 2 ghost cells, `Params.cpp:1217`), two cells behind xmin: the pulse
+#     interpolation_order = 2 ghost cells, `Params.cpp:1212`), two cells behind xmin: the pulse
 #     reaches x = 0 two cells late and its focus lies two cells short. The first runs measured
 #     both: Smilei's pulse 0.26 c/ω₀ = 2Δx behind, its carrier 1.979 rad from the other codes'
 #     (delay + ½·atan(focus/z_R) − π/2 − 2Δx = 1.9787 mod 2π).
 #     `smilei_laser` therefore gives the namelist `focus + 2Δx`, an envelope `center` equal to
 #     π/2 − ½·atan(ξ′/z_R) mod 2π (which sets the carrier's phase at the envelope's peak) and the
 #     `phase_offset` that puts that peak on the ghost node at t = delay − 2Δx (T-698).
+#     The condition also sets the amplitude. Its update of B_z on the ghost column
+#     (`ElectroMagnBC2D_SM.cpp:63` to `66`, `245`: B₀(1 + r) = −2E₀ − (1 − r)B₁ + 4b, r = Δt/Δx, b
+#     the laser's profile at the new B's time) is, with Ampère's law for the node between them,
+#     (B₀ + B₁)/2 + (E₀ⁿ⁺¹ + E₀ⁿ⁺²)/2 = 2b: the averages of B over the two half cells and of E
+#     over the two half steps, where the plane wave it launches has B = E. So the wave's amplitude
+#     is 2/(cos(kΔx/2) + cos(ω₀Δt/2)) times the prescribed one, k the Yee wavenumber of ω₀: 1.00198
+#     at λ₀/48 and this Δt (`smilei_launch_factor`; T-710 runs that update on a 1D Yee grid). The
+#     matched runs measured Smilei 0.13 % to 0.22 % above the other two codes
+#     (reports/lwfa-2d-a5.md). `smilei_laser` divides a₀ by it. Not corrected: the condition is the
+#     normal-incidence one, so a component of the beam at angle α is launched with E_y lower by
+#     α²/4, 3 × 10⁻⁴ of the amplitude for ⟨α²⟩ = 1/waist².
 #   `tgaussian(start, duration, fwhm, center)` is exp(−(t − center)²/σ) with σ = (fwhm/2)²/ln 2
 #   (`pyprofiles.py`), cut to zero outside [start, start + duration]; the cut is at e^−16 of the
 #   peak, where ParticleMesh's antenna and PIConGPU's pulse (zero before its start) also begin.
@@ -288,11 +299,24 @@ end
 
 pyf(x) = repr(Float64(x))
 
-"Ghost cells of Smilei's fields at interpolation order 2 (`oversize`, `Params.cpp:1217`): its laser is applied that many cells behind xmin (`ElectroMagnBC2D_SM.cpp:28`)."
+"Ghost cells of Smilei's fields at interpolation order 2 (`oversize`, `Params.cpp:1212`): its laser is applied that many cells behind xmin (`ElectroMagnBC2D_SM.cpp:28`)."
 const SMILEI_GHOST = 2
 
 """
-    smilei_laser(case) -> (; focus, center, duration, fwhm, phase_offset, back)
+    smilei_launch_factor(d) -> Float64
+
+The amplitude of the wave Smilei's Silver–Müller condition launches at normal incidence, per unit
+of the laser profile it is given: 2/(cos(kΔx/2) + cos(Δt/2)) at ω₀ = 1, with k the Yee wavenumber
+of ω₀ along x, sin(kΔx/2)/Δx = sin(Δt/2)/Δt (header, "The laser": the condition averages B over
+two half cells and E over two half steps).
+"""
+function smilei_launch_factor(d)
+    k = 2 / d.dx * asin(d.dx / d.dt * sin(d.dt / 2))
+    return 2 / (cos(k * d.dx / 2) + cos(d.dt / 2))
+end
+
+"""
+    smilei_laser(case) -> (; a0, focus, center, duration, fwhm, phase_offset, back)
 
 The parameters of Smilei's `LaserGaussian2D` and its `tgaussian` that put the case's pulse on the
 lab plane x = 0 (header, "The laser"). Smilei's amplitude on its injection node, `back` =
@@ -300,7 +324,8 @@ lab plane x = 0 (header, "The laser"). Smilei's amplitude on its injection node,
 (y − y_c)²/(2|R|): `focus` is counted from that node, `center` = π/2 − ½·atan(focus/z_R) + 2πn makes
 the sine the case's cosine with its Gouy phase at the envelope's peak (the least n with center ≥
 the case's delay, so that the envelope starts as low as the other codes'), and `phase_offset` =
-center − (delay − back) puts the peak on the node at t = delay − back.
+center − (delay − back) puts the peak on the node at t = delay − back. `a0` is the case's divided
+by `smilei_launch_factor`, so that the launched wave has the case's amplitude.
 """
 function smilei_laser(case)
     d, L = derived(case), case["laser"]
@@ -310,8 +335,8 @@ function smilei_laser(case)
     c0 = π / 2 - atan(focus / zR) / 2
     delay = Float64(L["delay"])
     center = c0 + 2π * ceil((delay - c0) / (2π))
-    return (; focus, center, duration = 2 * center, fwhm = 2 * Float64(L["duration"]) * sqrt(log(2)),
-              phase_offset = center - (delay - back), back)
+    return (; a0 = Float64(L["a0"]) / smilei_launch_factor(d), focus, center, duration = 2 * center,
+              fwhm = 2 * Float64(L["duration"]) * sqrt(log(2)), phase_offset = center - (delay - back), back)
 end
 
 "The cells of the strips at the back and the front of Smilei's window whose spectra its two `moving_x` diagnostics resolve cell by cell: two patches."
@@ -351,11 +376,12 @@ function smilei_namelist(case; plasma = true)
     )
 
     # The laser is applied $(SMILEI_GHOST) cells behind xmin, as sin(t) of the run's time: focus, center and
-    # phase_offset put the case's pulse (a cosine from the envelope's peak, with the Gouy phase) on x = 0
-    # (smilei_laser in scripts/lwfa/lwfa.jl).
+    # phase_offset put the case's pulse (a cosine from the envelope's peak, with the Gouy phase) on x = 0,
+    # and a0 is the case's $(pyf(L["a0"])) over the boundary condition's launch factor (smilei_laser in
+    # scripts/lwfa/lwfa.jl).
     LaserGaussian2D(
         box_side = "xmin",
-        a0 = $(pyf(L["a0"])),
+        a0 = $(pyf(las.a0)),
         omega = 1.0,
         focus = [$(pyf(las.focus)), $(pyf(d.yc))],
         waist = $(pyf(L["waist"])),
@@ -578,18 +604,18 @@ end
 # --- prepare --------------------------------------------------------------------------------------
 
 """
-    prepare(case_path, tag; media = ("vacuum", "plasma")) -> root
+    prepare(case_path, tag; media = ("vacuum", "plasma"), codes = ("pm", "smilei", "picongpu")) -> root
 
-Write the run directories of `case_path` under scripts/runs/lwfa-<tag>/ (the three codes, each
-medium of `media`) and the CPU box request of ParticleMesh and Smilei.
+Write the run directories of `case_path` under scripts/runs/lwfa-<tag>/ (each code of `codes`,
+each medium of `media`) and the CPU box request of the ParticleMesh and Smilei ones.
 """
-function prepare(case_path, tag; media = ("vacuum", "plasma"))
+function prepare(case_path, tag; media = ("vacuum", "plasma"), codes = ("pm", "smilei", "picongpu"))
     case = TOML.parsefile(case_path)
     root = joinpath(REPO, "scripts", "runs", "lwfa-$tag")
     ispath(root) && error("$root exists")
     laser_envelope(case) isa WavefrontTime ||
         @warn "case $(case["name"]) has no laser.envelope = \"wavefront\": ParticleMesh runs its default pulse (the envelope in t − delay alone), Smilei and PIConGPU theirs along the wavefront"
-    wanted(kinds) = [k for k in kinds if any(m -> endswith(k, m), media)]
+    wanted(kinds) = [k for k in kinds if any(m -> endswith(k, m), media) && any(c -> startswith(k, c), codes)]
     kinds = wanted(KINDS)
     for kind in kinds
         dir = joinpath(root, kind)
@@ -711,7 +737,17 @@ end
 const WAKE_FLOOR = 1.0e-3
 
 """
-    compare_rows(a, b, medium, d, λp; anchor = a, wake_length = 2) -> rows
+The length of the wake's window, in plasma wavelengths behind the laser's peak. One and a half: the
+window holds the first bucket with the sawtooth's jump at its back, and ends in the middle of the
+second, where E_x is smooth. A window of two wavelengths ends on the jump at the back of the second
+bucket; the anchor (the envelope's peak, which moves from crest to crest, half a wavelength of the
+laser at a time) then puts that jump inside or outside from one output to the next, and most of a
+pair's squared difference sits in it (reports/lwfa-2d-a5.md).
+"""
+const WAKE_LENGTH = 1.5
+
+"""
+    compare_rows(a, b, medium, d, λp; anchor = a, wake_length = WAKE_LENGTH, anchor_offset = 0) -> rows
 
 The comparison of the outputs of code `a` with those of code `b` in one medium, a row per output
 both hold; every pair of numbers is [a, b], and every relative rms difference is relative to b's
@@ -722,15 +758,15 @@ minus b, and for reference the box maximum of |E_y| (sampled on the lattice: up 
 (`envelope_relrms`, which a carrier phase between the codes inflates). In plasma, the wake on the
 axis from the laser's peak back `wake_length` plasma wavelengths: E_x (relative rms difference,
 extrema, and the same after the whole-cell shift of b that fits best) and ρ_e. The wake's window is
-placed at the envelope peak of `anchor`'s output, so that with one anchor several pairs are
-compared on the same lattice points; an output has the wake's keys only when |E_x| reaches
+placed at the envelope peak of `anchor`'s output, moved by `anchor_offset` cells, so that with one
+anchor several pairs are compared on the same lattice points; an output has the wake's keys only when |E_x| reaches
 `WAKE_FLOOR` of the wave-breaking field in the window in both codes (before the laser is in the
 plasma E_x is roundoff, and its relative difference means nothing). `wake_rho_relrms` is kept for
 the record and not a measure to count: ρ_e is a few narrow spikes, whose cell-wide displacements
 and the anchor's choice move it by tens of percent, and the window holds the pulse, under which
 ρ_e follows the carrier.
 """
-function compare_rows(a, b, medium, d, λp; anchor = a, wake_length = 2)
+function compare_rows(a, b, medium, d, λp; anchor = a, wake_length = WAKE_LENGTH, anchor_offset = 0)
     bystep = Dict(o["step"] => o for o in b)
     anchors = Dict(o["step"] => o for o in anchor)
     q = quarter_wave(d)
@@ -752,7 +788,7 @@ function compare_rows(a, b, medium, d, λp; anchor = a, wake_length = 2)
                              "carrier_phase" => carrier_phase(za, zb))
         if medium == "plasma"
             # the wake: from the laser's peak back wake_length plasma wavelengths, on the axis
-            mp = peak_m(get(anchors, o["step"], o))
+            mp = peak_m(get(anchors, o["step"], o)) + anchor_offset
             mlo = mp - round(Int, wake_length * λp / d.dx)
             wake = common_points(o["Ex_axis"], o["Ex_m0"], s["Ex_axis"], s["Ex_m0"]; mlo, mhi = mp)
             rho = common_points(o["rho_axis"], o["rho_m0"], s["rho_axis"], s["rho_m0"]; mlo, mhi = mp)
@@ -866,8 +902,80 @@ function spectrum_rows(S, d, codes; macro_weight = nothing, thresholds = (1.0, 5
                             "rows" => rows)
 end
 
-"The lengths of the wake's window, in plasma wavelengths, at which `compare` repeats the wake's measures next to its own 2."
-const WAKE_LENGTHS = (1.0, 1.5, 2.5)
+"The other lengths of the wake's window, in plasma wavelengths, at which `compare` repeats the wake's measures."
+const WAKE_LENGTHS = (1.0, 2.0, 2.5)
+
+# --- the 2D maps -----------------------------------------------------------------------------------
+
+"The bands of the distance from the axis, in waists, over which `map_rows` compares the maps of E_y: everything, the beam's flank, its far wing."
+const MAP_BANDS = ((0.0, Inf), (0.9, 1.6), (2.15, 2.85))
+
+"""
+The cells at the back of the columns two maps share that `map_rows` leaves out, in laser wavelengths.
+The shared columns start at the back of one code's window, and there the field is the boundary's:
+in A5's matched runs Smilei's E_y differs from both other codes' by a quarter of its rms in the first
+12 to 24 cells of its window, and by less than a hundredth further in.
+"""
+const MAP_BACK = 1.0
+
+"""
+    map_relrms(A, B, d, yc, stride, bands) -> Vector
+
+The relative rms difference of two maps (columns along x on the same lattice points, rows j at
+y = (1 + (j − 1)·stride[2] − ½)·Δy, E_y's rows), relative to B's rms, over the rows whose distance
+from the axis `yc` lies in each band [lo, hi) of `bands` (c/ω₀); `nothing` for a band without rows.
+"""
+function map_relrms(A, B, d, yc, stride, bands)
+    size(A) == size(B) || error("maps of sizes $(size(A)) and $(size(B))")
+    y = [abs((1 + (j - 1) * stride[2] - 0.5) * d.dy - yc) for j in axes(A, 2)]
+    return map(bands) do (lo, hi)
+        rows = findall(v -> lo <= v < hi, y)
+        isempty(rows) ? nothing : relrms(view(A, :, rows), view(B, :, rows))
+    end
+end
+
+"""
+    map_rows(runs, case, d, pairs) -> Dict
+
+What the axis lineouts do not see: for every output with a 2D map and every pair of codes whose
+plasma runs have it, the relative rms difference of E_y over the lattice columns both maps hold,
+in the bands of `MAP_BANDS` (`bands`, in c/ω₀). The two envelope conventions of the laser are the
+same field on the axis of the launch plane and differ off it, so one pulse in two codes means
+agreement here too. The first map of A5's case, t = 300, is before the pulse reaches the plasma.
+The columns within `MAP_BACK` laser wavelengths of the back of the shared ones (`back_margin`
+cells) are left out of a pair's key; the same over all shared columns is under the key with
+`_with_back` appended.
+"""
+function map_rows(runs, case, d, pairs)
+    w0 = Float64(case["laser"]["waist"])
+    bands = [(lo * w0, hi * w0) for (lo, hi) in MAP_BANDS]
+    steps = output_steps(case)[Int.(case["diagnostics"]["map_outputs"])]
+    margin = round(Int, MAP_BACK * 2π / d.dx)
+    read_map(code, k) = (p = joinpath(runs, "$code-plasma", "maps.h5"); isfile(p) || return nothing;
+        h5open(p, "r") do f
+            haskey(f, "step$k") || return nothing
+            g = f["step$k"]
+            (Ey = read(g["Ey"]), m0 = Int(read_attribute(g, "m0")), stride = haskey(HDF5.attributes(g), "stride") ? Int.(read_attribute(g, "stride")) : [1, 1])
+        end)
+    rows = Dict{String,Any}[]
+    for k in steps
+        r = Dict{String,Any}("step" => k, "t" => k * d.dt)
+        for (prefix, a, b) in pairs
+            A, B = read_map(a, k), read_map(b, k)
+            (A === nothing || B === nothing) && continue
+            A.stride == B.stride && (A.m0 - B.m0) % A.stride[1] == 0 || error("step $k: the maps of $a and $b are on different columns (m0 = $(A.m0), $(B.m0), strides $(A.stride), $(B.stride))")
+            sx = A.stride[1]
+            lo, hi = max(A.m0, B.m0), min(A.m0 + sx * (size(A.Ey, 1) - 1), B.m0 + sx * (size(B.Ey, 1) - 1))
+            ia, ib = ((lo - A.m0) ÷ sx + 1):((hi - A.m0) ÷ sx + 1), ((lo - B.m0) ÷ sx + 1):((hi - B.m0) ÷ sx + 1)
+            skip = cld(margin, sx)
+            length(ia) > skip || error("step $k: the maps of $a and $b share $(length(ia)) columns, no more than the back margin's $skip")
+            r[prefix * "plasma"] = map_relrms(view(A.Ey, ia[(skip + 1):end], :), view(B.Ey, ib[(skip + 1):end], :), d, d.yc, A.stride, bands)
+            r[prefix * "plasma_with_back"] = map_relrms(view(A.Ey, ia, :), view(B.Ey, ib, :), d, d.yc, A.stride, bands)
+        end
+        push!(rows, r)
+    end
+    return Dict{String,Any}("field" => "Ey", "bands" => [[lo, isfinite(hi) ? hi : nothing] for (lo, hi) in bands], "back_margin" => margin, "rows" => rows)
+end
 
 """
 Compare the summaries under `runs` (pm-*, smilei-*, and picongpu-* when present; the vacuum runs
@@ -875,10 +983,12 @@ alone when there is no pm-plasma) and write the figures, sidecars and `compariso
 `out`. `comparison.json` keeps ParticleMesh against Smilei under `vacuum` and `plasma`,
 ParticleMesh against PIConGPU under `picongpu_vacuum` and `picongpu_plasma`, and Smilei against
 PIConGPU under `smilei_picongpu_vacuum` and `smilei_picongpu_plasma` (`pairs` names the two codes
-of each key); the rows are `compare_rows`', every wake window two plasma wavelengths long and
-placed at ParticleMesh's envelope peak (`wake`). `wake_sensitivity` repeats the wake's E_x
-measures for the windows of `WAKE_LENGTHS`, and `spectrum` holds the spectra in one unit
-(`spectrum_rows`).
+of each key); the rows are `compare_rows`', every wake window `WAKE_LENGTH` plasma wavelengths
+long and placed at ParticleMesh's envelope peak (`wake`). `wake_sensitivity` repeats the wake's
+E_x measures for the windows of `WAKE_LENGTHS`, `wake_anchor_sensitivity` for the window moved by
+the anchor's step either way (half a laser wavelength: the envelope's peak snaps to a crest),
+`maps` compares the 2D maps of E_y off the axis (`map_rows`), and `spectrum` holds the spectra in
+one unit (`spectrum_rows`).
 """
 function compare(runs, out)
     mkpath(out)
@@ -901,10 +1011,12 @@ function compare(runs, out)
         result[prefix * medium] = rows(a, b, medium)
     end
     if "plasma" in media
-        result["wake"] = Dict{String,Any}("length" => 2.0, "anchor" => "pm", "floor" => WAKE_FLOOR * 2π / λp)
-        wake_keys = ("step", "t", "wake_Ex_relrms", "wake_Ex_shift", "wake_Ex_relrms_shifted")
-        result["wake_sensitivity"] = Dict(string(len) => Dict(prefix * "plasma" => [Dict(k => r[k] for k in wake_keys if haskey(r, k)) for r in rows(a, b, "plasma"; wake_length = len)]
-                                                              for (prefix, a, b) in pairs) for len in WAKE_LENGTHS)
+        result["wake"] = Dict{String,Any}("length" => WAKE_LENGTH, "anchor" => "pm", "floor" => WAKE_FLOOR * 2π / λp)
+        wake_keys = ("step", "t", "wake_Ex_relrms", "wake_Ex_shift", "wake_Ex_relrms_shifted", "wake_Ex_min", "wake_Ex_max")
+        wake_only(; kw...) = Dict(prefix * "plasma" => [Dict(k => r[k] for k in wake_keys if haskey(r, k)) for r in rows(a, b, "plasma"; kw...)] for (prefix, a, b) in pairs)
+        result["wake_sensitivity"] = Dict(string(len) => wake_only(; wake_length = len) for len in WAKE_LENGTHS)
+        result["wake_anchor_sensitivity"] = Dict(string(off) => wake_only(; anchor_offset = off) for off in (-h, h))
+        result["maps"] = map_rows(runs, case, d, pairs)
         P = case["plasma"]
         result["spectrum"] = spectrum_rows(S, d, codes; macro_weight = P["density"] * d.dx * d.dy / prod(Int.(P["particles_per_cell"])))
     end
@@ -968,7 +1080,7 @@ function compare_pair(dir_a, dir_b, out)
         edges = spectrum_edges(case)
         cut = unique(argmin(abs.(edges .- t)) for t in (1.0, 5.0, 10.0, 20.0, 40.0) if t < last(edges))
         macro_weight = P["density"] * d.dx * d.dy / prod(Int.(P["particles_per_cell"]))
-        result["wake"] = Dict{String,Any}("length" => 2.0, "anchor" => "a", "floor" => WAKE_FLOOR * 2π / λp)
+        result["wake"] = Dict{String,Any}("length" => WAKE_LENGTH, "anchor" => "a", "floor" => WAKE_FLOOR * 2π / λp)
         result["spectrum"] = Dict{String,Any}("unit" => "electrons per unit depth, n_c (c/ω₀)²", "thresholds" => edges[cut], "macro_weight" => macro_weight,
                                               "a" => [spectrum_row(o, edges, cut, spectrum_scale(code_key(A), d); macro_weight) for o in A["outputs"]],
                                               "b" => [spectrum_row(o, edges, cut, spectrum_scale(code_key(B), d); macro_weight) for o in B["outputs"]])
@@ -1072,7 +1184,7 @@ function plot_maps(out, runs, case, d, codes)
         ax = Axis(fig[row, 1]; xlabel = "x (c/ω₀), lab frame", ylabel = "y (c/ω₀)", title = "$(NAMES[c]): n_e/n₀ at t = $(round(k * d.dt; digits = 1))")
         hm = heatmap!(ax, x, y, -M ./ n0; colorrange = (0, 3), colormap = :viridis)
         Colorbar(fig[row, 2], hm)
-        side[NAMES[c]] = -M ./ n0
+        side[NAMES[c]] = round.(-M ./ n0; digits = 4)       # four decimals of n_e/n₀: the sidecar's size
     end
     save_plot(out, "density_maps", fig, side)
 end
@@ -1145,8 +1257,11 @@ include(joinpath(@__DIR__, "picongpu.jl"))
 if abspath(PROGRAM_FILE) == @__FILE__
     cmd = get(ARGS, 1, "")
     if cmd == "prepare"
-        media = get(ARGS, 4, "") == "vacuum" ? ("vacuum",) : length(ARGS) >= 4 ? error("prepare <case> <tag> [vacuum], got $(ARGS[4])") : ("vacuum", "plasma")
-        println(prepare(ARGS[2], ARGS[3]; media))
+        words = ARGS[4:end]
+        all(in(("vacuum", "plasma", "pm", "smilei", "picongpu")), words) || error("prepare <case> <tag> [vacuum|plasma] [pm|smilei|picongpu …], got $words")
+        media = Tuple(w for w in ("vacuum", "plasma") if w in words)
+        codes = Tuple(w for w in ("pm", "smilei", "picongpu") if w in words)
+        println(prepare(ARGS[2], ARGS[3]; media = isempty(media) ? ("vacuum", "plasma") : media, codes = isempty(codes) ? ("pm", "smilei", "picongpu") : codes))
     elseif cmd == "run-pm"
         be = backend_named(get(ARGS, 3, "cpu"))
         Base.invokelatest(run_pm, ARGS[2]; backend = be)        # CUDACore's methods are newer than this call
@@ -1159,6 +1274,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     elseif cmd == "compare-pair"
         compare_pair(ARGS[2], ARGS[3], ARGS[4])
     else
-        error("usage: lwfa.jl prepare <case> <tag> [vacuum] | run-pm <dir> [cpu|cuda] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out> | compare-pair <dir a> <dir b> <out>")
+        error("usage: lwfa.jl prepare <case> <tag> [vacuum|plasma] [pm|smilei|picongpu …] | run-pm <dir> [cpu|cuda] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out> | compare-pair <dir a> <dir b> <out>")
     end
 end
