@@ -120,13 +120,16 @@ end
     on_evolved(state, arrays::Tuple) -> EMState
 
 An `EMState` with the configuration, the scratch, the cache `K` and the recorder of `state`, whose
-evolved arrays are `arrays` (the layout of [`evolved`](@ref)`(state)`, with the array types of the
-state's own). No copy. `K` is the cache of whatever was stepped or refreshed last through either
-state ([`refresh_caches!`](@ref)).
+evolved arrays are `arrays`: as many arrays as [`evolved`](@ref)`(state)`, each of the type of its
+place there (an `ArgumentError` otherwise; a comparison of types, so nothing is converted and
+nothing copied). The sizes are the caller's to check where the arrays come from outside
+(`check_evolved`). `K` is the cache of whatever was stepped or refreshed last through either state
+([`refresh_caches!`](@ref)).
 """
 function on_evolved(st::EMState, a::Tuple)
-    length(a) == length(evolved(st)) ||
-        throw(ArgumentError("$(length(a)) arrays, the state evolves $(length(evolved(st))) (`evolved`)"))
+    a isa typeof(evolved(st)) ||
+        throw(ArgumentError("the arrays are not of the types of the state's evolved arrays (`evolved`): $(length(a)) arrays " *
+                            "against $(length(evolved(st))), or another array or element type"))
     species, a = species_on(st.species, a)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
@@ -173,6 +176,10 @@ struct EMSnapshot{U<:Tuple,A<:Tuple}
     k::Int
     units::U
     arrays::A
+    function EMSnapshot(k::Integer, units::U, arrays::A) where {U<:Tuple,A<:Tuple}
+        k >= 0 || throw(ArgumentError("a snapshot is taken after step k ≥ 0 (0: after initialize!), got k = $k"))
+        return new{U,A}(Int(k), units, arrays)
+    end
 end
 
 """
@@ -184,10 +191,7 @@ the parameters and a state built for the same problem and numerics it is a compl
 ([`restore!`](@ref)); the recorder's histories are the observer's and are not saved
 ([`histories`](@ref) reads them).
 """
-function snapshot(st::EMState, k::Integer)
-    k >= 0 || throw(ArgumentError("a snapshot is taken after step k ≥ 0 (0: after initialize!), got k = $k"))
-    return EMSnapshot(Int(k), state_units(st), map(copy, evolved(st)))
-end
+snapshot(st::EMState, k::Integer) = EMSnapshot(k, state_units(st), map(copy, evolved(st)))
 
 # Whether `src` has the layout of the state's evolved arrays: as many arrays, each of the element
 # type and size of its place (static shapes, a host check; the array types may differ, so host
@@ -223,9 +227,11 @@ witness bunch and every history entry from step `k + 1` on. The state may be new
 `k` are not touched.
 
 Refused with an `ArgumentError`: arrays of another layout (number, element type or size: another
-grid, capacity, element type, or set of absorbers, window and witness bunch), and a snapshot taken
-with another time step or cell size. Anything else of the configuration is the caller's to keep
-(the charges, the window's start, the witness bunch's injection time), and a restart with other
+grid, capacity or element type, a species, a PML, a window or a witness bunch more or less), and
+a snapshot taken with another time step or cell size. Nothing else is compared: the rest of the
+configuration is the caller's to keep (the charges, the window's start, the witness bunch's
+injection time, an absorber's profile, or an absorbing layer where the saved run had none, which
+adds no array), the values in the arrays are taken as they are, and a restart with other
 parameters or numerics is a run of its own from the saved state.
 
 The second form takes the arrays alone, in `evolved`'s layout (those of another state, or of a

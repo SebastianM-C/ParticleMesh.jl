@@ -23,7 +23,7 @@ module ParticleMeshElectromagneticSciMLExt
 
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!
-using ParticleMeshElectromagnetic: evolved, on_evolved, restore!, refresh_caches!, copy_arrays!
+using ParticleMeshElectromagnetic: evolved, on_evolved, restore!, refresh_caches!, copy_arrays!, check_evolved
 import ParticleMeshElectromagnetic: state_partition, remake_reload, harness_state
 using KernelAbstractions: CPU
 using SciMLBase: SciMLBase, DiscreteProblem, DiscreteFunction, AbstractSciMLProblem, AbstractTimeseriesSolution
@@ -58,8 +58,10 @@ a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), 
 integrator's state may continue, so that the histories and the state are those of `run!`. Step 1
 starts from `u0` without `initialize!`: `u0` holds everything a run evolves, so a solve is the run
 of its `u0`, a second solve the same run. The cache has not seen that `u0` (its `K` is the last
-solve's), so step 1 first rebuilds the cache from it (`refresh_caches!`, as `restore!` does) and
-checks that a problem given as `p` has the cache's configuration ([`check_setup`](@ref)).
+solve's), so step 1 first checks that `u0` has the layout of the cache's evolved arrays (their
+number, element types and sizes: a `u0` of another problem is an `ArgumentError`, not a silent
+conversion), rebuilds the cache from it (`refresh_caches!`, as `restore!` does) and checks that a
+problem given as `p` has the cache's configuration ([`check_setup`](@ref)).
 """
 struct EMMap{S<:EMState,B}
     state::S
@@ -81,6 +83,8 @@ function (m::EMMap)(u, uprev, p, t)
     (k == t && (k == 1 || (k == m.done[] + 1 && a === m.owner[]))) ||
         throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1) on one integrator; got t = $t after step $(m.done[])"))
     pk = step_params(p)
+    # a solve's first step: `u` is a copy of a `u0` that may come from anywhere (`remake`)
+    k == 1 && check_evolved(m.state, u.x)
     st = state_on(m.state, u)
     k == 1 && (check_fit(m.state, p); refresh_caches!(st))
     step!(st, pk, k)

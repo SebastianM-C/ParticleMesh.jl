@@ -223,6 +223,13 @@ function body_T740(be)
     for snap in snaps
         @test differences(ref, continue_run!(EMState(prob, num; backend = be), prob, snap), snap.k) == String[]
     end
+    # restore! writes the saved arrays and rebuilds the cache, nothing else: in a mode that does not sort,
+    # the particles stay in the slots they were saved in (here out of cell order)
+    prob, num = case_problem("landau", Float64; mode = Fast(), HARNESS_KW...)
+    ref, snaps = run_with_snapshots(prob, num, (40,); be)
+    saved = only(snaps)
+    st = restore!(EMState(prob, num; backend = be), saved)
+    @test !issorted(Array(saved.arrays[1])) && all(map(same_bits, evolved(st), saved.arrays))
 end
 
 @testset "T-740 a run saved after any step and restored into a new or a used state continues with the bits of the uninterrupted run [A4, A8, WP-056]" begin
@@ -334,6 +341,8 @@ function body_T742(be)
           (v.aux.witness.kinj, v.aux.witness.c0, v.aux.witness.nc, v.aux.witness.ppc) === (st.aux.witness.kinj, st.aux.witness.c0, st.aux.witness.nc, st.aux.witness.ppc)
     @test_throws ArgumentError on_evolved(st, copies[1:(end - 1)])
     @test_throws ArgumentError on_evolved(st, (copies..., copies[end]))
+    @test_throws ArgumentError on_evolved(st, (copies[1], copies[3], copies[2], copies[4:end]...))       # an offset where a cell belongs: nothing is converted
+    @test_throws ArgumentError on_evolved(st, map(a -> eltype(a) === T ? Float32.(a) : a, copies))
     # without absorbers, window and witness bunch: the species and the fields; with an absorbing layer nothing more; at N = 1 the same
     plain = EMState(plasma_step_2d(T), EMNumerics(; current = Esirkepov()); backend = be)
     @test same_arrays(evolved(plain), (sp(plain.species[1])..., sp(plain.species[2])..., values(plain.fields)...))
@@ -495,6 +504,8 @@ end
             save_snapshot(io, only(snaps))
             st = EMState(q, num)
             @test differences(ref, continue_run!(st, q, load_snapshot(seekstart(io), st)), 2) == String[]
+            sol = solve(DiscreteProblem(q, num; backend, save_everystep = false), FunctionMap())        # the harness's layout check of u0 too
+            @test partition_bits(sol.u[end]) == state_bits(ref) && history_bits(harness_state(sol)) == history_bits(ref)
         end
     end
     T = Float64
@@ -515,7 +526,8 @@ end
                 eltype = (plasma_step_2d(Float32), num),                                        # another element type
                 pml = (remade(; boundaries = (:periodic, :open)), EMNumerics(; current = Esirkepov(), absorber = PML(; cells = 3))),   # more arrays
                 dt = (remade(; dt = prob.dt / 2), num),                                         # the snapshot's layout, another time step
-                size = (remade(; length = (prob.length[1], 2 * prob.length[2])), num))         # the snapshot's layout, another cell size
+                size = (remade(; length = (prob.length[1], 2 * prob.length[2])), num),         # the snapshot's layout, another cell size
+                size1 = (remade(; length = (2 * prob.length[1], prob.length[2])), num))        # along the other axis
     states = map(((q, n),) -> initialize!(EMState(q, n), q), variants)
     for st in states
         before = map(copy, evolved(st))
@@ -528,7 +540,7 @@ end
     for st in (states.cells, states.transposed, states.smaller, states.larger, states.one, states.eltype, states.pml)
         @test_throws ArgumentError restore!(st, a)
     end
-    @test all(st -> map(size, evolved(st)) == map(size, a), (states.dt, states.size))
+    @test all(st -> map(size, evolved(st)) == map(size, a), (states.dt, states.size, states.size1))
     @test restore!(states.dt, a) === states.dt && all(map(same_bits, evolved(states.dt), a))
     @test_throws ArgumentError restore!(EMState(prob, num), a[1:(end - 1)])
     @test_throws ArgumentError restore!(EMState(prob, num), (a..., a[end]))
@@ -539,6 +551,10 @@ end
     bytes = take!(io)
     fresh = EMState(prob, num)
     @test load_snapshot(IOBuffer(bytes), fresh).k == 7
+    io0 = IOBuffer()
+    save_snapshot(io0, snapshot(initialize!(EMState(prob, num), prob), 0))
+    @test load_snapshot(seekstart(io0), fresh).k == 0                                            # a snapshot of the start
+    @test_throws ArgumentError EMSnapshot(-1, snap.units, snap.arrays)
     for cut in (0, 4, 8, 20, 40, 64, 100, length(bytes) ÷ 2, length(bytes) - 1)
         @test_throws ArgumentError load_snapshot(IOBuffer(bytes[1:cut]), fresh)
     end
@@ -547,6 +563,12 @@ end
     for st in (states.cells, states.transposed, states.smaller, states.larger, states.one, states.eltype, states.pml)
         @test_throws ArgumentError load_snapshot(IOBuffer(bytes), st)
     end
+    # the harness refuses a u0 of another layout at the first step of a solve, where it used to convert it or read past it
+    dp = DiscreteProblem(prob, num; backend, save_everystep = false)
+    for st in (states.cells, states.transposed, states.smaller, states.larger, states.one, states.eltype, states.pml)
+        @test_throws ArgumentError solve(remake(dp; u0 = state_partition(st)), FunctionMap())
+    end
+    @test solve(remake(dp; u0 = state_partition(states.dt)), FunctionMap()).retcode == ReturnCode.Success       # the arrays alone: its own layout
     other_dt = EMState(variants.dt...)
     @test_throws ArgumentError restore!(other_dt, load_snapshot(IOBuffer(bytes), other_dt))      # another time step: read, then refused by its units
 end
