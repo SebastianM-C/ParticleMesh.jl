@@ -7,8 +7,11 @@ using ParticleMeshElectromagnetic: ramp_factor
 
 # A5's case and its coarse-grid reference, the input of reports/lwfa-2d-a2.md.
 const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml", "lwfa-2d-a2.toml")]
+# the resolution scan: A5's case at λ₀/32, λ₀/48 and λ₀/64 with the outputs at the same times (T-714)
+const SCAN_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d-r32.toml", "lwfa-2d-r48.toml", "lwfa-2d-r64.toml")]
+const ALL_FILES = vcat(CASE_FILES, SCAN_FILES)
 
-@testset "T-510 the Smilei namelist carries the case: grid, step, window, the laser's parameters and the density profile [A1, A5]" for file in CASE_FILES
+@testset "T-510 the Smilei namelist carries the case: grid, step, window, the laser's parameters and the density profile [A1, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     nl = smilei_namelist(CASE; plasma = true)
@@ -54,7 +57,7 @@ const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml
     @test !occursin("Species(", vac) && occursin("fields = [\"Ex\", \"Ey\"]", vac) && !occursin("DiagParticleBinning", vac)
 end
 
-@testset "T-511 the ParticleMesh problem is the case with the antenna offset: plane on node antenna_cells + 1, focus and profile shifted [A1, A3, A5]" for file in CASE_FILES
+@testset "T-511 the ParticleMesh problem is the case with the antenna offset: plane on node antenna_cells + 1, focus and profile shifted [A1, A3, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     prob = pm_problem(CASE)
@@ -133,7 +136,7 @@ end
 
 cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).captures[1])
 
-@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" for file in CASE_FILES
+@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     u = reference_units(CASE["lambda0_um"] * 1e-6)
@@ -173,7 +176,7 @@ cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).c
     @test occursin("--openPMD.source fields_all ", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
 end
 
-@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" for file in CASE_FILES
+@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
@@ -193,7 +196,7 @@ end
     @test all(k -> picongpu_window_back(CASE, k) + lay.window - 1 >= max(0.0, k * d.dt - start) / d.dx + d.nx - 2, 0:97:d.steps)
 end
 
-@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" for file in CASE_FILES
+@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
@@ -370,7 +373,7 @@ end
 # A synthetic output on the lab lattice: a laser of the case's duration with its envelope peak at
 # x0 and carrier phase φ, behind it a wake −w·sin(k_p(x − x0)) and its density, and a narrow dip of
 # depth 1 in E_x three plasma wavelengths behind the peak.
-function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, plasma = true, bunch = 1.0e-3)
+function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, plasma = true, bunch = 1.0e-3, feature = nothing, bunch_bin = 40)
     d = derived(case)
     kp = sqrt(case["plasma"]["density"])
     τ = case["laser"]["duration"]
@@ -381,11 +384,13 @@ function synthetic_output(case, step; m0, n, x0, φ = 0.0, a0 = 1.0, w = 0.05, p
     plasma || return o
     xe = x .+ d.dx / 2                                                       # E_x's points, first at m = m0 + 1
     o["Ex_axis"] = @. ifelse(xe < x0, -w * sin(kp * (xe - x0)), 0.0) - exp(-(xe - (x0 - 6π / kp))^2 / 4)
+    # a feature of the wake, (amplitude, how far behind the pulse, width): for windows that must hold it or leave it out
+    feature === nothing || (o["Ex_axis"] .+= @. feature[1] * exp(-((xe - (x0 - feature[2])) / feature[3])^2))
     o["Ex_m0"] = m0 + 1
     o["rho_axis"] = @. -case["plasma"]["density"] * (1 + ifelse(x < x0, 0.5 * cos(kp * (x - x0)), 0.0))
     o["rho_m0"] = m0
     h = zeros(Int(case["diagnostics"]["spectrum_ekin"][3]))
-    h[1], h[6], h[40] = 5.0, 0.02, bunch                                     # the cold plasma, a warm bin, the bunch
+    h[1], h[6], h[bunch_bin] = 5.0, 0.02, bunch                              # the cold plasma, a warm bin, the bunch
     o["spectrum"] = h
     return o
 end
@@ -636,7 +641,7 @@ function smilei_node_field(nl, y, t)
     return envelope * a0 * sqrt(w) * exp(-(w / waist)^2 * y^2) * sin(t - φ)
 end
 
-@testset "T-698 the Smilei namelist's laser is the case's wavefront pulse on its injection node, two cells behind x = 0 [A1, A5]" for file in CASE_FILES
+@testset "T-698 the Smilei namelist's laser is the case's wavefront pulse on its injection node, two cells behind x = 0 [A1, A5]" for file in ALL_FILES
     case = TOML.parsefile(file)
     d, L = derived(case), case["laser"]
     nl = smilei_namelist(case; plasma = false)
@@ -1178,7 +1183,7 @@ end
     @test smilei_launch_factor(a5) - 1 ≈ (a5.dx^2 + a5.dt^2) / 16 rtol = 2e-3
 end
 
-@testset "T-711 the maps off the axis: the relative rms difference of E_y by band of the distance from the axis, on the columns two maps share [A5, A7]" begin
+@testset "T-711 the maps off the axis: the relative rms difference of E_y by band of the distance from the axis, on the columns two maps share, and column by column from their back [A5, A7]" begin
     case = TOML.parsefile(CASE_FILES[1])
     d = derived(case)
     w0 = case["laser"]["waist"]
@@ -1226,6 +1231,17 @@ end
         @test first_row["plasma_with_back"][3] > first_row["plasma"][3]
         @test !haskey(first_row, "picongpu_plasma") && !haskey(first_row, "smilei_picongpu_plasma")
         @test length(rows["rows"]) == length(case["diagnostics"]["map_outputs"]) && !haskey(rows["rows"][2], "plasma")
+        # column by column from the back of the shared ones: the three with the wrong sign are 2 and more of ParticleMesh's
+        # column away, the ones after by what the two fields differ (1 % to 20 %, by band)
+        bc = back_columns(runs, case; columns = 6)
+        @test length(bc) == 1 && bc[1]["step"] == k && bc[1]["x0"] ≈ (31 + mod(-31, stride[1])) * d.dx && bc[1]["spacing"] ≈ stride[1] * d.dx
+        @test length(bc[1]["plasma"]) == 6 && all(>(2.0), bc[1]["plasma"][1:3]) && all(v -> 0.01 < v < 0.2, bc[1]["plasma"][4:6])
+        @test bc[1]["plasma"][1] ≈ sqrt(sum(abs2, (2 + excess((jj - 0.5) * d.dy - d.yc)) * level((jj - 0.5) * d.dy - d.yc) for jj in 1:stride[2]:d.ny) /
+                                        sum(abs2, level((jj - 0.5) * d.dy - d.yc) for jj in 1:stride[2]:d.ny)) rtol = 1e-12
+        @test !haskey(bc[1], "picongpu_plasma") && bc[1]["smilei_back_x"] == smilei_window_back(case, k) * d.dx
+        mv = smilei_last_move(case, k)
+        @test bc[1]["smilei_move"] == Dict("iteration" => mv.iteration, "steps" => mv.steps, "reach" => mv.reach)
+        @test back_columns(mktempdir(), case) == []                              # no maps, no columns
     end
 end
 
@@ -1294,7 +1310,7 @@ function oblique_launch(kind, ky, dx, dy, dt; probe = 300, t0 = 300.0, periods =
 end
 
 @testset "T-712 Smilei's Silver–Müller condition launches an oblique component with 2cos α/(1 + cos α) of what it launches at normal incidence: its update for one k_y on the Yee grid [A5]" begin
-    for file in CASE_FILES
+    for file in vcat(CASE_FILES, SCAN_FILES[3:3])
         case = TOML.parsefile(file)
         d = derived(case)
         normal = oblique_launch(:silver_muller, 0.0, d.dx, d.dy, d.dt)
@@ -1335,4 +1351,443 @@ end
     # an absorber that absorbed would leave the continuum's value: 60 cells of ten times the strength
     strong = coefficient(:plane_wave_b; surface = 65, absorber = 60, strength = 1.0e-2)
     @test abs(strong - free) <= 0.02
+end
+
+# --- the resolution scan ---------------------------------------------------------------------------------
+
+@testset "T-714 the scan's three grids are one physical case: the box, the antenna, the patches and the maps in c/ω₀, the outputs at the same times, the primal nodes shared every λ₀/16 [A5, A7, WP-054]" begin
+    cases = TOML.parsefile.(SCAN_FILES)
+    D = derived.(cases)
+    @test [round(Int, 2π / d.dx) for d in D] == [32, 48, 64]
+    @test scan_same_case(cases) === nothing
+    @test scan_stride.(D) == [2, 3, 4] && quarter_wave.(D) == [8, 12, 16] && envelope_halfwidth.(cases) == [16, 24, 32]
+    # lengths: 96π × 64π ahead of the plane, the antenna 2.5π behind it, Smilei's patch 1.5π long, the maps every λ₀/8 and λ₀/4
+    @test all(d -> d.nx * d.dx ≈ 96π && d.ny * d.dy ≈ 64π && d.xa ≈ 2.5π, D)
+    @test all(((c, d),) -> (d.nx ÷ Int(c["grid"]["smilei_patches"][1])) * d.dx ≈ 1.5π, zip(cases, D))
+    @test all(((c, d),) -> c["diagnostics"]["map_stride"][1] * d.dx ≈ π / 4 && c["diagnostics"]["map_stride"][2] * d.dy ≈ π / 2, zip(cases, D))
+    @test all(d -> d.nx % 8 == 0 && d.ny % 8 == 0, D)                       # PIConGPU's supercells
+    # time: Δt as 1/32 : 1/48 : 1/64, the cadences 2 : 3 : 4, and the 13 output times the same doubles
+    @test D[1].dt / D[2].dt ≈ 1.5 && D[2].dt / D[3].dt ≈ 4 / 3
+    @test [d.every for d in D] == [552, 828, 1104] && [d.steps for d in D] == 13 .* [552, 828, 1104]
+    times = [output_steps(c) .* d.dt for (c, d) in zip(cases, D)]
+    @test all(t -> length(t) == 14 && maximum(abs, t .- times[1]) <= 1e-9, times)
+    @test times[1][2] ≈ 34.5π * 0.95 / sqrt(17 / 16)
+    # the wake's window and the plasma wavelength are whole cells, and whole shared nodes
+    λp = 2π / sqrt(cases[1]["plasma"]["density"])
+    @test [round(Int, WAKE_LENGTH * λp / d.dx) for d in D] == [480, 720, 960] && all(d -> WAKE_LENGTH * λp / d.dx ≈ round(WAKE_LENGTH * λp / d.dx), D)
+    # the windows: ParticleMesh's back within a cell of c(t − start), so within the coarse cell of each other; Smilei's moves by
+    # the same patch, at half-step times that differ by less than a step, so its back is the same place or a patch apart
+    for j in 1:14
+        t = times[1][j]
+        pm = [pm_window_back(c, k[j]) * d.dx for (c, d, k) in zip(cases, D, output_steps.(cases))]
+        @test all(x -> 0 <= max(0.0, t - 256) - x < D[1].dx + 1e-9, pm)
+        sm = [smilei_window_back(c, k[j]) * d.dx for (c, d, k) in zip(cases, D, output_steps.(cases))]
+        @test maximum(sm) - minimum(sm) <= 1.5π + 1e-9
+    end
+    # λ₀/48 is A5's case file but for the name, the step count and the cadence
+    a5, r48 = TOML.parsefile(CASE_FILES[1]), cases[2]
+    strip(c) = (c = deepcopy(c); delete!(c, "name"); delete!(c, "description"); delete!(c["time"], "steps"); delete!(c["time"], "fields_every"); c)
+    @test strip(a5) == strip(r48) && a5["time"]["fields_every"] == 829
+    # what is not one case is refused: A5's own cadence, the λ₀/32 case without the envelope's key
+    @test_throws ErrorException scan_same_case([cases[1], a5, cases[3]])
+    @test_throws ErrorException scan_same_case([TOML.parsefile(CASE_FILES[2]), cases[2], cases[3]])
+    # Smilei's plane-wave factor on each grid, (Δx² + Δt²)/16 above 1 to second order
+    f = smilei_launch_factor.(D)
+    @test f[1] ≈ 1.004474 atol = 1e-6
+    @test f[2] ≈ 1.001984 atol = 1e-6
+    @test f[3] ≈ 1.001115 atol = 1e-6
+    @test all(((x, d),) -> isapprox(x - 1, (d.dx^2 + d.dt^2) / 16; rtol = 5e-3), zip(f, D))
+    # PIConGPU's box at each resolution: whole supercells, the window at least the case's plus the cells behind x = 0
+    for (c, d) in zip(cases, D)
+        lay = picongpu_layout(c)
+        @test lay.local_y % 8 == 0 && lay.window >= d.nx + lay.j0 && lay.cells == (d.ny, 2 * lay.local_y)
+    end
+end
+
+@testset "T-719 Smilei's last window move before an output: the iteration at whose end its back went from one patch to the next, and how far c has come since [A5, WP-054]" begin
+    for file in ALL_FILES
+        case = TOML.parsefile(file)
+        d = derived(case)
+        patch = d.nx ÷ Int(case["grid"]["smilei_patches"][1])
+        @test smilei_last_move(case, 0) === nothing && smilei_last_move(case, floor(Int, case["window"]["start"] / d.dt)) === nothing
+        for k in (output_steps(case)[5], output_steps(case)[8] + 3, d.steps)
+            mv = smilei_last_move(case, k)
+            back = smilei_window_back(case, k)
+            # the output of the iteration still has the old back, the next one the new: that is the move
+            @test smilei_window_back(case, mv.iteration) == back - patch && smilei_window_back(case, mv.iteration + 1) == back
+            @test mv.steps == k - mv.iteration >= 1 && mv.reach == mv.steps * d.dt
+            @test mv.reach <= patch * d.dx + d.dt                                 # the window moves a patch per patch of time
+        end
+    end
+    # the scan's λ₀/48 outputs with maps, and WP-053's (829 steps apart): the same move, 2 and 9, 2 and 14 steps before
+    c48 = TOML.parsefile(SCAN_FILES[2])
+    @test [smilei_last_move(c48, k).iteration for k in (5796, 5803, 9936, 9948)] == [5794, 5794, 9934, 9934]
+    @test [smilei_last_move(c48, k).steps for k in (5796, 5803, 9936, 9948)] == [2, 9, 2, 14]
+end
+
+@testset "T-715 the measures across resolutions: the shared nodes, E_x to the primal nodes and anywhere, the axis lineout's rows, the order of three values and of three distances, the wake's extrema and its displacement, the axial Yee values [A5, A7, WP-054]" begin
+    # shared nodes: the points of a lineout on x = j·λ₀/16
+    v = collect(100.0:119.0)                                                  # lattice m = 7 … 26
+    @test shared_nodes(v, 7, 3).v == [102.0, 105.0, 108.0, 111.0, 114.0, 117.0] && shared_nodes(v, 7, 3).j0 == 3
+    @test shared_nodes(v, 8, 4).v == [100.0, 104.0, 108.0, 112.0, 116.0] && shared_nodes(v, 8, 4).j0 == 2
+    @test shared_nodes(v, -5, 2).j0 == -2 && shared_nodes(v, -5, 2).v[1] == 101.0
+    # a dual lineout on the primal nodes: exact for a cubic, fourth order for a sine
+    dx, m0 = 0.1, 5
+    cubic(x) = 2 - x + 0.3x^2 - 0.07x^3
+    p = dual_to_primal([cubic((m0 + i - 1 - 0.5) * dx) for i in 1:12], m0)
+    @test p.m0 == m0 + 1 && length(p.v) == 9
+    @test p.v ≈ [cubic((p.m0 + i - 1) * dx) for i in 1:9] rtol = 1e-13
+    err(h) = (q = dual_to_primal([sin((i - 0.5) * h) for i in 1:40], 1); maximum(abs, q.v .- [sin((q.m0 + i - 1) * h) for i in eachindex(q.v)]))
+    @test 14 < err(0.2) / err(0.1) < 18
+    # the axis lineout is the mean of the rows at ±Δy/2: for the case's beam, the axis's field times the factor, later by the delay
+    for file in SCAN_FILES
+        case = TOML.parsefile(file)
+        d, L = derived(case), case["laser"]
+        l = GaussianLaser(; a0 = L["a0"], waist = L["waist"], duration = L["duration"], delay = L["delay"], focus = L["focus"],
+                          position = 0.0, center = 0.0, envelope = WavefrontTime())
+        for x in (0.0, 150.0, 320.0, 700.0)
+            ax = axis_sampling(case, x)
+            ξ = x - L["focus"]
+            @test all(s -> isapprox(laser_field(l, ξ, d.dy / 2, s)[1], ax.amplitude * laser_field(l, ξ, 0.0, s - ax.phase)[1]; atol = 1e-13), (-20.0, -3.0, 0.4, 11.0))
+        end
+        @test axis_sampling(case, 320.0).amplitude ≈ exp(-(d.dy / 2)^2 / 28^2) && axis_sampling(case, 320.0).phase == 0
+    end
+    @test 1 - axis_sampling(TOML.parsefile(SCAN_FILES[1]), 320.0).amplitude ≈ 1.97e-4 rtol = 0.01       # λ₀/32: 0.020 % at the focus
+    @test 1 - axis_sampling(TOML.parsefile(SCAN_FILES[3]), 320.0).amplitude ≈ 4.9e-5 rtol = 0.01        # λ₀/64: 0.005 %
+    # the order of three values: recovered where there is one, with the limit; none where the three do not support one
+    for p in (1.0, 2.0, 2.5, 3.0), (f0, C) in ((0.7, 3.0), (-2.0, -40.0))
+        o = observed_order([f0 + C * n^-p for n in (32, 48, 64)])
+        @test o.order ≈ p atol = 1e-9
+        @test o.limit ≈ f0 rtol = 1e-10
+    end
+    @test observed_order((1.0, 2.0, 2.5)).ratio ≈ 2.0                         # first order: the differences as 2 to 1
+    @test observed_order((1.0, 2.0, 2.5)).order ≈ 1 atol = 1e-9
+    @test observed_order((9.0, 4.0, 2.25)).ratio ≈ 5 / 1.75                   # 1/N² at N = 32, 48, 64: as 9 : 4 : 2.25
+    @test observed_order((9.0, 4.0, 2.25)).order ≈ 2 atol = 1e-9
+    none(o) = o.order === nothing && o.limit === nothing
+    @test none(observed_order((1.0, 1.2, 1.1)))                               # not monotone
+    @test none(observed_order((1.0, 1.0, 1.0))) && observed_order((1.0, 1.0, 1.0)).ratio === nothing
+    @test none(observed_order([1 + n^-0.2 for n in (32, 48, 64)]))            # an order below the range
+    @test none(observed_order([1 + 1e6 * n^-5.0 for n in (32, 48, 64)]))      # and above it
+    @test none(observed_order((1.0, 1.0 - 4e-7, 1.0 - 6e-7); floor = 1e-6))   # differences below the floor
+    @test observed_order((4.0, 2.0, 1.0); cells = (1, 2, 4)).order ≈ 1 atol = 1e-9
+    # an extremum between samples, by the parabola through three of them
+    para(x) = 3 - 2 * (x - 0.3)^2
+    val, δ = refine_extremum(para(-1.0), para(0.0), para(1.0))
+    @test val ≈ 3 && δ ≈ 0.3
+    @test refine_extremum(1.0, 1.0, 1.0) == (1.0, 0.0)
+    e = wake_extrema([cos(0.2 * ((i - 0.5) * 0.5 - 7.3)) for i in 1:200], 1, 0.5, 0.0, 30.0)     # one period: a maximum at 7.3, a minimum half a period on
+    @test e["max"] ≈ 1 atol = 1e-5
+    @test e["max_x"] ≈ 7.3 atol = 1e-3
+    @test e["min"] ≈ -1 atol = 1e-5
+    @test e["min_x"] ≈ 7.3 + 5π atol = 1e-3
+    @test e["absmax"] ≈ 1 atol = 1e-3
+    @test wake_extrema([1.0, 2.0, 3.0], 1, 0.5, 5.0, 9.0) === nothing         # no point of the lineout in the window
+    # where the lineout still rises at the window's edge the largest sample is the edge, not an extremum: no key for it
+    rising = wake_extrema([0.1 * i for i in 1:200], 1, 0.5, 10.0, 40.0)
+    @test !haskey(rising, "max") && !haskey(rising, "min") && !haskey(rising, "max_x") && rising["absmax"] ≈ 0.1 * 80
+    half = wake_extrema([cos(0.2 * ((i - 0.5) * 0.5 - 7.3)) for i in 1:200], 1, 0.5, 0.0, 20.0)  # the maximum at 7.3 inside, falling to the edge at 20
+    @test half["max"] ≈ 1 atol = 1e-5
+    @test !haskey(half, "min") && !haskey(half, "min_x")
+    # the axial Yee values: the scheme's dispersion relation as an identity, the group velocity as its derivative, the leading terms
+    for file in SCAN_FILES
+        d = derived(TOML.parsefile(file))
+        y = yee_axis(d)
+        @test sin(d.dt / 2) / d.dt ≈ sin(y.k * d.dx / 2) / d.dx rtol = 1e-14
+        ω(k) = 2 / d.dt * asin(d.dt / d.dx * sin(k * d.dx / 2))
+        @test y.vg ≈ (ω(y.k + 1e-5) - ω(y.k - 1e-5)) / 2e-5 rtol = 1e-9
+        @test y.k - 1 ≈ (d.dx^2 - d.dt^2) / 24 rtol = 0.01
+        @test 1 - y.vg ≈ (d.dx^2 - d.dt^2) / 8 rtol = 0.01
+    end
+    @test yee_axis(derived(TOML.parsefile(SCAN_FILES[2]))).k - 1 ≈ 1.0770e-4 rtol = 1e-4       # λ₀/48, as the report has it
+    @test 1 - yee_axis(derived(TOML.parsefile(SCAN_FILES[3]))).vg ≈ 1.8169e-4 rtol = 1e-4      # λ₀/64
+    # a dual lineout anywhere, by the cubic through four points: exact for a cubic, dual_to_primal's value on a node
+    dual = [cubic((m0 + i - 1 - 0.5) * dx) for i in 1:12]
+    @test all(x -> isapprox(dual_at(dual, m0, dx, x), cubic(x); rtol = 1e-12), (0.57, 0.6, 0.931, 1.3999))
+    @test dual_at(dual, m0, dx, (p.m0 + 2) * dx) ≈ p.v[3] rtol = 1e-13
+    @test_throws ErrorException dual_at(dual, m0, dx, 0.41)
+    # how much of a difference between two lineouts is a displacement
+    h, n0 = 0.1, 3
+    f(x) = sin(0.1 * x) + 0.3 * sin(0.23 * x + 1)
+    fine = [f((n0 + i - 1 - 0.5) * h) for i in 1:2400]
+    xs = collect(60.0:0.4:180.0)
+    moved = wake_displacement([f(x - 0.25) for x in xs], xs, fine, n0, h, -0.4)   # the finest lineout a quarter further on, nothing else
+    @test moved["shift"] ≈ 0.25 atol = 1e-12
+    @test moved["relrms"] < 1e-6 && moved["explained"] > 1 - 1e-8 && moved["lag"] == -0.4
+    @test moved["relrms_0"] ≈ sqrt(sum(abs2, f.(xs .- 0.25) .- f.(xs)) / sum(abs2, f.(xs))) rtol = 1e-6
+    @test moved["relrms_at_lag"] ≈ sqrt(sum(abs2, f.(xs .- 0.25) .- f.(xs .+ 0.4)) / sum(abs2, f.(xs .+ 0.4))) rtol = 1e-6
+    back = wake_displacement([1.02 * f(x + 0.37) for x in xs], xs, fine, n0, h, -0.37)        # behind by 0.37 and 2 % higher
+    @test wake_displacement([f(x) for x in xs], xs, fine[1:1500], n0, h, 0.0) === nothing     # the finest lineout ends inside the stretch
+    @test wake_displacement([f(x) for x in xs], xs, fine, n0 + 590, h, 0.0) === nothing        # and here it begins 1 short of the displacements tried
+    @test back["shift"] ≈ -0.37 atol = 0.011
+    @test back["relrms"] ≈ 0.02 atol = 2e-3
+    @test back["relrms_at_lag"] ≈ 0.02 rtol = 1e-4
+    @test 0.5 < back["explained"] < 1
+    @test back["explained"] ≈ 1 - (back["relrms"] / back["relrms_0"])^2 rtol = 1e-12       # of the squared difference
+    @test back["relrms_0"] ≈ sqrt(sum(abs2, 1.02 .* f.(xs .+ 0.37) .- f.(xs)) / sum(abs2, f.(xs))) rtol = 1e-6
+    # 5 % higher in place: over a stretch that is no whole number of periods a small displacement still fits a little better
+    higher = wake_displacement([1.05 * f(x) for x in xs], xs, fine, n0, h, 0.0)
+    @test abs(higher["shift"]) <= 0.05
+    @test higher["relrms_0"] ≈ 0.05 rtol = 1e-6
+    @test 0 <= higher["explained"] < 0.01
+    # a sine over two periods. Displaced, it differs by its slope: a fifth of the squared difference at the steepest tenth
+    # of the places. Higher in place, there is no displacement in it, and it differs by its value, least where it is steepest
+    wave = [sin(0.1 * (n0 + i - 1 - 0.5) * h) for i in 1:2400]
+    xp = collect(20.0:0.1:(20.0 + 40π - 0.1))
+    @test wake_displacement([sin(0.1 * (x - 0.2)) for x in xp], xp, wave, n0, h, 0.0)["steep_share"] ≈ 0.2 atol = 0.01
+    up = wake_displacement([1.05 * sin(0.1 * x) for x in xp], xp, wave, n0, h, 0.0)
+    @test up["shift"] == 0 && up["explained"] == 0 && up["steep_share"] < 0.005
+    @test up["relrms"] ≈ 0.05 rtol = 1e-6
+    # a distance between two codes is a magnitude: three that fall towards less than nothing have no order, nor three that stay
+    @test distance_order([4.0, 16 / 9, 1.0], [32, 48, 64])["order"] ≈ 2 atol = 1e-9
+    @test distance_order([0.395, 0.123, 0.022], [32, 48, 64])["order"] === nothing && distance_order([0.395, 0.123, 0.022], [32, 48, 64])["ratio"] ≈ 0.272 / 0.101
+    @test distance_order([3 * (1 + 1e-5 * (64 / n)^2) for n in (32, 48, 64)], [32, 48, 64])["order"] === nothing     # differences of 10⁻⁵ of the value: it stays
+    @test distance_order([3 * (1 + 1e-2 * (64 / n)^2) for n in (32, 48, 64)], [32, 48, 64])["order"] ≈ 2 atol = 1e-9
+end
+
+@testset "T-716 PIConGPU's launch term in the model of T-713 on the scan's three grids: its surface and absorber are counted in cells, so the term changes with the grid and with a cell of the layout [A5, WP-054]" begin
+    ky = 1 / 28
+    term = map(SCAN_FILES) do file
+        d = derived(TOML.parsefile(file))
+        c(; kw...) = (1 - oblique_launch(:plane_wave_b, ky, d.dx, d.dy, d.dt; kw...) / oblique_launch(:plane_wave_b, 0.0, d.dx, d.dy, d.dt; kw...)) / ky^2
+        (pic = c(; surface = HUYGENS + 1, absorber = PIC_ABSORBER), free = c(; surface = 2400),      # 2400 cells: the edge out of reach on the finest grid too
+         nearer = c(; surface = HUYGENS, absorber = PIC_ABSORBER), further = c(; surface = HUYGENS + 2, absorber = PIC_ABSORBER),
+         absorber = [c(; surface = HUYGENS + 1, absorber = PIC_ABSORBER - 1), c(; surface = HUYGENS + 1, absorber = PIC_ABSORBER + 1),
+                     c(; surface = HUYGENS + 1, absorber = PIC_ABSORBER, strength = 0.8e-3), c(; surface = HUYGENS + 1, absorber = PIC_ABSORBER, strength = 1.2e-3)])
+    end
+    # with nothing behind the surface the term is the continuum's 1/4 on every grid
+    @test all(t -> abs(real(t.free) - 0.25) <= 0.002, term)
+    # the model's term on each grid, of 1/4, and the focus further out: λ₀/48 is T-713's 0.83 and 0.44; the other two are
+    # what the scan's runs should show for PIConGPU against ParticleMesh if the model is right
+    oblique(t) = real(t) / 0.25
+    focus(t) = -2 * imag(t)
+    @test oblique.(getfield.(term, :pic)) ≈ [1.7478, 0.8324, 0.1832] atol = 0.002
+    @test focus.(getfield.(term, :pic)) ≈ [-0.1489, 0.4445, 0.1240] atol = 0.002
+    # the layout matters: with the surface one cell nearer the edge or one further the term is another, by 0.02 at the least
+    # and by 0.3 at λ₀/32, so the values above are those of this layout and of no neighbour
+    @test oblique.(getfield.(term, :nearer)) ≈ [1.8426, 0.6251, 0.1601] atol = 0.002
+    @test oblique.(getfield.(term, :further)) ≈ [1.5397, 1.0513, 0.2376] atol = 0.002
+    @test focus.(getfield.(term, :nearer)) ≈ [0.0086, 0.4086, 0.0423] atol = 0.002
+    @test focus.(getfield.(term, :further)) ≈ [-0.2763, 0.4524, 0.2018] atol = 0.002
+    # the absorber a cell shorter or longer, a fifth weaker or stronger: under 2 % of the term at λ₀/32 and λ₀/48, and up to a
+    # sixth at λ₀/64, where the term is small
+    @test oblique.(term[1].absorber) ≈ [1.7681, 1.7266, 1.7748, 1.7216] atol = 0.002
+    @test oblique.(term[2].absorber) ≈ [0.8278, 0.8375, 0.8271, 0.8376] atol = 0.002
+    @test oblique.(term[3].absorber) ≈ [0.1608, 0.2067, 0.1543, 0.2110] atol = 0.002
+end
+
+@testset "T-717 compare_scan end to end: each code's planted orders across three grids, the wake on its window, the distances output by output with one that falls and one that stays [A5, A7, WP-054]" begin
+    cases = TOML.parsefile.(SCAN_FILES)
+    D = derived.(cases)
+    kp = sqrt(cases[1]["plasma"]["density"])
+    # the same fields on the three lattices but for what is planted: amplitude and wake second order, the pulse's place (four
+    # cells behind, so a shared node further back on the coarsest grid than on the finest) and the
+    # bunch first order, the carrier second order, a dip in the wake 1.25 λ_p behind the pulse first order; Smilei's
+    # amplitude a second-order term away from ParticleMesh's that grows through the run, its carrier 1 mrad, its wake 1 % higher
+    λp = 2π / kp
+    planted(code, d) = (; a0 = 1 + 0.5 * d.dx^2, grow = code == "smilei" ? 0.2 * d.dx^2 : 0.0, φ = 0.8 * d.dx^2 + (code == "smilei" ? 1e-3 : 0.0),
+                          lag = 4 * d.dx, w = 0.05 * (1 + 2 * d.dx^2) * (code == "smilei" ? 1.01 : 1.0), bunch = 1e-3 * (1 + d.dx), dip = -0.6 * (1 + 5 * d.dx))
+    growth(t) = 0.5 + t / 2600
+    mktempdir() do root
+        runs = map(zip(SCAN_FILES, cases, D)) do (file, case, d)
+            dir = joinpath(root, case["name"])
+            st = scan_stride(d)
+            for code in ("pm", "smilei"), medium in ("vacuum", "plasma")
+                v = planted(code, d)
+                run = joinpath(dir, "$code-$medium")
+                mkpath(run)
+                cp(file, joinpath(run, "case.toml"); force = true)
+                outs = map(output_steps(case)) do k
+                    t = k * d.dt
+                    m0 = st * 8 * max(0, floor(Int, (t - case["window"]["start"]) / (π)))        # the window's back on a shared node, the same place on every grid
+                    # what only the outputs a distance does not count hold: Smilei's carrier 4 mrad further off in its plasma run before
+                    # the pulse reaches the plasma (t = 364), and its bunch 10 % heavier up to t = 750, 2 % after
+                    early = code == "smilei" && medium == "plasma" && t < 364 ? 4e-3 : 0.0
+                    heavy = code == "smilei" ? (t < 750 ? 1.10 : 1.02) : 1.0
+                    o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"] - v.lag, φ = v.φ + early, a0 = v.a0 * (1 + v.grow * growth(t)), w = v.w,
+                                         plasma = medium == "plasma", bunch = v.bunch * heavy, feature = (v.dip * v.w, 1.25 * λp, 6.0),
+                                         bunch_bin = code == "smilei" ? 41 : 40)        # Smilei's bunch one bin higher
+                    medium == "plasma" && (o["spectrum"] ./= spectrum_scale(code, d); o["spectrum_region"] = collect(spectrum_region(case, k)))
+                    o
+                end
+                write_summary(run, outs; code, stride = Int.(case["diagnostics"]["map_stride"]), extra = Dict{String,Any}("seconds" => 1.0, "spectrum_edges" => spectrum_edges(case)))
+                rm(joinpath(run, "maps.h5"))
+            end
+            dir
+        end
+        out = joinpath(root, "scan")
+        res = compare_scan(out, runs)
+        @test res["cells"] == [32, 48, 64] && res["codes"] == ["pm", "smilei"] && res["media"] == ["vacuum", "plasma"]
+        @test all(c -> isfile(joinpath(out, "r$c", "comparison.json")), res["cells"])
+        @test isfile(joinpath(out, "scan.json")) && isfile(joinpath(out, "manifest.toml"))
+        @test all(n -> isfile(joinpath(out, "$n.png")) && isfile(joinpath(out, "$n.json")), ("scan_distances", "scan_self"))
+        # ParticleMesh's own change with the grid, at an output with the pulse well inside the window
+        late = 9
+        rv, rp = res["self"]["pm"]["vacuum"][late], res["self"]["pm"]["plasma"][late]
+        dx = [d.dx for d in D]
+        @test rv["t"] ≈ output_steps(cases[1])[late] * D[1].dt && rv["steps"] == [output_steps(c)[late] for c in cases]
+        @test rv["amplitude"] ≈ 1 .+ 0.5 .* dx .^ 2 rtol = 1e-4
+        @test rv["order"]["amplitude"]["order"] ≈ 2 atol = 0.05
+        @test rv["order"]["amplitude"]["limit"] ≈ 1 atol = 2e-4
+        @test rv["carrier_phase"] ≈ 0.8 .* (dx[1:2] .^ 2 .- dx[3]^2) atol = 1e-6
+        @test rv["order"]["carrier_phase"]["order"] ≈ 2 atol = 0.01
+        @test rv["centroid_x"][1:2] .- rv["centroid_x"][3] ≈ -4 .* (dx[1:2] .- dx[3]) atol = 1e-6
+        @test rv["order"]["centroid_x"]["order"] ≈ 1 atol = 0.01
+        @test haskey(rv, "amplitude_on_axis") && rv["amplitude_on_axis"][1] > rv["amplitude"][1] && !haskey(rp, "amplitude_on_axis")
+        @test !haskey(rv, "wake_Ex_max")
+        @test rp["wake_Ex_max"] ≈ 0.05 .* (1 .+ 2 .* dx .^ 2) rtol = 1e-5
+        @test rp["wake_Ex_min"] ≈ -0.05 .* (1 .+ 2 .* dx .^ 2) rtol = 1e-5
+        @test rp["order"]["wake_Ex_max"]["order"] ≈ 2 atol = 0.02
+        # the maximum a quarter of a plasma wavelength behind the pulse (or a whole wavelength further: the synthetic wake
+        # has both in the window, equal), and the pulse is 4Δx behind on each grid. The places are counted from one anchor, the
+        # shared node nearest the finest grid's centroid: the coarsest grid's centroid is a node further back
+        @test rp["wake_Ex_max_x"][1:2] .- rp["wake_Ex_max_x"][3] ≈ -4 .* (dx[1:2] .- dx[3]) atol = 1e-5
+        @test rp["wake_anchor_x"] ≈ round(rp["centroid_x"][3] / (π / 8)) * π / 8 && abs(rp["wake_anchor_x"] - rp["centroid_x"][1]) > π / 16
+        behind = -rp["wake_Ex_max_x"][3] - (π / 2) / kp                           # 0 or λ_p, but for the anchor's node
+        @test minimum(abs, behind .- (0.0, 2π / kp)) <= π / 16 + 1e-6
+        @test rp["order"]["wake_Ex_max_x"]["order"] ≈ 1 atol = 0.05
+        # the wake against the finest grid's over the 1.5 λ_p behind the anchor, from what was planted: the sine and the dip
+        # 1.25 λ_p behind, which a window of one λ_p would miss and one without an end would drown in the bump 3 λ_p behind
+        tl = rp["t"]
+        Ex(r, x) = (v = planted("pm", D[r]); x0 = tl - cases[r]["laser"]["delay"] - v.lag;
+                    (x < x0 ? -v.w * sin(kp * (x - x0)) : 0.0) + v.dip * v.w * exp(-((x - (x0 - 1.25 * λp)) / 6)^2))
+        nodes = rp["wake_anchor_x"] .- (0:round(Int, 1.5 * λp / (π / 8))) .* (π / 8)
+        @test rp["wake_Ex_relrms"] ≈ [relrms(Ex.(r, nodes), Ex.(3, nodes)) for r in 1:2] rtol = 2e-3
+        @test rp["wake_Ex_relrms"][1] > 2 * rp["wake_Ex_relrms"][2] > 0
+        # what of that is a displacement: the coarser pulses are 4Δx behind, and their wakes with them
+        for r in 1:2
+            dis = rp["wake_Ex_displacement"][r]
+            @test dis["lag"] ≈ -4 * (dx[r] - dx[3]) atol = 1e-6
+            @test dis["relrms_0"] ≈ rp["wake_Ex_relrms"][r] rtol = 1e-9
+            @test dis["shift"] < 0 && abs(dis["shift"] - dis["lag"]) <= 0.1 && dis["relrms"] < dis["relrms_0"] && dis["relrms_at_lag"] < dis["relrms_0"]
+            @test 0 < dis["explained"] < 1 && 0 < dis["steep_share"] < 1
+        end
+        # against the axial Yee values: the planted differences over the predicted ones (the synthetic fields are not Yee's)
+        Y = yee_axis.(D)
+        @test rv["yee"]["carrier_phase"] ≈ [0.8 * (dx[r]^2 - dx[3]^2) / ((Y[r].k - Y[3].k) * rv["centroid_x"][3]) for r in 1:2] rtol = 1e-4
+        @test rv["yee"]["centroid_x"] ≈ [-4 * (dx[r] - dx[3]) / ((Y[r].vg - Y[3].vg) * rv["centroid_x"][3] / Y[3].vg) for r in 1:2] rtol = 1e-4
+        @test !haskey(rp, "yee")
+        @test res["yee"]["k_minus_1"] ≈ [y.k - 1 for y in Y] && res["yee"]["one_minus_vg"] ≈ [1 - y.vg for y in Y]
+        ending = res["self"]["pm"]["vacuum"][end]
+        @test res["yee"]["finest"]["pm"]["t"] == ending["t"]
+        @test res["yee"]["finest"]["pm"]["carrier_phase"] ≈ (Y[3].k - 1) * ending["centroid_x"][3]
+        @test res["yee"]["finest"]["pm"]["centroid_x"] ≈ -(1 - Y[3].vg) * ending["centroid_x"][3] / Y[3].vg
+        @test all(isempty, res["back_columns"]) && length(res["back_columns"]) == 3      # these synthetic runs keep no maps
+        # the bunch bin by bin at the last output, in full-density macro-particle weights: the one bin the synthetic spectrum has
+        mw = [cases[r]["plasma"]["density"] * D[r].dx * D[r].dy / 4 for r in 1:3]
+        bb = res["bunch_bins"]
+        @test [b["macro_weight"] for b in bb["pm"]] ≈ mw && all(b -> b["t"] == res["self"]["pm"]["plasma"][end]["t"], bb["pm"])
+        @test [only(b["weights"]) for b in bb["pm"]] ≈ 1e-3 .* (1 .+ dx) ./ mw rtol = 1e-12
+        @test [only(b["weights"]) for b in bb["smilei"]] ≈ 1.02e-3 .* (1 .+ dx) ./ mw rtol = 1e-12
+        @test all(b -> b["energy"] == [spectrum_edges(cases[1])[40]] && b["from"] == spectrum_edges(cases[1])[40], bb["pm"])
+        @test bunch_bins(Dict{String,Any}("t" => 0.0, "spectrum" => [5.0, 0.0, 0.0]), cases[1], "pm") === nothing    # no group above a gap
+        @test rp["bunch_weight"] ≈ 1e-3 .* (1 .+ dx) rtol = 1e-12
+        @test rp["order"]["bunch_weight"]["order"] ≈ 1 atol = 1e-6
+        @test rp["top"] == fill(spectrum_edges(cases[1])[41], 3)
+        # before the pulse is in the window there is nothing to compare, and the row says only when it is
+        @test !haskey(res["self"]["pm"]["plasma"][1], "wake_Ex_max")
+        # the distances. Smilei's amplitude is a second-order term from ParticleMesh's that grows through the run: the largest
+        # is the last output's, on every grid, and every output has the order; its carrier is a constant 1 mrad: no order
+        dv = res["distances"]["vacuum"]
+        times = [r["t"] for r in res["self"]["pm"]["vacuum"] if r["t"] > 150]
+        apart(t) = 0.2 .* dx .^ 2 .* growth(t) ./ (1 .+ 0.2 .* dx .^ 2 .* growth(t))
+        @test dv["amplitude_relrms"]["max"] ≈ apart(times[end]) rtol = 1e-3
+        @test dv["amplitude_relrms"]["t_max"] ≈ fill(times[end], 3)
+        @test [q["t"] for q in dv["amplitude_relrms"]["per_output"]] ≈ times && length(times) == 12
+        @test dv["amplitude_relrms"]["per_output"][1]["value"] ≈ apart(times[1]) rtol = 1e-3
+        @test dv["amplitude_relrms"]["orders"]["count"] == dv["amplitude_relrms"]["orders"]["of"] == 12
+        @test dv["amplitude_relrms"]["orders"]["order"] ≈ [2, 2] atol = 0.05
+        @test maximum(abs, dv["amplitude_relrms"]["orders"]["limit"]) < 2e-4
+        @test !haskey(dv["amplitude_relrms"], "order")                           # the three run maxima get none of their own
+        @test dv["carrier_phase"]["max"] ≈ fill(1e-3, 3) rtol = 1e-3
+        @test dv["carrier_phase"]["orders"]["count"] == 0 && dv["carrier_phase"]["orders"]["of"] == 12 && dv["carrier_phase"]["orders"]["order"] === nothing
+        @test !haskey(res["distances"], "picongpu_vacuum")
+        # a plasma run counts from the pulse's arrival at the plasma, the bunch from t = 750: the 5 mrad and the 10 % planted before are not in them
+        dp = res["distances"]["plasma"]
+        @test res["from"] == Dict("vacuum" => 150.0, "plasma" => 364.0, "bunch" => 750.0)
+        @test dp["carrier_phase"]["max"] ≈ fill(1e-3, 3) rtol = 1e-3
+        @test dp["carrier_phase"]["orders"]["of"] == 10
+        # Smilei's wake is 1 % higher everywhere: 0.01/1.01 of its own in the lineout, and the extrema by the ratio, not by the difference
+        @test dp["wake_Ex_relrms"]["max"] ≈ fill(0.01 / 1.01, 3) rtol = 1e-9
+        @test dp["wake_Ex_min"]["max"] ≈ fill(1 - 1 / 1.01, 3) rtol = 1e-9
+        @test dp["wake_Ex_max"]["max"] ≈ fill(1 - 1 / 1.01, 3) rtol = 1e-9
+        @test dp["bunch_weight"]["max"] ≈ fill(1 - 1 / 1.02, 3) rtol = 1e-9          # ParticleMesh over Smilei
+        @test dp["bunch_weight"]["orders"]["count"] == 0 && dp["bunch_weight"]["orders"]["of"] == 6
+        # the highest occupied bins are one bin apart, 8.0 and 8.2 mₑc²: by their difference, not by their ratio
+        @test dp["top"]["max"] ≈ fill(0.2, 3) rtol = 1e-12
+        @test dp["top"]["orders"]["count"] == 0 && dp["top"]["orders"]["of"] == 10
+        @test !haskey(dp, "maps_all")                                            # these synthetic runs keep no maps
+        # the launches of the pair on each grid: the synthetic pulses have no focus in them, so only the shape of the entry
+        @test length(res["launch"]["vacuum"]) == 3 && all(f -> f["outputs"] == 12 && length(f["oblique"]) == 2, res["launch"]["vacuum"])
+        # the file is what was returned
+        saved = JSON.parsefile(joinpath(out, "scan.json"))
+        @test saved["cells"] == [32, 48, 64] && saved["self"]["pm"]["vacuum"][late]["order"]["centroid_x"]["order"] ≈ rv["order"]["centroid_x"]["order"]
+        # grids that are not one case are refused
+        @test_throws ErrorException compare_scan(joinpath(root, "bad"), [runs[2], runs[1], runs[3]])
+    end
+    # the maps' rows, from hand-made results of `compare` on the three grids: per band the largest over the maps' outputs
+    # and where it is, a band a map does not reach left out, and the order output by output. All rows: second order at the
+    # first output (4, 16/9, 1) and first order at the second (3, 2, 1.5), so the three largest are of two outputs and have
+    # the ratio of neither order; the flank falling as 0.395, 0.123, 0.022 at the first, the ratio of an order 1.84 towards
+    # a distance of −0.12: no order; the far wing staying to 10⁻⁵
+    wing(n) = 3 * (1 + 1e-5 * (64 / n)^2)
+    maps(n, i) = Dict{String,Any}("maps" => Dict{String,Any}("rows" => [Dict{String,Any}("t" => 300.0, "plasma" => Any[(64 / n)^2, flank[i], wing(n)]),
+                                                                        Dict{String,Any}("t" => 700.0, "plasma" => Any[1.5 * 64 / n, flank[i] / 2, nothing])]))
+    flank = [0.395, 0.123, 0.022]
+    dm = scan_distances([maps(n, i) for (i, n) in enumerate((32, 48, 64))], [32, 48, 64])["plasma"]
+    @test dm["maps_all"]["max"] ≈ [4, 2, 1.5] && dm["maps_flank"]["max"] == flank && dm["maps_wing"]["max"] == [wing(n) for n in (32, 48, 64)]
+    @test dm["maps_all"]["t_max"] == [300.0, 700.0, 700.0] && dm["maps_flank"]["t_max"] == fill(300.0, 3)
+    @test [q["t"] for q in dm["maps_all"]["per_output"]] == [300.0, 700.0] && dm["maps_all"]["per_output"][2]["value"] ≈ [3, 2, 1.5]
+    @test dm["maps_all"]["orders"]["count"] == 2 && dm["maps_all"]["orders"]["of"] == 2
+    @test [q["order"]["order"] for q in dm["maps_all"]["per_output"]] ≈ [2, 1] atol = 1e-6
+    @test dm["maps_all"]["orders"]["order"] ≈ [1, 2] atol = 1e-6
+    @test dm["maps_all"]["orders"]["limit"] ≈ [0, 0] atol = 1e-9
+    @test observed_order([4.0, 2.0, 1.5]).order ≈ 2.92 atol = 0.01            # what the three largest would give: no output's order
+    @test dm["maps_flank"]["orders"]["count"] == 0 && dm["maps_flank"]["orders"]["of"] == 2 && dm["maps_flank"]["orders"]["limit"] === nothing
+    @test dm["maps_flank"]["per_output"][1]["order"]["order"] === nothing && dm["maps_flank"]["per_output"][1]["order"]["ratio"] ≈ 0.272 / 0.101
+    @test observed_order(flank).order ≈ 1.84 atol = 0.01                      # what the three values alone would give
+    @test observed_order(flank).limit ≈ -0.12 atol = 0.01
+    @test length(dm["maps_wing"]["per_output"]) == 1 && dm["maps_wing"]["orders"]["count"] == 0
+    @test observed_order([wing(n) for n in (32, 48, 64)]).order ≈ 2 atol = 1e-6   # without the floor of a thousandth
+    @test !haskey(dm, "bunch_weight") && !haskey(dm, "carrier_phase")
+end
+
+@testset "T-718 launch_fit recovers what two launches differ by from a pair's vacuum rows: the oblique term and the focus, from the amplitude and from the phase, and what they do to the centroid [A5, WP-054]" begin
+    case = TOML.parsefile(SCAN_FILES[2])
+    w0, zR, focus = 28.0, 392.0, 320.0
+    # b launches 0.82 of the oblique term more than a and focuses 0.45 further out, 0.04 mrad apart besides
+    rows = map(0:13) do k
+        t = 99.89 * k
+        x = t - 104.0
+        ξ = x - focus
+        amp = 0.82 / (2 * w0^2 * (1 + (ξ / zR)^2)) - 0.45 * ξ / (2 * (zR^2 + ξ^2))
+        ph = -0.82 * ξ / (4 * (zR^2 + ξ^2)) - 0.45 * zR / (2 * (zR^2 + ξ^2)) - 4e-5
+        Dict{String,Any}("t" => t, "centroid_x" => Any[x, x + 1e-3], "amplitude_max" => [2.0 * (1 + amp), 2.0], "carrier_phase" => k == 0 ? nothing : ph)
+    end
+    f = launch_fit(rows, case)
+    @test f["outputs"] == 12                                                  # t > 150, with a phase
+    @test f["oblique"] ≈ [0.82, 0.82] rtol = 1e-9
+    @test f["focus"] ≈ [0.45, 0.45] rtol = 1e-9
+    @test f["phase_constant"] ≈ -4e-5 rtol = 1e-9
+    @test maximum(f["residual"]) <= 1e-15
+    @test launch_fit(rows[1:5], case) === nothing                             # three outputs past t = 150: too few to fit
+    # what the two terms do to the centroid of E_y²: against the centroid of a Gaussian pulse of the case's duration times
+    # the amplitude ratio they make, summed on a fine grid, at each output's place
+    τ = Float64(case["laser"]["duration"])
+    ratio(ξ) = 1 + 0.82 / (2 * w0^2 * (1 + (ξ / zR)^2)) - 0.45 * ξ / (2 * (zR^2 + ξ^2))
+    moved(ξ) = (u = -130.0:0.05:130.0; wgt = @. exp(-2 * u^2 / τ^2) * ratio(ξ + u)^2; sum(u .* wgt) / sum(wgt))
+    largest = maximum(abs(moved(r["centroid_x"][1] - focus)) for r in rows if r["t"] > 150 && r["carrier_phase"] !== nothing)
+    @test f["centroid_shift"][1] ≈ largest rtol = 0.01
+    @test f["centroid_shift"][2] ≈ f["centroid_shift"][1] rtol = 1e-8
+    @test 5e-4 < largest < 7e-4                                               # 0.0006 c/ω₀ for these two terms
+    # where the report's data is in the tree: its third runs, 1.00 of the term for Smilei against ParticleMesh, and 0.82 of it
+    # with a focus 0.47 further out for PIConGPU, from the amplitude and from the phase
+    old = joinpath(@__DIR__, "..", "..", "..", "reports", "lwfa-2d-a5", "lwfa-a5-3-compare", "comparison.json")
+    if isfile(old)
+        third, a5 = JSON.parsefile(old), TOML.parsefile(CASE_FILES[1])
+        g, h = launch_fit(third["picongpu_vacuum"], a5), launch_fit(third["vacuum"], a5)
+        @test g["oblique"] ≈ [0.82, 0.83] atol = 0.02
+        @test g["focus"] ≈ [0.47, 0.47] atol = 0.02
+        @test h["oblique"] ≈ [1.0, 0.99] atol = 0.02
+    end
 end

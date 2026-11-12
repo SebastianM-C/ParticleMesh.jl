@@ -1,0 +1,35 @@
+arguments = "-d 1 2 -r 2 -g 512 6192 -s 14352 --periodic 1 0 -m --windowMovePoint 0.837047803617571 --autoAdjustGrid 0 --fieldAbsorber exponential --currentInterpolation none --openPMD.period 1104 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source fields_all --fields_energy.period 1104"
+case = "lwfa-2d-r64"
+code = "PIConGPU 0.8.0"
+commit = "a991f960d06dd38663e63eb09b2bd0c861dabfc2"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+precision = "Float64"
+reference_wavelength_m = 8.0e-7
+run_id = "lwfa-scan-r64/picongpu-vacuum"
+updated = "2026-11-12T07:25:04.796Z"
+
+[inputs]
+"case.toml" = "sha256:0b0dc95320a71d7efd12872c6a60e87464551e68d6c121eeb00aded81c4fbe90"
+"kind.txt" = "sha256:566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+"params/density.param" = "sha256:084f92686618a71fbe3a0789ba21b81bc318dd31e1d678c3c4e04eaf2e8ae0d7"
+"params/dimension.param" = "sha256:913b08833d9f42fa73016b74be60f917a35c699ae22452781cb107bb6c10dc0c"
+"params/fieldSolver.param" = "sha256:49a56f0d12d7b727f71e2cebb5b548c641a36ebbf3c769a0e2250eb68efa2ca0"
+"params/fileOutput.param" = "sha256:f800897f9935badefcb3c8e20ef7bcf21f4f56b6682e1443774c0bc4078a418a"
+"params/incidentField.param" = "sha256:4a1b76194442247861e8181f36c7ace01e5da68ff720d7210025d1fee7d638cd"
+"params/memory.param" = "sha256:6f24bb7acb5197e65c5283f8669eb3c8c19f19f146e96f29fd07581784091770"
+"params/particle.param" = "sha256:5835aa2dcc224662fedcea0ad27621cca44074743eef6bf9b5381f1c4580042d"
+"params/precision.param" = "sha256:a27eaa9ab80b8af0a09cd0195259b3114e979d435c6f85a81238b9da15d198ac"
+"params/simulation.param" = "sha256:edaf9c883ed5d03206f7a98fc8242eeab70b0e23568e90b0b5b1bffe070ac52c"
+"params/species.param" = "sha256:27f4736edd1dbe0ecc5818739257693d2b2808a52e9efc47a30569020832bb3f"
+"params/speciesDefinition.param" = "sha256:bc4af5f9138a87c2a0a492f32b0da54bd3e95613ac27394c3f108b9d76cd6109"
+"params/speciesInitialization.param" = "sha256:4db5d95575aa85bce31acf5e08abfac77ca505c0c4729b887582aa62151ad151"
+"run.sh" = "sha256:b325108499c21176430b2e50bd7e2638a1c58d3778a5165d31924c79dc36bde6"
+
+[layout]
+cells = [512, 6192]
+devices_y = 2
+j0 = 17
+local_y = 3096
+move_point = 0.837047803617571
+window_y = 3096

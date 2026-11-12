@@ -1,0 +1,35 @@
+arguments = "-d 1 2 -r 2 -g 256 3120 -s 7176 --periodic 1 0 -m --windowMovePoint 0.8253205128205128 --autoAdjustGrid 0 --fieldAbsorber exponential --currentInterpolation none --openPMD.period 552 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source species_all,fields_all --fields_energy.period 552 --e_energyHistogram.period 552 --e_energyHistogram.filter all --e_energyHistogram.binCount 500 --e_energyHistogram.minEnergy 0.0 --e_energyHistogram.maxEnergy 51099.89506917531"
+case = "lwfa-2d-r32"
+code = "PIConGPU 0.8.0"
+commit = "a991f960d06dd38663e63eb09b2bd0c861dabfc2"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+precision = "Float64"
+reference_wavelength_m = 8.0e-7
+run_id = "lwfa-scan-r32/picongpu-plasma"
+updated = "2026-11-12T07:24:57.962Z"
+
+[inputs]
+"case.toml" = "sha256:9be9531bcc889aac5ad30cfcc65f28054dbad29bc69319a54fd96580b5039ff9"
+"kind.txt" = "sha256:c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
+"params/density.param" = "sha256:da3f8c0a88efe422307a24774b9ad44e974c0f316f6629247186bc92b8639c3f"
+"params/dimension.param" = "sha256:414f8920ee46253ba1eee7aa77326c694b70504f7a5531849f212f608f098b39"
+"params/fieldSolver.param" = "sha256:20cba5d28bc1194ccbc6bf1c5cb02f8b82a3ed1359d33cf06f1629731a641c9a"
+"params/fileOutput.param" = "sha256:204e72eee7fd8e9bd36e271561ce012cf1ff36c4857cc623abfd23eb0a72717c"
+"params/incidentField.param" = "sha256:77d17351db6c50275c22a93ee183e1716a96b953fa03ca271c0e3c54fb78fdd6"
+"params/memory.param" = "sha256:8572ad1035b7171efe584a2bb2718aad41758af68aaa8fd8fc80253930891c85"
+"params/particle.param" = "sha256:bb4010c63e4f63344b7bcc98729ad0f6ae5fadecbb6f9cf23c1418369cb4fdf8"
+"params/precision.param" = "sha256:497c9c7a9ee2cea35c6680b92147f9964ae131d1671ff72b76206985b5444ee0"
+"params/simulation.param" = "sha256:dfc9728b9f619da3284db450459fab9c3237437919a42e2b71abf4c675fa381c"
+"params/species.param" = "sha256:b4fb798e519556a45d03102b59303d46c93dfd9de0df785eedc1e17b83603c42"
+"params/speciesDefinition.param" = "sha256:2afe7551a856a0dafed80cc03e003050f90a1aa71fefdc8be1910c9dc75247c9"
+"params/speciesInitialization.param" = "sha256:abe713d2540fcd173fa23ec3c8f0981b78ece70240e5b0cdbb8565a3c108712e"
+"run.sh" = "sha256:99f1816cd47c258bd83c8025b9783caaaedfa17c6444ca41f62cad0bd9017e21"
+
+[layout]
+cells = [256, 3120]
+devices_y = 2
+j0 = 17
+local_y = 1560
+move_point = 0.8253205128205128
+window_y = 1560
