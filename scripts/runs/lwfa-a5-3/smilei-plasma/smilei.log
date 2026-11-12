@@ -1,0 +1,257 @@
+                    _            _
+  ___           _  | |        _  \ \   Version : 5.1-HEAD
+ / __|  _ __   (_) | |  ___  (_)  | |   
+ \__ \ | '  \   _  | | / -_)  _   | |
+ |___/ |_|_|_| |_| |_| \___| |_|  | |  
+                                 /_/    
+ 
+ 
+
+ Reading the simulation parameters
+ -------------------------------------------------------------------------------
+ HDF5 version 1.10.10
+ Python version 3.12.3
+	 Parsing pyinit.py
+	 Parsing 5.1-HEAD
+	 Parsing pyprofiles.py
+	 Parsing namelist.py
+	 Parsing pycontrol.py
+	 Check for function preprocess()
+	 python preprocess function does not exist
+	 Calling python _smilei_check
+	 Calling python _prepare_checkpoint_dir
+	 Calling python _keep_python_running() :
+[1;36mCAREFUL: Patches distribution: hilbertian
+[0m
+	 Smilei will run on CPU devices
+[;33m
+[WARNING](0) src/Params/Params.cpp:1170 (compute) simulation_time has been redefined from 1300.216875 to 1300.156555 to match timestep.[0m
+ 
+
+ Geometry: 2Dcartesian
+ -------------------------------------------------------------------------------
+	 Interpolation order : 2
+	 Maxwell solver : Yee
+	 simulation duration = 1300.156555,   total number of iterations = 10777
+	 timestep = 0.120642 = 0.950000 x CFL,   time resolution = 8.289002
+	 Grid length: 301.593, 201.062
+	 Cell length: 0.1309, 0.523599, 0
+	 Number of cells: 2304, 384
+	 Spatial resolution: 7.63944, 1.90986
+ 
+
+ Electromagnetic boundary conditions
+ -------------------------------------------------------------------------------
+	 xmin silver-muller, absorbing vector [1, 0]
+	 xmax silver-muller, absorbing vector [-1, -0]
+	 ymin periodic
+	 ymax periodic
+ 
+
+ Vectorization: 
+ -------------------------------------------------------------------------------
+	 Mode: off
+	 Calling python writeInfo
+ 
+
+ Initializing MPI
+ -------------------------------------------------------------------------------
+	 applied topology for periodic BCs in y-direction
+	 MPI_THREAD_MULTIPLE enabled
+	 Number of MPI processes: 1
+	 Number of threads per MPI process : 16
+	 OpenMP task parallelization not activated
+ 
+	 Number of patches: 64 x 8
+	 Number of cells in one patch: 36 x 48
+	 Dynamic load balancing: never
+ 
+
+ Initializing the restart environment
+ -------------------------------------------------------------------------------
+ 
+
+ Initializing moving window
+ -------------------------------------------------------------------------------
+	 Moving window is active:
+		 velocity_x : 1.000000
+		 time_start : 256.000000
+ 
+ 
+ 
+
+ Initializing species
+ -------------------------------------------------------------------------------
+	 
+	 Creating Species #0: electron
+		 > Pusher: boris
+		 > Boundary conditions: remove remove periodic periodic
+		 > Density profile: 2D user-defined function (uses numpy)
+	 
+	 Creating Species #1: ion
+		 > Pusher: boris
+		 > Species frozen until time: 5200.626218
+		 > Boundary conditions: remove remove periodic periodic
+		 > Density profile: 2D user-defined function (uses numpy)
+ 
+
+ Initializing laser parameters
+ -------------------------------------------------------------------------------
+ 		Laser #0: separable profile
+			omega              : 1
+			chirp_profile      : 1D built-in profile `tconstant` (0.000000)
+			time envelope      : 1D built-in profile `tgaussian` (start: 0.000000, duration: 216.084875, sigma: 676.000000, center: 108.042438, order: 2.000000)
+			space envelope (y) : 1D user-defined function
+			space envelope (z) : 1D user-defined function
+			phase          (y) : 1D user-defined function
+			phase          (z) : 1D user-defined function
+		delay phase      (y) : 0
+		delay phase      (z) : 0
+ 
+
+ Initializing Patches
+ -------------------------------------------------------------------------------
+	 First patch created
+		 Approximately 10% of patches created
+		 Approximately 20% of patches created
+		 Approximately 30% of patches created
+		 Approximately 40% of patches created
+		 Approximately 50% of patches created
+		 Approximately 60% of patches created
+		 Approximately 70% of patches created
+		 Approximately 80% of patches created
+		 Approximately 90% of patches created
+	 All patches created
+ 
+
+ Creating Diagnostics, antennas, and external fields
+ -------------------------------------------------------------------------------
+	 Created ParticleBinning #0: species electron
+		 Axis ekin from 0 to 100 in 500 steps
+	 Created ParticleBinning #1: species electron
+		 Axis moving_x from 0 to 9.42478 in 72 steps
+		 Axis ekin from 0 to 100 in 500 steps
+	 Created ParticleBinning #2: species electron
+		 Axis moving_x from 292.168 to 301.593 in 72 steps
+		 Axis ekin from 0 to 100 in 500 steps
+	 Diagnostic Fields #0  :
+		 Ex Ey Rho_electron 
+ 
+
+ Finalize MPI environment
+ -------------------------------------------------------------------------------
+	 Done creating diagnostics, antennas, and external fields
+ 
+
+ Minimum memory consumption (does not include all temporary buffers)
+ -------------------------------------------------------------------------------
+              Particles: Master 46 MB;   Max 46 MB;   Global 0.0455 GB
+                 Fields: Master 118 MB;   Max 118 MB;   Global 0.116 GB
+            scalars.txt: Master 0 MB;   Max 0 MB;   Global 0 GB
+    ParticleBinning0.h5: Master 0 MB;   Max 0 MB;   Global 3.73e-06 GB
+    ParticleBinning1.h5: Master 0 MB;   Max 0 MB;   Global 0.000268 GB
+    ParticleBinning2.h5: Master 0 MB;   Max 0 MB;   Global 0.000268 GB
+             Fields0.h5: Master 0 MB;   Max 0 MB;   Global 0 GB
+ 
+
+ Initial fields setup
+ -------------------------------------------------------------------------------
+	 Applying external fields at time t = 0
+	 Applying prescribed fields at time t = 0
+	 Applying antennas at time t = 0
+ 
+
+ Open files & initialize diagnostics
+ -------------------------------------------------------------------------------
+ 
+
+ Running diags at time t = 0
+ -------------------------------------------------------------------------------
+ 
+
+ Species creation summary
+ -------------------------------------------------------------------------------
+		 Species 0 (electron) created with 488448 particles
+		 Species 1 (ion) created with 488448 particles
+ 
+
+ Expected disk usage (approximate)
+ -------------------------------------------------------------------------------
+	 WARNING: disk usage by non-uniform particles maybe strongly underestimated,
+	    especially when particles are created at runtime (ionization, pair generation, etc.)
+	 
+	 Expected disk usage for diagnostics:
+		 File Fields0.h5: 264.12 M
+		 File scalars.txt: 169.92 K
+		 File ParticleBinning0.h5: 60.37 K
+		 File ParticleBinning1.h5: 3.58 M
+		 File ParticleBinning2.h5: 3.58 M
+	 Total disk usage for diagnostics: 271.51 M
+	 
+ 
+
+ Keeping or closing the python runtime environment
+ -------------------------------------------------------------------------------
+	 Checking for cleanup() function:
+	 python cleanup function does not exist
+	 Keeping Python interpreter alive
+ 
+
+ Time-Loop started: number of time-steps n_time = 10777
+ -------------------------------------------------------------------------------
+[1;36mCAREFUL: The following `push time` assumes a global number of 16 cores (hyperthreading is unknown)
+[0m
+      timestep       sim time   cpu time [s]   (    diff [s] )   push time [ns]
+     500/10777     6.0381e+01     5.7107e+00   (  5.7107e+00 )             187 
+    1000/10777     1.2070e+02     1.1514e+01   (  5.8033e+00 )             190 
+    1500/10777     1.8102e+02     1.7215e+01   (  5.7014e+00 )             186 
+    2000/10777     2.4134e+02     2.2983e+01   (  5.7673e+00 )             188 
+ >>> Window starts moving
+    2500/10777     3.0166e+02     3.0023e+01   (  7.0401e+00 )             108 
+    3000/10777     3.6199e+02     4.0819e+01   (  1.0796e+01 )              98 
+    3500/10777     4.2231e+02     5.5689e+01   (  1.4869e+01 )              95 
+    4000/10777     4.8263e+02     7.4307e+01   (  1.8618e+01 )              93 
+    4500/10777     5.4295e+02     9.6453e+01   (  2.2146e+01 )              99 
+    5000/10777     6.0327e+02     1.1956e+02   (  2.3109e+01 )             104 
+    5500/10777     6.6359e+02     1.4237e+02   (  2.2811e+01 )             102 
+    6000/10777     7.2391e+02     1.6554e+02   (  2.3170e+01 )             104 
+    6500/10777     7.8423e+02     1.8848e+02   (  2.2939e+01 )             103 
+    7000/10777     8.4455e+02     2.1168e+02   (  2.3199e+01 )             104 
+    7500/10777     9.0487e+02     2.3483e+02   (  2.3150e+01 )             104 
+    8000/10777     9.6519e+02     2.5787e+02   (  2.3036e+01 )             103 
+    8500/10777     1.0255e+03     2.8103e+02   (  2.3165e+01 )             104 
+    9000/10777     1.0858e+03     3.0407e+02   (  2.3035e+01 )             103 
+    9500/10777     1.1462e+03     3.2716e+02   (  2.3098e+01 )             104 
+   10000/10777     1.2065e+03     3.5026e+02   (  2.3092e+01 )             104 
+   10500/10777     1.2668e+03     3.7324e+02   (  2.2987e+01 )             103 
+ 
+
+ End time loop, time dual = 1.3002e+03
+ -------------------------------------------------------------------------------
+ 
+
+ Time profiling : (print time > 0.001%)
+ -------------------------------------------------------------------------------
+ Time_in_time_loop	3.8607e+02	9.9890e+01% coverage
+ 	           Particles	3.080188e+02	8.0e+01%
+ 	             Maxwell	3.221455e+01	8.3e+00%
+ 	          Maxwell_BC	1.065862e+01	2.8e+00%
+ 	         Diagnostics	3.803555e+00	    <1%
+ 	          Mov window	2.014637e+00	    <1%
+ 	      Sync Particles	1.106688e+01	2.9e+00%
+ 	         Sync Fields	1.522385e+00	    <1%
+ 	      Sync Densities	3.390030e+00	    <1%
+ 
+	 Printed times are averaged per MPI process
+ 		 See advanced metrics in profil.txt
+ 
+	Diagnostics profile :
+ 		         scalars.txt	1.4e+00
+ 		 ParticleBinning0.h5	1.3e+00
+ 		 ParticleBinning1.h5	8.3e-02
+ 		 ParticleBinning2.h5	7.8e-02
+ 		          Fields0.h5	6.2e-01
+ 
+
+ END
+ -------------------------------------------------------------------------------
