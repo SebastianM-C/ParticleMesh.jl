@@ -52,7 +52,7 @@ end
         r = harness_equals_loop(Float64; n)
         @test r.ok
         @test r.t == r.n
-        @test r.state             # particles, fields and K
+        @test r.state             # particles and fields
         @test r.hist              # the diagnostic histories in the cache
         @test r.u0                # solving does not touch the problem's u0
         @test r.again             # a second solve of the same problem gives the same bits
@@ -62,7 +62,7 @@ end
     st = EMState(prob, num; backend)
     initialize!(st, prob)
     u = state_partition(st)
-    @test u.x[1] === st.species[1].cell[1] && u.x[end] === st.K
+    @test u.x[1] === st.species[1].cell[1] && u.x[end] === st.fields.Jz && all(a -> a !== st.K, u.x)   # K is a cache, outside the partition (WP-056)
     @test map(eltype, u.x)[1:8] == (Int32, Float64, Float64, Float64, Float64, Float64, UInt8, Int32)
     saved = copy(u)
     run!(st, params(prob), 5)

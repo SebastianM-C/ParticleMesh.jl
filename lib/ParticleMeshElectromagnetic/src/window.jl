@@ -132,12 +132,14 @@ window_load(st::EMState, p::EMParams, i::Integer) = window_load(st.setup[i], p.s
 The moving window placed on a grid by the state: the description, the time step and the cell size
 along axis 1 it counts its shifts with, the interior columns `n1`, the injection column `inj` (the
 plasma is loaded on columns `1 … inj`, [`injection_column`](@ref)), the guard width `g`,
-`lost`, one device counter per species of the
+and what a run evolves of it ([`evolved`](@ref)): `lost`, one device counter per species of the
 fresh particles that found no free slot (zero unless the buffers overflow; read with
 [`window_lost`](@ref) outside a step), `fast`, one device counter per species of the fresh
 particles of the refills whose drawn speed reached c (read with [`window_superluminal`](@ref)),
-and `flags`, per species the refill's scratch of one flag per fresh particle that `fast` sums;
-`back`, the PML of the back edge placed on the grid ([`BackPMLFields`](@ref)), or `nothing`.
+and the convolution fields of `back`, the PML of the back edge placed on the grid
+([`BackPMLFields`](@ref)), or `nothing`; `flags` is per species the refill's scratch of one flag
+per fresh particle that `fast` sums. The window's position is not kept: it is a function of the
+step index ([`window_shifts`](@ref)).
 What the refill loads is not here: the densities, the profile, the drifts, the thermal speeds and
 the seed are parameters ([`window_load`](@ref)).
 """

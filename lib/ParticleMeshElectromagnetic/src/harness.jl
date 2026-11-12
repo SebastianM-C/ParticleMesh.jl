@@ -5,21 +5,17 @@
 """
     state_partition(state::EMState) -> ArrayPartition
 
-The SciML state of an [`EMState`](@ref): a zero-copy `RecursiveArrayTools.ArrayPartition`
-over its arrays, in this order:
+The SciML state of an [`EMState`](@ref): a zero-copy `RecursiveArrayTools.ArrayPartition` over
+everything a run evolves, the arrays of [`evolved`](@ref)`(state)` in its order (per species the
+cells, offsets, momenta, weights, status and count; the fields; at N = 2 a PML's convolution
+fields, the moving window's counters and the witness bunch). The element types stay mixed
+(`Int32`, `UInt8` and `T`). The workspaces, the extras, the scratch `ρ`, the kinetic energy `K`
+(a cache of the momenta, rebuilt where a partition is written into a state) and the recorder with
+its histories are not in it.
 
-1. per species: the cells and offsets per axis, the momenta `u[1:3]`, the weights, the status
-   and the alive count;
-2. the fields of [`FIELD_LAYOUT`](@ref), in its order;
-3. the kinetic energy density `K` at n − 1/2, which the next step's observer reads.
-
-The element types stay mixed (`Int32`, `UInt8` and `T`). The workspaces, the extras, the
-scratch `ρ` and the recorder with its histories are not in the partition: they stay in the
-state's cache, and so does what a 2D run evolves next to the particles and the fields (a PML's
-convolution fields, the moving window's counters, the witness bunch's particles), so the
-partition is the whole evolved state only for a periodic run without a witness.
-`copyto!(state, u)` writes a partition back into the state's arrays; a run from step 1 on
-them is the run of that partition, since step 1 zeroes a PML's convolution fields.
+`copyto!(state, u)` is [`restore!`](@ref)`(state, u.x)`: it writes a partition back into the
+state's arrays and rebuilds `K`, so a run from the step after the one `u` was saved at is the run
+`u` came from.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """
@@ -49,10 +45,16 @@ function remake_reload end
 
 """
     harness_state(prob_or_sol) -> EMState
+    harness_state(prob_or_sol, u) -> EMState
 
 The cache of a harness problem, or of a solution of one: the `EMState` whose workspaces and
 diagnostic histories the steps use. Read the histories with `histories(harness_state(sol))`.
-Its particle and field arrays hold the problem's `u0`, not the solution.
+Its evolved arrays ([`evolved`](@ref): particles, fields, a PML's convolution fields, the
+window's counters, the witness bunch) hold the problem's `u0`, not the solution.
+
+With a saved state `u` of the solution (`sol.u[end]`), the same cache over the arrays of `u`, with
+no copy: the state to hand to a read-out, `witness_energy_gain(harness_state(sol, sol.u[end]), params)`
+or `window_lost(harness_state(sol, sol.u[end]))`. Its `K` is that of the last step taken.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """

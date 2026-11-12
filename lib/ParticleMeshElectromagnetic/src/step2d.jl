@@ -77,7 +77,7 @@ The state of a 2D problem ([`EMState`](@ref)): the grid of `problem.cells` cells
 [`SpeciesDescription`](@ref) at capacity `prod(cells)·prod(ppc)` with the extras of
 `flux_extras(T, 2)` (the old position per axis, which the push stores), the workspaces, the fields
 of [`field_layout`](@ref)`(Val(2))`, `ρ`, the kinetic-energy chunks `K` (one entry per
-[`KINETIC_CHUNK`](@ref) slots of each species), the default [`HistoryRecorder`](@ref) for
+[`KINETIC_CHUNK`](@ref) slots of each species; none without species), the default [`HistoryRecorder`](@ref) for
 `problem.kmode` and `problem.nsteps` steps, and in `aux`: the spectral workspace and the potential
 `φ` of the initial solve, the [`AntennaPlane`](@ref)s of the problem's lasers (`antennas`: where
 each plane lies on the grid, not the laser), the absorber placed on the grid (`layer`: the
@@ -311,10 +311,10 @@ after every step (T-360), off the antenna columns with lasers (T-406), and off t
 with an open boundary (T-451); with passes its filtered form does (T-441). Parameters that do
 not fit the state are refused first ([`check_params`](@ref): a laser off its plane, a pulse the
 window would pass while it emits, another element type); the default observer refuses a `k`
-outside the steps it was allocated for. Step 1 zeroes a PML's convolution fields
-([`reset_convolution!`](@ref)): they are field state outside the state's partition, so every run
-from step 1 is the same run, also one that starts from particle and field arrays copied back
-into a state that has run (`copyto!(state, partition)`, a solve of the harness).
+outside the steps it was allocated for. The step reads and writes the state's evolved arrays
+([`evolved`](@ref)) and nothing else that outlives it but the cache `K`, and `k` enters only
+through the source's time, the window's position and the witness bunch's injection step: no step
+is special, so a run continues from any step of a saved state ([`restore!`](@ref)).
 """
 function step!(st::EMState{2}, p::EMParams, k::Integer; observer = st.recorder)
     check_params(st, p)
@@ -323,7 +323,6 @@ function step!(st::EMState{2}, p::EMParams, k::Integer; observer = st.recorder)
     n = Int32.(ncells(grid))
     g = Int32(guards(grid))
     dx = cellsize(grid)
-    k == 1 && reset_convolution!(st)
     observe!(observer, st, k)
     inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
     for s in (st.species..., witness_species(st)...)

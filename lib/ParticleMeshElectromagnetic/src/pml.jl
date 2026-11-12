@@ -280,11 +280,9 @@ end
 
 retire!(::PMLFields, st) = retire_open!(st)
 
-# The convolution fields are part of the field state but not of the state's partition: step 1
-# starts them at zero (so its first B half step reads ψ_B = 0, not c·D⁺_y E⁰; zero for fields
-# that start at zero in the layer), so every run from step 1 (`run!`, a solve of the harness,
-# which takes the steps in order on one integrator, or a run from a partition copied back into a
-# state that has run) is the same run. `initialize!` zeroes them too, with the fields.
+# The convolution fields are field state, evolved by every step and part of the state's evolved
+# arrays (`evolved`, the harness's partition). A run starts them at zero, with the fields:
+# `initialize!` zeroes them (so step 1's first B half step reads ψ_B = 0, not c·D⁺_y E⁰).
 reset_absorber!(::Any) = nothing
 reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBx, L.ψBz, L.ψEx, L.ψEz)); nothing)
 
@@ -424,9 +422,10 @@ reset_back!(w) = reset_absorber!(w.back)
     reset_convolution!(state) -> state
 
 Zero the convolution fields of the state's PMLs (the open axis' and the window's back edge's);
-nothing without one, and nothing at N = 1. `initialize!` calls it, and so does `step!` at
-step 1, because the state's partition ([`state_partition`](@ref)) does not hold these fields: a
-run from step 1 needs no call by hand.
+nothing without one, and nothing at N = 1. `initialize!` calls it, with the fields it zeroes; no
+step does (the fields are part of what a run evolves, [`evolved`](@ref)), so whoever sets the
+fields of a state that has run by hand, instead of `initialize!` or [`restore!`](@ref), calls it
+too.
 """
 reset_convolution!(st::EMState{1}) = st
 reset_convolution!(st::EMState{2}) = (reset_absorber!(st.aux.layer); reset_back!(st.aux.window); st)

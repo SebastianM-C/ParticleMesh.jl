@@ -132,26 +132,31 @@ end
 """
     EMState{N}
 
-What a run evolves, with the caches and the configuration a step needs next to it, allocated once
-from a problem and its numerics; no parameter of [`EMParams`](@ref) is kept in it.
+What a run evolves, with the cache, the scratch and the configuration a step needs next to it,
+allocated once from a problem and its numerics; no parameter of [`EMParams`](@ref) is kept in it.
 
-- Evolved by `initialize!` and `step!`: the `species` (the engine's `Species`, a tuple), the
-  `fields` of [`field_layout`](@ref)`(Val(N))` with guards, and at N = 2 in `aux` the convolution
-  fields of a PML (in `layer` and in the window's `back`), the window's counters and the witness
-  bunch's particles.
-- Scratch and caches: the species' workspaces `ws`, the scratch field `ρ` (the charge for the
-  initial field, then the scratch of the current filter and of the window's shift), the kinetic
-  energy buffer `K` that a step leaves for the next observation (at N = 1 the kinetic energy
-  density, a field; at N = 2 the kinetic energy of fixed chunks of particle slots, in order), and
-  at N = 2 in `aux` the spectral workspace and the potential `φ` of the initial solve and the
-  absorbers' coefficient tables.
+- Evolved by `initialize!` and `step!`, and nothing else is ([`evolved`](@ref) is the list, as a
+  tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
+  momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
+  guards, and at N = 2 in `aux` the convolution fields of a PML (in `layer` and in the window's
+  `back`), the window's counters `lost` and `fast` and the witness bunch's particles. With the
+  step index and the parameters they are a complete restart ([`snapshot`](@ref),
+  [`restore!`](@ref)).
+- The cache: the kinetic energy buffer `K` that a step leaves for the next observation (at N = 1
+  the kinetic energy density, a field; at N = 2 the kinetic energy of fixed chunks of particle
+  slots, in order), a function of the evolved momenta, weights and status, rebuilt by
+  `refresh_caches!` where the evolved arrays are written from outside.
+- Scratch, written before it is read within a call: the species' workspaces `ws` and extras (the
+  old position the push stores), the field `ρ` (the charge for the initial field, then the scratch
+  of the current filter and of the window's shift), and at N = 2 in `aux` the spectral workspace
+  and the potential `φ` of the initial solve, the PMLs' shift scratch and the refill's `flags`.
 - Configuration: the `numerics`, the `grid` (`PeriodicGrid{N}`), the time step `dt` (to time what
   the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
-  of each species (name, particles per cell, Philox stream, kind of momentum distribution), and at
-  N = 2 in `aux` the antenna planes ([`AntennaPlane`](@ref)), the placed absorber, the
-  [`WindowFrame`](@ref) and the [`WitnessFrame`](@ref) (`nothing` where the problem has none).
-  `aux` is empty at N = 1.
+  of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
+  species' charge and mass, and at N = 2 in `aux` the antenna planes ([`AntennaPlane`](@ref)),
+  the placed absorber's coefficient tables, the [`WindowFrame`](@ref) and the
+  [`WitnessFrame`](@ref) (`nothing` where the problem has none). `aux` is empty at N = 1.
 - `recorder`: the state's default observer, a [`HistoryRecorder`](@ref) for the problem's
   diagnostic `kmode` and `nsteps`. A step does not read it; `step!` hands it to
   [`observe!`](@ref) unless another observer is given.
