@@ -1,0 +1,17 @@
+backend = "CUDABackend"
+case = "lwfa-2d-r32"
+code = "ParticleMesh"
+commit = "1e36a43211bc771dfa7282b62e03872037b5ed7c"
+cpu = "Intel(R) Core(TM) i9-14900K"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+gpu = "NVIDIA GeForce RTX 4080 SUPER"
+julia = "1.13.3"
+run_id = "lwfa-scan-r32/pm-vacuum"
+run_seconds = 16.508995056152344
+threads = 1
+updated = "2026-11-12T07:39:08.034Z"
+
+[inputs]
+"case.toml" = "sha256:9be9531bcc889aac5ad30cfcc65f28054dbad29bc69319a54fd96580b5039ff9"
+"kind.txt" = "sha256:566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
