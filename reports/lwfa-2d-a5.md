@@ -100,15 +100,15 @@ One population compared: the electrons trapped in the wake, which gain energy up
 
 | | ParticleMesh | Smilei | PIConGPU |
 |---|---|---|---|
-| weight, t = 900 to 1300 (n_c (c/ω₀)²) | 1.245920 × 10⁻³ | 1.267714 × 10⁻³ | 1.248813 × 10⁻³ |
+| weight, t = 800 to 1300 (n_c (c/ω₀)²) | 1.245920 × 10⁻³ | 1.267714 × 10⁻³ | 1.248813 × 10⁻³ |
 | energy range at t = 1300 (mₑc²) | 52.2 to 67.0 | 57.4 to 67.4 | 57.2 to 67.2 |
 | occupied bins at t = 1300 (0.2 mₑc² each) | 40 | 38 | 36 |
 | of those, bins with less than half a plateau macro-particle's weight | 35 | 33 | 32 |
 | empty gap below the group at t = 1300 (mₑc²) | 37.4 | 43.0 | 34.6 |
 
-- **Weight.** ParticleMesh is 0.23 % below PIConGPU and 1.72 % below Smilei; Smilei is 1.51 % above PIConGPU. Each weight is constant from t = 900 (ParticleMesh's and Smilei's from t = 800, where PIConGPU's group is separated by one mₑc² only).
+- **Weight.** ParticleMesh is 0.23 % below PIConGPU and 1.72 % below Smilei; Smilei is 1.51 % above PIConGPU. Each weight is the same at every output from t = 800, where PIConGPU's group is separated from the rest by one mₑc² only (`gap`).
 - **A threshold is not this measure.** The weight above 20 mₑc² is PIConGPU's 1.258096 × 10⁻³ from t = 1000: it counts two more electrons of 4.64 × 10⁻⁶ each, between 20.0 and 23.6 mₑc², which do not gain energy while the bunch goes from 33 to 67. ParticleMesh and Smilei have nothing between 20 mₑc² and their bunch.
-- **What the bunch is made of.** One plateau macro-particle carries n₀·Δx·Δy/4 = 1.713 × 10⁻⁴ (`macro_weight`), and the bunch weighs 7.3 of those. But it occupies 36 to 40 bins, 32 to 35 of which hold less than half of one: it is at least about 40 macro-particles, most of them light. A particle's weight is the density where it was loaded, so the light ones come from the foot of the ramp. The three codes assign weights there by three different rules (`lwfa.jl`'s header, "The plasma"), so differences of a percent in the bunch's weight may come from the load and not from the dynamics. This case does not test injection (A5 plans a second, injecting case).
+- **What the bunch is made of.** One plateau macro-particle carries n₀·Δx·Δy/4 = 1.713 × 10⁻⁴ (`macro_weight`), and the bunch weighs 7.3 to 7.4 of those. But it occupies 36 to 40 bins, 32 to 35 of which hold less than half of one: it is at least about 40 macro-particles, most of them light. A particle's weight is the density where it was loaded, so the light ones come from the foot of the ramp. The three codes assign weights there by three different rules (`lwfa.jl`'s header, "The plasma"), so differences of a percent in the bunch's weight may come from the load and not from the dynamics. This case does not test injection (A5 plans a second, injecting case).
 
 ### 3.5 ParticleMesh's `ekin_max` (#362)
 
@@ -141,7 +141,7 @@ Pending the matched re-run:
 - **Settled by reading the sources and by the first runs' numbers**: Smilei's carrier phase and two-cell lag (§3.1), and the motion of ParticleMesh's centroid against the other two (§3.2).
 - **Not settled.**
   - Whether the matched lasers agree as the sources say they should; the vacuum runs of §4 measure it. Smilei's launch was read, not run: the sub-cell part of its lag is known only from the first runs (the phase leaves 0.001 c/ω₀).
-  - What is left of the wake's E_x after a whole-cell shift in the first runs, 0.9 % to 2.9 % in every pair, and ParticleMesh's wake extrema about 1 % below both other codes' from t = 1000. Both may follow from the pulses' different histories through the focus; the re-run tells.
+  - What is left of the wake's E_x after a whole-cell shift in the first runs, 0.9 % to 2.9 % in every pair from t = 500, and ParticleMesh's wake extrema about 1 % below both other codes' from t = 1000. Both may follow from the pulses' different histories through the focus; the re-run tells.
   - The reader of PIConGPU's electron dump is tested on synthetic files written as PIConGPU 0.8.0 is understood to write them, not on a real dump. It decides from the data which way `positionOffset` counts and refuses what fits none; if it refuses, the summary keeps the plugin's histogram and says so, and the dump stays for a corrected reader.
 - **The tests.** `scripts/lwfa/test/runtests.jl` (T-510 to T-518, T-690 to T-694, T-698 to T-707) for the generators, the readers and the measures on synthetic data, and a small ParticleMesh run end to end; `lib/ParticleMeshElectromagnetic/test/antenna.jl` (T-695 to T-697) for the wavefront envelope. They do not test the physics of the case.
 
