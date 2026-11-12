@@ -438,7 +438,8 @@ function picongpu_param_files(case; plasma = true, precision = "Float64")
         using FieldTmpSolvers = MakeSeq_t<ChargeDensity_Seq>;
         using NativeFileOutputFields = MakeSeq_t<FieldE>;
         using FileOutputFields = MakeSeq_t<NativeFileOutputFields, FieldTmpSolvers>;
-        using FileOutputParticles = MakeSeq_t<>;
+        /* the electrons, for the spectrum over the comparison's region; written only with --openPMD.source species_all */
+        using FileOutputParticles = VectorAllSpecies;
     } // namespace picongpu
     """
     return f
