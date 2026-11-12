@@ -1,0 +1,10 @@
+case = "lwfa-2d"
+commit = "df75c5c27c163a8197f6d7d8f41f4e2dacd9e604"
+dirty = false
+updated = "2026-11-12T05:06:24.042Z"
+
+[inputs]
+
+[summaries]
+a = "sha256:89f997f2919d053186e15d5a575a95c7dfd5a515b97e0f42b3fe7dc1a0072caa"
+b = "sha256:c70e612125ab0b404133812a2585ee1e91f063c0038e2f0a772ecfe185d12152"
