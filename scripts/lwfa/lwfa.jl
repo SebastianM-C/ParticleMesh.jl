@@ -913,8 +913,9 @@ const MAP_BANDS = ((0.0, Inf), (0.9, 1.6), (2.15, 2.85))
 """
 The cells at the back of the columns two maps share that `map_rows` leaves out, in laser wavelengths.
 The shared columns start at the back of one code's window, and there the field is the boundary's:
-in A5's matched runs Smilei's E_y differs from both other codes' by a quarter of its rms in the first
-12 to 24 cells of its window, and by less than a hundredth further in.
+in A5's matched runs Smilei's E_y differs from both other codes' by a fifth to two fifths of the field
+in the two or three kept columns nearest the back of its window, and by a few percent further in
+(reports/lwfa-2d-a5.md).
 """
 const MAP_BACK = 1.0
 
