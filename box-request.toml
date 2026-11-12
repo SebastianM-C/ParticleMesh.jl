@@ -1,0 +1,29 @@
+# CPU box request: Smilei alone with its launch corrected for its boundary condition (the plane-wave factor and the oblique components: smilei_laser),
+# the focus-0 vacuum case, A5's case in vacuum and A5's case in plasma (scripts/lwfa/lwfa.jl prepare)
+timeout = 7200
+category = "crosscode"
+outputs = ["scripts/runs/lwfa-a5-4-focus0/smilei-vacuum", "scripts/runs/lwfa-a5-4/smilei-vacuum", "scripts/runs/lwfa-a5-4/smilei-plasma"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-a5-4-focus0/smilei-vacuum"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-a5-4-focus0/smilei-vacuum"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-a5-4/smilei-vacuum"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-a5-4/smilei-vacuum"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-a5-4/smilei-plasma"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-a5-4/smilei-plasma"]

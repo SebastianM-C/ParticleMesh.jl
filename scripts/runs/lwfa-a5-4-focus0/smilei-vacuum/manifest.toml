@@ -1,0 +1,13 @@
+case = "lwfa-2d-focus0"
+code = "Smilei v5.1"
+commit = "2a8d467d5a16930f8dd1a511164e2c1b969257aa"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+run_id = "lwfa-a5-4-focus0/smilei-vacuum"
+updated = "2026-11-12T05:59:55.439Z"
+
+[inputs]
+"case.toml" = "sha256:243bb33d614576bcac8c2d1eb5aa48367e0368e8eeb2f46f33ee8b700ad28268"
+"kind.txt" = "sha256:566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+"namelist.py" = "sha256:1a4b5ef908c03ff03a4bed6d9e7f35ee2cdd3bccc4c43ed3ad9d934551cf6dd5"
+"run.sh" = "sha256:9ce0b9c853df2a51b851702e79a6977d55ce979f6683a8000e7206bd96cb597f"
