@@ -445,7 +445,8 @@ end
     run!(state, params, nsteps; first = 1, observer = state.recorder)
 
 The plain loop: `step!` with `observer` for `k = first:first+nsteps-1`. Call
-[`initialize!`](@ref) once before.
+[`initialize!`](@ref) once before, or [`restore!`](@ref) a snapshot and continue with
+`first = snapshot.k + 1`.
 """
 function run!(st::EMState, p::EMParams, nsteps::Integer; first::Integer = 1, observer = st.recorder)
     for k in first:(first + nsteps - 1)
