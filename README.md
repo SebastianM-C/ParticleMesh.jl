@@ -44,15 +44,20 @@ CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exi
 - **Laser wakefield.** A5's first 2D LWFA case runs with the moving window on the GPU. The
   animation is its ParticleMesh run at λ₀/48 on an RTX 4080 SUPER: the electron density in grey,
   the laser's E_y in red and blue, a₀ = 2 into 0.01 n_c (`scripts/lwfa/animate.jl`, outputs and
-  manifest in `reports/lwfa-animation/`). The same case on a coarser grid (λ₀/32), run in
-  ParticleMesh and in Smilei on the CPU, reproduces Smilei's laser and wake field to a few percent, and its
-  electron density on the axis to 5 % to 17 % rms (`reports/lwfa-2d-a2.md`).
+  manifest in `reports/lwfa-animation/`). The same case was run in ParticleMesh, Smilei v5.1 and
+  PIConGPU 0.8.0 with the three codes launching the same pulse: ParticleMesh's wake field on the
+  axis, over the first 1.5 plasma wavelengths behind the pulse, is within 0.16 % rms of Smilei's
+  and 0.13 % of PIConGPU's, and its laser amplitude in vacuum within 0.004 % of Smilei's and
+  0.07 % of PIConGPU's. This is one run per code at λ₀/48 in Float64: agreement between three
+  implementations of the same scheme, not a convergence result and not an acceptance test. The
+  report says what matching the launches took and what is left unexplained
+  (`reports/lwfa-2d-a5.md`, reviewed independently, `reports/lwfa-2d-a5/review.md`).
 
 ![A 2D laser wakefield in ParticleMesh: the laser pulse (red and blue) drives plasma wake buckets in the electron density (grey) as the window moves with it](reports/lwfa-animation/lwfa.gif)
 
-Not done yet: A5's LWFA case at λ₀/48 in all three codes and the injecting case after it;
-gradients through a full LWFA run (the element type and the SciML harness are in place, the
-optimization is not); AMD GPUs; performance work (WP-041); Reactant, which is parked (A9). The
+Not done yet: an acceptance threshold for the LWFA case, which waits for a resolution scan
+(A7), and the injecting case after it; gradients and optimization on a full-size LWFA run (they
+exist on small 2D cases, in reports that are not yet independently reviewed); AMD GPUs; performance work (WP-041); Reactant, which is parked (A9). The
 work packages and their state are in `trace/wp/`, the results in `reports/`. The cross-code
 comparisons on the linear cases have had a fresh reviewer (`reports/crosscode-*/review*.md`);
 the other reports, the LWFA comparison among them, have not, so their numbers are not validated
