@@ -1532,14 +1532,20 @@ grid) and every observable of `SCAN_DISTANCES`, the largest magnitude over the o
 `from`'s time for the medium (`scan_from`) at each resolution (`max`) and `observed_order` of the
 three (`order`): a distance that falls with an order is discretization, one that stays is a
 difference of what is solved (differences of the three below a thousandth of the largest count as
-staying). Added where every resolution has them: the maps' rows (`maps_all`, `maps_flank`,
+staying; three values that extrapolate to a distance below zero by more than half the finest
+grid's value have no order either: they fall, but not as a power of Δ towards a distance). Added where every resolution has them: the maps' rows (`maps_all`, `maps_flank`,
 `maps_wing`), the bunch's weight (`bunch_weight`, |a/b − 1| over the outputs after `from.bunch` at
 which both spectra have a highest group) and the highest occupied bin (`top`, |a − b| in mₑc² over
 the plasma runs' outputs after `from.plasma`).
 """
 function scan_distances(per, cells; from = (; vacuum = 150.0, plasma = 150.0, bunch = 150.0))
     out = Dict{String,Any}()
-    entry(mx) = Dict{String,Any}("max" => mx, "order" => length(mx) == 3 ? order_dict(mx; cells, rel = 1e-3) : nothing)
+    function entry(mx)
+        length(mx) == 3 || return Dict{String,Any}("max" => mx, "order" => nothing)
+        o = order_dict(mx; cells, rel = 1e-3)
+        o["limit"] !== nothing && o["limit"] < -mx[3] / 2 && (o["order"] = o["limit"] = nothing)     # a distance is a magnitude
+        return Dict{String,Any}("max" => mx, "order" => o)
+    end
     one(v, how) = v === nothing ? nothing : how == :value ? abs(v) : (any(isnothing, v) ? nothing : how == :difference ? abs(v[1] - v[2]) : abs(v[1] / v[2] - 1))
     for (medium, key, how) in SCAN_DISTANCES, (prefix, a, b) in PAIRS
         all(c -> haskey(c, prefix * medium), per) || continue

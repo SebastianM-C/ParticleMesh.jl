@@ -1563,11 +1563,18 @@ end
         @test_throws ErrorException compare_scan(joinpath(root, "bad"), [runs[2], runs[1], runs[3]])
     end
     # the maps' rows, from hand-made results of `compare` on the three grids: per band the largest over the maps' outputs, a
-    # band a map does not reach left out; second order planted
-    maps(f) = Dict{String,Any}("maps" => Dict{String,Any}("rows" => [Dict{String,Any}("plasma" => Any[1f, 2f, 3f]), Dict{String,Any}("plasma" => Any[4f, 0.5f, nothing])]))
-    dm = scan_distances([maps((64 / n)^2) for n in (32, 48, 64)], [32, 48, 64])["plasma"]
-    @test dm["maps_all"]["max"] ≈ 4 .* [4, 16 / 9, 1] && dm["maps_flank"]["max"] ≈ 2 .* [4, 16 / 9, 1] && dm["maps_wing"]["max"] ≈ 3 .* [4, 16 / 9, 1]
+    # band a map does not reach left out. All rows second order; the flank falling as 0.395, 0.123, 0.022, which is the ratio
+    # of an order 1.84 towards a distance of −0.12: no order; the far wing staying
+    maps(v) = Dict{String,Any}("maps" => Dict{String,Any}("rows" => [Dict{String,Any}("plasma" => Any[v[1] / 2, v[2], v[3]]), Dict{String,Any}("plasma" => Any[v[1], v[2] / 2, nothing])]))
+    flank = [0.395, 0.123, 0.022]
+    dm = scan_distances([maps(((64 / n)^2, flank[i], 3.0)) for (i, n) in enumerate((32, 48, 64))], [32, 48, 64])["plasma"]
+    @test dm["maps_all"]["max"] ≈ [4, 16 / 9, 1] && dm["maps_flank"]["max"] == flank && dm["maps_wing"]["max"] == fill(3.0, 3)
     @test dm["maps_all"]["order"]["order"] ≈ 2 atol = 1e-6
+    @test dm["maps_all"]["order"]["limit"] ≈ 0 atol = 1e-9
+    @test dm["maps_flank"]["order"]["order"] === nothing && dm["maps_flank"]["order"]["limit"] === nothing && dm["maps_flank"]["order"]["ratio"] ≈ 0.272 / 0.101
+    @test observed_order(flank).order ≈ 1.84 atol = 0.01                      # what the three values alone would give
+    @test observed_order(flank).limit ≈ -0.12 atol = 0.01
+    @test dm["maps_wing"]["order"]["order"] === nothing
     @test !haskey(dm, "bunch_weight") && !haskey(dm, "carrier_phase")
 end
 
