@@ -11,11 +11,15 @@ over its arrays, in this order:
 1. per species: the cells and offsets per axis, the momenta `u[1:3]`, the weights, the status
    and the alive count;
 2. the fields of [`FIELD_LAYOUT`](@ref), in its order;
-3. the kinetic energy density `K` at n − 1/2, which the next step's diagnostics read.
+3. the kinetic energy density `K` at n − 1/2, which the next step's observer reads.
 
 The element types stay mixed (`Int32`, `UInt8` and `T`). The workspaces, the extras, the
-scratch `ρ` and the diagnostic histories are not in the state: they stay in the state's
-cache. `copyto!(state, u)` writes a partition back into the state's arrays.
+scratch `ρ` and the recorder with its histories are not in the partition: they stay in the
+state's cache, and so does what a 2D run evolves next to the particles and the fields (a PML's
+convolution fields, the moving window's counters, the witness bunch's particles), so the
+partition is the whole evolved state only for a periodic run without a witness.
+`copyto!(state, u)` writes a partition back into the state's arrays; a run from step 1 on
+them is the run of that partition, since step 1 zeroes a PML's convolution fields.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """
@@ -24,14 +28,20 @@ function state_partition end
 """
     remake_reload(prob; p, kwargs...) -> DiscreteProblem
 
-The `remake` path that reloads the state for new parameters (A3): a new cache and a new `u0`,
-loaded by [`initialize!`](@ref) from the problem description `p` (an [`EMProblem`](@ref)),
-with the numerics, the backend, the time span and the problem keywords of `prob` unless
-`kwargs` replaces them. The element type follows `p`, so a `p` of duals gets a dual cache.
+The `remake` path that builds the harness problem of another problem description `p` (an
+[`EMProblem`](@ref)): a new cache, sized for `p`, and a new `u0`, loaded by [`initialize!`](@ref),
+with the numerics, the backend, the time span and the problem keywords of `prob` unless `kwargs`
+replaces them. The element type follows `p`, so a `p` of duals gets a dual cache.
 
-A plain `remake(prob; p = p′)` does not reload: it keeps `u0`, and with it the weights that
-`initialize!` loaded from the old parameters. Only the time step and the diagnostic
-wavenumber of `p′` would take effect. Use `remake_reload` whenever `p` changes.
+A plain `remake(prob; p = p′)` keeps the cache and `u0`. The steps then take the parameters of
+`p′` (`p′` an `EMProblem`, whose `params` are taken, or an [`EMParams`](@ref)): its lasers, its
+witness bunch, and the densities, profile and seed of the moving window's refill. That is the whole
+change for a parameter that acts only during the steps (a laser's). It is not for one that also
+enters the initial load (a density, a drift, a thermal speed, the seed, the background fields),
+whose `u0` holds the old weights and momenta, nor for a `p′` of another configuration or element
+type: a problem of another configuration is refused at the first step ([`check_setup`](@ref)),
+parameters that do not fit by the step ([`check_params`](@ref)), while an `EMParams` cannot say
+what configuration it was made for. `remake_reload` is for those.
 
 Needs `using SciMLBase, RecursiveArrayTools` (the package extension).
 """

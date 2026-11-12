@@ -70,7 +70,7 @@ end
     for P in PUSHERS
         st = digest(numerics_from_case(case; pusher = P))
         @test st.numerics.pusher === P
-        @test all(isfinite, st.hist.K) && all(isfinite, st.fields.Ex)
+        @test all(isfinite, st.recorder.hist.K) && all(isfinite, st.fields.Ex)
         @test state_digest(st) == state_digest(digest(numerics_from_case(case; pusher = P)))   # Reference mode, rerun
         P isa Boris && @test state_digest(st) == state_digest(ref)
     end

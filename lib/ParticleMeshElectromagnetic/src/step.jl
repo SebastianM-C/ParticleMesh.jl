@@ -77,9 +77,9 @@ end
 end
 
 """
-    check_subluminal(s, d::SpeciesDescription) -> s
+    check_subluminal(s, species) -> s
 
-Refuse a load of species `d` into `s` in which a drawn speed reaches c, before the velocities
+Refuse a load of `species` (anything with a `name`: a description, or a state's setup of it) into `s` in which a drawn speed reaches c, before the velocities
 become momenta (γ = 1/√(1 − v²) is not finite there; #257). The loader draws each velocity
 component as `drift + thermal·z` with `z` standard normal, in velocity, so the Gaussian tail
 passes c with a probability that grows with the thermal speed. One device reduction, the
@@ -100,27 +100,31 @@ function check_subluminal(s, d)
 end
 
 """
-    load_species!(s, grid, p, d::SpeciesDescription, seed; density_at, workgroupsize) -> s
+    load_species!(s, grid, ps::SpeciesParams, setup, seed; density_at, workgroupsize) -> s
 
-The quiet start of species `d` into `s` with the [`CosineProfile`](@ref) parameters `p`, at N = 1
-and 2: `load_quiet!` with the species' [`momentum_distribution`](@ref), keyed by `seed` and the
-species' stream. A Gaussian-velocity load is checked ([`check_subluminal`](@ref)) and its
-velocities converted to `u = γv`; the two momentum draws write `u` directly and need neither. A
-Maxwell–Jüttner load counts the particles whose rejection tries all ran out (they keep their last,
-finite proposal), one device counter read once on the host, and warns when there are any; the
-probability is near 1e−22 per particle. Called by `initialize!`, never inside `step!`.
+The quiet start of a species into `s`, at N = 1 and 2, from its parameters `ps` (the
+[`CosineProfile`](@ref)'s density, amplitude and wave vector through the weights, A3; the drift
+and the thermal speeds through the momenta) and the state's `setup` of it (particles per cell,
+Philox stream, kind of momentum distribution): `load_quiet!` with the species'
+[`momentum_distribution`](@ref), keyed by `seed` and the stream. A Gaussian-velocity load is
+checked ([`check_subluminal`](@ref)) and its velocities converted to `u = γv`; the two momentum
+draws write `u` directly and need neither. A Maxwell–Jüttner load counts the particles whose
+rejection tries all ran out (they keep their last, finite proposal), one device counter read once
+on the host, and warns when there are any; the probability is near 1e−22 per particle. Called by
+`initialize!`, never inside `step!`.
 """
-function load_species!(s, grid, p, d::SpeciesDescription, seed; density_at, workgroupsize)
-    dist = momentum_distribution(d)
+function load_species!(s, grid, ps::SpeciesParams, setup, seed; density_at, workgroupsize)
+    dist = momentum_distribution(setup.momentum, setup.name, ps.drift, ps.thermal)
     exhausted = dist isa MaxwellJuttner ? KernelAbstractions.zeros(get_backend(s), Int32, 1) : nothing
-    load_quiet!(s, grid, CosineProfile(), p, d.ppc, dist; seed, stream = d.stream, density_at, exhausted, workgroupsize)
+    load_quiet!(s, grid, CosineProfile(), density_params(ps), setup.ppc, dist; seed, stream = setup.stream, density_at, exhausted,
+                workgroupsize)
     if !draws_momentum(dist)
-        check_subluminal(s, d)
+        check_subluminal(s, setup)
         launcher(velocity_to_momentum_kernel!, get_backend(s), workgroupsize)(s; ndrange = capacity(s))
     end
     if exhausted !== nothing
         n = Int(only(Array(exhausted)))
-        n > 0 && @warn "species $(d.name): $n Maxwell–Jüttner draws ran out of rejection tries and keep their last proposal"
+        n > 0 && @warn "species $(setup.name): $n Maxwell–Jüttner draws ran out of rejection tries and keep their last proposal"
     end
     return s
 end
@@ -128,31 +132,46 @@ end
 """
     EMState{N}
 
-Everything a step reads and writes, allocated once: the numerics, the grid (`PeriodicGrid{N}`),
-the species and their workspaces (tuples), the fields of [`field_layout`](@ref)`(Val(N))` (with
-guards), the scratch field `ρ` (the charge for the initial field, then the scratch of the
-current filter), the kinetic energy buffer `K`,
-the diagnostic histories, one entry per step (see [`histories`](@ref)), and `aux`, what only
-one dimension needs (empty at N = 1; at N = 2 the spectral workspace and potential of the
-initial solve, the diagnostics' phase tables and partial sums, see [`EMState`](@ref)'s 2D
-constructor). At N = 1 `K` is the kinetic energy density, a field; at N = 2 it holds the kinetic
-energy of fixed chunks of particle slots, in order (its size is fixed by the capacities).
+What a run evolves, with the caches and the configuration a step needs next to it, allocated once
+from a problem and its numerics; no parameter of [`EMParams`](@ref) is kept in it.
+
+- Evolved by `initialize!` and `step!`: the `species` (the engine's `Species`, a tuple), the
+  `fields` of [`field_layout`](@ref)`(Val(N))` with guards, and at N = 2 in `aux` the convolution
+  fields of a PML (in `layer` and in the window's `back`), the window's counters and the witness
+  bunch's particles.
+- Scratch and caches: the species' workspaces `ws`, the scratch field `ρ` (the charge for the
+  initial field, then the scratch of the current filter and of the window's shift), the kinetic
+  energy buffer `K` that a step leaves for the next observation (at N = 1 the kinetic energy
+  density, a field; at N = 2 the kinetic energy of fixed chunks of particle slots, in order), and
+  at N = 2 in `aux` the spectral workspace and the potential `φ` of the initial solve and the
+  absorbers' coefficient tables.
+- Configuration: the `numerics`, the `grid` (`PeriodicGrid{N}`), the time step `dt` (to time what
+  the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
+  delay, the window's shift count and the witness's injection step are made for it), the `setup`
+  of each species (name, particles per cell, Philox stream, kind of momentum distribution), and at
+  N = 2 in `aux` the antenna planes ([`AntennaPlane`](@ref)), the placed absorber, the
+  [`WindowFrame`](@ref) and the [`WitnessFrame`](@ref) (`nothing` where the problem has none).
+  `aux` is empty at N = 1.
+- `recorder`: the state's default observer, a [`HistoryRecorder`](@ref) for the problem's
+  diagnostic `kmode` and `nsteps`. A step does not read it; `step!` hands it to
+  [`observe!`](@ref) unless another observer is given.
 """
-struct EMState{N,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,KB,H<:NamedTuple,X<:NamedTuple}
+struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,KB,R,SU<:Tuple,X<:NamedTuple}
     numerics::NU
     grid::G
+    dt::T
     species::SP
     ws::WS
     fields::F
     ρ::A
     K::KB
-    hist::H
+    recorder::R
+    setup::SU
     aux::X
 end
 
 Base.ndims(::EMState{N}) where {N} = N
-
-const HISTORY_KEYS = (:WEx, :WEy, :WEz, :WBx, :WBy, :WBz, :K, :Ex_re, :Ex_im, :Ey_re, :Ey_im, :Bz_re, :Bz_im)
+Base.eltype(::EMState{N,T}) where {N,T} = T
 
 """
     EMState(problem, numerics; backend = CPU())
@@ -160,10 +179,11 @@ const HISTORY_KEYS = (:WEx, :WEy, :WEz, :WBx, :WBy, :WBz, :K, :Ex_re, :Ex_im, :E
 Allocate the state of `problem` (an [`EMProblem`](@ref)) for `numerics`: the grid with
 [`em_guard_width`](@ref) guards, one species per [`SpeciesDescription`](@ref) at capacity
 `cells·ppc` with the extras `(old_cell = Int32, old_offset = T)` that `deposit_flux!` reads,
-the workspaces, the fields and the histories for `problem.nsteps` steps. The particles are
-loaded by [`initialize!`](@ref). Throws an `ArgumentError` naming the limit unless
-`problem.dt < courant_limit(numerics.solver, grid)` ([`check_courant`](@ref)): the solver is then
-stable and every particle moves less than one cell per step, as `deposit_flux!` needs.
+the workspaces, the fields, and the default [`HistoryRecorder`](@ref) for `problem.kmode` and
+`problem.nsteps` steps. The particles are loaded by [`initialize!`](@ref). Throws an
+`ArgumentError` naming the limit unless `problem.dt < courant_limit(numerics.solver, grid)`
+([`check_courant`](@ref)): the solver is then stable and every particle moves less than one cell
+per step, as `deposit_flux!` needs.
 """
 function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Esirkepov ||
@@ -178,9 +198,9 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU())
         Species(backend, T, n * d.ppc; q = d.charge, m = d.mass, extras = (old_cell = Int32, old_offset = T))
     end
     ws = map(s -> Workspace(s, grid), species)
-    hist = NamedTuple{HISTORY_KEYS}(ntuple(_ -> KernelAbstractions.zeros(backend, T, problem.nsteps), length(HISTORY_KEYS)))
-    return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
-                   field(backend, T, grid), hist, NamedTuple())
+    recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = numerics.workgroupsize)
+    return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
+                   field(backend, T, grid), recorder, map(species_setup, problem.species), NamedTuple())
 end
 
 # The mode the depositions of `s` run in: the step sorts when it is `Reference()` and passes it,
@@ -214,18 +234,98 @@ check_momenta_at(m::Symbol) = m in (:t0, :t_minus_half) ? m :
     throw(ArgumentError("momenta_at must be :t0 or :t_minus_half, got :$m"))
 
 """
+    check_params(state, params) -> params
+
+Whether `params` fit `state` (an `ArgumentError` naming the misfit otherwise): the same element
+type, one [`SpeciesParams`](@ref) per species, and at N = 2 one laser per antenna plane, each
+within half a cell of its plane's column (the column is fixed when the state is built), with a
+moving window every pulse over before the window passes its plane, a witness's parameters exactly
+when the state has a bunch, and a profile only with a window; and what an [`EMProblem`](@ref)
+refuses of the same numbers: a thermal spread that is not isotropic and positive for a species
+the state loads as Maxwell–Jüttner, and in a moving window a perturbation amplitude, background
+fields, or, when the window starts later than t = 0, a drift or a thermal speed. `initialize!` and `step!` call it
+first, so parameters that were made for another state stop the run instead of giving another
+run silently. The checks are host comparisons of host scalars and of types (no device data,
+§0.4 rule 2), a few per step; a compiler that traces the parameters would hoist them out of the
+step, which is why they are one function.
+"""
+function check_params(st::EMState{N,T}, p::EMParams) where {N,T}
+    eltype(p) === T ||
+        throw(ArgumentError("the parameters have element type $(eltype(p)), the state $T: build the state from a problem of the parameters' element type"))
+    length(p.species) == length(st.species) ||
+        throw(ArgumentError("$(length(p.species)) species in the parameters, $(length(st.species)) in the state"))
+    all(ps -> ps isa SpeciesParams{T,N}, p.species) ||
+        throw(ArgumentError("the species' parameters must be SpeciesParams{$T,$N}, got $(map(typeof, p.species))"))
+    foreach(check_species_params, p.species, st.setup)
+    check_aux_params(st, p)
+    return p
+end
+
+# A species the state loads as Maxwell–Jüttner takes one positive thermal speed (the loader reads
+# the first component only), as `SpeciesDescription` requires.
+function check_species_params(ps::SpeciesParams, setup)
+    th = ps.thermal
+    setup.momentum === :maxwell_juttner && !(th[1] == th[2] == th[3] && th[1] > 0) &&
+        throw(ArgumentError("species $(setup.name): the state loads it as Maxwell–Jüttner, which takes the same nonzero thermal speed in every component, got $th"))
+    return nothing
+end
+
+function check_aux_params(::EMState{1}, p::EMParams)
+    isempty(p.lasers) || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
+    p.witness === nothing || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
+    p.profile === nothing || throw(ArgumentError("a density profile is implemented with the moving window only"))
+    return nothing
+end
+
+"""
+    check_setup(state, problem) -> problem
+
+Whether `state` has the configuration of `problem` (an `ArgumentError` otherwise), what a state
+takes from the problem it is built for besides the parameters: the cells and the cell sizes, the
+time step, per species the name, the particles per cell, the Philox stream, the kind of momentum
+distribution, the charge and the mass (as the state holds them, converted to its element type:
+a description in another type than the problem's is the state's own problem), and at N = 2 which
+boundaries are open or a window, the
+window's start and the witness bunch's placement, charge and mass; and the diagnostic mode of
+the state's own recorder, whose histories would otherwise be of another mode than the problem's. Called by
+`initialize!(state, problem)`; the problem's parameters are checked by [`check_params`](@ref)
+(the lasers' planes among them).
+"""
+function check_setup(st::EMState{N}, problem::EMProblem{M}) where {N,M}
+    wrong(what) = throw(ArgumentError("the problem \"$(problem.name)\" does not have the configuration the state was built for ($what): build a new EMState for it"))
+    N == M || wrong("N = $M against $N")
+    st.recorder.kmode == problem.kmode ||
+        throw(ArgumentError("the problem \"$(problem.name)\" has the diagnostic mode $(problem.kmode), the state's recorder $(st.recorder.kmode): the state's histories would be of another mode; observe with HistoryRecorder(problem, state), or build a new EMState"))
+    ncells(st.grid) == problem.cells || wrong("cells $(problem.cells) against $(ncells(st.grid))")
+    cellsize(st.grid) == problem.length ./ problem.cells || wrong("cell sizes $(problem.length ./ problem.cells) against $(cellsize(st.grid))")
+    st.dt == problem.dt || wrong("dt $(problem.dt) against $(st.dt)")
+    map(species_setup, problem.species) == st.setup ||
+        wrong("the species' names, particles per cell, streams or momentum distributions $(map(species_setup, problem.species)) against $(st.setup)")
+    all(map((s, d) -> s.q == oftype(s.q, d.charge) && s.m == oftype(s.m, d.mass), st.species, problem.species)) ||
+        wrong("a species' charge or mass")
+    check_aux_setup(st, problem, wrong)
+    return problem
+end
+
+check_aux_setup(::EMState{1}, problem, wrong) = nothing
+
+"""
+    initialize!(state, params; momenta_at = :t0, density_at = :particle) -> state
     initialize!(state, problem; momenta_at = :t0, density_at = :particle) -> state
 
-The state at t = 0 from the problem description: each species loaded by the engine's quiet
+The state at t = 0 from the parameters ([`EMParams`](@ref); or from a problem description, whose
+`params(problem)` are taken after [`check_setup`](@ref)): each species loaded by the engine's quiet
 start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
 through the weights, A3; momenta from the species' distribution, [`momentum_distribution`](@ref),
-by Philox draws keyed by the problem's seed and the species' stream, [`load_species!`](@ref): a
+by Philox draws keyed by the parameters' seed and the species' stream, [`load_species!`](@ref): a
 Maxwell–Jüttner or Gaussian-momentum draw writes `u = γv` directly, a Gaussian-velocity draw is
 converted, and refused if a drawn speed reaches c, `check_subluminal`); the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
 ρ, so that (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ) to roundoff, the mean being the immobile
-neutralizing background; the background fields `E0` and `B0` of the problem added where they
-are nonzero (so a problem without them keeps the bits of the fields); then the momenta at
-t = −Δt/2 (half-step centring, A2), and the kinetic energy density there.
+neutralizing background; the background fields `E0` and `B0` of the parameters added where they
+are nonzero (so a run without them keeps the bits of the fields); then the momenta at
+t = −Δt/2 (half-step centring, A2), and the kinetic energy density there. Everything a run
+evolves starts here, so a state that has run before is the same as a new one after it; the
+recorder's histories are not touched (entry `k` is overwritten when step `k` is observed again).
 
 `momenta_at` says at which time the loaded momenta are taken:
 
@@ -244,16 +344,16 @@ cosine's amplitude by about sinc(kΔx/2) ≈ 1 − (kΔx)²/24 against the per-p
 constant 1.00017 in the field-energy ratio of the 1D two-stream case). Positions and the momenta
 draws are the same in both; anything else is an `ArgumentError`.
 """
-function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
+function initialize!(st::EMState{1}, p::EMParams; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
     check_momenta_at(momenta_at)
     ParticleMeshCore.check_density_at(density_at)
+    check_params(st, p)
     (; numerics, grid) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
-    for (s, d) in zip(st.species, problem.species)
+    for (s, ps, setup) in zip(st.species, p.species, st.setup)
         fill!(s.status, ParticleMeshCore.FREE)
-        k = 2 * T(π) * d.mode / problem.length
-        load_species!(s, grid, (d.density, d.amplitude, k), d, problem.seed; density_at, workgroupsize = wgs)
+        load_species!(s, grid, ps, setup, p.seed; density_at, workgroupsize = wgs)
     end
     foreach(a -> fill!(a, zero(T)), st.fields)
     for (s, ws) in zip(st.species, st.ws)
@@ -265,55 +365,56 @@ function initialize!(st::EMState{1}, problem::EMProblem{1}; momenta_at::Symbol =
     end
     fold_guards!(st.ρ, grid; workgroupsize = wgs)
     cumsum_periodic!(st.fields.Ex, st.ρ, grid; workgroupsize = wgs)
-    add_background!(st.fields, problem.E0, problem.B0)
+    add_background!(st.fields, p.E0, p.B0)
     if momenta_at === :t0
         g = Int32(guards(grid))
         for s in st.species
             launcher(kick_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
-                                                        -s.q / s.m * problem.dt / 4; ndrange = capacity(s))
+                                                        -s.q / s.m * st.dt / 4; ndrange = capacity(s))
         end
     end
     kinetic!(st)
     return st
 end
 
+initialize!(st::EMState, problem::EMProblem; kw...) = (check_setup(st, problem); initialize!(st, params(problem); kw...))
+
 """
-    step!(state, params, k) -> state
+    step!(state, params, k; observer = state.recorder) -> state
 
-Step `k` (from t = (k−1)Δt to kΔt), the module's step order:
+Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state and the parameters
+([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
+(§0.4). First the `observer` sees the state at the start of the step ([`observe!`](@ref): Eⁿ,
+Bⁿ and the kinetic energy at n − 1/2 that the previous step left in `K`; `nothing` observes
+nothing); then the module's step order:
 
-1. diagnostics of step `k`: the field energies and mode amplitudes of Eⁿ, Bⁿ, and the kinetic
-   energy at n − 1/2 (deposited at the end of the previous step);
-2. per species: store the old cell and offset as extras, push the momentum in Eⁿ, Bⁿ gathered
+1. per species: store the old cell and offset as extras, push the momentum in Eⁿ, Bⁿ gathered
    at xⁿ (the pusher of the numerics) and move the particle, xⁿ⁺¹ = xⁿ + Δt·uₓ/γ;
-3. sort by cell where the deposition mode needs it (the extras follow the particles);
-4. zero Jx, Jy, Jz and add every species' current with the engine's `deposit_flux!` (Esirkepov
+2. sort by cell where the deposition mode needs it (the extras follow the particles);
+3. zero Jx, Jy, Jz and add every species' current with the engine's `deposit_flux!` (Esirkepov
    for Jx from the old and new positions, `q·w·u_{y,z}/γ` for Jy and Jz), fold the guards, then
    apply the numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`);
-5. deposit the kinetic energy density at n + 1/2 (for the next step's diagnostics);
-6. the mesh solve of the numerics (Yee: B half step, E full step with J, B half step).
+4. deposit the kinetic energy density at n + 1/2 (for the next observation);
+5. the mesh solve of the numerics (Yee: B half step, E full step with J, B half step).
 
-`k` must lie within the `nsteps` the state was allocated for (an `ArgumentError` otherwise: the
-diagnostics write entry `k`). Gauss's law then holds to roundoff after every step, from
-continuity (T-212); with filter passes its filtered form does (T-441). A function of the
-state and the parameters only, every buffer in the state, no host-side branch on device data
-(§0.4).
+Gauss's law then holds to roundoff after every step, from continuity (T-212); with filter passes
+its filtered form does (T-441). At N = 1 a step reads no parameter (there is no source and no
+refill), but parameters that do not fit the state are refused as at N = 2
+([`check_params`](@ref)); the default observer, the state's [`HistoryRecorder`](@ref), refuses a
+`k` outside the steps it was allocated for with an `ArgumentError`.
 """
-function step!(st::EMState{1}, p::EMParams, k::Integer)
-    (; numerics, grid, fields) = st
-    # k is a host integer (not device data): the diagnostics kernel writes entry k of the
-    # histories under @inbounds, so a k past their length must not reach it.
-    1 <= k <= length(st.hist.K) || throw(ArgumentError("step $k outside the $(length(st.hist.K)) steps the state was allocated for"))
+function step!(st::EMState{1}, p::EMParams, k::Integer; observer = st.recorder)
+    check_params(st, p)
+    (; numerics, grid, fields, dt) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
     n = Int32(ncells(grid))
     g = Int32(guards(grid))
     dx = cellsize(grid)
-    diagnostics_kernel!(get_backend(st.ρ))(st.hist, fields, st.K, dx, p.kmode, n, g, Int32(length(st.K)), Int32(k);
-                                           ndrange = 1)
+    observe!(observer, st, k)
     for s in st.species
-        launcher(push_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
-                                                    p.dt / dx, n; ndrange = capacity(s))
+        launcher(push_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2,
+                                                    dt / dx, n; ndrange = capacity(s))
     end
     for (s, ws) in zip(st.species, st.ws)
         sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
@@ -323,7 +424,7 @@ function step!(st::EMState{1}, p::EMParams, k::Integer)
     fill!(fields.Jz, zero(T))
     for (s, ws) in zip(st.species, st.ws)
         ParticleMeshCore.deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER,
-                                       grid, ws; dt = p.dt, quantity_y = CurrentY(), quantity_z = CurrentZ(),
+                                       grid, ws; dt, quantity_y = CurrentY(), quantity_z = CurrentZ(),
                                        workgroupsize = wgs)
     end
     fold_guards!(fields.Jx, grid; workgroupsize = wgs)
@@ -331,18 +432,19 @@ function step!(st::EMState{1}, p::EMParams, k::Integer)
     fold_guards!(fields.Jz, grid; workgroupsize = wgs)
     filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs)
     kinetic!(st)
-    solve_fields!(numerics.solver, fields, grid, p.dt; workgroupsize = wgs)
+    solve_fields!(numerics.solver, fields, grid, dt; workgroupsize = wgs)
     return st
 end
 
 """
-    run!(state, params, nsteps; first = 1)
+    run!(state, params, nsteps; first = 1, observer = state.recorder)
 
-The plain loop: `step!` for `k = first:first+nsteps-1`. Call [`initialize!`](@ref) once before.
+The plain loop: `step!` with `observer` for `k = first:first+nsteps-1`. Call
+[`initialize!`](@ref) once before.
 """
-function run!(st::EMState, p::EMParams, nsteps::Integer; first::Integer = 1)
+function run!(st::EMState, p::EMParams, nsteps::Integer; first::Integer = 1, observer = st.recorder)
     for k in first:(first + nsteps - 1)
-        step!(st, p, k)
+        step!(st, p, k; observer)
     end
     return st
 end

@@ -10,7 +10,7 @@ function landau_field_energy(α, mode, seed; be = CPU())
     T = typeof(α)
     st, p, prob, _ = case_state("landau", T; mode, seed, amplitude = α, be, GRADIENT_KW...)
     run!(st, p, prob.nsteps)
-    return Array(st.hist.WEx)[end]
+    return Array(st.recorder.hist.WEx)[end]
 end
 
 function body_T219(be)

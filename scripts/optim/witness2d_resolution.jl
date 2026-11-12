@@ -13,9 +13,9 @@ include(joinpath(@__DIR__, "witness2d_case.jl"))
 
 "The best of the objective over centres 30 to 50 (0.25 apart) from one run at (τ, n₀)."
 function best_center(τ, n; kw...)
-    st = witness_state(τ, n, 40.0; kw...)
+    st, p = witness_state(τ, n, 40.0; kw...)
     cs = collect(30.0:0.25:50.0)
-    Js = gain_at_centers(st, cs)
+    Js = gain_at_centers(st, p, cs)
     i = argmax(Js)
     return (; J = Js[i], center = cs[i])
 end

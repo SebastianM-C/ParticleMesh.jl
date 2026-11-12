@@ -75,16 +75,18 @@ function witness_problem(duration, density, center; nsteps = WCASE.nsteps, t_end
                      profile = DensityRamp(; vacuum = T(WCASE.vacuum), ramp = T(WCASE.ramp)), witness = wb)
 end
 
+"The case's state after its run, and the parameters of the run (which the witness's read-out takes: the state keeps no copy)."
 function witness_state(duration, density, center; kw...)
     prob = witness_problem(duration, density, center; kw...)
     st = EMState(prob, EMNumerics(; mode = Reference()))
-    initialize!(st, prob)
-    run!(st, params(prob), prob.nsteps)
-    return st
+    p = params(prob)
+    initialize!(st, p)
+    run!(st, p, prob.nsteps)
+    return st, p
 end
 
 "The objective: the witness bunch's weighted mean energy gain (mₑc²) at the last step (WP-047)."
-witness_gain(duration, density, center; kw...) = witness_energy_gain(witness_state(duration, density, center; kw...))
+witness_gain(duration, density, center; kw...) = witness_energy_gain(witness_state(duration, density, center; kw...)...)
 
 """
     lattice_x(st) -> Vector{Float64}
@@ -102,15 +104,15 @@ function lattice_x(st)
 end
 
 """
-    gain_at_centers(st, centers; length) -> Vector
+    gain_at_centers(st, p, centers; length) -> Vector
 
-The objective at other witness centres from one run: the witnesses are test particles, so their
+The objective at other witness centres from one run (`st`, `p` of `witness_state`): the witnesses are test particles, so their
 gains do not depend on the centre, which enters only through the weights (A3). The weighted mean
 of the run's gains with the weights recomputed at each centre, summed in lattice order as
 `witness_energy_gain` sums (all witnesses alive, as it requires).
 """
-function gain_at_centers(st, centers; length = WCASE.length)
-    g = witness_gains(st)
+function gain_at_centers(st, p, centers; length = WCASE.length)
+    g = witness_gains(st, p)
     all(g.alive) || throw(ArgumentError("$(count(!, g.alive)) witnesses were lost"))
     x0 = lattice_x(st)
     gains = Float64.(value_of.(g.gain))

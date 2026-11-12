@@ -307,7 +307,7 @@ end
 # --- T-406 ----------------------------------------------------------------------------------
 
 """
-    antenna_divergences(st, nk, dt) -> (; gauss, gauss_col, divb, divb_col, scale, bscale)
+    antenna_divergences(st, p, nk, dt) -> (; gauss, gauss_col, divb, divb_col, scale, bscale)
 
 The Gauss residual `D⁻·E − (ρ − mean ρ)` (ρ deposited now in the state's mode) at every interior
 node and ∇·B at every cell centre, split into the maximum away from the antenna's columns
@@ -316,10 +316,10 @@ subtracting the surface charges the antenna's corrections have accumulated over 
 steps of `dt`: per step, `(Δt/Δx)·cos θ·D⁻_y bp` on the E column (the B of the plane behind at the half
 time) and `−(Δt/2Δx)·sin θ·D⁺_y e` on the B column, twice (the incident E at the step's two ends).
 """
-function antenna_divergences(st, nk, dt)
+function antenna_divergences(st, p, nk, dt)
     (; grid, numerics) = st
     T = eltype(st.ρ)
-    a = only(st.aux.antennas)
+    a = Antenna(only(p.lasers), only(st.aux.antennas))
     l = a.laser
     ρd = field(CPU(), T, grid)
     for (s, ws) in zip(st.species, st.ws)
@@ -389,7 +389,7 @@ end
         for k in 1:prob.nsteps
             step!(st, p, k)
             k % 10 == 0 || k == prob.nsteps || continue
-            d = antenna_divergences(st, k, prob.dt)
+            d = antenna_divergences(st, p, k, prob.dt)
             s = base_eps(T) * sqrt(k + 1)
             worst = max(worst, d.gauss / (s * d.scale))
             worst_col = max(worst_col, d.gauss_col / (s * d.scale))
@@ -474,7 +474,7 @@ end
             worst /= base_eps(T) * sqrt(p0.nsteps + 1)
             record!("T-409", T, worst)
             @test worst <= C
-            a = only(r1.st.aux.antennas)
+            a = run_antenna(r1)
             for s in (zero(T), one(T) / 2)
                 @test all(antenna_dy(a, Int32(j), s) === antenna_dy(a, Int32(j + n2), s) for j in 1:g)
                 @test all(antenna_dy(a, Int32(j), s) === antenna_dy(a, Int32(j - n2), s) for j in (n2 + g + 1):(n2 + 2g))

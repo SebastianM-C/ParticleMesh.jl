@@ -368,7 +368,6 @@ end
     st = open_state(prob, PML(; cells = 7))
     @test st isa EMState{2} && st.aux.layer isa PMLFields
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4), filter = BinomialFilter(1)))
-    @test_throws ArgumentError step!(st, EMParams(prob.dt / 2, prob.kmode), 1)
     # the case file: [numerics.pml], exactly one absorber
     case = deepcopy(load_case("weibel-2d"))
     case["grid"]["boundaries"] = ["periodic", "open"]
@@ -458,7 +457,7 @@ end
         worst = 0.0
         for k in 1:prob.nsteps
             step!(st, p, k)
-            r = window_gauss(st, window_shifts(st, k))
+            r = window_gauss(st, p, window_shifts(st, k))
             worst = max(worst, Float64(maximum(r.res[3:end, off]) / (base_eps(T) * r.scale * sqrt(k + 1))))
         end
         @info "T-549" T worst shifts = window_shifts(st, prob.nsteps) alive = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species) of = n0

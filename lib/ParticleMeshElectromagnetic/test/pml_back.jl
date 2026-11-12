@@ -116,7 +116,7 @@ end
             step!(st, p, k)
             k % 3 == 0 || continue
             s_win = window_shifts(st, k)
-            r = window_gauss(st, s_win)
+            r = window_gauss(st, p, s_win)
             cols = [i for i in axes(r.res, 1) if i > cb && !(i in (ia - 1 - s_win, ia - s_win))]
             worst = max(worst, Float64(maximum(r.res[cols, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
             inside = max(inside, Float64(maximum(r.res[1:cb, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))

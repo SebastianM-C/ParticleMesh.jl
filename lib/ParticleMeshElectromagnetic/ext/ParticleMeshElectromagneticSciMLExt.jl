@@ -9,17 +9,18 @@ the same bits as `initialize!` plus `run!` in `Reference()` mode (T-100).
 - The state `u` is [`state_partition`](@ref): the particle and field arrays and `K`, with mixed
   element types.
 - The cache is an `EMState` owned by the problem's map. It holds the workspaces, the extras and
-  the diagnostic histories, which stay out of `u` because `FunctionMap` copies the state every
-  step.
-- `p` is the problem description, an `EMProblem`. `remake_reload` reloads the state for a new
-  `p`; a plain `remake` does not (A3).
+  the recorder with its histories, which stay out of `u` because `FunctionMap` copies the state
+  every step.
+- `p` is the problem description, an `EMProblem`, whose `params` the steps read; an `EMParams`
+  is taken as it is. A plain `remake(prob; p = p′)` changes the parameters of the steps and
+  keeps `u0`; `remake_reload` builds the cache and `u0` of another problem (A3).
 - Time counts steps: `t = k` after step `k`, with `dt = 1`, the `DiscreteProblem` convention.
   The physical time is `t·Δt` in 1/ω₀ (A1), and `saveat` takes whole step numbers.
 """
 module ParticleMeshElectromagneticSciMLExt
 
 using ParticleMeshElectromagnetic
-using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, params, initialize!, step!
+using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!
 import ParticleMeshElectromagnetic: state_partition, remake_reload, harness_state
 using ParticleMeshCore: Species
 using KernelAbstractions: CPU
@@ -68,8 +69,9 @@ end
 """
     state_on(state, u) -> EMState
 
-An `EMState` that shares the cache of `state` (numerics, grid, workspaces, extras, `ρ`, `aux`, the
-histories) and whose particle and field arrays and `K` are the arrays of the partition `u`.
+An `EMState` that shares the cache of `state` (numerics, grid, time step, workspaces, extras, `ρ`,
+the recorder, the species' setup, `aux`) and whose particle and field arrays and `K` are the
+arrays of the partition `u`.
 Zero-copy; the array types of `u` must be those of the state.
 """
 function state_on(st::EMState, u::ArrayPartition)
@@ -77,7 +79,7 @@ function state_on(st::EMState, u::ArrayPartition)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     K = only(drop(a, nf))
-    return EMState(st.numerics, st.grid, species, st.ws, fields, st.ρ, K, st.hist, st.aux)
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, st.recorder, st.setup, st.aux)
 end
 
 function check_layout(st::EMState, u::ArrayPartition)
@@ -100,11 +102,14 @@ end
 
 The in-place map of the harness, `m(u, uprev, p, t)`: copy `uprev` into `u`, then the module's
 `step!` on `u` with the cache of `state`, as step `k = t` (`FunctionMap` passes the time at the
-end of the step). `p` is the `EMProblem`, read for the time step and the diagnostic wavenumber.
-`done` counts the steps of the current solve and `owner` holds the first array of the state
-it stepped (a reference, so `===` cannot match a later array at a reused address): a solve
-must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and only the same
-integrator's state may continue, so that the histories and the state are those of `run!`.
+end of the step). `p` gives the parameters of the step: the `params` of an `EMProblem`, or an
+`EMParams` itself. `done` counts the steps of the current solve and `owner` holds the first array
+of the state it stepped (a reference, so `===` cannot match a later array at a reused address):
+a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and only the same
+integrator's state may continue, so that the histories and the state are those of `run!`. Step 1
+starts from `u0` without `initialize!`: the step itself zeroes there the fields outside the
+partition, a PML's convolution fields, and the map checks that a problem given as `p` has the
+cache's configuration ([`check_setup`](@ref)).
 """
 struct EMMap{S<:EMState,B}
     state::S
@@ -125,11 +130,18 @@ function (m::EMMap)(u, uprev, p, t)
     a = first(u.x)
     (k == t && (k == 1 || (k == m.done[] + 1 && a === m.owner[]))) ||
         throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1) on one integrator; got t = $t after step $(m.done[])"))
-    step!(state_on(m.state, u), params(p), k)
+    pk = step_params(p)
+    k == 1 && check_fit(m.state, p)
+    step!(state_on(m.state, u), pk, k)
     m.done[] = k
     m.owner[] = a
     return nothing
 end
+
+step_params(p::EMProblem) = params(p)
+step_params(p::EMParams) = p
+check_fit(st::EMState, p::EMProblem) = check_setup(st, p)
+check_fit(::EMState, ::EMParams) = nothing
 
 harness_map(prob::AbstractSciMLProblem) = harness_map(prob.f.f)
 harness_map(sol::AbstractTimeseriesSolution) = harness_map(sol.prob)
@@ -157,19 +169,20 @@ The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
 
 - `u0 = state_partition(state)` of a new `EMState`, loaded by `initialize!(state, problem)`;
 - the map runs the module's `step!` (see `EMMap`), with that state as its cache;
-- `p = problem`; `tspan = (0, nsteps)` in steps, `dt = 1`. A solve takes every step from
+- `p = problem`, whose `params` the steps read; `tspan = (0, nsteps)` in steps, `dt = 1`. A solve takes every step from
   step 1, so a `tspan` that starts elsewhere or a `dt ≠ 1` is refused with an `ArgumentError`:
   here, or at the first step when it comes from `remake` or a `solve` keyword. A run is
   continued with the integrator interface (`init`, `step!`), not by a second solve.
 
 `kwargs` are stored as problem keywords and passed to `solve`, for example
 `saveat = [0, 10, 20]` (whole steps; the saved states are copies of the particle and field
-arrays) or `save_everystep = false`. The diagnostic histories are in the cache, entry `k`
-written by step `k`: `histories(harness_state(sol))`.
+arrays) or `save_everystep = false`. The diagnostic histories are in the cache's recorder, entry
+`k` written at step `k`: `histories(harness_state(sol))`.
 
-To change the parameters use [`remake_reload`](@ref): a plain `remake(prob; p = p′)` keeps the
-weights loaded from the old `p`. One problem holds one cache, so solves of the same problem
-must not run concurrently; `remake_reload` gives each problem of an ensemble its own.
+A plain `remake(prob; p = p′)` changes the parameters the steps read and keeps `u0`, with the
+weights and momenta loaded from the old `p`; for a parameter of the initial load, or another
+configuration, use [`remake_reload`](@ref). One problem holds one cache, so solves of the same
+problem must not run concurrently; `remake_reload` gives each problem of an ensemble its own.
 """
 function SciMLBase.DiscreteProblem(problem::EMProblem, numerics::EMNumerics; backend = CPU(),
                                    nsteps::Integer = problem.nsteps, kwargs...)

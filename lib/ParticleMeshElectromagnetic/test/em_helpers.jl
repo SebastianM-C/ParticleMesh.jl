@@ -62,7 +62,7 @@ function state_digest(st::EMState)
     for a in values(st.fields)
         h = hash(bits(a), h)
     end
-    for a in values(st.hist)
+    for a in values(st.recorder.hist)
         h = hash(bits(a), h)
     end
     return h
