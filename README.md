@@ -51,12 +51,16 @@ CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exi
   0.07 % of PIConGPU's. This is one run per code at λ₀/48 in Float64: agreement between three
   implementations of the same scheme, not a convergence result and not an acceptance test. The
   report says what matching the launches took and what is left unexplained
-  (`reports/lwfa-2d-a5.md`, reviewed independently, `reports/lwfa-2d-a5/review.md`).
+  (`reports/lwfa-2d-a5.md`, reviewed independently, `reports/lwfa-2d-a5/review.md`). A scan over
+  λ₀/32, λ₀/48 and λ₀/64 in the three codes shows the laser converging at second order, its
+  change with the grid within 2.5 % of the Yee dispersion relation's in ParticleMesh, and the
+  scheme's own error at λ₀/48 about ten to a thousand times the distance between the codes
+  (`reports/wp-054-lwfa-resolution-scan.md`, reviewed independently).
 
 ![A 2D laser wakefield in ParticleMesh: the laser pulse (red and blue) drives plasma wake buckets in the electron density (grey) as the window moves with it](reports/lwfa-animation/lwfa.gif)
 
-Not done yet: an acceptance threshold for the LWFA case, which waits for a resolution scan
-(A7), and the injecting case after it; gradients and optimization on a full-size LWFA run (they
+Not done yet: a script that checks A7's bounds for the LWFA case on demand, and the injecting
+case; gradients and optimization on a full-size LWFA run (they
 exist on small 2D cases, in reports that are not yet independently reviewed); AMD GPUs; performance work (WP-041); Reactant, which is parked (A9). The
 work packages and their state are in `trace/wp/`, the results in `reports/`. The cross-code
 comparisons on the linear cases have had a fresh reviewer (`reports/crosscode-*/review*.md`);
