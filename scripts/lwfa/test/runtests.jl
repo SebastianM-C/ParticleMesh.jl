@@ -7,8 +7,11 @@ using ParticleMeshElectromagnetic: ramp_factor
 
 # A5's case and its coarse-grid reference, the input of reports/lwfa-2d-a2.md.
 const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml", "lwfa-2d-a2.toml")]
+# the resolution scan: A5's case at λ₀/32, λ₀/48 and λ₀/64 with the outputs at the same times (T-714)
+const SCAN_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d-r32.toml", "lwfa-2d-r48.toml", "lwfa-2d-r64.toml")]
+const ALL_FILES = vcat(CASE_FILES, SCAN_FILES)
 
-@testset "T-510 the Smilei namelist carries the case: grid, step, window, the laser's parameters and the density profile [A1, A5]" for file in CASE_FILES
+@testset "T-510 the Smilei namelist carries the case: grid, step, window, the laser's parameters and the density profile [A1, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     nl = smilei_namelist(CASE; plasma = true)
@@ -54,7 +57,7 @@ const CASE_FILES = [joinpath(@__DIR__, "..", "cases", f) for f in ("lwfa-2d.toml
     @test !occursin("Species(", vac) && occursin("fields = [\"Ex\", \"Ey\"]", vac) && !occursin("DiagParticleBinning", vac)
 end
 
-@testset "T-511 the ParticleMesh problem is the case with the antenna offset: plane on node antenna_cells + 1, focus and profile shifted [A1, A3, A5]" for file in CASE_FILES
+@testset "T-511 the ParticleMesh problem is the case with the antenna offset: plane on node antenna_cells + 1, focus and profile shifted [A1, A3, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     prob = pm_problem(CASE)
@@ -133,7 +136,7 @@ end
 
 cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).captures[1])
 
-@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" for file in CASE_FILES
+@testset "T-514 the PIConGPU deck carries the case with the axes swapped: cells, step, the laser's envelope, focus and polarization [A1, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     u = reference_units(CASE["lambda0_um"] * 1e-6)
@@ -173,7 +176,7 @@ cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).c
     @test occursin("--openPMD.source fields_all ", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
 end
 
-@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" for file in CASE_FILES
+@testset "T-515 PIConGPU's moving window: a box of whole supercells, the window's back at lab x = c(t − start) [A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
@@ -193,7 +196,7 @@ end
     @test all(k -> picongpu_window_back(CASE, k) + lay.window - 1 >= max(0.0, k * d.dt - start) / d.dx + d.nx - 2, 0:97:d.steps)
 end
 
-@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" for file in CASE_FILES
+@testset "T-516 PIConGPU's density is the case's profile at the cell centres of the lab lattice [A3, A5]" for file in ALL_FILES
     CASE = TOML.parsefile(file)
     d = derived(CASE)
     lay = picongpu_layout(CASE)
@@ -636,7 +639,7 @@ function smilei_node_field(nl, y, t)
     return envelope * a0 * sqrt(w) * exp(-(w / waist)^2 * y^2) * sin(t - φ)
 end
 
-@testset "T-698 the Smilei namelist's laser is the case's wavefront pulse on its injection node, two cells behind x = 0 [A1, A5]" for file in CASE_FILES
+@testset "T-698 the Smilei namelist's laser is the case's wavefront pulse on its injection node, two cells behind x = 0 [A1, A5]" for file in ALL_FILES
     case = TOML.parsefile(file)
     d, L = derived(case), case["laser"]
     nl = smilei_namelist(case; plasma = false)
@@ -1294,7 +1297,7 @@ function oblique_launch(kind, ky, dx, dy, dt; probe = 300, t0 = 300.0, periods =
 end
 
 @testset "T-712 Smilei's Silver–Müller condition launches an oblique component with 2cos α/(1 + cos α) of what it launches at normal incidence: its update for one k_y on the Yee grid [A5]" begin
-    for file in CASE_FILES
+    for file in vcat(CASE_FILES, SCAN_FILES[3:3])
         case = TOML.parsefile(file)
         d = derived(case)
         normal = oblique_launch(:silver_muller, 0.0, d.dx, d.dy, d.dt)
@@ -1335,4 +1338,211 @@ end
     # an absorber that absorbed would leave the continuum's value: 60 cells of ten times the strength
     strong = coefficient(:plane_wave_b; surface = 65, absorber = 60, strength = 1.0e-2)
     @test abs(strong - free) <= 0.02
+end
+
+# --- the resolution scan ---------------------------------------------------------------------------------
+
+@testset "T-714 the scan's three grids are one physical case: the box, the antenna, the patches and the maps in c/ω₀, the outputs at the same times, the primal nodes shared every λ₀/16 [A5, A7, WP-054]" begin
+    cases = TOML.parsefile.(SCAN_FILES)
+    D = derived.(cases)
+    @test [round(Int, 2π / d.dx) for d in D] == [32, 48, 64]
+    @test scan_same_case(cases) === nothing
+    @test scan_stride.(D) == [2, 3, 4] && quarter_wave.(D) == [8, 12, 16] && envelope_halfwidth.(cases) == [16, 24, 32]
+    # lengths: 96π × 64π ahead of the plane, the antenna 2.5π behind it, Smilei's patch 1.5π long, the maps every λ₀/8 and λ₀/4
+    @test all(d -> d.nx * d.dx ≈ 96π && d.ny * d.dy ≈ 64π && d.xa ≈ 2.5π, D)
+    @test all(((c, d),) -> (d.nx ÷ Int(c["grid"]["smilei_patches"][1])) * d.dx ≈ 1.5π, zip(cases, D))
+    @test all(((c, d),) -> c["diagnostics"]["map_stride"][1] * d.dx ≈ π / 4 && c["diagnostics"]["map_stride"][2] * d.dy ≈ π / 2, zip(cases, D))
+    @test all(d -> d.nx % 8 == 0 && d.ny % 8 == 0, D)                       # PIConGPU's supercells
+    # time: Δt as 1/32 : 1/48 : 1/64, the cadences 2 : 3 : 4, and the 13 output times the same doubles
+    @test D[1].dt / D[2].dt ≈ 1.5 && D[2].dt / D[3].dt ≈ 4 / 3
+    @test [d.every for d in D] == [552, 828, 1104] && [d.steps for d in D] == 13 .* [552, 828, 1104]
+    times = [output_steps(c) .* d.dt for (c, d) in zip(cases, D)]
+    @test all(t -> length(t) == 14 && maximum(abs, t .- times[1]) <= 1e-9, times)
+    @test times[1][2] ≈ 34.5π * 0.95 / sqrt(17 / 16)
+    # the wake's window and the plasma wavelength are whole cells, and whole shared nodes
+    λp = 2π / sqrt(cases[1]["plasma"]["density"])
+    @test [round(Int, WAKE_LENGTH * λp / d.dx) for d in D] == [480, 720, 960] && all(d -> WAKE_LENGTH * λp / d.dx ≈ round(WAKE_LENGTH * λp / d.dx), D)
+    # the windows: ParticleMesh's back within a cell of c(t − start), so within the coarse cell of each other; Smilei's moves by
+    # the same patch, at half-step times that differ by less than a step, so its back is the same place or a patch apart
+    for j in 1:14
+        t = times[1][j]
+        pm = [pm_window_back(c, k[j]) * d.dx for (c, d, k) in zip(cases, D, output_steps.(cases))]
+        @test all(x -> 0 <= max(0.0, t - 256) - x < D[1].dx + 1e-9, pm)
+        sm = [smilei_window_back(c, k[j]) * d.dx for (c, d, k) in zip(cases, D, output_steps.(cases))]
+        @test maximum(sm) - minimum(sm) <= 1.5π + 1e-9
+    end
+    # λ₀/48 is A5's case file but for the name, the step count and the cadence
+    a5, r48 = TOML.parsefile(CASE_FILES[1]), cases[2]
+    strip(c) = (c = deepcopy(c); delete!(c, "name"); delete!(c, "description"); delete!(c["time"], "steps"); delete!(c["time"], "fields_every"); c)
+    @test strip(a5) == strip(r48) && a5["time"]["fields_every"] == 829
+    # what is not one case is refused: A5's own cadence, the λ₀/32 case without the envelope's key
+    @test_throws ErrorException scan_same_case([cases[1], a5, cases[3]])
+    @test_throws ErrorException scan_same_case([TOML.parsefile(CASE_FILES[2]), cases[2], cases[3]])
+    # Smilei's plane-wave factor on each grid, (Δx² + Δt²)/16 above 1 to second order
+    f = smilei_launch_factor.(D)
+    @test f[1] ≈ 1.004474 atol = 1e-6
+    @test f[2] ≈ 1.001984 atol = 1e-6
+    @test f[3] ≈ 1.001115 atol = 1e-6
+    @test all(((x, d),) -> isapprox(x - 1, (d.dx^2 + d.dt^2) / 16; rtol = 5e-3), zip(f, D))
+    # PIConGPU's box at each resolution: whole supercells, the window at least the case's plus the cells behind x = 0
+    for (c, d) in zip(cases, D)
+        lay = picongpu_layout(c)
+        @test lay.local_y % 8 == 0 && lay.window >= d.nx + lay.j0 && lay.cells == (d.ny, 2 * lay.local_y)
+    end
+end
+
+@testset "T-715 the measures across resolutions: the shared nodes, E_x to the primal nodes, the axis lineout's rows, the order of three values [A5, A7, WP-054]" begin
+    # shared nodes: the points of a lineout on x = j·λ₀/16
+    v = collect(100.0:119.0)                                                  # lattice m = 7 … 26
+    @test shared_nodes(v, 7, 3).v == [102.0, 105.0, 108.0, 111.0, 114.0, 117.0] && shared_nodes(v, 7, 3).j0 == 3
+    @test shared_nodes(v, 8, 4).v == [100.0, 104.0, 108.0, 112.0, 116.0] && shared_nodes(v, 8, 4).j0 == 2
+    @test shared_nodes(v, -5, 2).j0 == -2 && shared_nodes(v, -5, 2).v[1] == 101.0
+    # a dual lineout on the primal nodes: exact for a cubic, fourth order for a sine
+    dx, m0 = 0.1, 5
+    cubic(x) = 2 - x + 0.3x^2 - 0.07x^3
+    p = dual_to_primal([cubic((m0 + i - 1 - 0.5) * dx) for i in 1:12], m0)
+    @test p.m0 == m0 + 1 && length(p.v) == 9
+    @test p.v ≈ [cubic((p.m0 + i - 1) * dx) for i in 1:9] rtol = 1e-13
+    err(h) = (q = dual_to_primal([sin((i - 0.5) * h) for i in 1:40], 1); maximum(abs, q.v .- [sin((q.m0 + i - 1) * h) for i in eachindex(q.v)]))
+    @test 14 < err(0.2) / err(0.1) < 18
+    # the axis lineout is the mean of the rows at ±Δy/2: for the case's beam, the axis's field times the factor, later by the delay
+    for file in SCAN_FILES
+        case = TOML.parsefile(file)
+        d, L = derived(case), case["laser"]
+        l = GaussianLaser(; a0 = L["a0"], waist = L["waist"], duration = L["duration"], delay = L["delay"], focus = L["focus"],
+                          position = 0.0, center = 0.0, envelope = WavefrontTime())
+        for x in (0.0, 150.0, 320.0, 700.0)
+            ax = axis_sampling(case, x)
+            ξ = x - L["focus"]
+            @test all(s -> isapprox(laser_field(l, ξ, d.dy / 2, s)[1], ax.amplitude * laser_field(l, ξ, 0.0, s - ax.phase)[1]; atol = 1e-13), (-20.0, -3.0, 0.4, 11.0))
+        end
+        @test axis_sampling(case, 320.0).amplitude ≈ exp(-(d.dy / 2)^2 / 28^2) && axis_sampling(case, 320.0).phase == 0
+    end
+    @test 1 - axis_sampling(TOML.parsefile(SCAN_FILES[1]), 320.0).amplitude ≈ 1.97e-4 rtol = 0.01       # λ₀/32: 0.020 % at the focus
+    @test 1 - axis_sampling(TOML.parsefile(SCAN_FILES[3]), 320.0).amplitude ≈ 4.9e-5 rtol = 0.01        # λ₀/64: 0.005 %
+    # the order of three values: recovered where there is one, with the limit; none where the three do not support one
+    for p in (1.0, 2.0, 2.5, 3.0), (f0, C) in ((0.7, 3.0), (-2.0, -40.0))
+        o = observed_order([f0 + C * n^-p for n in (32, 48, 64)])
+        @test o.order ≈ p atol = 1e-9
+        @test o.limit ≈ f0 rtol = 1e-10
+    end
+    @test observed_order((1.0, 2.0, 2.5)).ratio ≈ 2.0                         # first order: the differences as 2 to 1
+    @test observed_order((1.0, 2.0, 2.5)).order ≈ 1 atol = 1e-9
+    @test observed_order((9.0, 4.0, 2.25)).ratio ≈ 5 / 1.75                   # 1/N² at N = 32, 48, 64: as 9 : 4 : 2.25
+    @test observed_order((9.0, 4.0, 2.25)).order ≈ 2 atol = 1e-9
+    none(o) = o.order === nothing && o.limit === nothing
+    @test none(observed_order((1.0, 1.2, 1.1)))                               # not monotone
+    @test none(observed_order((1.0, 1.0, 1.0))) && observed_order((1.0, 1.0, 1.0)).ratio === nothing
+    @test none(observed_order([1 + n^-0.2 for n in (32, 48, 64)]))            # an order below the range
+    @test none(observed_order([1 + 1e6 * n^-5.0 for n in (32, 48, 64)]))      # and above it
+    @test none(observed_order((1.0, 1.0 - 4e-7, 1.0 - 6e-7); floor = 1e-6))   # differences below the floor
+    @test observed_order((4.0, 2.0, 1.0); cells = (1, 2, 4)).order ≈ 1 atol = 1e-9
+    # an extremum between samples, by the parabola through three of them
+    para(x) = 3 - 2 * (x - 0.3)^2
+    val, δ = refine_extremum(para(-1.0), para(0.0), para(1.0))
+    @test val ≈ 3 && δ ≈ 0.3
+    @test refine_extremum(1.0, 1.0, 1.0) == (1.0, 0.0)
+    e = wake_extrema([cos(0.2 * ((i - 0.5) * 0.5 - 7.3)) for i in 1:200], 1, 0.5, 0.0, 30.0)     # one period: a maximum at 7.3, a minimum half a period on
+    @test e["max"] ≈ 1 atol = 1e-5
+    @test e["max_x"] ≈ 7.3 atol = 1e-3
+    @test e["min"] ≈ -1 atol = 1e-5
+    @test e["min_x"] ≈ 7.3 + 5π atol = 1e-3
+    @test wake_extrema([1.0, 2.0, 3.0], 1, 0.5, 5.0, 9.0) === nothing         # no point of the lineout in the window
+end
+
+@testset "T-716 PIConGPU's launch term in the model of T-713 on the scan's three grids: its surface and absorber are counted in cells, so the term changes with the grid [A5, WP-054]" begin
+    ky = 1 / 28
+    term = map(SCAN_FILES) do file
+        d = derived(TOML.parsefile(file))
+        c(; kw...) = (1 - oblique_launch(:plane_wave_b, ky, d.dx, d.dy, d.dt; kw...) / oblique_launch(:plane_wave_b, 0.0, d.dx, d.dy, d.dt; kw...)) / ky^2
+        (pic = c(; surface = HUYGENS + 1, absorber = PIC_ABSORBER), free = c(; surface = 2400))      # 2400 cells: the edge out of reach on the finest grid too
+    end
+    # with nothing behind the surface the term is the continuum's 1/4 on every grid
+    @test all(t -> abs(real(t.free) - 0.25) <= 0.002, term)
+    # λ₀/48: the 0.83 of 1/4 and the focus 0.44 further out of T-713
+    @test 0.80 <= real(term[2].pic) / 0.25 <= 0.86 && 0.42 <= -2 * imag(term[2].pic) <= 0.47
+    # the other two grids, as the model has them: what the scan's runs should show for PIConGPU against ParticleMesh if it is
+    # right. λ₀/32: 1.75 of 1/4 and a focus 0.15 nearer; λ₀/64: 0.18 of 1/4 and a focus 0.12 further out
+    @test 1.65 <= real(term[1].pic) / 0.25 <= 1.85 && -0.25 <= -2 * imag(term[1].pic) <= -0.05
+    @test 0.10 <= real(term[3].pic) / 0.25 <= 0.26 && 0.05 <= -2 * imag(term[3].pic) <= 0.20
+end
+
+@testset "T-717 compare_scan end to end: each code's planted orders across three grids, a distance that falls with the grid and one that stays [A5, A7, WP-054]" begin
+    cases = TOML.parsefile.(SCAN_FILES)
+    D = derived.(cases)
+    kp = sqrt(cases[1]["plasma"]["density"])
+    # the same fields on the three lattices but for what is planted: amplitude and wake second order, the pulse's place and the
+    # bunch first order, the carrier second order; Smilei's amplitude a second-order term away from ParticleMesh's, its carrier 1 mrad
+    planted(code, d) = (; a0 = (1 + 0.5 * d.dx^2) * (code == "smilei" ? 1 + 0.2 * d.dx^2 : 1.0), φ = 0.8 * d.dx^2 + (code == "smilei" ? 1e-3 : 0.0),
+                          lag = 0.3 * d.dx, w = 0.05 * (1 + 2 * d.dx^2), bunch = 1e-3 * (1 + d.dx))
+    mktempdir() do root
+        runs = map(zip(SCAN_FILES, cases, D)) do (file, case, d)
+            dir = joinpath(root, case["name"])
+            st = scan_stride(d)
+            for code in ("pm", "smilei"), medium in ("vacuum", "plasma")
+                v = planted(code, d)
+                run = joinpath(dir, "$code-$medium")
+                mkpath(run)
+                cp(file, joinpath(run, "case.toml"); force = true)
+                outs = map(output_steps(case)) do k
+                    t = k * d.dt
+                    m0 = st * 8 * max(0, floor(Int, (t - case["window"]["start"]) / (π)))        # the window's back on a shared node, the same place on every grid
+                    o = synthetic_output(case, k; m0, n = d.nx, x0 = t - case["laser"]["delay"] - v.lag, φ = v.φ, a0 = v.a0, w = v.w,
+                                         plasma = medium == "plasma", bunch = v.bunch)
+                    medium == "plasma" && (o["spectrum"] ./= spectrum_scale(code, d); o["spectrum_region"] = collect(spectrum_region(case, k)))
+                    o
+                end
+                write_summary(run, outs; code, stride = Int.(case["diagnostics"]["map_stride"]), extra = Dict{String,Any}("seconds" => 1.0, "spectrum_edges" => spectrum_edges(case)))
+                rm(joinpath(run, "maps.h5"))
+            end
+            dir
+        end
+        out = joinpath(root, "scan")
+        res = compare_scan(out, runs)
+        @test res["cells"] == [32, 48, 64] && res["codes"] == ["pm", "smilei"] && res["media"] == ["vacuum", "plasma"]
+        @test all(c -> isfile(joinpath(out, "r$c", "comparison.json")), res["cells"])
+        @test isfile(joinpath(out, "scan.json")) && isfile(joinpath(out, "manifest.toml"))
+        @test all(n -> isfile(joinpath(out, "$n.png")) && isfile(joinpath(out, "$n.json")), ("scan_distances", "scan_self"))
+        # ParticleMesh's own change with the grid, at an output with the pulse well inside the window
+        late = 9
+        rv, rp = res["self"]["pm"]["vacuum"][late], res["self"]["pm"]["plasma"][late]
+        dx = [d.dx for d in D]
+        @test rv["t"] ≈ output_steps(cases[1])[late] * D[1].dt && rv["steps"] == [output_steps(c)[late] for c in cases]
+        @test rv["amplitude"] ≈ 1 .+ 0.5 .* dx .^ 2 rtol = 1e-4
+        @test rv["order"]["amplitude"]["order"] ≈ 2 atol = 0.05
+        @test rv["order"]["amplitude"]["limit"] ≈ 1 atol = 2e-4
+        @test rv["carrier_phase"] ≈ 0.8 .* (dx[1:2] .^ 2 .- dx[3]^2) atol = 1e-6
+        @test rv["order"]["carrier_phase"]["order"] ≈ 2 atol = 0.01
+        @test rv["centroid_x"][1:2] .- rv["centroid_x"][3] ≈ -0.3 .* (dx[1:2] .- dx[3]) atol = 1e-6
+        @test rv["order"]["centroid_x"]["order"] ≈ 1 atol = 0.01
+        @test haskey(rv, "amplitude_on_axis") && rv["amplitude_on_axis"][1] > rv["amplitude"][1] && !haskey(rp, "amplitude_on_axis")
+        @test !haskey(rv, "wake_Ex_max")
+        @test rp["wake_Ex_max"] ≈ 0.05 .* (1 .+ 2 .* dx .^ 2) rtol = 1e-5
+        @test rp["wake_Ex_min"] ≈ -0.05 .* (1 .+ 2 .* dx .^ 2) rtol = 1e-5
+        @test rp["order"]["wake_Ex_max"]["order"] ≈ 2 atol = 0.02
+        # the maximum a quarter of a plasma wavelength behind the pulse (or a whole wavelength further: the synthetic wake
+        # has both in the window, equal), and the pulse is 0.3Δx behind on each grid
+        @test rp["wake_Ex_max_x"][1:2] .- rp["wake_Ex_max_x"][3] ≈ -0.3 .* (dx[1:2] .- dx[3]) atol = 1e-5
+        behind = -rp["wake_Ex_max_x"][3] - (π / 2) / kp                           # 0 or λ_p, but for the lag and the anchor's node
+        @test minimum(abs, behind .- (0.0, 2π / kp)) <= 0.3 * dx[3] + π / 16
+        @test rp["order"]["wake_Ex_max_x"]["order"] ≈ 1 atol = 0.05
+        @test rp["wake_Ex_relrms"][1] > 2 * rp["wake_Ex_relrms"][2] > 0 && 1.7 <= rp["order"]["wake_Ex_relrms"]["order"] <= 2.2
+        @test rp["bunch_weight"] ≈ 1e-3 .* (1 .+ dx) rtol = 1e-12
+        @test rp["order"]["bunch_weight"]["order"] ≈ 1 atol = 1e-6
+        @test rp["top"] == fill(spectrum_edges(cases[1])[41], 3)
+        # before the pulse is in the window there is nothing to compare, and the row says only when it is
+        @test !haskey(res["self"]["pm"]["plasma"][1], "wake_Ex_max")
+        # the distances: Smilei's amplitude a second-order term from ParticleMesh's, its carrier a constant 1 mrad
+        dv = res["distances"]["vacuum"]
+        @test dv["amplitude_relrms"]["max"] ≈ 0.2 .* dx .^ 2 ./ (1 .+ 0.2 .* dx .^ 2) rtol = 1e-3
+        @test dv["amplitude_relrms"]["order"]["order"] ≈ 2 atol = 0.05
+        @test dv["carrier_phase"]["max"] ≈ fill(1e-3, 3) rtol = 1e-3
+        @test dv["carrier_phase"]["order"]["order"] === nothing
+        @test haskey(res["distances"]["plasma"], "wake_Ex_relrms") && !haskey(res["distances"], "picongpu_vacuum")
+        # the file is what was returned
+        saved = JSON.parsefile(joinpath(out, "scan.json"))
+        @test saved["cells"] == [32, 48, 64] && saved["self"]["pm"]["vacuum"][late]["order"]["centroid_x"]["order"] ≈ rv["order"]["centroid_x"]["order"]
+        # grids that are not one case are refused
+        @test_throws ErrorException compare_scan(joinpath(root, "bad"), [runs[2], runs[1], runs[3]])
+    end
 end

@@ -6,6 +6,7 @@
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl summarize-picongpu <dir>            # PIConGPU's dumps into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare <runs dir> <out dir>        # the comparison, figures and sidecars
 #   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare-pair <dir a> <dir b> <out dir>  # two runs of one case and medium, the same measures
+#   julia +1.13 --project=scripts scripts/lwfa/lwfa.jl compare-scan <out dir> <runs dir …>  # one case on several grids, coarse to fine: each code's change with Δ, the distances against Δ
 #
 # A prepared run has six directories: `smilei-vacuum`, `smilei-plasma`, `pm-vacuum`, `pm-plasma`,
 # `picongpu-vacuum`, `picongpu-plasma` (with `vacuum`, the three vacuum ones). The vacuum runs check
@@ -1268,6 +1269,370 @@ function plot_pairs(out, result, pairs, media)
     save_plot(out, "pair_distances", fig, side)
 end
 
+# --- the resolution scan -----------------------------------------------------------------------------
+#
+# One physical case on several grids (`cases/lwfa-2d-r32.toml`, `-r48`, `-r64`): Δx = λ₀/N, Δy = 4Δx,
+# Δt ∝ Δx, the outputs at the same times. The primal nodes of the lattices coincide on x = j·λ₀/16;
+# the dual points (E_x along x, E_y along y) coincide nowhere. So across resolutions:
+# - E_y on the axis and its analytic signal are compared on the shared nodes, with nothing
+#   interpolated (the quadrature of `carrier_signal` uses points a quarter wavelength apart, the same
+#   places on every grid);
+# - E_x on the axis is brought to the primal nodes by the four-point midpoint formula
+#   (`dual_to_primal`, error 3/128·Δx⁴·∂⁴E_x: exact for cubics, and wrong by what it is at a front a
+#   few cells wide, as any interpolation is);
+# - the axis lineout of E_y is the mean of the two rows at y_c ∓ Δy/2, which is a different place on
+#   every grid: in vacuum the beam's profile gives what that does (`axis_sampling`), in plasma it is
+#   part of the difference between the resolutions and is second order in Δy.
+# The measures between two codes at one resolution stay `compare`'s.
+
+"The cells per λ₀/16 of a grid whose primal nodes hold the lattice x = j·λ₀/16: 2, 3, 4 at λ₀/32, λ₀/48, λ₀/64."
+function scan_stride(d)
+    s = π / (8 * d.dx)
+    r = round(Int, s)
+    r >= 1 && abs(s - r) <= 1e-9 * r || error("Δx = $(d.dx) is not λ₀/16 over a whole number")
+    return r
+end
+
+"The points of a primal lineout (first point at lattice m `m0`) on the nodes x = j·λ₀/16, `s` cells apart: `(; v, j0)`, the first at j = j0."
+function shared_nodes(v, m0, s)
+    i0 = mod(-m0, s) + 1
+    return (; v = v[i0:s:end], j0 = (m0 + i0 - 1) ÷ s)
+end
+
+"""
+    dual_to_primal(v, m0) -> (; v, m0)
+
+A dual lineout (point i at x = (m0 + i − 1 − ½)·Δx) on the primal nodes between its points, by the
+four-point midpoint formula (−f(−3Δx/2) + 9f(−Δx/2) + 9f(Δx/2) − f(3Δx/2))/16, exact for cubics;
+the first node returned is m = m0 + 1.
+"""
+function dual_to_primal(v, m0)
+    n = length(v)
+    return (; v = Float64[(-v[i - 1] + 9 * v[i] + 9 * v[i + 1] - v[i + 2]) / 16 for i in 2:(n - 2)], m0 = m0 + 1)
+end
+
+"""
+    axis_sampling(case, x) -> (; amplitude, phase)
+
+What the axis lineout of E_y is of the field on the axis itself, for the case's beam in vacuum with
+its centre at lab x: the lineout is the mean of the two rows at y_c ∓ Δy/2 (E_y is dual in y), where
+the beam is the axis's field times `amplitude` = exp(−(Δy/2)²/w(ξ)²) and later by (Δy/2)²/(2R(ξ)),
+which is `phase` in the carrier's convention cos(x − t + φ); ξ = x − focus.
+"""
+function axis_sampling(case, x)
+    d, L = derived(case), case["laser"]
+    ξ = x - Float64(L["focus"])
+    zR = Float64(L["waist"])^2 / 2
+    h2 = (d.dy / 2)^2
+    return (; amplitude = exp(-h2 / (Float64(L["waist"])^2 * (1 + (ξ / zR)^2))), phase = h2 * ξ / (2 * (ξ^2 + zR^2)))
+end
+
+"The orders between which `observed_order` reports one."
+const ORDER_RANGE = (0.5, 4.0)
+
+"""
+    observed_order(f; cells = (32, 48, 64), floor = 0) -> (; d1, d2, ratio, order, limit)
+
+Three values of one quantity on grids of `cells` per wavelength, coarse to fine. If
+f = f∞ + C·Δ^p, the differences d1 = f₁ − f₂ and d2 = f₂ − f₃ have the ratio
+(N₁⁻ᵖ − N₂⁻ᵖ)/(N₂⁻ᵖ − N₃⁻ᵖ), which grows with p: 2.0 for p = 1, 2.86 for p = 2, 4.11 for p = 3 on
+these grids. `order` is the p of the measured ratio, and `limit` = f₃ − d2/((N₃/N₂)ᵖ − 1) the
+extrapolated value, both `nothing` unless the two differences have one sign, both exceed `floor`
+in size and the ratio is that of an order within `ORDER_RANGE`. Three points give one equation
+for p and no check of it: an order here says that the three values are compatible with one, and
+is worth what its constancy over outputs and observables is.
+"""
+function observed_order(f; cells = (32, 48, 64), floor = 0.0)
+    d1, d2 = f[1] - f[2], f[2] - f[3]
+    g(p) = (Float64(cells[1])^-p - Float64(cells[2])^-p) / (Float64(cells[2])^-p - Float64(cells[3])^-p)
+    ratio = d2 == 0 ? nothing : d1 / d2
+    none = (; d1, d2, ratio, order = nothing, limit = nothing)
+    (ratio === nothing || abs(d1) <= floor || abs(d2) <= floor) && return none
+    g(ORDER_RANGE[1]) <= ratio <= g(ORDER_RANGE[2]) || return none
+    lo, hi = ORDER_RANGE
+    for _ in 1:60
+        mid = (lo + hi) / 2
+        g(mid) < ratio ? (lo = mid) : (hi = mid)
+    end
+    p = (lo + hi) / 2
+    return (; d1, d2, ratio, order = p, limit = f[3] - d2 / ((cells[3] / cells[2])^p - 1))
+end
+
+# `observed_order` as a Dict, differences below `rel` of the largest value counting as none.
+order_dict(f; cells, rel = 1e-9) = (o = observed_order(f; cells, floor = rel * maximum(abs, f)); Dict{String,Any}(string(k) => v for (k, v) in pairs(o)))
+
+"The extremum of three equally spaced values around the middle one, by the parabola through them: `(value, offset)`, the offset in steps from the middle."
+function refine_extremum(a, b, c)
+    den = a - 2b + c
+    den == 0 && return (b, 0.0)
+    δ = (a - c) / (2den)
+    return (b - (a - c) * δ / 4, δ)
+end
+
+# The minimum and the maximum of a dual lineout between x = lo and x = hi (c/ω₀), refined by a parabola, and where they are.
+function wake_extrema(v, m0, dx, lo, hi)
+    x(i) = (m0 + i - 1 - 0.5) * dx
+    idx = [i for i in 2:(length(v) - 1) if lo <= x(i) <= hi]
+    isempty(idx) && return nothing
+    out = Dict{String,Any}()
+    for (name, pick) in (("min", argmin), ("max", argmax))
+        i = idx[pick(v[idx])]
+        val, δ = refine_extremum(v[i - 1], v[i], v[i + 1])
+        abs(δ) <= 1 || ((val, δ) = (v[i], 0.0))                  # the extremum is at the window's edge: the sample
+        out[name], out[name * "_x"] = val, x(i) + δ * dx
+    end
+    return out
+end
+
+"""
+    scan_same_case(cases)
+
+Throws unless the cases are one physical case on different grids: the same laser, plasma, window
+start and spectrum, the same box, antenna offset and map spacing in c/ω₀, Δy/Δx and the Courant
+number, and the outputs at the same times.
+"""
+function scan_same_case(cases)
+    D = derived.(cases)
+    a = cases[1]
+    for (c, d) in zip(cases, D)
+        for key in ("laser", "plasma", "window")
+            c[key] == a[key] || error("$(c["name"]): [$key] is not $(a["name"])'s")
+        end
+        c["diagnostics"]["spectrum_ekin"] == a["diagnostics"]["spectrum_ekin"] && c["diagnostics"]["map_outputs"] == a["diagnostics"]["map_outputs"] ||
+            error("$(c["name"]): the spectrum's bins or the maps' outputs are not $(a["name"])'s")
+        same(x, y) = isapprox(x, y; rtol = 1e-12)
+        same(d.nx * d.dx, D[1].nx * D[1].dx) && same(d.ny * d.dy, D[1].ny * D[1].dy) && same(d.xa, D[1].xa) && same(d.dy / d.dx, D[1].dy / D[1].dx) &&
+            same(d.dt / d.dx, D[1].dt / D[1].dx) && same(d.every * d.dt, D[1].every * D[1].dt) && d.steps ÷ d.every == D[1].steps ÷ D[1].every ||
+            error("$(c["name"]): the box, the antenna's offset, the cell's shape, the Courant number or the output times are not $(a["name"])'s")
+        st, s1 = Int.(c["diagnostics"]["map_stride"]), Int.(a["diagnostics"]["map_stride"])
+        same(st[1] * d.dx, s1[1] * D[1].dx) && same(st[2] * d.dy, s1[2] * D[1].dy) || error("$(c["name"]): the maps' spacing is not $(a["name"])'s")
+        scan_stride(d)
+    end
+    return nothing
+end
+
+"""
+    scan_self(outs, cases, medium, code) -> rows
+
+One code's runs of one medium on the grids of `cases` (coarse to fine; `outs[r]` the outputs of a
+summary), a row per output time. Every array has one entry per resolution unless it says "against
+the finest", which has one per coarser grid:
+- `amplitude`, the largest |z| of the analytic signal on the axis lineout (each on its own
+  lattice), and in vacuum `amplitude_on_axis`, that over `axis_sampling`'s factor;
+- `centroid_x` of E_y² on the shared nodes;
+- `carrier_phase`, against the finest, on the shared nodes (in vacuum `axis_sampling_phase` holds
+  what the lineout's rows add to each grid's phase);
+- in plasma, the wake on the axis from the finest grid's centroid (on a shared node) back
+  `WAKE_LENGTH` plasma wavelengths, the same interval for the three: `wake_Ex_min`, `wake_Ex_max`
+  with their places relative to that anchor (`…_x`), each on its own dual lattice and refined by a
+  parabola, and `wake_Ex_relrms` against the finest on the shared nodes after `dual_to_primal`;
+- in plasma, the spectrum's `bunch_weight` and `top` in the one unit.
+`order` has `observed_order` of each: of the three values, or for the two differences against the
+finest with zero as the third.
+"""
+function scan_self(outs, cases, medium, code)
+    D = derived.(cases)
+    cells = [round(Int, 2π / d.dx) for d in D]
+    st, qs = scan_stride.(D), quarter_wave.(D)
+    λ16 = π / 8
+    λp = 2π / sqrt(cases[1]["plasma"]["density"])
+    nwake = round(Int, WAKE_LENGTH * λp / λ16)
+    R = length(cases)
+    edges = spectrum_edges(cases[1])
+    rows = Dict{String,Any}[]
+    for k in 1:minimum(length, outs)
+        o = [outs[r][k] for r in 1:R]
+        t = o[end]["t"]
+        all(x -> isapprox(x["t"], t; rtol = 1e-9, atol = 1e-9), o) || error("output $k of $code-$medium: the times $([x["t"] for x in o]) differ")
+        row = Dict{String,Any}("t" => t, "steps" => [x["step"] for x in o])
+        ord = Dict{String,Any}()
+        z = [carrier_signal(Float64.(o[r]["Ey_axis"]), o[r]["Ey_m0"], qs[r]) for r in 1:R]
+        amp = [maximum(abs, z[r].z; init = 0.0) for r in 1:R]
+        row["amplitude"] = amp
+        cen = map(1:R) do r
+            e = shared_nodes(Float64.(o[r]["Ey_axis"]) .^ 2, o[r]["Ey_m0"], st[r])
+            sum(e.v) > 0 ? sum((e.j0 .+ (0:(length(e.v) - 1))) .* e.v) / sum(e.v) * λ16 : nothing
+        end
+        row["centroid_x"] = cen
+        if !any(isnothing, cen) && all(>(0), amp)
+            ord["centroid_x"] = order_dict(cen; cells)
+            zs = [shared_nodes(z[r].z, z[r].m0, st[r]) for r in 1:R]
+            row["carrier_phase"] = map(1:(R - 1)) do r
+                lo, hi = max(zs[r].j0, zs[R].j0), min(zs[r].j0 + length(zs[r].v), zs[R].j0 + length(zs[R].v)) - 1
+                lo <= hi ? angle(sum(zs[r].v[(lo:hi) .- zs[r].j0 .+ 1] .* conj.(zs[R].v[(lo:hi) .- zs[R].j0 .+ 1]))) : nothing
+            end
+            if medium == "vacuum"
+                ax = [axis_sampling(cases[r], cen[r]) for r in 1:R]
+                row["amplitude_on_axis"] = [amp[r] / ax[r].amplitude for r in 1:R]
+                row["axis_sampling_phase"] = [a.phase for a in ax]
+                ord["amplitude_on_axis"] = order_dict(row["amplitude_on_axis"]; cells)
+            end
+            ord["amplitude"] = order_dict(amp; cells)
+            R == 3 && !any(isnothing, row["carrier_phase"]) && (ord["carrier_phase"] = order_dict((row["carrier_phase"]..., 0.0); cells))
+        end
+        if medium == "plasma" && !any(isnothing, cen)
+            ja = round(Int, cen[R] / λ16)                             # the anchor: the finest grid's centroid, on a shared node
+            xa = ja * λ16
+            ex = [wake_extrema(Float64.(o[r]["Ex_axis"]), o[r]["Ex_m0"], D[r].dx, xa - nwake * λ16, xa) for r in 1:R]
+            floor_Ex = WAKE_FLOOR * 2π / λp
+            if !any(isnothing, ex) && all(e -> max(abs(e["min"]), abs(e["max"])) >= floor_Ex, ex)
+                for name in ("min", "max")
+                    row["wake_Ex_$name"] = [e[name] for e in ex]
+                    row["wake_Ex_$(name)_x"] = [e[name * "_x"] - xa for e in ex]
+                    ord["wake_Ex_$name"] = order_dict(row["wake_Ex_$name"]; cells)
+                    ord["wake_Ex_$(name)_x"] = order_dict(row["wake_Ex_$(name)_x"]; cells)
+                end
+                p = map(1:R) do r
+                    e = dual_to_primal(Float64.(o[r]["Ex_axis"]), o[r]["Ex_m0"])
+                    shared_nodes(e.v, e.m0, st[r])
+                end
+                row["wake_Ex_relrms"] = map(1:(R - 1)) do r
+                    c = common_points(p[r].v, p[r].j0, p[R].v, p[R].j0; mlo = ja - nwake, mhi = ja)
+                    isempty(c.m) ? nothing : relrms(c.a, c.b)
+                end
+                R == 3 && !any(isnothing, row["wake_Ex_relrms"]) && (ord["wake_Ex_relrms"] = order_dict((row["wake_Ex_relrms"]..., 0.0); cells))
+            end
+            sp = [spectrum_row(o[r], edges, Int[], spectrum_scale(code, D[r])) for r in 1:R]
+            if all(s -> s["bunch"] !== nothing, sp)
+                row["bunch_weight"] = [s["bunch"]["weight"] for s in sp]
+                row["bunch_from"] = [s["bunch"]["from"] for s in sp]
+                ord["bunch_weight"] = order_dict(row["bunch_weight"]; cells)
+            end
+            all(s -> s["top"] !== nothing, sp) && (row["top"] = [s["top"] for s in sp])
+        end
+        row["order"] = ord
+        push!(rows, row)
+    end
+    return rows
+end
+
+"The observables of `compare`'s rows whose largest magnitude over a run `scan_distances` follows: key, how a pair of values becomes one number, the first time counted."
+const SCAN_DISTANCES = (("vacuum", "carrier_phase", :value), ("vacuum", "centroid_x", :difference), ("vacuum", "amplitude_relrms", :value),
+                        ("plasma", "carrier_phase", :value), ("plasma", "centroid_x", :difference), ("plasma", "amplitude_relrms", :value),
+                        ("plasma", "wake_Ex_relrms", :value), ("plasma", "wake_Ex_min", :ratio), ("plasma", "wake_Ex_max", :ratio))
+
+"""
+    scan_distances(per, cells) -> Dict
+
+The code-to-code distances at each resolution: for every pair of `compare`'s results `per` (one per
+grid) and every observable of `SCAN_DISTANCES`, the largest magnitude over the outputs from t = 150
+at each resolution (`max`) and `observed_order` of the three (`order`): a distance that falls with
+an order is discretization, one that stays is a difference of what is solved (differences of the
+three below a thousandth of the largest count as staying). The maps' rows
+(`maps_all`, `maps_flank`) and the bunch's weight are added where every resolution has them.
+"""
+function scan_distances(per, cells)
+    out = Dict{String,Any}()
+    one(v, how) = v === nothing ? nothing : how == :value ? abs(v) : (any(isnothing, v) ? nothing : how == :difference ? abs(v[1] - v[2]) : abs(v[1] / v[2] - 1))
+    for (medium, key, how) in SCAN_DISTANCES, (prefix, a, b) in PAIRS
+        all(c -> haskey(c, prefix * medium), per) || continue
+        mx = map(per) do c
+            v = [one(get(r, key, nothing), how) for r in c[prefix * medium] if r["t"] > 150]
+            v = filter(!isnothing, v)
+            isempty(v) ? nothing : maximum(v)
+        end
+        any(isnothing, mx) && continue
+        get!(out, prefix * medium, Dict{String,Any}())[key] = Dict{String,Any}("max" => mx, "order" => length(mx) == 3 ? order_dict(mx; cells, rel = 1e-3) : nothing)
+    end
+    for (prefix, a, b) in PAIRS, (band, name) in ((1, "maps_all"), (2, "maps_flank"))
+        all(c -> haskey(c, "maps") && any(r -> haskey(r, prefix * "plasma"), c["maps"]["rows"]), per) || continue
+        mx = [maximum(r[prefix * "plasma"][band] for r in c["maps"]["rows"] if haskey(r, prefix * "plasma") && r[prefix * "plasma"][band] !== nothing; init = 0.0) for c in per]
+        get!(out, prefix * "plasma", Dict{String,Any}())[name] = Dict{String,Any}("max" => mx, "order" => length(mx) == 3 ? order_dict(mx; cells, rel = 1e-3) : nothing)
+    end
+    return out
+end
+
+"""
+    compare_scan(out, runs) -> Dict
+
+The resolution scan: `runs` holds one directory of run summaries per grid, coarse to fine (each as
+`compare` takes it). Runs `compare` on each into `out`/r<cells>, and writes `scan.json` with each
+code's own change with the grid (`self`: `scan_self` per code and medium) and the code-to-code
+distances at each resolution (`distances`: `scan_distances`), two figures with their sidecars and a
+manifest with the summaries' hashes.
+"""
+function compare_scan(out, runs)
+    mkpath(out)
+    cases = [TOML.parsefile(joinpath(r, "pm-vacuum", "case.toml")) for r in runs]
+    scan_same_case(cases)
+    cells = [round(Int, 2π / derived(c).dx) for c in cases]
+    issorted(cells) && allunique(cells) || error("the runs must be given coarse to fine, got λ₀/$cells")
+    per = [compare(r, joinpath(out, "r$c")) for (r, c) in zip(runs, cells)]
+    codes = [c for c in per[1]["codes"] if all(p -> c in p["codes"], per)]
+    media = [m for m in per[1]["media"] if all(p -> m in p["media"], per)]
+    result = Dict{String,Any}("cases" => [c["name"] for c in cases], "cells" => cells, "codes" => codes, "media" => media,
+                              "wake_length" => WAKE_LENGTH, "order_range" => collect(ORDER_RANGE))
+    result["self"] = Dict(code => Dict(medium => scan_self([load_summary(joinpath(r, "$code-$medium"))["outputs"] for r in runs], cases, medium, code)
+                                       for medium in media) for code in codes)
+    result["distances"] = scan_distances(per, cells)
+    open(io -> JSON.print(io, result, 2), joinpath(out, "scan.json"), "w")
+    plot_scan(out, result)
+    write_manifest(out; root = REPO,
+                   extra = Dict{String,Any}("cases" => result["cases"], "runs" => [relpath(r, REPO) for r in runs],
+                                            "summaries" => Dict("r$c/$code-$medium" => "sha256:" * RunManifest.file_hash(joinpath(r, "$code-$medium", "summary.json"))
+                                                                for (r, c) in zip(runs, cells) for code in codes for medium in media)))
+    return result
+end
+
+# The scan's two figures: the distances between the codes against the grid, and each code's own differences from its finest grid.
+function plot_scan(out, result)
+    cells = result["cells"]
+    pcolor = Dict("" => "#d62728", "picongpu_" => "#2ca02c", "smilei_picongpu_" => "#7f7f7f")
+    panels = [(m, k, title) for (m, k, title) in (("vacuum", "amplitude_relrms", "laser amplitude, vacuum (relative rms)"), ("vacuum", "carrier_phase", "carrier phase, vacuum (rad)"),
+                                                  ("plasma", "carrier_phase", "carrier phase, plasma (rad)"), ("plasma", "wake_Ex_relrms", "wake E_x (relative rms)"),
+                                                  ("plasma", "wake_Ex_min", "wake minimum, |a/b − 1|"), ("plasma", "wake_Ex_max", "wake maximum, |a/b − 1|"))
+              if any(p -> haskey(result["distances"], p[1] * m) && haskey(result["distances"][p[1] * m], k), PAIRS)]
+    if !isempty(panels)
+        fig = Figure(size = (1300, 400 * cld(length(panels), 3)))
+        drawn = nothing                                              # an axis with every pair's line, for the legend
+        for (i, (medium, key, title)) in enumerate(panels)
+            ax = Axis(fig[(i - 1) ÷ 3 + 1, (i - 1) % 3 + 1]; xlabel = "cells per λ₀", ylabel = "largest distance over the run", title,
+                      xscale = log10, yscale = log10, xticks = (Float64.(cells), string.(cells)))
+            lines = 0
+            for (prefix, a, b) in PAIRS
+                e = get(get(result["distances"], prefix * medium, Dict()), key, nothing)
+                e === nothing && continue
+                v = Float64.(e["max"])
+                all(>(0), v) || continue                             # a distance of zero has no place on a logarithmic axis
+                scatterlines!(ax, Float64.(cells), v; label = "$(NAMES[a]) − $(NAMES[b])", color = pcolor[prefix])
+                lines += 1
+            end
+            lines > 0 && (drawn === nothing || lines > drawn[2]) && (drawn = (ax, lines))
+        end
+        drawn === nothing || Legend(fig[cld(length(panels), 3) + 1, 1:3], drawn[1]; orientation = :horizontal, framevisible = false)
+        save_plot(out, "scan_distances", fig, Dict{String,Any}("cells" => cells, "distances" => result["distances"]))
+    end
+    spanels = [(m, k, title) for (m, k, title) in (("vacuum", "amplitude_on_axis", "amplitude on the axis, vacuum: |f_N/f_fine − 1|"), ("vacuum", "carrier_phase", "carrier phase against the finest, vacuum (rad)"),
+                                                   ("plasma", "carrier_phase", "carrier phase against the finest, plasma (rad)"), ("plasma", "wake_Ex_relrms", "wake E_x against the finest (relative rms)"))
+               if m in result["media"]]
+    isempty(spanels) && return nothing
+    fig = Figure(size = (1300, 400 * cld(length(spanels), 2)))
+    side = Dict{String,Any}("cells" => cells)
+    drawn = nothing
+    for (i, (medium, key, title)) in enumerate(spanels)
+        ax = Axis(fig[(i - 1) ÷ 2 + 1, (i - 1) % 2 + 1]; xlabel = "t (1/ω₀)", ylabel = "difference from the finest grid", title, yscale = log10)
+        lines = 0
+        for code in result["codes"], r in 1:(length(cells) - 1)
+            t, v = Float64[], Float64[]
+            for row in result["self"][code][medium]
+                x = get(row, key, nothing)
+                (x === nothing || any(isnothing, x)) && continue
+                val = key == "amplitude_on_axis" ? abs(x[r] / x[end] - 1) : abs(x[r])
+                val > 0 || continue
+                push!(t, row["t"]); push!(v, val)
+            end
+            isempty(t) && continue
+            scatterlines!(ax, t, v; label = "$(NAMES[code]), λ₀/$(cells[r])", color = COLORS[Symbol(code)], linestyle = r == 1 ? :solid : :dash)
+            side["$(medium)_$(key)_$(code)_r$(cells[r])"] = Dict("t" => t, "value" => v)
+            lines += 1
+        end
+        lines > 0 && (drawn === nothing || lines > drawn[2]) && (drawn = (ax, lines))
+    end
+    drawn === nothing || Legend(fig[cld(length(spanels), 2) + 1, 1:2], drawn[1]; orientation = :horizontal, framevisible = false, nbanks = 2)
+    save_plot(out, "scan_self", fig, side)
+    return nothing
+end
+
 # --- PIConGPU -------------------------------------------------------------------------------------
 
 include(joinpath(@__DIR__, "picongpu.jl"))
@@ -1293,7 +1658,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
         compare(ARGS[2], ARGS[3])
     elseif cmd == "compare-pair"
         compare_pair(ARGS[2], ARGS[3], ARGS[4])
+    elseif cmd == "compare-scan"
+        length(ARGS) >= 4 || error("compare-scan <out> <runs, coarse to fine …>")
+        compare_scan(ARGS[2], ARGS[3:end])
     else
-        error("usage: lwfa.jl prepare <case> <tag> [vacuum|plasma] [pm|smilei|picongpu …] | run-pm <dir> [cpu|cuda] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out> | compare-pair <dir a> <dir b> <out>")
+        error("usage: lwfa.jl prepare <case> <tag> [vacuum|plasma] [pm|smilei|picongpu …] | run-pm <dir> [cpu|cuda] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out> | compare-pair <dir a> <dir b> <out> | compare-scan <out> <runs, coarse to fine …>")
     end
 end
