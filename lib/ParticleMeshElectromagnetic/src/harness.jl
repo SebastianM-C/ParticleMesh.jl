@@ -50,10 +50,13 @@ function remake_reload end
 
 Of a solution: the state at the end of the solve, as the plain loop leaves it. Its evolved arrays
 ([`evolved`](@ref): particles, fields, a PML's convolution fields, the window's counters, the
-witness bunch) are those of the last saved state `sol.u[end]` (no copy), its kinetic energy `K` is
-computed from them, and its recorder is the solve's: `histories(harness_state(sol))`,
-`witness_energy_gain(harness_state(sol), params)`, `window_lost(harness_state(sol))`. The recorder
-is the cache's, one per problem, so it holds the histories of the last solve of that problem.
+witness bunch) are those the solve saved at its end, `sol.u[end]` (no copy), its kinetic energy
+`K` is computed from them, and its recorder is the solve's: `histories(harness_state(sol))`,
+`witness_energy_gain(harness_state(sol), params)`, `window_lost(harness_state(sol))`. A solution
+that did not save the end of its solve (`save_end = false`, or a `saveat` without the last step)
+has no such state and is an `ArgumentError`: its saved states are `harness_state(sol, u)`, and
+the histories are in the problem's cache too. The recorder is the cache's, one per problem, so it
+holds the histories of the last solve of that problem.
 
 Of a problem: its cache, the `EMState` whose workspaces and recorder the steps use. Its evolved
 arrays are the problem's `u0`, with their own `K`, whatever has been solved since.

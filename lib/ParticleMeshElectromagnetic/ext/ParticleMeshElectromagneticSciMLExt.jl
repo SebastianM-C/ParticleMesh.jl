@@ -108,7 +108,16 @@ harness_map(m::EMMap) = m
 harness_map(f) = throw(ArgumentError("not a problem of the ParticleMeshElectromagnetic harness: map $(typeof(f))"))
 
 harness_state(prob::AbstractSciMLProblem) = harness_map(prob).state
-harness_state(sol::AbstractTimeseriesSolution) = (st = harness_map(sol).state; state_view(st, sol.u[end].x, st.recorder))
+function harness_state(sol::AbstractTimeseriesSolution)
+    st = harness_map(sol).state
+    tend = last(sol.prob.tspan)
+    # host values of the solution: the state at the end exists only if the solve saved it
+    !isempty(sol.t) && sol.t[end] == tend ||
+        throw(ArgumentError("harness_state(sol) is the state at the end of the solve (step $tend), and the solution's last saved state is at step " *
+                            "$(isempty(sol.t) ? "none" : sol.t[end]): save the end (save_end = true, or a saveat that includes $tend), " *
+                            "or take a saved state with harness_state(sol, u); the histories are also in harness_state(sol.prob)"))
+    return state_view(st, sol.u[end].x, st.recorder)
+end
 harness_state(x::Union{AbstractSciMLProblem,AbstractTimeseriesSolution}, u::ArrayPartition) = state_view(harness_map(x).state, u.x)
 
 # --- the problem --------------------------------------------------------------------------
@@ -140,8 +149,10 @@ The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
 restart of its step: `restore!(state, sol.u[i].x)`) or `save_everystep = false`. The diagnostic
 histories are in the cache's recorder, entry `k` written at step `k`:
 `histories(harness_state(sol))`, and `harness_state(sol)` is the state at the end of the solve for
-every read-out (the witness bunch's gain, the window's counters); `harness_state(sol, sol.u[i])`
-is that of another saved state.
+every read-out (the witness bunch's gain, the window's counters), which the solve must have
+saved (it does unless `save_end = false` or a `saveat` leaves the end out);
+`harness_state(sol, sol.u[i])` is that of another saved state, and the histories are also in the
+problem's cache, `histories(harness_state(prob))`.
 
 A plain `remake(prob; p = p′)` changes the parameters the steps read and keeps `u0`, with the
 weights and momenta loaded from the old `p`; for a parameter of the initial load, or another

@@ -489,6 +489,19 @@ end
         @test window_lost(harness_state(sol)) == window_lost(harness_state(sol, sol.u[end])) == lost && lost[1] > 0
         @test window_lost(harness_state(dp)) == (0,)
     end
+    # harness_state(sol) is the end of the solve or an error: a solution that did not save its end has no end state,
+    # and its last saved state is not handed out as one (its counters would be an earlier step's, next to the whole
+    # solve's histories); the saved states and the histories are still there
+    href = history_bits(loop_state(fwd, tight))
+    for (kw, k) in (((; saveat = [0, 20]), 20), ((; save_everystep = false, save_end = false), 0))
+        part = solve(dp, FunctionMap(); kw...)
+        @test part.retcode == ReturnCode.Success && part.t[end] == k
+        @test_throws ArgumentError harness_state(part)
+        @test window_lost(harness_state(part, part.u[end])) == window_lost(loop_state(fwd, tight, k)) != lost
+        @test history_bits(harness_state(dp)) == href
+    end
+    whole = solve(dp, FunctionMap(); saveat = [0, 20, 40])
+    @test whole.t == [0, 20, 40] && window_lost(harness_state(whole)) == lost && history_bits(harness_state(whole)) == href
     # and the refills' superluminal draws
     hot = window_plasma(Float64; cells = (16, 6), ppc = (1, 1), vacuum = -100, ramp = 1, thermal = (0.3, 0.3, 0.3), nsteps = 150, seed = 6)
     fast = window_superluminal(loop_state(hot, EMNumerics()))
