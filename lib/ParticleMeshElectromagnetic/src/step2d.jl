@@ -69,37 +69,22 @@ end
     @inbounds K[first + c - Int32(1)] = acc
 end
 
-# Per-axis phase tables of the diagnostic mode m on n nodes: columns cos and sin of 2π·m·x/n at
-# the Node() positions x = j − 1 and at the Center() positions x = j − 1/2. The angle over π,
-# m·(2j − 2)/n and m·(2j − 1)/n, is reduced exactly in integers modulo 2 before the division.
-@kernel function phase_table_kernel!(t, m::Int, n::Int)
-    j = @index(Global, Linear)
-    T = eltype(t)
-    @inbounds begin
-        sn, cs = sincospi(T(mod(m * (2j - 2), 2n)) / T(n))
-        t[j, 1] = cs
-        t[j, 2] = sn
-        sn, cs = sincospi(T(mod(m * (2j - 1), 2n)) / T(n))
-        t[j, 3] = cs
-        t[j, 4] = sn
-    end
-end
-
 """
     EMState(problem::EMProblem{2}, numerics; backend = CPU())
 
-The state of a 2D problem: the grid of `problem.cells` cells per axis with
-[`em_guard_width`](@ref) guards, one species per [`SpeciesDescription`](@ref) at capacity
-`prod(cells)·prod(ppc)` with the extras of `flux_extras(T, 2)` (the old position per axis, which
-the push stores), the workspaces, the fields of [`field_layout`](@ref)`(Val(2))`, `ρ`, the
-kinetic-energy chunks `K` (one entry per [`KINETIC_CHUNK`](@ref) slots of each species), the
-histories for `problem.nsteps` steps (the keys of `HISTORY_KEYS_2D`) and in `aux`: the spectral workspace and the potential `φ` of the initial solve, the
-diagnostic mode `kmode`, the unit vector `khat` along its wave vector, the phase tables of each
-axis (written once), the diagnostics' per-row partial sums, the [`Antenna`](@ref)s of the
-problem's lasers, placed on the grid, the absorber placed on the grid (`layer`: the absorbing layer's
-[`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref), `nothing` for a periodic box), the moving window's [`WindowFrame`](@ref) (`window`, `nothing`
-without one; its species buffers then hold `(1 + numerics.headroom)` times the window's
-particles) and the time step `dt` that the antennas, the layer and the window were made for.
+The state of a 2D problem ([`EMState`](@ref)): the grid of `problem.cells` cells per axis with
+[`em_guard_width`](@ref) guards, the time step `problem.dt`, one species per
+[`SpeciesDescription`](@ref) at capacity `prod(cells)·prod(ppc)` with the extras of
+`flux_extras(T, 2)` (the old position per axis, which the push stores), the workspaces, the fields
+of [`field_layout`](@ref)`(Val(2))`, `ρ`, the kinetic-energy chunks `K` (one entry per
+[`KINETIC_CHUNK`](@ref) slots of each species), the default [`HistoryRecorder`](@ref) for
+`problem.kmode` and `problem.nsteps` steps, and in `aux`: the spectral workspace and the potential
+`φ` of the initial solve, the [`AntennaPlane`](@ref)s of the problem's lasers (`antennas`: where
+each plane lies on the grid, not the laser), the absorber placed on the grid (`layer`: the
+absorbing layer's [`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref), `nothing` for a
+periodic box), the moving window's [`WindowFrame`](@ref) (`window`, `nothing` without one; its
+species buffers then hold `(1 + numerics.headroom)` times the window's particles) and the
+[`WitnessFrame`](@ref) of a witness bunch (`witness`, or `nothing`).
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
@@ -109,7 +94,9 @@ Courant limit of the numerics' solver ([`check_courant`](@ref)), and unless the 
 `absorber` is an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) exactly when the problem's axis 2 is
 `:open` (the absorber also checks its fit on the grid), and unless the numerics' `filter` has zero
 passes with an open axis 2 (the filter wraps the current across the open edge, and no test checks
-the two together yet).
+the two together yet), and unless the problem's own parameters fit the planes and the window
+([`check_params`](@ref)'s conditions: with a window, every pulse over before the window passes its
+antenna).
 """
 function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -132,8 +119,8 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
         throw(ArgumentError("back_absorber = $(numerics.back_absorber) needs a moving window (boundaries = (:window, ·))"))
     window = problem.window === nothing ? nothing :
              WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes; back = numerics.back_absorber, workgroupsize = wgs)
-    antennas = map(l -> Antenna(l, grid, problem.dt), problem.lasers)
-    window === nothing || check_window_antennas(window, antennas)
+    planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
+    window === nothing || check_window_antennas(window, map(Antenna, params(problem).lasers, planes))
     witness = problem.witness === nothing ? nothing : WitnessFrame(problem, grid, backend)
     species = map(problem.species) do d
         cap = prod(n) * prod(d.ppc)
@@ -143,20 +130,11 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
     ws = map(s -> Workspace(s, grid; flux), species)
     nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), species; init = 0)
-    hist = NamedTuple{HISTORY_KEYS_2D}(ntuple(_ -> KernelAbstractions.zeros(backend, T, problem.nsteps), length(HISTORY_KEYS_2D)))
-    tables = ntuple(Val(2)) do d
-        t = KernelAbstractions.allocate(backend, T, n[d], 4)
-        launcher(phase_table_kernel!, backend, wgs)(t, problem.kmode[d], n[d]; ndrange = n[d])
-        t
-    end
-    k = ntuple(d -> 2 * T(π) * problem.kmode[d] / problem.length[d], Val(2))
-    knorm = sqrt(k[1] * k[1] + k[2] * k[2])
+    recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
-           kmode = problem.kmode, khat = (k[1] / knorm, k[2] / knorm), tables = tables,
-           partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]),
-           antennas = antennas, layer = layer, window = window, witness = witness, dt = problem.dt)
-    return EMState(numerics, grid, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
-                   KernelAbstractions.zeros(backend, T, nK), hist, aux)
+           antennas = planes, layer = layer, window = window, witness = witness)
+    return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
+                   KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species), aux)
 end
 
 "The kinetic energy of every chunk of particle slots at the current momenta, into `st.K` (deterministic, no deposition)."
@@ -172,13 +150,41 @@ function kinetic!(st::EMState{2})
     return st
 end
 
+function check_aux_setup(st::EMState{2}, problem, wrong)
+    (; layer, window) = st.aux
+    (problem.boundaries[2] === :open) == (layer !== nothing) || wrong("axis 2 is $(problem.boundaries[2])")
+    (problem.window === nothing ? window === nothing : window !== nothing && window.window == problem.window) ||
+        wrong("the moving window $(problem.window)")
+    w = witness_frame(st)
+    b = problem.witness
+    (b === nothing) == (w === nothing) || wrong("the witness bunch")
+    b === nothing || (witness_placement(b, st.grid, st.dt) == (w.kinj, w.c0, w.nc, w.ppc) && w.species.q == b.charge && w.species.m == b.mass) ||
+        wrong("the witness bunch's injection step, lattice, charge or mass")
+    return nothing
+end
+
+function check_aux_params(st::EMState{2}, p::EMParams)
+    (; antennas, window) = st.aux
+    length(p.lasers) == length(antennas) ||
+        throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state"))
+    foreach((l, a) -> check_plane(a, l), p.lasers, antennas)
+    window === nothing || check_window_antennas(window, map(Antenna, p.lasers, antennas))
+    (p.witness === nothing) == (witness_frame(st) === nothing) ||
+        throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
+    p.profile === nothing || window !== nothing ||
+        throw(ArgumentError("a density profile is implemented with the moving window only"))
+    return nothing
+end
+
 """
-    initialize!(state::EMState{2}, problem::EMProblem{2}; momenta_at = :t0, density_at = :particle) -> state
+    initialize!(state::EMState{2}, params; momenta_at = :t0, density_at = :particle) -> state
 
 The 2D state at t = 0, as in 1D: each species loaded by the engine's 2D quiet start (weights
-`density·(1 + amplitude·cos(k·x))/prod(ppc)` with `k_d = 2π·mode_d/L_d`, so the parameters enter
-through the weights, A3), the momenta from the species' distribution as in 1D
-([`load_species!`](@ref)); the fields zero; Ex and Ey from
+`density·(1 + amplitude·cos(k·x))/prod(ppc)` with the parameters' wave vector, so the parameters
+enter through the weights, A3), the momenta from the species' distribution as in 1D
+([`load_species!`](@ref)); the fields zero, and with them the convolution fields of a PML (they
+are field state: ψ of a field that starts at zero is zero, and a state that ran before must not
+carry the last run's into this one); the witness bunch's buffer empty; the window's counters zero; Ex and Ey from
 the deposited charge by the engine's periodic solve, `φ` from `inverse_laplacian_periodic!` of ρ
 and `E = G` from `gradient_periodic!`, so that the backward-difference divergence of E is
 ρ − mean(ρ) to roundoff (the mean is the immobile background); the background fields `E0`, `B0`
@@ -191,23 +197,24 @@ u⁻¹ᐟ², the convention of Smilei and PIConGPU, and kept as loaded. `density
 method's: `:particle` (the default) evaluates the profile at each particle, `:cell_centre` at
 the centre of its cell, as the reference codes do.
 """
-function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
+function initialize!(st::EMState{2}, p::EMParams; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
     check_momenta_at(momenta_at)
     ParticleMeshCore.check_density_at(density_at)
     st.aux.window === nothing || density_at === :particle ||
         throw(ArgumentError("density_at = :$density_at: the moving window's loads and refills evaluate the density at each particle (:particle) only"))
+    check_params(st, p)
     (; numerics, grid, aux) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
     window = aux.window
-    for (i, (s, d)) in enumerate(zip(st.species, problem.species))
+    for (i, (s, ps, setup)) in enumerate(zip(st.species, p.species, st.setup))
         fill!(s.status, ParticleMeshCore.FREE)
-        k = ntuple(a -> 2 * T(π) * d.mode[a] / problem.length[a], Val(2))
-        window === nothing || (load_window_species!(window, i, s, grid, wgs, d); continue)
-        load_species!(s, grid, (d.density, d.amplitude, k[1], k[2]), d, problem.seed; density_at, workgroupsize = wgs)
+        window === nothing || (load_window_species!(window, i, s, grid, wgs, window_load(setup, ps, p), setup.name); continue)
+        load_species!(s, grid, ps, setup, p.seed; density_at, workgroupsize = wgs)
     end
     clear_witness!(witness_frame(st))
     foreach(a -> fill!(a, zero(T)), st.fields)
+    reset_convolution!(st)
     for (s, ws) in zip(st.species, st.ws)
         sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
     end
@@ -221,12 +228,12 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
         inverse_laplacian_periodic!(aux.φ, st.ρ, grid, aux.spectral; workgroupsize = wgs)
         gradient_periodic!((st.fields.Ex, st.fields.Ey), aux.φ, grid; workgroupsize = wgs)
     end
-    add_background!(st.fields, problem.E0, problem.B0)
+    add_background!(st.fields, p.E0, p.B0)
     if momenta_at === :t0
         g = Int32(guards(grid))
         for s in st.species
             launcher(kick_2d_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
-                                                           -s.q / s.m * problem.dt / 4; ndrange = capacity(s))
+                                                           -s.q / s.m * st.dt / 4; ndrange = capacity(s))
         end
     end
     kinetic!(st)
@@ -234,14 +241,14 @@ function initialize!(st::EMState{2}, problem::EMProblem{2}; momenta_at::Symbol =
 end
 
 # The current of the step, by the numerics' choice: none, or the charge-conserving one.
-current!(::NoCurrent, st::EMState{2}, p::EMParams) = st
+current!(::NoCurrent, st::EMState{2}) = st
 
 # Sort where the deposition mode needs it (the old positions in the extras follow the
 # particles), zero Jx, Jy, Jz, add every species' Esirkepov current from its old and new
 # positions (`q·w·u_z/γ` for Jz), fold the guards (with a moving window, the x-guards dropped
 # first) and apply the numerics' binomial filter (through the scratch field ρ, which only
 # initialize! and the window shift read otherwise).
-function current!(::Esirkepov, st::EMState{2}, p::EMParams)
+function current!(::Esirkepov, st::EMState{2})
     (; numerics, grid, fields) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
@@ -253,7 +260,7 @@ function current!(::Esirkepov, st::EMState{2}, p::EMParams)
     fill!(fields.Jz, zero(T))
     for (s, ws) in zip(st.species, st.ws)
         deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER_2D, grid, ws;
-                      dt = p.dt, quantity_z = CurrentZ(), workgroupsize = wgs)
+                      dt = st.dt, quantity_z = CurrentZ(), workgroupsize = wgs)
     end
     window = st.aux.window
     for J in (fields.Jx, fields.Jy, fields.Jz)
@@ -265,59 +272,59 @@ function current!(::Esirkepov, st::EMState{2}, p::EMParams)
 end
 
 """
-    step!(state::EMState{2}, params, k) -> state
+    step!(state::EMState{2}, params, k; observer = state.recorder) -> state
 
-Step `k` at N = 2, the order of the 1D step: the diagnostics of Eⁿ, Bⁿ and of the kinetic
-energy at n − 1/2 (parallel reductions in a fixed order); per species, store the old position,
+Step `k` at N = 2, a function of the state and the parameters ([`EMParams`](@ref)) in the order
+of the 1D step: the `observer` sees Eⁿ, Bⁿ and the kinetic energy at n − 1/2
+([`observe!`](@ref)); per species, store the old position,
 push the momentum in Eⁿ, Bⁿ gathered at xⁿ on each component's stagger and move the particle
 along both axes; the current of the numerics' choice (for [`Esirkepov`](@ref)`()`: sort where
 the mode needs it, zero J, the engine's `deposit_flux!` per species, fold the guards, then the
 numerics' [`BinomialFilter`](@ref); for `NoCurrent()` J stays zero); the kinetic energy at
 n + 1/2; the mesh solve (Yee: B half step, E full step with J, B half step), with the antennas'
 total-field/scattered-field corrections between the sub-steps (time `(k − 1)·Δt` at the start of
-the step). With an open axis 2 the particles that crossed the box edge are retired after the
+the step), each antenna the parameters' laser on the state's plane ([`Antenna`](@ref)). With an open axis 2 the particles that crossed the box edge are retired after the
 current of their last move is deposited, and the absorbing layer damps the fields around each
 sub-step (WP-027). With a moving window (WP-028) the particles that crossed an x edge are
 retired before the current (their current would land at the opposite edge), the x-guards of the fields are zero after every sub-step, the antenna planes stay
 in the lab frame (their window columns move back with the shifts, and they stop once the window
 has passed them), and after the field solve the window shifts by the cells it moved in this
 step ([`window_shifts`](@ref)): E, B and the particles one column back, the back column dropped,
-the fresh plasma of the injection column loaded. A witness bunch (WP-047, [`WitnessBunch`](@ref)) is
-injected at the start of its step, pushed with the species and moved and retired at the edges as
+the fresh plasma of the injection column loaded with the parameters' densities, profile, drifts,
+thermal speeds and seed. A witness bunch (WP-047, [`WitnessBunch`](@ref)) is
+injected at the start of its step with the parameters' momentum and weights, pushed with the species and moved and retired at the edges as
 they are, and deposits nothing. With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff
 after every step (T-360), off the antenna columns with lasers (T-406), and off the layer rows
-with an open boundary (T-451); with passes its filtered form does (T-441). `k` must lie within
-the allocated steps, `params.kmode` must be the state's diagnostic mode and `params.dt` the
-problem's time step, for which the antennas and the layer were made (an `ArgumentError`
-otherwise).
+with an open boundary (T-451); with passes its filtered form does (T-441). Parameters that do
+not fit the state are refused first ([`check_params`](@ref): a laser off its plane, a pulse the
+window would pass while it emits, another element type); the default observer refuses a `k`
+outside the steps it was allocated for.
 """
-function step!(st::EMState{2}, p::EMParams, k::Integer)
-    (; numerics, grid, fields) = st
-    1 <= k <= length(st.hist.K) || throw(ArgumentError("step $k outside the $(length(st.hist.K)) steps the state was allocated for"))
-    p.kmode == st.aux.kmode || throw(ArgumentError("params.kmode = $(p.kmode) is not the state's diagnostic mode $(st.aux.kmode)"))
+function step!(st::EMState{2}, p::EMParams, k::Integer; observer = st.recorder)
+    check_params(st, p)
+    (; numerics, grid, fields, dt) = st
     wgs = numerics.workgroupsize
     n = Int32.(ncells(grid))
     g = Int32(guards(grid))
     dx = cellsize(grid)
-    p.dt == st.aux.dt || throw(ArgumentError("params.dt = $(p.dt) is not the time step $(st.aux.dt) the state's antennas and layer were made for"))
-    k == 1 && (reset_absorber!(st.aux.layer); reset_back!(st.aux.window))
-    record_diagnostics!(st, k)
-    inject_witness!(witness_frame(st), grid, k, wgs)
+    observe!(observer, st, k)
+    inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
     for s in (st.species..., witness_species(st)...)
-        launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * p.dt / 2,
-                                                       (p.dt / dx[1], p.dt / dx[2]), n; ndrange = capacity(s))
+        launcher(push_2d_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2,
+                                                       (dt / dx[1], dt / dx[2]), n; ndrange = capacity(s))
     end
     retire_x!(st.aux.window, st)
-    current!(numerics.current, st, p)
+    current!(numerics.current, st)
     retire!(st.aux.layer, st)
     kinetic!(st)
     window = st.aux.window
+    antennas = map(Antenna, p.lasers, st.aux.antennas)
     if window === nothing
-        solve_fields!(numerics.solver, fields, grid, p.dt, st.aux.antennas, (k - 1) * p.dt, st.aux.layer; workgroupsize = wgs)
+        solve_fields!(numerics.solver, fields, grid, dt, antennas, (k - 1) * dt, st.aux.layer; workgroupsize = wgs)
     else
-        antennas = window_antennas(st.aux.antennas, window_shifts(window, k - 1))
-        solve_fields!(numerics.solver, fields, grid, p.dt, antennas, (k - 1) * p.dt, st.aux.layer, window; workgroupsize = wgs)
-        advance_window!(window, st, k)
+        solve_fields!(numerics.solver, fields, grid, dt, window_antennas(antennas, window_shifts(window, k - 1)), (k - 1) * dt,
+                      st.aux.layer, window; workgroupsize = wgs)
+        advance_window!(window, st, p, k)
     end
     return st
 end

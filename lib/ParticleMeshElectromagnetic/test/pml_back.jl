@@ -88,10 +88,11 @@ end
     for (c, o) in zip((:ψBy, :ψBz, :ψEy, :ψEz), old)
         @test getfield(L, c)[1:5, :] == o[2:6, :] && all(iszero, getfield(L, c)[6, :])
     end
-    # step 1 zeroes the convolution fields: a state with stale ψ takes the fresh state's first step
+    # initialize! zeroes the convolution fields: a state with stale ψ, initialized, takes the fresh state's first step
     fresh = back_state(prob; back = pml)
     used = back_state(prob; back = pml)
     foreach(c -> (getfield(used.aux.window.back, c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
+    initialize!(used, prob)
     step!(fresh, params(prob), 1)
     step!(used, params(prob), 1)
     @test all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
@@ -116,7 +117,7 @@ end
             step!(st, p, k)
             k % 3 == 0 || continue
             s_win = window_shifts(st, k)
-            r = window_gauss(st, s_win)
+            r = window_gauss(st, p, s_win)
             cols = [i for i in axes(r.res, 1) if i > cb && !(i in (ia - 1 - s_win, ia - s_win))]
             worst = max(worst, Float64(maximum(r.res[cols, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
             inside = max(inside, Float64(maximum(r.res[1:cb, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))

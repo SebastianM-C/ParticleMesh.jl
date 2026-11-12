@@ -26,6 +26,13 @@ pusher ([`Boris`](@ref)), the mesh solver ([`Yee`](@ref)) and the current filter
 ([`BinomialFilter`](@ref)). Every kernel is a
 KernelAbstractions kernel, generic in the element type and within the Reactant rules of §0.4.
 
+A run is `state = EMState(problem, numerics)`, `initialize!(state, p)` and `step!(state, p, k)`
+(or `run!`) with `p = params(problem)`: the step is a function of the state and the parameters
+([`EMParams`](@ref): the lasers, the densities and the profile, the witness bunch, the seed; A3),
+and the state keeps what a run evolves and the configuration it was sized for, no parameter. The
+diagnostics are an observer's ([`observe!`](@ref), [`HistoryRecorder`](@ref)), called at the start
+of each step.
+
 With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
 `DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
 with [`state_partition`](@ref), [`remake_reload`](@ref) and [`harness_state`](@ref).
@@ -42,16 +49,18 @@ export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
-export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, EMParams, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
-export EMState, initialize!, step!, run!, params
+export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
+export EMParams, SpeciesParams, WitnessParams, params, check_params
+export EMState, initialize!, step!, run!
+export HistoryRecorder, observe!
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export state_partition, remake_reload, harness_state
-export GaussianLaser, AxisTime, WavefrontTime, Antenna, laser_energy, laser_field
+export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
-export MovingWindow, DensityRamp, WindowFrame, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
+export MovingWindow, DensityRamp, WindowFrame, window_load, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
 
 include("layout.jl")
 include("yee.jl")

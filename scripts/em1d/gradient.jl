@@ -20,7 +20,7 @@ function energy_at_end(α, mode = Reference(), seed = GRAD_SEED)
     st = EMState(prob, numerics_from_case(case; mode))
     initialize!(st, prob)
     run!(st, params(prob), prob.nsteps)
-    return Array(st.hist.WEx)[end]
+    return Array(st.recorder.hist.WEx)[end]
 end
 
 function gradient_scan(; α0 = 0.01)

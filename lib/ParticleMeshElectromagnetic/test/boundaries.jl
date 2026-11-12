@@ -327,9 +327,10 @@ end
     @test_throws ArgumentError mk("open")
     @test_throws ArgumentError EMProblem("x", 1.0, 8, 0.1, 1, (), 1, 1.0; boundaries = (:open,))
     @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; absorber = ab))
-    # the time step is the one the layer was made for
+    # the time step is the state's, for which the layer was made: a problem of another one is not this state's
     st = open_state(prob, ab)
-    @test_throws ArgumentError step!(st, EMParams(prob.dt / 2, prob.kmode), 1)
+    half = EMProblem(prob.name, prob.length, prob.cells, prob.dt / 2, prob.nsteps, prob.species, prob.seed, prob.kmode; boundaries = prob.boundaries)
+    @test_throws ArgumentError initialize!(st, half)
     # the case file: grid.boundaries and [numerics.absorbing_layer]
     case = deepcopy(load_case("weibel-2d"))
     case["grid"]["boundaries"] = ["periodic", "open"]

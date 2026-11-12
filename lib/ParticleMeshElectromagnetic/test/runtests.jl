@@ -43,6 +43,7 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("lwfa_gradient.jl") # WP-043: T-580 to T-582, a gradient through a small LWFA run, after window.jl
         include("witness.jl")       # WP-047: T-640 to T-645, the witness bunch and its mean energy gain, after lwfa_gradient.jl
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
+        include("params.jl")        # WP-055: T-720 to T-725, the step as a function of the state and the parameters, after harness.jl
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET
     finally

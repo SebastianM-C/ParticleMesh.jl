@@ -201,15 +201,67 @@ end
 end
 
 """
+    AntennaPlane{T}
+
+Where a laser's antenna lies on a 2D grid, the part of an [`Antenna`](@ref) that a state holds
+(configuration; the laser itself is a parameter, [`EMParams`](@ref)): the primal column `ia`
+(interior index along axis 1) of the plane, its position `xa = (ia − 1)·Δx`, the cell sizes, the
+guard width, the transverse cells and the box height (for the nearest periodic image of the
+axis), the half cell `hx` from the E plane to the B plane behind it and the time `ht` by which the
+incident wave reaches the B plane earlier: `ht = k·Δx/2` with `k` the Yee wavenumber of ω₀ = 1
+along x, `sin(kΔx/2)/Δx = sin(Δt/2)/Δt`, the phase of the discrete plane wave between the two
+planes (with c·Δx/2 instead, the antenna would leak (k − 1)·Δx/4 of the amplitude). The column is
+the nearest primal node to the laser's `position`, an integer, so the position is not a
+differentiable parameter (A3) and a laser placed elsewhere needs a new state
+([`check_params`](@ref) refuses it).
+
+    AntennaPlane(position, grid::PeriodicGrid{2}, dt)
+
+The plane on the primal column nearest to `position` for the time step `dt` (whose type is the
+element type), which must leave at least the grid's guard width of interior columns on either
+side of the corrected columns `ia − 1` and `ia` (so the corrections never touch an x-guard and
+the plane is not split by the periodic seam; an `ArgumentError` otherwise).
+"""
+struct AntennaPlane{T}
+    ia::Int32
+    xa::T
+    dx::NTuple{2,T}
+    g::Int32
+    n2::Int32
+    ly::T
+    hx::T
+    ht::T
+end
+
+function AntennaPlane(position, grid::PeriodicGrid{2}, dt::T) where {T}
+    n, h, g = ncells(grid), cellsize(grid), guards(grid)
+    ia = round(Int, position / h[1]) + 1
+    g + 2 <= ia <= n[1] - g ||
+        throw(ArgumentError("antenna position $(position) is column $ia; it must lie in columns $(g + 2) to $(n[1] - g) of the $(n[1]) cells, away from the periodic seam"))
+    hx = T(h[1]) / 2
+    k = asin(T(h[1]) / dt * sin(dt / 2)) / hx
+    return AntennaPlane(Int32(ia), T((ia - 1) * h[1]), T.(h), Int32(g), Int32(n[2]), T(n[2] * h[2]), hx, k * hx)
+end
+
+# A laser of the parameters belongs on the plane the state built for it: within half a cell of the
+# plane's column, up to the rounding of the position's conversion to the element type.
+function check_plane(a::AntennaPlane{T}, l::GaussianLaser) where {T}
+    c = l.position / a.dx[1]
+    abs(c - (a.ia - 1)) <= one(T) / 2 + 8 * eps(T) * max(one(T), abs(c)) ||
+        throw(ArgumentError("laser position $(l.position) is not on the state's antenna plane (column $(a.ia), x = $(a.xa)): the plane's column is fixed when the state is built, so a laser placed elsewhere needs a new state (A3: the position is not a differentiable parameter)"))
+    return nothing
+end
+
+"""
     Antenna{L,T}
 
-A [`GaussianLaser`](@ref) placed on a 2D grid by the state, isbits for the device: the primal
-column `ia` (interior index along axis 1) of the plane, its position `xa = (ia − 1)·Δx`, the cell
-sizes, the guard width, the transverse cells and the box height (for the nearest periodic image
-of the axis), the half cell `hx` from the E plane to the B plane behind it and the time `ht` by
-which the incident wave reaches the B plane earlier: `ht = k·Δx/2` with `k` the Yee wavenumber
-of ω₀ = 1 along x, `sin(kΔx/2)/Δx = sin(Δt/2)/Δt`, the phase of the discrete plane wave between
-the two planes (with c·Δx/2 instead, the antenna would leak (k − 1)·Δx/4 of the amplitude).
+A [`GaussianLaser`](@ref) on an [`AntennaPlane`](@ref), isbits for the device: the laser and the
+plane's fields (`ia`, `xa`, `dx`, `g`, `n2`, `ly`, `hx`, `ht`). The step makes it from the
+parameters' laser and the state's plane, `Antenna(laser, plane)`.
+
+    Antenna(laser::GaussianLaser, grid::PeriodicGrid{2}, dt)
+
+places `laser`, converted to the type of `dt`, on its own plane `AntennaPlane(laser.position, grid, dt)`.
 """
 struct Antenna{L,T}
     laser::L
@@ -223,24 +275,8 @@ struct Antenna{L,T}
     ht::T
 end
 
-"""
-    Antenna(laser::GaussianLaser, grid::PeriodicGrid{2}, dt) -> Antenna
-
-Place `laser` on `grid` for the time step `dt` (whose type is the element type): its plane on the primal column nearest to `laser.position`, which must
-leave at least the grid's guard width of interior columns on either side of the corrected
-columns `ia − 1` and `ia` (so the corrections never touch an x-guard and the plane is not split by
-the periodic seam; an `ArgumentError` otherwise).
-"""
-function Antenna(l::GaussianLaser, grid::PeriodicGrid{2}, dt::T) where {T}
-    n, h, g = ncells(grid), cellsize(grid), guards(grid)
-    ia = round(Int, l.position / h[1]) + 1
-    g + 2 <= ia <= n[1] - g ||
-        throw(ArgumentError("antenna position $(l.position) is column $ia; it must lie in columns $(g + 2) to $(n[1] - g) of the $(n[1]) cells, away from the periodic seam"))
-    hx = T(h[1]) / 2
-    k = asin(T(h[1]) / dt * sin(dt / 2)) / hx
-    return Antenna(convert_laser(T, l), Int32(ia), T((ia - 1) * h[1]), T.(h), Int32(g), Int32(n[2]),
-                   T(n[2] * h[2]), hx, k * hx)
-end
+Antenna(l::GaussianLaser, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht)
+Antenna(l::GaussianLaser, grid::PeriodicGrid{2}, dt::T) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt))
 
 convert_laser(::Type{T}, l::GaussianLaser) where {T} =
     GaussianLaser{T,T,typeof(l.envelope)}(T(l.a0), T(l.waist), T(l.duration), T(l.delay), T(l.focus), T(l.chirp), T(l.polarization),

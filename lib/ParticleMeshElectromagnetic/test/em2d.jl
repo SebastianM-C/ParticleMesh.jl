@@ -2,7 +2,7 @@
 # (T-350 to T-358). The 2D step here deposits no current (`NoCurrent()`); test particles are a
 # species of zero density, so their weights, charge and current are zero.
 
-using ParticleMeshElectromagnetic: kick_2d_kernel!, fields_at, FIELD_LAYOUT_2D, record_diagnostics!
+using ParticleMeshElectromagnetic: kick_2d_kernel!, fields_at, FIELD_LAYOUT_2D
 using ParticleMeshCore: stagger_offset
 using ForwardDiff: partials
 
@@ -249,7 +249,7 @@ end
         for (c, (A, ψ)) in pairs(amps)
             set_mode!(getfield(st.fields, c), st.grid, L2D[c], m, L, A, ψ)
         end
-        record_diagnostics!(st, 1)
+        observe!(st.recorder, st, 1)
         h = histories(st)
         area = value_of(L[1] * L[2])
         worstW = worstA = 0.0
@@ -289,7 +289,7 @@ end
             end
         end
         step!(s1, params(p1), 1)
-        record_diagnostics!(s2, 1)
+        observe!(s2.recorder, s2, 1)
         q1, q2 = histories(s1), histories(s2)
         worst = 0.0
         for key in (:Ex_re, :Ex_im, :Ey_re, :Ey_im, :Bz_re, :Bz_im)
@@ -332,7 +332,7 @@ end
         g, n = guards(st.grid), ncells(st.grid)
         Ex = Array(st.fields.Ex)[(g + 1):(g + n[1]), (g + 1):(g + n[2])]
         WEx = sum(abs2, Ex) * dA / 2
-        record_diagnostics!(st, 1)
+        observe!(st.recorder, st, 1)
         h = histories(st)
         rK = absdiff(h.K[1], kin) / (base_eps(T) * length(alive) * absmax(kin))
         rW = absdiff(h.WEx[1], WEx) / (base_eps(T) * prod(n) * absmax(WEx))
@@ -421,7 +421,7 @@ end
     @test_throws ArgumentError EMProblem("x", (T(1), T(1)), (8, 8), T(1) / 20, 2, (sd2,), 1, (0, 0))   # the zero mode
     @test_throws ArgumentError EMProblem("x", (T(1), T(1)), (8, 8), T(1) / 20, 2, (sd2,), 1, (1.0, 0.0)) # not integers
     st = state_2d(prob)
-    @test_throws ArgumentError step!(st, EMParams(prob.dt, (1, 1)), 1)                       # another diagnostic mode
     @test_throws ArgumentError step!(st, params(prob), prob.nsteps + 1)
+    @test_throws ArgumentError HistoryRecorder(prob, st; kmode = (0, 0))                     # the zero mode
     step!(st, params(prob), 1)
 end

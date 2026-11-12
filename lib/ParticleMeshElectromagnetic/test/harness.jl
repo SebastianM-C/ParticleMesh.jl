@@ -25,7 +25,7 @@ end
 
 partition_bits(u::ArrayPartition) = map(bits, u.x)
 state_bits(st::EMState) = partition_bits(state_partition(st))
-history_bits(st::EMState, n = length(st.hist.K)) = map(h -> bits(view(h, 1:n)), values(st.hist))
+history_bits(st::EMState, n = length(st.recorder.hist.K)) = map(h -> bits(view(h, 1:n)), values(st.recorder.hist))
 
 "Bytes of the arrays of a partition."
 partition_bytes(u::ArrayPartition) = sum(sizeof, u.x)
@@ -183,7 +183,7 @@ end
     copies_end = sum(sizeof, keys(distinct)) / state
     cache = harness_state(dprob)
     ws = Base.summarysize(cache.ws)
-    hist = Base.summarysize(cache.hist)
+    hist = Base.summarysize(cache.recorder.hist)
     extras = sum(s -> Base.summarysize(s.extras), cache.species)
     total = Base.summarysize(integ) / state
     @info "T-104 harness memory" state_bytes = state copies_init copies_end total_over_state = total workspaces_bytes = ws histories_bytes = hist extras_bytes = extras rho_bytes = sizeof(cache.ρ)
@@ -199,7 +199,7 @@ The Ex field energy at the last step of the T-219 run, through `solve` of a prob
 function harness_field_energy(α, mode, seed)
     p, _ = case_problem("landau", typeof(α); mode, seed, amplitude = α, GRADIENT_KW...)
     sol = solve(remake_reload(HARNESS_BASE[]; p), FunctionMap(); save_everystep = false)
-    return Array(harness_state(sol).hist.WEx)[end]
+    return Array(harness_state(sol).recorder.hist.WEx)[end]
 end
 const HARNESS_BASE = Ref{Any}()
 

@@ -81,7 +81,7 @@ function time_case_cuda(name, ::Type{T}, mode, nparticles, be) where {T}
     st, p, prob, bytes = state_for(case, T, mode, be; ppc, nsteps = nsteps + 10)
     np = sum(alive_count, st.species)
     k = Ref(0)
-    step() = step!(st, p, (k[] = mod1(k[] + 1, length(st.hist.K)); k[]))
+    step() = step!(st, p, (k[] = mod1(k[] + 1, length(st.recorder.hist.K)); k[]))
     run!(st, p, 3); sync(be); k[] = 3
     t_step = timed(() -> foreach(_ -> step(), 1:nsteps), be; reps = 3) / nsteps
     (; numerics, grid, fields) = st
@@ -92,11 +92,11 @@ function time_case_cuda(name, ::Type{T}, mode, nparticles, be) where {T}
     end
     t_flux = timed(be) do
         for (s, ws) in zip(st.species, st.ws)
-            deposit_flux!(numerics.mode, fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER, grid, ws; dt = p.dt,
+            deposit_flux!(numerics.mode, fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER, grid, ws; dt = st.dt,
                           quantity_y = ParticleMeshElectromagnetic.CurrentY(), quantity_z = ParticleMeshElectromagnetic.CurrentZ())
         end
     end
-    t_solve = timed(() -> solve_fields!(numerics.solver, fields, grid, p.dt), be)
+    t_solve = timed(() -> solve_fields!(numerics.solver, fields, grid, st.dt), be)
     scratch = similar(st.ρ)
     t_scan = timed(() -> cumsum_periodic!(scratch, st.ρ, grid), be)
     ns(t) = t / np * 1e9

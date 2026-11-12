@@ -483,7 +483,7 @@ end
         (Ax, ψx), (Ay, ψy) = (T(2) / 3, -one(T)), (T(1) / 7, T(1) / 2)
         set_mode!(st.fields.Bx, st.grid, L2D.Bx, m, L, Ax, ψx)
         set_mode!(st.fields.By, st.grid, L2D.By, m, L, Ay, ψy)
-        record_diagnostics!(st, 1)
+        observe!(st.recorder, st, 1)
         h = histories(st)
         k = (2π * m[1] / value_of(L[1]), 2π * m[2] / value_of(L[2]))
         k̂ = k ./ hypot(k...)
@@ -495,7 +495,7 @@ end
         worst = maximum(abs(value_of(getfield(h, key)[1]) - v) / ε for (key, v) in exact)
         # the transposed stagger (Bx on By's positions) is off by half a cell on both axes
         set_mode!(st.fields.Bx, st.grid, L2D.By, m, L, Ax, ψx)
-        record_diagnostics!(st, 2)
+        observe!(st.recorder, st, 2)
         off = abs(value_of(histories(st).Bx_re[2]) - exact[:Bx_re]) / ε
         record!("T-369", T, worst)
         @test worst <= C
