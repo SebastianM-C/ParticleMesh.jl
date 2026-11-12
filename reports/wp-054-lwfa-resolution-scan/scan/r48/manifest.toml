@@ -1,8 +1,8 @@
 case = "lwfa-2d-r48"
-commit = "ae844e7227466da39c6cfbd414be207c11752cb8"
+commit = "16d943d66f4e797ca802b1ea40050cb070ff07b1"
 dirty = false
 runs = "scripts/runs/lwfa-scan-r48-three"
-updated = "2026-11-12T08:42:54.773Z"
+updated = "2026-11-12T09:50:43.410Z"
 
 [inputs]
 
