@@ -1,0 +1,16 @@
+# CPU box request of the LWFA case lwfa-2d-focus0 (scripts/lwfa/lwfa.jl prepare)
+timeout = 7200
+category = "crosscode"
+outputs = ["scripts/runs/lwfa-a5-focus0/smilei-vacuum", "scripts/runs/lwfa-a5-focus0/pm-vacuum"]
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "run-pm", "scripts/runs/lwfa-a5-focus0/pm-vacuum"]
+
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/lwfa-a5-focus0/smilei-vacuum"
+
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/lwfa.jl", "summarize-smilei", "scripts/runs/lwfa-a5-focus0/smilei-vacuum"]
