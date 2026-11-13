@@ -282,11 +282,15 @@ end
 
 function body_T757(be)
     noise = Float64[]
-    for T in TYPES, mode in (Reference(), Fast()), (N, passes) in ((1, 0), (1, 2), (2, 0), (2, 1))
+    # at N = 1 the Weibel case for the transverse currents, and the two-stream case with a tenth of
+    # the density perturbed for motion along x in a field that is there from the first step: what the
+    # branch that is not bitwise can see (planted at 4 threads, a kick of twice the size is 640 times
+    # its bound there and a move 1e-3 too long 50 times; the Weibel case's first steps show neither)
+    for T in TYPES, mode in (Reference(), Fast()), (N, passes, name) in ((1, 0, "weibel"), (1, 2, "two-stream"), (1, 0, "two-stream"), (2, 0, ""), (2, 1, ""))
         mk() = if N == 1
-            case = load_case("weibel")
+            case = load_case(name)
             case["numerics"]["filter_passes"] = passes
-            prob = problem_from_case(case, T; ppc = 8, t_end = 1)
+            prob = problem_from_case(case, T; ppc = 8, t_end = 1, amplitude = name == "two-stream" ? seeded(T, 1 // 10) : nothing)
             st = EMState(prob, numerics_from_case(case; mode); backend = be)
             initialize!(st, prob)
             st, params(prob)
@@ -310,10 +314,10 @@ function body_T757(be)
             # own scales, not of the fields, which a case may leave at roundoff themselves (the
             # Weibel case's beams cancel in the charge and in the current, so its first steps'
             # fields are the deposition's noise and nothing else)
-            # (measured: 5 eps on the CPU at 4 threads, 4 eps on CUDA, over 12 runs each)
+            # (measured: 5 eps on the CPU at 4 threads over 15 runs, 4 eps on CUDA over 12)
             worst = step_distance(a, b)
             push!(noise, worst / eps(basetype(T)))
-            @test worst <= 256 * eps(basetype(T))
+            @test worst <= 64 * eps(basetype(T))
         end
     end
     isempty(noise) || @info "T-757 unordered Fast deposition: largest difference of two runs of one step order over the plasma's scales, in eps" backend = nameof(typeof(be)) worst = maximum(noise) runs = length(noise)

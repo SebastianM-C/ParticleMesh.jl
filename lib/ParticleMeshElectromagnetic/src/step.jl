@@ -245,10 +245,25 @@ antenna_planes(::Nothing) = ()
 `state` with another tuple of [`FieldModifier`](@ref)s, which its steps then walk, and everything
 else the same arrays (no copy: the two states are one run, use one of them). How a modifier that
 the state's constructor does not know joins a state, at the place in the tuple its order in the
-solve asks for: `with_modifiers(state, (state.modifiers..., m))`.
+solve asks for: `with_modifiers(state, (state.modifiers..., m))`. A state finds its open axis'
+absorber, its back edge's PML and its antenna planes by their type (`open_absorber`,
+`back_absorber`, `antenna_planes`: the evolved list, the particles' retirement and the checks of
+the parameters go by them), so a tuple with two of one of them is an `ArgumentError`.
 """
-with_modifiers(st::EMState, modifiers::Tuple) =
-    EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux)
+function with_modifiers(st::EMState, modifiers::Tuple)
+    check_modifiers(modifiers)
+    return EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux)
+end
+
+# At most one of each modifier that a state finds by its type (a host check of the tuple's types).
+function check_modifiers(modifiers::Tuple)
+    for (what, M) in (("absorber of the open axis (an absorbing layer or a PML)", OpenAbsorber), ("PML of the window's back edge", BackPMLFields),
+                      ("AntennaPlanes (it holds every plane)", AntennaPlanes))
+        n = count(m -> m isa M, modifiers)
+        n <= 1 || throw(ArgumentError("a state has one $what, which it finds by its type; the tuple of modifiers has $n"))
+    end
+    return modifiers
+end
 
 Base.ndims(::EMState{N}) where {N} = N
 Base.eltype(::EMState{N,T}) where {N,T} = T

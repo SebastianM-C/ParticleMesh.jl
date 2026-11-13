@@ -393,6 +393,19 @@ reach(x) = reach!(AbstractArray[], x)
     @test !any(a -> any(b -> a === b, rest), mine)
     ψ = (evolved_arrays(open_absorber(st))..., evolved_arrays(back_absorber(st))...)
     @test length(ψ) == 8 && all(a -> count(b -> a === b, evolved(st)) == 1, ψ)
+    # a state finds these three by their type, so a second one of a kind is refused, not merged
+    # with the first: a second absorber of the open axis (a PML or a layer), a second back-edge PML,
+    # a second set of planes; through the harness's keyword too
+    extra_open = PMLFields(PML(; cells = 4), st.grid, st.dt; backend = CPU())
+    extra_layer = LayerFactors(AbsorbingLayer(; cells = 4, strength = 1), st.grid, st.dt; backend = CPU())
+    extra_back = BackPMLFields(PML(; cells = 6), st.grid, st.dt; backend = CPU())
+    for extra in (extra_open, extra_layer, extra_back, st.modifiers[3])
+        @test_throws ArgumentError with_modifiers(st, (st.modifiers..., extra))
+        @test_throws ArgumentError with_modifiers(st, (extra, st.modifiers...))
+        @test_throws ArgumentError DiscreteProblem(prob, num; modifiers = ms -> (ms..., extra))
+    end
+    @test with_modifiers(st, (st.modifiers..., Idle(), Idle())) isa EMState          # other kinds may repeat
+    @test length(evolved(with_modifiers(st, st.modifiers[2:end]))) == length(evolved(st)) - 4   # and one may be taken out
     # a state over other arrays: its PMLs are over those arrays, its tuple has the order and the
     # other modifiers of the state's, and a step of it leaves the state's own arrays alone
     initialize!(st, prob)
