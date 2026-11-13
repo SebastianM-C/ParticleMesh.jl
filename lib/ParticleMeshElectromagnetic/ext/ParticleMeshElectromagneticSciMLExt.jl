@@ -6,11 +6,14 @@ The SciML harness of the electromagnetic module (WP-008): the module's step as a
 around the module's own `initialize!` and `step!`, with no second implementation: a solve gives
 the same bits as `initialize!` plus `run!` in `Reference()` mode (T-100).
 
-- The state `u` is [`state_partition`](@ref): the particle and field arrays and `K`, with mixed
-  element types.
-- The cache is an `EMState` owned by the problem's map. It holds the workspaces, the extras and
-  the recorder with its histories, which stay out of `u` because `FunctionMap` copies the state
-  every step.
+- The state `u` is [`state_partition`](@ref): everything a run evolves (`evolved`: the particle
+  and field arrays, a PML's convolution fields, the moving window's counters, the witness
+  bunch), with mixed element types. A saved `u` with its step is a restart.
+- The cache is an `EMState` owned by the problem's map. It holds the configuration, the
+  workspaces, the extras and the recorder with its histories, which stay out of `u` because
+  `FunctionMap` copies the state every step. Its own evolved arrays are the problem's `u0`, with
+  their kinetic energy `K`; the kinetic energy of the integrator's state, which a step leaves
+  for the next observation, is a buffer of the map's, apart from it.
 - `p` is the problem description, an `EMProblem`, whose `params` the steps read; an `EMParams`
   is taken as it is. A plain `remake(prob; p = p′)` changes the parameters of the steps and
   keeps `u0`; `remake_reload` builds the cache and `u0` of another problem (A3).
@@ -21,79 +24,27 @@ module ParticleMeshElectromagneticSciMLExt
 
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!
+using ParticleMeshElectromagnetic: evolved, on_evolved, state_view, restore!, refresh_caches!, copy_arrays!, check_evolved
 import ParticleMeshElectromagnetic: state_partition, remake_reload, harness_state
-using ParticleMeshCore: Species
 using KernelAbstractions: CPU
 using SciMLBase: SciMLBase, DiscreteProblem, DiscreteFunction, AbstractSciMLProblem, AbstractTimeseriesSolution
 using RecursiveArrayTools: ArrayPartition
 
-# --- the state: a flat tuple of arrays, and back ---------------------------------------------
+# --- the state: the evolved arrays as a partition, and back -------------------------------------
 
-species_arrays(s::Species) = (s.cell..., s.offset..., s.u..., s.w, s.status, s.count)
-species_length(::Species{N}) where {N} = 2N + 6
-
-flat_species() = ()
-flat_species(s, rest...) = (species_arrays(s)..., flat_species(rest...)...)
-
-state_arrays(st::EMState) = (flat_species(st.species...)..., values(st.fields)..., st.K)
-
-state_partition(st::EMState) = ArrayPartition(state_arrays(st)...)
-
-# copyto! over two tuples of arrays, unrolled (a foreach over a heterogeneous tuple dispatches
-# dynamically and allocates)
-copy_arrays!(::Tuple{}, ::Tuple{}) = nothing
-@inline function copy_arrays!(dst::Tuple, src::Tuple)
-    copyto!(first(dst), first(src))
-    return copy_arrays!(Base.tail(dst), Base.tail(src))
-end
-
-@inline take(a::Tuple, ::Val{n}) where {n} = ntuple(i -> a[i], Val(n))
-@inline drop(a::Tuple, ::Val{n}) where {n} = ntuple(i -> a[n + i], Val(length(a) - n))
-
-# A species of the same type as `s` over the first arrays of `a`: same charge, mass and extras.
-function species_on(s::Species{N}, a::Tuple) where {N}
-    cell = ntuple(i -> a[i], Val(N))
-    offset = ntuple(i -> a[N + i], Val(N))
-    u = (a[2N + 1], a[2N + 2], a[2N + 3])
-    return typeof(s)(cell, offset, u, a[2N + 4], a[2N + 5], a[2N + 6], s.q, s.m, s.extras)
-end
-
-species_on(::Tuple{}, a::Tuple) = ((), a)
-function species_on(sp::Tuple, a::Tuple)
-    s = first(sp)
-    n = Val(species_length(s))
-    rest, a′ = species_on(Base.tail(sp), drop(a, n))
-    return (species_on(s, take(a, n)), rest...), a′
-end
+state_partition(st::EMState) = ArrayPartition(evolved(st)...)
 
 """
-    state_on(state, u) -> EMState
+    state_on(map, u) -> EMState
 
-An `EMState` that shares the cache of `state` (numerics, grid, time step, workspaces, extras, `ρ`,
-the recorder, the species' setup, `aux`) and whose particle and field arrays and `K` are the
-arrays of the partition `u`.
-Zero-copy; the array types of `u` must be those of the state.
+The integrator's state as an `EMState`: the configuration, the scratch and the recorder of the
+map's cache state, the arrays of the partition `u` as its evolved arrays (`on_evolved`), and the
+map's own kinetic-energy buffer, which the steps of a solve write and read in order. Zero-copy;
+the array types of `u` must be those of the cache.
 """
-function state_on(st::EMState, u::ArrayPartition)
-    species, a = species_on(st.species, u.x)
-    nf = Val(length(st.fields))
-    fields = NamedTuple{keys(st.fields)}(take(a, nf))
-    K = only(drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, st.recorder, st.setup, st.aux)
-end
+state_on(m, u::ArrayPartition) = on_evolved(m.state, u.x, m.K, m.state.recorder)
 
-function check_layout(st::EMState, u::ArrayPartition)
-    a = state_arrays(st)
-    length(u.x) == length(a) && all(map((x, y) -> typeof(x) == typeof(y) && size(x) == size(y), u.x, a)) ||
-        throw(ArgumentError("the partition does not have the layout of the state (state_partition)"))
-    return nothing
-end
-
-function Base.copyto!(st::EMState, u::ArrayPartition)
-    check_layout(st, u)
-    copy_arrays!(state_arrays(st), u.x)
-    return st
-end
+Base.copyto!(st::EMState, u::ArrayPartition) = restore!(st, u.x)
 
 # --- the map ------------------------------------------------------------------------------
 
@@ -107,18 +58,23 @@ end of the step). `p` gives the parameters of the step: the `params` of an `EMPr
 of the state it stepped (a reference, so `===` cannot match a later array at a reused address):
 a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), and only the same
 integrator's state may continue, so that the histories and the state are those of `run!`. Step 1
-starts from `u0` without `initialize!`: the step itself zeroes there the fields outside the
-partition, a PML's convolution fields, and the map checks that a problem given as `p` has the
-cache's configuration ([`check_setup`](@ref)).
+starts from `u0` without `initialize!`: `u0` holds everything a run evolves, so a solve is the run
+of its `u0`, a second solve the same run. `K` is the kinetic energy of the integrator's state, a
+buffer of the map's that the last solve left, so step 1 first checks that `u0` has the layout of the cache's evolved arrays (their
+number, element types and sizes: a `u0` of another problem is an `ArgumentError`, not a silent
+conversion), computes `K` from it (`refresh_caches!`, as `restore!` does) and checks that a
+problem given as `p` has the cache's configuration ([`check_setup`](@ref)). The cache state's own
+`K` stays that of its own arrays, the problem's `u0`.
 """
-struct EMMap{S<:EMState,B}
+struct EMMap{S<:EMState,B,KB}
     state::S
     backend::B
+    K::KB
     done::Base.RefValue{Int}
     owner::Base.RefValue{Any}
 end
 
-EMMap(state::EMState, backend) = EMMap(state, backend, Ref(0), Ref{Any}(nothing))
+EMMap(state::EMState, backend) = EMMap(state, backend, similar(state.K), Ref(0), Ref{Any}(nothing))
 
 function (m::EMMap)(u, uprev, p, t)
     # The module's step sorts the particle buffers in place, so the next state starts as a
@@ -131,8 +87,11 @@ function (m::EMMap)(u, uprev, p, t)
     (k == t && (k == 1 || (k == m.done[] + 1 && a === m.owner[]))) ||
         throw(ArgumentError("the harness takes every step from step 1 (t0 = 0, dt = 1) on one integrator; got t = $t after step $(m.done[])"))
     pk = step_params(p)
-    k == 1 && check_fit(m.state, p)
-    step!(state_on(m.state, u), pk, k)
+    # a solve's first step: `u` is a copy of a `u0` that may come from anywhere (`remake`)
+    k == 1 && check_evolved(m.state, u.x)
+    st = state_on(m, u)
+    k == 1 && (check_fit(m.state, p); refresh_caches!(st))
+    step!(st, pk, k)
     m.done[] = k
     m.owner[] = a
     return nothing
@@ -148,7 +107,18 @@ harness_map(sol::AbstractTimeseriesSolution) = harness_map(sol.prob)
 harness_map(m::EMMap) = m
 harness_map(f) = throw(ArgumentError("not a problem of the ParticleMeshElectromagnetic harness: map $(typeof(f))"))
 
-harness_state(x::Union{AbstractSciMLProblem,AbstractTimeseriesSolution}) = harness_map(x).state
+harness_state(prob::AbstractSciMLProblem) = harness_map(prob).state
+function harness_state(sol::AbstractTimeseriesSolution)
+    st = harness_map(sol).state
+    tend = last(sol.prob.tspan)
+    # host values of the solution: the state at the end exists only if the solve saved it
+    !isempty(sol.t) && sol.t[end] == tend ||
+        throw(ArgumentError("harness_state(sol) is the state at the end of the solve (step $tend), and the solution's last saved state is at step " *
+                            "$(isempty(sol.t) ? "none" : sol.t[end]): save the end (save_end = true, or a saveat that includes $tend), " *
+                            "or take a saved state with harness_state(sol, u); the histories are also in harness_state(sol.prob)"))
+    return state_view(st, sol.u[end].x, st.recorder)
+end
+harness_state(x::Union{AbstractSciMLProblem,AbstractTimeseriesSolution}, u::ArrayPartition) = state_view(harness_map(x).state, u.x)
 
 # --- the problem --------------------------------------------------------------------------
 
@@ -175,9 +145,14 @@ The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
   continued with the integrator interface (`init`, `step!`), not by a second solve.
 
 `kwargs` are stored as problem keywords and passed to `solve`, for example
-`saveat = [0, 10, 20]` (whole steps; the saved states are copies of the particle and field
-arrays) or `save_everystep = false`. The diagnostic histories are in the cache's recorder, entry
-`k` written at step `k`: `histories(harness_state(sol))`.
+`saveat = [0, 10, 20]` (whole steps; the saved states are copies of the evolved arrays, each a
+restart of its step: `restore!(state, sol.u[i].x)`) or `save_everystep = false`. The diagnostic
+histories are in the cache's recorder, entry `k` written at step `k`:
+`histories(harness_state(sol))`, and `harness_state(sol)` is the state at the end of the solve for
+every read-out (the witness bunch's gain, the window's counters), which the solve must have
+saved (it does unless `save_end = false` or a `saveat` leaves the end out);
+`harness_state(sol, sol.u[i])` is that of another saved state, and the histories are also in the
+problem's cache, `histories(harness_state(prob))`.
 
 A plain `remake(prob; p = p′)` changes the parameters the steps read and keeps `u0`, with the
 weights and momenta loaded from the old `p`; for a parameter of the initial load, or another

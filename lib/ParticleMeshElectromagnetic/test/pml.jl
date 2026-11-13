@@ -178,7 +178,8 @@ end
 # A zero profile adds exactly zero: a vacuum slab packet through the open box with a PML of
 # σ = α = 0, κ = 1 is the periodic box's bit for bit. A real PML: its coefficients are the closed
 # form of the profile at the layer rows (exactly b = 1, c = 0, q = 0 at the rows whose depth is
-# zero), its convolution fields start at zero and are zero again at step 1 of a new run, every guard
+# zero), its convolution fields start at zero and are zero again at the start of a new run (a
+# snapshot of the start, or `reset_convolution!`; no step zeroes them, WP-056), every guard
 # is its interior image after a solve, and only the layer rows of Bx, Bz, Ex, Ez change against the
 # plain solve.
 @testset "T-544 a zero-profile PML is the periodic step bit for bit; coefficients, rows and guards [A2, A4, A8, WP-034]" begin
@@ -216,18 +217,30 @@ end
         for c in (:Ex, :Ez, :Bx, :Bz)
             @test Array(getfield(sl.fields, c))[inner, (g + 1):(g + 8)] != Array(getfield(plain, c))[inner, (g + 1):(g + 8)]
         end
-        # step 1 starts the convolution fields at zero: a state that ran before, set back to the
-        # initial fields, takes the fresh state's first step bit for bit
+        # a state that ran before, set back to its start, takes the fresh state's first step bit for
+        # bit. The convolution fields are part of what a run evolves (WP-056), so no step zeroes
+        # them: the start is a snapshot, which holds them (zero there), or the initial fields
+        # copied back by hand with reset_convolution!; the fields alone are not the start
         mk() = (s = EMState(prob, EMNumerics(; current = NoCurrent(), absorber = PML(; cells = 8, kappa_max = 3, alpha_max = 0.1)));
                 initialize!(s, prob); slab_init!(s, geo, :TM); s)
+        same_fields(a, b) = all(c -> bits(Array(getfield(a.fields, c))) == bits(Array(getfield(b.fields, c))), keys(a.fields))
         fresh, used = mk(), mk()
         init = map(copy, used.fields)
+        start = snapshot(used, 0)
+        step!(fresh, params(prob), 1)
         run!(used, params(prob), 5)
         @test any(!iszero, Array(used.aux.layer.ψEx))
         foreach(copyto!, values(used.fields), values(init))
-        step!(fresh, params(prob), 1)
         step!(used, params(prob), 1)
-        @test all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
+        @test !same_fields(fresh, used)
+        foreach(copyto!, values(used.fields), values(init))
+        reset_convolution!(used)
+        step!(used, params(prob), 1)
+        @test same_fields(fresh, used)
+        run!(used, params(prob), 4; first = 2)
+        restore!(used, start)
+        step!(used, params(prob), 1)
+        @test same_fields(fresh, used)
     end
     # the coefficients: 4 cells on 16 rows with 3 guards; at the half row p the depth
     # d = 8 − min(p, 32 − p), r = d/8, and off the layer exactly (1, 0, 0)

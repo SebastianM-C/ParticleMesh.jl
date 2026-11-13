@@ -31,7 +31,9 @@ A run is `state = EMState(problem, numerics)`, `initialize!(state, p)` and `step
 ([`EMParams`](@ref): the lasers, the densities and the profile, the witness bunch, the seed; A3),
 and the state keeps what a run evolves and the configuration it was sized for, no parameter. The
 diagnostics are an observer's ([`observe!`](@ref), [`HistoryRecorder`](@ref)), called at the start
-of each step.
+of each step. The state is closed: [`evolved`](@ref) lists what a run evolves, and with the step
+index it is a restart, [`snapshot`](@ref) after any step and [`restore!`](@ref) into a state built
+for the same problem (to a file with [`save_snapshot`](@ref), [`load_snapshot`](@ref)).
 
 With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
 `DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
@@ -55,6 +57,7 @@ export EMState, initialize!, step!, run!, check_setup, reset_convolution!
 export HistoryRecorder, observe!
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
+export evolved, EMSnapshot, snapshot, restore!, save_snapshot, load_snapshot
 export state_partition, remake_reload, harness_state
 export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
@@ -75,6 +78,7 @@ include("boundaries.jl")
 include("pml.jl")
 include("window.jl")
 include("witness.jl")
+include("restart.jl")
 include("diagnostics.jl")
 include("harness.jl")
 

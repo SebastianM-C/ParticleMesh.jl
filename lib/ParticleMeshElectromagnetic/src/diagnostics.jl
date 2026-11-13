@@ -204,6 +204,16 @@ end
 HistoryRecorder(problem::EMProblem{N,T}, st::EMState{N,T}; kmode = problem.kmode, nsteps::Integer = problem.nsteps) where {N,T} =
     HistoryRecorder(get_backend(st.ρ), T, st.grid, problem.length, kmode, nsteps; workgroupsize = st.numerics.workgroupsize)
 
+"""
+    empty_recorder(recorder::HistoryRecorder) -> HistoryRecorder
+
+A recorder of the same mode and length with histories of its own, zero, and at N = 2 partial sums
+of its own; the phase tables, written once, are shared.
+"""
+empty_recorder(r::HistoryRecorder) = typeof(r)(map(h -> fill!(similar(h), zero(eltype(h))), r.hist), r.kmode, own_scratch(r.aux))
+own_scratch(aux::NamedTuple{()}) = aux
+own_scratch(aux::NamedTuple) = merge(aux, (; partials = similar(aux.partials)))
+
 "The number of steps a recorder holds."
 Base.length(r::HistoryRecorder) = length(r.hist.K)
 

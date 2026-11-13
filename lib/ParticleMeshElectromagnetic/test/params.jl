@@ -600,8 +600,8 @@ end
 # that laser's run (in vacuum, twice a₀ gives twice the fields bit for bit) with no new cache,
 # where it used to need `remake_reload`; a `p′` that does not fit the cache is refused: parameters
 # by the step, a problem of another configuration (another time step) at the first step. A solve
-# starts from `u0` without `initialize!`, and step 1 zeroes what the partition does not hold of the
-# fields, a PML's convolution fields: a second solve of a problem with a PML, on the
+# starts from `u0` without `initialize!`, and `u0` holds a PML's convolution fields (WP-056: they
+# are part of what a run evolves), zero at t = 0: a second solve of a problem with a PML, on the
 # open axis or on a window's back edge, is the first, and both are the loop; and a state that
 # has run, set back to a partition saved at t = 0, runs again as it did, with no call by hand.
 @testset "T-735 the harness: remake(p) changes the step's parameters with no new cache, and a second solve with a PML is the first [A3, A9, WP-055, WP-008]" begin
@@ -634,7 +634,7 @@ end
     wref = loop_state(wprob, wnum)
     @test partition_bits(wb.u[end]) == wua == state_bits(wref)
     @test history_bits(harness_state(wb)) == wha == history_bits(wref)
-    # a PML's convolution fields are outside the partition: a second solve starts them at zero as the first did
+    # a PML's convolution fields are in the partition (WP-056): a second solve starts from u0's, zero, as the first did
     for T in TYPES
         prob, _ = open_plasma_2d(T; nsteps = 20)
         num = EMNumerics(; current = Esirkepov(), absorber = PML(; cells = 4, sigma_max = 1.5, order = 3, kappa_max = 2, kappa_order = 2, alpha_max = 0.2))

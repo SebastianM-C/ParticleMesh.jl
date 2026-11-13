@@ -40,10 +40,10 @@ function harness_equals_loop(::Type{T}; n = nothing, be = CPU()) where {T}
     ref = loop_state(prob, num, n; be)
     again = solve(dprob, FunctionMap(); save_everystep = false)
     return (; ok = sol.retcode == ReturnCode.Success, t = sol.t[end], n,
-            state = partition_bits(sol.u[end]) == state_bits(ref),
+            state = partition_bits(sol.u[end]) == state_bits(ref) && bits(harness_state(sol).K) == bits(ref.K),
             hist = history_bits(harness_state(sol), n) == history_bits(ref, n),
             u0 = partition_bits(dprob.u0) == u0,
-            again = partition_bits(again.u[end]) == state_bits(ref) &&
+            again = partition_bits(again.u[end]) == state_bits(ref) && bits(harness_state(again).K) == bits(ref.K) &&
                     history_bits(harness_state(again), n) == history_bits(ref, n))
 end
 
@@ -62,7 +62,7 @@ end
     st = EMState(prob, num; backend)
     initialize!(st, prob)
     u = state_partition(st)
-    @test u.x[1] === st.species[1].cell[1] && u.x[end] === st.K
+    @test u.x[1] === st.species[1].cell[1] && u.x[end] === st.fields.Jz && all(a -> a !== st.K, u.x)   # K is a cache, outside the partition (WP-056)
     @test map(eltype, u.x)[1:8] == (Int32, Float64, Float64, Float64, Float64, Float64, UInt8, Int32)
     saved = copy(u)
     run!(st, params(prob), 5)
@@ -125,7 +125,7 @@ end
     for (i, k) in enumerate(steps)
         run!(st, p, k - done; first = done + 1)
         done = k
-        @test partition_bits(sol.u[i]) == state_bits(st)
+        @test partition_bits(sol.u[i]) == state_bits(st) && bits(harness_state(sol, sol.u[i]).K) == bits(st.K)
     end
     # saved states are copies of the arrays, with their element types
     @test all(map(!==, sol.u[1].x, sol.u[2].x))
