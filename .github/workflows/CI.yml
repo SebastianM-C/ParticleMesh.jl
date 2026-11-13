@@ -194,7 +194,7 @@ jobs:
         run: |
           # git grep exits 0 on a match, 1 on none, and above 1 on an error, which must not pass as clean.
           status=0
-          git grep -nIE '(ssh://|BEGIN [A-Z ]*PRIVATE KEY|(^|[^0-9A-Za-z.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9A-Za-z.]|\.([^0-9]|$)|$))' -- . ':!.github/workflows/CI.yml' || status=$?
+          git grep -nIE '(ssh:[/]/|BEGIN [A-Z ]*PRIVATE KEY|(^|[^0-9A-Za-z.])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9A-Za-z.]|\.([^0-9]|$)|$))' -- . || status=$?
           if [ "$status" -eq 0 ]; then
             echo "Found a pattern that looks like private infrastructure; see matches above." >&2
             exit 1
@@ -216,8 +216,11 @@ jobs:
   # minor findings go into one open `follow-up` issue per PR instead of a follow-up PR. A PR whose diff
   # touches a path in the base branch's CODEOWNERS is labelled `tier-2` and says so in the review.
   # Merge policy: F4 in docs/plan/factory-and-observability.md. Merging itself is GitHub's auto-merge,
-  # enabled by the PR author (see CLAUDE.md, "Pull requests"). Re-running the review alone is "re-run
-  # failed jobs" on this run: the tests that passed are not repeated.
+  # enabled by the PR author (see CLAUDE.md, "Pull requests"). "Re-run failed jobs" on a run repeats
+  # what failed and the jobs behind it, never the tests that passed: a failed CI job and then the
+  # review, or a lens job that broke and then the gate. A gate that failed on a lens's blocking
+  # finding is answered by a push; to review the same commit again, re-run its `Review (...)` job,
+  # since re-running the gate alone repeats the stored verdict.
   # Secrets: CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, a Max subscription token). If the action
   # ever rejects the plain GITHUB_TOKEN, install the Claude GitHub App on the repository, drop the
   # github_token input and grant `id-token: write` to the lens job instead.
@@ -348,9 +351,13 @@ jobs:
             ${{ runner.temp }}/brief.md and the contract every change must respect is
             ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
             this PR comes from the PR itself). The CI jobs of this commit finished before this review
-            started and are listed in ${{ runner.temp }}/ci.md: the tests have passed (`Julia pre` may
-            have failed, which is allowed). That is the test result your brief asks for, so run only
-            what goes beyond it.
+            started and are listed in ${{ runner.temp }}/ci.md: every one of them passed (`Julia pre` may
+            have failed, which is allowed). The Julia jobs run the tests of the root package and of
+            every lib/ package, and only when the diff touches src/, lib/, test/, benchmark/, a root
+            Project or Manifest file or this workflow; the trace job runs the tests of scripts/trace,
+            scripts/crosscode and scripts/lwfa. For those tests, that is the result your brief asks
+            for. CI runs no other tests: when the change touches tests outside that list (another
+            directory of scripts/, say), run them yourself.
             The PR head is checked
             out in the working directory. Read the brief and the contract, then `gh pr view` and
             `gh pr diff` for the change and its description, read the files it touches, and run what the
