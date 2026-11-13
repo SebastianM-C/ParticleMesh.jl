@@ -1,0 +1,101 @@
+branch = "runs/lwfa-scan-smilei"
+request_commit = "406a48b5c8ba023b1ae5ed8b6a7777ddf5b1883c"
+started = "2026-11-12T07:39:19Z"
+category = "crosscode"
+outputs = ["scripts/runs/lwfa-scan-r32/smilei-vacuum", "scripts/runs/lwfa-scan-r32/smilei-plasma", "scripts/runs/lwfa-scan-r48/smilei-vacuum", "scripts/runs/lwfa-scan-r48/smilei-plasma", "scripts/runs/lwfa-scan-r64/smilei-vacuum", "scripts/runs/lwfa-scan-r64/smilei-plasma"]
+finished = "2026-11-12T08:06:52Z"
+ok = true
+files_returned = 93
+dumps_over_20MB = ["scripts/runs/lwfa-scan-r32/smilei-vacuum/Fields0.h5", "scripts/runs/lwfa-scan-r32/smilei-plasma/Fields0.h5", "scripts/runs/lwfa-scan-r48/smilei-vacuum/Fields0.h5", "scripts/runs/lwfa-scan-r48/smilei-plasma/Fields0.h5", "scripts/runs/lwfa-scan-r64/smilei-vacuum/Fields0.h5", "scripts/runs/lwfa-scan-r64/smilei-plasma/Fields0.h5"]
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T07:39:19Z"
+exit = 0
+seconds = 17
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T07:39:36Z"
+exit = 0
+seconds = 19
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T07:39:55Z"
+exit = 0
+seconds = 115
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T07:41:50Z"
+exit = 0
+seconds = 8
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T07:41:59Z"
+exit = 0
+seconds = 46
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T07:42:44Z"
+exit = 0
+seconds = 7
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T07:42:52Z"
+exit = 0
+seconds = 386
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T07:49:17Z"
+exit = 0
+seconds = 8
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T07:49:26Z"
+exit = 0
+seconds = 113
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T07:51:19Z"
+exit = 0
+seconds = 8
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T07:51:26Z"
+exit = 0
+seconds = 917
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T08:06:43Z"
+exit = 0
+seconds = 9
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"

@@ -1,0 +1,14 @@
+case = "lwfa-2d-focus0"
+commit = "2a8d467d5a16930f8dd1a511164e2c1b969257aa"
+dirty = false
+runs = "scripts/runs/lwfa-a5-4-focus0-three"
+updated = "2026-11-12T06:16:40.696Z"
+
+[inputs]
+
+[maps]
+
+[summaries]
+picongpu-vacuum = "sha256:bc72188ff8bcfc3e27224f4e2a3b8b1090917d4ecbc1438541538adae7cbe88e"
+pm-vacuum = "sha256:56a6214e1371baded2652a6f448a77ecf7d0803fd49c6ef1125f15e29665e6e7"
+smilei-vacuum = "sha256:55098233ead5aeece27238dc1e34bfa671cdd3dab0aab72f18945f5903859e22"

@@ -1,0 +1,20 @@
+case = "lwfa-2d"
+commit = "3e4f2311d2a0eb5ceecbeb8fd73e2436b149d432"
+dirty = false
+runs = "scripts/runs/lwfa-a5-3-three"
+updated = "2026-11-12T05:54:31.178Z"
+
+[inputs]
+
+[maps]
+picongpu-plasma = "sha256:392b431085a9c916178c0967968fd73213d2c92ddaaea5104a46de06ff10b66e"
+pm-plasma = "sha256:70875c2acec3da934d2a5b53aacaf0f8f5c787aed3f553e6f6ca42c2fa68d030"
+smilei-plasma = "sha256:51571ba501eca280c89034f8e8ed39863e7ac2db4df74b97ef299b7d9de22f0d"
+
+[summaries]
+picongpu-plasma = "sha256:d239c46ed96dec7170b8bad1806c809f6fcaed947f3aecd2801556faa03c4e23"
+picongpu-vacuum = "sha256:860bee82b900f6fd36f310453977935c8942c37ed38469f0188194305b71c9d7"
+pm-plasma = "sha256:c7a29eec32bd9aa9024f3dbd5596aed11f2bd60989778d7ed1fa44b0acd08f30"
+pm-vacuum = "sha256:e190dfd4399ed7ea4b2f0a978528dc81bfd51bc714aeeb04c6d5555780ea1f29"
+smilei-plasma = "sha256:c70e612125ab0b404133812a2585ee1e91f063c0038e2f0a772ecfe185d12152"
+smilei-vacuum = "sha256:fdde3a13dcfcf89dcee8ec71e3b2984e547ff82e59a363c48b9da43119dc4990"

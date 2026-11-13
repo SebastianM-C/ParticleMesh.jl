@@ -62,14 +62,14 @@ function gauss_rows(; nsteps = 200)
     prob = window_lwfa(Float64; nsteps)
     st = window_state(prob)
     p = params(prob)
-    ia = st.aux.antennas[1].ia
+    ia = antenna_planes(st)[1].ia
     n = prob.cells
     worst = zeros(n[1])
     hist = Dict{String,Any}[]
     for k in 1:nsteps
         step!(st, p, k)
         s = window_shifts(st, k)
-        r = window_gauss(st, s)
+        r = window_gauss(st, p, s)
         per = [maximum(r.res[i, :]) / r.scale for i in 1:n[1]]
         worst .= max.(worst, per)
         skip = (1, 2, ia - 1 - s, ia - s)
@@ -95,7 +95,7 @@ function shift_cost()
         push!(window_shifts(st, k) > window_shifts(st, k - 1) ? shifting : plain, t)
     end
     s = window_shifts(st, 330)
-    shift_alone = [(@elapsed shift_window!(st, s)) for _ in 1:20]
+    shift_alone = [(@elapsed shift_window!(st, p, s)) for _ in 1:20]
     return Dict{String,Any}("step_with_shift_s" => median(shifting), "step_without_shift_s" => median(plain),
                             "shift_window_s" => median(shift_alone), "steps_with_shift" => length(shifting),
                             "steps_without_shift" => length(plain), "particles" => alive_count(st.species[1]),

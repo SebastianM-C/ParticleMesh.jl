@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -156,6 +156,21 @@ else
         @test all(x -> all(isfinite, x) && all(!iszero, x), c)
         @test ratio <= emC("T-612")
         @test cpu_rel <= emC("T-611")      # the refined, longer run on CUDA is the CPU's too
+    end
+
+    @testset "T-736 the parameters handed to a state on CUDA: T-730, T-731 and T-734 with the CPU's assertions [A3, A4, A8, WP-055]" begin
+        rerun_module_on(GPU, (("T-730", body_T730), ("T-731", body_T731), ("T-734", body_T734)))
+    end
+
+    @testset "T-747 the restart on CUDA: T-740, T-741, T-742 and T-744 with the CPU's assertions [A4, A8, WP-056]" begin
+        rerun_module_on(GPU, (("T-740", body_T740), ("T-741", body_T741), ("T-742", body_T742), ("T-744", body_T744)))
+    end
+
+    # of T-756, the part that holds the kernels against the 1D kernels of before WP-057 on the device
+    # (its other part holds them against host arithmetic bit for bit, which holds on the CPU only, A4)
+    @testset "T-758 the field modifiers and the one step on CUDA: T-750, T-751, T-753, T-756's kernels, T-757 and T-759 with the CPU's assertions [A4, A8, WP-057]" begin
+        rerun_module_on(GPU, (("T-750", body_T750), ("T-751", body_T751), ("T-753", body_T753), ("T-756 kernels", body_T756_kernels), ("T-757", body_T757),
+                              ("T-757 window", body_T757_window), ("T-759", body_T759)))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin

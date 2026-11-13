@@ -1,7 +1,7 @@
 # WP-028: the moving window's problems, used by window.jl.
 
 using KernelAbstractions: get_backend
-using ParticleMeshElectromagnetic: injection_column, load_window_columns!, velocity_momentum, window_density_params
+using ParticleMeshElectromagnetic: injection_column, load_window_columns!, velocity_momentum
 
 const ZERO3(T) = (zero(T), zero(T), zero(T))
 
@@ -61,10 +61,10 @@ function particle_set(s)
     return sort([(c1[i], c2[i], map(a -> components(a[i]), rest)...) for i in eachindex(c1)])
 end
 
-"The fresh cold load of the window's plasma columns of species 1 at position `s` (a scratch species)."
-function fresh_window_load(st, s_win; species = 1, thermal = false)
+"The fresh cold load of the window's plasma columns of species 1 at position `s`, of the parameters `p` (a scratch species)."
+function fresh_window_load(st, p, s_win; species = 1, thermal = false)
     T = eltype(st.ρ)
-    load = st.aux.window.loads[species]
+    load = window_load(st, p, species)
     thermal || (load = (; load..., vdrift = ZERO3(T), vth = ZERO3(T)))
     sp = st.species[species]
     n = ncells(st.grid)
@@ -75,19 +75,19 @@ function fresh_window_load(st, s_win; species = 1, thermal = false)
 end
 
 """
-    window_gauss(st, s) -> (; res, scale)
+    window_gauss(st, p, s) -> (; res, scale)
 
 Gauss's law of the window, `D⁻ₓEx + D⁻_yEy − (ρ − ρ₀(s))` with ρ from [`window_charge!`](@ref)
 and the background's ρ₀ from [`window_background!`](@ref), per interior node; `scale` is T-360's
 `(n₁ + n₂)·max|ρ|`. Returns the matrix of residuals (absmax over the partials of a dual).
 """
-function window_gauss(st, s_win)
+function window_gauss(st, p, s_win)
     T = eltype(st.ρ)
     grid = st.grid
     be = get_backend(st.ρ)
     ρ, ρ0 = field(be, T, grid), field(be, T, grid)
     window_charge!(ρ, st)
-    window_background!(ρ0, st, s_win)
+    window_background!(ρ0, st, p, s_win)
     ρ, ρ0 = Array(ρ), Array(ρ0)
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
     Ex, Ey = Array(st.fields.Ex), Array(st.fields.Ey)

@@ -54,7 +54,7 @@ function state_digest_2d(st::EMState{2})
     for s in st.species, a in (s.cell..., s.offset..., s.u..., s.w, s.status, s.count, values(s.extras)...)
         h = hash(bits(a), h)
     end
-    for a in (values(st.fields)..., st.K, values(st.hist)...)
+    for a in (values(st.fields)..., st.K, values(st.recorder.hist)...)
         h = hash(bits(a), h)
     end
     return h

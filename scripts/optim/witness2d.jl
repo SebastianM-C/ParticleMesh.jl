@@ -48,9 +48,9 @@ energy_at_a0(a0, τ) = WCASE.energy * (a0 / a0_at_energy(τ))^2
 
 "The best of the objective over the centre box at (τ, n₀) from one run (the centre is free: weights only), on a 0.25 grid."
 function best_over_center(τ, n; kw...)
-    st = witness_state(τ, n, 40.0; kw...)
+    st, p = witness_state(τ, n, 40.0; kw...)
     cs = collect(BOX[3][1]:0.25:BOX[3][2])
-    Js = gain_at_centers(st, cs)
+    Js = gain_at_centers(st, p, cs)
     i = argmax(Js)
     return (; J = Js[i], center = cs[i], Js, centers = cs)
 end
@@ -154,14 +154,14 @@ function main()
     sτ = [τb * (1 + d) for d in rel if inbox(τb * (1 + d), 1)]
     sn = [nb * (1 + d) for d in rel if inbox(nb * (1 + d), 2)]
     sc = [cb * (1 + d) for d in rel if inbox(cb * (1 + d), 3)]
-    stb = witness_state(τb, nb, cb)
+    stb, pb = witness_state(τb, nb, cb)
     out["slices"] = Dict("tau" => sτ, "J_tau" => [witness_gain(τ, nb, cb) for τ in sτ],
                          "density" => sn, "J_density" => [witness_gain(τb, n, cb) for n in sn],
-                         "center" => sc, "J_center" => gain_at_centers(stb, sc))
+                         "center" => sc, "J_center" => gain_at_centers(stb, pb, sc))
     jc = best["J"]
     s = out["slices"]
-    check("gain_at_centers at the optimum's centre is witness_energy_gain", isapprox(gain_at_centers(stb, [cb])[1], jc; rtol = 1e-12),
-          "$(gain_at_centers(stb, [cb])[1]) and $jc")
+    check("gain_at_centers at the optimum's centre is witness_energy_gain", isapprox(gain_at_centers(stb, pb, [cb])[1], jc; rtol = 1e-12),
+          "$(gain_at_centers(stb, pb, [cb])[1]) and $jc")
     check("the slices fall below the optimum on both sides",
           is_interior_max(sτ, s["J_tau"], τb, jc) && is_interior_max(sn, s["J_density"], nb, jc) && is_interior_max(sc, s["J_center"], cb, jc),
           "centre $jc, τ slice $(s["J_tau"]), n₀ slice $(s["J_density"]), x_c slice $(s["J_center"])")

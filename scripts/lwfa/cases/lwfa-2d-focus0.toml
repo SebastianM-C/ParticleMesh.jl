@@ -1,0 +1,51 @@
+# A5's 2D laser-wakefield case (`lwfa-2d.toml`) with the laser's focus on the injection plane, for
+# vacuum runs of the three codes: the wavefront is flat where the pulse is launched, so the two
+# envelope conventions (`envelope`, below) are one pulse there and nothing of the launch depends on
+# the wavefront's curvature. What the codes then differ by in vacuum is the rest: the antenna, the
+# Huygens surface and the boundary condition themselves, and the beam's diffraction on the lattice
+# (z_R = 392 c/ω₀, the run covers three Rayleigh lengths). Everything but `name`, `description`
+# and `laser.focus` is lwfa-2d.toml's; the plasma entries are not used by vacuum runs.
+
+schema = "lwfa-proposal-1"
+name = "lwfa-2d-focus0"
+description = "the laser of the 2D LWFA case (A5) focused on its injection plane, for vacuum runs: a0 = 2, w0 = 28, tau = 26 (1/e field), dx = λ0/48, moving window from t = 256, periodic in y"
+lambda0_um = 0.8                  # only for the SI numbers of reports, and PIConGPU's SI input
+
+[grid]
+dx = 0.1308996938995747           # λ₀/48 = 2π/48
+dy = 0.5235987755982988           # 4·dx
+cells = [2304, 384]               # 301.6 × 201.1 c/ω₀ ahead of the injection plane; multiples of 8 (PIConGPU's supercell)
+antenna_cells = 60                # ParticleMesh only: 7.85 c/ω₀ behind the antenna plane, as in lwfa-2d-a2
+transverse = "periodic"           # all codes; the box is 7.2 waists wide
+smilei_patches = [64, 8]          # 36 × 48 cells per patch; Smilei's window moves by a patch
+picongpu_devices = 2              # PIConGPU: local domains along y on the one GPU, the window and the hidden one (scripts/lwfa/picongpu.jl)
+
+[time]
+courant = 0.95                    # dt = courant / sqrt(1/dx² + 1/dy²) = 0.1206, Yee's 2D limit; a0·dt = 0.241
+steps = 10777                     # 13 outputs of 829 steps, t_end ≈ 1300
+fields_every = 829                # ≈ 100/ω₀
+
+[laser]
+a0 = 2.0                          # peak field at the focus
+waist = 28.0                      # 1/e field radius at the focus (k_p·w0 = 2.8)
+duration = 26.0                   # 1/e half width of the field envelope (intensity FWHM 30.6, about 13 fs at 0.8 µm)
+delay = 104.0                     # envelope peak on the injection plane at t = 4·duration
+focus = 0.0                       # on the injection plane: a flat wavefront there (lwfa-2d.toml: 320)
+polarization = "y"                # E along y, in the simulation plane
+envelope = "wavefront"            # envelope and carrier on one time along the curved wavefront, t − delay − (y − y_c)²/(2R): the pulse
+                                  # Smilei and PIConGPU launch; ParticleMesh's WavefrontTime (its default has the envelope in t − delay alone)
+
+[window]
+start = 256.0                     # the antenna plane is passed at 256 + 60·dx = 263.9, after delay + 6·duration = 260
+
+[plasma]
+density = 0.01                    # n0 in n_c: ω_p = 0.1 ω₀, λ_p = 62.8 c/ω₀
+vacuum = 260.0                    # zero density up to x = 260
+ramp = 60.0                       # sin² up-ramp over 60 c/ω₀, then the plateau
+particles_per_cell = [2, 2]       # 4 electrons per cell on a regular 2 × 2 lattice; ions immobile
+seed = 1                          # unused by a cold load, recorded
+
+[diagnostics]
+spectrum_ekin = [0.0, 100.0, 500] # electron kinetic-energy histogram, mₑc² units: min, max, bins, 0.2 wide (lwfa-2d-a2 went to 20 in bins of 0.1; its fastest electron had 66)
+map_stride = [6, 3]               # the 2D maps keep every 6th column and 3rd row: lwfa-2d-a2's map spacing
+map_outputs = [4, 8, 13]          # which outputs (1-based, of 13) keep a 2D map

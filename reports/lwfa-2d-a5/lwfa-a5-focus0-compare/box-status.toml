@@ -1,0 +1,38 @@
+branch = "runs/lwfa-a5-focus0"
+request_commit = "9f8a3883d791b0d8d956772838afb0c1baadc6ef"
+started = "2026-11-12T02:50:03Z"
+category = "crosscode"
+outputs = ["scripts/runs/lwfa-a5-focus0/smilei-vacuum", "scripts/runs/lwfa-a5-focus0/pm-vacuum"]
+finished = "2026-11-12T02:52:16Z"
+ok = true
+files_returned = 19
+dumps_over_20MB = ["scripts/runs/lwfa-a5-focus0/smilei-vacuum/Fields0.h5"]
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T02:50:03Z"
+exit = 0
+seconds = 80
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T02:51:23Z"
+exit = 0
+seconds = 46
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T02:52:09Z"
+exit = 0
+seconds = 7
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"

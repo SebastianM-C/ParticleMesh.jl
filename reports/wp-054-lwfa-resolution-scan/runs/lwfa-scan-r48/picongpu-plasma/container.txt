@@ -1,0 +1,8 @@
+# picongpu: 0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:89
+# gpu: NVIDIA GeForce RTX 4080 SUPER, 620.70.06
+# cpus: 32
+# cpu model: Intel(R) Core(TM) i9-14900K
+# compile start: 2026-11-12T07:46:38.114225390Z
+# compile end: 2026-11-12T07:47:43.436980014Z
+# start: 2026-11-12T07:47:43.440264627Z
+# end: 2026-11-12T07:49:59.472282056Z

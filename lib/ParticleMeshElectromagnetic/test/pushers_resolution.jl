@@ -51,7 +51,7 @@ const PUSHERS5 = (PUSHERS..., QU)
     digest(num) = (st = EMState(prob, num; backend); initialize!(st, prob); run!(st, params(prob), prob.nsteps); st)
     st = digest(numerics_from_case(case; pusher = QU))
     @test st.numerics.pusher === QU
-    @test all(isfinite, st.hist.K) && all(isfinite, st.fields.Ex)
+    @test all(isfinite, st.recorder.hist.K) && all(isfinite, st.fields.Ex)
     @test state_digest(st) == state_digest(digest(numerics_from_case(case; pusher = QU)))
 end
 

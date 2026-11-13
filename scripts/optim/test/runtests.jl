@@ -205,24 +205,24 @@ include(joinpath(@__DIR__, "..", "witness2d_case.jl"))
 end
 
 @testset "T-681 the witness centre enters through the weights only: one run gives the objective at every centre [A3, WP-047, WP-052]" begin
-    st1 = witness_state(5.0, 0.07, 38.0)
-    st2 = witness_state(5.0, 0.07, 44.0)
+    st1, p1 = witness_state(5.0, 0.07, 38.0)
+    st2, p2 = witness_state(5.0, 0.07, 44.0)
     # lattice_x is the kernel's lattice: the weights it set are the Gaussian of these positions
-    for (st, c) in ((st1, 38.0), (st2, 44.0))
+    for (st, p, c) in ((st1, p1, 38.0), (st2, p2, 44.0))
         x0 = lattice_x(st)
-        g = witness_gains(st)
+        g = witness_gains(st, p)
         @test length(x0) == length(g.w)
         @test g.w ≈ exp.(-((x0 .- c) ./ WCASE.length) .^ 2 ./ 2) rtol = 1e-14
     end
-    @test witness_gains(st1).gain == witness_gains(st2).gain            # test particles: the centre does not move them
-    @test gain_at_centers(st1, [38.0, 44.0]) ≈ [witness_energy_gain(st1), witness_energy_gain(st2)] rtol = 1e-13
-    @test !(witness_energy_gain(st1) ≈ witness_energy_gain(st2))
+    @test witness_gains(st1, p1).gain == witness_gains(st2, p2).gain            # test particles: the centre does not move them
+    @test gain_at_centers(st1, p1, [38.0, 44.0]) ≈ [witness_energy_gain(st1, p1), witness_energy_gain(st2, p2)] rtol = 1e-13
+    @test !(witness_energy_gain(st1, p1) ≈ witness_energy_gain(st2, p2))
     # a lost witness is refused, as witness_energy_gain refuses it (last: this changes st1)
     s = ParticleMeshElectromagnetic.witness_frame(st1).species
     status = Array(s.status)
     status[1] = ParticleMeshElectromagnetic.ParticleMeshCore.FREE
     copyto!(s.status, status)
-    @test_throws ArgumentError gain_at_centers(st1, [40.0])
+    @test_throws ArgumentError gain_at_centers(st1, p1, [40.0])
 end
 
 @testset "T-682 the interior-maximum test of the run's slices refuses one-sided and flat slices [WP-052]" begin

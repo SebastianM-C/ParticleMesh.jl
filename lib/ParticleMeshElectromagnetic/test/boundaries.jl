@@ -200,14 +200,14 @@ end
         slab_init!(sl, geo, :TE)
         foreach(a -> a .= T.(randn(Xoshiro(7), size(a))), values(sl.fields))
         foreach(a -> fill_guards!(a, sl.grid), values(sl.fields))
-        solve_fields!(Yee(), sl.fields, sl.grid, prob.dt, (), zero(T), sl.aux.layer)
+        solve_fields!(Yee(), sl.fields, sl.grid, prob.dt, sl.modifiers, nothing, 1)
         refilled = map(a -> fill_guards!(copy(a), sl.grid), sl.fields)
         @test all(c -> bits(Array(getfield(sl.fields, c))) == bits(Array(getfield(refilled, c))), keys(sl.fields))
-        # no layer: the 7-argument solve is the 6-argument one
+        # no layer: the solve with no modifiers is the periodic one (T-751 holds it against the sub-steps)
         f1 = map(copy, sp.fields)
         f2 = map(copy, sp.fields)
-        solve_fields!(Yee(), f1, sp.grid, pp.dt, (), zero(T), nothing)
-        solve_fields!(Yee(), f2, sp.grid, pp.dt, (), zero(T))
+        solve_fields!(Yee(), f1, sp.grid, pp.dt, sp.modifiers, nothing, 1)
+        solve_fields!(Yee(), f2, sp.grid, pp.dt)
         @test all(c -> bits(Array(getfield(f1, c))) == bits(Array(getfield(f2, c))), keys(f1))
     end
     # the factors of a layer of 4 cells on 16 rows with 3 guards: Node() rows j₀ = 0…3 and 13…15
@@ -217,7 +217,7 @@ end
     for order in (2, 0)
         prob, ab = open_plasma_2d(Float64; layer = 4, strength = 1, order)
         st = open_state(prob, ab)
-        L = st.aux.layer
+        L = open_absorber(st)
         g, n2 = guards(st.grid), ncells(st.grid)[2]
         @test g == 3
         for (fac, s, τ) in ((L.node_full, 0, prob.dt), (L.center_full, 1, prob.dt), (L.node_half, 0, prob.dt / 2),
@@ -327,9 +327,10 @@ end
     @test_throws ArgumentError mk("open")
     @test_throws ArgumentError EMProblem("x", 1.0, 8, 0.1, 1, (), 1, 1.0; boundaries = (:open,))
     @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; absorber = ab))
-    # the time step is the one the layer was made for
+    # the time step is the state's, for which the layer was made: a problem of another one is not this state's
     st = open_state(prob, ab)
-    @test_throws ArgumentError step!(st, EMParams(prob.dt / 2, prob.kmode), 1)
+    half = EMProblem(prob.name, prob.length, prob.cells, prob.dt / 2, prob.nsteps, prob.species, prob.seed, prob.kmode; boundaries = prob.boundaries)
+    @test_throws ArgumentError initialize!(st, half)
     # the case file: grid.boundaries and [numerics.absorbing_layer]
     case = deepcopy(load_case("weibel-2d"))
     case["grid"]["boundaries"] = ["periodic", "open"]

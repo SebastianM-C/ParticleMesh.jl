@@ -27,7 +27,7 @@ Smilei measures its profile over (cells + ½)·Δ, with primal and dual rows off
 
 ## 4. The state of the convolution fields
 
-The convolution fields are part of the field state but not of the arrays in `state_partition`. **Assumption:** `step!` sets them to zero at step 1. Every run from step 1 is then the same run, including a solve of the SciML harness, which takes its steps in order on one integrator. A gradient through the harness's state vector does not see them. They are not parameters (A3), and a PML run through the harness differentiates the fields and particles only.
+The convolution fields are field state: they are among the arrays a run evolves (`evolved`, WP-056), so `state_partition` holds them, a snapshot saves them and a gradient through the harness's state vector sees them. `initialize!` zeroes them with the fields, and no step treats them specially (T-744). They are not parameters (A3).
 
 ## 5. What is left out
 

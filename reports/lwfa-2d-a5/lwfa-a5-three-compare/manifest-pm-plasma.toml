@@ -1,0 +1,15 @@
+case = "lwfa-2d"
+code = "ParticleMesh"
+commit = "a28681ca791ad25b2a22b408e4fcc1c110b1b9ba"
+cpu = "AMD EPYC 9655 96-Core Processor"
+dirty = true
+generator = "scripts/lwfa/lwfa.jl"
+julia = "1.13.3"
+run_id = "lwfa-a5-1/pm-plasma"
+run_seconds = 2656.0884499549866
+threads = 16
+updated = "2026-11-05T20:24:03.057Z"
+
+[inputs]
+"case.toml" = "sha256:3c189e041755de315bcff2c43b2a989ad4ebb1076c4f171b2f64fa5e0a2cf559"
+"kind.txt" = "sha256:c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
