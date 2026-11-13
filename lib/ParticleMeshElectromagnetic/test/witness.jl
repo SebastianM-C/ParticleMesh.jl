@@ -197,6 +197,10 @@ function body_T641(be)
         record!("T-641", T, err)
         @test err <= emC("T-641")
         @test value_of.(g.y) ≈ last.(pts) rtol = 4 * base_eps(T)
+        # the bunch drifted back into the window's back band, where an observable is not to be read (#370): refused
+        edge = window_back_band(st) * h[1]
+        @test any(<(edge), value_of.(g.x))
+        @test_throws ArgumentError witness_energy_gain(st)
 
         prob = witness_in_window(T; momentum = zero(T), region = ((1, 4), (0, 3)))
         st = EMState(prob, EMNumerics(); backend = be)
