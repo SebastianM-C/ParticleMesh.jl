@@ -78,11 +78,12 @@ The state of a 2D problem ([`EMState`](@ref)): the grid of `problem.cells` cells
 `flux_extras(T, 2)` (the old position per axis, which the push stores), the workspaces, the fields
 of [`field_layout`](@ref)`(Val(2))`, `ρ`, the kinetic-energy chunks `K` (one entry per
 [`KINETIC_CHUNK`](@ref) slots of each species; none without species), the default [`HistoryRecorder`](@ref) for
-`problem.kmode` and `problem.nsteps` steps, and in `aux`: the spectral workspace and the potential
-`φ` of the initial solve, the [`AntennaPlane`](@ref)s of the problem's lasers (`antennas`: where
-each plane lies on the grid, not the laser), the absorber placed on the grid (`layer`: the
-absorbing layer's [`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref), `nothing` for a
-periodic box), the moving window's [`WindowFrame`](@ref) (`window`, `nothing` without one; its
+`problem.kmode` and `problem.nsteps` steps, the field modifiers of the mesh solve
+([`field_modifiers`](@ref): the absorber placed on the grid, the absorbing layer's
+[`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref); the back edge's [`BackPMLFields`](@ref);
+the [`AntennaPlanes`](@ref) of the problem's lasers, where each plane lies on the grid, not the
+laser; the window's [`WindowEdges`](@ref)), and in `aux`: the spectral workspace and the potential
+`φ` of the initial solve, the moving window's [`WindowFrame`](@ref) (`window`, `nothing` without one; its
 species buffers then hold `(1 + numerics.headroom)` times the window's particles) and the
 [`WitnessFrame`](@ref) of a witness bunch (`witness`, or `nothing`).
 
@@ -117,10 +118,10 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
         throw(ArgumentError("back_absorber = $(numerics.back_absorber): the window's back edge takes a PML(...) or nothing"))
     problem.window === nothing && numerics.back_absorber !== nothing &&
         throw(ArgumentError("back_absorber = $(numerics.back_absorber) needs a moving window (boundaries = (:window, ·))"))
-    window = problem.window === nothing ? nothing :
-             WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes; back = numerics.back_absorber, workgroupsize = wgs)
+    window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
+    back = numerics.back_absorber === nothing ? nothing : BackPMLFields(numerics.back_absorber, grid, problem.dt; backend, workgroupsize = wgs)
     planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
-    window === nothing || check_window_antennas(window, map(Antenna, params(problem).lasers, planes))
+    window === nothing || check_window_antennas(window, back, map(Antenna, params(problem).lasers, planes))
     witness = problem.witness === nothing ? nothing : WitnessFrame(problem, grid, backend)
     species = map(problem.species) do d
         cap = prod(n) * prod(d.ppc)
@@ -132,10 +133,41 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), species; init = 0)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
-           antennas = planes, layer = layer, window = window, witness = witness)
+           window = window, witness = witness)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
-                   KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species), aux)
+                   KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
+                   field_modifiers(layer, back, planes, window), aux)
 end
+
+"""
+    field_modifiers(layer, back, planes, window) -> Tuple
+
+The [`FieldModifier`](@ref)s of a 2D state, in the order the mesh solve walks them
+([`solve_fields!`](@ref)), from what the state placed on its grid (each `nothing` or empty where
+the problem has none): the open axis' absorber `layer`, the back edge's PML `back`, the antenna
+`planes` and the moving window's frame. Around each Yee sub-step that is
+
+    before:  the absorbing layer's half damping
+    the Yee update
+    after:   the open axis' PML correction, the back edge's PML correction, the antennas'
+             corrections, the absorbing layer's half damping, the window's zero x-guards
+
+so a PML corrects the curl the update has just taken before a source is added to it, the
+absorbing layer damps what the sub-step and its source left (symmetric splitting), and the
+window's edges are set last, over whatever the others wrote into the x-guards. The order is the
+tuple's: a PML first, an absorbing layer after the antennas (an open axis has one or the other),
+the edges last.
+"""
+field_modifiers(layer, back, planes::Tuple, window) =
+    (modifier_first(layer)..., present(back)..., antenna_modifier(planes, window)..., modifier_late(layer)..., present(edges_of(window))...)
+
+present(::Nothing) = ()
+present(m::FieldModifier) = (m,)
+modifier_first(::Any) = ()
+modifier_late(::Any) = ()
+antenna_modifier(::Tuple{}, window) = ()
+antenna_modifier(planes::Tuple, window) = (AntennaPlanes(planes, WindowClock(window)),)
+edges_of(::Nothing) = nothing
 
 "The kinetic energy of every chunk of particle slots at the current momenta, into `st.K` (deterministic, no deposition)."
 function kinetic!(st::EMState{2})
@@ -151,8 +183,8 @@ function kinetic!(st::EMState{2})
 end
 
 function check_aux_setup(st::EMState{2}, problem, wrong)
-    (; layer, window) = st.aux
-    (problem.boundaries[2] === :open) == (layer !== nothing) || wrong("axis 2 is $(problem.boundaries[2])")
+    window = st.aux.window
+    (problem.boundaries[2] === :open) == (open_absorber(st) !== nothing) || wrong("axis 2 is $(problem.boundaries[2])")
     (problem.window === nothing ? window === nothing : window !== nothing && window.window == problem.window) ||
         wrong("the moving window $(problem.window)")
     w = witness_frame(st)
@@ -164,11 +196,11 @@ function check_aux_setup(st::EMState{2}, problem, wrong)
 end
 
 function check_aux_params(st::EMState{2}, p::EMParams)
-    (; antennas, window) = st.aux
+    antennas, window = antenna_planes(st), st.aux.window
     length(p.lasers) == length(antennas) ||
         throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state"))
     foreach((l, a) -> check_plane(a, l), p.lasers, antennas)
-    window === nothing || check_window_antennas(window, map(Antenna, p.lasers, antennas))
+    window === nothing || check_window_antennas(window, back_absorber(st), map(Antenna, p.lasers, antennas))
     (p.witness === nothing) == (witness_frame(st) === nothing) ||
         throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
     p.profile === nothing || window !== nothing ||
@@ -331,16 +363,9 @@ function step!(st::EMState{2}, p::EMParams, k::Integer; observer = st.recorder)
     end
     retire_x!(st.aux.window, st)
     current!(numerics.current, st)
-    retire!(st.aux.layer, st)
+    retire!(open_absorber(st), st)
     kinetic!(st)
-    window = st.aux.window
-    antennas = map(Antenna, p.lasers, st.aux.antennas)
-    if window === nothing
-        solve_fields!(numerics.solver, fields, grid, dt, antennas, (k - 1) * dt, st.aux.layer; workgroupsize = wgs)
-    else
-        solve_fields!(numerics.solver, fields, grid, dt, window_antennas(antennas, window_shifts(window, k - 1)), (k - 1) * dt,
-                      st.aux.layer, window; workgroupsize = wgs)
-        advance_window!(window, st, p, k)
-    end
+    solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs)
+    advance_window!(st.aux.window, st, p, k)
     return st
 end

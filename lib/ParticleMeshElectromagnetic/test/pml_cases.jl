@@ -114,7 +114,7 @@ function pml_step_digests(; workgroupsize = nothing, be = CPU())
         prob, _ = open_plasma_2d(T; nsteps = 20)
         st = open_state(prob, PML(; cells = 4, kappa_max = 2, alpha_max = 0.1); workgroupsize, be)
         run!(st, params(prob), prob.nsteps)
-        L = st.aux.layer
+        L = open_absorber(st)
         h = state_digest_2d(st)
         for a in (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
             h = hash(bits(a), h)

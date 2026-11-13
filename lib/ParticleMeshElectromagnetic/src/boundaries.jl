@@ -75,9 +75,10 @@ along axis 2 (guards included), applied before and after a sub-step of length τ
 `Node()` and at `Center()` along y and for τ = Δt/2 (`half`, the B half steps: factors
 exp(−σΔt/4)) and τ = Δt (`full`, the E step: exp(−σΔt/2)); the number of layer rows `cells`,
 the guard width and the interior rows, which fix the rows the damping visits. `dt` is the time
-step the factors were made for.
+step the factors were made for. A [`FieldModifier`](@ref): it damps the components a sub-step
+updates before the sub-step and after it, and has no parameter half.
 """
-struct LayerFactors{V,T}
+struct LayerFactors{V,T} <: FieldModifier
     node_half::V
     center_half::V
     node_full::V
@@ -129,9 +130,8 @@ end
 
 # The layer's half damping before and after each Yee sub-step: B around a half step, E around the
 # full step, each component with the factor of its own stagger along y (field_layout(Val(2))): Ex,
-# Ez, By on Node() rows, Ey, Bx, Bz on Center() rows. With no layer nothing is done.
-absorb_b!(::Nothing, f, wgs) = nothing
-absorb_e!(::Nothing, f, wgs) = nothing
+# Ez, By on Node() rows, Ey, Bx, Bz on Center() rows. Symmetric splitting, second order in Δt. The
+# damping writes the guard rows with their interior images' factors, so every guard stays filled.
 function absorb_b!(L::LayerFactors, f, wgs)
     absorb_rows!(f.Bx, L.center_half, L, wgs)
     absorb_rows!(f.By, L.node_half, L, wgs)
@@ -145,33 +145,11 @@ function absorb_e!(L::LayerFactors, f, wgs)
     return nothing
 end
 
-"""
-    solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, layer; workgroupsize = nothing)
-
-The Yee step with the antennas' corrections ([`solve_fields!`](@ref) with antennas) and the
-absorbing layer (a [`LayerFactors`](@ref), or `nothing`): before each sub-step and after it and
-its antenna correction, the components it updates are multiplied by exp(−σ·τ/2) in the layer
-rows, τ the sub-step's length (symmetric splitting, second order in Δt). With `layer = nothing` it
-is the step with antennas, bit for bit. The damping writes the guard rows with their interior
-images' factors, so every guard stays filled.
-"""
-function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, layer; workgroupsize = nothing)
-    T = eltype(f.Ex)
-    h = T(dt) / 2
-    absorb_b!(layer, f, workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    antenna_b!(antennas, f, h, t, workgroupsize)
-    absorb_b!(layer, f, workgroupsize)
-    absorb_e!(layer, f, workgroupsize)
-    yee_e!(f, grid, dt; workgroupsize)
-    antenna_e!(antennas, f, dt, t + h, workgroupsize)
-    absorb_e!(layer, f, workgroupsize)
-    absorb_b!(layer, f, workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
-    absorb_b!(layer, f, workgroupsize)
-    return f
-end
+modifier_late(L::LayerFactors) = (L,)
+before_substep!(L::LayerFactors, mp, f, grid, ::BHalf, wgs) = absorb_b!(L, f, wgs)
+after_substep!(L::LayerFactors, mp, f, grid, ::BHalf, wgs) = absorb_b!(L, f, wgs)
+before_substep!(L::LayerFactors, mp, f, grid, ::EStep, wgs) = absorb_e!(L, f, wgs)
+after_substep!(L::LayerFactors, mp, f, grid, ::EStep, wgs) = absorb_e!(L, f, wgs)
 
 # Particles that left the box across the open axis 2 this step are retired: below the Courant
 # limit a particle moves less than one cell per axis per step, so its cell along axis 2 changes by

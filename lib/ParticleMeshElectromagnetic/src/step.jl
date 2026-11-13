@@ -138,8 +138,8 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
 - Evolved by `initialize!` and `step!`, and nothing else is ([`evolved`](@ref) is the list, as a
   tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
   momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
-  guards, and at N = 2 in `aux` the convolution fields of a PML (in `layer` and in the window's
-  `back`), the window's counters `lost` and `fast` and the witness bunch's particles. With the
+  guards, and at N = 2 the convolution fields of a PML (in `modifiers`) and in `aux` the
+  window's counters `lost` and `fast` and the witness bunch's particles. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
 - The cache: the kinetic energy buffer `K` that a step leaves for the next observation (at N = 1
@@ -149,19 +149,25 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
 - Scratch, written before it is read within a call: the species' workspaces `ws` and extras (the
   old position the push stores), the field `ρ` (the charge for the initial field, then the scratch
   of the current filter and of the window's shift), and at N = 2 in `aux` the spectral workspace
-  and the potential `φ` of the initial solve, the PMLs' shift scratch and the refill's `flags`.
+  and the potential `φ` of the initial solve and the refill's `flags`, and the PMLs' shift scratch.
 - Configuration: the `numerics`, the `grid` (`PeriodicGrid{N}`), the time step `dt` (to time what
   the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
   of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
-  species' charge and mass, and at N = 2 in `aux` the antenna planes ([`AntennaPlane`](@ref)),
-  the placed absorber's coefficient tables, the [`WindowFrame`](@ref) and the
+  species' charge and mass, and at N = 2 in `aux` the [`WindowFrame`](@ref) and the
   [`WitnessFrame`](@ref) (`nothing` where the problem has none). `aux` is empty at N = 1.
+- `modifiers`: the tuple of [`FieldModifier`](@ref)s that the mesh solve walks
+  ([`solve_fields!`](@ref)), in the order [`field_modifiers`](@ref) gives them: the placed
+  absorber of an open axis (a PML's coefficient tables and convolution fields, or an absorbing
+  layer's factors), the PML of a moving window's back edge, the antenna planes
+  ([`AntennaPlanes`](@ref)) and the window's x edges. Each is held here and nowhere else in the
+  state (`open_absorber`, `back_absorber` and `antenna_planes` find them). Empty for a periodic
+  box without lasers, and at N = 1.
 - `recorder`: the state's default observer, a [`HistoryRecorder`](@ref) for the problem's
   diagnostic `kmode` and `nsteps`. A step does not read it; `step!` hands it to
   [`observe!`](@ref) unless another observer is given.
 """
-struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,KB,R,SU<:Tuple,X<:NamedTuple}
+struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,KB,R,SU<:Tuple,MD<:Tuple{Vararg{FieldModifier}},X<:NamedTuple}
     numerics::NU
     grid::G
     dt::T
@@ -172,8 +178,28 @@ struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:Name
     K::KB
     recorder::R
     setup::SU
+    modifiers::MD
     aux::X
 end
+
+"The placed absorber of a state's open axis (a [`LayerFactors`](@ref) or a [`PMLFields`](@ref)), or `nothing`."
+open_absorber(st::EMState) = pick_modifier(Union{LayerFactors,PMLFields}, st.modifiers)
+"The placed PML of a moving window's back edge (a [`BackPMLFields`](@ref)), or `nothing`."
+back_absorber(st::EMState) = pick_modifier(BackPMLFields, st.modifiers)
+"The antenna planes of a state, one [`AntennaPlane`](@ref) per laser; `()` without lasers."
+antenna_planes(st::EMState) = antenna_planes(pick_modifier(AntennaPlanes, st.modifiers))
+antenna_planes(::Nothing) = ()
+
+"""
+    with_modifiers(state, modifiers::Tuple) -> EMState
+
+`state` with another tuple of [`FieldModifier`](@ref)s, which its steps then walk, and everything
+else the same arrays (no copy: the two states are one run, use one of them). How a modifier that
+the state's constructor does not know joins a state, at the place in the tuple its order in the
+solve asks for: `with_modifiers(state, (state.modifiers..., m))`.
+"""
+with_modifiers(st::EMState, modifiers::Tuple) =
+    EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux)
 
 Base.ndims(::EMState{N}) where {N} = N
 Base.eltype(::EMState{N,T}) where {N,T} = T
@@ -205,7 +231,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU())
     ws = map(s -> Workspace(s, grid), species)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = numerics.workgroupsize)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
-                   field(backend, T, grid), recorder, map(species_setup, problem.species), NamedTuple())
+                   field(backend, T, grid), recorder, map(species_setup, problem.species), (), NamedTuple())
 end
 
 # The mode the depositions of `s` run in: the step sorts when it is `Reference()` and passes it,
@@ -437,7 +463,7 @@ function step!(st::EMState{1}, p::EMParams, k::Integer; observer = st.recorder)
     fold_guards!(fields.Jz, grid; workgroupsize = wgs)
     filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs)
     kinetic!(st)
-    solve_fields!(numerics.solver, fields, grid, dt; workgroupsize = wgs)
+    solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs)
     return st
 end
 

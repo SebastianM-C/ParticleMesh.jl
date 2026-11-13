@@ -355,23 +355,28 @@ function antenna_e!(as::Tuple, f, dt, t, wgs)
 end
 
 """
-    solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t; workgroupsize = nothing)
+    AntennaPlanes(planes, clock)
 
-The Yee step of [`solve_fields!`](@ref) from time `t` to `t + dt` with the antennas'
-total-field/scattered-field corrections after each sub-step: after the first B half step the
-incident E at time `t`, after the E step the incident B at `t + dt/2`, after the second B half
-step the incident E at `t + dt` (see [`Antenna`](@ref)). With no antennas it is the plain step,
-bit for bit. The corrected columns lie away from the x-guards, and the corrections write the
-y-guards with the values of their interior images, so every guard stays filled.
+The laser antennas of a state as one [`FieldModifier`](@ref). Its state half is the `planes`, one
+[`AntennaPlane`](@ref) per laser of the problem, in the lasers' order, and the `clock` of a moving
+window (a [`WindowClock`](@ref), `nothing` on a static grid): the planes stay in the lab frame, so
+their window columns move back with the window's shifts. Its parameter half is the lasers of the
+run's parameters (`params.lasers`, A3): at step `k` the [`Antenna`](@ref)s of those lasers on the
+planes, where the window has them at the start of the step. After each Yee sub-step it adds the
+total-field/scattered-field corrections: after the first B half step the incident E at the start
+of the step, after the E step the incident B half a step later, after the second B half step the
+incident E at the end. The corrected columns lie away from the x-guards, and the corrections
+write the y-guards with the values of their interior images, so every guard stays filled.
 """
-function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t; workgroupsize = nothing)
-    T = eltype(f.Ex)
-    h = T(dt) / 2
-    yee_b_half!(f, grid, h; workgroupsize)
-    antenna_b!(antennas, f, h, t, workgroupsize)
-    yee_e!(f, grid, dt; workgroupsize)
-    antenna_e!(antennas, f, dt, t + h, workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
-    return f
+struct AntennaPlanes{P<:Tuple,C} <: FieldModifier
+    planes::P
+    clock::C
+    AntennaPlanes(planes::Tuple, clock) = new{typeof(planes),typeof(clock)}(planes, clock)
 end
+
+antenna_planes(m::AntennaPlanes) = m.planes
+modifier_params(m::AntennaPlanes, p, k) = placed_antennas(m.clock, map(Antenna, p.lasers, m.planes), k)
+placed_antennas(::Nothing, antennas::Tuple, k) = antennas
+
+after_substep!(::AntennaPlanes, antennas::Tuple, f, grid, s::BHalf, wgs) = antenna_b!(antennas, f, s.τ, s.t, wgs)
+after_substep!(::AntennaPlanes, antennas::Tuple, f, grid, s::EStep, wgs) = antenna_e!(antennas, f, s.τ, s.t, wgs)

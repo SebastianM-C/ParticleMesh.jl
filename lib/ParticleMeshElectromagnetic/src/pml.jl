@@ -140,9 +140,10 @@ and the convolution fields ψ of the four y-difference terms (`ψBx`,
 `ψBz` on Center() rows, `ψEx`, `ψEz` on Node() rows), each of n₁ columns by 2·cells layer rows
 (the first `cells` interior rows and the last `cells`), zero at t = 0, and a scratch array of
 their size for the moving window's shift. `dt` is the time step the coefficients were made for,
-`sigma_max` the σ_max they use.
+`sigma_max` the σ_max they use. A [`FieldModifier`](@ref): a correction after each sub-step, with
+no parameter half.
 """
-struct PMLFields{V,M,T}
+struct PMLFields{V,M,T} <: FieldModifier
     node::NTuple{3,V}
     center::NTuple{3,V}
     ψBx::M
@@ -228,38 +229,13 @@ function pml_e!(L::PMLFields, f, grid, dt, wgs)
     return nothing
 end
 
-"""
-    solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, pml::PMLFields[, window]; workgroupsize = nothing)
-
-The Yee step with the antennas' corrections and the convolutional PML: after each Yee sub-step,
-the PML's correction of the four y-difference terms in the layer rows (their convolution fields
-advanced first, B's in the second half step only), then the antennas' correction, then, with a
-moving window's [`WindowFrame`](@ref) (WP-028), the zero x-guards of the components the sub-step
-updated. With a zero profile (σ = α = 0, κ = 1) the corrections add zero, so the step is the
-antennas' solve (and the window's) bit for bit up to the sign of zero.
-"""
-solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, L::PMLFields; workgroupsize = nothing) =
-    solve_fields!(Yee(), f, grid, dt, antennas, t, L, nothing; workgroupsize)
-function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, L::PMLFields, window; workgroupsize = nothing)
-    T = eltype(f.Ex)
-    h = T(dt) / 2
-    yee_b_half!(f, grid, h; workgroupsize)
-    pml_b!(L, f, grid, h, false, workgroupsize)
-    back_b!(window, f, grid, h, false, workgroupsize)
-    antenna_b!(antennas, f, h, t, workgroupsize)
-    edges_b!(window, f, workgroupsize)
-    yee_e!(f, grid, dt; workgroupsize)
-    pml_e!(L, f, grid, dt, workgroupsize)
-    back_e!(window, f, grid, dt, workgroupsize)
-    antenna_e!(antennas, f, dt, t + h, workgroupsize)
-    edges_e!(window, f, workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    pml_b!(L, f, grid, h, true, workgroupsize)
-    back_b!(window, f, grid, h, true, workgroupsize)
-    antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
-    edges_b!(window, f, workgroupsize)
-    return f
-end
+# The PML as a field modifier: after each Yee sub-step, its correction of the four y-difference
+# terms in the layer rows (their convolution fields advanced first, B's in the second half step
+# only). With a zero profile (σ = α = 0, κ = 1) the corrections add zero, so the solve is the one
+# without it bit for bit up to the sign of zero (T-544).
+modifier_first(L::PMLFields) = (L,)
+after_substep!(L::PMLFields, mp, f, grid, s::BHalf, wgs) = pml_b!(L, f, grid, s.τ, s.second, wgs)
+after_substep!(L::PMLFields, mp, f, grid, s::EStep, wgs) = pml_e!(L, f, grid, s.τ, wgs)
 
 # The moving window's shift (WP-028) moves E and B one column back; the convolution fields belong
 # to the same points and move with them: ψ[i, k] ← ψ[i + 1, k] on the columns 1 … n₁ − 1, zero on
@@ -303,13 +279,14 @@ reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.�
 """
     BackPMLFields
 
-The PML of the moving window's back edge placed on a grid ([`WindowFrame`](@ref)'s `back`): per
+The PML of the moving window's back edge placed on a grid (a state's `back_absorber`): per
 stagger along x (`node` for E's x-differences, `center` for B's) the coefficients b, c (τ = Δt)
 and q = 1/κ − 1 per layer column, the convolution fields `ψBy`, `ψBz` (Center() columns) and
 `ψEy`, `ψEz` (Node() columns), each `cells` columns by n₂ rows, zero at t = 0, and a scratch of
-their size for the shift. `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁).
+their size for the shift. `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁). A
+[`FieldModifier`](@ref) of a moving-window state, after the open axis' PML in its tuple.
 """
-struct BackPMLFields{V,M,T}
+struct BackPMLFields{V,M,T} <: FieldModifier
     node::NTuple{3,V}
     center::NTuple{3,V}
     ψBy::M
@@ -380,11 +357,7 @@ end
 
 # After a B half step of length h: By += h(q·D⁺ₓEz + ψBy), Bz −= h(q·D⁺ₓEy + ψBz) on their Center()
 # columns, ψ advanced in the second half step only; after the E step: Ey −= Δt(q·D⁻ₓBz + ψEy),
-# Ez += Δt(q·D⁻ₓBy + ψEz) on Node() columns. Without a window or a back-edge PML nothing is done.
-back_b!(::Nothing, f, grid, h, adv, wgs) = nothing
-back_e!(::Nothing, f, grid, dt, wgs) = nothing
-back_b!(w, f, grid, h, adv, wgs) = back_b!(w.back, f, grid, h, adv, wgs)
-back_e!(w, f, grid, dt, wgs) = back_e!(w.back, f, grid, dt, wgs)
+# Ez += Δt(q·D⁻ₓBy + ψEz) on Node() columns.
 function back_b!(L::BackPMLFields, f, grid, h, adv, wgs)
     T = eltype(f.By)
     rdx = inv(cellsize(grid)[1])
@@ -399,6 +372,9 @@ function back_e!(L::BackPMLFields, f, grid, dt, wgs)
     back_correct!(f.Ez, L.ψEz, f.By, L.node, T(dt), rdx, false, true, L, grid, wgs)
     return nothing
 end
+
+after_substep!(L::BackPMLFields, mp, f, grid, s::BHalf, wgs) = back_b!(L, f, grid, s.τ, s.second, wgs)
+after_substep!(L::BackPMLFields, mp, f, grid, s::EStep, wgs) = back_e!(L, f, grid, s.τ, wgs)
 
 # The window's shift: ψ[k, j] ← ψ[k + 1, j] on the layer columns 1 … cells − 1, zero on the last
 # (its field point comes from outside the layer, where nothing was convolved).
@@ -415,8 +391,6 @@ function shift_absorber!(L::BackPMLFields, wgs)
     return nothing
 end
 reset_absorber!(L::BackPMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBy, L.ψBz, L.ψEy, L.ψEz)); nothing)
-reset_back!(::Nothing) = nothing
-reset_back!(w) = reset_absorber!(w.back)
 
 """
     reset_convolution!(state) -> state
@@ -427,8 +401,13 @@ step does (the fields are part of what a run evolves, [`evolved`](@ref)), so who
 fields of a state that has run by hand, instead of `initialize!` or [`restore!`](@ref), calls it
 too.
 """
-reset_convolution!(st::EMState{1}) = st
-reset_convolution!(st::EMState{2}) = (reset_absorber!(st.aux.layer); reset_back!(st.aux.window); st)
+reset_convolution!(st::EMState) = (reset_absorbers!(st.modifiers); st)
+@generated function reset_absorbers!(ms::NTuple{M,FieldModifier}) where {M}
+    return quote
+        Base.Cartesian.@nexprs $M i -> reset_absorber!(ms[i])
+        return nothing
+    end
+end
 "The columns the back-edge PML takes (0 without one)."
 back_cells(::Nothing) = 0
 back_cells(L::BackPMLFields) = L.cells

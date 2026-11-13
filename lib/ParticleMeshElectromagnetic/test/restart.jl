@@ -11,7 +11,7 @@ using SciMLBase: SciMLBase, DiscreteProblem, ReturnCode, remake, solve
 using OrdinaryDiffEqFunctionMap: FunctionMap
 
 "The eight convolution fields of a state with a PML on the open axis and on the window's back edge."
-psis(s) = (L = s.aux.layer; B = s.aux.window.back; (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
+psis(s) = (L = open_absorber(s); B = back_absorber(s); (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
 
 """
     evolved_host(st) -> Vector{Pair{String,Any}}
@@ -29,12 +29,12 @@ function evolved_host(st::EMState)
     end
     append!(out, map((n, a) -> string(n) => Array(a), keys(st.fields), values(st.fields)))
     ndims(st) == 2 || return out
-    (; layer, window) = st.aux
+    layer, window = open_absorber(st), st.aux.window
     layer isa PMLFields && append!(out, map((n, a) -> "layer $n" => Array(a), ("ψBx", "ψBz", "ψEx", "ψEz"), (layer.ψBx, layer.ψBz, layer.ψEx, layer.ψEz)))
     window === nothing && return out
     append!(out, map(a -> "lost" => Array(a), window.lost))
     append!(out, map(a -> "fast" => Array(a), window.fast))
-    b = window.back
+    b = back_absorber(st)
     b === nothing || append!(out, map((n, a) -> "back $n" => Array(a), ("ψBy", "ψBz", "ψEy", "ψEz"), (b.ψBy, b.ψBz, b.ψEy, b.ψEz)))
     return out
 end
@@ -291,12 +291,13 @@ function scramble_scratch!(st::EMState)
         fill!(ws.seg_stop, Int32(2))
     end
     ndims(st) == 2 || return st
-    (; φ, spectral, layer, window) = st.aux
+    (; φ, spectral, window) = st.aux
+    layer, back = open_absorber(st), back_absorber(st)
     junk!((φ, spectral.re, spectral.im, st.recorder.aux.partials))
     layer isa PMLFields && junk!(layer.scratch)
+    back === nothing || junk!(back.scratch)
     window === nothing && return st
     junk!(window.flags)
-    window.back === nothing || junk!(window.back.scratch)
     return st
 end
 
@@ -326,7 +327,7 @@ function body_T742(be)
     T = Float64
     prob, num = restart_full(T; species = 2)
     st = EMState(prob, num; backend = be)
-    f, L, w, b = st.fields, st.aux.layer, st.aux.window, st.aux.window.back
+    f, L, w, b = st.fields, open_absorber(st), st.aux.window, back_absorber(st)
     sp(s) = (s.cell[1], s.cell[2], s.offset[1], s.offset[2], s.u[1], s.u[2], s.u[3], s.w, s.status, s.count)
     expected = (sp(st.species[1])..., sp(st.species[2])..., f.Ex, f.Ey, f.Ez, f.Bx, f.By, f.Bz, f.Jx, f.Jy, f.Jz,
                 L.ψBx, L.ψBz, L.ψEx, L.ψEz, w.lost[1], w.lost[2], w.fast[1], w.fast[2], b.ψBy, b.ψBz, b.ψEy, b.ψEz, sp(st.aux.witness.species)...)
@@ -341,9 +342,9 @@ function body_T742(be)
     @test v.K === K2 && v.recorder === rec2 && v.K !== st.K && v.recorder !== st.recorder
     @test v.ws === st.ws && v.ρ === st.ρ && v.numerics === st.numerics && v.grid === st.grid && v.dt === st.dt && v.setup === st.setup
     @test all(map((a, c) -> a.extras === c.extras && a.q === c.q && a.m === c.m, (v.species..., v.aux.witness.species), (st.species..., st.aux.witness.species)))
-    @test v.aux.antennas === st.aux.antennas && v.aux.spectral === st.aux.spectral && v.aux.φ === st.aux.φ && v.aux.layer.scratch === L.scratch &&
-          v.aux.layer.node === L.node && v.aux.layer.center === L.center && v.aux.window.flags === w.flags && v.aux.window.back.scratch === b.scratch &&
-          v.aux.window.back.node === b.node && v.aux.window.back.center === b.center &&
+    @test antenna_planes(v) === antenna_planes(st) && v.aux.spectral === st.aux.spectral && v.aux.φ === st.aux.φ && open_absorber(v).scratch === L.scratch &&
+          open_absorber(v).node === L.node && open_absorber(v).center === L.center && v.aux.window.flags === w.flags && back_absorber(v).scratch === b.scratch &&
+          back_absorber(v).node === b.node && back_absorber(v).center === b.center &&
           (v.aux.window.window, v.aux.window.dt, v.aux.window.dx1, v.aux.window.n1, v.aux.window.inj, v.aux.window.g) === (w.window, w.dt, w.dx1, w.n1, w.inj, w.g) &&
           (v.aux.witness.kinj, v.aux.witness.c0, v.aux.witness.nc, v.aux.witness.ppc) === (st.aux.witness.kinj, st.aux.witness.c0, st.aux.witness.nc, st.aux.witness.ppc)
     @test_throws ArgumentError on_evolved(st, copies[1:(end - 1)], K2, rec2)
@@ -523,7 +524,7 @@ end
         num = EMNumerics(; current = Esirkepov(), absorber = PML(; cells = 4, sigma_max = 1.5, order = 3, kappa_max = 2, kappa_order = 2, alpha_max = 0.2))
         dp = DiscreteProblem(prob, num; backend, save_everystep = false)
         half = solve(dp, FunctionMap())
-        @test any(!iszero, Array(harness_state(half, half.u[end]).aux.layer.ψEx))
+        @test any(!iszero, Array(open_absorber(harness_state(half, half.u[end])).ψEx))
         rest = solve(remake(dp; u0 = half.u[end]), FunctionMap())
         hrest = history_bits(harness_state(rest))
         ref = EMState(prob, num; backend)
@@ -551,7 +552,7 @@ function body_T744(be)
         a = EMState(prob, num; backend = be)
         initialize!(a, prob)
         run!(a, p, 10; observer = nothing)
-        L = a.aux.layer
+        L = open_absorber(a)
         @test all(ψ -> any(!iszero, Array(ψ)), (L.ψBx, L.ψBz, L.ψEx, L.ψEz))
         snap = snapshot(a, 10)
         run!(a, p, 10; first = 11, observer = nothing)

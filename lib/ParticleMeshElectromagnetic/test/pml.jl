@@ -201,8 +201,8 @@ end
         initialize!(sl, prob)
         foreach(a -> (a .= T.(randn(Xoshiro(7), size(a))); fill_guards!(a, sl.grid)), values(sl.fields))
         plain = map(copy, sl.fields)
-        solve_fields!(Yee(), sl.fields, sl.grid, prob.dt, (), zero(T), sl.aux.layer)
-        solve_fields!(Yee(), plain, sl.grid, prob.dt, (), zero(T))
+        solve_fields!(Yee(), sl.fields, sl.grid, prob.dt, sl.modifiers, nothing, 1)
+        solve_fields!(Yee(), plain, sl.grid, prob.dt)
         refilled = map(a -> fill_guards!(copy(a), sl.grid), sl.fields)
         @test all(c -> bits(Array(getfield(sl.fields, c))) == bits(Array(getfield(refilled, c))), keys(sl.fields))
         g, n = guards(sl.grid), ncells(sl.grid)
@@ -229,7 +229,7 @@ end
         start = snapshot(used, 0)
         step!(fresh, params(prob), 1)
         run!(used, params(prob), 5)
-        @test any(!iszero, Array(used.aux.layer.ψEx))
+        @test any(!iszero, Array(open_absorber(used).ψEx))
         foreach(copyto!, values(used.fields), values(init))
         step!(used, params(prob), 1)
         @test !same_fields(fresh, used)
@@ -247,7 +247,7 @@ end
     prob, _ = open_plasma_2d(Float64; layer = 4)
     pml = PML(; cells = 4, sigma_max = 1.5, order = 3, kappa_max = 2, kappa_order = 2, alpha_max = 0.2, alpha_order = 1)
     st = open_state(prob, pml)
-    L = st.aux.layer
+    L = open_absorber(st)
     n2 = ncells(st.grid)[2]
     for (set, sh) in ((L.node, 0), (L.center, 1))
         τ = prob.dt
@@ -355,7 +355,7 @@ end
                 a = Array(getfield(st.fields, c))
                 @test all(x -> partials(x)[1] == value(x) && iszero(partials(x)[2]) && iszero(partials(x)[3]), a)
             end
-            ψ = Array(st.aux.layer.ψEz)
+            ψ = Array(open_absorber(st).ψEz)
             @test all(x -> partials(x)[1] == value(x), ψ)
         end
     end
@@ -379,7 +379,7 @@ end
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 2)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 8)))
     st = open_state(prob, PML(; cells = 7))
-    @test st isa EMState{2} && st.aux.layer isa PMLFields
+    @test st isa EMState{2} && open_absorber(st) isa PMLFields
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4), filter = BinomialFilter(1)))
     # the case file: [numerics.pml], exactly one absorber
     case = deepcopy(load_case("weibel-2d"))
@@ -447,7 +447,7 @@ end
     end
     # the shift of the convolution fields
     st = window_state(warm(Float64); absorber = PML(; cells = 4, kappa_max = 2, alpha_max = 0.1))
-    L = st.aux.layer
+    L = open_absorber(st)
     foreach(c -> (getfield(L, c) .= randn(Xoshiro(17), size(getfield(L, c)))), (:ψBx, :ψBz, :ψEx, :ψEz))
     before = map(c -> copy(getfield(L, c)), (:ψBx, :ψBz, :ψEx, :ψEz))
     PME_shift = ParticleMeshElectromagnetic.shift_absorber!

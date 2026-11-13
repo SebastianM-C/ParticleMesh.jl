@@ -31,13 +31,16 @@ convolution_fields(L::PMLFields) = (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
 convolution_fields(L::BackPMLFields) = (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
 
 window_arrays(::Nothing) = ()
-window_arrays(w::WindowFrame) = (w.lost..., w.fast..., convolution_fields(w.back)...)
+window_arrays(w::WindowFrame) = (w.lost..., w.fast...)
 
 witness_arrays(::Nothing) = ()
 witness_arrays(w::WitnessFrame) = species_arrays(w.species)
 
-evolved_aux(::EMState{1}) = ()
-evolved_aux(st::EMState{2}) = (convolution_fields(st.aux.layer)..., window_arrays(st.aux.window)..., witness_arrays(st.aux.witness)...)
+# What a run evolves besides the particles and the fields, in `evolved`'s order: the modifiers'
+# convolution fields are named here one by one (the window's counters lie between the two PMLs'),
+# so a modifier with evolved arrays of its own takes its place in this list and in `aux_on`.
+evolved_aux(st::EMState) = (convolution_fields(open_absorber(st))..., window_arrays(window_frame(st))...,
+                            convolution_fields(back_absorber(st))..., witness_arrays(witness_frame(st))...)
 
 """
     evolved(state::EMState) -> Tuple
@@ -99,8 +102,7 @@ function window_on(w::WindowFrame, a::Tuple)
     ns = Val(length(w.lost))
     lost, a = take(a, ns), drop(a, ns)
     fast, a = take(a, ns), drop(a, ns)
-    back, a = absorber_on(w.back, a)
-    return WindowFrame(w.window, w.dt, w.dx1, w.n1, w.inj, w.g, lost, fast, w.flags, back), a
+    return WindowFrame(w.window, w.dt, w.dx1, w.n1, w.inj, w.g, lost, fast, w.flags), a
 end
 
 witness_on(::Nothing, a::Tuple) = (nothing, a)
@@ -109,12 +111,25 @@ function witness_on(w::WitnessFrame, a::Tuple)
     return WitnessFrame(species_on(w.species, take(a, n)), w.kinj, w.c0, w.nc, w.ppc), drop(a, n)
 end
 
-aux_on(st::EMState{1}, a::Tuple) = (st.aux, a)
-function aux_on(st::EMState{2}, a::Tuple)
-    layer, a = absorber_on(st.aux.layer, a)
-    window, a = window_on(st.aux.window, a)
-    witness, a = witness_on(st.aux.witness, a)
-    return merge(st.aux, (; layer, window, witness)), a
+# The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order.
+# A modifier that holds evolved arrays is replaced by one over the new arrays (by its type: a
+# state has at most one of each); the others are kept.
+function aux_on(st::EMState, a::Tuple)
+    layer, a = absorber_on(open_absorber(st), a)
+    window, a = window_on(window_frame(st), a)
+    back, a = absorber_on(back_absorber(st), a)
+    witness, a = witness_on(witness_frame(st), a)
+    return replace_absorbers(st.modifiers, layer, back), aux_with(st.aux, window, witness), a
+end
+
+aux_with(aux::NamedTuple{()}, window, witness) = aux
+aux_with(aux::NamedTuple, window, witness) = merge(aux, (; window, witness))
+
+on_absorbers(m::FieldModifier, layer, back) = m
+on_absorbers(::PMLFields, layer, back) = layer
+on_absorbers(::BackPMLFields, layer, back) = back
+@generated function replace_absorbers(ms::NTuple{M,FieldModifier}, layer, back) where {M}
+    return :(Base.Cartesian.@ntuple $M i -> on_absorbers(ms[i], layer, back))
 end
 
 """
@@ -136,8 +151,8 @@ function on_evolved(st::EMState, a::Tuple, K, recorder)
     species, a = species_on(st.species, a)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
-    aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, aux)
+    modifiers, aux, _ = aux_on(st, drop(a, nf))
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux)
 end
 
 """
