@@ -41,6 +41,9 @@ include(joinpath(@__DIR__, "..", "problem.jl"))
     @test maximum(abs, r.g) < 1e-6 && r.reason == "ftol"
     r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-6, maxiters = 100)
     @test maximum(abs, r.g) <= 1e-6 && r.reason == "gtol"
+    # The tolerance reaches the solver: a loose one stops earlier, with a larger gradient.
+    loose = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-1, maxiters = 100)
+    @test loose.reason == "gtol" && maximum(abs, loose.g) > 1e-6 && loose.evals < r.evals
     # Out of iterations: the reason says so.
     r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-12, maxiters = 1)
     @test r.reason == "maxiter"
@@ -66,7 +69,8 @@ end
     # The objective records every run with its kind; maximize uses one run with duals per point.
     o = Objective(Jx, b; verbose = false)
     @test o(z) == v && value_gradient(o, z) == (v, g)
-    @test [e["kind"] for e in o.log] == ["value", "gradient"] && o.log[2]["grad"] == g && o.log[1]["phys"] == collect(phys(b, z))
+    @test [e["kind"] for e in o.log] == ["value", "gradient"] && o.log[2]["grad"] == g
+    @test all(e -> e["z"] == z && e["phys"] == collect(phys(b, z)) && e["J"] == v, o.log)
     q = Objective((τ, f) -> -(τ - 7.7)^2 - ((f - 113) / 10)^2, b; verbose = false)
     r = maximize(q, scaled(b, (4.5, 70.0)))
     @test all(isapprox.(phys(q, r.z), (7.7, 113.0); atol = 1e-4))
@@ -210,6 +214,13 @@ end
 end
 # Tests of the WP-052 fixed-energy case (witness2d_case.jl): two full runs of the case, about a minute.
 include(joinpath(@__DIR__, "..", "witness2d_case.jl"))
+
+@testset "T-762 the cases' boxes are the reports' boxes [WP-045, WP-052, WP-058]" begin
+    # reports/wp-045-wake-optimization.md: τ ∈ [4, 9], x_f ∈ [60, 130], z = (τ/6, x_f/90).
+    @test (WAKE_BOX.lo, WAKE_BOX.hi, WAKE_BOX.scale) == ([4.0, 60.0], [9.0, 130.0], [6.0, 90.0])
+    # reports/wp-052-fixed-energy-optimization.md: τ ∈ [4, 9], n₀ ∈ [0.04, 0.10], x_c ∈ [30, 50], z = (τ/6, n₀/0.07, x_c/40).
+    @test (WITNESS_BOX.lo, WITNESS_BOX.hi, WITNESS_BOX.scale) == ([4.0, 0.04, 30.0], [9.0, 0.10, 50.0], [6.0, 0.07, 40.0])
+end
 
 @testset "T-680 a₀ from the fixed energy inverts laser_energy, with no energy derivative along τ [A3, WP-052]" begin
     for τ in (4.0, 5.5, 9.0), E in (WCASE.energy, WCASE.energy / 2.25)

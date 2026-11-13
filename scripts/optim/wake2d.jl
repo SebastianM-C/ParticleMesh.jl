@@ -16,6 +16,7 @@ include(joinpath(@__DIR__, "wake2d_case.jl"))
 # The parameters, scaled to O(1) (A1): z = (τ/6, focus/90) in WP-045's box (`WAKE_BOX`).
 const SCALE = WAKE_BOX.scale
 phys(z) = phys(WAKE_BOX, z)
+const TAU, FOCUS = (WAKE_BOX.lo[1], WAKE_BOX.hi[1]), (WAKE_BOX.lo[2], WAKE_BOX.hi[2])   # the box in physical units
 const OBJECTIVE = Objective(wake_amplitude, WAKE_BOX)
 
 "The objective at `z`, from a plain run."
@@ -28,7 +29,7 @@ function main()
                   extra_inputs = [joinpath(@__DIR__, "wake2d_case.jl"), joinpath(@__DIR__, "problem.jl")],
                   params = Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(CASE)))
     out = Dict{String,Any}("case" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(CASE)),
-                           "scale" => collect(SCALE), "box_tau" => [4.0, 9.0], "box_focus" => [60.0, 130.0])
+                           "scale" => collect(SCALE), "box_tau" => collect(TAU), "box_focus" => collect(FOCUS))
     t0 = time()
 
     # 1. Gradient check at the first start: central differences in z at three steps.
@@ -66,7 +67,7 @@ function main()
           join(("$(r["reason"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
 
     # 3. The brute-force grid scan over the box (7 × 7).
-    τs, fs = collect(range(4.0, 9.0; length = 7)), collect(range(60.0, 130.0; length = 7))
+    τs, fs = collect(range(TAU...; length = 7)), collect(range(FOCUS...; length = 7))
     grid = [wake_amplitude(τ, f) for τ in τs, f in fs]
     ib = argmax(grid)
     out["grid"] = Dict("tau" => τs, "focus" => fs, "J" => [grid[i, :] for i in axes(grid, 1)], "best" => [τs[ib[1]], fs[ib[2]], grid[ib]])
@@ -76,8 +77,8 @@ function main()
     # 4. Slices through the optimizer's best point, ±10 % in each parameter.
     best = runs[argmax([r["J"] for r in runs])]
     τbest, fbest = best["phys"]
-    sτ = [τbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if 4.0 <= τbest * (1 + d) <= 9.0]
-    sf = [fbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if 60.0 <= fbest * (1 + d) <= 130.0]
+    sτ = [τbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if TAU[1] <= τbest * (1 + d) <= TAU[2]]
+    sf = [fbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if FOCUS[1] <= fbest * (1 + d) <= FOCUS[2]]
     out["slices"] = Dict("tau" => sτ, "J_tau" => [wake_amplitude(τ, fbest) for τ in sτ],
                          "focus" => sf, "J_focus" => [wake_amplitude(τbest, f) for f in sf])
     jc = best["J"]

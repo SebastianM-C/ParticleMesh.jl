@@ -3,7 +3,7 @@ id = "WP-058"
 status = "active"
 goals = ["A0", "A1", "A7"]
 depends_on = ["WP-045", "WP-048", "WP-051", "WP-052"]
-adds_dependencies = ["Optimization", "OptimizationLBFGSB", "ADTypes"]
+adds_dependencies = ["Optimization", "OptimizationLBFGSB"]
 +++
 # WP-058: the optimization scripts on Optimization.jl
 

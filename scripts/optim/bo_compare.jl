@@ -40,7 +40,7 @@ function main(; nstarts = 3, budget = 30)
         for ξ in XIS
             println("BO ξ = $ξ, seed $seed")
             L = logged()
-            r = bayesopt(L, LO, HI; budget, seed, ξ, verbose = true)
+            r = bayesopt(L; budget, seed, ξ, verbose = true)
             push!(runs, Dict("method" => "BO ξ=$ξ", "xi" => ξ, "seed" => seed, "calls" => L.log, "best_z" => r.best_x, "best_J" => r.best_y,
                              "lengthscales" => [exp.(θ[1:2]) for θ in r.θ], "ei" => r.ei))
         end
@@ -67,7 +67,7 @@ function main(; nstarts = 3, budget = 30)
     end
     tv = [c["seconds"] for r in runs for c in r["calls"] if c["kind"] == "value"]
     tg = [c["seconds"] for r in runs for c in r["calls"] if c["kind"] == "gradient"]
-    out = Dict{String,Any}("Jstar" => Jstar, "tolerances" => collect(tols), "runs" => runs, "box_tau" => [4.0, 9.0], "box_focus" => [60.0, 130.0],
+    out = Dict{String,Any}("Jstar" => Jstar, "tolerances" => collect(tols), "runs" => runs, "box_tau" => [WAKE_BOX.lo[1], WAKE_BOX.hi[1]], "box_focus" => [WAKE_BOX.lo[2], WAKE_BOX.hi[2]],
                            "median_seconds_value" => median(tv), "median_seconds_gradient" => median(tg), "seconds" => time() - t0)
     out["xis"] = collect(XIS)
     open(io -> JSON.print(io, out, 2), joinpath(dir, "results.json"), "w")

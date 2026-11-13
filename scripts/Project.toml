@@ -1,5 +1,4 @@
 [deps]
-ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -20,7 +19,6 @@ ParticleMesh = {path = ".."}
 ParticleMeshElectromagnetic = {path = "../lib/ParticleMeshElectromagnetic"}
 
 [compat]
-ADTypes = "1"
 CUDACore = "6"
 ForwardDiff = "1"
 HDF5 = "0.17"
