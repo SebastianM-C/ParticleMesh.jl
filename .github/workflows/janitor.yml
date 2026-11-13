@@ -8,14 +8,15 @@ name: Janitor
 # GitHub as the factory app, like the package manager, so its PRs trigger CI and the review gate. Sonnet
 # at high effort: the work is mechanical by design, and the brief sends everything else back to the issue.
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, FACTORY_APP_ID, FACTORY_APP_PRIVATE_KEY.
-# Triggers: the review gate is what files follow-up issues, so a finished Review run starts the janitor
-# (`workflow_run` fires even though the review runs on GITHUB_TOKEN; an `issues` trigger would not). The
+# Triggers: the review gate is what files follow-up issues, and it is the last job of the CI workflow, so
+# a finished CI run starts the janitor (`workflow_run` fires even though the review runs on GITHUB_TOKEN;
+# an `issues` trigger would not). The
 # hourly cron is the backstop, since GitHub delivers scheduled events on a best-effort basis. The
 # concurrency group below keeps at most one run going and one waiting.
 
 on:
   workflow_run:
-    workflows: [Review]
+    workflows: [CI]
     types: [completed]
   schedule:
     - cron: '17 * * * *'
