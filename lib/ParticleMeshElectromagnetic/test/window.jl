@@ -20,18 +20,19 @@ function body_T470(be)
         prob = window_plasma(T; thermal = (T(1) / 10, T(1) / 20, T(1) / 30), drift = (T(1) / 50, zero(T), zero(T)), vacuum = 14, ramp)
         st = EMState(prob, EMNumerics(); backend = be)
         w = st.aux.window
+        load = window_load(st, params(prob), 1)
         n = ncells(st.grid)
         s_win = 8                     # the fresh column, global column 31, lies on the ramp (x from 14 to 18)
         col = injection_column(w)
         # the window's column `col` at position s_win, through the refill kernel
         sc = Species(be, T, n[2] * 4; q = -one(T), m = one(T), N = 2)
-        load_window_columns!(sc, st.grid, w.loads[1], KernelAbstractions.zeros(be, Int32, 1), col, 1, s_win)
+        load_window_columns!(sc, st.grid, load, KernelAbstractions.zeros(be, Int32, 1), col, 1, s_win)
         @test alive_count(sc) == n[2] * 4
         # the static domain of n₁ + s_win columns, loaded by the engine with the same profile
         big = PeriodicGrid((n[1] + s_win, n[2]), cellsize(st.grid), guards(st.grid))
         sb = Species(be, T, prod(ncells(big)) * 4; q = -one(T), m = one(T), N = 2)
-        load_quiet!(sb, big, ParticleMeshElectromagnetic.RampedCosine(), w.loads[1].p, (2, 2); vdrift = w.loads[1].vdrift,
-                    vth = w.loads[1].vth, seed = prob.seed, stream = 1)
+        load_quiet!(sb, big, ParticleMeshElectromagnetic.RampedCosine(), load.p, (2, 2); vdrift = load.vdrift,
+                    vth = load.vth, seed = prob.seed, stream = 1)
         sel = findall(==(Int32(col + s_win)), Array(sb.cell[1]))
         @test length(sel) == n[2] * 4
         a = Array(sc.cell[2]); b = Array(sb.cell[2])[sel]
@@ -89,10 +90,10 @@ function body_T471(be)
             s_win = window_shifts(st, k)
             ok_fields &= all(a -> same_bits(a, zero(a)), values(st.fields))
             window_charge!(ρ, st)
-            window_background!(ρ0, st, s_win)
+            window_background!(ρ0, st, p, s_win)
             ok_charge &= effective_mode(mode, T) isa Reference ? same_bits(ρ, ρ0) :
                          maximum(absdiff.(Array(ρ), Array(ρ0))) <= 8 * base_eps(T) * maximum(absmax, Array(ρ))
-            ok_set &= particle_set(st.species[1]) == particle_set(fresh_window_load(st, s_win))
+            ok_set &= particle_set(st.species[1]) == particle_set(fresh_window_load(st, p, s_win))
         end
         s_end = window_shifts(st, prob.nsteps)
         @test s_end > n[1]
@@ -195,13 +196,13 @@ function body_T473(be)
         prob = window_lwfa(T)
         st = window_state(prob; mode, be)
         p = params(prob)
-        ia = st.aux.antennas[1].ia            # the plane's interior column on the static grid
+        ia = antenna_planes(st)[1].ia            # the plane's interior column on the static grid
         worst = 0.0
         for k in 1:prob.nsteps
             step!(st, p, k)
             k % 3 == 0 || continue
             s_win = window_shifts(st, k)
-            r = window_gauss(st, s_win)
+            r = window_gauss(st, p, s_win)
             skip = (1, 2, ia - 1 - s_win, ia - s_win)
             cols = [i for i in axes(r.res, 1) if !(i in skip)]
             worst = max(worst, Float64(maximum(r.res[cols, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
@@ -220,7 +221,7 @@ function body_T473(be)
         worst = 0.0
         for k in 1:prob.nsteps
             step!(st, p, k)
-            r = window_gauss(st, window_shifts(st, k))
+            r = window_gauss(st, p, window_shifts(st, k))
             worst = max(worst, Float64(maximum(r.res[3:end, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
         end
         @info "T-473 warm" T mode worst shifts = window_shifts(st, prob.nsteps)
@@ -237,7 +238,7 @@ function body_T473(be)
         worst = 0.0
         for k in 1:prob.nsteps
             step!(st, p, k)
-            r = window_gauss(st, window_shifts(st, k))
+            r = window_gauss(st, p, window_shifts(st, k))
             worst = max(worst, Float64(maximum(r.res[3:end, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
         end
         @info "T-473 warm, drift and ramp" T mode worst shifts = window_shifts(st, prob.nsteps)
@@ -330,10 +331,10 @@ function body_T476(be)
         s = st.species[1]
         before = (status = Array(s.status), c1 = Array(s.cell[1]))
         shifts = window_shifts(st, k) - window_shifts(st, k - 1)
-        r0 = shifts == 0 ? window_gauss(st, window_shifts(st, k)).res : nothing
+        r0 = shifts == 0 ? window_gauss(st, p, window_shifts(st, k)).res : nothing
         step!(st, p, k)
         shifts == 0 || continue       # a shift step re-sorts the slots
-        r1 = window_gauss(st, window_shifts(st, k))
+        r1 = window_gauss(st, p, window_shifts(st, k))
         @test maximum(abs.(r1.res[3:end, :] .- r0[3:end, :])) <= 64 * eps(Float64) * r1.scale
         was = before.status .== ParticleMeshCore.ALIVE
         now = Array(s.status) .== ParticleMeshCore.ALIVE
@@ -487,7 +488,7 @@ function body_T479(be)
             for k in 1:prob.nsteps
                 step!(st, p, k)
                 k % 5 == 0 || continue
-                r = window_gauss(st, window_shifts(st, k))
+                r = window_gauss(st, p, window_shifts(st, k))
                 worst = max(worst, Float64(maximum(r.res[3:end, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
             end
             window_superluminal(st)[1] > 0 || continue

@@ -34,10 +34,12 @@ function back_comparison(back; nsteps = 200, extra = 100, position = BACK_POSITI
     h = prob.length[1] / n[1]
     win = back_state(prob; back)
     shifts = window_shifts(win, prob.nsteps)
-    ref = back_state(static_twin(prob, n[1] + shifts + 8); back)
-    free = back_state(window_lwfa(Float64; plasma = false, nsteps, position = position + extra * h,
-                                  cells = (n[1] + shifts + 8 + extra, n[2]), start = Inf))
-    p = params(prob)
+    twin = static_twin(prob, n[1] + shifts + 8)
+    ref = back_state(twin; back)
+    far = window_lwfa(Float64; plasma = false, nsteps, position = position + extra * h,
+                      cells = (n[1] + shifts + 8 + extra, n[2]), start = Inf)
+    free = back_state(far)
+    p, pr, pf = params(prob), params(twin), params(far)      # each state its own problem's laser
     g = guards(win.grid)
     J = (g + 1):(g + n[2])
     cb = back === nothing ? 0 : back.cells
@@ -45,8 +47,8 @@ function back_comparison(back; nsteps = 200, extra = 100, position = BACK_POSITI
     history = zeros(prob.nsteps)
     for k in 1:prob.nsteps
         step!(win, p, k)
-        step!(ref, p, k)
-        step!(free, p, k)
+        step!(ref, pr, k)
+        step!(free, pf, k)
         s = window_shifts(win, k)
         for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
             a, b, f = Array(getfield(win.fields, c)), Array(getfield(ref.fields, c)), Array(getfield(free.fields, c))
@@ -195,7 +197,7 @@ function back_slab_init!(st, geo, pol)
         copyto!(a, T.(host[c]))
         fill_guards!(a, grid)
     end
-    ParticleMeshElectromagnetic.yee_b_half!(fields, grid, -st.aux.dt / 2)
+    ParticleMeshElectromagnetic.yee_b_half!(fields, grid, -st.dt / 2)
     return st
 end
 

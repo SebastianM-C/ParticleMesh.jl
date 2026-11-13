@@ -69,21 +69,24 @@ end
 
 """
     momentum_distribution(d::SpeciesDescription{T}) -> GaussianVelocity, GaussianMomentum or MaxwellJuttner
+    momentum_distribution(momentum::Symbol, name, drift, thermal)
 
 The engine's distribution object (`load_quiet!`'s `dist`) of a species' `momentum`:
 `MaxwellJuttner(thermal[1]², drift)`, `GaussianMomentum(Γ·drift, thermal)` or
 `GaussianVelocity(drift, thermal)`. For the two momentum draws a drift of |β| ≥ 1 (or NaN) or a
 thermal speed that is not finite is an `ArgumentError` (the velocity draw leaves both to
-[`check_subluminal`](@ref)).
+[`check_subluminal`](@ref)). The second form takes the kind and the numbers apart, as a state
+(the kind) and its parameters (`drift`, `thermal`, [`SpeciesParams`](@ref)) hold them.
 """
-function momentum_distribution(d::SpeciesDescription{T}) where {T}
-    d.momentum === :gaussian_velocity && return GaussianVelocity(d.drift, d.thermal)
-    all(isfinite, d.thermal) || throw(ArgumentError("species $(d.name): the thermal speeds $(d.thermal) must be finite"))
-    b2 = d.drift[1]^2 + d.drift[2]^2 + d.drift[3]^2
-    b2 < 1 || throw(ArgumentError("species $(d.name): the drift speed $(sqrt(b2)) must be below c"))
-    d.momentum === :maxwell_juttner && return MaxwellJuttner{T}(d.thermal[1]^2, d.drift)
+momentum_distribution(d::SpeciesDescription) = momentum_distribution(d.momentum, d.name, d.drift, d.thermal)
+function momentum_distribution(momentum::Symbol, name, drift::NTuple{3,T}, thermal::NTuple{3,T}) where {T}
+    momentum === :gaussian_velocity && return GaussianVelocity(drift, thermal)
+    all(isfinite, thermal) || throw(ArgumentError("species $name: the thermal speeds $thermal must be finite"))
+    b2 = drift[1]^2 + drift[2]^2 + drift[3]^2
+    b2 < 1 || throw(ArgumentError("species $name: the drift speed $(sqrt(b2)) must be below c"))
+    momentum === :maxwell_juttner && return MaxwellJuttner{T}(thermal[1]^2, drift)
     Γ = one(T) / sqrt(one(T) - b2)
-    return GaussianMomentum(map(b -> Γ * b, d.drift), d.thermal)
+    return GaussianMomentum(map(b -> Γ * b, drift), thermal)
 end
 
 """
@@ -276,18 +279,142 @@ function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), s
 end
 
 """
-    EMParams(dt, kmode)
+    SpeciesParams{T,N}
 
-Run parameters of the step: the time step and the diagnostic `kmode` of the problem (the
-wavenumber at N = 1; the integer mode per axis at N = 2, which must be the state's, since the
-2D state holds its phase tables).
+The parameters of one mobile species (A3) of a problem of element type `T`: the `density` (n_c)
+and the relative `amplitude` and `wavevector` (ω₀/c, one component per axis) of its cosine
+perturbation, which enter through the particle weights in the initial load and, with a moving
+window, in every refill; the `drift` velocity (c) and the `thermal` speeds per component (c),
+which enter through the loaded momenta. `density`, `amplitude`, `drift` and `thermal` may be
+`Dual`s. The species' charge and mass are not here: they belong to the engine's `Species`, fixed
+when the state is built.
+
+`SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal)` converts every number to `T`.
+`params(problem)` keeps the four numbers of the description in the description's own type `S`
+(the third type parameter; `S = T` unless a `SpeciesDescription{S}` of another type was put into
+the problem), as the loader has always received them: a Float64 species in a Float32 problem
+loads from Float64 numbers.
 """
-struct EMParams{T,K}
-    dt::T
-    kmode::K
+struct SpeciesParams{T,N,S}
+    density::S
+    amplitude::S
+    wavevector::NTuple{N,T}
+    drift::NTuple{3,S}
+    thermal::NTuple{3,S}
+    # written out so that no constructor without type parameters exists: its `NTuple{N,T}`
+    # argument would leave `T` unbound for an empty tuple
+    SpeciesParams{T,N,S}(density, amplitude, wavevector, drift, thermal) where {T,N,S} =
+        new{T,N,S}(density, amplitude, wavevector, drift, thermal)
 end
 
-params(p::EMProblem) = EMParams(p.dt, p.kmode)
+SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal) where {T,N} =
+    SpeciesParams{T,N,T}(T(density), T(amplitude), T.(Tuple(wavevector)), T.(Tuple(drift)), T.(Tuple(thermal)))
+
+"""
+    WitnessParams{T}
+
+The parameters of a witness bunch (A3, [`WitnessBunch`](@ref)): the `momentum` its particles are
+injected with (u = γv, mₑc) and the `center`, `length` and `width` of the Gaussian averaging
+weights; all may be `Dual`s. The injection time, the region and the lattice are configuration
+of the state, and the charge and mass belong to the bunch's `Species`.
+"""
+struct WitnessParams{T}
+    momentum::NTuple{3,T}
+    center::NTuple{2,T}
+    length::T
+    width::T
+end
+
+"""
+    EMParams{T}
+
+The parameters of a run (A3), everything of the problem description that [`initialize!`](@ref)
+and [`step!`](@ref) read as numbers, in the state's element type `T`:
+
+- `lasers`: the [`GaussianLaser`](@ref)s, read by the antennas' source in every step;
+- `species`: one [`SpeciesParams`](@ref) per mobile species, read by the initial load and by the
+  moving window's refill;
+- `profile`: the [`DensityRamp`](@ref) of a moving-window plasma, or `nothing`, read where the
+  species' densities are;
+- `witness`: the [`WitnessParams`](@ref) of a witness bunch, or `nothing`, read at its injection
+  step and by [`witness_gains`](@ref);
+- `seed`: the seed of the momentum draws (initial load and refill);
+- `E0`, `B0`: the uniform background fields added at t = 0 (not differentiable: the addition
+  tests them for zero on the host).
+
+`params(problem)` builds them from an [`EMProblem`](@ref). A state holds no copy of any of them:
+the same state initialized or stepped with other parameters gives the run of those parameters
+(T-731), and a `Dual` parameter reaches the antenna's source and the refill's weights in the step
+with no new state (T-730), as long as the state's element type is the parameters'.
+
+What stays in the state is configuration, fixed when it is built from a problem and its numerics:
+every size (cells, particles per cell, the witness lattice), the time step (the absorbers'
+coefficient tables, the antenna's half-cell delay, the window's shift count and the witness's
+injection step are made from it, the last two as integers), the antenna plane's column (the
+nearest primal node to the laser's `position`, which is therefore not a differentiable
+parameter, A3), the window's start, and per species the charge, the mass, the Philox stream and
+the kind of its momentum distribution. [`check_params`](@ref) says whether parameters fit a state,
+and `initialize!` and `step!` ask it. A derivative with respect to a number of the configuration
+(a charge, a mass, the time step) is not carried by the parameters: it needs a state built from
+the dual problem, and `initialize!(state, problem)` refuses a problem whose configuration is not
+the state's ([`check_setup`](@ref)).
+
+    EMParams{T}(; species, lasers = (), profile = nothing, witness = nothing, seed, E0 = zeros, B0 = zeros)
+    EMParams(p::EMParams; lasers = p.lasers, species = p.species, ...)
+
+build them from their parts (the lasers and the profile converted to `T`), or from another set
+with some parts replaced.
+"""
+struct EMParams{T,LZ<:Tuple,SP<:Tuple,PR,WB}
+    lasers::LZ
+    species::SP
+    profile::PR
+    witness::WB
+    seed::Int
+    E0::NTuple{3,T}
+    B0::NTuple{3,T}
+end
+
+function EMParams{T}(; species::Tuple, lasers::Tuple = (), profile = nothing, witness = nothing, seed::Integer,
+                     E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3)) where {T}
+    lz = map(l -> convert_laser(T, l), lasers)
+    pr = profile === nothing ? nothing : DensityRamp{T}(T(profile.vacuum), T(profile.ramp))
+    return EMParams{T,typeof(lz),typeof(species),typeof(pr),typeof(witness)}(lz, species, pr, witness, Int(seed), T.(Tuple(E0)),
+                                                                           T.(Tuple(B0)))
+end
+
+EMParams(p::EMParams{T}; lasers = p.lasers, species = p.species, profile = p.profile, witness = p.witness, seed = p.seed,
+         E0 = p.E0, B0 = p.B0) where {T} = EMParams{T}(; lasers, species, profile, witness, seed, E0, B0)
+
+Base.eltype(::EMParams{T}) where {T} = T
+
+# The wave vector of a cosine perturbation of integer `mode` per axis on a box of `box`.
+wavevector(mode::Integer, box::T) where {T} = (2 * T(π) * mode / box,)
+wavevector(mode::NTuple{2,Int}, box::NTuple{2,T}) where {T} = ntuple(a -> 2 * T(π) * mode[a] / box[a], Val(2))
+
+"""
+    params(problem::EMProblem) -> EMParams
+
+The parameters of a problem description ([`EMParams`](@ref)), in its element type: each species'
+wave vector `2π·mode/length` per axis, the lasers and the profile converted to `T`.
+"""
+function params(problem::EMProblem{N,T}) where {N,T}
+    species = map(d -> species_params(T, d, wavevector(d.mode, problem.length)), problem.species)
+    b = problem.witness
+    witness = b === nothing ? nothing : WitnessParams{T}(b.momentum, b.center, b.length, b.width)
+    return EMParams{T}(; lasers = problem.lasers, species, profile = problem.profile, witness, seed = problem.seed,
+                       E0 = problem.E0, B0 = problem.B0)
+end
+
+# The description's numbers in the description's own type, the wave vector in the problem's.
+species_params(::Type{T}, d::SpeciesDescription{S}, k::NTuple{N,T}) where {T,N,S} =
+    SpeciesParams{T,N,S}(d.density, d.amplitude, k, d.drift, d.thermal)
+
+"The loader's parameters of a species' [`CosineProfile`](@ref): density, amplitude and the wave vector."
+density_params(ps::SpeciesParams) = (ps.density, ps.amplitude, ps.wavevector...)
+
+# What a state keeps of a species' description: configuration, no parameter (the name is for messages).
+species_setup(d::SpeciesDescription) = (name = d.name, ppc = d.ppc, stream = d.stream, momentum = d.momentum)
 
 getnum(d, key, default) = haskey(d, key) ? d[key] : default
 

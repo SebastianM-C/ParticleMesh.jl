@@ -276,11 +276,11 @@ const PHYSICS_2D = Dict{String,Any}()
 const LANDAU_LOADS = Dict(:maxwell_juttner => :maxwell_juttner, :gaussian_momentum => :momentum_maxwellian,
                           :gaussian_velocity => :velocity_maxwellian)
 
-function run_case_2d(name; be = CPU(), ppc, cells, amplitude = nothing, t_end = nothing)
+function run_case_2d(name; be = CPU(), ppc, cells, amplitude = nothing, t_end = nothing, seed = nothing)
     case = load_case(name)
     n0 = Tuple(case["grid"]["cells"])
     dt = case["time"]["dt"] * minimum(n0 ./ cells)
-    prob = problem_from_case(case, Float64; ppc, cells, dt, amplitude, t_end)
+    prob = problem_from_case(case, Float64; ppc, cells, dt, amplitude, t_end, seed)
     st = EMState(prob, numerics_from_case(case); backend = be)
     initialize!(st, prob)
     t = @elapsed run!(st, params(prob), prob.nsteps)
@@ -315,9 +315,28 @@ function body_T364(be)
     @test abs(rel) <= emC("T-364", "rate")
     @test abs(relω) <= emC("T-364", "frequency")
     @test transverse <= emC("T-364", "transverse")
+    # WP-037: the rate of the ensemble over the case's first four seeds (the default seed's run
+    # above and three more), fitted as WP-032's `damping_rate_mode_ensemble` on |⟨k̂·Ê⟩_seeds|²,
+    # the seed mean of the complex coefficient. Its seed noise is a few times smaller than one
+    # seed's. At test size the rate sits about 15 % above the theory of the load (32 seeds), so
+    # the bound is centred there: |rel − offset| ≤ rate_ensemble catches a rate error of about
+    # 13 % either way.
+    seeds = r.case["numerics"]["seeds"][1:4]
+    @test case_seed(r.case) == seeds[1]
+    coeffs = [complex.(r.h.El_re, r.h.El_im)]
+    for seed in seeds[2:end]
+        rs = run_case_2d("landau-oblique-2d"; be, ppc = (16, 16), cells = (32, 32), amplitude = 1 / 10, t_end = 18, seed)
+        push!(coeffs, complex.(rs.h.El_re, rs.h.El_im))
+    end
+    fe = damping_from_peaks(r.ts, abs2.(sum(coeffs) ./ length(coeffs)); fit_start = o["fit_start"], floor_factor = o["floor_factor"])
+    rele = (fe.gamma - th.gamma) / th.gamma
+    @info "T-364 four-seed ensemble" backend = backend_label(be) seeds γ = fe.gamma rel = rele peaks = length(fe.t_fit)
+    d["ensemble γ $(backend_label(be))"] = rele
+    @test length(fe.t_fit) >= 3
+    @test abs(rele - emC("T-364", "rate_ensemble_offset")) <= emC("T-364", "rate_ensemble")
 end
 
-@testset "T-364 oblique Landau damping in 2D against the relativistic linear theory of its load [A5, A7, WP-023, WP-033]" begin
+@testset "T-364 oblique Landau damping in 2D against the relativistic linear theory of its load, one seed and a four-seed ensemble [A5, A7, WP-023, WP-033, WP-037]" begin
     body_T364(CPU())
 end
 
@@ -464,7 +483,7 @@ end
         (Ax, ψx), (Ay, ψy) = (T(2) / 3, -one(T)), (T(1) / 7, T(1) / 2)
         set_mode!(st.fields.Bx, st.grid, L2D.Bx, m, L, Ax, ψx)
         set_mode!(st.fields.By, st.grid, L2D.By, m, L, Ay, ψy)
-        record_diagnostics!(st, 1)
+        observe!(st.recorder, st, 1)
         h = histories(st)
         k = (2π * m[1] / value_of(L[1]), 2π * m[2] / value_of(L[2]))
         k̂ = k ./ hypot(k...)
@@ -476,7 +495,7 @@ end
         worst = maximum(abs(value_of(getfield(h, key)[1]) - v) / ε for (key, v) in exact)
         # the transposed stagger (Bx on By's positions) is off by half a cell on both axes
         set_mode!(st.fields.Bx, st.grid, L2D.By, m, L, Ax, ψx)
-        record_diagnostics!(st, 2)
+        observe!(st.recorder, st, 2)
         off = abs(value_of(histories(st).Bx_re[2]) - exact[:Bx_re]) / ε
         record!("T-369", T, worst)
         @test worst <= C

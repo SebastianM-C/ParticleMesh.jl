@@ -126,7 +126,7 @@ function slab_init!(st, geo, pol)
     for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
         copyto!(getfield(fields, c), T.(host[c]))
     end
-    yee_b_half!(fields, grid, -st.aux.dt / 2)       # B^{1/2} → B⁰ = B^{1/2} + (Δt/2)∇×E⁰
+    yee_b_half!(fields, grid, -st.dt / 2)       # B^{1/2} → B⁰ = B^{1/2} + (Δt/2)∇×E⁰
     return st
 end
 

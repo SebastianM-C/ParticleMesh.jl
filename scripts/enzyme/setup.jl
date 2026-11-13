@@ -63,6 +63,7 @@ function main(args)
         occursin(kin_old, s) || error("kinetic! of step2d.jl has changed; update setup.jl")
         s = replace(s, kin_old => kin_new)
         zip_old = "    for (s, ws) in zip(st.species, st.ws)\n"
+        occursin(zip_old, s) || error("the zip loops of step2d.jl have changed; update setup.jl")
         s = replace(s, zip_old => "    foreach(st.species, st.ws) do s, ws\n")
         chmod(f, 0o644)
         write(f, s)

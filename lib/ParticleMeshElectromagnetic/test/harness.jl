@@ -25,7 +25,7 @@ end
 
 partition_bits(u::ArrayPartition) = map(bits, u.x)
 state_bits(st::EMState) = partition_bits(state_partition(st))
-history_bits(st::EMState, n = length(st.hist.K)) = map(h -> bits(view(h, 1:n)), values(st.hist))
+history_bits(st::EMState, n = length(st.recorder.hist.K)) = map(h -> bits(view(h, 1:n)), values(st.recorder.hist))
 
 "Bytes of the arrays of a partition."
 partition_bytes(u::ArrayPartition) = sum(sizeof, u.x)
@@ -40,10 +40,10 @@ function harness_equals_loop(::Type{T}; n = nothing, be = CPU()) where {T}
     ref = loop_state(prob, num, n; be)
     again = solve(dprob, FunctionMap(); save_everystep = false)
     return (; ok = sol.retcode == ReturnCode.Success, t = sol.t[end], n,
-            state = partition_bits(sol.u[end]) == state_bits(ref),
+            state = partition_bits(sol.u[end]) == state_bits(ref) && bits(harness_state(sol).K) == bits(ref.K),
             hist = history_bits(harness_state(sol), n) == history_bits(ref, n),
             u0 = partition_bits(dprob.u0) == u0,
-            again = partition_bits(again.u[end]) == state_bits(ref) &&
+            again = partition_bits(again.u[end]) == state_bits(ref) && bits(harness_state(again).K) == bits(ref.K) &&
                     history_bits(harness_state(again), n) == history_bits(ref, n))
 end
 
@@ -62,7 +62,7 @@ end
     st = EMState(prob, num; backend)
     initialize!(st, prob)
     u = state_partition(st)
-    @test u.x[1] === st.species[1].cell[1] && u.x[end] === st.K
+    @test u.x[1] === st.species[1].cell[1] && u.x[end] === st.fields.Jz && all(a -> a !== st.K, u.x)   # K is a cache, outside the partition (WP-056)
     @test map(eltype, u.x)[1:8] == (Int32, Float64, Float64, Float64, Float64, Float64, UInt8, Int32)
     saved = copy(u)
     run!(st, params(prob), 5)
@@ -125,7 +125,7 @@ end
     for (i, k) in enumerate(steps)
         run!(st, p, k - done; first = done + 1)
         done = k
-        @test partition_bits(sol.u[i]) == state_bits(st)
+        @test partition_bits(sol.u[i]) == state_bits(st) && bits(harness_state(sol, sol.u[i]).K) == bits(st.K)
     end
     # saved states are copies of the arrays, with their element types
     @test all(map(!==, sol.u[1].x, sol.u[2].x))
@@ -183,7 +183,7 @@ end
     copies_end = sum(sizeof, keys(distinct)) / state
     cache = harness_state(dprob)
     ws = Base.summarysize(cache.ws)
-    hist = Base.summarysize(cache.hist)
+    hist = Base.summarysize(cache.recorder.hist)
     extras = sum(s -> Base.summarysize(s.extras), cache.species)
     total = Base.summarysize(integ) / state
     @info "T-104 harness memory" state_bytes = state copies_init copies_end total_over_state = total workspaces_bytes = ws histories_bytes = hist extras_bytes = extras rho_bytes = sizeof(cache.ρ)
@@ -199,7 +199,7 @@ The Ex field energy at the last step of the T-219 run, through `solve` of a prob
 function harness_field_energy(α, mode, seed)
     p, _ = case_problem("landau", typeof(α); mode, seed, amplitude = α, GRADIENT_KW...)
     sol = solve(remake_reload(HARNESS_BASE[]; p), FunctionMap(); save_everystep = false)
-    return Array(harness_state(sol).hist.WEx)[end]
+    return Array(harness_state(sol).recorder.hist.WEx)[end]
 end
 const HARNESS_BASE = Ref{Any}()
 

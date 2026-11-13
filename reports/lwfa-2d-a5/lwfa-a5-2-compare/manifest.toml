@@ -1,0 +1,15 @@
+case = "lwfa-2d"
+commit = "680de8b907fff8ea92923d7a8ab2f779eca85c0b"
+dirty = false
+runs = "scripts/runs/lwfa-a5-2-three"
+updated = "2026-11-12T04:38:02.394Z"
+
+[inputs]
+
+[summaries]
+picongpu-plasma = "sha256:d239c46ed96dec7170b8bad1806c809f6fcaed947f3aecd2801556faa03c4e23"
+picongpu-vacuum = "sha256:860bee82b900f6fd36f310453977935c8942c37ed38469f0188194305b71c9d7"
+pm-plasma = "sha256:c7a29eec32bd9aa9024f3dbd5596aed11f2bd60989778d7ed1fa44b0acd08f30"
+pm-vacuum = "sha256:e190dfd4399ed7ea4b2f0a978528dc81bfd51bc714aeeb04c6d5555780ea1f29"
+smilei-plasma = "sha256:89f997f2919d053186e15d5a575a95c7dfd5a515b97e0f42b3fe7dc1a0072caa"
+smilei-vacuum = "sha256:7b4e4bce85b6caf369b2f1ac3b06ca4d48c6faa2742cf27e9f7a532a3587a39b"

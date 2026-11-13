@@ -123,7 +123,7 @@ Preconditions: every particle moved less than one cell per axis since the old po
 stored, the seams and the corner included (not detected); at least 3 cells per axis; at least
 `maximum(flux_guard_width(shape, stagger))` guard cells (checked). The guard convention is
 `deposit!`'s (fold each field). `Fast()` adds with atomics, one work item per particle, and falls
-back to `Reference()` for element types without them (`effective_mode`). `Reference()` needs
+back to `Reference()` for element types without them (`effective_mode`), sorting first (T-345). `Reference()` needs
 `sort_by_cell!` after the move and a workspace built with `Workspace(species, grid; flux = (shape,
 stagger))`; it is bitwise across reruns, thread counts and launch shapes (T-303).
 """
@@ -139,6 +139,7 @@ function deposit_flux!(mode, Jx::AbstractMatrix{T}, Jy::AbstractMatrix{T}, Jz::A
         throw(ArgumentError("deposit_flux! needs $gw guard cells for this shape and stagger, the grid has $(guards(grid))"))
     all(>=(3), ncells(grid)) || throw(ArgumentError("deposit_flux! needs at least 3 cells per axis"))
     sx = map(h -> h / dt, cellsize(grid))
+    fallback_sort!(mode, T, s, grid, ws, workgroupsize)
     _deposit_flux_2d!(effective_mode(mode, T), Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, quantity_z, workgroupsize)
 end
 

@@ -8,6 +8,7 @@ include("flux_cases.jl")
 include("n1_digests.jl")
 include("engine2d_cases.jl")
 include("flux2d_cases.jl")
+include("recorded_2d.jl")     # WP-037: the 2D Reference digests recorded on a commit (T-266, T-303)
 include("spectral_cases.jl")
 include("momenta_cases.jl")
 

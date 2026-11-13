@@ -1,0 +1,35 @@
+arguments = "-d 1 2 -r 2 -g 384 4656 -s 10777 --periodic 1 0 -m --windowMovePoint 0.833118556701031 --autoAdjustGrid 0 --fieldAbsorber exponential --currentInterpolation none --openPMD.period 829 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source fields_all --fields_energy.period 829"
+case = "lwfa-2d-focus0"
+code = "PIConGPU 0.8.0"
+commit = "6ead5bd3bd0d718b620d5d16cd0957cdf9dd5530"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+precision = "Float64"
+reference_wavelength_m = 8.0e-7
+run_id = "lwfa-a5-focus0/picongpu-vacuum"
+updated = "2026-11-12T01:55:36.920Z"
+
+[inputs]
+"case.toml" = "sha256:243bb33d614576bcac8c2d1eb5aa48367e0368e8eeb2f46f33ee8b700ad28268"
+"kind.txt" = "sha256:566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+"params/density.param" = "sha256:a44fe5a243eb67d8f8762cba3517e735a15b5014cf22b45bb4856f4bff8dbbd8"
+"params/dimension.param" = "sha256:25d1784f0c8b05bba3aa1a5df8fdcb71fe4596aff495e22619054abcb278f618"
+"params/fieldSolver.param" = "sha256:4fe1a62f6bd3dc6a264a5ab859a8a9ab1458af6ee061871ff883a9082ab545d4"
+"params/fileOutput.param" = "sha256:d1f5b489542bd867690c714556693649ba3e1afae14eda033aaea860443775c8"
+"params/incidentField.param" = "sha256:70a6a5516ff972c4b1607ca7f0bf5189a261e6f8d2e9fcfdce3e47c7c8e4d407"
+"params/memory.param" = "sha256:a080632bfe6ed2acc130b2b1009bd4c2b2f3ed7f3172ac4d0ec2f120e0af3bda"
+"params/particle.param" = "sha256:56bbb244449ec681ba3734389b5ecb0c8f7bff8008b69e7c2fcf8d75f5d55ead"
+"params/precision.param" = "sha256:cb9ac5eb7427b6effae53d8c6799a2edbd9277b9659c5bb9c51559aa10efb3d5"
+"params/simulation.param" = "sha256:8033cf3994159b96aae94ea7802e7f16d010f7df5bba8c8c58dd3787d211785a"
+"params/species.param" = "sha256:5d8f26f56267c466980f91f318e774c479e2d1eef16e0d80c3027a160c436a2b"
+"params/speciesDefinition.param" = "sha256:9c366f82157cc1f1ca79329d13a1fda6b4811ae123ef3f795b4620036540722e"
+"params/speciesInitialization.param" = "sha256:598bb6e74ae621657fcf7b8a83cc3ebd62cd9efbbcfe374c28cb5baad38eae26"
+"run.sh" = "sha256:0a089310260f7f76b19bedd420f43b4774f5f902164da4e226a688e429af82d6"
+
+[layout]
+cells = [384, 4656]
+devices_y = 2
+j0 = 17
+local_y = 2328
+move_point = 0.833118556701031
+window_y = 2328

@@ -1,0 +1,13 @@
+case = "lwfa-2d-r64"
+code = "Smilei v5.1"
+commit = "a991f960d06dd38663e63eb09b2bd0c861dabfc2"
+dirty = false
+generator = "scripts/lwfa/lwfa.jl"
+run_id = "lwfa-scan-r64/smilei-plasma"
+updated = "2026-11-12T07:25:04.720Z"
+
+[inputs]
+"case.toml" = "sha256:0b0dc95320a71d7efd12872c6a60e87464551e68d6c121eeb00aded81c4fbe90"
+"kind.txt" = "sha256:c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
+"namelist.py" = "sha256:66349f81749e2b632b69033614bdaa19ae052cd0feb39cf274a695ddc6c751a8"
+"run.sh" = "sha256:9ce0b9c853df2a51b851702e79a6977d55ce979f6683a8000e7206bd96cb597f"

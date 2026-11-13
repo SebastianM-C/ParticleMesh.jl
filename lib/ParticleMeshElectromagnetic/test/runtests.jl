@@ -24,6 +24,7 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("pushers_sciml.jl")
         include("pushers_resolution.jl")   # WP-016: after pushers.jl, whose helpers it uses
         include("gauss.jl")
+        include("fast_reference.jl")   # WP-037: T-290, Fast against Reference histories
         include("initialize.jl")    # T-420, the time of the loaded momenta; T-522, where the density is sampled
         include("subluminal.jl")    # T-480, T-481: a Gaussian-velocity load whose drawn speeds reach c is refused (#257); after em2d_cases.jl
         include("momenta.jl")       # WP-033: T-537, T-539, the momentum distributions in the module; after subluminal.jl (its helpers)
@@ -42,6 +43,10 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
         include("lwfa_gradient.jl") # WP-043: T-580 to T-582, a gradient through a small LWFA run, after window.jl
         include("witness.jl")       # WP-047: T-640 to T-645, the witness bunch and its mean energy gain, after lwfa_gradient.jl
         include("harness.jl")       # after gradient.jl: T-105 reuses its run
+        include("params.jl")        # WP-055: T-730 to T-735, the step as a function of the state and the parameters, after harness.jl
+        include("restart.jl")       # WP-056: T-740 to T-746 and T-748, the closed state and the restart, after params.jl (its helpers)
+        include("modifiers.jl")     # WP-057: T-750 to T-754 and T-759, the one field solve and its tuple of modifiers, after restart.jl (its helpers)
+        include("one_step.jl")      # WP-057: T-755 to T-757, the one step body over N, after modifiers.jl (its helpers)
         include("gpu.jl")           # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
         include("qa.jl")            # T-372 to T-374: Aqua and JET
     finally

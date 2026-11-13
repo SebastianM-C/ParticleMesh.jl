@@ -71,13 +71,13 @@ function body_T640(be)
             step!(st, p, k)
         end
         @test witness_alive(st) == 0
-        @test_throws ArgumentError witness_energy_gain(st)
+        @test_throws ArgumentError witness_energy_gain(st, params(prob))
         for k in k0:prob.nsteps
             step!(st, p, k)
         end
         pts, _ = lattice(prob.witness, Float64.(value_of.(cellsize(st.grid))), ncells(st.grid))
         @test witness_alive(st) == length(pts) == 8 * 4 * 2      # 8 cells × 4 rows × 2 points
-        g = witness_gains(st)
+        g = witness_gains(st, params(prob))
         npush = prob.nsteps - k0 + 1
         ux = 3 + npush * (-1 / 2) * (-1 / 20) * dt
         gain = 4 * (sqrt(1 + ux^2 + 1 / 4 + 1 / 16) - sqrt(1 + 9 + 1 / 4 + 1 / 16))
@@ -87,7 +87,7 @@ function body_T640(be)
         @test err <= emC("T-640")
         @test all(==(T(1) / 2), Array(s.u[2])) && all(==(T(1) / 4), Array(s.u[3]))
         @test maximum(x -> abs(value_of(x) - gain), g.gain) <= emC("T-640") * 4 * npush * base_eps(T) * ux
-        @test abs(value_of(witness_energy_gain(st)) - gain) <= emC("T-640") * 4 * npush * base_eps(T) * ux
+        @test abs(value_of(witness_energy_gain(st, params(prob))) - gain) <= emC("T-640") * 4 * npush * base_eps(T) * ux
         # the weights from the definition, at the lattice (the lattice order is the slot order)
         c, ℓ, wd = (4.0, 2.0), 1.0, 1.5
         for (i, (x, y)) in enumerate(pts)
@@ -109,16 +109,16 @@ function body_T640(be)
         u1 = Array(s.u[1])
         u1[2] += one(T)
         copyto!(s.u[1], u1)
-        g = witness_gains(st)
+        g = witness_gains(st, params(prob))
         a = findall(g.alive)
         @test length(a) == length(pts) - length(1:3:length(pts))
         mean = sum(value_of(g.w[i]) * value_of(g.gain[i]) for i in a) / sum(value_of(g.w[i]) for i in a)
-        @test_throws ArgumentError witness_energy_gain(st)            # a retired witness is refused by default
-        @test value_of(witness_energy_gain(st; allow_lost = true)) ≈ mean rtol = 16 * base_eps(T)
-        @test !(value_of(witness_energy_gain(st; allow_lost = true)) ≈ sum(value_of.(g.w) .* value_of.(g.gain)) / sum(value_of.(g.w)))
+        @test_throws ArgumentError witness_energy_gain(st, params(prob))            # a retired witness is refused by default
+        @test value_of(witness_energy_gain(st, params(prob); allow_lost = true)) ≈ mean rtol = 16 * base_eps(T)
+        @test !(value_of(witness_energy_gain(st, params(prob); allow_lost = true)) ≈ sum(value_of.(g.w) .* value_of.(g.gain)) / sum(value_of.(g.w)))
         # weights that underflow on every alive witness (the centre far outside the region) are refused, not a NaN
         copyto!(s.w, zero(Array(s.w)))
-        @test_throws ArgumentError witness_energy_gain(st; allow_lost = true)
+        @test_throws ArgumentError witness_energy_gain(st, params(prob); allow_lost = true)
         initialize!(st, prob)
         @test witness_alive(st) == 0
     end
@@ -189,7 +189,7 @@ function body_T641(be)
         @test moved > 10
         v = 10 / sqrt(101)
         npush = prob.nsteps - k0 + 1
-        g = witness_gains(st)
+        g = witness_gains(st, params(prob))
         @test witness_alive(st) == length(pts)
         @test all(iszero, g.gain)
         x = [p[1] + npush * v * Float64(value_of(prob.dt)) - moved * h[1] for p in pts]
@@ -220,7 +220,7 @@ function body_T641(be)
         end
         @test counts == expected
         @test first(counts) == length(pts) && last(counts) == 0
-        @test_throws ArgumentError witness_energy_gain(st)
+        @test_throws ArgumentError witness_energy_gain(st, params(prob))
 
         # a bunch moving backwards (u₀ = −3) crosses the back edge by its own motion between the
         # shifts, and is retired there (not wrapped to the front): alive after step k are the
@@ -274,8 +274,8 @@ const WITNESS_NAMES = (LWFA_GRADIENT_NAMES..., "center", "length")
 
 "The WP-047 objective at `x = (a0, duration, focus, density, ramp, center, length)`: the witness bunch's mean energy gain in the WP-043 case."
 function lwfa_witness_gain(x, mode = Reference(); kw...)
-    st, _ = lwfa_gradient_run(x[1:5], mode; witness = lwfa_witness(x[6], x[7]), kw...)
-    return witness_energy_gain(st)                   # refuses a run in which a witness left the window
+    st, prob = lwfa_gradient_run(x[1:5], mode; witness = lwfa_witness(x[6], x[7]), kw...)
+    return witness_energy_gain(st, params(prob))     # refuses a run in which a witness left the window
 end
 
 # One ForwardDiff gradient in all seven parameters (chunk 7, Float64, Reference) against A7's
@@ -286,10 +286,10 @@ end
 const T642_AD = Ref{Any}(nothing)
 @testset "T-642 ForwardDiff of the witness bunch's mean energy gain through the small LWFA run against the finite-difference floor, seven parameters [A3, A7, WP-047]" begin
     x0 = collect(WITNESS_X0)
-    st, _ = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference(); witness = lwfa_witness(x0[6], x0[7]))
-    g = witness_gains(st)
+    st, prob = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference(); witness = lwfa_witness(x0[6], x0[7]))
+    g = witness_gains(st, params(prob))
     @test witness_alive(st) == length(g.gain)
-    J0 = witness_energy_gain(st)
+    J0 = witness_energy_gain(st, params(prob))
     @info "T-642 objective" J0 maxgain = maximum(g.gain) mingain = minimum(g.gain)
     @test J0 > 0.1                                   # the bunch sits in the accelerating phase
     ad = ForwardDiff.gradient(x -> lwfa_witness_gain(x), x0)
@@ -337,16 +337,16 @@ end
 # are the same bits.
 @testset "T-644 the witness bunch changes nothing else in the run [A3, A4, WP-047]" begin
     st0, _ = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference())
-    st1, _ = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference(); witness = lwfa_witness(26.0, 3.0))
-    st2, _ = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference(); witness = lwfa_witness(20.0, 1.5))
+    st1, p1 = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference(); witness = lwfa_witness(26.0, 3.0))
+    st2, p2 = lwfa_gradient_run(LWFA_GRADIENT_X0, Reference(); witness = lwfa_witness(20.0, 1.5))
     for k in keys(st0.fields)
         @test same_bits(Array(st0.fields[k]), Array(st1.fields[k]))
     end
-    for k in keys(st0.hist)
-        @test same_bits(Array(st0.hist[k]), Array(st1.hist[k]))
+    for k in keys(st0.recorder.hist)
+        @test same_bits(Array(st0.recorder.hist[k]), Array(st1.recorder.hist[k]))
     end
     @test same_bits(Array(st0.species[1].u[1]), Array(st1.species[1].u[1]))
-    g1, g2 = witness_gains(st1), witness_gains(st2)
+    g1, g2 = witness_gains(st1, params(p1)), witness_gains(st2, params(p2))
     @test same_bits(g1.gain, g2.gain)
     @test !same_bits(g1.w, g2.w)
 end

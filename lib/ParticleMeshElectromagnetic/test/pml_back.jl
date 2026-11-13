@@ -32,7 +32,8 @@ end
 # start), and with an open y axis the y-PML's step and the matched layer's apply the same back-edge
 # corrections. Each correction on its own
 # changes only its two components on the layer columns, advancing its convolution fields only
-# where asked; a shift moves ψ one column back with the last column zero; step 1 zeroes ψ.
+# where asked; a shift moves ψ one column back with the last column zero; no step zeroes ψ (they
+# are part of what a run evolves, WP-056), a snapshot of the start or `reset_convolution!` does.
 @testset "T-571 a zero-profile back-edge PML is the window's step bit for bit; corrections, shift and reset [A2, A4, A8, WP-034]" begin
     for T in TYPES
         prob = back_lwfa(T; nsteps = 120)
@@ -54,7 +55,7 @@ end
     run!(b, params(warm), warm.nsteps)
     @test window_shifts(a, warm.nsteps) > 0
     @test all(c -> bits(Array(getfield(a.fields, c))) == bits(Array(getfield(b.fields, c))), keys(a.fields))
-    @test all(c -> getfield(a.aux.window.back, c) == getfield(b.aux.window.back, c), (:ψBy, :ψBz, :ψEy, :ψEz))
+    @test all(c -> getfield(back_absorber(a), c) == getfield(back_absorber(b), c), (:ψBy, :ψBz, :ψEy, :ψEz))
     @test particle_set(a.species[1]) == particle_set(b.species[1])
     prob = back_lwfa(Float64; nsteps = 4)
     st = back_state(prob; back = PML(; cells = 6, kappa_max = 2, alpha_max = 0.1))
@@ -81,20 +82,34 @@ end
             @test (getfield(L, c) == ψ0[c]) == !(adv && c in ψs)
         end
     end
-    L = st.aux.window.back
+    L = back_absorber(st)
     foreach(c -> (getfield(L, c) .= randn(Xoshiro(29), size(getfield(L, c)))), (:ψBy, :ψBz, :ψEy, :ψEz))
     old = map(c -> copy(getfield(L, c)), (:ψBy, :ψBz, :ψEy, :ψEz))
     shift_absorber!(L, nothing)
     for (c, o) in zip((:ψBy, :ψBz, :ψEy, :ψEz), old)
         @test getfield(L, c)[1:5, :] == o[2:6, :] && all(iszero, getfield(L, c)[6, :])
     end
-    # step 1 zeroes the convolution fields: a state with stale ψ takes the fresh state's first step
+    # the convolution fields are part of what a run evolves (WP-056), so no step zeroes them: a state
+    # with stale ψ takes another first step than the fresh state, and the fresh state's after
+    # reset_convolution!, or after restore! of a snapshot of the start, which holds them (zero there)
     fresh = back_state(prob; back = pml)
     used = back_state(prob; back = pml)
-    foreach(c -> (getfield(used.aux.window.back, c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
+    start = snapshot(used, 0)
+    stale!() = foreach(c -> (getfield(back_absorber(used), c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
+    same_fields() = all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
     step!(fresh, params(prob), 1)
+    stale!()
     step!(used, params(prob), 1)
-    @test all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
+    @test !same_fields()
+    restore!(used, start)
+    stale!()
+    reset_convolution!(used)
+    step!(used, params(prob), 1)
+    @test same_fields()
+    stale!()
+    restore!(used, start)
+    step!(used, params(prob), 1)
+    @test same_fields()
 end
 
 # --- T-572 ----------------------------------------------------------------------------------
@@ -110,13 +125,13 @@ end
         prob = back_lwfa(T)
         st = back_state(prob; back = PML(; cells = cb, alpha_max = 0.2), mode)
         p = params(prob)
-        ia = st.aux.antennas[1].ia
+        ia = antenna_planes(st)[1].ia
         worst = inside = 0.0
         for k in 1:prob.nsteps
             step!(st, p, k)
             k % 3 == 0 || continue
             s_win = window_shifts(st, k)
-            r = window_gauss(st, s_win)
+            r = window_gauss(st, p, s_win)
             cols = [i for i in axes(r.res, 1) if i > cb && !(i in (ia - 1 - s_win, ia - s_win))]
             worst = max(worst, Float64(maximum(r.res[cols, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
             inside = max(inside, Float64(maximum(r.res[1:cb, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
@@ -134,18 +149,18 @@ end
     prob = back_lwfa(Float64; nsteps = 4)
     @test_throws ArgumentError back_state(prob; back = AbsorbingLayer(; cells = 4, strength = 1))
     @test_throws ArgumentError back_state(prob; back = PML(; cells = 2))     # thinner than the guards
-    @test back_state(prob; back = PML(; cells = 8)).aux.window.back isa BackPMLFields
-    @test back_state(prob; back = PML(; cells = 4)).aux.window.back.sigma_max ≈ 0.8 * 5 / cellsize(back_state(prob).grid)[1]
+    @test back_absorber(back_state(prob; back = PML(; cells = 8))) isa BackPMLFields
+    @test back_absorber(back_state(prob; back = PML(; cells = 4))).sigma_max ≈ 0.8 * 5 / cellsize(back_state(prob).grid)[1]
     # 2·cells < n₁, on a window without a laser
     dark = window_lwfa(Float64; nsteps = 4, laser = false)
     @test_throws ArgumentError back_state(dark; back = PML(; cells = 32))
-    @test back_state(dark; back = PML(; cells = 31)).aux.window.back isa BackPMLFields
+    @test back_absorber(back_state(dark; back = PML(; cells = 31))) isa BackPMLFields
     # the antenna (window_lwfa's, columns 8 and 9) stays out of the layer while it emits
     lwfa = window_lwfa(Float64; nsteps = 4)
     @test_throws ArgumentError back_state(lwfa; back = PML(; cells = 8))      # inside the layer from the start
     @test_throws ArgumentError back_state(lwfa; back = PML(; cells = 6))      # reached before its pulse is over
-    @test back_state(lwfa; back = PML(; cells = 4)).aux.window.back isa BackPMLFields
-    @test back_state(window_lwfa(Float64; nsteps = 4, start = 40); back = PML(; cells = 6)).aux.window.back isa BackPMLFields
+    @test back_absorber(back_state(lwfa; back = PML(; cells = 4))) isa BackPMLFields
+    @test back_absorber(back_state(window_lwfa(Float64; nsteps = 4, start = 40); back = PML(; cells = 6))) isa BackPMLFields
     plain, _ = open_plasma_2d(Float64)
     @test_throws ArgumentError EMState(plain, EMNumerics(; absorber = PML(; cells = 4), back_absorber = PML(; cells = 4)))
     @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; back_absorber = PML(; cells = 4)))   # no window at N = 1
@@ -160,7 +175,7 @@ function back_digest(; workgroupsize = nothing)
     st = back_state(prob; back = PML(; cells = 6, kappa_max = 2, alpha_max = 0.1), workgroupsize)
     run!(st, params(prob), prob.nsteps)
     h = state_digest_2d(st)
-    L = st.aux.window.back
+    L = back_absorber(st)
     for a in (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
         h = hash(bits(a), h)
     end

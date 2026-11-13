@@ -17,21 +17,30 @@ const CASE = (a0 = 1.0, waist = 10.0, density = 0.1, vacuum = 64.0, ramp = 8.0, 
               cells = (224, 64), nsteps = 512, ppc = (2, 2), dy_cells = 4)
 
 """
-    wake_problem(duration, focus; nsteps, cells, ppc, dy_cells) -> EMProblem{2}
+    wake_problem(duration, focus; nsteps, ppl, dy_cells, cells, ppc, a0, waist) -> EMProblem{2}
 
 The case at a pulse duration (1/e field half width) and focus; the element type follows the
 arguments. The pulse's delay is 54 and the window starts at 108 = delay + 6·9, after the antenna
-has finished, for durations up to 9. `cells`, `ppc` and `dy_cells` (Δy in units of Δx, with the
-transverse box kept) are there for resolution checks.
+has finished, for durations up to 9. `ppl` (cells per λ₀ along x, Δx = λ₀/ppl), `dy_cells` (Δy in
+units of Δx), `cells` (by default the 14 λ₀ × 16 λ₀ box at that resolution) and `ppc` are there for
+resolution checks; the antenna stays at x = 3λ₀/8 at every `ppl` divisible by 8. `a0` and `waist`
+override the case's pulse (WP-051: low-a₀ and plane-wave comparisons).
 """
-function wake_problem(duration, focus; nsteps = CASE.nsteps, cells = CASE.cells, ppc = CASE.ppc, dy_cells = CASE.dy_cells)
+function wake_problem(duration, focus; nsteps = CASE.nsteps, ppl = 16, dy_cells = CASE.dy_cells,
+                      cells = nothing, ppc = CASE.ppc, a0 = CASE.a0, waist = CASE.waist)
+    ppl % 8 == 0 || throw(ArgumentError("ppl = $ppl: the antenna sits at 3λ₀/8, a cell edge only for ppl divisible by 8"))
+    if cells === nothing
+        (16ppl) % dy_cells == 0 ||
+            throw(ArgumentError("dy_cells = $dy_cells does not divide the 16 λ₀ box's $(16ppl) cells of Δx; pass `cells` explicitly"))
+        cells = (14ppl, 16ppl ÷ dy_cells)
+    end
     T = promote_type(typeof(duration), typeof(focus))
     z3 = (zero(T), zero(T), zero(T))
-    h = 2 * T(π) / 16
+    h = 2 * T(π) / ppl
     hy = dy_cells * h
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
-    pulse = GaussianLaser(; a0 = T(CASE.a0), waist = T(CASE.waist), duration = T(duration), delay = T(CASE.delay), focus = T(focus),
-                          position = 6h, center = cells[2] * hy / 2)
+    pulse = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = T(CASE.delay), focus = T(focus),
+                          position = 6 * (2 * T(π) / 16), center = cells[2] * hy / 2)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(CASE.density), zero(T), (1, 0), ppc, z3, z3, 1)
     return EMProblem("wake2d", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
                      lasers = (pulse,), boundaries = (:window, :periodic), window = MovingWindow(; start = T(CASE.start)),

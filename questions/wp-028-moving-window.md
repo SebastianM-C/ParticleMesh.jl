@@ -42,5 +42,4 @@ The particle buffers hold `(1 + headroom)·prod(cells)·prod(ppc)` slots, with `
 
 - The case-file schema: `grid.boundaries = ["window", ·]`, a `[window]` table and a profile per case. The cross-code generators would then need the axis swap of §1.
 - An absorbing back edge (§3).
-- The harness (`DiscreteProblem`): the step takes its step index from the harness, so a window state should run through it, but that is not tested, and `state_partition` does not carry the refill's lost-particle counters.
 - Threads: the bitwise property is tested across reruns and launch shapes, not at 1 and 4 threads (T-474 has no worker run).

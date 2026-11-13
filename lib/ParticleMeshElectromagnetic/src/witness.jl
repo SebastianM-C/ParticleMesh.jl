@@ -10,8 +10,10 @@
 #   fixed region, the same for every parameter value, and the bunch's centre, length and width
 #   enter only through the averaging weights, a Gaussian of the lattice positions. A shift of the
 #   centre therefore moves the weight across the lattice, never a particle. The injection time,
-#   the region and the lattice are configuration (host integers, §0.4 rule 2); the momentum,
-#   charge and mass may carry derivatives.
+#   the region and the lattice are configuration (host integers, §0.4 rule 2), held by the state's
+#   `WitnessFrame`; the momentum, the centre, the length and the width are parameters of the step
+#   (`WitnessParams` in `EMParams`), read at the injection step and by the gain's read-out, and
+#   may carry derivatives, as may the charge and the mass, which the bunch's `Species` holds.
 # - Injection: at the start of the first step whose start time (k − 1)·Δt reaches `inject`, every
 #   lattice point becomes alive at its place with the momentum `momentum`, taken as the momentum
 #   at the half step before (as the window's refill takes its plasma's). Before that step the
@@ -76,13 +78,13 @@ witness_as(::Type{T}, b::WitnessBunch) where {T} =
 """
     WitnessFrame
 
-The witness bunch placed on a grid by the state: the description, its particles (a `Species{2}`
-of one slot per lattice point, with the push's extras; `w` holds the averaging weights), the
-injection step `kinj`, the first cell `c0` and the cells `nc` of the lattice per axis, and its
-points per cell.
+The witness bunch placed on a grid by the state: its particles (a `Species{2}` of the bunch's
+charge and mass, one slot per lattice point, with the push's extras; `w` holds the averaging
+weights), the injection step `kinj`, the first cell `c0` and the cells `nc` of the lattice per
+axis, and its points per cell. The bunch's momentum and weights' parameters are not here
+([`WitnessParams`](@ref)).
 """
-struct WitnessFrame{B,S}
-    bunch::B
+struct WitnessFrame{S}
     species::S
     kinj::Int
     c0::NTuple{2,Int32}
@@ -108,17 +110,21 @@ function witness_step(inject, dt)
     return k
 end
 
-function WitnessFrame(problem::EMProblem{2,T}, grid, backend) where {T}
-    b = problem.witness
+"A bunch's placement on a grid for a time step, host integers: the injection step, the first cell and the cells of the lattice per axis, and its points per cell."
+function witness_placement(b::WitnessBunch, grid, dt)
     h = cellsize(grid)
     n = ncells(grid)
     (a1, n1), (a2, n2) = ntuple(d -> witness_cells(b.region[d]..., h[d], n[d], d), Val(2))
-    kinj = witness_step(b.inject, problem.dt)
+    return (witness_step(b.inject, dt), Int32.((a1, a2)), Int32.((n1, n2)), Int32.(b.ppc))
+end
+
+function WitnessFrame(problem::EMProblem{2,T}, grid, backend) where {T}
+    b = problem.witness
+    kinj, c0, nc, ppc = witness_placement(b, grid, problem.dt)
     kinj <= problem.nsteps ||
         throw(ArgumentError("the witness bunch is injected at step $kinj (t = $(b.inject)), after the $(problem.nsteps) steps of the problem"))
-    cap = n1 * n2 * prod(b.ppc)
-    s = Species(backend, T, cap; q = b.charge, m = b.mass, N = 2, extras = flux_extras(T, 2))
-    return WitnessFrame(b, s, kinj, Int32.((a1, a2)), Int32.((n1, n2)), Int32.(b.ppc))
+    s = Species(backend, T, prod(nc) * prod(b.ppc); q = b.charge, m = b.mass, N = 2, extras = flux_extras(T, 2))
+    return WitnessFrame(s, kinj, c0, nc, ppc)
 end
 
 # One work item per lattice point, in lattice order (cells along axis 1 fastest, then rows; within
@@ -164,11 +170,10 @@ witness_frame(st::EMState) = haskey(st.aux, :witness) ? st.aux.witness : nothing
 clear_witness!(::Nothing) = nothing
 clear_witness!(w::WitnessFrame) = (fill!(w.species.status, ParticleMeshCore.FREE); fill!(w.species.count, Int32(0)); nothing)
 
-"At the start of step `k`: inject the bunch if `k` is its injection step (a host test of the step count, §0.4)."
-inject_witness!(::Nothing, grid, k, wgs) = nothing
-function inject_witness!(w::WitnessFrame, grid, k, wgs)
+"At the start of step `k`: inject the bunch with the parameters `b` if `k` is its injection step (a host test of the step count, §0.4)."
+inject_witness!(::Nothing, b, grid, k, wgs) = nothing
+function inject_witness!(w::WitnessFrame, b::WitnessParams, grid, k, wgs)
     k == w.kinj || return nothing
-    b = w.bunch
     s = w.species
     launcher(inject_witness_kernel!, get_backend(s), wgs)(s, w.c0, w.nc, w.ppc, cellsize(grid), b.momentum, b.center, b.length,
                                                           b.width; ndrange = capacity(s))
@@ -179,23 +184,25 @@ end
 # --- observables (host reads, outside a step) ---------------------------------------------------
 
 """
-    witness_gains(state::EMState{2}) -> NamedTuple
+    witness_gains(state::EMState{2}, params::EMParams) -> NamedTuple
 
 The witness bunch of `state` per particle, in lattice order (host arrays): the position `x` and
 `y` (c/ω₀; window coordinates with a moving window), the averaging weight `w`, the energy gain
-`gain = m·(γ − γ₀)` in mₑc² (γ of the momentum at the last half step, γ₀ that of the injected
-momentum, written `m·(|u|² − |u₀|²)/(γ + γ₀)` against cancellation) and `alive`. An
+`gain = m·(γ − γ₀)` in mₑc² (γ of the momentum at the last half step, γ₀ that of the momentum the
+bunch was injected with, `params.witness.momentum`: the parameters of the run, since the state
+keeps no copy; written `m·(|u|² − |u₀|²)/(γ + γ₀)` against cancellation) and `alive`. An
 `ArgumentError` without a bunch. A device read: never inside a step.
 """
-function witness_gains(st::EMState{2})
+function witness_gains(st::EMState{2}, p::EMParams)
     w = witness_frame(st)
     w === nothing && throw(ArgumentError("the state has no witness bunch (EMProblem(...; witness = WitnessBunch(...)))"))
+    p.witness === nothing && throw(ArgumentError("the parameters have no witness bunch, the state has one"))
     s = w.species
     h = cellsize(st.grid)
     u1, u2, u3 = Array(s.u[1]), Array(s.u[2]), Array(s.u[3])
     alive = Array(s.status) .== ALIVE
-    u0 = w.bunch.momentum
-    m = w.bunch.mass
+    u0 = p.witness.momentum
+    m = s.m
     a0 = u0[1]^2 + u0[2]^2 + u0[3]^2
     g0 = sqrt(1 + a0)
     gain = map(u1, u2, u3) do a, b, c
@@ -208,7 +215,7 @@ function witness_gains(st::EMState{2})
 end
 
 """
-    witness_energy_gain(state::EMState{2}; allow_lost = false) -> T
+    witness_energy_gain(state::EMState{2}, params::EMParams; allow_lost = false) -> T
 
 The objective of WP-047: the weighted mean energy gain of the witness bunch's alive particles,
 `Σ wᵢ·gainᵢ / Σ wᵢ` over [`witness_gains`](@ref), in mₑc², summed on the host in lattice order
@@ -222,8 +229,8 @@ outside the region), or none is alive (before the injection, or all lost), it is
 `ArgumentError` too, never a NaN. So is an alive witness inside a moving window's back band
 ([`window_back_band`](@ref)), where observables are not to be read (#370).
 """
-function witness_energy_gain(st::EMState{2}; allow_lost::Bool = false)
-    g = witness_gains(st)
+function witness_energy_gain(st::EMState{2}, p::EMParams; allow_lost::Bool = false)
+    g = witness_gains(st, p)
     any(g.alive) || throw(ArgumentError("no witness particle is alive: the bunch is not injected yet, or every particle left the box"))
     allow_lost || all(g.alive) ||
         throw(ArgumentError("$(count(!, g.alive)) of the $(length(g.alive)) witness particles left the box, so the mean jumps between neighbouring parameter values; widen the window, move the bunch, or pass allow_lost = true"))

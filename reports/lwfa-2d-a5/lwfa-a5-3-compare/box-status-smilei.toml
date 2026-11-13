@@ -1,0 +1,59 @@
+branch = "runs/lwfa-a5-3-smilei"
+request_commit = "e79e5b7fc5e140cd62430cfd4d4792ab1c84f0fb"
+started = "2026-11-12T04:53:31Z"
+category = "crosscode"
+outputs = ["scripts/runs/lwfa-a5-3-focus0/smilei-vacuum", "scripts/runs/lwfa-a5-3/smilei-vacuum", "scripts/runs/lwfa-a5-3/smilei-plasma"]
+finished = "2026-11-12T05:02:09Z"
+ok = true
+files_returned = 45
+dumps_over_20MB = ["scripts/runs/lwfa-a5-3-focus0/smilei-vacuum/Fields0.h5", "scripts/runs/lwfa-a5-3/smilei-vacuum/Fields0.h5", "scripts/runs/lwfa-a5-3/smilei-plasma/Fields0.h5"]
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T04:53:31Z"
+exit = 0
+seconds = 48
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T04:54:19Z"
+exit = 0
+seconds = 21
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T04:54:40Z"
+exit = 0
+seconds = 47
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T04:55:26Z"
+exit = 0
+seconds = 7
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-12T04:55:33Z"
+exit = 0
+seconds = 387
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-12T05:02:00Z"
+exit = 0
+seconds = 8
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"

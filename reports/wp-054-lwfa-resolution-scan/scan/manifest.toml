@@ -1,0 +1,27 @@
+cases = ["lwfa-2d-r32", "lwfa-2d-r48", "lwfa-2d-r64"]
+commit = "16d943d66f4e797ca802b1ea40050cb070ff07b1"
+dirty = false
+runs = ["scripts/runs/lwfa-scan-r32-three", "scripts/runs/lwfa-scan-r48-three", "scripts/runs/lwfa-scan-r64-three"]
+updated = "2026-11-12T09:50:50.747Z"
+
+[inputs]
+
+[summaries]
+"r32/picongpu-plasma" = "sha256:b670d77908db4a50016b8f688fda2e391135ec7447235c06f2354e28dd0d81d3"
+"r32/picongpu-vacuum" = "sha256:9595fbd3875bacb48394201e7214944f05611e28040b2227455028bb75e17290"
+"r32/pm-plasma" = "sha256:5eaa2ebac728ee31fa04f3aaa1a792029bbf6629883a4b3a12da953c18899848"
+"r32/pm-vacuum" = "sha256:6f170d64f423ab3179f17b16696503c49858eb79d66f958ebd3ce361c0cf8733"
+"r32/smilei-plasma" = "sha256:f683d42699de419d8cb0dd40b53cf58c5f5f34a8c3779f98a0b6a98e9c394e65"
+"r32/smilei-vacuum" = "sha256:e4fbf4dd1d31144c43f4b4e4d0db98cf37b0d2d7c720bb2064a36fe6df5667e8"
+"r48/picongpu-plasma" = "sha256:24a113fbc77b17302ca6ee9599e218dd7dd8477169bee7c8803896cec26d18a0"
+"r48/picongpu-vacuum" = "sha256:a70471611e5a69c41d583e92841e0373a433ce8aed88682092d029e9481c6a50"
+"r48/pm-plasma" = "sha256:26eaf83e6be43b6180f8fe523d92170e608044f9785faba41d61ffaafab009ce"
+"r48/pm-vacuum" = "sha256:ccd12aa23277afb38a0d69c602acbaa78d1e79940aebf4f615ab21ddf79a4787"
+"r48/smilei-plasma" = "sha256:9e49d2f9e9e8e2662646819c50d007c84857a6c0bb44220afcbef73bf0ea9b3d"
+"r48/smilei-vacuum" = "sha256:e307c9defa13237ac24a65a8012149680853620096ce42fc1fb97ceda2bc9468"
+"r64/picongpu-plasma" = "sha256:1b35c8421d6b261ac806b6ad0277fa8bc4836aec480797eb3a9831099b0a37f3"
+"r64/picongpu-vacuum" = "sha256:458a0e038177cb310f94d2ace3260481dc7fc51a4a0b7407f71564aa1de4a888"
+"r64/pm-plasma" = "sha256:4cf2b57a2557a46a7f7feb3eaef43c51cfa966d0a0493a2467bbc9491897cecc"
+"r64/pm-vacuum" = "sha256:6efe65b86a565892c26620104307cdc90bf67ccd378bbcd1da9e6e0a0dfce8d2"
+"r64/smilei-plasma" = "sha256:bc59dfcae6a74618b4a0b684c62c2924420f0a81a35aa4e5061539b7c3b033ed"
+"r64/smilei-vacuum" = "sha256:673755513366ef8e6f22a91b77bb4f28178b2ebb71fcbeb61d16190fd08233dd"
