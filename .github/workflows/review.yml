@@ -89,7 +89,8 @@ jobs:
     name: Review (${{ matrix.lens }})
     needs: lenses
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # Up to three hours of waiting for CI, then the review itself.
+    timeout-minutes: 300
     permissions:
       contents: read
       pull-requests: read
@@ -118,32 +119,39 @@ jobs:
             cp ".claude/agents/$LENS-reviewer.md" "$RUNNER_TEMP/brief.md"
           fi
       - name: Wait for CI on this commit and summarize it
-        # The lens decides with the CI result in hand (up to an hour of waiting): a pass rests on a test
-        # result, never on reading alone (the lens briefs).
+        # The review depends on the tests: this step ends only when the CI run of this commit has
+        # completed, and fails the job otherwise, so no lens is asked for a verdict without a test result
+        # (a pass rests on a test result, never on reading alone; the lens briefs). CI runs on every
+        # pull request event that starts this workflow, so a run exists within minutes; a full run takes
+        # 50 to 90 minutes. A job that fails here is rerun once CI has a result.
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           id=""; status=""
-          for i in $(seq 1 60); do
+          for i in $(seq 1 180); do
             id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI.yml --commit "$HEAD" --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
             if [ -n "$id" ]; then
               status=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json status -q .status 2>/dev/null || true)
               [ "$status" = completed ] && break
+            elif [ "$i" -ge 15 ]; then
+              break
             fi
             sleep 60
           done
+          if [ -z "$id" ]; then
+            echo "::error::no CI run was found for ${HEAD:0:7} after 15 minutes; rerun this job once CI has run on the commit"
+            exit 1
+          fi
+          if [ "$status" != completed ]; then
+            echo "::error::CI run $id had not finished after three hours (status: $status); rerun this job once it has"
+            exit 1
+          fi
           {
             echo "# CI on ${HEAD:0:7}"
-            if [ -z "$id" ]; then
-              echo "No CI run was found for this commit."
-            elif [ "$status" != completed ]; then
-              echo "CI run $id had not finished after an hour (status: $status); its tests are unverified."
-            else
-              gh run view "$id" --repo "$GITHUB_REPOSITORY" --json conclusion,jobs \
-                -q '"Run conclusion: \(.conclusion)\n" + ([.jobs[] | "- \(.name): \(.conclusion // .status)"] | join("\n"))'
-              echo "The \`Julia pre\` job is allowed to fail (CLAUDE.md, A6); every other failed job is a failing test."
-            fi
+            gh run view "$id" --repo "$GITHUB_REPOSITORY" --json conclusion,jobs \
+              -q '"Run conclusion: \(.conclusion)\n" + ([.jobs[] | "- \(.name): \(.conclusion // .status)"] | join("\n"))'
+            echo "The \`Julia pre\` job is allowed to fail (CLAUDE.md, A6); every other failed job is a failing test."
           } > "$RUNNER_TEMP/ci.md"
           cat "$RUNNER_TEMP/ci.md"
       - uses: julia-actions/setup-julia@v3
@@ -165,8 +173,8 @@ jobs:
             ${{ runner.temp }}/brief.md and the contract every change must respect is
             ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
             this PR comes from the PR itself). The CI result for this commit is in
-            ${{ runner.temp }}/ci.md: a failed job other than `Julia pre` is a failing test, and
-            unfinished or missing CI means the tests are unverified unless you complete a run yourself.
+            ${{ runner.temp }}/ci.md, from a run that has completed (this job does not ask for a review
+            before it has): a failed job other than `Julia pre` is a failing test.
             The PR head is checked
             out in the working directory. Read the brief and the contract, then `gh pr view` and
             `gh pr diff` for the change and its description, read the files it touches, and run what the
