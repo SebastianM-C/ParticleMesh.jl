@@ -1,7 +1,6 @@
 # Tier-2 paths. A change here needs the repository owner's approval in addition to the automated
 # review (ruleset "main" requires review from Code Owners). Paths not listed are tier 0 or 1 and
-# merge on green required checks plus the automated review; the digest lists derived changes
-# (work packages, interfaces) for the owner's veto. The last matching pattern wins.
+# merge on green required checks plus the automated review. The last matching pattern wins.
 
 # The owner's aims and binding decisions: the root everything else is derived from
 /docs/goals/                @SebastianM-C

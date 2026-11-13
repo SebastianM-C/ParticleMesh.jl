@@ -433,7 +433,7 @@ jobs:
         run: |
           set -euo pipefail
           expected=$(printf '%s' "$LENSES" | jq 'length')
-          tier2=$(printf '%s' "${TIER2:-[]}" | jq -r 'if length > 0 then "**Tier 2:** this PR changes code-owner paths (" + (map("`" + . + "`") | join(", ")) + "). The digest lists it for the owner.\n\n" else "" end')
+          tier2=$(printf '%s' "${TIER2:-[]}" | jq -r 'if length > 0 then "**Tier 2:** this PR changes code-owner paths (" + (map("`" + . + "`") | join(", ")) + ")." else "" end')
           body=$(jq -rs '
             def line: "- **\(.severity)** `\(.file)`\(if .line > 0 then ":\(.line)" else "" end): \(.note)";
             "Automated review of \(env.HEAD[0:7]) by the \(map(.lens) | join(" and ")) lens(es), written by Claude Code (claude-opus-5-5) in `.github/workflows/CI.yml`.\n\n"
@@ -441,7 +441,8 @@ jobs:
                    + (if (.findings | length) > 0 then "\n" + (.findings | map(line) | join("\n")) + "\n" else "" end))
                | join("\n"))
           ' verdicts/*.json)
-          body="$tier2$body"
+          # Command substitution drops trailing newlines, so the blank line is added here.
+          if [ -n "$tier2" ]; then body="$tier2"$'\n\n'"$body"; fi
           count=$(jq -rs 'length' verdicts/*.json)
           passes=$(jq -rs 'map(select(.verdict == "pass")) | length' verdicts/*.json)
           if [ "$count" != "$expected" ]; then
@@ -499,7 +500,7 @@ jobs:
             gh issue create --title "$title" --label follow-up --body "$body"
           fi
       - name: Label tier-2 pull requests
-        # Never blocks the merge; the label is how the digest finds tier-2 changes. It also runs after an
+        # Never blocks the merge; the label is how the owner finds tier-2 changes. It also runs after an
         # incomplete review or a "request changes" verdict, each of which fails an earlier step.
         if: ${{ !cancelled() && needs.lenses.result == 'success' }}
         continue-on-error: true
