@@ -28,7 +28,7 @@ Requirements, interfaces and plans are prose in `docs/plan/` that cites goal ids
 
 ## When a goal changes
 
-The overseer's digest lists the open packages that cite each goal edited since the last digest. The next session that picks one up re-reads it against the goal and rewrites the sentences that no longer fit; at two sentences a package is re-read, not re-derived.
+The next session that picks up an open package citing the goal re-reads it against the goal and rewrites the sentences that no longer fit; at two sentences a package is re-read, not re-derived.
 
 ## Commands
 
@@ -40,7 +40,3 @@ julia +1.13 --project=scripts scripts/trace/test/runtests.jl
 ```
 
 `build.jl` prints coverage (per goal: packages, tests) and the errors. `--check` exits 1 on an error: a malformed file or front matter, an unknown front-matter key, an unknown goal, package or tag, a duplicate or untagged test id, or a forbidden engine dependency (ModelingToolkit, MethodOfLines, Molly or Checkpointing in the root or a `lib/` `Project.toml`). CI runs both commands. The check sees only the packages present, so it cannot catch a reused id or a citation of a deleted package outside test tags and `depends_on`; the next id comes from the git log as above.
-
-## Digests
-
-The overseer writes the digests into `trace/digests/`, named as `.claude/agents/overseer.md` says.

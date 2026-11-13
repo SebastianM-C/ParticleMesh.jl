@@ -6,5 +6,5 @@ The owner's input to the project: the aims (A0) and the binding decisions A1 to 
 - A file states the decision as it stands; git is its history. Never keep superseded text next to the new one.
 - Each fact has one home; derived text cites it by id, it does not copy it (the map of homes is in `CLAUDE.md`, "Working here").
 - The derived documents follow the same rule: `docs/plan/` and the work packages in `trace/wp/` describe the current state, and git is the history. What is done, answered, superseded or withdrawn and no longer needs to appear is deleted; the commit message carries the details worth keeping.
-- Work packages name the goals they serve (`goals = ["A3"]` in their front matter) and say in one or two sentences what to build and how to show it works; when a goal changes, the digest lists the open packages that cite it and the factory rewrites the ones that no longer fit (`trace/README.md`).
+- Work packages name the goals they serve (`goals = ["A3"]` in their front matter) and say in one or two sentences what to build and how to show it works; when a goal changes, the factory rewrites the open packages that cite it and no longer fit (`trace/README.md`).
 - Ids are never reused. A11 to A14 were process settings and are now the factory settings F1 to F4 in `docs/plan/factory-and-observability.md`.
