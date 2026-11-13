@@ -62,6 +62,22 @@ Ex, (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ). Every field is an engine fie
 """
 const FIELD_LAYOUT = field_layout(Val(1))
 
+"The module's 2D field layout, [`field_layout`](@ref)`(Val(2))`."
+const FIELD_LAYOUT_2D = field_layout(Val(2))
+"The stagger of ρ at N = 2, the primal nodes on both axes."
+const RHO_STAGGER_2D = (RHO_STAGGER, RHO_STAGGER)
+
+# The engine has two conventions for a stagger: a bare `Stagger` in its 1D calls (`deposit!`,
+# `deposit_flux!`), one `Stagger` per axis in its N-axis ones (`gather_at` on tuples). The step is
+# written once over N with the 1D case as the 1-tuple case, so it asks for the layout here.
+const FIELD_LAYOUT_1D_AXES = map(s -> (s,), FIELD_LAYOUT)
+"The field layout with one stagger per resolved axis for every component: the engine's N-axis `gather_at` takes it at N = 1 too."
+@inline gather_layout(::Val{1}) = FIELD_LAYOUT_1D_AXES
+@inline gather_layout(::Val{2}) = FIELD_LAYOUT_2D
+"The stagger of ρ as the engine's depositions take it at N: bare at N = 1, one per axis above."
+@inline rho_stagger(::Val{1}) = RHO_STAGGER
+@inline rho_stagger(::Val{2}) = RHO_STAGGER_2D
+
 """
     em_fields(backend, T, grid::PeriodicGrid{N})
 

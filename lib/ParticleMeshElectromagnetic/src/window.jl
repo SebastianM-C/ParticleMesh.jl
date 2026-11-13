@@ -221,7 +221,7 @@ function window_shifts(c::WindowClock, k::Integer)
     return t < zero(t) ? 0 : floor(Int, t / c.dx1)
 end
 window_shifts(w::WindowFrame, k::Integer) = window_shifts(WindowClock(w), k)
-window_shifts(st::EMState, k::Integer) = window_shifts(st.aux.window, k)
+window_shifts(st::EMState, k::Integer) = window_shifts(window_frame(st), k)
 
 "The fresh particles of each species that found no free slot in the window's refills (a device read: never inside a step)."
 window_lost(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.lost)

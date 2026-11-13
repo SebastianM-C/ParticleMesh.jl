@@ -699,3 +699,29 @@ include(joinpath(REPO, "scripts", "digest", "digest.jl"))
     step!(st, params(prob), 1)
     @test all(map(!=, split(EMDigest.digest_line(st), " | ")[1:2], split(d1, " | ")[1:2]))
 end
+
+# #428: at N = 1 a mode that sorts sorts what is restored into it (`refresh_caches!`), the identity
+# for arrays saved from such a mode. Arrays saved from a `Fast()` run are not sorted, so restored
+# into a `Reference()` state they are the same particles in another slot order: another run from
+# there on, as `restore!` says of a restart with other numerics.
+@testset "T-748 a Fast N = 1 snapshot restored into a Reference state is the same particles, sorted: another slot order [A4, WP-056]" begin
+    T = Float64
+    case = load_case("two-stream")
+    prob = problem_from_case(case, T; HARNESS_KW...)
+    fast = EMState(prob, numerics_from_case(case; mode = Fast()))
+    initialize!(fast, prob)
+    run!(fast, params(prob), 40; observer = nothing)
+    snap = snapshot(fast, 40)
+    rows(s) = [(Array(s.cell[1])[i], Array(s.offset[1])[i], Array(s.u[1])[i], Array(s.u[2])[i], Array(s.u[3])[i], Array(s.w)[i])
+               for i in findall(==(ParticleMeshCore.ALIVE), Array(s.status))]
+    for (mode, sorted) in ((Reference(), true), (Fast(), false))
+        st = restore!(EMState(prob, numerics_from_case(case; mode)), snap)
+        for (s, f) in zip(st.species, fast.species)
+            @test sort(rows(s)) == sort(rows(f))                                    # the same particles
+            @test issorted(first.(rows(s))) == sorted                               # sorted by cell exactly in the mode that sorts
+            @test (rows(s) == rows(f)) == !sorted                                   # so in another slot order there
+        end
+        @test all(same_bits.(Array.(values(st.fields)), Array.(values(fast.fields))))
+        @test sum(Array(st.K)) ≈ sum(Array(fast.K)) rtol = 1e-12                    # the cache is of the restored particles
+    end
+end

@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -164,6 +164,11 @@ else
 
     @testset "T-747 the restart on CUDA: T-740, T-741, T-742 and T-744 with the CPU's assertions [A4, A8, WP-056]" begin
         rerun_module_on(GPU, (("T-740", body_T740), ("T-741", body_T741), ("T-742", body_T742), ("T-744", body_T744)))
+    end
+
+    # T-756 holds the kernels against host arithmetic bit for bit, which holds on the CPU only (A4)
+    @testset "T-758 the field modifiers and the one step on CUDA: T-750, T-751, T-753 and T-757 with the CPU's assertions [A4, A8, WP-057]" begin
+        rerun_module_on(GPU, (("T-750", body_T750), ("T-751", body_T751), ("T-753", body_T753), ("T-757", body_T757)))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin

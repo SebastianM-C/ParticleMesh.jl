@@ -1,6 +1,8 @@
 # The module's step: composed here from engine pieces, in the module's own order. The engine owns
 # no System, State or step! (architecture-draft.md §0.7); this file is where the electromagnetic
-# step order lives.
+# step order lives. `initialize!` and `step!` are one method each over the number N of resolved
+# axes, the 1D case being the case of one axis (WP-057); `step!`'s documentation names what is
+# per N.
 
 "The current density's y component per particle, `q·w·u_y/γ` (a `deposit_flux!` quantity)."
 struct CurrentY end
@@ -20,34 +22,52 @@ struct KineticEnergy end
     end
 end
 
-"E and B of the layout at offset `δ` of cell `c` (guards filled), each on its own stagger."
-@inline function fields_at(f, c::Int32, δ::T, shape, g::Int32) where {T}
-    E = (gather_at(f.Ex, c, δ, shape, FIELD_LAYOUT.Ex, g),
-         gather_at(f.Ey, c, δ, shape, FIELD_LAYOUT.Ey, g),
-         gather_at(f.Ez, c, δ, shape, FIELD_LAYOUT.Ez, g))
-    B = (gather_at(f.Bx, c, δ, shape, FIELD_LAYOUT.Bx, g),
-         gather_at(f.By, c, δ, shape, FIELD_LAYOUT.By, g),
-         gather_at(f.Bz, c, δ, shape, FIELD_LAYOUT.Bz, g))
+"E and B of the layout at offset `δ` of cell `c` (one entry per resolved axis; guards filled), each on its own stagger."
+@inline function fields_at(f, c::NTuple{N,Int32}, δ::NTuple{N,Any}, shape, g::Int32) where {N}
+    L = gather_layout(Val(N))
+    E = (gather_at(f.Ex, c, δ, shape, L.Ex, g), gather_at(f.Ey, c, δ, shape, L.Ey, g), gather_at(f.Ez, c, δ, shape, L.Ez, g))
+    B = (gather_at(f.Bx, c, δ, shape, L.Bx, g), gather_at(f.By, c, δ, shape, L.By, g), gather_at(f.Bz, c, δ, shape, L.Bz, g))
     return E, B
 end
 
-# Store the old position (the extras deposit_flux! reads), push the momentum in Eⁿ, Bⁿ at xⁿ,
-# and move the particle by Δt·uₓ/γ (less than one cell below the Courant limit, as deposit_flux! requires).
-@kernel function push_kernel!(s, f, pusher, shape, g::Int32, qm_h, dt_dx, n::Int32)
+# The position before the move, where the engine's `deposit_flux!` reads it: the extras of
+# `flux_extras(T, N)`, whose names are the engine's per N.
+@inline function store_old!(x, i, c::NTuple{1}, δ::NTuple{1})
+    @inbounds x.old_cell[i] = c[1]
+    @inbounds x.old_offset[i] = δ[1]
+    return nothing
+end
+@inline function store_old!(x, i, c::NTuple{2}, δ::NTuple{2})
+    @inbounds x.old_cell_1[i] = c[1]
+    @inbounds x.old_cell_2[i] = c[2]
+    @inbounds x.old_offset_1[i] = δ[1]
+    @inbounds x.old_offset_2[i] = δ[2]
+    return nothing
+end
+
+@inline function set_position!(s, i, c::NTuple{N}, δ::NTuple{N}) where {N}
+    ntuple(d -> (@inbounds s.cell[d][i] = c[d]; @inbounds s.offset[d][i] = δ[d]; nothing), Val(N))
+    return nothing
+end
+
+# Store the old position per axis (the extras deposit_flux! reads), push the momentum in Eⁿ, Bⁿ at
+# xⁿ, and move the particle by Δt·u_d/γ along each resolved axis (less than one cell per axis below
+# the Courant limit, as deposit_flux! requires). One kernel over N: at N = 1 the cell, the offset,
+# `dt_dx` and `n` are 1-tuples.
+@kernel function push_kernel!(s, f, pusher, shape, g::Int32, qm_h, dt_dx::NTuple{N}, n::NTuple{N,Int32}) where {N}
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
-        c = s.cell[1][i]
-        δ = s.offset[1][i]
-        s.extras.old_cell[i] = c
-        s.extras.old_offset[i] = δ
+        c = particle_cell(s, i, Val(N))
+        δ = particle_offset(s, i, Val(N))
+        store_old!(s.extras, i, c, δ)
         E, B = fields_at(f, c, δ, shape, g)
         u = push_momentum(pusher, (s.u[1][i], s.u[2][i], s.u[3][i]), E, B, qm_h)
         s.u[1][i] = u[1]
         s.u[2][i] = u[2]
         s.u[3][i] = u[3]
-        c′, δ′ = advance(c, δ, u[1] / lorentz_factor(u) * dt_dx, n)
-        s.cell[1][i] = c′
-        s.offset[1][i] = δ′
+        γ = lorentz_factor(u)
+        c′, δ′ = advance(c, δ, ntuple(d -> u[d] / γ * dt_dx[d], Val(N)), n)
+        set_position!(s, i, c′, δ′)
     end
 end
 
@@ -55,7 +75,8 @@ end
 @kernel function kick_kernel!(s, f, pusher, shape, g::Int32, qm_h)
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
-        E, B = fields_at(f, s.cell[1][i], s.offset[1][i], shape, g)
+        vN = Val(length(s.cell))
+        E, B = fields_at(f, particle_cell(s, i, vN), particle_offset(s, i, vN), shape, g)
         u = push_momentum(pusher, (s.u[1][i], s.u[2][i], s.u[3][i]), E, B, qm_h)
         s.u[1][i] = u[1]
         s.u[2][i] = u[2]
@@ -301,10 +322,17 @@ function check_species_params(ps::SpeciesParams, setup)
     return nothing
 end
 
-function check_aux_params(::EMState{1}, p::EMParams)
-    isempty(p.lasers) || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
-    p.witness === nothing || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
-    p.profile === nothing || throw(ArgumentError("a density profile is implemented with the moving window only"))
+function check_aux_params(st::EMState, p::EMParams)
+    antennas, window = antenna_planes(st), window_frame(st)
+    length(p.lasers) == length(antennas) ||
+        throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state$(ndims(st) == 1 ? " (laser antennas are implemented at N = 2 only)" : "")"))
+    foreach((l, a) -> check_plane(a, l), p.lasers, antennas)
+    window === nothing || check_window_antennas(window, back_absorber(st), map(Antenna, p.lasers, antennas))
+    (p.witness === nothing) == (witness_frame(st) === nothing) ||
+        throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
+    p.profile === nothing || window !== nothing ||
+        throw(ArgumentError("a density profile is implemented with the moving window only"))
+    window === nothing || check_window_params(window, p)
     return nothing
 end
 
@@ -338,32 +366,57 @@ function check_setup(st::EMState{N}, problem::EMProblem{M}) where {N,M}
     return problem
 end
 
-check_aux_setup(::EMState{1}, problem, wrong) = nothing
+# What a problem's boundaries, window and witness bunch ask of a state: the absorber of an open
+# axis, the window's frame and the bunch's placement (none of them at N = 1, where no problem has one).
+function check_aux_setup(st::EMState, problem, wrong)
+    window = window_frame(st)
+    (last(problem.boundaries) === :open) == (open_absorber(st) !== nothing) || wrong("axis 2 is $(last(problem.boundaries))")
+    (problem.window === nothing ? window === nothing : window !== nothing && window.window == problem.window) ||
+        wrong("the moving window $(problem.window)")
+    w = witness_frame(st)
+    b = problem.witness
+    (b === nothing) == (w === nothing) || wrong("the witness bunch")
+    b === nothing || (witness_placement(b, st.grid, st.dt) == (w.kinj, w.c0, w.nc, w.ppc) && w.species.q == oftype(w.species.q, b.charge) && w.species.m == oftype(w.species.m, b.mass)) ||
+        wrong("the witness bunch's injection step, lattice, charge or mass")
+    return nothing
+end
 
 """
     initialize!(state, params; momenta_at = :t0, density_at = :particle) -> state
     initialize!(state, problem; momenta_at = :t0, density_at = :particle) -> state
 
 The state at t = 0 from the parameters ([`EMParams`](@ref); or from a problem description, whose
-`params(problem)` are taken after [`check_setup`](@ref)): each species loaded by the engine's quiet
-start (`load_quiet!`, weights `density·(1 + amplitude·cos(k·x))/ppc`, so the parameters enter
-through the weights, A3; momenta from the species' distribution, [`momentum_distribution`](@ref),
-by Philox draws keyed by the parameters' seed and the species' stream, [`load_species!`](@ref): a
-Maxwell–Jüttner or Gaussian-momentum draw writes `u = γv` directly, a Gaussian-velocity draw is
-converted, and refused if a drawn speed reaches c, `check_subluminal`); the fields zero; Ex from the charge, as Smilei solves at t = 0: `cumsum_periodic!` of the deposited
-ρ, so that (Ex[j] − Ex[j−1])/Δx = ρ[j] − mean(ρ) to roundoff, the mean being the immobile
-neutralizing background; the background fields `E0` and `B0` of the parameters added where they
-are nonzero (so a run without them keeps the bits of the fields); then the momenta at
-t = −Δt/2 (half-step centring, A2), and the kinetic energy density there. Everything a run
+`params(problem)` are taken after [`check_setup`](@ref)), one method for N = 1 and N = 2: each
+species loaded by the engine's quiet start (`load_quiet!`, weights
+`density·(1 + amplitude·cos(k·x))/prod(ppc)` with the parameters' wave vector, so the parameters
+enter through the weights, A3; momenta from the species' distribution,
+[`momentum_distribution`](@ref), by Philox draws keyed by the parameters' seed and the species'
+stream, [`load_species!`](@ref): a Maxwell–Jüttner or Gaussian-momentum draw writes `u = γv`
+directly, a Gaussian-velocity draw is converted, and refused if a drawn speed reaches c,
+`check_subluminal`; with a moving window the window's own load of its plasma columns); the witness
+bunch's buffer empty and the window's counters zero; the fields zero, and with them the
+convolution fields of a PML (they are field state: ψ of a field that starts at zero is zero, and a
+state that ran before must not carry the last run's into this one); the initial field from the
+deposited charge (`initial_field!`, below); the background fields `E0` and `B0` of the parameters
+added where they are nonzero (so a run without them keeps the bits of the fields); then the
+momenta at t = −Δt/2 (half-step centring, A2), and the kinetic energy there. Everything a run
 evolves starts here, so a state that has run before is the same as a new one after it; the
 recorder's histories are not touched (entry `k` is overwritten when step `k` is observed again).
+
+The initial field is where the two dimensions differ: at N = 1, Ex from the charge as Smilei
+solves at t = 0, `cumsum_periodic!` of the deposited ρ, so that (Ex[j] − Ex[j−1])/Δx =
+ρ[j] − mean(ρ) to roundoff, the mean being the immobile neutralizing background; at N = 2, Ex and
+Ey by the engine's periodic solve, `φ` from `inverse_laplacian_periodic!` of ρ and `E = G` from
+`gradient_periodic!`, so that the backward-difference divergence of E is ρ − mean(ρ) to roundoff;
+with a moving window the plasma starts neutral against its immobile background, so E⁰ = 0 and no
+solve is made (the charge in the x-guards is dropped).
 
 `momenta_at` says at which time the loaded momenta are taken:
 
 - `:t0` (the default): the loaded momenta are `u⁰`, and `initialize!` moves them half a step
   back, `uⁿ⁻¹ᐟ²` from `u⁰` by the pusher with −Δt/2 in E⁰, B⁰;
 - `:t_minus_half`: the loaded momenta are already `u⁻¹ᐟ²` and are kept as loaded, with no kick.
-  This is the convention of Smilei and PIConGPU, which the 1D cross-code runs use; the two
+  This is the convention of Smilei and PIConGPU, which the cross-code runs use; the two
   starts differ by O(Δt·E⁰) in the momenta.
 
 Positions, weights and fields are the same in both; anything else is an `ArgumentError`.
@@ -373,29 +426,37 @@ Positions, weights and fields are the same in both; anything else is an `Argumen
 loaded profile is piecewise constant per cell, as Smilei and PIConGPU sample it, which lowers a
 cosine's amplitude by about sinc(kΔx/2) ≈ 1 − (kΔx)²/24 against the per-particle load (#226: a
 constant 1.00017 in the field-energy ratio of the 1D two-stream case). Positions and the momenta
-draws are the same in both; anything else is an `ArgumentError`.
+draws are the same in both; anything else is an `ArgumentError`, and so is `:cell_centre` with a
+moving window, whose loads and refills evaluate the density at each particle only.
 """
-function initialize!(st::EMState{1}, p::EMParams; momenta_at::Symbol = :t0, density_at::Symbol = :particle)
+function initialize!(st::EMState{N}, p::EMParams; momenta_at::Symbol = :t0, density_at::Symbol = :particle) where {N}
     check_momenta_at(momenta_at)
     ParticleMeshCore.check_density_at(density_at)
+    window = window_frame(st)
+    window === nothing || density_at === :particle ||
+        throw(ArgumentError("density_at = :$density_at: the moving window's loads and refills evaluate the density at each particle (:particle) only"))
     check_params(st, p)
     (; numerics, grid) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
-    for (s, ps, setup) in zip(st.species, p.species, st.setup)
+    for (i, (s, ps, setup)) in enumerate(zip(st.species, p.species, st.setup))
         fill!(s.status, ParticleMeshCore.FREE)
+        window === nothing || (load_window_species!(window, i, s, grid, wgs, window_load(setup, ps, p), setup.name); continue)
         load_species!(s, grid, ps, setup, p.seed; density_at, workgroupsize = wgs)
     end
+    clear_witness!(witness_frame(st))
     foreach(a -> fill!(a, zero(T)), st.fields)
+    reset_convolution!(st)
     for (s, ws) in zip(st.species, st.ws)
         sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
     end
     fill!(st.ρ, zero(T))
     for (s, ws) in zip(st.species, st.ws)
-        deposit!(deposit_mode(st, s), st.ρ, s, numerics.shape, RHO_STAGGER, grid, ws; workgroupsize = wgs)
+        deposit!(deposit_mode(st, s), st.ρ, s, numerics.shape, rho_stagger(Val(N)), grid, ws; workgroupsize = wgs)
     end
+    zero_x_edges!(window, st.ρ; workgroupsize = wgs)
     fold_guards!(st.ρ, grid; workgroupsize = wgs)
-    cumsum_periodic!(st.fields.Ex, st.ρ, grid; workgroupsize = wgs)
+    initial_field!(st)
     add_background!(st.fields, p.E0, p.B0)
     if momenta_at === :t0
         g = Int32(guards(grid))
@@ -408,45 +469,31 @@ function initialize!(st::EMState{1}, p::EMParams; momenta_at::Symbol = :t0, dens
     return st
 end
 
+# The initial field from the deposited, folded charge in `st.ρ`. A dispatch on N that stays: the
+# 1D sum and the 2D spectral solve give different bits for the same charge.
+initial_field!(st::EMState{1}) = (cumsum_periodic!(st.fields.Ex, st.ρ, st.grid; workgroupsize = st.numerics.workgroupsize); st)
+
 initialize!(st::EMState, problem::EMProblem; kw...) = (check_setup(st, problem); initialize!(st, params(problem); kw...))
 
-"""
-    step!(state, params, k; observer = state.recorder) -> state
+# The transverse components the engine's `deposit_flux!` takes as per-particle quantities, the
+# currents along the axes that are not resolved: Jy and Jz at N = 1, Jz at N = 2 (the in-plane
+# components are Esirkepov's). A dispatch on N that stays: it is the scheme's.
+transverse_currents(::Val{1}) = (; quantity_y = CurrentY(), quantity_z = CurrentZ())
+transverse_currents(::Val{2}) = (; quantity_z = CurrentZ())
 
-Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state and the parameters
-([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
-(§0.4). First the `observer` sees the state at the start of the step ([`observe!`](@ref): Eⁿ,
-Bⁿ and the kinetic energy at n − 1/2 that the previous step left in `K`; `nothing` observes
-nothing); then the module's step order:
+# The current of the step, by the numerics' choice: none, or the charge-conserving one.
+current!(::NoCurrent, st::EMState) = st
 
-1. per species: store the old cell and offset as extras, push the momentum in Eⁿ, Bⁿ gathered
-   at xⁿ (the pusher of the numerics) and move the particle, xⁿ⁺¹ = xⁿ + Δt·uₓ/γ;
-2. sort by cell where the deposition mode needs it (the extras follow the particles);
-3. zero Jx, Jy, Jz and add every species' current with the engine's `deposit_flux!` (Esirkepov
-   for Jx from the old and new positions, `q·w·u_{y,z}/γ` for Jy and Jz), fold the guards, then
-   apply the numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`);
-4. deposit the kinetic energy density at n + 1/2 (for the next observation);
-5. the mesh solve of the numerics (Yee: B half step, E full step with J, B half step).
-
-Gauss's law then holds to roundoff after every step, from continuity (T-212); with filter passes
-its filtered form does (T-441). At N = 1 a step reads no parameter (there is no source and no
-refill), but parameters that do not fit the state are refused as at N = 2
-([`check_params`](@ref)); the default observer, the state's [`HistoryRecorder`](@ref), refuses a
-`k` outside the steps it was allocated for with an `ArgumentError`.
-"""
-function step!(st::EMState{1}, p::EMParams, k::Integer; observer = st.recorder)
-    check_params(st, p)
-    (; numerics, grid, fields, dt) = st
+# Sort where the deposition mode needs it (the old positions in the extras follow the
+# particles), zero Jx, Jy, Jz, add every species' current with the engine's `deposit_flux!`
+# (Esirkepov from the old and new positions along the resolved axes, `q·w·u/γ` along the others),
+# fold the guards (with a moving window, the x-guards dropped first) and apply the numerics'
+# binomial filter (through the scratch field ρ, which only initialize! and the window shift read
+# otherwise).
+function current!(::Esirkepov, st::EMState{N}) where {N}
+    (; numerics, grid, fields) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
-    n = Int32(ncells(grid))
-    g = Int32(guards(grid))
-    dx = cellsize(grid)
-    observe!(observer, st, k)
-    for s in st.species
-        launcher(push_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2,
-                                                    dt / dx, n; ndrange = capacity(s))
-    end
     for (s, ws) in zip(st.species, st.ws)
         sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
     end
@@ -454,16 +501,94 @@ function step!(st::EMState{1}, p::EMParams, k::Integer; observer = st.recorder)
     fill!(fields.Jy, zero(T))
     fill!(fields.Jz, zero(T))
     for (s, ws) in zip(st.species, st.ws)
-        ParticleMeshCore.deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, RHO_STAGGER,
-                                       grid, ws; dt, quantity_y = CurrentY(), quantity_z = CurrentZ(),
-                                       workgroupsize = wgs)
+        deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, rho_stagger(Val(N)), grid, ws;
+                      dt = st.dt, transverse_currents(Val(N))..., workgroupsize = wgs)
     end
-    fold_guards!(fields.Jx, grid; workgroupsize = wgs)
-    fold_guards!(fields.Jy, grid; workgroupsize = wgs)
-    fold_guards!(fields.Jz, grid; workgroupsize = wgs)
-    filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs)
+    window = window_frame(st)
+    for J in (fields.Jx, fields.Jy, fields.Jz)
+        zero_x_edges!(window, J; workgroupsize = wgs)
+        fold_guards!(J, grid; workgroupsize = wgs)
+    end
+    filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs, edges = window)
+    return st
+end
+
+"""
+    step!(state, params, k; observer = state.recorder) -> state
+
+Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state and the parameters
+([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
+(§0.4). One method for N = 1 and N = 2, the 1D case being the case of one resolved axis; what a
+problem does not have (a witness bunch, a moving window, an open axis, field modifiers: none of
+them at N = 1) is `nothing` or empty and costs nothing. First the `observer` sees the state at
+the start of the step ([`observe!`](@ref): Eⁿ, Bⁿ and the kinetic energy at n − 1/2 that the
+previous step left in `K`; `nothing` observes nothing); then the module's step order:
+
+1. a witness bunch (WP-047, [`WitnessBunch`](@ref)) is injected at the start of its step with the
+   parameters' momentum and weights; from then on it is pushed with the species and moved and
+   retired at the edges as they are, and deposits nothing;
+2. per species: store the old position as extras, push the momentum in Eⁿ, Bⁿ gathered at xⁿ on
+   each component's stagger (the pusher of the numerics) and move the particle along every
+   resolved axis, xⁿ⁺¹ = xⁿ + Δt·u/γ;
+3. with a moving window (WP-028), retire the particles that crossed an x edge, before the
+   current (their current would land at the opposite edge);
+4. the current of the numerics' choice. [`Esirkepov`](@ref)`()`: sort by cell where the
+   deposition mode needs it (the extras follow the particles), zero Jx, Jy, Jz and add every
+   species' current with the engine's `deposit_flux!` (charge-conserving along the resolved axes,
+   `q·w·u/γ` along the others: Jy and Jz at N = 1, Jz at N = 2), fold the guards, then apply the
+   numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`).
+   `NoCurrent()` (N = 2): J stays as it is;
+5. with an open axis 2 (WP-027), retire the particles that crossed the box edge, after the current
+   of their last move is deposited;
+6. the kinetic energy at n + 1/2, for the next observation;
+7. the mesh solve of the numerics, [`solve_fields!`](@ref) (Yee: B half step, E full step with J,
+   B half step), which walks the state's field modifiers around the sub-steps
+   ([`field_modifiers`](@ref): an open axis' absorbing layer or PML, the PML of a window's back
+   edge, the antennas, each the parameters' laser on the state's plane, and the window's x edges);
+8. with a moving window, the shift by the cells it moved in this step ([`window_shifts`](@ref)):
+   E, B and the particles one column back, the back column dropped, the fresh plasma of the
+   injection column loaded with the parameters' densities, profile, drifts, thermal speeds and
+   seed.
+
+With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff after every step, from
+continuity (T-212, T-360), off the antenna columns with lasers (T-406), and off the layer rows
+with an open boundary (T-451); with passes its filtered form does (T-441). Parameters that do
+not fit the state are refused first ([`check_params`](@ref): a laser off its plane, a pulse the
+window would pass while it emits, another element type; at N = 1 a step reads no parameter, there
+being no source and no refill, but the check is the same); the default observer, the state's
+[`HistoryRecorder`](@ref), refuses a `k` outside the steps it was allocated for with an
+`ArgumentError`. The step reads and writes the state's evolved arrays ([`evolved`](@ref)) and
+nothing else that outlives it but the cache `K`, and `k` enters only through the source's time,
+the window's position and the witness bunch's injection step: no step is special, so a run
+continues from any step of a saved state ([`restore!`](@ref)).
+
+Two pieces of the step are per N by dispatch, because each gives other bits than its
+counterpart: the kinetic energy (`kinetic!`: a deposited density at N = 1, sums over fixed chunks
+of particle slots at N = 2) and, in `initialize!`, the initial field. Besides them N enters
+through the engine's conventions only: the names of the extras that hold the old position
+(`store_old!`), a bare stagger in the 1D depositions (`rho_stagger`), and which components of the
+current are per-particle quantities (`transverse_currents`).
+"""
+function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
+    check_params(st, p)
+    (; numerics, grid, fields, dt) = st
+    wgs = numerics.workgroupsize
+    n = Int32.(grid.n)
+    g = Int32(guards(grid))
+    dt_dx = map(h -> dt / h, grid.dx)
+    window = window_frame(st)
+    observe!(observer, st, k)
+    inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
+    for s in (st.species..., witness_species(st)...)
+        launcher(push_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
+                                                    ndrange = capacity(s))
+    end
+    retire_x!(window, st)
+    current!(numerics.current, st)
+    retire!(open_absorber(st), st)
     kinetic!(st)
     solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs)
+    advance_window!(window, st, p, k)
     return st
 end
 

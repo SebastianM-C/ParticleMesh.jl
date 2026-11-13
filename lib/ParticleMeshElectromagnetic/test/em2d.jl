@@ -2,7 +2,7 @@
 # (T-350 to T-358). The 2D step here deposits no current (`NoCurrent()`); test particles are a
 # species of zero density, so their weights, charge and current are zero.
 
-using ParticleMeshElectromagnetic: kick_2d_kernel!, fields_at, FIELD_LAYOUT_2D
+using ParticleMeshElectromagnetic: fields_at, FIELD_LAYOUT_2D
 using ParticleMeshCore: stagger_offset
 using ForwardDiff: partials
 
@@ -170,8 +170,7 @@ function centring_error(::Type{T}, N, dt; undo = false, tend = 4) where {T}
     initialize!(st, prob)
     if undo
         s = first(st.species)
-        kernel = N == 1 ? kick_kernel! : kick_2d_kernel!
-        kernel(CPU())(s, st.fields, num.pusher, num.shape, Int32(guards(st.grid)), s.q / s.m * prob.dt / 4; ndrange = capacity(s))
+        kick_kernel!(CPU())(s, st.fields, num.pusher, num.shape, Int32(guards(st.grid)), s.q / s.m * prob.dt / 4; ndrange = capacity(s))
     end
     run!(st, params(prob), nsteps)
     γ = sqrt(1 + big(Float64(value_of(u0)))^2)

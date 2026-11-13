@@ -9,8 +9,9 @@
 
 Something that changes the fields within the mesh solve, around the solver's sub-steps. A state
 holds its modifiers as a tuple (`state.modifiers`) and [`solve_fields!`](@ref) walks it, so a new
-boundary or source is a new subtype with the methods below and a place in a state's tuple; the
-solve is not touched.
+boundary or source is a new subtype with the methods below and a place in a state's tuple (given
+by the state's constructor, [`field_modifiers`](@ref), or to an existing state by
+[`with_modifiers`](@ref)); the solve is not touched.
 
 A modifier has two halves. The state half is the modifier itself: its arrays and coefficients,
 made for a grid and a time step (an absorber's tables and convolution fields, an antenna's plane).

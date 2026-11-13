@@ -48,12 +48,12 @@ using KernelAbstractions
 using KernelAbstractions: @kernel, @index, @Const, get_backend
 import Adapt
 using ParticleMeshCore
-using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger
+using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger, particle_cell, particle_offset
 
 export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
 export FieldModifier, BHalf, EStep, modifier_params, before_substep!, after_substep!, field_modifiers
-export open_absorber, back_absorber, antenna_planes
+export open_absorber, back_absorber, antenna_planes, with_modifiers
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
 export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution

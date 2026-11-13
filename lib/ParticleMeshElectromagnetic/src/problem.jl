@@ -411,8 +411,7 @@ species_params(::Type{T}, d::SpeciesDescription{S}, k::NTuple{N,T}) where {T,N,S
     SpeciesParams{T,N,S}(d.density, d.amplitude, k, d.drift, d.thermal)
 
 "The loader's parameters of a species' [`CosineProfile`](@ref): density, amplitude and the wave vector."
-density_params(ps::SpeciesParams{T,1}) where {T} = (ps.density, ps.amplitude, ps.wavevector[1])
-density_params(ps::SpeciesParams{T,2}) where {T} = (ps.density, ps.amplitude, ps.wavevector[1], ps.wavevector[2])
+density_params(ps::SpeciesParams) = (ps.density, ps.amplitude, ps.wavevector...)
 
 # What a state keeps of a species' description: configuration, no parameter (the name is for messages).
 species_setup(d::SpeciesDescription) = (name = d.name, ppc = d.ppc, stream = d.stream, momentum = d.momentum)
