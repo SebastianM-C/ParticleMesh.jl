@@ -1,4 +1,5 @@
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -6,6 +7,8 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationLBFGSB = "22f7324a-a79d-40f2-bebe-3af60c77bd15"
 ParticleMesh = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
 ParticleMeshElectromagnetic = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -17,8 +20,11 @@ ParticleMesh = {path = ".."}
 ParticleMeshElectromagnetic = {path = "../lib/ParticleMeshElectromagnetic"}
 
 [compat]
+ADTypes = "1"
 CUDACore = "6"
 ForwardDiff = "1"
 HDF5 = "0.17"
 KernelAbstractions = "0.10.6"
+Optimization = "5"
+OptimizationLBFGSB = "1.5"
 SpecialFunctions = "2"

@@ -1,7 +1,7 @@
 # WP-045: the first 2D optimization. Maximize the wake amplitude of a small 2D LWFA run
 # (wake2d_case.jl) over the pulse duration τ and the focus, at fixed a₀ and density, with
-# ForwardDiff gradients (Float64, Reference) and the box-constrained quasi-Newton maximizer of
-# maximize.jl; check the optimum against a brute-force grid scan, a finite-difference check of
+# ForwardDiff gradients (Float64, Reference) and the bound-constrained L-BFGS-B of Optimization.jl
+# (problem.jl, WP-058); check the optimum against a brute-force grid scan, a finite-difference check of
 # the gradient, slices through the optimum, and the 1D linear-theory duration 2/ω_p.
 #
 #   julia +1.13 --project=scripts -t 4 scripts/optim/wake2d.jl
@@ -12,35 +12,20 @@
 
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "wake2d_case.jl"))
-include(joinpath(@__DIR__, "maximize.jl"))
-using ForwardDiff: Dual, value, partials
 
-# The parameters, scaled to O(1) (A1): z = (τ/6, focus/90), in the box τ ∈ [4, 9], focus ∈ [60, 130].
-const SCALE = (6.0, 90.0)
-const LO = [4.0 / SCALE[1], 60.0 / SCALE[2]]
-const HI = [9.0 / SCALE[1], 130.0 / SCALE[2]]
-phys(z) = (z[1] * SCALE[1], z[2] * SCALE[2])
+# The parameters, scaled to O(1) (A1): z = (τ/6, focus/90) in WP-045's box (`WAKE_BOX`).
+const SCALE = WAKE_BOX.scale
+phys(z) = phys(WAKE_BOX, z)
+const OBJECTIVE = Objective(wake_amplitude, WAKE_BOX)
 
-J(z) = wake_amplitude(phys(z)...)
-
-"""
-The objective and its gradient in z, in one run with a dual. The dual carries three partials,
-the third unseeded: the step segfaults on the KernelAbstractions CPU (PoCL) backend with
-`Dual{Float64,2}` while 1, 3 and 5 partials run (WP-045; the upstream issue is linked in the PR).
-"""
-function fg(z)
-    d1 = Dual{Nothing}(z[1], 1.0, 0.0, 0.0)
-    d2 = Dual{Nothing}(z[2], 0.0, 1.0, 0.0)
-    v = wake_amplitude(phys((d1, d2))...)
-    f, g = value(v), collect(Tuple(partials(v))[1:2])
-    println("  z = ", round.(z; digits = 5), "  (τ, focus) = ", round.(phys(z); digits = 3), "  J = ", f, "  ∇J = ", g)
-    flush(stdout)
-    return f, g
-end
+"The objective at `z`, from a plain run."
+J(z) = OBJECTIVE(z)
+"The objective and its gradient in z, in one run with duals."
+fg(z) = value_gradient(OBJECTIVE, z)
 
 function main()
     dir = run_dir("wake2d", @__FILE__; prefix = "optim", work_package = "WP-045",
-                  extra_inputs = [joinpath(@__DIR__, "wake2d_case.jl"), joinpath(@__DIR__, "maximize.jl")],
+                  extra_inputs = [joinpath(@__DIR__, "wake2d_case.jl"), joinpath(@__DIR__, "problem.jl")],
                   params = Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(CASE)))
     out = Dict{String,Any}("case" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(CASE)),
                            "scale" => collect(SCALE), "box_tau" => [4.0, 9.0], "box_focus" => [60.0, 130.0])
@@ -67,7 +52,7 @@ function main()
     runs = Dict{String,Any}[]
     for (name, zs) in (("start A", z0), ("start B", [8.5 / SCALE[1], 125.0 / SCALE[2]]))
         println("optimizing from $name")
-        t = @elapsed r = maximize_box(fg, zs, LO, HI; maxiter = 25, gtol = 1e-4, xtol = 1e-4)
+        t = @elapsed r = maximize(OBJECTIVE, zs; maxiters = 25, gtol = 1e-4)
         push!(runs, Dict("name" => name, "start" => zs, "z" => r.z, "phys" => collect(phys(r.z)), "J" => r.f, "grad" => r.g,
                          "reason" => r.reason, "evals" => r.evals, "seconds" => t,
                          "path" => [Dict("z" => p[1], "phys" => collect(phys(p[1])), "J" => p[2], "grad" => p[3]) for p in r.path]))
@@ -76,7 +61,9 @@ function main()
     out["optimizer"] = runs
     Ja, Jb = runs[1]["J"], runs[2]["J"]
     check("both starts reach the same value", abs(Ja - Jb) <= 1e-4 * max(Ja, Jb), "J = $Ja and $Jb")
-    check("both starts stop on the gradient", all(r -> r["reason"] == "gtol", runs), join((r["reason"] for r in runs), ", "))
+    # L-BFGS-B may also stop on a small decrease of the objective ("ftol"), so the gradient is checked here
+    check("both starts end with the gradient below gtol", all(r -> maximum(abs, r["grad"]) < 1e-4, runs),
+          join(("$(r["reason"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
 
     # 3. The brute-force grid scan over the box (7 × 7).
     τs, fs = collect(range(4.0, 9.0; length = 7)), collect(range(60.0, 130.0; length = 7))
