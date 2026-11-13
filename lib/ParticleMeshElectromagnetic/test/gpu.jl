@@ -166,9 +166,11 @@ else
         rerun_module_on(GPU, (("T-740", body_T740), ("T-741", body_T741), ("T-742", body_T742), ("T-744", body_T744)))
     end
 
-    # T-756 holds the kernels against host arithmetic bit for bit, which holds on the CPU only (A4)
-    @testset "T-758 the field modifiers and the one step on CUDA: T-750, T-751, T-753 and T-757 with the CPU's assertions [A4, A8, WP-057]" begin
-        rerun_module_on(GPU, (("T-750", body_T750), ("T-751", body_T751), ("T-753", body_T753), ("T-757", body_T757)))
+    # of T-756, the part that holds the kernels against the 1D kernels of before WP-057 on the device
+    # (its other part holds them against host arithmetic bit for bit, which holds on the CPU only, A4)
+    @testset "T-758 the field modifiers and the one step on CUDA: T-750, T-751, T-753, T-756's kernels, T-757 and T-759 with the CPU's assertions [A4, A8, WP-057]" begin
+        rerun_module_on(GPU, (("T-750", body_T750), ("T-751", body_T751), ("T-753", body_T753), ("T-756 kernels", body_T756_kernels), ("T-757", body_T757),
+                              ("T-757 window", body_T757_window), ("T-759", body_T759)))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin

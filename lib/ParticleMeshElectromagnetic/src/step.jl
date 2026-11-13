@@ -30,6 +30,34 @@ end
     return E, B
 end
 
+# At N = 1 the gathers are the engine's 1D calls on the bare staggers of `FIELD_LAYOUT`, as the 1D
+# step has always made them. A dispatch on N that stays: the N-axis gather gives the same bits at
+# N = 1 (T-756), but compiles to another shape for duals with the quadratic shape (its per-axis
+# weights are a `map` whose closure is not inlined there), and the 1D step keeps its code.
+@inline function fields_at(f, c::NTuple{1,Int32}, δ::NTuple{1,Any}, shape, g::Int32)
+    L = FIELD_LAYOUT
+    c1, δ1 = c[1], δ[1]
+    E = (gather_at(f.Ex, c1, δ1, shape, L.Ex, g), gather_at(f.Ey, c1, δ1, shape, L.Ey, g), gather_at(f.Ez, c1, δ1, shape, L.Ez, g))
+    B = (gather_at(f.Bx, c1, δ1, shape, L.Bx, g), gather_at(f.By, c1, δ1, shape, L.By, g), gather_at(f.Bz, c1, δ1, shape, L.Bz, g))
+    return E, B
+end
+
+# The particle's cell and offset after a move by Δt·u_d/γ along each resolved axis. At N = 1 the
+# move is written as the 1D step has always written it, a dispatch on N that stays because the bits
+# differ on a device: a device compiler may contract a multiplication and an addition into one
+# rounding, which of them depends on the shape of the expression, and with duals at N = 1 the
+# N-tuple form rounds the new offset's value otherwise than the 1D form does (CUDA; the CPU's bits
+# are the same in both forms). T-756 holds both kernels against the 1D kernels of before WP-057
+# on the backend they run on.
+@inline function moved(c::NTuple{N}, δ::NTuple{N}, u, dt_dx, n) where {N}
+    γ = lorentz_factor(u)
+    return advance(c, δ, ntuple(d -> u[d] / γ * dt_dx[d], Val(N)), n)
+end
+@inline function moved(c::NTuple{1}, δ::NTuple{1}, u, dt_dx, n)
+    c′, δ′ = advance(c[1], δ[1], u[1] / lorentz_factor(u) * dt_dx[1], n[1])
+    return (c′,), (δ′,)
+end
+
 # The position before the move, where the engine's `deposit_flux!` reads it: the extras of
 # `flux_extras(T, N)`, whose names are the engine's per N.
 @inline function store_old!(x, i, c::NTuple{1}, δ::NTuple{1})
@@ -53,7 +81,8 @@ end
 # Store the old position per axis (the extras deposit_flux! reads), push the momentum in Eⁿ, Bⁿ at
 # xⁿ, and move the particle by Δt·u_d/γ along each resolved axis (less than one cell per axis below
 # the Courant limit, as deposit_flux! requires). One kernel over N: at N = 1 the cell, the offset,
-# `dt_dx` and `n` are 1-tuples.
+# `dt_dx` and `n` are 1-tuples, and the gather (`fields_at`), the move (`moved`) and the extras
+# (`store_old!`) are its three leaves that are per N.
 @kernel function push_kernel!(s, f, pusher, shape, g::Int32, qm_h, dt_dx::NTuple{N}, n::NTuple{N,Int32}) where {N}
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
@@ -65,8 +94,7 @@ end
         s.u[1][i] = u[1]
         s.u[2][i] = u[2]
         s.u[3][i] = u[3]
-        γ = lorentz_factor(u)
-        c′, δ′ = advance(c, δ, ntuple(d -> u[d] / γ * dt_dx[d], Val(N)), n)
+        c′, δ′ = moved(c, δ, u, dt_dx, n)
         set_position!(s, i, c′, δ′)
     end
 end
@@ -204,7 +232,7 @@ struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:Name
 end
 
 "The placed absorber of a state's open axis (a [`LayerFactors`](@ref) or a [`PMLFields`](@ref)), or `nothing`."
-open_absorber(st::EMState) = pick_modifier(Union{LayerFactors,PMLFields}, st.modifiers)
+open_absorber(st::EMState) = pick_modifier(OpenAbsorber, st.modifiers)
 "The placed PML of a moving window's back edge (a [`BackPMLFields`](@ref)), or `nothing`."
 back_absorber(st::EMState) = pick_modifier(BackPMLFields, st.modifiers)
 "The antenna planes of a state, one [`AntennaPlane`](@ref) per laser; `()` without lasers."
@@ -562,12 +590,14 @@ nothing else that outlives it but the cache `K`, and `k` enters only through the
 the window's position and the witness bunch's injection step: no step is special, so a run
 continues from any step of a saved state ([`restore!`](@ref)).
 
-Two pieces of the step are per N by dispatch, because each gives other bits than its
+Three pieces of the step are per N by dispatch, because each gives other bits than its
 counterpart: the kinetic energy (`kinetic!`: a deposited density at N = 1, sums over fixed chunks
-of particle slots at N = 2) and, in `initialize!`, the initial field. Besides them N enters
-through the engine's conventions only: the names of the extras that hold the old position
-(`store_old!`), a bare stagger in the 1D depositions (`rho_stagger`), and which components of the
-current are per-particle quantities (`transverse_currents`).
+of particle slots at N = 2), in `initialize!` the initial field, and the move of a particle
+(`moved`: on a device the N-tuple form rounds a dual's new offset otherwise than the 1D form).
+Besides them N enters through the engine's conventions only: its 1D gather on a bare stagger
+(`fields_at`), the names of the extras that hold the old position (`store_old!`), a bare stagger
+in the 1D depositions (`rho_stagger`), and which components of the current are per-particle
+quantities (`transverse_currents`).
 """
 function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     check_params(st, p)

@@ -245,7 +245,6 @@ after_substep!(L::PMLFields, mp, f, grid, s::EStep, wgs) = pml_e!(L, f, grid, s.
     i32 = Int32(i)
     @inbounds ψ[i, k] = ifelse(i32 < n1, src[min(i32 + Int32(1), n1), k], zero(eltype(ψ)))
 end
-shift_absorber!(::Any, wgs) = nothing
 function shift_absorber!(L::PMLFields, wgs)
     for ψ in (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
         copyto!(L.scratch, ψ)
@@ -259,8 +258,8 @@ retire!(::PMLFields, st) = retire_open!(st)
 # The convolution fields are field state, evolved by every step and part of the state's evolved
 # arrays (`evolved`, the harness's partition). A run starts them at zero, with the fields:
 # `initialize!` zeroes them (so step 1's first B half step reads ψ_B = 0, not c·D⁺_y E⁰).
-reset_absorber!(::Any) = nothing
-reset_absorber!(L::PMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBx, L.ψBz, L.ψEx, L.ψEz)); nothing)
+evolved_arrays(L::PMLFields) = (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
+on_arrays(L::PMLFields, ψ::NTuple{4,Any}) = PMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
 
 # --- the moving window's back edge (WP-034 with WP-028) -------------------------------------------
 #
@@ -390,13 +389,18 @@ function shift_absorber!(L::BackPMLFields, wgs)
     end
     return nothing
 end
-reset_absorber!(L::BackPMLFields) = (foreach(ψ -> fill!(ψ, zero(eltype(ψ))), (L.ψBy, L.ψBz, L.ψEy, L.ψEz)); nothing)
+evolved_arrays(L::BackPMLFields) = (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
+on_arrays(L::BackPMLFields, ψ::NTuple{4,Any}) = BackPMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
+
+"The placed absorbers an open axis can have."
+const OpenAbsorber = Union{LayerFactors,PMLFields}
 
 """
     reset_convolution!(state) -> state
 
-Zero the convolution fields of the state's PMLs (the open axis' and the window's back edge's);
-nothing without one, and nothing at N = 1. `initialize!` calls it, with the fields it zeroes; no
+Zero the evolved arrays of the state's field modifiers: the convolution fields of its PMLs (the
+open axis' and the window's back edge's), and those of any other modifier with state
+(`reset_absorber!`); nothing without one, and nothing at N = 1. `initialize!` calls it, with the fields it zeroes; no
 step does (the fields are part of what a run evolves, [`evolved`](@ref)), so whoever sets the
 fields of a state that has run by hand, instead of `initialize!` or [`restore!`](@ref), calls it
 too.

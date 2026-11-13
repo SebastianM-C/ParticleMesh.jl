@@ -52,7 +52,7 @@ using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger, particle_c
 
 export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
-export FieldModifier, BHalf, EStep, modifier_params, before_substep!, after_substep!, field_modifiers
+export FieldModifier, BHalf, EStep, modifier_params, before_substep!, after_substep!, evolved_arrays, on_arrays, field_modifiers
 export open_absorber, back_absorber, antenna_planes, with_modifiers
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm

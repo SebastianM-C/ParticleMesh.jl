@@ -4,8 +4,9 @@
 # by particle. After em2d_cases.jl (`plasma_step_2d`, `state_2d`), modifiers.jl (`random_fields`) and
 # params.jl.
 
-using ParticleMeshElectromagnetic: FIELD_LAYOUT_2D, check_aux_params, check_aux_setup, current!, kinetic!, initial_field!, refresh_caches!
+using ParticleMeshElectromagnetic: FIELD_LAYOUT_2D, check_aux_params, check_aux_setup, current!, kinetic!, initial_field!, refresh_caches!, window_frame, zero_x_edges!
 using ParticleMeshCore: gather_at, advance, launcher, ALIVE
+using KernelAbstractions: KernelAbstractions, @kernel, @index
 
 # --- T-755 -----------------------------------------------------------------------------------------
 
@@ -38,10 +39,20 @@ end
     run!(st1, p1, 3)
     run!(st2, p2, 3)
     @test all(isfinite, Array(st1.fields.Ex)) && all(isfinite, Array(st2.fields.Ex))
+    # the observer comes first in the one step: it sees the particles where the last step left them
+    # (the default recorder reads the fields and `K`, which the push leaves, so it cannot tell)
+    for (st, p) in ((st1, p1), (st2, p2))
+        s = first(st.species)
+        before = (Array(s.offset[1]), Array(s.u[1]))
+        seen = Ref{Any}(nothing)
+        step!(st, p, 4; observer = (x, k) -> (seen[] = (k, Array(first(x.species).offset[1]), Array(first(x.species).u[1]))))
+        @test seen[][1] == 4 && same_bits(seen[][2], before[1]) && same_bits(seen[][3], before[2])
+        @test !same_bits(Array(s.offset[1]), before[1])
+    end
     laser = GaussianLaser(; a0 = 1.0, waist = 4.0, duration = 2.0, delay = 12.0, focus = 12.0, position = 1.0, center = 1.0)
     @test_throws "implemented at N = 2 only" check_params(st1, EMParams(p1; lasers = (laser,)))
     @test_throws "0 antenna planes in the state" check_params(st2, EMParams(p2; lasers = (laser,)))
-    @test_throws ArgumentError step!(st1, EMParams(p1; lasers = (laser,)), 4)
+    @test_throws ArgumentError step!(st1, EMParams(p1; lasers = (laser,)), 5)
     @test_throws "witness bunch" check_params(st1, EMParams(p1; witness = WitnessParams{Float64}((1.0, 0.0, 0.0), (1.0, 1.0), 1.0, 1.0)))
     @test_throws "moving window only" check_params(st1, EMParams(p1; profile = DensityRamp(; vacuum = 1.0, ramp = 1.0)))
     @test_throws ArgumentError initialize!(st1, prob2)
@@ -155,8 +166,81 @@ function body_T756(be)
     end
 end
 
-@testset "T-756 the push and the kick, one kernel each over N, are the 1D and the 2D push written out with the engine's calls, bit for bit [A2, A4, A8, WP-057]" begin
+# The 1D push and kick kernels as they were before WP-057 (commit 0eeca89, `step.jl`), for the backend
+# the package's kernels run on: a device compiler may contract a multiplication and an addition
+# into one rounding, so the host's arithmetic above is no reference there, and the kernels are.
+@inline function fields_1d(f, c::Int32, δ, shape, g::Int32)
+    L = FIELD_LAYOUT
+    E = (gather_at(f.Ex, c, δ, shape, L.Ex, g), gather_at(f.Ey, c, δ, shape, L.Ey, g), gather_at(f.Ez, c, δ, shape, L.Ez, g))
+    B = (gather_at(f.Bx, c, δ, shape, L.Bx, g), gather_at(f.By, c, δ, shape, L.By, g), gather_at(f.Bz, c, δ, shape, L.Bz, g))
+    return E, B
+end
+@kernel function push_1d_kernel!(s, f, pusher, shape, g::Int32, qm_h, dt_dx, n::Int32)
+    i = @index(Global, Linear)
+    @inbounds if s.status[i] == ALIVE
+        c = s.cell[1][i]
+        δ = s.offset[1][i]
+        s.extras.old_cell[i] = c
+        s.extras.old_offset[i] = δ
+        E, B = fields_1d(f, c, δ, shape, g)
+        u = push_momentum(pusher, (s.u[1][i], s.u[2][i], s.u[3][i]), E, B, qm_h)
+        s.u[1][i] = u[1]
+        s.u[2][i] = u[2]
+        s.u[3][i] = u[3]
+        c′, δ′ = advance(c, δ, u[1] / lorentz_factor(u) * dt_dx, n)
+        s.cell[1][i] = c′
+        s.offset[1][i] = δ′
+    end
+end
+@kernel function kick_1d_kernel!(s, f, pusher, shape, g::Int32, qm_h)
+    i = @index(Global, Linear)
+    @inbounds if s.status[i] == ALIVE
+        E, B = fields_1d(f, s.cell[1][i], s.offset[1][i], shape, g)
+        u = push_momentum(pusher, (s.u[1][i], s.u[2][i], s.u[3][i]), E, B, qm_h)
+        s.u[1][i] = u[1]
+        s.u[2][i] = u[2]
+        s.u[3][i] = u[3]
+    end
+end
+
+"""
+On the backend `be`: the package's push and kick at N = 1 against the 1D kernels of before WP-057,
+on two states of the same load and the same fields, over several pushes (so that the momenta and
+the offsets leave their loaded values), bit for bit in every array, for each element type, both
+shapes and two pushers.
+"""
+function body_T756_kernels(be)
+    for T in TYPES, shape in (Quadratic, Linear), pusher in (Boris(), HigueraCary())
+        mk() = (prob = problem_from_case(load_case("landau"), T; ppc = 16, t_end = 1, amplitude = seeded(T, 1 // 100));
+                st = EMState(prob, EMNumerics(; pusher, shape); backend = be); initialize!(st, prob); st)
+        a, b = mk(), mk()
+        f = random_fields(be, T, a.grid, 95)
+        foreach(st -> foreach(copyto!, values(st.fields), values(f)), (a, b))
+        g, n, dt = Int32(guards(a.grid)), Int32(ncells(a.grid)), a.dt
+        dt_dx = dt / cellsize(a.grid)
+        sa, sb = first(a.species), first(b.species)
+        start = host(sa)
+        qk = -sa.q / sa.m * dt / 4
+        launcher(kick_kernel!, be, nothing)(sa, a.fields, pusher, shape, g, qk; ndrange = capacity(sa))
+        launcher(kick_1d_kernel!, be, nothing)(sb, b.fields, pusher, shape, g, qk; ndrange = capacity(sb))
+        KernelAbstractions.synchronize(be)
+        same_particles(x, y) = all(map(same_bits, (x.cell..., x.offset..., x.u..., values(x.extras)...), (y.cell..., y.offset..., y.u..., values(y.extras)...)))
+        @test same_particles(host(sa), host(sb))
+        @test !same_bits(host(sa).u[1], start.u[1])
+        qp = sa.q / sa.m * dt / 2
+        for _ in 1:8
+            launcher(push_kernel!, be, nothing)(sa, a.fields, pusher, shape, g, qp, (dt_dx,), (n,); ndrange = capacity(sa))
+            launcher(push_1d_kernel!, be, nothing)(sb, b.fields, pusher, shape, g, qp, dt_dx, n; ndrange = capacity(sb))
+        end
+        KernelAbstractions.synchronize(be)
+        @test same_particles(host(sa), host(sb))
+        @test !same_bits(host(sa).offset[1], start.offset[1]) && !same_bits(host(sa).u[2], start.u[2])
+    end
+end
+
+@testset "T-756 the push and the kick, one kernel each over N, are the 1D and the 2D push written out with the engine's calls, bit for bit, and at N = 1 the 1D kernels of before on their backend [A2, A4, A8, WP-057]" begin
     body_T756(CPU())
+    body_T756_kernels(CPU())
 end
 
 # --- T-757 -----------------------------------------------------------------------------------------
@@ -197,6 +281,7 @@ function step_written_out!(st::EMState{N}, k) where {N}
 end
 
 function body_T757(be)
+    noise = Float64[]
     for T in TYPES, mode in (Reference(), Fast()), (N, passes) in ((1, 0), (1, 2), (2, 0), (2, 1))
         mk() = if N == 1
             case = load_case("weibel")
@@ -221,11 +306,100 @@ function body_T757(be)
         if exact
             @test isempty(differences(a, b, 0))
         else
-            @test all(map((x, y) -> isapprox(value_of.(Array(x)), value_of.(Array(y)); rtol = 1e-3), values(a.fields), values(b.fields)))
+            # the two runs then differ by the order of the atomic sums: roundoff of the plasma's
+            # own scales, not of the fields, which a case may leave at roundoff themselves (the
+            # Weibel case's beams cancel in the charge and in the current, so its first steps'
+            # fields are the deposition's noise and nothing else)
+            # (measured: 5 eps on the CPU at 4 threads, 4 eps on CUDA, over 12 runs each)
+            worst = step_distance(a, b)
+            push!(noise, worst / eps(basetype(T)))
+            @test worst <= 256 * eps(basetype(T))
         end
+    end
+    isempty(noise) || @info "T-757 unordered Fast deposition: largest difference of two runs of one step order over the plasma's scales, in eps" backend = nameof(typeof(be)) worst = maximum(noise) runs = length(noise)
+    return nothing
+end
+
+"""
+The largest difference between two states of the same slot order, over the plasma's own scales:
+the momenta over the largest momentum, the positions in cells, the current over ρ₀, the summed
+charge density of the species taken as positive (ρ₀·c is the current of the whole plasma at c),
+and E and B over ρ₀·Δ, the field that ρ₀ makes over the smallest cell. `Inf` if the alive slots
+differ.
+"""
+function step_distance(a::EMState{N}, b::EMState{N}) where {N}
+    hv(x) = Float64.(value_of.(Array(x)))
+    alive(s) = Array(s.status) .== ALIVE
+    ρ0 = sum(s -> abs(Float64(value_of(s.q))) * sum(hv(s.w)[alive(s)]), a.species) / prod(a.grid.n)
+    Δ = Float64(value_of(minimum(a.grid.dx)))
+    umax = maximum(s -> maximum(c -> maximum(abs, hv(c)[alive(s)]), s.u), a.species)
+    worst = 0.0
+    for (names, scale) in (((:Ex, :Ey, :Ez), ρ0 * Δ), ((:Bx, :By, :Bz), ρ0 * Δ), ((:Jx, :Jy, :Jz), ρ0)), n in names
+        worst = max(worst, maximum(abs, hv(getfield(a.fields, n)) .- hv(getfield(b.fields, n))) / scale)
+    end
+    for (sa, sb) in zip(a.species, b.species)
+        m = alive(sa)
+        m == alive(sb) || return Inf
+        for d in 1:3
+            worst = max(worst, maximum(abs, (hv(sa.u[d]) .- hv(sb.u[d]))[m]) / umax)
+        end
+        for d in 1:N
+            δ = abs.((Array(sa.cell[d]) .- Array(sb.cell[d]) .+ hv(sa.offset[d]) .- hv(sb.offset[d]))[m])
+            worst = max(worst, maximum(min.(δ, a.grid.n[d] .- δ)))          # the nearer way round the periodic axis
+        end
+    end
+    return worst
+end
+
+"""
+The current of a moving-window state with filter passes, against its pieces written out: the
+x-guards of the deposited current dropped before the fold, and the filter with the window's edges
+(zero x-guards in every pass). A filter that wraps along x gives another current.
+"""
+function body_T757_window(be)
+    for T in TYPES
+        tenth = one(T) / 10
+        prob = window_plasma(T; cells = (24, 8), nsteps = 30, thermal = (tenth, tenth, tenth), drift = (2tenth, zero(T), -tenth))
+        # twelve steps in, then the push and the retirement at the x edges of the next step: the state as `current!` finds it
+        function mk()
+            st = EMState(prob, EMNumerics(; filter = BinomialFilter(2), headroom = 1 / 2); backend = be)
+            initialize!(st, prob)
+            run!(st, params(prob), 12; observer = nothing)
+            (; numerics, grid, dt) = st
+            for s in st.species
+                launcher(push_kernel!, get_backend(s), nothing)(s, st.fields, numerics.pusher, numerics.shape, Int32(guards(grid)), s.q / s.m * dt / 2,
+                                                                map(h -> dt / h, grid.dx), Int32.(grid.n); ndrange = capacity(s))
+            end
+            ParticleMeshElectromagnetic.retire_x!(window_frame(st), st)
+            return st
+        end
+        function written_out!(st; edges = window_frame(st))
+            (; numerics, grid, fields) = st
+            w = window_frame(st)
+            for (s, ws) in zip(st.species, st.ws)
+                sort_by_cell!(s, grid, ws)
+            end
+            foreach(J -> fill!(J, zero(T)), (fields.Jx, fields.Jy, fields.Jz))
+            for (s, ws) in zip(st.species, st.ws)
+                deposit_flux!(ParticleMeshElectromagnetic.deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, (RHO_STAGGER, RHO_STAGGER), grid, ws;
+                              dt = st.dt, quantity_z = CurrentZ())
+            end
+            for J in (fields.Jx, fields.Jy, fields.Jz)
+                zero_x_edges!(w, J)
+                fold_guards!(J, grid)
+            end
+            filter_current!(numerics.filter, fields, grid, st.ρ; edges)
+            return map(J -> bits(Array(J)), (fields.Jx, fields.Jy, fields.Jz))
+        end
+        a, b, c = mk(), mk(), mk()
+        current!(Esirkepov(), a)
+        ja = map(J -> bits(Array(J)), (a.fields.Jx, a.fields.Jy, a.fields.Jz))
+        @test ja == written_out!(b)
+        @test ja != written_out!(c; edges = nothing)          # a filter that wraps along x gives another current
     end
 end
 
-@testset "T-757 the one step of a periodic state is the 1D step and the 2D step written out from their pieces, bit for bit in Reference mode [A2, A4, WP-057]" begin
+@testset "T-757 the one step of a periodic state is the 1D step and the 2D step written out from their pieces, bit for bit in Reference mode, and a window's current its pieces [A2, A4, WP-057]" begin
     body_T757(CPU())
+    body_T757_window(CPU())
 end

@@ -1,4 +1,4 @@
-# WP-057: the one field solve and its tuple of field modifiers, T-750 to T-754. The solve walks
+# WP-057: the one field solve and its tuple of field modifiers, T-750 to T-754 and T-759. The solve walks
 # whatever tuple it is handed, around the three Yee sub-steps, so the tests add modifiers of their
 # own (defined here, not in the package) and hold the solve against the sub-steps written out. After
 # params.jl (`params_case`), restart.jl (`restart_full`) and boundaries_cases.jl.
@@ -137,7 +137,7 @@ function modifier_state(::Type{T}, absorber, be; k0 = 30) where {T}
 end
 
 "Everything a solve of `st` writes: the fields and the convolution fields of its PMLs."
-solve_arrays(st) = (values(st.fields)..., PME.convolution_fields(open_absorber(st))..., PME.convolution_fields(back_absorber(st))...)
+solve_arrays(st) = (values(st.fields)..., evolved_arrays(open_absorber(st))..., evolved_arrays(back_absorber(st))...)
 same_solve(a, b) = all(map(same_bits, solve_arrays(a), solve_arrays(b)))
 
 function body_T750(be)
@@ -372,6 +372,11 @@ reach(x) = reach!(AbstractArray[], x)
     nolaser = EMProblem("no laser", win().length, win().cells, win().dt, 10, win().species, 1, (1, 0); boundaries = (:window, :open),
                         window = MovingWindow(; start = 0.0))
     @test kinds(EMState(nolaser, EMNumerics(; absorber = pml))) == (:PMLFields, :WindowEdges)
+    # the constructor refuses an antenna plane inside the back edge's PML, and one the layer reaches
+    # while it emits, before any parameters are checked (window_lwfa's plane is columns 8 and 9)
+    @test_throws ArgumentError EMState(window_lwfa(T; nsteps = 4), EMNumerics(; back_absorber = PML(; cells = 8)))
+    @test_throws ArgumentError EMState(window_lwfa(T; nsteps = 4), EMNumerics(; back_absorber = PML(; cells = 6)))
+    @test EMState(window_lwfa(T; nsteps = 4), EMNumerics(; back_absorber = PML(; cells = 4))) isa EMState
     # the window's clock in the antennas' modifier is the frame's, and static antennas have none
     w = EMState(win(), EMNumerics())
     @test w.modifiers[1].clock === WindowClock(w.aux.window) === WindowClock(w.aux.window.window.start, w.aux.window.dt, w.aux.window.dx1)
@@ -386,7 +391,7 @@ reach(x) = reach!(AbstractArray[], x)
     @test length(mine) == 2 * (6 + 5) && allunique(objectid.(mine))
     rest = reach((st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.aux))
     @test !any(a -> any(b -> a === b, rest), mine)
-    ψ = (PME.convolution_fields(open_absorber(st))..., PME.convolution_fields(back_absorber(st))...)
+    ψ = (evolved_arrays(open_absorber(st))..., evolved_arrays(back_absorber(st))...)
     @test length(ψ) == 8 && all(a -> count(b -> a === b, evolved(st)) == 1, ψ)
     # a state over other arrays: its PMLs are over those arrays, its tuple has the order and the
     # other modifiers of the state's, and a step of it leaves the state's own arrays alone
@@ -396,7 +401,7 @@ reach(x) = reach!(AbstractArray[], x)
     held = map(copy, evolved(st))
     v = PME.state_view(st, map(copy, evolved(st)))
     @test typeof(v.modifiers) === typeof(st.modifiers) && v.modifiers[3] === st.modifiers[3] && v.modifiers[4] === st.modifiers[4]
-    ψv = (PME.convolution_fields(open_absorber(v))..., PME.convolution_fields(back_absorber(v))...)
+    ψv = (evolved_arrays(open_absorber(v))..., evolved_arrays(back_absorber(v))...)
     @test all(a -> count(b -> a === b, evolved(v)) == 1, ψv) && !any(a -> any(b -> a === b, ψ), ψv)
     step!(v, p, 31; observer = nothing)
     @test all(map(same_bits, evolved(st), held))
@@ -408,4 +413,101 @@ reach(x) = reach!(AbstractArray[], x)
     tv = PME.on_evolved(tagged, map(copy, evolved(tagged)), similar(tagged.K), tagged.recorder)
     @test map(m -> nameof(typeof(m)), tv.modifiers) == (:Idle, :PMLFields, :BackPMLFields, :Affine, :AntennaPlanes, :WindowEdges)
     @test evolved(tagged) === evolved(st)
+end
+
+# --- T-759: a modifier with state of its own ----------------------------------------------------------
+
+"""
+A modifier with an evolved array: `n`, one entry, counts the E steps it has seen, and after each
+it multiplies Ez by `1 + n/1024`. A run with it depends on the count, so a restart that loses the
+array is another run.
+"""
+struct Mem{A} <: FieldModifier
+    n::A
+end
+PME.evolved_arrays(m::Mem) = (m.n,)
+PME.on_arrays(m::Mem, a::Tuple{Any}) = Mem(a[1])
+PME.after_substep!(m::Mem, mp, f, grid, ::EStep, wgs) = (m.n .+= 1; f.Ez .*= 1 .+ m.n ./ 1024; nothing)
+
+"`modifier_state`'s problem and numerics (a window, a PML on the open axis and on the back edge, a laser), with a `Mem` added to the state's tuple at `place`."
+function mem_case(::Type{T}) where {T}
+    prob = params_case((seeded(T, 1), T(3), seeded(T, 2 // 100), T(8)); nsteps = 100, cells = (72, 16), position = 10, open_y = true, polarization = 1)
+    return prob, EMNumerics(; absorber = PML(; cells = 4, alpha_max = 0.2), back_absorber = PML(; cells = 6))
+end
+with_mem(st, place = length(st.modifiers)) =
+    with_modifiers(st, (st.modifiers[1:place]..., Mem(KernelAbstractions.zeros(get_backend(st.ρ), eltype(st), 1)), st.modifiers[(place + 1):end]...))
+mem_of(st) = only(filter(m -> m isa Mem, collect(Any, st.modifiers)))
+mem_count(st) = value_of(only(Array(mem_of(st).n)))
+
+function body_T759(be)
+    for T in TYPES
+        prob, num = mem_case(T)
+        p = params(prob)
+        mk(place...) = with_mem(EMState(prob, num; backend = be), place...)
+        plain = EMState(prob, num; backend = be)
+        # the evolved list: the state's own, in its order, and the modifier's array where the tuple
+        # has the modifier among the others (after the back edge's PML when it is last, before it
+        # when it is first), in front of the witness bunch; no existing array moves
+        base, np = evolved(plain), length(evolved(plain))
+        @test np == 10 + 9 + 4 + 2 + 4                 # one species, the fields, the open axis' ψ, the counters, the back edge's ψ
+        for (place, at) in ((length(plain.modifiers), np), (0, np - 4), (2, np))
+            st = with_mem(plain, place)
+            ev = @inferred evolved(st)
+            @test length(ev) == np + 1 && ev[at + 1] === mem_of(st).n
+            @test (ev[1:at]..., ev[(at + 2):end]...) === base
+        end
+        # a run starts the count at zero, and counts
+        a = mk()
+        fill!(mem_of(a).n, 7)
+        initialize!(a, prob)
+        @test mem_count(a) == 0
+        run!(a, p, 20)
+        @test mem_count(a) == 20
+        initialize!(plain, prob)
+        run!(plain, p, 20)
+        @test !same_bits(Array(a.fields.Ez), Array(plain.fields.Ez))      # the modifier acts
+        # a restart in the middle, into a new state with the modifier: the uninterrupted run's bits,
+        # the count included; through a file too
+        b = mk()
+        initialize!(b, prob)
+        run!(b, p, 10)
+        snap = snapshot(b, 10)
+        @test length(snap.arrays) == np + 1
+        c = restore!(mk(), snap)
+        @test mem_count(c) == 10
+        run!(c, p, 10; first = 11)
+        @test isempty(differences(a, c, 10)) && mem_count(c) == 20 && same_bits(Array(mem_of(a).n), Array(mem_of(c).n))
+        file = tempname()
+        save_snapshot(file, snap)
+        d = restore!(mk(), load_snapshot(file, mk()))
+        run!(d, p, 10; first = 11)
+        @test isempty(differences(a, d, 10)) && same_bits(Array(mem_of(a).n), Array(mem_of(d).n))
+        # a state without the modifier is another layout, both ways
+        @test_throws ArgumentError restore!(EMState(prob, num; backend = be), snap)
+        @test_throws ArgumentError restore!(mk(), snapshot(plain, 20))
+        # a state over other arrays has the modifier over those, and steps them alone
+        held = map(copy, evolved(a))
+        v = PME.state_view(a, map(copy, evolved(a)))
+        @test mem_of(v).n !== mem_of(a).n && mem_of(v).n === evolved(v)[np + 1]
+        step!(v, p, 21; observer = nothing)
+        @test mem_count(v) == 21 && mem_count(a) == 20 && all(map(same_bits, evolved(a), held))
+        # the harness: the modifier's array is in the partition, a solve is the loop's run, and a
+        # second solve starts the count again
+        dprob = DiscreteProblem(prob, num; backend = be, nsteps = 20, save_everystep = false, modifiers = ms -> (ms..., Mem(KernelAbstractions.zeros(be, T, 1))))
+        @test length(dprob.u0.x) == np + 1
+        for _ in 1:2
+            sol = solve(dprob, FunctionMap())
+            h = harness_state(sol)
+            @test mem_count(h) == 20 && isempty(differences(a, h, 0; cache = false)) && same_bits(Array(mem_of(a).n), Array(mem_of(h).n))
+            @test mem_count(harness_state(dprob)) == 0
+        end
+        # a problem rebuilt from the harness problem keeps the modifier, with an array of its own
+        again = remake_reload(dprob; p = prob)
+        @test length(again.u0.x) == np + 1 && mem_of(harness_state(again)).n !== mem_of(harness_state(dprob)).n
+        @test mem_count(harness_state(solve(again, FunctionMap()))) == 20
+    end
+end
+
+@testset "T-759 a modifier with an evolved array of its own is in the evolved list, in a snapshot, a restart, a state over other arrays and the harness's partition [A4, A9, WP-057]" begin
+    body_T759(CPU())
 end

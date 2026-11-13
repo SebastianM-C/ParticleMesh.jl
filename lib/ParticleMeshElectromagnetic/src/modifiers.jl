@@ -33,11 +33,43 @@ no parameter from the modifier. The order of the tuple is the order of the corre
 sub-step, so it is part of the scheme: [`field_modifiers`](@ref) says which order the module's
 own modifiers take and why.
 
-A modifier with arrays that a run evolves (a PML's convolution fields) also names them in
-[`evolved`](@ref), zeroes them in `reset_absorber!` and moves them in `shift_absorber!` (the
-moving window's shift); those are per modifier type, in `restart.jl`, `pml.jl` and `window.jl`.
+A modifier with arrays that a run evolves (a PML's convolution fields) says so, and they are then
+part of the state's evolved arrays ([`evolved`](@ref)) with everything that follows from it: a
+snapshot holds them, `restore!` writes them, a state over other arrays ([`state_view`](@ref), the
+SciML harness's partition) has the modifier over those arrays, and `initialize!` zeroes them:
+
+    evolved_arrays(m)              # its evolved arrays, a tuple of fixed length; `()` by default
+    on_arrays(m, arrays::Tuple)    # the same modifier over other arrays of that layout
+    reset_absorber!(m)             # the start of a run; by default every evolved array zero
+    shift_absorber!(m, workgroupsize)   # a moving window's shift by one cell; nothing by default
+
+A modifier that keeps state in an array without listing it is not restarted with the run.
 """
 abstract type FieldModifier end
+
+"""
+    evolved_arrays(m::FieldModifier) -> Tuple
+
+The arrays of the modifier that a run evolves, in a fixed order and number per modifier type; `()`
+for a modifier without state of its own (the default). They join [`evolved`](@ref)`(state)`.
+"""
+evolved_arrays(::FieldModifier) = ()
+evolved_arrays(::Nothing) = ()
+
+"""
+    on_arrays(m::FieldModifier, arrays::Tuple) -> FieldModifier
+
+The modifier `m` with `arrays` in the place of its [`evolved_arrays`](@ref) (as many, of the same
+types) and everything else it holds kept; no copy. A modifier with evolved arrays defines it; one
+without is its own (the default).
+"""
+on_arrays(m::FieldModifier, ::Tuple{}) = m
+
+"The start of a run for a modifier's evolved arrays: zero, unless the modifier says otherwise. `initialize!` calls it ([`reset_convolution!`](@ref))."
+reset_absorber!(m::FieldModifier) = (foreach(a -> fill!(a, zero(eltype(a))), evolved_arrays(m)); nothing)
+
+"A moving window's shift by one cell for a modifier's own arrays (a PML's convolution fields move with the fields); nothing by default."
+shift_absorber!(::FieldModifier, wgs) = nothing
 
 """
     BHalf(τ, t, second)

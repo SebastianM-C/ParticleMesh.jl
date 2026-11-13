@@ -25,22 +25,26 @@ species_length(::Species{N}) where {N} = 2N + 6
 flat_species() = ()
 flat_species(s, rest...) = (species_arrays(s)..., flat_species(rest...)...)
 
-"The convolution fields of a placed absorber: four for a PML (the open axis' or the back edge's), none otherwise."
-convolution_fields(::Any) = ()
-convolution_fields(L::PMLFields) = (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
-convolution_fields(L::BackPMLFields) = (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
-
 window_arrays(::Nothing) = ()
 window_arrays(w::WindowFrame) = (w.lost..., w.fast...)
 
 witness_arrays(::Nothing) = ()
 witness_arrays(w::WitnessFrame) = species_arrays(w.species)
 
-# What a run evolves besides the particles and the fields, in `evolved`'s order: the modifiers'
-# convolution fields are named here one by one (the window's counters lie between the two PMLs'),
-# so a modifier with evolved arrays of its own takes its place in this list and in `aux_on`.
-evolved_aux(st::EMState) = (convolution_fields(open_absorber(st))..., window_arrays(window_frame(st))...,
-                            convolution_fields(back_absorber(st))..., witness_arrays(witness_frame(st))...)
+# The evolved arrays of every modifier but the open axis' absorber, in the tuple's order, written
+# out for the tuple's length (static at every length, as the solve's walk).
+@generated function other_evolved(ms::NTuple{M,FieldModifier}) where {M}
+    parts = [:(evolved_arrays(ms[$i])...) for i in 1:M if !(fieldtype(ms, i) <: OpenAbsorber)]
+    return :(($(parts...),))
+end
+
+# What a run evolves besides the particles and the fields, in `evolved`'s order: the open axis'
+# absorber's arrays, the window's counters, the arrays of every other modifier in the tuple's
+# order (`evolved_arrays`: the back edge's PML, and any modifier a state was given), the witness
+# bunch. The open axis' absorber comes before the counters whatever its place in the tuple: that
+# is the order the list has had since it exists, and no configuration's list moves.
+evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(window_frame(st))...,
+                            other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...)
 
 """
     evolved(state::EMState) -> Tuple
@@ -53,8 +57,10 @@ What a run evolves, as a flat tuple of the state's own arrays (no copy), in this
    (a step with `Esirkepov()` writes it before reading it; with `NoCurrent()` it is kept as it is);
 3. at N = 2, where the state has them: the four convolution fields of the open axis' PML
    (`ψBx`, `ψBz`, `ψEx`, `ψEz`); the moving window's counters, per species `lost` and then per
-   species `fast`; the four convolution fields of the window's back-edge PML (`ψBy`, `ψBz`,
-   `ψEy`, `ψEz`); the witness bunch's particles, as a species.
+   species `fast`; the evolved arrays of every other field modifier in the order of the state's
+   tuple ([`evolved_arrays`](@ref): the four convolution fields of the window's back-edge PML,
+   `ψBy`, `ψBz`, `ψEy`, `ψEz`, and those of a modifier the state was given with
+   [`with_modifiers`](@ref)); the witness bunch's particles, as a species.
 
 The element types stay mixed (`Int32`, `UInt8` and `T`). With the step index `k`, the parameters
 and the configuration the state was built for, these arrays are the whole run: [`snapshot`](@ref)
@@ -87,14 +93,22 @@ function species_on(sp::Tuple, a::Tuple)
     return (species_on(s, take(a, n)), rest...), a′
 end
 
-absorber_on(L, a::Tuple) = (L, a)
-function absorber_on(L::PMLFields, a::Tuple)
-    ψ = take(a, Val(4))
-    return PMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max), drop(a, Val(4))
+modifier_on(::Nothing, a::Tuple) = (nothing, a)
+function modifier_on(m::FieldModifier, a::Tuple)
+    n = Val(length(evolved_arrays(m)))
+    return on_arrays(m, take(a, n)), drop(a, n)
 end
-function absorber_on(L::BackPMLFields, a::Tuple)
-    ψ = take(a, Val(4))
-    return BackPMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max), drop(a, Val(4))
+
+# The tuple `ms` over the arrays `a`, consumed in `other_evolved`'s order; the open axis' absorber,
+# whose arrays come earlier in the list, is given (`open`).
+@generated function others_on(ms::NTuple{M,FieldModifier}, open, a::Tuple) where {M}
+    body = Expr(:block)
+    names = [Symbol(:m_, i) for i in 1:M]
+    for i in 1:M
+        push!(body.args, fieldtype(ms, i) <: OpenAbsorber ? :($(names[i]) = open) : :(($(names[i]), a) = modifier_on(ms[$i], a)))
+    end
+    push!(body.args, :(return ($(names...),), a))
+    return body
 end
 
 window_on(::Nothing, a::Tuple) = (nothing, a)
@@ -111,26 +125,18 @@ function witness_on(w::WitnessFrame, a::Tuple)
     return WitnessFrame(species_on(w.species, take(a, n)), w.kinj, w.c0, w.nc, w.ppc), drop(a, n)
 end
 
-# The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order.
-# A modifier that holds evolved arrays is replaced by one over the new arrays (by its type: a
-# state has at most one of each); the others are kept.
+# The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order:
+# every modifier is the same modifier over its part of `a` (`on_arrays`).
 function aux_on(st::EMState, a::Tuple)
-    layer, a = absorber_on(open_absorber(st), a)
+    open, a = modifier_on(open_absorber(st), a)
     window, a = window_on(window_frame(st), a)
-    back, a = absorber_on(back_absorber(st), a)
+    modifiers, a = others_on(st.modifiers, open, a)
     witness, a = witness_on(witness_frame(st), a)
-    return replace_absorbers(st.modifiers, layer, back), aux_with(st.aux, window, witness), a
+    return modifiers, aux_with(st.aux, window, witness), a
 end
 
 aux_with(aux::NamedTuple{()}, window, witness) = aux
 aux_with(aux::NamedTuple, window, witness) = merge(aux, (; window, witness))
-
-on_absorbers(m::FieldModifier, layer, back) = m
-on_absorbers(::PMLFields, layer, back) = layer
-on_absorbers(::BackPMLFields, layer, back) = back
-@generated function replace_absorbers(ms::NTuple{M,FieldModifier}, layer, back) where {M}
-    return :(Base.Cartesian.@ntuple $M i -> on_absorbers(ms[i], layer, back))
-end
 
 """
     on_evolved(state, arrays::Tuple, K, recorder) -> EMState
