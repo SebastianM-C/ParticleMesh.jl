@@ -67,7 +67,7 @@ end
     @test l.position == d.xa && l.focus == CASE["laser"]["focus"] + d.xa && l.center == d.yc
     @test prob.profile.vacuum == CASE["plasma"]["vacuum"] + d.xa
     st = EMState(pm_problem(CASE; plasma = false), EMNumerics())
-    @test only(st.aux.antennas).ia == d.na + 1                     # node i at (i − 1)Δx: the plane x = x_a
+    @test only(antenna_planes(st)).ia == d.na + 1                     # node i at (i − 1)Δx: the plane x = x_a
     @test window_shifts(st, 0) == 0
     k = ceil(Int, (CASE["window"]["start"] + 100) / d.dt)          # 100/ω₀ after the window starts
     @test window_shifts(st, k) == floor(Int, (k * d.dt - CASE["window"]["start"]) / d.dx)

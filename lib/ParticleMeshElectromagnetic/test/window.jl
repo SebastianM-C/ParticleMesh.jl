@@ -196,7 +196,7 @@ function body_T473(be)
         prob = window_lwfa(T)
         st = window_state(prob; mode, be)
         p = params(prob)
-        ia = st.aux.antennas[1].ia            # the plane's interior column on the static grid
+        ia = antenna_planes(st)[1].ia            # the plane's interior column on the static grid
         worst = 0.0
         for k in 1:prob.nsteps
             step!(st, p, k)

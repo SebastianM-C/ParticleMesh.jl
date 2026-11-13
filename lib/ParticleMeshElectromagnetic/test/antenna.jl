@@ -153,7 +153,7 @@ end
         dt = T(3 // 10)
         for k in 1:5
             solve_fields!(Yee(), f1, grid, dt)
-            solve_fields!(Yee(), f2, grid, dt, (), (k - 1) * dt)
+            solve_fields!(Yee(), f2, grid, dt, (AntennaPlanes((), nothing),), (; lasers = ()), k)
         end
         @test all(same_bits(getfield(f1, k), getfield(f2, k)) for k in keys(f1))
     end
@@ -319,7 +319,7 @@ time) and `−(Δt/2Δx)·sin θ·D⁺_y e` on the B column, twice (the incident
 function antenna_divergences(st, p, nk, dt)
     (; grid, numerics) = st
     T = eltype(st.ρ)
-    a = Antenna(only(p.lasers), only(st.aux.antennas))
+    a = Antenna(only(p.lasers), only(antenna_planes(st)))
     l = a.laser
     ρd = field(CPU(), T, grid)
     for (s, ws) in zip(st.species, st.ws)

@@ -128,29 +128,6 @@ function yee_e!(f::NamedTuple, grid::PeriodicGrid{N}, dt; workgroupsize = nothin
 end
 
 """
-    solve_fields!(::Yee, f, grid, dt; workgroupsize = nothing)
-
-The mesh-solve slot: from Eⁿ, Bⁿ and the current Jⁿ⁺¹ᐟ² to Eⁿ⁺¹, Bⁿ⁺¹ by
-`Bⁿ⁺¹ᐟ² = Bⁿ − (Δt/2)∇×Eⁿ`, `Eⁿ⁺¹ = Eⁿ + Δt(∇×Bⁿ⁺¹ᐟ² − Jⁿ⁺¹ᐟ²)`, `Bⁿ⁺¹ = Bⁿ⁺¹ᐟ² − (Δt/2)∇×Eⁿ⁺¹`
-([`yee_b_half!`](@ref), [`yee_e!`](@ref)), on the fields `f` of [`field_layout`](@ref)`(Val(N))`
-on a `PeriodicGrid{N}` (N = 1 and N = 2; guards of E filled on entry, the currents folded). Every
-component it changes has its guards filled on return.
-
-In vacuum a mode of wave vector k advances by the ω of the exact discrete relation
-sin(ωΔt/2)/Δt = √(Σ_d sin²(k_dΔ_d/2)/Δ_d²) (T-210, T-320), and Σ(Eⁿ)² + Σ Bⁿ⁻¹ᐟ²·Bⁿ⁺¹ᐟ² is
-conserved (T-323); it is stable for Δt below [`courant_limit`](@ref) and grows beyond it (T-325).
-It does not check Δt: the state constructor does ([`check_courant`](@ref)).
-"""
-function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid, dt; workgroupsize = nothing)
-    T = eltype(f.Ex)
-    h = T(dt) / 2
-    yee_b_half!(f, grid, h; workgroupsize)
-    yee_e!(f, grid, dt; workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    return f
-end
-
-"""
     courant_limit(::Yee, grid) -> Δt_max
 
 The stability limit of the Yee solver on `grid`: `1/√(Σ_d 1/Δ_d²)` (c = 1, A1), in the grid's

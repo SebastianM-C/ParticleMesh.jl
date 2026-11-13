@@ -68,7 +68,7 @@ function antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU
 end
 
 "The antenna of a run: the problem's laser on the plane where the state placed it."
-run_antenna(r) = Antenna(only(params(r.prob).lasers), only(r.st.aux.antennas))
+run_antenna(r) = Antenna(only(params(r.prob).lasers), only(antenna_planes(r.st)))
 
 """
     incident_dtft(r) -> (; Ey, Ez)

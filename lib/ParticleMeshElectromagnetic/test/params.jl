@@ -72,12 +72,13 @@ function run_arrays(st::EMState)
     push!(out, Array(st.K))
     append!(out, map(Array, values(st.recorder.hist)))
     ndims(st) == 2 || return out
-    L = st.aux.layer
+    L = open_absorber(st)
     L isa PMLFields && append!(out, map(Array, (L.ψBx, L.ψBz, L.ψEx, L.ψEz)))
     w = st.aux.window
     w === nothing && return out
     append!(out, map(Array, (w.lost..., w.fast...)))
-    w.back === nothing || append!(out, map(Array, (w.back.ψBy, w.back.ψBz, w.back.ψEy, w.back.ψEz)))
+    b = back_absorber(st)
+    b === nothing || append!(out, map(Array, (b.ψBy, b.ψBz, b.ψEy, b.ψEz)))
     return out
 end
 
@@ -407,10 +408,10 @@ end
     @test p1.species[1].wavevector == (2π * landau.species[1].mode / landau.length,) && p1.lasers == () && p1.witness === nothing
     st = EMState(prob, EMNumerics())
     @test check_params(st, p) === p
-    @test st.aux.antennas[1] isa AntennaPlane{T} && isbits(st.aux.antennas[1])
+    @test antenna_planes(st)[1] isa AntennaPlane{T} && isbits(antenna_planes(st)[1])
     # what the step makes of them, spelled out: the antenna of the laser on the state's plane, and the refill's load
     h1 = cellsize(st.grid)[1]
-    a1 = Antenna(p.lasers[1], st.aux.antennas[1])
+    a1 = Antenna(p.lasers[1], antenna_planes(st)[1])
     @test a1.laser === p.lasers[1] && (a1.ia, a1.g, a1.n2) == (9, guards(st.grid), 16) && a1.xa === 8 * h1
     @test a1.dx === cellsize(st.grid) && a1.ly === 16 * cellsize(st.grid)[2] && a1.hx === h1 / 2
     @test a1.ht ≈ asin(h1 / prob.dt * sin(prob.dt / 2)) rtol = 4eps()      # the Yee wavenumber's half cell,
@@ -490,7 +491,7 @@ end
     # within its plane's half cell the position changes nothing: it only chooses the column
     l = prob.lasers[1]
     q = EMParams(p; lasers = (GaussianLaser(; a0 = l.a0, waist = l.waist, duration = l.duration, delay = l.delay, focus = l.focus, position = 6.1, center = l.center),))
-    @test AntennaPlane(6.1, st.grid, prob.dt) === st.aux.antennas[1]
+    @test AntennaPlane(6.1, st.grid, prob.dt) === antenna_planes(st)[1]
     a, b = EMState(prob, EMNumerics()), EMState(prob, EMNumerics())
     initialize!(a, p)
     run!(a, p, 60)
@@ -498,7 +499,7 @@ end
     run!(b, q, 60)
     @test same_run(a, b) && any(!iszero, Array(a.fields.Ey))
     at(pos) = EMParams(p; lasers = (GaussianLaser(; a0 = l.a0, waist = l.waist, duration = l.duration, delay = l.delay, focus = l.focus, position = pos, center = l.center),))
-    @test st.aux.antennas[1].ia == 9                           # the plane at x = 8Δx
+    @test antenna_planes(st)[1].ia == 9                           # the plane at x = 8Δx
     @test check_params(st, at(8.4 * h1)) isa EMParams && check_params(st, at(7.6 * h1)) isa EMParams
     @test_throws ArgumentError check_params(st, at(8.6 * h1))
     @test_throws ArgumentError check_params(st, at(7.4 * h1))
@@ -570,7 +571,7 @@ function body_T734(be)
         initialize!(used, first)
         run!(used, params(first), first.nsteps)
         @test !same_run(fresh, used)
-        psis(s) = (L = s.aux.layer; B = s.aux.window.back; (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
+        psis(s) = (L = open_absorber(s); B = back_absorber(s); (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
         @test all(ψ -> any(!iszero, Array(ψ)), psis(used))
         @test witness_alive(used) > 0
         initialize!(used, prob)
@@ -628,7 +629,7 @@ end
     wd = DiscreteProblem(wprob, wnum; backend, save_everystep = false)
     wa = solve(wd, FunctionMap())
     wua, wha = partition_bits(wa.u[end]), history_bits(harness_state(wa))
-    back = harness_state(wa).aux.window.back
+    back = back_absorber(harness_state(wa))
     @test all(ψ -> any(!iszero, Array(ψ)), (back.ψBy, back.ψBz, back.ψEy, back.ψEz))
     wb = solve(wd, FunctionMap())
     wref = loop_state(wprob, wnum)
@@ -641,7 +642,7 @@ end
         dp = DiscreteProblem(prob, num; backend, save_everystep = false)
         a = solve(dp, FunctionMap())
         ua, ha = partition_bits(a.u[end]), history_bits(harness_state(a))
-        @test any(!iszero, Array(harness_state(a).aux.layer.ψEx))
+        @test any(!iszero, Array(open_absorber(harness_state(a)).ψEx))
         b = solve(dp, FunctionMap())
         ref = loop_state(prob, num)
         @test partition_bits(b.u[end]) == ua == state_bits(ref)

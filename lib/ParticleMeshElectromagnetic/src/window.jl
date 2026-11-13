@@ -134,16 +134,17 @@ along axis 1 it counts its shifts with, the interior columns `n1`, the injection
 plasma is loaded on columns `1 … inj`, [`injection_column`](@ref)), the guard width `g`,
 and what a run evolves of it ([`evolved`](@ref)): `lost`, one device counter per species of the
 fresh particles that found no free slot (zero unless the buffers overflow; read with
-[`window_lost`](@ref) outside a step), `fast`, one device counter per species of the fresh
-particles of the refills whose drawn speed reached c (read with [`window_superluminal`](@ref)),
-and the convolution fields of `back`, the PML of the back edge placed on the grid
-([`BackPMLFields`](@ref)), or `nothing`; `flags` is per species the refill's scratch of one flag
+[`window_lost`](@ref) outside a step), and `fast`, one device counter per species of the fresh
+particles of the refills whose drawn speed reached c (read with [`window_superluminal`](@ref));
+`flags` is per species the refill's scratch of one flag
 per fresh particle that `fast` sums. The window's position is not kept: it is a function of the
 step index ([`window_shifts`](@ref)).
 What the refill loads is not here: the densities, the profile, the drifts, the thermal speeds and
-the seed are parameters ([`window_load`](@ref)).
+the seed are parameters ([`window_load`](@ref)). What the window does to the fields within the
+mesh solve is not here either: its x edges ([`WindowEdges`](@ref)) and the PML of its back edge
+([`BackPMLFields`](@ref)) are field modifiers of the state (`state.modifiers`).
 """
-struct WindowFrame{W,T,L,F,K}
+struct WindowFrame{W,T,L,F}
     window::W
     dt::T
     dx1::T
@@ -153,8 +154,22 @@ struct WindowFrame{W,T,L,F,K}
     lost::L
     fast::L
     flags::F
-    back::K
 end
+
+"""
+    WindowClock(start, dt, dx1)
+
+When a moving window moves, apart from the window itself: its start time, the time step and the
+cell size along axis 1 ([`window_shifts`](@ref)). Isbits configuration, the part of a
+[`WindowFrame`](@ref) that the antennas' modifier keeps ([`AntennaPlanes`](@ref)).
+"""
+struct WindowClock{T}
+    start::T
+    dt::T
+    dx1::T
+end
+WindowClock(w::WindowFrame) = WindowClock(w.window.start, w.dt, w.dx1)
+WindowClock(::Nothing) = nothing
 
 """
     injection_column(window::WindowFrame) -> Int
@@ -190,7 +205,10 @@ about 5000 times noisier at the finite-difference scale, so the band is not wher
 part. Columns `window_back_band + 1 … n₁` are the ones to read.
 """
 window_back_band(w::WindowFrame) = 3 * (w.n1 - w.inj)
-window_back_band(st::EMState) = window_back_band(st.aux.window)
+window_back_band(st::EMState) = window_back_band(window_frame(st))
+
+"The moving window's frame of a state, or `nothing` (at N = 1, and at N = 2 without a window)."
+window_frame(st::EMState) = haskey(st.aux, :window) ? st.aux.window : nothing
 
 """
     window_shifts(window::WindowFrame, k) -> Int
@@ -198,11 +216,12 @@ window_back_band(st::EMState) = window_back_band(st.aux.window)
 The number of cells the window has moved after step `k` (`k = 0`: at t = 0),
 `max(0, floor((k·Δt − start)/Δx₁))`; a host function of the configuration.
 """
-function window_shifts(w::WindowFrame, k::Integer)
-    t = k * w.dt - w.window.start
-    return t < zero(t) ? 0 : floor(Int, t / w.dx1)
+function window_shifts(c::WindowClock, k::Integer)
+    t = k * c.dt - c.start
+    return t < zero(t) ? 0 : floor(Int, t / c.dx1)
 end
-window_shifts(st::EMState, k::Integer) = window_shifts(st.aux.window, k)
+window_shifts(w::WindowFrame, k::Integer) = window_shifts(WindowClock(w), k)
+window_shifts(st::EMState, k::Integer) = window_shifts(window_frame(st), k)
 
 "The fresh particles of each species that found no free slot in the window's refills (a device read: never inside a step)."
 window_lost(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.lost)
@@ -220,7 +239,7 @@ on device data, §0.4). The initial load refuses such a draw instead, with an `A
 """
 window_superluminal(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.fast)
 
-function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Integer; back = nothing, workgroupsize = nothing) where {T}
+function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Integer) where {T}
     n1 = ncells(grid)[1]
     inj = window_injection_column(n1, shape, passes)
     inj >= 2 ||
@@ -228,11 +247,22 @@ function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Inte
     lost = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
     fast = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
     flags = map(d -> KernelAbstractions.zeros(backend, Int32, inj * ncells(grid)[2] * prod(d.ppc)), problem.species)
-    bk = back === nothing ? nothing : BackPMLFields(back, grid, problem.dt; backend, workgroupsize)
-    return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), lost, fast, flags, bk)
+    return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), lost, fast, flags)
 end
 
 # --- the x edges ------------------------------------------------------------------------------
+
+"""
+    WindowEdges(g)
+
+The x edges of a moving window as a [`FieldModifier`](@ref): the guard width `g` of the columns
+that hold the window's field-free outside in place of the periodic images. It has no arrays and
+no parameter half.
+"""
+struct WindowEdges <: FieldModifier
+    g::Int
+end
+edges_of(w::WindowFrame) = WindowEdges(w.g)
 
 # Zero the x-guard columns of a field (every row): ndrange (2g, rows), the first g columns and the last g.
 @kernel function zero_x_guards_kernel!(a, g::Int32, shift::Int32)
@@ -249,58 +279,27 @@ place of the periodic images, and on a deposited current or charge before the fo
 drops the contributions of cells outside the box. With `window = nothing` nothing is done.
 """
 zero_x_edges!(::Nothing, a; workgroupsize = nothing) = a
-function zero_x_edges!(w::WindowFrame, a; workgroupsize = nothing)
+function zero_x_edges!(w::Union{WindowFrame,WindowEdges}, a; workgroupsize = nothing)
     w.g == 0 && return a
     shift = size(a, 1) - 2w.g
     launcher(zero_x_guards_kernel!, get_backend(a), workgroupsize)(a, Int32(w.g), Int32(shift); ndrange = (2w.g, size(a, 2)))
     return a
 end
 
-edges_b!(::Nothing, f, wgs) = nothing
-edges_e!(::Nothing, f, wgs) = nothing
-function edges_b!(w::WindowFrame, f, wgs)
+# The window's x edges as a field modifier, last in a state's tuple: after each Yee sub-step and
+# every other modifier's correction of it, the x-guards of the components it updated are set to
+# zero, the undisturbed outside of the window.
+function after_substep!(w::WindowEdges, mp, f, grid, ::BHalf, wgs)
     zero_x_edges!(w, f.Bx; workgroupsize = wgs)
     zero_x_edges!(w, f.By; workgroupsize = wgs)
     zero_x_edges!(w, f.Bz; workgroupsize = wgs)
     return nothing
 end
-function edges_e!(w::WindowFrame, f, wgs)
+function after_substep!(w::WindowEdges, mp, f, grid, ::EStep, wgs)
     zero_x_edges!(w, f.Ex; workgroupsize = wgs)
     zero_x_edges!(w, f.Ey; workgroupsize = wgs)
     zero_x_edges!(w, f.Ez; workgroupsize = wgs)
     return nothing
-end
-
-"""
-    solve_fields!(::Yee, f, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, layer, window; workgroupsize = nothing)
-
-The Yee step with the antennas, the absorbing layer and the moving window's x edges (a
-[`WindowFrame`](@ref), or `nothing`): after each sub-step, its antenna correction and its layer
-damping, the x-guards of the components it updated are set to zero, the undisturbed outside of the
-window. With `window = nothing` it is the step with antennas and layer, bit for bit.
-"""
-function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid{2}, dt, antennas::Tuple, t, layer, window; workgroupsize = nothing)
-    T = eltype(f.Ex)
-    h = T(dt) / 2
-    absorb_b!(layer, f, workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    back_b!(window, f, grid, h, false, workgroupsize)
-    antenna_b!(antennas, f, h, t, workgroupsize)
-    absorb_b!(layer, f, workgroupsize)
-    edges_b!(window, f, workgroupsize)
-    absorb_e!(layer, f, workgroupsize)
-    yee_e!(f, grid, dt; workgroupsize)
-    back_e!(window, f, grid, dt, workgroupsize)
-    antenna_e!(antennas, f, dt, t + h, workgroupsize)
-    absorb_e!(layer, f, workgroupsize)
-    edges_e!(window, f, workgroupsize)
-    absorb_b!(layer, f, workgroupsize)
-    yee_b_half!(f, grid, h; workgroupsize)
-    back_b!(window, f, grid, h, true, workgroupsize)
-    antenna_b!(antennas, f, h, t + T(dt), workgroupsize)
-    absorb_b!(layer, f, workgroupsize)
-    edges_b!(window, f, workgroupsize)
-    return f
 end
 
 # Particles that crossed an x edge of the window this step (their cell along axis 1 jumped across
@@ -334,12 +333,16 @@ back edge it is inactive (the step skips it).
 window_antennas(antennas::Tuple, s::Integer) =
     map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht), antennas)
 
+# The antennas of step k in a moving window: where the window has their planes at the start of the step.
+placed_antennas(c::WindowClock, antennas::Tuple, k) = window_antennas(antennas, window_shifts(c, k - 1))
+
 # The window passes antenna a in the step after which it has moved ia − g − 1 cells; its pulse must
 # be over by then, six durations after its delay (the envelope below Float64 roundoff). With a PML
 # on the back edge (WP-034) the plane must also stay out of the layer's columns 1 … cells while it
 # emits: it reaches them after ia − cells − 1 shifts, and a plane inside them at the start is refused.
-function check_window_antennas(w::WindowFrame, antennas::Tuple)
-    cb = back_cells(w.back)
+# `back` is the back edge's placed PML, or `nothing`.
+function check_window_antennas(w::WindowFrame, back, antennas::Tuple)
+    cb = back_cells(back)
     for a in antennas
         edge = max(Int(a.g), cb)
         s_off = a.ia - edge - 1                    # the shifts after which it no longer acts outside the layer
@@ -497,8 +500,7 @@ function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
         copyto!(st.ρ, a)
         launcher(shift_columns_kernel!, get_backend(a), wgs)(a, st.ρ, Int32(g + 1), Int32(g + n[1]), a === fields.Ex; ndrange = size(a))
     end
-    shift_absorber!(aux.layer, wgs)
-    shift_absorber!(w.back, wgs)
+    shift_absorbers!(st.modifiers, wgs)
     for (s, ws, setup, ps, lost, fast, flags) in zip(st.species, st.ws, st.setup, p.species, w.lost, w.fast, w.flags)
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
         sort_by_cell!(s, grid, ws; workgroupsize = wgs)
@@ -509,6 +511,14 @@ function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
     end
     kinetic!(st)
     return st
+end
+
+# Every modifier's own arrays move with the fields (a PML's convolution fields; nothing otherwise).
+@generated function shift_absorbers!(ms::NTuple{M,FieldModifier}, wgs) where {M}
+    return quote
+        Base.Cartesian.@nexprs $M i -> shift_absorber!(ms[i], wgs)
+        return nothing
+    end
 end
 
 # The window's moves after step k: one shift per cell it moved in this step.
@@ -536,7 +546,7 @@ function window_charge!(ρ, st::EMState{2})
         sorts(st, s) && sort_by_cell!(s, grid, ws)
         deposit!(deposit_mode(st, s), ρ, s, numerics.shape, RHO_STAGGER_2D, grid, ws)
     end
-    zero_x_edges!(st.aux.window, ρ)
+    zero_x_edges!(window_frame(st), ρ)
     fold_guards!(ρ, grid)
     return ρ
 end

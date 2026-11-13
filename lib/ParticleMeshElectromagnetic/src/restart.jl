@@ -25,19 +25,26 @@ species_length(::Species{N}) where {N} = 2N + 6
 flat_species() = ()
 flat_species(s, rest...) = (species_arrays(s)..., flat_species(rest...)...)
 
-"The convolution fields of a placed absorber: four for a PML (the open axis' or the back edge's), none otherwise."
-convolution_fields(::Any) = ()
-convolution_fields(L::PMLFields) = (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
-convolution_fields(L::BackPMLFields) = (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
-
 window_arrays(::Nothing) = ()
-window_arrays(w::WindowFrame) = (w.lost..., w.fast..., convolution_fields(w.back)...)
+window_arrays(w::WindowFrame) = (w.lost..., w.fast...)
 
 witness_arrays(::Nothing) = ()
 witness_arrays(w::WitnessFrame) = species_arrays(w.species)
 
-evolved_aux(::EMState{1}) = ()
-evolved_aux(st::EMState{2}) = (convolution_fields(st.aux.layer)..., window_arrays(st.aux.window)..., witness_arrays(st.aux.witness)...)
+# The evolved arrays of every modifier but the open axis' absorber, in the tuple's order, written
+# out for the tuple's length (static at every length, as the solve's walk).
+@generated function other_evolved(ms::NTuple{M,FieldModifier}) where {M}
+    parts = [:(evolved_arrays(ms[$i])...) for i in 1:M if !(fieldtype(ms, i) <: OpenAbsorber)]
+    return :(($(parts...),))
+end
+
+# What a run evolves besides the particles and the fields, in `evolved`'s order: the open axis'
+# absorber's arrays, the window's counters, the arrays of every other modifier in the tuple's
+# order (`evolved_arrays`: the back edge's PML, and any modifier a state was given), the witness
+# bunch. The open axis' absorber comes before the counters whatever its place in the tuple: that
+# is the order the list has had since it exists, and no configuration's list moves.
+evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(window_frame(st))...,
+                            other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...)
 
 """
     evolved(state::EMState) -> Tuple
@@ -50,8 +57,10 @@ What a run evolves, as a flat tuple of the state's own arrays (no copy), in this
    (a step with `Esirkepov()` writes it before reading it; with `NoCurrent()` it is kept as it is);
 3. at N = 2, where the state has them: the four convolution fields of the open axis' PML
    (`ψBx`, `ψBz`, `ψEx`, `ψEz`); the moving window's counters, per species `lost` and then per
-   species `fast`; the four convolution fields of the window's back-edge PML (`ψBy`, `ψBz`,
-   `ψEy`, `ψEz`); the witness bunch's particles, as a species.
+   species `fast`; the evolved arrays of every other field modifier in the order of the state's
+   tuple ([`evolved_arrays`](@ref): the four convolution fields of the window's back-edge PML,
+   `ψBy`, `ψBz`, `ψEy`, `ψEz`, and those of a modifier the state was given with
+   [`with_modifiers`](@ref)); the witness bunch's particles, as a species.
 
 The element types stay mixed (`Int32`, `UInt8` and `T`). With the step index `k`, the parameters
 and the configuration the state was built for, these arrays are the whole run: [`snapshot`](@ref)
@@ -84,14 +93,22 @@ function species_on(sp::Tuple, a::Tuple)
     return (species_on(s, take(a, n)), rest...), a′
 end
 
-absorber_on(L, a::Tuple) = (L, a)
-function absorber_on(L::PMLFields, a::Tuple)
-    ψ = take(a, Val(4))
-    return PMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max), drop(a, Val(4))
+modifier_on(::Nothing, a::Tuple) = (nothing, a)
+function modifier_on(m::FieldModifier, a::Tuple)
+    n = Val(length(evolved_arrays(m)))
+    return on_arrays(m, take(a, n)), drop(a, n)
 end
-function absorber_on(L::BackPMLFields, a::Tuple)
-    ψ = take(a, Val(4))
-    return BackPMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max), drop(a, Val(4))
+
+# The tuple `ms` over the arrays `a`, consumed in `other_evolved`'s order; the open axis' absorber,
+# whose arrays come earlier in the list, is given (`open`).
+@generated function others_on(ms::NTuple{M,FieldModifier}, open, a::Tuple) where {M}
+    body = Expr(:block)
+    names = [Symbol(:m_, i) for i in 1:M]
+    for i in 1:M
+        push!(body.args, fieldtype(ms, i) <: OpenAbsorber ? :($(names[i]) = open) : :(($(names[i]), a) = modifier_on(ms[$i], a)))
+    end
+    push!(body.args, :(return ($(names...),), a))
+    return body
 end
 
 window_on(::Nothing, a::Tuple) = (nothing, a)
@@ -99,8 +116,7 @@ function window_on(w::WindowFrame, a::Tuple)
     ns = Val(length(w.lost))
     lost, a = take(a, ns), drop(a, ns)
     fast, a = take(a, ns), drop(a, ns)
-    back, a = absorber_on(w.back, a)
-    return WindowFrame(w.window, w.dt, w.dx1, w.n1, w.inj, w.g, lost, fast, w.flags, back), a
+    return WindowFrame(w.window, w.dt, w.dx1, w.n1, w.inj, w.g, lost, fast, w.flags), a
 end
 
 witness_on(::Nothing, a::Tuple) = (nothing, a)
@@ -109,13 +125,18 @@ function witness_on(w::WitnessFrame, a::Tuple)
     return WitnessFrame(species_on(w.species, take(a, n)), w.kinj, w.c0, w.nc, w.ppc), drop(a, n)
 end
 
-aux_on(st::EMState{1}, a::Tuple) = (st.aux, a)
-function aux_on(st::EMState{2}, a::Tuple)
-    layer, a = absorber_on(st.aux.layer, a)
-    window, a = window_on(st.aux.window, a)
-    witness, a = witness_on(st.aux.witness, a)
-    return merge(st.aux, (; layer, window, witness)), a
+# The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order:
+# every modifier is the same modifier over its part of `a` (`on_arrays`).
+function aux_on(st::EMState, a::Tuple)
+    open, a = modifier_on(open_absorber(st), a)
+    window, a = window_on(window_frame(st), a)
+    modifiers, a = others_on(st.modifiers, open, a)
+    witness, a = witness_on(witness_frame(st), a)
+    return modifiers, aux_with(st.aux, window, witness), a
 end
+
+aux_with(aux::NamedTuple{()}, window, witness) = aux
+aux_with(aux::NamedTuple, window, witness) = merge(aux, (; window, witness))
 
 """
     on_evolved(state, arrays::Tuple, K, recorder) -> EMState
@@ -136,8 +157,8 @@ function on_evolved(st::EMState, a::Tuple, K, recorder)
     species, a = species_on(st.species, a)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
-    aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, aux)
+    modifiers, aux, _ = aux_on(st, drop(a, nf))
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux)
 end
 
 """

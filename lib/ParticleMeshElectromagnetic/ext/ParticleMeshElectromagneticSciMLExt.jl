@@ -23,7 +23,7 @@ the same bits as `initialize!` plus `run!` in `Reference()` mode (T-100).
 module ParticleMeshElectromagneticSciMLExt
 
 using ParticleMeshElectromagnetic
-using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!
+using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!, with_modifiers
 using ParticleMeshElectromagnetic: evolved, on_evolved, state_view, restore!, refresh_caches!, copy_arrays!, check_evolved
 import ParticleMeshElectromagnetic: state_partition, remake_reload, harness_state
 using KernelAbstractions: CPU
@@ -66,15 +66,16 @@ conversion), computes `K` from it (`refresh_caches!`, as `restore!` does) and ch
 problem given as `p` has the cache's configuration ([`check_setup`](@ref)). The cache state's own
 `K` stays that of its own arrays, the problem's `u0`.
 """
-struct EMMap{S<:EMState,B,KB}
+struct EMMap{S<:EMState,B,KB,F}
     state::S
     backend::B
     K::KB
     done::Base.RefValue{Int}
     owner::Base.RefValue{Any}
+    modifiers::F
 end
 
-EMMap(state::EMState, backend) = EMMap(state, backend, similar(state.K), Ref(0), Ref{Any}(nothing))
+EMMap(state::EMState, backend, modifiers = identity) = EMMap(state, backend, similar(state.K), Ref(0), Ref{Any}(nothing), modifiers)
 
 function (m::EMMap)(u, uprev, p, t)
     # The module's step sorts the particle buffers in place, so the next state starts as a
@@ -122,18 +123,19 @@ harness_state(x::Union{AbstractSciMLProblem,AbstractTimeseriesSolution}, u::Arra
 
 # --- the problem --------------------------------------------------------------------------
 
-function harness_problem(problem::EMProblem, numerics::EMNumerics, backend, tspan; kwargs...)
+function harness_problem(problem::EMProblem, numerics::EMNumerics, backend, tspan; modifiers = identity, kwargs...)
     iszero(first(tspan)) || throw(ArgumentError("tspan must start at step 0, got $(first(tspan))"))
     last(tspan) <= problem.nsteps ||
         throw(ArgumentError("tspan ends at step $(last(tspan)), past the $(problem.nsteps) steps of the problem"))
     get(kwargs, :dt, 1) == 1 || throw(ArgumentError("the harness steps with dt = 1, got dt = $(kwargs[:dt])"))
-    st = EMState(problem, numerics; backend)
+    built = EMState(problem, numerics; backend)
+    st = with_modifiers(built, modifiers(built.modifiers))
     initialize!(st, problem)
-    return DiscreteProblem(DiscreteFunction{true}(EMMap(st, backend)), state_partition(st), tspan, problem; merge((; dt = 1), kwargs)...)
+    return DiscreteProblem(DiscreteFunction{true}(EMMap(st, backend, modifiers)), state_partition(st), tspan, problem; merge((; dt = 1), kwargs)...)
 end
 
 """
-    DiscreteProblem(problem::EMProblem, numerics::EMNumerics; backend = CPU(), nsteps = problem.nsteps, kwargs...)
+    DiscreteProblem(problem::EMProblem, numerics::EMNumerics; backend = CPU(), nsteps = problem.nsteps, modifiers = identity, kwargs...)
 
 The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
 
@@ -143,6 +145,11 @@ The module's step as a `DiscreteProblem`, to be solved with `FunctionMap()`:
   step 1, so a `tspan` that starts elsewhere or a `dt ≠ 1` is refused with an `ArgumentError`:
   here, or at the first step when it comes from `remake` or a `solve` keyword. A run is
   continued with the integrator interface (`init`, `step!`), not by a second solve.
+
+`modifiers` is a function from the tuple of field modifiers the state is built with to the tuple
+it steps with (`with_modifiers`; `ms -> (ms..., m)` adds a modifier `m` of one's own), called
+once per state, so [`remake_reload`](@ref) gives the new state its own; a modifier's evolved
+arrays are in `u` with the rest.
 
 `kwargs` are stored as problem keywords and passed to `solve`, for example
 `saveat = [0, 10, 20]` (whole steps; the saved states are copies of the evolved arrays, each a
@@ -166,7 +173,7 @@ end
 
 function remake_reload(prob::DiscreteProblem; p::EMProblem, tspan = prob.tspan, kwargs...)
     m = harness_map(prob)
-    return harness_problem(p, m.state.numerics, m.backend, tspan; merge(NamedTuple(prob.kwargs), kwargs)...)
+    return harness_problem(p, m.state.numerics, m.backend, tspan; modifiers = m.modifiers, merge(NamedTuple(prob.kwargs), kwargs)...)
 end
 
 end

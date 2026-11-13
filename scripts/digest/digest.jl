@@ -238,6 +238,11 @@ hist_of(st) = st.recorder.hist
 diag_arrays(st) = haskey(st.recorder.aux, :tables) ? AbstractArray[st.recorder.aux.tables..., st.recorder.aux.partials] : AbstractArray[]
 auxget(st, k) = haskey(st.aux, k) ? getfield(st.aux, k) : nothing
 
+# The placed absorber of the open axis and the PML of the window's back edge: field modifiers of
+# the state since WP-057 (`state.modifiers`), `aux.layer` and the window frame's `back` before.
+layer_of(st) = hasfield(typeof(st), :modifiers) ? PME.open_absorber(st) : auxget(st, :layer)
+back_of(st, win) = hasfield(typeof(st), :modifiers) ? PME.back_absorber(st) : win.back
+
 function groups(st)
     state = AbstractArray[]
     foreach(s -> append!(state, species_arrays(s)), st.species)
@@ -245,13 +250,13 @@ function groups(st)
     w === nothing || append!(state, species_arrays(w.species))
     append!(state, values(st.fields))
     push!(state, st.ρ, st.K)
-    append!(state, walk(auxget(st, :layer)))
+    append!(state, walk(layer_of(st)))
     win = auxget(st, :window)
     if win !== nothing
         append!(state, win.lost)
         append!(state, win.fast)
         append!(state, win.flags)
-        append!(state, walk(win.back))
+        append!(state, walk(back_of(st, win)))
     end
     append!(state, diag_arrays(st))
     φ = auxget(st, :φ)

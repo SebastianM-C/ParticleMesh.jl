@@ -33,7 +33,10 @@ and the state keeps what a run evolves and the configuration it was sized for, n
 diagnostics are an observer's ([`observe!`](@ref), [`HistoryRecorder`](@ref)), called at the start
 of each step. The state is closed: [`evolved`](@ref) lists what a run evolves, and with the step
 index it is a restart, [`snapshot`](@ref) after any step and [`restore!`](@ref) into a state built
-for the same problem (to a file with [`save_snapshot`](@ref), [`load_snapshot`](@ref)).
+for the same problem (to a file with [`save_snapshot`](@ref), [`load_snapshot`](@ref)). There is
+one mesh solve, [`solve_fields!`](@ref), which walks the state's tuple of field modifiers
+([`FieldModifier`](@ref): the absorbers, the antennas, a moving window's edges) around the
+solver's sub-steps.
 
 With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
 `DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
@@ -45,10 +48,12 @@ using KernelAbstractions
 using KernelAbstractions: @kernel, @index, @Const, get_backend
 import Adapt
 using ParticleMeshCore
-using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger
+using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger, particle_cell, particle_offset
 
 export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
+export FieldModifier, BHalf, EStep, modifier_params, before_substep!, after_substep!, evolved_arrays, on_arrays, field_modifiers
+export open_absorber, back_absorber, antenna_planes, with_modifiers
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
 export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
@@ -59,14 +64,15 @@ export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export evolved, EMSnapshot, snapshot, restore!, save_snapshot, load_snapshot
 export state_partition, remake_reload, harness_state
-export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, laser_energy, laser_field
+export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPlanes, laser_energy, laser_field
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
-export MovingWindow, DensityRamp, WindowFrame, window_load, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
+export MovingWindow, DensityRamp, WindowFrame, WindowEdges, WindowClock, window_load, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
 
 include("layout.jl")
 include("yee.jl")
+include("modifiers.jl")
 include("pushers.jl")
 include("test_particles.jl")
 include("filter.jl")

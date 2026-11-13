@@ -22,7 +22,7 @@ function kick_back_2d!(st::EMState{2}, prob::EMProblem{2})
     (; numerics, grid) = st
     g = Int32(guards(grid))
     for s in st.species
-        ParticleMeshCore.launcher(ParticleMeshElectromagnetic.kick_2d_kernel!, get_backend(s), numerics.workgroupsize)(
+        ParticleMeshCore.launcher(kick_kernel!, get_backend(s), numerics.workgroupsize)(
             s, st.fields, numerics.pusher, numerics.shape, g, -s.q / s.m * prob.dt / 4; ndrange = capacity(s))
     end
     ParticleMeshElectromagnetic.kinetic!(st)
