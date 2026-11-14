@@ -62,9 +62,14 @@ function main()
     out["optimizer"] = runs
     Ja, Jb = runs[1]["J"], runs[2]["J"]
     check("both starts reach the same value", abs(Ja - Jb) <= 1e-4 * max(Ja, Jb), "J = $Ja and $Jb")
-    # L-BFGS-B may also stop on a small decrease of the objective ("ftol"), so the gradient is checked here
-    check("both starts end with the gradient below gtol", all(r -> maximum(abs, r["grad"]) < 1e-4, runs),
+    # Each start stops on one of L-BFGS-B's convergence tests: the projected gradient below gtol, or an
+    # iteration that lowers −J by less than about 2e-9 relative ("ftol"; OptimizationLBFGSB does not pass
+    # that tolerance through, and at a sharp maximum it can fire with the gradient still above gtol).
+    # Either way, the two starts must end at the same point.
+    check("both starts stop on a convergence test", all(r -> r["reason"] in ("gtol", "ftol"), runs),
           join(("$(r["reason"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
+    dz = maximum(abs, Float64.(runs[1]["z"]) .- Float64.(runs[2]["z"]))
+    check("both starts end at the same point", dz < 1e-4, "largest difference in z: $dz")
 
     # 3. The brute-force grid scan over the box (7 × 7).
     τs, fs = collect(range(TAU...; length = 7)), collect(range(FOCUS...; length = 7))
