@@ -216,7 +216,7 @@ end
 
 # --- sensitivities of the witness gain (which other parameters matter) ----------------------------
 
-const SENS_NAMES = ("a0", "duration", "waist", "focus", "delay", "chirp", "density", "ramp", "vacuum", "u0", "center", "length")
+const SENS_NAMES = (:a0, :duration, :waist, :focus, :delay, :chirp, :density, :ramp, :vacuum, :u0, :center, :length)
 "WP-052's optimum, with a₀ as its own parameter; `chirp` is 0 there, so its entry is the scale of z − 1 instead."
 const SENS_P0 = (a0_at_energy(4.935566813273559), 4.935566813273559, WCASE.waist, WCASE.focus, WCASE.delay, 0.01, 0.07200235514790519,
                  WCASE.ramp, WCASE.vacuum, WCASE.u0, 36.55596361907769, WCASE.length)
@@ -228,7 +228,7 @@ them an argument. At z = 1 it is WP-052's optimum.
 """
 function gain_of(z)
     T = eltype(z)
-    q = NamedTuple{SENS_NAMES}(ntuple(i -> SENS_NAMES[i] == "chirp" ? SENS_P0[i] * (z[i] - 1) : SENS_P0[i] * z[i], length(z)))
+    q = NamedTuple{SENS_NAMES}(ntuple(i -> SENS_NAMES[i] == :chirp ? SENS_P0[i] * (z[i] - 1) : SENS_P0[i] * z[i], length(z)))
     z3 = (zero(T), zero(T), zero(T))
     cells, ppl = WCASE.cells, 16
     h = 2 * T(π) / ppl
@@ -252,7 +252,7 @@ function gain_of(z)
 end
 
 function sensitivity_mode(tag)
-    dir = out_dir(tag, "sensitivity", Dict{String,Any}("names" => collect(SENS_NAMES), "p0" => collect(SENS_P0)))
+    dir = out_dir(tag, "sensitivity", Dict{String,Any}("names" => collect(string.(SENS_NAMES)), "p0" => collect(SENS_P0)))
     n = length(SENS_NAMES)
     z0 = ones(n)
     t0 = time()
@@ -263,14 +263,14 @@ function sensitivity_mode(tag)
     g = ForwardDiff.gradient(gain_of, z0, ForwardDiff.GradientConfig(gain_of, z0, ForwardDiff.Chunk{n}()))
     tg = time() - t1
     println("∇J = $g, $(round(tg; digits = 1)) s"); flush(stdout)
-    out = Dict{String,Any}("names" => collect(SENS_NAMES), "p0" => collect(SENS_P0), "J0" => J0, "J_case" => Jcase, "grad_z" => g,
+    out = Dict{String,Any}("names" => collect(string.(SENS_NAMES)), "p0" => collect(SENS_P0), "J0" => J0, "J_case" => Jcase, "grad_z" => g,
                            "seconds_value" => t1 - t0, "seconds_gradient" => tg, "fd" => Any[])
     save() = open(io -> JSON.print(io, out), joinpath(dir, "sensitivity.json"), "w")
     save()
     for i in 1:n, hstep in (1e-2, 1e-3)
         e = [j == i ? hstep : 0.0 for j in 1:n]
         fd = (gain_of(z0 .+ e) - gain_of(z0 .- e)) / 2hstep
-        push!(out["fd"], Dict("name" => SENS_NAMES[i], "h" => hstep, "fd" => fd, "ad" => g[i]))
+        push!(out["fd"], Dict("name" => string(SENS_NAMES[i]), "h" => hstep, "fd" => fd, "ad" => g[i]))
         println("FD ", SENS_NAMES[i], " h = $hstep: fd = $fd, ad = ", g[i]); flush(stdout)
         save()
     end
