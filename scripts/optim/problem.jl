@@ -123,9 +123,11 @@ function maximize_box(fg, z0, lo, hi; maxiters = 30, gtol = 1e-4, solver = LBFGS
     prob = OptimizationProblem(OptimizationFunction(negf; grad = neggrad!), clamp.(collect(Float64, z0), lo, hi); lb = lo, ub = hi)
     sol = solve(prob, solver; maxiters, reltol = gtol)
     _, f, g = at(sol.u)
-    # The wrapper turns L-BFGS-B's stop message into the return code and does not keep it, so the
-    # reason is read from the result: the projected gradient below `gtol` is "gtol", another
-    # successful stop is L-BFGS-B's stop on the decrease of the objective ("ftol").
+    # The stop message is lost: OptimizationLBFGSB reads it with `String(task)`, which empties the
+    # solver's buffer (#437). So the reason is inferred from the result: the projected gradient below
+    # `gtol` is "gtol", another successful stop is L-BFGS-B's stop on the decrease of the objective
+    # ("ftol"). L-BFGS-B clips the projected gradient at the bounds slightly differently, so near a
+    # bound its own gradient stop could be labelled "ftol".
     reason = if maximum(abs, projected_gradient(sol.u, g, lo, hi)) <= gtol
         "gtol"
     elseif sol.retcode == ReturnCode.Success
