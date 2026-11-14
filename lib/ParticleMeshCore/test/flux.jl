@@ -1,5 +1,7 @@
 # The charge-conserving flux deposition of WP-009: T-110 to T-117 (computations in flux_cases.jl).
 
+foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) run beside this file's in-process runs
+
 const MODES = (Reference(), Fast())
 const INPROCESS_FLUX = flux_digests()
 worker_flux(nt) = [chopprefix(l, "FLUX ") for l in worker_lines(nt) if startswith(l, "FLUX ")]

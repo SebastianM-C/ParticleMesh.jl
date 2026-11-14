@@ -73,3 +73,6 @@ history_times(prob) = (0:(prob.nsteps - 1)) .* Float64(value_of(prob.dt))
 
 "True when every entry of `a` is `+0.0` (of its element type) bit for bit."
 all_plus_zero(a) = all(x -> bits([x]) == bits([zero(x)]), Array(a))
+
+"The key of a case's results in `PHYSICS` (physics.jl) and `PHYSICS_2D` (em2d_step.jl): the name on the CPU, the name and the backend elsewhere."
+physics_key(name, be) = be isa CPU ? name : "$name on $(backend_label(be))"

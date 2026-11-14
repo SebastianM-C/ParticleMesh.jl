@@ -1,5 +1,7 @@
 # T-218: the Reference mode is bitwise reproducible across reruns and thread counts (A4).
 
+foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
+
 @testset "T-218 Reference mode is bitwise identical across reruns and 1 and 4 threads [A4, WP-014]" begin
     first = determinism_digests()
     second = determinism_digests()

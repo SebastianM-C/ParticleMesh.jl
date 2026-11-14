@@ -14,9 +14,28 @@ function determinism_digests(; workgroupsize = nothing, be = CPU())
     return out
 end
 
-"The output of determinism_worker.jl at `nt` threads, run once per suite (T-218 and T-355 read it)."
+"The thread counts of the worker runs; the first request starts one worker for each, side by side."
+const DETERMINISM_THREADS = (1, 4)
+const DETERMINISM_RUNS = Dict{Int,Tuple{Base.Process,String}}()
 const DETERMINISM_WORKER_OUTPUT = Dict{Int,String}()
+
+"Start determinism_worker.jl at `nt` threads, its output going to a file (not a pipe nobody reads yet)."
+function start_determinism_worker(nt)
+    get!(DETERMINISM_RUNS, nt) do
+        worker = joinpath(@__DIR__, "determinism_worker.jl")
+        out = tempname()
+        cmd = `$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$(dirname(Base.active_project())) $worker`
+        (run(pipeline(cmd; stdout = out, stderr = stderr); wait = false), out)
+    end
+end
+
+"The output of determinism_worker.jl at `nt` threads, run once per suite (T-218, T-355 and the 2D files read it)."
 worker_output(nt) = get!(DETERMINISM_WORKER_OUTPUT, nt) do
-    worker = joinpath(@__DIR__, "determinism_worker.jl")
-    read(`$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$(dirname(Base.active_project())) $worker`, String)
+    foreach(start_determinism_worker, nt in DETERMINISM_THREADS ? DETERMINISM_THREADS : (nt,))
+    proc, out = DETERMINISM_RUNS[nt]
+    wait(proc)
+    success(proc) || error("determinism_worker.jl with $nt threads failed: $proc")
+    s = read(out, String)
+    rm(out; force = true)
+    s
 end

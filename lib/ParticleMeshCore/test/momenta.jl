@@ -2,6 +2,8 @@
 # references and digests are in momenta_cases.jl. Statistical checks run at fixed seeds, so they
 # are deterministic; their bounds are in tolerances.toml.
 
+foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) run beside this file's in-process runs
+
 const MJ_THETAS = (1e-5, 1e-3, 0.1, 0.5, 0.99, 1.0, 3.0, 100.0)
 
 function body_T530(be = CPU())

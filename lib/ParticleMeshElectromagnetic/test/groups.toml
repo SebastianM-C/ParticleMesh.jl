@@ -1,0 +1,20 @@
+# The groups of this suite that CI runs in parallel jobs, one group per job (`PM_TEST_GROUP=<n>`,
+# ParticleMeshCore's test/groups.jl and .github/workflows/CI.yml). Each group lists files in the
+# suite's order (TEST_FILES in runtests.jl) and carries the earlier files whose helpers or runs its
+# own files reuse, so that it runs on its own. Every file is in a group or in `full_suite_only`. Each
+# run prints the time of every file, the numbers to rebalance the groups by.
+
+full_suite_only = ["gpu.jl"]   # reruns bodies of the other files on the GPU
+
+groups = [
+    # the 1D solver and pushers, and the 1D physics cases
+    ["yee.jl", "yee_nd.jl", "boris.jl", "pushers.jl", "pushers_sciml.jl", "pushers_resolution.jl", "gauss.jl",
+     "fast_reference.jl", "physics.jl"],
+    # the 2D step and its boundaries, each file after the ones whose helpers it uses
+    ["determinism.jl", "em2d.jl", "em2d_step.jl", "filter.jl", "boundaries.jl", "pml.jl"],
+    # the loads, the antenna, the moving window and the LWFA gradient
+    ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "window.jl", "pml_back.jl", "lwfa_gradient.jl",
+     "witness.jl"],
+    # the gradient, the harness and the state layer built on it, and the quality checks
+    ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
+]

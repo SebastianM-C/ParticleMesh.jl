@@ -1,6 +1,8 @@
 # WP-020, the charge-conserving flux deposition at N = 2: T-300 to T-309 (computations in
 # flux2d_cases.jl).
 
+foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) run beside this file's in-process runs
+
 const INPROCESS_FLUX2D = flux2d_digests()
 f2d_worker(nt) = [chopprefix(l, "F2D ") for l in worker_lines(nt) if startswith(l, "F2D ")]
 
