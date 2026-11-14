@@ -312,9 +312,10 @@ function backend_mode(name, tag)
         r = Dict{String,Any}("ppl" => ppl, "dy_cells" => dy_cells, "type" => string(T), "kind" => kind, "mode" => string(nameof(typeof(mode))), "nsteps" => nsteps,
                              "cells" => [14ppl, 16ppl ÷ dy_cells])
         try
-            (ppl, dy_cells) == grids[1] && f()             # compile on the small grid
+            # invokelatest: CUDACore is loaded inside this function, after the world it was compiled in
+            (ppl, dy_cells) == grids[1] && Base.invokelatest(f)   # compile on the small grid
             t0 = time()
-            v = f()
+            v = Base.invokelatest(f)
             r["seconds"] = time() - t0
             r["J"] = Float64(ForwardDiff.value(v))
             kind == "gradient" && (r["grad"] = Float64.(collect(ForwardDiff.partials(v))))
