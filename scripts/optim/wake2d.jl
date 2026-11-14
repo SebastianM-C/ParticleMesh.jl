@@ -30,7 +30,7 @@ function main()
 
     # 1. Gradient check at the first start: central differences in z at three steps.
     starts = (("start A", (4.5, 70.0)), ("start B", (8.5, 125.0)))
-    prob0 = case_prob0lem(wake_amplitude, WAKE_BOX, starts[1][2])
+    prob0 = case_problem(wake_amplitude, WAKE_BOX, starts[1][2])
     J(z) = prob0.f(z, prob0.p)
     z0 = prob0.u0
     f0, g0 = value_gradient(prob0, z0)
