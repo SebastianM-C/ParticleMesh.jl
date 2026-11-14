@@ -2,6 +2,8 @@
 # T-369. The plasma of T-360, T-362, T-363 and T-366 (`plasma_step_2d`, em2d_cases.jl) has two
 # mobile species of opposite charge whose particles cross cells and both periodic seams.
 
+foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
+
 using ParticleMeshElectromagnetic: RHO_STAGGER_2D, case_seed
 using .Theory: weibel_cold_growth_2d
 

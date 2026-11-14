@@ -1,6 +1,8 @@
 # WP-021, the periodic spectral inverse of the discrete Laplacian and the forward-difference
 # gradient at N = 1 and N = 2 on the CPU backend: T-310 to T-316.
 
+foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) run beside this file's in-process runs
+
 const INPROCESS_SPECTRAL = spectral_digests()
 spectral_worker(nt) = [chopprefix(l, "SPECTRAL ") for l in worker_lines(nt) if startswith(l, "SPECTRAL ")]
 
