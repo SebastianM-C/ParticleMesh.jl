@@ -12,16 +12,18 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Which parts of the repository a pull request touches. The Julia jobs below skip their steps when a
-  # pull request touches no code, instead of skipping the job: a skipped matrix job reports under its
-  # unexpanded name ("Julia ${{ matrix.version }}"), which would leave a required "Julia 1.13" check
-  # waiting forever. Pushes to main always run everything.
+  # Which parts of the repository a pull request touches, and the groups the Julia tests run in. The
+  # other jobs skip their steps when a pull request touches no code, instead of skipping the job: a
+  # skipped matrix job reports under its unexpanded name, which would leave a required check waiting
+  # forever; the test groups are skipped as a job, and the required "Julia 1.13" job below reports for
+  # them. Pushes to main always run everything.
   changes:
     name: Changed paths
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.diff.outputs.code }}
       manifests: ${{ steps.diff.outputs.manifests }}
+      suites: ${{ steps.groups.outputs.suites }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -57,49 +59,91 @@ jobs:
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "manifests=$manifests" >> "$GITHUB_OUTPUT"
           echo "code: $code, manifests: $manifests"
-  test:
-    name: Julia ${{ matrix.version }}
+      - id: groups
+        name: The test groups, one job each
+        # The root package's suite, then every lib/ package (ParticleMeshReactant has its own job) in
+        # the groups of its test/groups.toml (lib/ParticleMeshCore/test/groups.jl), or whole when it
+        # has none. Read from the tree, so a new package or group runs without a change here.
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'EOF'
+          import glob, json, os, tomllib
+          suites = [{"name": "root", "project": ".", "group": ""}]
+          for project in sorted(glob.glob("lib/*/Project.toml")):
+              lib = os.path.dirname(project)
+              name = os.path.basename(lib)
+              if name == "ParticleMeshReactant":
+                  continue
+              short = name.removeprefix("ParticleMesh") or name
+              spec = os.path.join(lib, "test", "groups.toml")
+              if os.path.isfile(spec):
+                  with open(spec, "rb") as f:
+                      n = len(tomllib.load(f)["groups"])
+                  suites += [{"name": f"{short} {i}/{n}", "project": lib, "group": str(i)} for i in range(1, n + 1)]
+              else:
+                  suites.append({"name": short, "project": lib, "group": ""})
+          print("suites=" + json.dumps(suites))
+          EOF
+          grep '^suites=' "$GITHUB_OUTPUT"
+
+  # The Julia tests, one job per suite group, in parallel, on 1.13 and on the pre-release. Each job
+  # instantiates the workspace and runs one group in a fresh process (`PM_TEST_GROUP`).
+  julia:
+    name: Julia ${{ matrix.version }} (${{ matrix.suite.name }})
     needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.version == 'pre' }}
     strategy:
       fail-fast: false
       matrix:
         version: ['1.13', 'pre']
+        suite: ${{ fromJSON(needs.changes.outputs.suites) }}
     steps:
-      - if: needs.changes.outputs.code != 'true'
-        run: echo "No code paths changed in this pull request; the Julia tests are skipped."
-      - if: needs.changes.outputs.code == 'true'
-        uses: actions/checkout@v7
-      - if: needs.changes.outputs.code == 'true'
-        uses: julia-actions/setup-julia@v3
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
-      - if: needs.changes.outputs.code == 'true'
-        uses: julia-actions/cache@v3
+      - uses: julia-actions/cache@v3
+        with:
+          # One cache per Julia version, shared by the groups, which instantiate the same workspace;
+          # one per matrix entry would multiply the repository's cache storage by the group count.
+          cache-name: julia-cache;workflow=${{ github.workflow }};job=julia;version=${{ matrix.version }}
+          include-matrix: false
       - name: Update the manifest on the pre-release (it is resolved for 1.13)
-        if: needs.changes.outputs.code == 'true' && matrix.version == 'pre'
+        if: matrix.version == 'pre'
         run: julia --project -e 'using Pkg; Pkg.update()'
-      - if: needs.changes.outputs.code == 'true'
-        uses: julia-actions/julia-buildpkg@v1
-      - if: needs.changes.outputs.code == 'true'
-        uses: julia-actions/julia-runtest@v1
-      - name: Test every lib/ subpackage in its own process (ParticleMeshReactant has its own job)
-        if: needs.changes.outputs.code == 'true'
+      - name: Instantiate the workspace
+        run: julia --project -e 'using Pkg; Pkg.instantiate()'
+      - name: Test ${{ matrix.suite.project }}, group ${{ matrix.suite.group || 'all' }}
+        env:
+          PROJECT: ${{ matrix.suite.project }}
+          PM_TEST_GROUP: ${{ matrix.suite.group }}
+        run: julia --color=yes --project="$PROJECT" -e 'using Pkg; Pkg.test()'
+
+  # The required check for the Julia tests: it passes when every 1.13 group passed, or when a pull
+  # request touches no code and the groups were skipped. The pre-release groups continue on error
+  # (A6), so they do not fail it.
+  test:
+    name: Julia 1.13
+    needs: [changes, julia]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          RESULT: ${{ needs.julia.result }}
         run: |
-          # Every subpackage runs and its log group closes even when an earlier one fails.
-          failed=""
-          for project in lib/*/Project.toml; do
-            [ -f "$project" ] || continue
-            dir=$(dirname "$project")
-            [ "$dir" = lib/ParticleMeshReactant ] && continue
-            echo "::group::$dir"
-            julia --color=yes --project="$dir" -e 'using Pkg; Pkg.test()' || failed="$failed $dir"
-            echo "::endgroup::"
-          done
-          if [ -n "$failed" ]; then
-            echo "failed:$failed" >&2
+          if [ "$CHANGES" != success ]; then
+            echo "the changed-paths job did not succeed ($CHANGES), so no tests ran" >&2
             exit 1
+          elif [ "$CODE" != true ] && [ "$RESULT" = skipped ]; then
+            echo "No code paths changed in this pull request; the Julia tests are skipped."
+          elif [ "$RESULT" != success ]; then
+            echo "a Julia 1.13 test group did not pass ($RESULT); see the Julia 1.13 (...) jobs" >&2
+            exit 1
+          else
+            echo "every Julia 1.13 test group passed"
           fi
   reactant:
     # The Reactant CPU smoke test (architecture-draft.md §0.4 rule 7) lives in its own workspace member,
@@ -183,6 +227,8 @@ jobs:
         run: julia --project=scripts scripts/crosscode/test/runtests.jl
       - name: Tests of the LWFA case's generators and readers
         run: julia --project=scripts scripts/lwfa/test/runtests.jl
+      - name: Tests of the optimization scripts
+        run: julia --project=scripts scripts/optim/test/runtests.jl
       - name: Goal links, test tags and engine dependencies
         run: julia --project=scripts scripts/trace/build.jl --check
   leak-scan:
@@ -226,8 +272,9 @@ jobs:
   # github_token input and grant `id-token: write` to the lens job instead.
   lenses:
     name: Choose the review lenses
-    # The review depends on the tests: it starts when every CI job above has succeeded (`Julia pre` may
-    # fail, its job continues on error), so a lens always has the test result of the commit it reviews.
+    # The review depends on the tests: it starts when every CI job above has succeeded (the `Julia pre`
+    # groups may fail, they continue on error), so a lens always has the test result of the commit it
+    # reviews.
     needs: [test, reactant, manifests, trace, leak-scan]
     # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
     # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
@@ -320,7 +367,7 @@ jobs:
           fi
       - name: The CI jobs of this run
         # They have all finished and succeeded, or this job would not run (`needs` of the lenses job); the
-        # list tells the lens which ran and how `Julia pre`, which may fail, ended.
+        # list tells the lens which ran and how the `Julia pre` groups, which may fail, ended.
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD: ${{ github.event.pull_request.head.sha }}
@@ -329,7 +376,7 @@ jobs:
             echo "# CI on ${HEAD:0:7}"
             gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json jobs \
               -q '[.jobs[] | select(.status == "completed") | "- \(.name): \(.conclusion)"] | join("\n")'
-            echo "Every job this review depends on has passed. The \`Julia pre\` job is allowed to fail (CLAUDE.md, A6)."
+            echo "Every job this review depends on has passed. The \`Julia pre (...)\` jobs are allowed to fail (CLAUDE.md, A6)."
           } > "$RUNNER_TEMP/ci.md"
           cat "$RUNNER_TEMP/ci.md"
       - uses: julia-actions/setup-julia@v3
@@ -351,12 +398,13 @@ jobs:
             ${{ runner.temp }}/brief.md and the contract every change must respect is
             ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
             this PR comes from the PR itself). The CI jobs of this commit finished before this review
-            started and are listed in ${{ runner.temp }}/ci.md: every one of them passed (`Julia pre` may
-            have failed, which is allowed). The Julia jobs run the tests of the root package and of
-            every lib/ package, and only when the diff touches src/, lib/, test/, benchmark/, a root
+            started and are listed in ${{ runner.temp }}/ci.md: every one of them passed (the
+            `Julia pre (...)` jobs may have failed, which is allowed). The Julia jobs run the tests of the
+            root package and of every lib/ package, split into the groups of each package's
+            test/groups.toml, and only when the diff touches src/, lib/, test/, benchmark/, a root
             Project or Manifest file or this workflow; the trace job runs the tests of scripts/trace,
-            scripts/crosscode and scripts/lwfa. For those tests, that is the result your brief asks
-            for. CI runs no other tests: when the change touches tests outside that list (another
+            scripts/crosscode, scripts/lwfa and scripts/optim. For those tests, that is the result your
+            brief asks for. CI runs no other tests: when the change touches tests outside that list (another
             directory of scripts/, say), run them yourself.
             The PR head is checked
             out in the working directory. Read the brief and the contract, then `gh pr view` and
