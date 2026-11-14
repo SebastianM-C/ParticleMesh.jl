@@ -1,149 +1,87 @@
-# WP-058: the layer between the cases of scripts/optim and Optimization.jl.
+# WP-058: a case as an Optimization.jl problem.
 #
-# A case is an objective J(x₁, …, x_n) of physical parameters in a box. The optimizers work in scaled
-# coordinates z = x ./ scale, so that every parameter is O(1) (A1). `Objective` runs the case and
-# records every run; `maximize` hands −J to a bound-constrained solver of Optimization.jl (L-BFGS-B by
-# default), with the gradient from one ForwardDiff run per point. `bayes.jl` takes the same objective.
+# A case is an objective J(x₁, …, x_n) of physical parameters in a box. `case_problem` makes it an
+# `OptimizationProblem` in the scaled coordinates z = x ./ scale, so that every parameter is O(1)
+# (A1), to be maximized (`MaxSense`) with ForwardDiff gradients (`AutoForwardDiff`). Any solver of
+# Optimization.jl that takes bounds solves it:
+#
+#     prob = case_problem(wake_amplitude, WAKE_BOX, (4.5, 70.0))
+#     rec = Record(prob, LBFGSB())
+#     sol = solve(prob, LBFGSB(); callback = rec, maxiters = 25, reltol = 1e-4)
+#     sol.u .* WAKE_BOX.scale        # the optimum in physical units; sol.objective is J there
+#
+# `bayes.jl` adds a Bayesian optimizer as one more solver of the same problem.
 
-using Optimization: OptimizationFunction, OptimizationProblem, ReturnCode, solve
+using Optimization: Optimization, OptimizationFunction, OptimizationProblem, AutoForwardDiff, MaxSense, ReturnCode, solve
+using OptimizationBase: OptimizationBase
 using OptimizationLBFGSB: LBFGSB
-using ForwardDiff: ForwardDiff, Dual, value, partials
+using DifferentiationInterface: DifferentiationInterface
+using ForwardDiff: ForwardDiff
+using TimerOutputs: TimerOutputs, TimerOutput, @timeit
+
+"The section of a problem's timer that a run at `z` goes to: a run with duals carries the gradient."
+run_kind(z) = eltype(z) <: ForwardDiff.Dual ? "run with duals" : "plain run"
 
 """
-    ScaledBox(lo, hi, scale)
+    case_problem(J, box, x0; timer = TimerOutput()) -> OptimizationProblem
 
-The box `lo ≤ x ≤ hi` of the physical parameters, and the scale of each: the optimizers see
-`z = x ./ scale` in the box `zlo(b) ≤ z ≤ zhi(b)`.
+The maximization of the case objective `J(x...)` over `box`, a named tuple `(; lo, hi, scale)` in
+physical units, from the start `x0` (physical units). The problem's unknown is z = x ./ box.scale.
+Its parameters are `p = (; scale, timer)`: `prob.f(z, prob.p)` is J at `z`, and `p.timer` times
+every run of `J` in the sections "plain run" and "run with duals".
 """
-struct ScaledBox
-    lo::Vector{Float64}
-    hi::Vector{Float64}
-    scale::Vector{Float64}
-    function ScaledBox(lo, hi, scale)
-        length(lo) == length(hi) == length(scale) || throw(DimensionMismatch("lo, hi and scale need one entry per parameter"))
-        all(lo .< hi) || throw(ArgumentError("every lower bound must lie below its upper bound: lo = $lo, hi = $hi"))
-        all(>(0), scale) || throw(ArgumentError("every scale must be positive: $scale"))
-        return new(collect(Float64, lo), collect(Float64, hi), collect(Float64, scale))
-    end
-end
-
-zlo(b::ScaledBox) = b.lo ./ b.scale
-zhi(b::ScaledBox) = b.hi ./ b.scale
-"The physical parameters at `z`, as a tuple; the element type follows `z` (duals stay duals)."
-phys(b::ScaledBox, z) = ntuple(i -> z[i] * b.scale[i], length(b.scale))
-"The scaled coordinates of physical parameters `x`."
-scaled(b::ScaledBox, x) = collect(Float64, x) ./ b.scale
-
-"""
-    value_gradient(J, b::ScaledBox, z) -> (J, ∇J)
-
-`J` at `z` and its gradient in `z`, from one call of `J` with ForwardDiff duals, one partial per
-parameter.
-"""
-function value_gradient(J, b::ScaledBox, z)
-    v = J(dual_point(b, z)...)
-    return value(v), collect(Float64, partials(v))
+function case_problem(J, box, x0; timer = TimerOutput())
+    f(z, p) = @timeit p.timer run_kind(z) J((z .* p.scale)...)
+    return OptimizationProblem(OptimizationFunction(f, AutoForwardDiff()), x0 ./ box.scale, (; box.scale, timer);
+                               lb = box.lo ./ box.scale, ub = box.hi ./ box.scale, sense = MaxSense)
 end
 
 """
-    dual_point(b::ScaledBox, z) -> tuple of duals
+    value_gradient(prob, z) -> (J, ∇J)
 
-The physical parameters at `z` as ForwardDiff duals whose partials are the derivatives in `z`, one
-per parameter: a function of them carries its gradient in `z`.
+The objective of `prob` at `z` and its gradient in z, from one run with duals.
 """
-dual_point(b::ScaledBox, z) = _dual_point(b, z, Val(length(b.scale)))
-function _dual_point(b, z, ::Val{N}) where {N}
-    length(z) == N || throw(DimensionMismatch("z has $(length(z)) entries, the box $N parameters"))
-    return phys(b, ntuple(i -> Dual{Nothing}(Float64(z[i]), ntuple(j -> Float64(i == j), Val(N))...), Val(N)))
+value_gradient(prob, z) = DifferentiationInterface.value_and_gradient(w -> prob.f(w, prob.p), AutoForwardDiff(), z)
+
+"The number of runs of `kind` (\"plain run\" or \"run with duals\") in `timer`, and their mean seconds (`nothing` without any)."
+function runs(timer::TimerOutput, kind)
+    haskey(timer, kind) || return (; n = 0, seconds = nothing)
+    n = TimerOutputs.ncalls(timer[kind])
+    return (; n, seconds = TimerOutputs.time(timer[kind]) / 1e9 / n)
 end
 
 """
-    Objective(J, box; label = "J", verbose = true)
+    Record(prob, alg)
 
-The objective `J(x...)` of a case on `box`, as the optimizers call it, with a record of every run in
-`log`: `o(z)` runs `J` once and returns its value; `value_gradient(o, z)` runs it once with duals
-and returns the value and the gradient in `z`. Each entry of `log` holds the kind ("value" or
-"gradient"), `z`, the physical parameters, J, the gradient (for "gradient") and the run's seconds.
+A callback for `solve(prob, alg; callback)` that keeps what the solver reports at each call: the
+point `u`, the objective there and the wall-clock `seconds` since the record was made. L-BFGS-B and
+`BayesianEI` call it once per point they evaluate. With `verbose` it prints each call.
+
+A solver without a sense of its own minimizes −J for a `MaxSense` problem, and Optimization.jl
+hands that −J to the callback (#440); the record turns it back, so `objective` is always J.
 """
-struct Objective{F}
-    J::F
-    box::ScaledBox
-    log::Vector{Dict{String,Any}}
-    label::String
+struct Record
+    u::Vector{Vector{Float64}}
+    objective::Vector{Float64}
+    seconds::Vector{Float64}
+    start::Float64
+    negated::Bool
     verbose::Bool
 end
-Objective(J, box::ScaledBox; label = "J", verbose = true) = Objective(J, box, Dict{String,Any}[], label, verbose)
+Record(prob, alg; verbose = false) =
+    Record(Vector{Float64}[], Float64[], Float64[], time(), prob.sense === MaxSense && !OptimizationBase.supports_sense(alg), verbose)
 
-phys(o::Objective, z) = phys(o.box, z)
-
-function (o::Objective)(z::AbstractVector{<:Real})
-    t = @elapsed v = o.J(phys(o.box, z)...)
-    f = Float64(v)
-    push!(o.log, Dict{String,Any}("kind" => "value", "z" => collect(Float64, z), "phys" => collect(phys(o.box, z)), "J" => f, "seconds" => t))
-    o.verbose && (println("  value  x = ", round.(phys(o.box, z); digits = 4), "  ", o.label, " = ", f, "  ", round(t; digits = 1), " s"); flush(stdout))
-    return f
-end
-
-function value_gradient(o::Objective, z::AbstractVector{<:Real})
-    t = @elapsed (f, g) = value_gradient(o.J, o.box, z)
-    push!(o.log, Dict{String,Any}("kind" => "gradient", "z" => collect(Float64, z), "phys" => collect(phys(o.box, z)), "J" => f, "grad" => g, "seconds" => t))
-    o.verbose && (println("  grad   x = ", round.(phys(o.box, z); digits = 4), "  ", o.label, " = ", f, "  ∇ = ", g, "  ", round(t; digits = 1), " s"); flush(stdout))
-    return f, g
-end
-
-"The gradient with the components held at a bound (pointing out of the box) set to zero."
-projected_gradient(z, g, lo, hi) = [(z[i] <= lo[i] && g[i] < 0) || (z[i] >= hi[i] && g[i] > 0) ? 0.0 : g[i] for i in eachindex(z)]
-
-"""
-    maximize_box(fg, z0, lo, hi; maxiters = 30, gtol = 1e-4, solver = LBFGSB()) -> (; z, f, g, path, evals, reason, retcode)
-
-Maximize `f` over the box `lo ≤ z ≤ hi` with `fg(z) -> (f, ∇f)`, as the minimization of `−f` by
-`solver` through Optimization.jl. The solver asks for the value and then the gradient at each
-point; both come from the one `fg` call of that point, so each point costs one `fg` call. `gtol`
-is L-BFGS-B's tolerance on the largest component of the projected gradient. `reason` is "gtol"
-when the solution's projected gradient is below it, "ftol" for L-BFGS-B's other successful stop
-(an iteration lowered `−f` by less than about 2e-9 relative), "maxiter", or the return code.
-`z`, `f` and `g` are the solution, its value and its gradient; `path` holds `(z, f, g)` of every
-point evaluated, in order (line-search trials included), and `evals` their number.
-"""
-function maximize_box(fg, z0, lo, hi; maxiters = 30, gtol = 1e-4, solver = LBFGSB())
-    path = Tuple{Vector{Float64},Float64,Vector{Float64}}[]
-    function at(z)
-        for p in Iterators.reverse(path)
-            p[1] == z && return p
-        end
-        f, g = fg(collect(Float64, z))
-        p = (collect(Float64, z), Float64(f), collect(Float64, g))
-        push!(path, p)
-        return p
-    end
-    negf(z, _) = -at(z)[2]
-    neggrad!(G, z, _) = (G .= .-at(z)[3]; G)
-    lo, hi = collect(Float64, lo), collect(Float64, hi)
-    prob = OptimizationProblem(OptimizationFunction(negf; grad = neggrad!), clamp.(collect(Float64, z0), lo, hi); lb = lo, ub = hi)
-    sol = solve(prob, solver; maxiters, reltol = gtol)
-    _, f, g = at(sol.u)
-    # The stop message is lost: OptimizationLBFGSB reads it with `String(task)`, which empties the
-    # solver's buffer (#437). So the reason is inferred from the result: the projected gradient below
-    # `gtol` is "gtol", another successful stop is L-BFGS-B's stop on the decrease of the objective
-    # ("ftol"). L-BFGS-B clips the projected gradient at the bounds slightly differently, so near a
-    # bound its own gradient stop could be labelled "ftol".
-    reason = if maximum(abs, projected_gradient(sol.u, g, lo, hi)) <= gtol
-        "gtol"
-    elseif sol.retcode == ReturnCode.Success
-        "ftol"
-    elseif sol.retcode == ReturnCode.MaxIters
-        "maxiter"
-    else
-        string(sol.retcode)
-    end
-    return (; z = collect(Float64, sol.u), f, g, path, evals = length(path), reason, retcode = sol.retcode)
+function (r::Record)(state, args...)
+    push!(r.u, copy(state.u))
+    push!(r.objective, r.negated ? -state.objective : state.objective)
+    push!(r.seconds, time() - r.start)
+    r.verbose && (println("  point ", length(r.u), ": u = ", round.(r.u[end]; digits = 5), "  objective = ", r.objective[end], "  ", round(r.seconds[end]; digits = 1), " s"); flush(stdout))
+    return false
 end
 
 """
-    maximize(o::Objective, z0; maxiters = 30, gtol = 1e-4, solver = LBFGSB())
+    path(rec, scale) -> Vector of Dict
 
-`maximize_box` of the objective `o` over its box from `z0` (scaled coordinates), with one run with
-duals per point; every run lands in `o.log`.
+The record's points for a results file: the scaled point, the physical one, and the objective.
 """
-maximize(o::Objective, z0; kw...) = maximize_box(z -> value_gradient(o, z), z0, zlo(o.box), zhi(o.box); kw...)
+path(rec::Record, scale) = [Dict("z" => u, "phys" => u .* scale, "J" => J) for (u, J) in zip(rec.u, rec.objective)]

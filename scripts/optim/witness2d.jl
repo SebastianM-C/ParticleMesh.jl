@@ -1,8 +1,8 @@
 # WP-052: the 2D optimization at a fixed laser energy. Maximize the witness bunch's mean energy
 # gain (WP-047) of a small 2D LWFA run (witness2d_case.jl) over the pulse duration τ, the plasma
 # density n₀ and the witness centre x_c, with a₀ coupled to τ so that the laser energy stays fixed;
-# ForwardDiff gradients (Float64, Reference) and the bound-constrained L-BFGS-B of Optimization.jl
-# (problem.jl, WP-058). Checks: the launched energy against τ, AD against finite differences, two
+# ForwardDiff gradients (Float64, Reference) and the bound-constrained L-BFGS-B, through
+# Optimization.jl (problem.jl, WP-058). Checks: the launched energy against τ, AD against finite differences, two
 # starts, a brute-force grid scan, slices through the optimum, the optimum inside the box, and the
 # same problem at fixed a₀ and at a lower energy, where the duration runs to a bound.
 #
@@ -14,24 +14,28 @@
 
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "witness2d_case.jl"))
+include(joinpath(@__DIR__, "problem.jl"))
 
 # The parameters, scaled to O(1) (A1): z = (τ/6, n₀/0.07, x_c/40) in WP-052's box (`WITNESS_BOX`):
 # τ ∈ [4, 9], n₀ ∈ [0.04, 0.10], x_c ∈ [30, 50] (3 lengths inside the lattice, which starts at x = 24).
 const SCALE = WITNESS_BOX.scale
 const BOX = Tuple(zip(WITNESS_BOX.lo, WITNESS_BOX.hi))
-const LO, HI = zlo(WITNESS_BOX), zhi(WITNESS_BOX)
-phys(z) = phys(WITNESS_BOX, z)
-const OBJECTIVE = Objective(witness_gain, WITNESS_BOX)
+const LO, HI = WITNESS_BOX.lo ./ SCALE, WITNESS_BOX.hi ./ SCALE
+# L-BFGS-B's settings: `reltol` is its tolerance on the largest component of the projected gradient.
+const SOLVE = (; maxiters = 40, reltol = 1e-4)
 
-"The objective at `z`, from a plain run."
-J(z) = OBJECTIVE(z)
-"The objective and its gradient in z, in one run with duals."
-fg(z) = value_gradient(OBJECTIVE, z)
 """
-The same problem with the pulse at a fixed `a0` instead of the case's energy (its energy then grows
+The objective with the pulse at a fixed `a0` instead of the case's energy (its energy then grows
 with τ: section 5).
 """
-fixed_a0_objective(a0) = Objective((τ, n, c) -> witness_gain(τ, n, c; energy = energy_at_a0(a0, τ)), WITNESS_BOX; label = "J (a₀ = $(round(a0; digits = 4)))")
+fixed_a0_gain(a0) = (τ, n, c) -> witness_gain(τ, n, c; energy = energy_at_a0(a0, τ))
+
+"`prob` solved by L-BFGS-B: the solution, the record of its points, and the gradient at the solution."
+function optimize(prob)
+    rec = Record(prob, LBFGSB(); verbose = true)
+    sol = solve(prob, LBFGSB(); callback = rec, SOLVE...)
+    return sol, rec, value_gradient(prob, sol.u)[2]
+end
 
 "The energy of a pulse of amplitude `a0` and duration `τ`: the energy keyword that holds a₀ fixed."
 energy_at_a0(a0, τ) = WCASE.energy * (a0 / a0_at_energy(τ))^2
@@ -91,10 +95,14 @@ function main()
     check("the launched energy is the same at every τ", spread < 2e-3, "relative spread $spread over τ = 4, 6.5, 9; W/energy = $(Ws ./ WCASE.energy)")
 
     # 1. The gradient at the first start against central differences in z at three steps.
-    z0 = [4.5 / SCALE[1], 0.05 / SCALE[2], 36.0 / SCALE[3]]
-    f0, g0 = fg(z0)
+    starts = (("start A", (4.5, 0.05, 36.0)), ("start B", (8.5, 0.095, 47.0)))
+    prob0 = case_prob0lem(witness_gain, WITNESS_BOX, starts[1][2])
+    J(z) = prob0.f(z, prob0.p)
+    z0 = prob0.u0
+    f0, g0 = value_gradient(prob0, z0)
     J0 = J(z0)
-    check("fg's value is J", isapprox(f0, J0; rtol = 1e-12), "fg = $f0, J = $J0")
+    # The solver takes the value from a plain run and the gradient from a run with duals.
+    check("the run with duals gives the plain run's value", isapprox(f0, J0; rtol = 1e-12), "with duals $f0, plain $J0")
     fdcheck = Dict{String,Any}[]
     for h in (1e-2, 1e-3, 1e-4)
         fd = [(J(z0 .+ h .* (1:3 .== i)) - J(z0 .- h .* (1:3 .== i))) / 2h for i in 1:3]
@@ -107,23 +115,24 @@ function main()
 
     # 2. The optimizer from two starts on opposite sides of the box.
     runs = Dict{String,Any}[]
-    for (name, zs) in (("start A", z0), ("start B", [8.5 / SCALE[1], 0.095 / SCALE[2], 47.0 / SCALE[3]]))
+    for (name, x0) in starts
         println("optimizing from $name")
-        t = @elapsed r = maximize(OBJECTIVE, zs; maxiters = 40, gtol = 1e-4)
-        push!(runs, Dict("name" => name, "start" => zs, "z" => r.z, "phys" => collect(phys(r.z)), "J" => r.f, "grad" => r.g,
-                         "a0" => a0_at_energy(phys(r.z)[1]), "reason" => r.reason, "evals" => r.evals, "seconds" => t,
-                         "path" => [Dict("z" => p[1], "phys" => collect(phys(p[1])), "J" => p[2], "grad" => p[3]) for p in r.path]))
-        println("$name: $(r.reason) after $(r.evals) evaluations, (τ, n₀, x_c) = $(phys(r.z)), J = $(r.f), ∇J = $(r.g)")
+        prob = case_problem(witness_gain, WITNESS_BOX, x0)
+        sol, rec, g = optimize(prob)
+        push!(runs, Dict("name" => name, "start" => prob.u0, "z" => sol.u, "phys" => sol.u .* SCALE, "J" => sol.objective, "grad" => g,
+                         "a0" => a0_at_energy(sol.u[1] * SCALE[1]), "retcode" => string(sol.retcode), "evals" => length(rec.u),
+                         "seconds" => sol.stats.time, "path" => path(rec, SCALE)))
+        println("$name: $(sol.retcode) after $(length(rec.u)) points, (τ, n₀, x_c) = $(sol.u .* SCALE), J = $(sol.objective), ∇J = $g")
     end
     out["optimizer"] = runs
     Ja, Jb = runs[1]["J"], runs[2]["J"]
     check("both starts reach the same value", abs(Ja - Jb) <= 1e-4 * max(Ja, Jb), "J = $Ja and $Jb")
-    # Each start stops on one of L-BFGS-B's convergence tests: the projected gradient below gtol, or an
-    # iteration that lowers −J by less than about 2e-9 relative ("ftol"; OptimizationLBFGSB does not pass
-    # that tolerance through, and at a sharp maximum it can fire with the gradient still above gtol).
-    # Either way, the two starts must end at the same point.
-    check("both starts stop on a convergence test", all(r -> r["reason"] in ("gtol", "ftol"), runs),
-          join(("$(r["reason"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
+    # Each start stops on one of L-BFGS-B's convergence tests: the projected gradient below `reltol`, or
+    # an iteration that lowers −J by less than about 2e-9 relative (OptimizationLBFGSB does not pass that
+    # tolerance through, #437, and at a sharp maximum it can fire with the gradient still above
+    # `reltol`). Either way, the two starts must end at the same point.
+    check("both starts stop on a convergence test", all(r -> r["retcode"] == "Success", runs),
+          join(("$(r["retcode"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
     dz = maximum(abs, Float64.(runs[1]["z"]) .- Float64.(runs[2]["z"]))
     check("both starts end at the same point", dz < 1e-4, "largest difference in z: $dz")
     best = runs[argmax([r["J"] for r in runs])]
@@ -170,14 +179,14 @@ function main()
     check("the fixed-a₀ problems have the optimum's a₀", all(a -> isapprox(a, a0b; rtol = 1e-14), a0s), "a₀ = $a0s, optimum's $a0b")
     fixed_a0 = [best_over_center(τ, nb; energy = energy_at_a0(a0b, τ)) for τ in τf]
     println("optimizing at fixed a₀ = $a0b from start A")
-    t = @elapsed r = maximize(fixed_a0_objective(a0b), z0; maxiters = 40, gtol = 1e-4)
-    println("fixed a₀: $(r.reason) after $(r.evals) evaluations, (τ, n₀, x_c) = $(phys(r.z)), J = $(r.f), ∇J = $(r.g)")
+    sol, rec, g = optimize(case_problem(fixed_a0_gain(a0b), WITNESS_BOX, starts[1][2]))
+    println("fixed a₀: $(sol.retcode) after $(length(rec.u)) points, (τ, n₀, x_c) = $(sol.u .* SCALE), J = $(sol.objective), ∇J = $g")
     out["fixed_a0"] = Dict("a0" => a0b, "tau" => τf, "J" => [r.J for r in fixed_a0], "center" => [r.center for r in fixed_a0],
-                           "optimizer" => Dict("start" => z0, "z" => r.z, "phys" => collect(phys(r.z)), "J" => r.f, "grad" => r.g,
-                                               "reason" => r.reason, "evals" => r.evals, "seconds" => t,
-                                               "path" => [Dict("phys" => collect(phys(p[1])), "J" => p[2]) for p in r.path]))
+                           "optimizer" => Dict("start" => z0, "z" => sol.u, "phys" => sol.u .* SCALE, "J" => sol.objective, "grad" => g,
+                                               "retcode" => string(sol.retcode), "evals" => length(rec.u), "seconds" => sol.stats.time,
+                                               "path" => path(rec, SCALE)))
     check("at fixed a₀ the gain grows with τ", issorted([q.J for q in fixed_a0]), "J at τ = $τf: $([q.J for q in fixed_a0])")
-    check("at fixed a₀ the optimizer ends with τ on its upper bound", r.z[1] == HI[1] && r.g[1] > 0, "τ = $(phys(r.z)[1]), ∂J/∂z₁ = $(r.g[1])")
+    check("at fixed a₀ the optimizer ends with τ on its upper bound", sol.u[1] == HI[1] && g[1] > 0, "τ = $(sol.u[1] * SCALE[1]), ∂J/∂z₁ = $(g[1])")
     τl = [4.0, 5.0, 6.0, 7.0]
     low = [best_over_center(τ, nb; energy = WCASE.energy / 2.25) for τ in τl]
     out["low_energy"] = Dict("energy" => WCASE.energy / 2.25, "tau" => τl, "J" => [r.J for r in low], "center" => [r.center for r in low])

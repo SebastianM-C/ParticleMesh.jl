@@ -1,6 +1,7 @@
 # Tests of the WP-048 Bayesian optimizer on analytic objectives:
 #   julia +1.13 --project=scripts scripts/optim/test/bayes.jl
 using Test
+include(joinpath(@__DIR__, "..", "problem.jl"))
 include(joinpath(@__DIR__, "..", "bayes.jl"))
 
 @testset "T-620 the Latin hypercube puts one point in each stratum and repeats bit for bit [WP-048]" begin
@@ -61,18 +62,36 @@ const BRANIN_MIN = 5 / (4π)   # = 0.3978873577…
         r = bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 40, seed)
         @test length(r.y) == 40
         push!(gaps, -r.best_y - BRANIN_MIN)
-        @test -r.best_y - BRANIN_MIN < 2e-4          # measured 7e-6 to 3.4e-5; Branin spans about 300 on the box. With ξ = 0.01, seeds 1 to 10 gave 0.006 to 0.13
+        @test -r.best_y - BRANIN_MIN < 2e-4          # measured 1.2e-6 to 5e-5; Branin spans about 300 on the box. With ξ = 0.01, seeds 1 to 10 gave 0.006 to 0.13
         seed == 1 && @test bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 12, seed).y == r.y[1:12]
     end
     println("Branin gaps after 40 evaluations, seeds 1 to 6: ", gaps)
-    # The same optimizer on a problem.jl objective (WP-058): it searches the objective's box in
-    # scaled coordinates, logs one plain run per evaluation, and repeats the call on the bounds.
-    box = ScaledBox([-5.0, 0.0], [10.0, 15.0], [5.0, 5.0])
-    o = Objective((x1, x2) -> -branin([x1, x2]), box; verbose = false)
-    r = bayesopt(o; budget = 12, seed = 1)
-    @test r.y == bayesopt(z -> -branin(z .* box.scale), zlo(box), zhi(box); budget = 12, seed = 1).y
-    @test length(o.log) == 12 && all(e -> e["kind"] == "value" && all(zlo(box) .<= e["z"] .<= zhi(box)), o.log)
-    @test [e["J"] for e in o.log] == r.y
+    # As a solver of Optimization.jl (WP-058): on a case problem it searches the box in scaled
+    # coordinates with one plain run per evaluation, and its callback sees every point with J there.
+    box = (lo = [-5.0, 0.0], hi = [10.0, 15.0], scale = [5.0, 5.0])
+    prob = case_problem((x1, x2) -> -branin([x1, x2]), box, box.lo)
+    rec = Record(prob, BayesianEI())
+    sol = solve(prob, BayesianEI(; seed = 1); maxiters = 12, callback = rec)
+    direct = bayesopt(z -> -branin(z .* box.scale), prob.lb, prob.ub; budget = 12, seed = 1)
+    @test !rec.negated && rec.objective == direct.y == sol.original.y
+    @test rec.u == direct.x && all(u -> all(prob.lb .<= u .<= prob.ub), rec.u)
+    @test sol.u == direct.best_x && sol.objective == direct.best_y == maximum(rec.objective)
+    @test sol.retcode == ReturnCode.MaxIters && sol.stats.fevals == 12
+    @test runs(prob.p.timer, "plain run").n == 12 && runs(prob.p.timer, "run with duals").n == 0
+    # A minimization gives the same points, with the problem's own objective in the record.
+    pmin = OptimizationProblem(OptimizationFunction((z, p) -> branin(z .* box.scale)), copy(prob.lb); lb = prob.lb, ub = prob.ub)
+    rmin = Record(pmin, BayesianEI())
+    smin = solve(pmin, BayesianEI(; seed = 1); maxiters = 12, callback = rmin)
+    @test rmin.u == rec.u && rmin.objective == .-rec.objective && smin.objective == -sol.objective == minimum(rmin.objective)
+    # The other settings reach the search, the callback can stop it, and it refuses to run without
+    # bounds or a budget.
+    @test solve(prob, BayesianEI(; seed = 2); maxiters = 12).original.y != direct.y
+    @test solve(prob, BayesianEI(; seed = 1, n_init = 7); maxiters = 12).original.x[1:7] == [prob.lb .+ u .* (prob.ub .- prob.lb) for u in latin_hypercube(7, 2, 1)]
+    @test solve(prob, BayesianEI(; seed = 1, ξ = 0.5); maxiters = 12).original.y != direct.y
+    halt = solve(prob, BayesianEI(; seed = 1); maxiters = 12, callback = (state, args...) -> state.iter == 8)
+    @test halt.retcode == ReturnCode.Terminated && halt.original.y == direct.y[1:7]
+    @test_throws ArgumentError solve(prob, BayesianEI())
+    @test_throws Exception solve(OptimizationProblem(OptimizationFunction((z, p) -> sum(z)), [0.0, 0.0]), BayesianEI(); maxiters = 5)
 end
 
 @testset "T-623 the proposal depends on the seed, never repeats an evaluated point, and reach counts calls [WP-048]" begin

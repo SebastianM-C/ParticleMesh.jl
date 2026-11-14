@@ -21,10 +21,10 @@
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "wake2d_case.jl"))
 include(joinpath(@__DIR__, "slab.jl"))
-using ForwardDiff: value, partials
+include(joinpath(@__DIR__, "problem.jl"))
+using ForwardDiff: Dual, value, partials
 
 const SCALE = WAKE_BOX.scale                   # z = (τ/6, focus/90), as in WP-045
-phys(z) = phys(WAKE_BOX, z)
 const DT45 = 0.95 / sqrt(1 / (2π / 16)^2 + 1 / (4 * 2π / 16)^2)      # WP-045's step
 const BOX_TIMES = (512 * DT45, 160.0, 170.0, 180.0, 190.0, 200.0, 210.0, 220.0)   # first: WP-045's read-out
 
@@ -66,7 +66,8 @@ function theory()
 end
 
 function observe_dual(τ, f, r)
-    t = @elapsed o = wake_observe(dual_point(WAKE_BOX, scaled(WAKE_BOX, (τ, f)))...; box_times = BOX_TIMES, reskw(r)...)
+    # One run with duals carries ∂/∂z of every observable: the partials are seeded with dx/dz = SCALE.
+    t = @elapsed o = wake_observe(Dual(τ, SCALE[1], 0.0), Dual(f, 0.0, SCALE[2]); box_times = BOX_TIMES, reskw(r)...)
     slab = Dict(string(k) => Dict("J" => value(v), "grad" => collect(Tuple(partials(v)))) for (k, v) in pairs(o.slab))
     osc = Dict(string(k) => Dict("J" => value(v), "grad" => collect(Tuple(partials(v)))) for (k, v) in pairs(o.osc))
     box = [Dict("t" => tb, "J" => value(v), "grad" => collect(Tuple(partials(v)))) for (tb, v) in zip(BOX_TIMES, o.box)]
@@ -84,7 +85,7 @@ function probe(τ, f, ress, fd)
         if fd && i == 1
             g = out["runs"][1]["slab"]["main"]["grad"]
             z0 = [τ / SCALE[1], f / SCALE[2]]
-            Jz(z) = slab_amplitude(phys(z)...; reskw(r)...)
+            Jz(z) = slab_amplitude((z .* SCALE)...; reskw(r)...)
             out["fd"] = map((1e-2, 1e-3)) do h
                 fdg = [(Jz(z0 .+ h .* (1:2 .== k)) - Jz(z0 .- h .* (1:2 .== k))) / 2h for k in 1:2]
                 println("FD h = $h: $fdg against AD $g")
@@ -98,12 +99,13 @@ end
 
 function optimize(r, τ0, f0)
     dir = newdir("optimize", Dict{String,Any}("resolution" => collect(r), "start" => [τ0, f0]))
-    obj = Objective((τ, f) -> slab_amplitude(τ, f; reskw(r)...), WAKE_BOX)
-    t = @elapsed res = maximize(obj, scaled(WAKE_BOX, (τ0, f0)); maxiters = 25, gtol = 1e-4)
-    out = Dict{String,Any}("resolution" => collect(r), "start" => [τ0, f0], "phys" => collect(phys(res.z)), "J" => res.f, "grad" => res.g,
-                           "reason" => res.reason, "evals" => res.evals, "seconds" => t,
-                           "path" => [Dict("phys" => collect(phys(p[1])), "J" => p[2], "grad" => p[3]) for p in res.path])
-    println("$(r.ppl)x$(r.dy_cells): $(res.reason) after $(res.evals) evaluations: (τ, focus) = $(phys(res.z)), J = $(res.f)")
+    prob = case_problem((τ, f) -> slab_amplitude(τ, f; reskw(r)...), WAKE_BOX, (τ0, f0))
+    rec = Record(prob, LBFGSB(); verbose = true)
+    sol = solve(prob, LBFGSB(); callback = rec, maxiters = 25, reltol = 1e-4)   # reltol: L-BFGS-B's projected-gradient tolerance
+    _, g = value_gradient(prob, sol.u)
+    out = Dict{String,Any}("resolution" => collect(r), "start" => [τ0, f0], "phys" => sol.u .* SCALE, "J" => sol.objective, "grad" => g,
+                           "retcode" => string(sol.retcode), "evals" => length(rec.u), "seconds" => sol.stats.time, "path" => path(rec, SCALE))
+    println("$(r.ppl)x$(r.dy_cells): $(sol.retcode) after $(length(rec.u)) points: (τ, focus) = $(sol.u .* SCALE), J = $(sol.objective)")
     save_results(dir, out)
 end
 

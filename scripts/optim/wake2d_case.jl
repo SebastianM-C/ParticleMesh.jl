@@ -4,13 +4,12 @@ using ParticleMesh, KernelAbstractions
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: window_back_band
 using ForwardDiff: ForwardDiff
-isdefined(@__MODULE__, :ScaledBox) || include(joinpath(@__DIR__, "problem.jl"))
 
 """
-WP-045's box: the pulse duration τ ∈ [4, 9] (1/ω₀) and the focus x_f ∈ [60, 130] (c/ω₀), scaled
-to z = (τ/6, x_f/90).
+WP-045's box: the pulse duration τ ∈ [4, 9] (1/ω₀) and the focus x_f ∈ [60, 130] (c/ω₀), and the
+scale of each: the optimizers work in z = (τ/6, x_f/90).
 """
-const WAKE_BOX = ScaledBox([4.0, 60.0], [9.0, 130.0], [6.0, 90.0])
+const WAKE_BOX = (lo = [4.0, 60.0], hi = [9.0, 130.0], scale = [6.0, 90.0])
 
 value_of(x::Real) = x
 value_of(d::ForwardDiff.Dual) = ForwardDiff.value(d)
