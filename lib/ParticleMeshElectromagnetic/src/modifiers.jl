@@ -170,7 +170,7 @@ function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid, dt, modifiers::
     t = (k - 1) * dt
     mps = resolve_params(modifiers, p, k)
     substep!(yee_b_half!, f, grid, BHalf(h, t, false), modifiers, mps, workgroupsize)
-    substep!(yee_e!, f, grid, EStep(dt, t + h), modifiers, mps, workgroupsize)
+    substep!(yee_e!, f, grid, EStep(T(dt), t + h), modifiers, mps, workgroupsize)
     substep!(yee_b_half!, f, grid, BHalf(h, t + T(dt), true), modifiers, mps, workgroupsize)
     return f
 end
