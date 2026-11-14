@@ -122,3 +122,32 @@ function em2d_step_digests(; workgroupsize = nothing, be = CPU())
     end
     return out
 end
+
+# The counter-streaming beams of T-361 (em2d_step.jl): a 1D problem and the same problem in 2D,
+# invariant along one axis. filter.jl, boundaries.jl and pml_back.jl use `beams_1d` too.
+const INV_DRIFT = (1 // 5, 3 // 20, -1 // 10)
+
+function beams_1d(::Type{T}; n = 16, ppc = 8, nsteps = 30, amplitude = one(T) / 20) where {T}
+    L = 2 * T(π)
+    dx = L / n
+    v = T.(INV_DRIFT)
+    sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), 1, ppc, v, zero3(T), 1),
+          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), 1, ppc, .-v, zero3(T), 2))
+    return EMProblem("beams-1d", L, n, 4dx / 5, nsteps, sp, 1, 2 * T(π) / L)
+end
+
+# axis = 1: varies along x (y-invariant); axis = 2: varies along y. The invariant axis has 6 cells
+# (the fewest the guards allow) of twice the 1D cell size, 2 particles per cell.
+function beams_2d(::Type{T}, axis; n = 16, ppc = 8, nsteps = 30, amplitude = one(T) / 20) where {T}
+    L = 2 * T(π)
+    dx = L / n
+    v = T.(INV_DRIFT)
+    v2 = axis == 1 ? v : (-v[2], v[1], v[3])
+    box = axis == 1 ? (L, 12dx) : (12dx, L)
+    cells = axis == 1 ? (n, 6) : (6, n)
+    p2 = axis == 1 ? (ppc, 2) : (2, ppc)
+    m = axis == 1 ? (1, 0) : (0, 1)
+    sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), m, p2, v2, zero3(T), 1),
+          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), m, p2, .-v2, zero3(T), 2))
+    return EMProblem("beams-2d", box, cells, 4dx / 5, nsteps, sp, 1, m)
+end
