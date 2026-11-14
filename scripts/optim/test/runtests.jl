@@ -1,48 +1,80 @@
-# Tests of the WP-045 maximizer and the WP-052 case: julia +1.13 --project=scripts scripts/optim/test/runtests.jl
+# Tests of the optimization layer (WP-058) and the cases (WP-051, WP-052):
+#   julia +1.13 --project=scripts scripts/optim/test/runtests.jl
 using Test
-include(joinpath(@__DIR__, "..", "maximize.jl"))
+using ForwardDiff: ForwardDiff
+include(joinpath(@__DIR__, "..", "problem.jl"))
 
-@testset "T-600 the box-constrained maximizer finds interior and bound maxima of analytic objectives, with a capped step [WP-045, WP-052]" begin
-    # An anisotropic concave quadratic with its maximum inside the box.
+@testset "T-760 L-BFGS-B through Optimization.jl finds interior and bound maxima of analytic objectives, one fg call per point [WP-058]" begin
+    # An anisotropic concave quadratic with its maximum inside the box. Every point the solver
+    # evaluates costs one fg call: the value and the gradient of a point come from the same call.
     A = [3.0 1.0; 1.0 0.5]
     c = [0.3, 0.7]
-    fq(z) = (r = z .- c; (-r' * A * r / 2, -A * r))
-    r = maximize_box(fq, [0.9, 0.1], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 1e-12)
+    calls = Ref(0)
+    fq(z) = (calls[] += 1; r = z .- c; (-r' * A * r / 2, -A * r))
+    r = maximize_box(fq, [0.9, 0.1], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10)
     @test r.z ≈ c atol = 1e-8
-    @test r.reason in ("gtol", "xtol")
-    @test all(i -> r.path[i + 1][2] >= r.path[i][2], 1:(length(r.path) - 1))   # monotone ascent
-    # The same quadratic with its maximum outside the box: the maximizer is on the bound z₁ = 0.5,
-    # where the constrained optimum of z₂ is c₂ − A₂₁(0.5 − c₁)/A₂₂.
-    r = maximize_box(fq, [0.9, 0.1], [0.5, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 1e-12)
+    @test r.reason == "gtol" && maximum(abs, r.g) <= 1e-10
+    @test r.evals == calls[] == length(r.path) == length(unique(first.(r.path)))
+    @test r.path[1][1] == [0.9, 0.1]                                               # the start is the first point
+    @test r.f == maximum(p[2] for p in r.path)
+    # The maximum outside the box: on the bound z₁ = 0.5, where the constrained optimum of z₂ is
+    # c₂ − A₂₁(0.5 − c₁)/A₂₂, with the gradient pointing out of the box.
+    r = maximize_box(fq, [0.9, 0.1], [0.5, 0.0], [1.0, 1.0]; gtol = 1e-9, maxiters = 200)
     @test r.z[1] == 0.5
     @test r.z[2] ≈ c[2] - A[2, 1] * (0.5 - c[1]) / A[2, 2] atol = 1e-8
-    @test r.g[1] < 0                                                              # pointing out of the box
-    # The maximum outside the box's upper corner on z₁: held at the upper bound z₁ = 0.2, with the
-    # same constrained optimum formula for z₂, and the stop on the projected gradient.
-    c2 = [0.3, 0.7]
-    r = maximize_box(fq, [0.05, 0.1], [0.0, 0.0], [0.2, 1.0]; gtol = 1e-9, xtol = 0.0, maxiter = 200)
+    @test r.g[1] < 0 && r.reason == "gtol"
+    # Held at the upper bound z₁ = 0.2 instead.
+    r = maximize_box(fq, [0.05, 0.1], [0.0, 0.0], [0.2, 1.0]; gtol = 1e-9, maxiters = 200)
     @test r.z[1] == 0.2
-    @test r.z[2] ≈ c2[2] - A[2, 1] * (0.2 - c2[1]) / A[2, 2] atol = 1e-8
-    @test r.g[1] > 0
-    @test r.reason == "gtol"
-    # The bound case above also stops on the projected gradient, not on a small step.
-    r = maximize_box(fq, [0.9, 0.1], [0.5, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 0.0, maxiter = 200)
-    @test r.reason == "gtol" && r.z[1] == 0.5
-    # A start outside the box is projected into it first.
-    r = maximize_box(fq, [3.0, -2.0], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 0.0, maxiter = 200)
+    @test r.z[2] ≈ c[2] - A[2, 1] * (0.2 - c[1]) / A[2, 2] atol = 1e-8
+    @test r.g[1] > 0 && r.reason == "gtol"
+    # A start outside the box is projected into it first, and no point leaves the box.
+    r = maximize_box(fq, [3.0, -2.0], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10, maxiters = 200)
+    @test r.path[1][1] == [1.0, 0.0]
     @test all(p -> all(0 .<= p[1] .<= 1), r.path)
     @test r.z ≈ c atol = 1e-8
-    # A smooth non-quadratic objective (a Gaussian bump on a slope), maximum inside.
+    # A smooth non-quadratic objective (a Gaussian bump on a slope), maximum inside. L-BFGS-B stops
+    # on the objective's decrease (about 2e-9, fixed by the wrapper) before a gradient of 1e-9; the
+    # gradient there is near 2e-7.
     fb(z) = (e = exp(-sum(abs2, z .- [0.4, 0.6]) / 0.1); (e + 0.01z[1], e .* (-2 .* (z .- [0.4, 0.6]) ./ 0.1) .+ [0.01, 0.0]))
-    r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 1e-12, maxiter = 100)
-    @test maximum(abs, r.g) < 1e-8
-    # A capped step (WP-052): no accepted step is longer than maxstep in any coordinate, and the
-    # interior maximum is still reached; uncapped, the first step from this start is 0.6 long.
-    r = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; gtol = 1e-10, xtol = 1e-12, maxiter = 200, maxstep = 0.05)
-    @test all(i -> maximum(abs, r.path[i + 1][1] .- r.path[i][1]) <= 0.05 + 1e-15, 1:(length(r.path) - 1))
-    @test r.z ≈ c atol = 1e-8
-    r1 = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; maxiter = 1)
-    @test maximum(abs, r1.path[2][1] .- r1.path[1][1]) ≈ 0.6 rtol = 1e-12   # the default is no cap (WP-045 relies on it)
+    r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-9, maxiters = 100)
+    @test maximum(abs, r.g) < 1e-6 && r.reason == "ftol"
+    r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-6, maxiters = 100)
+    @test maximum(abs, r.g) <= 1e-6 && r.reason == "gtol"
+    # The tolerance reaches the solver: a loose one stops earlier, with a larger gradient.
+    loose = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-1, maxiters = 100)
+    @test loose.reason == "gtol" && maximum(abs, loose.g) > 1e-6 && loose.evals < r.evals
+    # Out of iterations: the reason says so.
+    r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-12, maxiters = 1)
+    @test r.reason == "maxiter"
+end
+
+@testset "T-761 a scaled box maps physical parameters both ways, and an objective's gradient in z is ForwardDiff's [WP-058]" begin
+    b = ScaledBox([4.0, 60.0], [9.0, 130.0], [6.0, 90.0])
+    @test zlo(b) == [4.0 / 6.0, 60.0 / 90.0] && zhi(b) == [9.0 / 6.0, 130.0 / 90.0]
+    @test all(isapprox.(phys(b, scaled(b, (7.0, 100.0))), (7.0, 100.0); rtol = 1e-15))
+    @test_throws ArgumentError ScaledBox([1.0], [0.0], [1.0])
+    @test_throws ArgumentError ScaledBox([0.0], [1.0], [0.0])
+    @test_throws DimensionMismatch ScaledBox([0.0, 0.0], [1.0, 1.0], [1.0])
+    @test_throws DimensionMismatch dual_point(b, [1.0, 1.0, 1.0])
+    # The value and the gradient in z from one run with duals, against ForwardDiff on z directly
+    # and against the chain rule written out (∂J/∂z_i = ∂J/∂x_i · scale_i).
+    Jx(τ, f) = τ^2 * sin(f / 30) + τ * f / 100
+    z = scaled(b, (6.5, 95.0))
+    v, g = value_gradient(Jx, b, z)
+    @test v == Jx(phys(b, z)...)
+    @test g ≈ ForwardDiff.gradient(w -> Jx(phys(b, w)...), z) rtol = 1e-14
+    τ, f = phys(b, z)
+    @test g ≈ [(2τ * sin(f / 30) + f / 100) * 6.0, (τ^2 * cos(f / 30) / 30 + τ / 100) * 90.0] rtol = 1e-13
+    # The objective records every run with its kind; maximize uses one run with duals per point.
+    o = Objective(Jx, b; verbose = false)
+    @test o(z) == v && value_gradient(o, z) == (v, g)
+    @test [e["kind"] for e in o.log] == ["value", "gradient"] && o.log[2]["grad"] == g
+    @test all(e -> e["z"] == z && e["phys"] == collect(phys(b, z)) && e["J"] == v, o.log)
+    q = Objective((τ, f) -> -(τ - 7.7)^2 - ((f - 113) / 10)^2, b; verbose = false)
+    r = maximize(q, scaled(b, (4.5, 70.0)))
+    @test all(isapprox.(phys(q, r.z), (7.7, 113.0); atol = 1e-4))
+    @test length(q.log) == r.evals && all(e -> e["kind"] == "gradient", q.log)
 end
 
 include(joinpath(@__DIR__, "..", "wake2d_case.jl"))
@@ -182,6 +214,13 @@ end
 end
 # Tests of the WP-052 fixed-energy case (witness2d_case.jl): two full runs of the case, about a minute.
 include(joinpath(@__DIR__, "..", "witness2d_case.jl"))
+
+@testset "T-762 the cases' boxes are the reports' boxes [WP-045, WP-052, WP-058]" begin
+    # reports/wp-045-wake-optimization.md: τ ∈ [4, 9], x_f ∈ [60, 130], z = (τ/6, x_f/90).
+    @test (WAKE_BOX.lo, WAKE_BOX.hi, WAKE_BOX.scale) == ([4.0, 60.0], [9.0, 130.0], [6.0, 90.0])
+    # reports/wp-052-fixed-energy-optimization.md: τ ∈ [4, 9], n₀ ∈ [0.04, 0.10], x_c ∈ [30, 50], z = (τ/6, n₀/0.07, x_c/40).
+    @test (WITNESS_BOX.lo, WITNESS_BOX.hi, WITNESS_BOX.scale) == ([4.0, 0.04, 30.0], [9.0, 0.10, 50.0], [6.0, 0.07, 40.0])
+end
 
 @testset "T-680 a₀ from the fixed energy inverts laser_energy, with no energy derivative along τ [A3, WP-052]" begin
     for τ in (4.0, 5.5, 9.0), E in (WCASE.energy, WCASE.energy / 2.25)

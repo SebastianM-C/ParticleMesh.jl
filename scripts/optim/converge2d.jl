@@ -9,7 +9,7 @@
 #       WP-045's box objective at several read-out times; `fd` adds a central-difference check of
 #       the main window's gradient at the first resolution
 #   ... converge2d.jl optimize <ppl>x<dy_cells> <τ0> <focus0>
-#       maximize J over the WP-045 box from (τ0, focus0) with maximize.jl
+#       maximize J over the WP-045 box from (τ0, focus0) with L-BFGS-B (problem.jl)
 #   ... converge2d.jl tauscan <ppl>x<dy_cells> <a0> <waist> <focus> <τ>[,<τ>...] [rows]
 #       J of every window against τ at one focus (a plane wave: a large waist and a few rows)
 #   ... converge2d.jl plots <run dir> [<run dir> ...]
@@ -21,13 +21,10 @@
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "wake2d_case.jl"))
 include(joinpath(@__DIR__, "slab.jl"))
-include(joinpath(@__DIR__, "maximize.jl"))
-using ForwardDiff: Dual, value, partials
+using ForwardDiff: value, partials
 
-const SCALE = (6.0, 90.0)                      # z = (τ/6, focus/90), as in WP-045
-const LO = [4.0 / SCALE[1], 60.0 / SCALE[2]]
-const HI = [9.0 / SCALE[1], 130.0 / SCALE[2]]
-phys(z) = (z[1] * SCALE[1], z[2] * SCALE[2])
+const SCALE = WAKE_BOX.scale                   # z = (τ/6, focus/90), as in WP-045
+phys(z) = phys(WAKE_BOX, z)
 const DT45 = 0.95 / sqrt(1 / (2π / 16)^2 + 1 / (4 * 2π / 16)^2)      # WP-045's step
 const BOX_TIMES = (512 * DT45, 160.0, 170.0, 180.0, 190.0, 200.0, 210.0, 220.0)   # first: WP-045's read-out
 
@@ -39,7 +36,7 @@ const GROUP = Ref("")      # `--group=<name>` as the first argument: run directo
 
 function newdir(cmd, params)
     return run_dir("converge2d-$cmd", @__FILE__; prefix = isempty(GROUP[]) ? "optim" : "$(GROUP[])/optim", work_package = "WP-051",
-                   extra_inputs = [joinpath(@__DIR__, f) for f in ("wake2d_case.jl", "slab.jl", "maximize.jl")],
+                   extra_inputs = [joinpath(@__DIR__, f) for f in ("wake2d_case.jl", "slab.jl", "problem.jl")],
                    params = merge(Dict{String,Any}("command" => cmd, "args" => copy(ARGS)), params))
 end
 
@@ -69,9 +66,7 @@ function theory()
 end
 
 function observe_dual(τ, f, r)
-    d1 = Dual{Nothing}(τ / SCALE[1], 1.0, 0.0)
-    d2 = Dual{Nothing}(f / SCALE[2], 0.0, 1.0)
-    t = @elapsed o = wake_observe(phys((d1, d2))...; box_times = BOX_TIMES, reskw(r)...)
+    t = @elapsed o = wake_observe(dual_point(WAKE_BOX, scaled(WAKE_BOX, (τ, f)))...; box_times = BOX_TIMES, reskw(r)...)
     slab = Dict(string(k) => Dict("J" => value(v), "grad" => collect(Tuple(partials(v)))) for (k, v) in pairs(o.slab))
     osc = Dict(string(k) => Dict("J" => value(v), "grad" => collect(Tuple(partials(v)))) for (k, v) in pairs(o.osc))
     box = [Dict("t" => tb, "J" => value(v), "grad" => collect(Tuple(partials(v)))) for (tb, v) in zip(BOX_TIMES, o.box)]
@@ -103,16 +98,8 @@ end
 
 function optimize(r, τ0, f0)
     dir = newdir("optimize", Dict{String,Any}("resolution" => collect(r), "start" => [τ0, f0]))
-    function fg(z)
-        d1 = Dual{Nothing}(z[1], 1.0, 0.0)
-        d2 = Dual{Nothing}(z[2], 0.0, 1.0)
-        v = slab_amplitude(phys((d1, d2))...; reskw(r)...)
-        fv, gv = value(v), collect(Tuple(partials(v)))
-        println("  (τ, focus) = ", round.(phys(z); digits = 4), "  J = ", fv, "  ∇J = ", gv)
-        flush(stdout)
-        return fv, gv
-    end
-    t = @elapsed res = maximize_box(fg, [τ0 / SCALE[1], f0 / SCALE[2]], LO, HI; maxiter = 25, gtol = 1e-4, xtol = 1e-4)
+    obj = Objective((τ, f) -> slab_amplitude(τ, f; reskw(r)...), WAKE_BOX)
+    t = @elapsed res = maximize(obj, scaled(WAKE_BOX, (τ0, f0)); maxiters = 25, gtol = 1e-4)
     out = Dict{String,Any}("resolution" => collect(r), "start" => [τ0, f0], "phys" => collect(phys(res.z)), "J" => res.f, "grad" => res.g,
                            "reason" => res.reason, "evals" => res.evals, "seconds" => t,
                            "path" => [Dict("phys" => collect(phys(p[1])), "J" => p[2], "grad" => p[3]) for p in res.path])

@@ -1,7 +1,7 @@
 # WP-045: the first 2D optimization. Maximize the wake amplitude of a small 2D LWFA run
 # (wake2d_case.jl) over the pulse duration τ and the focus, at fixed a₀ and density, with
-# ForwardDiff gradients (Float64, Reference) and the box-constrained quasi-Newton maximizer of
-# maximize.jl; check the optimum against a brute-force grid scan, a finite-difference check of
+# ForwardDiff gradients (Float64, Reference) and the bound-constrained L-BFGS-B of Optimization.jl
+# (problem.jl, WP-058); check the optimum against a brute-force grid scan, a finite-difference check of
 # the gradient, slices through the optimum, and the 1D linear-theory duration 2/ω_p.
 #
 #   julia +1.13 --project=scripts -t 4 scripts/optim/wake2d.jl
@@ -12,38 +12,24 @@
 
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "wake2d_case.jl"))
-include(joinpath(@__DIR__, "maximize.jl"))
-using ForwardDiff: Dual, value, partials
 
-# The parameters, scaled to O(1) (A1): z = (τ/6, focus/90), in the box τ ∈ [4, 9], focus ∈ [60, 130].
-const SCALE = (6.0, 90.0)
-const LO = [4.0 / SCALE[1], 60.0 / SCALE[2]]
-const HI = [9.0 / SCALE[1], 130.0 / SCALE[2]]
-phys(z) = (z[1] * SCALE[1], z[2] * SCALE[2])
+# The parameters, scaled to O(1) (A1): z = (τ/6, focus/90) in WP-045's box (`WAKE_BOX`).
+const SCALE = WAKE_BOX.scale
+phys(z) = phys(WAKE_BOX, z)
+const TAU, FOCUS = (WAKE_BOX.lo[1], WAKE_BOX.hi[1]), (WAKE_BOX.lo[2], WAKE_BOX.hi[2])   # the box in physical units
+const OBJECTIVE = Objective(wake_amplitude, WAKE_BOX)
 
-J(z) = wake_amplitude(phys(z)...)
-
-"""
-The objective and its gradient in z, in one run with a dual. The dual carries three partials,
-the third unseeded: the step segfaults on the KernelAbstractions CPU (PoCL) backend with
-`Dual{Float64,2}` while 1, 3 and 5 partials run (WP-045; the upstream issue is linked in the PR).
-"""
-function fg(z)
-    d1 = Dual{Nothing}(z[1], 1.0, 0.0, 0.0)
-    d2 = Dual{Nothing}(z[2], 0.0, 1.0, 0.0)
-    v = wake_amplitude(phys((d1, d2))...)
-    f, g = value(v), collect(Tuple(partials(v))[1:2])
-    println("  z = ", round.(z; digits = 5), "  (τ, focus) = ", round.(phys(z); digits = 3), "  J = ", f, "  ∇J = ", g)
-    flush(stdout)
-    return f, g
-end
+"The objective at `z`, from a plain run."
+J(z) = OBJECTIVE(z)
+"The objective and its gradient in z, in one run with duals."
+fg(z) = value_gradient(OBJECTIVE, z)
 
 function main()
     dir = run_dir("wake2d", @__FILE__; prefix = "optim", work_package = "WP-045",
-                  extra_inputs = [joinpath(@__DIR__, "wake2d_case.jl"), joinpath(@__DIR__, "maximize.jl")],
+                  extra_inputs = [joinpath(@__DIR__, "wake2d_case.jl"), joinpath(@__DIR__, "problem.jl")],
                   params = Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(CASE)))
     out = Dict{String,Any}("case" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(CASE)),
-                           "scale" => collect(SCALE), "box_tau" => [4.0, 9.0], "box_focus" => [60.0, 130.0])
+                           "scale" => collect(SCALE), "box_tau" => collect(TAU), "box_focus" => collect(FOCUS))
     t0 = time()
 
     # 1. Gradient check at the first start: central differences in z at three steps.
@@ -67,7 +53,7 @@ function main()
     runs = Dict{String,Any}[]
     for (name, zs) in (("start A", z0), ("start B", [8.5 / SCALE[1], 125.0 / SCALE[2]]))
         println("optimizing from $name")
-        t = @elapsed r = maximize_box(fg, zs, LO, HI; maxiter = 25, gtol = 1e-4, xtol = 1e-4)
+        t = @elapsed r = maximize(OBJECTIVE, zs; maxiters = 25, gtol = 1e-4)
         push!(runs, Dict("name" => name, "start" => zs, "z" => r.z, "phys" => collect(phys(r.z)), "J" => r.f, "grad" => r.g,
                          "reason" => r.reason, "evals" => r.evals, "seconds" => t,
                          "path" => [Dict("z" => p[1], "phys" => collect(phys(p[1])), "J" => p[2], "grad" => p[3]) for p in r.path]))
@@ -76,10 +62,17 @@ function main()
     out["optimizer"] = runs
     Ja, Jb = runs[1]["J"], runs[2]["J"]
     check("both starts reach the same value", abs(Ja - Jb) <= 1e-4 * max(Ja, Jb), "J = $Ja and $Jb")
-    check("both starts stop on the gradient", all(r -> r["reason"] == "gtol", runs), join((r["reason"] for r in runs), ", "))
+    # Each start stops on one of L-BFGS-B's convergence tests: the projected gradient below gtol, or an
+    # iteration that lowers −J by less than about 2e-9 relative ("ftol"; OptimizationLBFGSB does not pass
+    # that tolerance through, and at a sharp maximum it can fire with the gradient still above gtol).
+    # Either way, the two starts must end at the same point.
+    check("both starts stop on a convergence test", all(r -> r["reason"] in ("gtol", "ftol"), runs),
+          join(("$(r["reason"]), |∇J|∞ = $(maximum(abs, r["grad"]))" for r in runs), "; "))
+    dz = maximum(abs, Float64.(runs[1]["z"]) .- Float64.(runs[2]["z"]))
+    check("both starts end at the same point", dz < 1e-4, "largest difference in z: $dz")
 
     # 3. The brute-force grid scan over the box (7 × 7).
-    τs, fs = collect(range(4.0, 9.0; length = 7)), collect(range(60.0, 130.0; length = 7))
+    τs, fs = collect(range(TAU...; length = 7)), collect(range(FOCUS...; length = 7))
     grid = [wake_amplitude(τ, f) for τ in τs, f in fs]
     ib = argmax(grid)
     out["grid"] = Dict("tau" => τs, "focus" => fs, "J" => [grid[i, :] for i in axes(grid, 1)], "best" => [τs[ib[1]], fs[ib[2]], grid[ib]])
@@ -89,8 +82,8 @@ function main()
     # 4. Slices through the optimizer's best point, ±10 % in each parameter.
     best = runs[argmax([r["J"] for r in runs])]
     τbest, fbest = best["phys"]
-    sτ = [τbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if 4.0 <= τbest * (1 + d) <= 9.0]
-    sf = [fbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if 60.0 <= fbest * (1 + d) <= 130.0]
+    sτ = [τbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if TAU[1] <= τbest * (1 + d) <= TAU[2]]
+    sf = [fbest * (1 + d) for d in (-0.1, -0.05, 0.0, 0.05, 0.1) if FOCUS[1] <= fbest * (1 + d) <= FOCUS[2]]
     out["slices"] = Dict("tau" => sτ, "J_tau" => [wake_amplitude(τ, fbest) for τ in sτ],
                          "focus" => sf, "J_focus" => [wake_amplitude(τbest, f) for f in sf])
     jc = best["J"]

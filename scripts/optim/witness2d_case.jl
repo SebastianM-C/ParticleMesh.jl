@@ -6,6 +6,14 @@ using ParticleMesh, KernelAbstractions
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: witness_frame
 using ForwardDiff: ForwardDiff
+isdefined(@__MODULE__, :ScaledBox) || include(joinpath(@__DIR__, "problem.jl"))
+
+"""
+WP-052's box: the pulse duration τ ∈ [4, 9] (1/ω₀), the density n₀ ∈ [0.04, 0.10] (n_c) and the
+witness centre x_c ∈ [30, 50] (c/ω₀, 3 bunch lengths inside the lattice, which starts at x = 24),
+scaled to z = (τ/6, n₀/0.07, x_c/40).
+"""
+const WITNESS_BOX = ScaledBox([4.0, 0.04, 30.0], [9.0, 0.10, 50.0], [6.0, 0.07, 40.0])
 
 value_of(x::Real) = x
 value_of(d::ForwardDiff.Dual) = ForwardDiff.value(d)

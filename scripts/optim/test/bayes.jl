@@ -55,7 +55,7 @@ end
 branin(x) = (x[2] - 5.1 / (4π^2) * x[1]^2 + 5 / π * x[1] - 6)^2 + 10 * (1 - 1 / (8π)) * cos(x[1]) + 10
 const BRANIN_MIN = 5 / (4π)   # = 0.3978873577…
 
-@testset "T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations from every seed tried and repeats bit for bit [WP-048]" begin
+@testset "T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations from every seed tried and repeats bit for bit [WP-048, WP-058]" begin
     gaps = Float64[]
     for seed in 1:6
         r = bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 40, seed)
@@ -65,6 +65,14 @@ const BRANIN_MIN = 5 / (4π)   # = 0.3978873577…
         seed == 1 && @test bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 12, seed).y == r.y[1:12]
     end
     println("Branin gaps after 40 evaluations, seeds 1 to 6: ", gaps)
+    # The same optimizer on a problem.jl objective (WP-058): it searches the objective's box in
+    # scaled coordinates, logs one plain run per evaluation, and repeats the call on the bounds.
+    box = ScaledBox([-5.0, 0.0], [10.0, 15.0], [5.0, 5.0])
+    o = Objective((x1, x2) -> -branin([x1, x2]), box; verbose = false)
+    r = bayesopt(o; budget = 12, seed = 1)
+    @test r.y == bayesopt(z -> -branin(z .* box.scale), zlo(box), zhi(box); budget = 12, seed = 1).y
+    @test length(o.log) == 12 && all(e -> e["kind"] == "value" && all(zlo(box) .<= e["z"] .<= zhi(box)), o.log)
+    @test [e["J"] for e in o.log] == r.y
 end
 
 @testset "T-623 the proposal depends on the seed, never repeats an evaluated point, and reach counts calls [WP-048]" begin

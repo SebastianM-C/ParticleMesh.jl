@@ -1,13 +1,15 @@
 # WP-048: a Bayesian-optimization baseline for the WP-045 problem. A Gaussian process with a
 # Matérn-5/2 kernel (one length scale per parameter) on the unit box, hyperparameters by maximum
 # marginal likelihood, and expected improvement as the acquisition. Written out here rather than
-# taken from a package: it is short, it adds no dependency to scripts/, and every choice is visible.
+# taken from a package: it is short, Julia has no maintained Bayesian optimizer to take instead, and
+# every choice is visible. Its inner maximizations (the hyperparameters, the acquisition) use
+# problem.jl's L-BFGS-B, and it takes problem.jl's `Objective` (WP-058).
 
 import LinearAlgebra
 using LinearAlgebra: Symmetric, cholesky, diag, dot, norm, I
 using SpecialFunctions: erfc
 using ForwardDiff: ForwardDiff
-isdefined(@__MODULE__, :maximize_box) || include(joinpath(@__DIR__, "maximize.jl"))
+isdefined(@__MODULE__, :maximize_box) || include(joinpath(@__DIR__, "problem.jl"))
 
 # Counter-based uniforms in [0, 1) (splitmix64 of seed and counter), so a run is reproducible
 # bit for bit without a random-number state.
@@ -57,7 +59,7 @@ end
 """
     fit_gp(X, y; starts) -> (; θ, nll)
 
-Maximum marginal likelihood over θ in `θbounds`, by the WP-045 maximizer with ForwardDiff gradients
+Maximum marginal likelihood over θ in `θbounds`, by L-BFGS-B (`maximize_box`) with ForwardDiff gradients
 from a few fixed starts (and `starts`, such as the previous fit).
 """
 function fit_gp(X, y; starts = Vector{Float64}[])
@@ -75,7 +77,7 @@ function fit_gp(X, y; starts = Vector{Float64}[])
                 return -Inf, zero(θ)
             end
         end
-        r = maximize_box(fg, clamp.(θ0, lo, hi), lo, hi; maxiter = 60, gtol = 1e-5, xtol = 1e-6)
+        r = maximize_box(fg, clamp.(θ0, lo, hi), lo, hi; maxiters = 60, gtol = 1e-5)
         -r.f < best.nll && (best = (; θ = r.z, nll = -r.f))
     end
     return best
@@ -104,7 +106,7 @@ end
     propose(X, y, θ, seed, iter; ξ, ncand, nrefine) -> u
 
 The next point in the unit box: expected improvement on `ncand` counter-based candidates, then the
-WP-045 maximizer with ForwardDiff gradients from the `nrefine` best of them. Points closer than
+L-BFGS-B (`maximize_box`) with ForwardDiff gradients from the `nrefine` best of them. Points closer than
 1e-6 to an evaluated one are skipped.
 """
 function propose(X, y, θ, seed, iter; ξ = 0.0, ncand = 2048, nrefine = 5)
@@ -117,7 +119,7 @@ function propose(X, y, θ, seed, iter; ξ = 0.0, ncand = 2048, nrefine = 5)
     vals = ei.(cands)
     best_u, best_v = cands[argmax(vals)], maximum(vals)
     for i in partialsortperm(vals, 1:min(nrefine, ncand); rev = true)
-        r = maximize_box(u -> (ei(u), ForwardDiff.gradient(ei, u)), cands[i], zeros(d), ones(d); maxiter = 40, gtol = 1e-10, xtol = 1e-8)
+        r = maximize_box(u -> (ei(u), ForwardDiff.gradient(ei, u)), cands[i], zeros(d), ones(d); maxiters = 40, gtol = 1e-10)
         far = minimum(xi -> norm(r.z .- xi), X) > 1e-6
         far && r.f > best_v && ((best_u, best_v) = (r.z, r.f))
     end
@@ -157,6 +159,9 @@ function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ
     ib = argmax(y)
     return (; x = to_box.(U), y, best_x = to_box(U[ib]), best_y = y[ib], θ = θs, ei = eis)
 end
+
+"`bayesopt` of a problem.jl objective over its box, in scaled coordinates; every run lands in `o.log`."
+bayesopt(o::Objective; kw...) = bayesopt(o, zlo(o.box), zhi(o.box); kw...)
 
 """
     reach(best_so_far, cum_seconds, Jstar, ε) -> (; calls, seconds) or nothing
