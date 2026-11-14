@@ -41,6 +41,10 @@ solver's sub-steps.
 With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
 `DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
 with [`state_partition`](@ref), [`remake_reload`](@ref) and [`harness_state`](@ref).
+
+The differentiable parameters of a description are also one vector, [`tunables`](@ref) and
+[`with_tunables`](@ref) (WP-059); with SciMLStructures loaded, a second extension makes them the
+`Tunable` portion of an `EMProblem` and of an `EMParams`.
 """
 module ParticleMeshElectromagnetic
 
@@ -58,6 +62,7 @@ export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, pu
 export lorentz_rhs!, particle_problem, pusher_algorithm
 export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution
 export EMParams, SpeciesParams, WitnessParams, params, check_params
+export tunables, tunable_names, tunable_count, with_tunables
 export EMState, initialize!, step!, run!, check_setup, reset_convolution!
 export HistoryRecorder, observe!
 export CurrentY, CurrentZ, KineticEnergy
@@ -84,6 +89,7 @@ include("boundaries.jl")
 include("pml.jl")
 include("window.jl")
 include("witness.jl")
+include("tunables.jl")
 include("restart.jl")
 include("diagnostics.jl")
 include("harness.jl")

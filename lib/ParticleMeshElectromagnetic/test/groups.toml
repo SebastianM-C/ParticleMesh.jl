@@ -14,7 +14,7 @@ groups = [
     ["determinism.jl", "em2d.jl", "em2d_step.jl", "filter.jl", "boundaries.jl", "pml.jl"],
     # the loads, the antenna, the moving window and the LWFA gradient
     ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "window.jl", "pml_back.jl", "lwfa_gradient.jl",
-     "witness.jl"],
+     "witness.jl", "tunables.jl"],
     # the gradient, the harness and the state layer built on it, and the quality checks
     ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
 ]

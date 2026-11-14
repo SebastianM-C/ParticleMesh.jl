@@ -44,6 +44,7 @@ const TEST_FILES = [
     "pml_back.jl",            # WP-034: T-570 to T-576, the PML on the window's back edge, after window.jl
     "lwfa_gradient.jl",       # WP-043: T-580 to T-582, a gradient through a small LWFA run, after window.jl
     "witness.jl",             # WP-047: T-640 to T-645, the witness bunch and its mean energy gain, after lwfa_gradient.jl
+    "tunables.jl",            # WP-059: T-770 to T-773, the parameters as one vector and as a SciML structure, after lwfa_gradient.jl (its case and T-581's gradient)
     "harness.jl",             # after gradient.jl: T-105 reuses its run
     "params.jl",              # WP-055: T-730 to T-735, the step as a function of the state and the parameters, after harness.jl
     "restart.jl",             # WP-056: T-740 to T-746 and T-748, the closed state and the restart, after params.jl (its helpers)
