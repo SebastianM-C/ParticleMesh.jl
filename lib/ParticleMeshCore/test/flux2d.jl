@@ -390,15 +390,16 @@ end
     end
 end
 
-@testset "T-802 the flux patch is one contiguous column per cell, its particles' stencils summed in slot order from zero [A4, WP-061]" begin
-    for T in TYPES, st in ((Node(), Node()), (Center(), Node()))
+@testset "T-802 the flux patch holds, per cell, its particles' stencils summed in slot order from zero: one contiguous column per cell stencil-major, one row cell-major [A4, WP-061]" begin
+    SM, CM = ParticleMeshCore.StencilMajor(), ParticleMeshCore.CellMajor()
+    for T in TYPES, st in ((Node(), Node()), (Center(), Node())), layout in (SM, CM)
         grid = grid2(T, flux_g2(Quadratic, st))
         s = flux_species_2d(T, grid, 400)
         dt = T(basetype(T)(1 // 4))
-        _, _, _, ws = flux2d(Reference(), s, Quadratic, st, grid; dt)
+        _, _, _, ws = flux2d(Reference(), s, Quadratic, st, grid; dt, flux_layout = layout)
         n = ncells(grid)
         K = prod(ParticleMeshCore.flux_widths(Quadratic, st))
-        @test size(ws.flux_patch) == (3K, prod(n))
+        @test size(ws.flux_patch) == (layout === SM ? (3K, prod(n)) : (prod(n), 3K))
         sx = map(h -> h / dt, cellsize(grid))
         same, filled = true, 0
         for L in 1:prod(n)
@@ -410,9 +411,9 @@ end
                 end
             end
             filled += ws.seg_stop[L] >= ws.seg_start[L]
-            same &= same_bits(ws.flux_patch[:, L], acc)
+            same &= same_bits(layout === SM ? ws.flux_patch[:, L] : ws.flux_patch[L, :], acc)
         end
         @test same
-        @test 100 < filled < prod(n)          # cells with particles, and empty ones (zero columns)
+        @test 100 < filled < prod(n)          # cells with particles, and empty ones (zeros)
     end
 end

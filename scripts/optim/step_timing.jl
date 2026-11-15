@@ -113,11 +113,13 @@ end
 """
 The 2D Reference flux deposition on the state `st` (sorted, after its run): seconds of
 `deposit_flux!`, of its patch kernel and of its reduce kernel as `_deposit_flux_2d!` launches
-them (lib/ParticleMeshCore/src/flux2d.jl), and of `sort_by_cell!` on the sorted species.
+them (lib/ParticleMeshCore/src/flux2d.jl), and of `sort_by_cell!` on the sorted species; the
+patch kernel with fixed work-groups next to the backend's default (`by_workgroup`); and, in a
+tree whose workspace takes a patch layout, the three deposition times per layout (`by_layout`).
 """
 function deposition_kernels(st)
     (; numerics, grid, fields) = st
-    s, ws = st.species[1], st.ws[1]
+    s = st.species[1]
     shape, stg = numerics.shape, PME.rho_stagger(Val(2))
     qz = PME.transverse_currents(Val(2)).quantity_z
     wgs = numerics.workgroupsize
@@ -126,22 +128,39 @@ function deposition_kernels(st)
     M = PMC.flux_widths(shape, stg)
     r = map(x -> PMC.flux_reach(shape, x), stg)
     lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
+    layouts = isdefined(PMC, :flux_patch_layout)      # the kernels' arguments differ between the trees this script compares
+    patch_args(ws) = layouts ? (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, ws.flux_layout, Val(prod(M))) :
+                     (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, Val(prod(M)))
+    reduce_args(ws) = layouts ? (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), lo, hi, Int32.(M)) :
+                      (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, n, Int32(guards(grid)), lo, hi, Int32.(M))
     patch_launch = isdefined(PMC, :item_launcher) ? PMC.item_launcher : PMC.launcher
-    whole = least() do
-        deposit_flux!(Reference(), fields.Jx, fields.Jy, fields.Jz, s, shape, stg, grid, ws; dt = st.dt, quantity_z = qz, workgroupsize = wgs)
+    function three(ws)
+        whole = least() do
+            deposit_flux!(Reference(), fields.Jx, fields.Jy, fields.Jz, s, shape, stg, grid, ws; dt = st.dt, quantity_z = qz, workgroupsize = wgs)
+        end
+        patch = least(() -> patch_launch(PMC.flux_patch_2d_kernel!, BE, wgs)(patch_args(ws)...; ndrange = prod(n)))
+        reduce = least(() -> PMC.launcher(PMC.flux_reduce_2d_kernel!, BE, wgs)(reduce_args(ws)...; ndrange = size(fields.Jx)))
+        return Dict{String,Any}("deposit_flux" => whole, "patch_kernel" => patch, "reduce_kernel" => reduce)
     end
-    patch = least() do
-        patch_launch(PMC.flux_patch_2d_kernel!, BE, wgs)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, Val(prod(M));
-                                                         ndrange = prod(n))
+    ws = st.ws[1]
+    out = three(ws)
+    out["sort_sorted"] = least(() -> sort_by_cell!(s, grid, ws; workgroupsize = wgs))
+    out["patch_layout"] = collect(size(ws.flux_patch))
+    out["by_workgroup"] = Dict{String,Any}(string(g) => least(() -> PMC.launcher(PMC.flux_patch_2d_kernel!, BE, g)(patch_args(ws)...; ndrange = prod(n)))
+                                           for g in WORKGROUPS)
+    if layouts
+        out["by_layout"] = Dict{String,Any}()
+        for layout in (PMC.StencilMajor(), PMC.CellMajor())
+            ws2 = Workspace(s, grid; flux = (shape, stg), flux_layout = layout)
+            sort_by_cell!(s, grid, ws2; workgroupsize = wgs)
+            out["by_layout"][string(nameof(typeof(layout)))] = three(ws2)
+        end
     end
-    reduce = least() do
-        PMC.launcher(PMC.flux_reduce_2d_kernel!, BE, wgs)(fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, n, Int32(guards(grid)), lo, hi,
-                                                          Int32.(M); ndrange = size(fields.Jx))
-    end
-    sort = least(() -> sort_by_cell!(s, grid, ws; workgroupsize = wgs))
-    return Dict{String,Any}("deposit_flux" => whole, "patch_kernel" => patch, "reduce_kernel" => reduce, "sort_sorted" => sort,
-                            "patch_layout" => collect(size(ws.flux_patch)))
+    return out
 end
+
+"The work-groups of the patch kernel's scan: the backend's default (`nothing`) and fixed sizes."
+const WORKGROUPS = (nothing, 1, 8, 64, 512)
 
 "One element type and mode: the phases of the second of two runs, the plain `run!` time, the deposition's kernels."
 function measure(label, (duration, focus), mode)
@@ -202,6 +221,32 @@ function kernel_table(rows)
     return String(take!(io))
 end
 
+"The Markdown table of the patch kernel per work-group: milliseconds per call (`nothing`: the backend's default)."
+function workgroup_table(rows)
+    io = IOBuffer()
+    println(io, "| element type | ", join(("`$g`" for g in WORKGROUPS), " | "), " |")
+    println(io, "|---|", join(("---" for _ in WORKGROUPS), "|"), "|")
+    for r in rows
+        haskey(r, "kernels") && r["mode"] == "Reference" || continue
+        println(io, "| `", r["T"], "` | ", join((fmt(1e3 * r["kernels"]["by_workgroup"][string(g)]) for g in WORKGROUPS), " | "), " |")
+    end
+    return String(take!(io))
+end
+
+"The Markdown table of the deposition per patch layout: milliseconds per call."
+function layout_table(rows)
+    io = IOBuffer()
+    names = ("StencilMajor", "CellMajor")
+    println(io, "| element type | ", join(("`deposit_flux!` $l | patch $l | reduce $l" for l in names), " | "), " |")
+    println(io, "|---|", join(("---|---|---" for _ in names), "|"), "|")
+    for r in rows
+        haskey(r, "kernels") && r["mode"] == "Reference" && haskey(r["kernels"], "by_layout") || continue
+        k = r["kernels"]["by_layout"]
+        println(io, "| `", r["T"], "` | ", join((fmt(1e3 * k[l][x]) for l in names for x in ("deposit_flux", "patch_kernel", "reduce_kernel")), " | "), " |")
+    end
+    return String(take!(io))
+end
+
 function phase_figure(rows, title)
     fig = Figure(; size = (900, 420))
     ax = Axis(fig[1, 1]; title, ylabel = "seconds per run", xticks = (1:length(rows), ["$(r["T"])\n$(r["mode"])" for r in rows]))
@@ -238,7 +283,10 @@ function main()
     save_plot(dir, "step_timing", fig, Dict("rows" => rows, "threads" => Threads.nthreads(), "cpu" => cpu_model(), "gpu" => gpu,
                                             "backend" => BACKEND_NAME, "phases" => collect(string.(PHASES))))
     tables = "Seconds per run of $(CASE.nsteps) steps ($where_):\n\n" * phase_table(rows) *
-             "\nMilliseconds per call on the last state:\n\n" * kernel_table(rows)
+             "\nMilliseconds per call on the last state:\n\n" * kernel_table(rows) *
+             "\nMilliseconds per call of the patch kernel per work-group:\n\n" * workgroup_table(rows)
+    any(r -> haskey(r, "kernels") && haskey(r["kernels"], "by_layout"), rows) &&
+        (tables *= "\nMilliseconds per call of the deposition per patch layout:\n\n" * layout_table(rows))
     write(joinpath(dir, "tables.md"), tables)
     print(tables)
     println("step_timing: outputs in ", relpath(dir, REPO))

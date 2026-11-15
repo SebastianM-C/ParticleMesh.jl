@@ -1,5 +1,5 @@
 """
-    Workspace(species, grid; flux = nothing)
+    Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend))
 
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
@@ -14,11 +14,13 @@ extras tuple costs nothing.
 
 `flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
 deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
-cell, `M_d` the flux stencil width of axis `d` (5 or 6 at order 2), in `flux_patch`, a
-`3·M₁·M₂ × prod(n)` array (stencil-major: one column per cell). Without it
-`flux_patch` is empty and costs nothing. `N = 1` needs no flux scratch.
+cell, `M_d` the flux stencil width of axis `d` (5 or 6 at order 2), in the array `flux_patch`,
+stored in the order `flux_layout`: `StencilMajor()`, `3·M₁·M₂ × prod(n)` with one column per
+cell, or `CellMajor()`, `prod(n) × 3·M₁·M₂`; the default is the backend's
+(`flux_patch_layout`). Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no
+flux scratch.
 """
-struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS}
+struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL}
     key::VK
     perm::VP
     ak::AW
@@ -30,9 +32,11 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS}
     seg_stop::VI
     flux_patch::FP
     flux::FS
+    flux_layout::FL
 end
 
-function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing) where {N,T}
+function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
+                   flux_layout = flux_patch_layout(get_backend(s))) where {N,T}
     flux === nothing || N == 2 ||
         throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
     backend = get_backend(s)
@@ -47,8 +51,9 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing) where
     n = prod(grid.n)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
-    flux_patch = KernelAbstractions.zeros(backend, T, flux === nothing ? 0 : flux_patch_values(flux...), flux === nothing ? 0 : n)
-    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux)
+    patch_size = flux === nothing ? (0, 0) : flux_patch_size(flux_layout, flux_patch_values(flux...), n)
+    flux_patch = KernelAbstractions.zeros(backend, T, patch_size...)
+    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux, flux_layout)
 end
 
 # One buffer per extra: the first of `pool` with the extra's element type, else a new one,

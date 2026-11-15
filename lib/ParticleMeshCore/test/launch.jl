@@ -32,9 +32,10 @@ engine_refusal(err, wg, kernel) =
     st = (Node(), Node())   # the stagger of the electromagnetic 2D step's current
     wmax = KI.max_work_group_size(backend)
     # #297: Dual{Float32,3}, Quadratic, 2D at 512 and 1024 (PoCL reported 983 work-items as the
-    # flux patch kernel's maximum at this stagger, both on the machine of #297 and where this test
-    # was written, and 1164 at (Node(), Center())), and at the backend's maximum, which the sort
-    # kernels before the flux patch take. A size past the backend's limit is T-501's.
+    # flux patch kernel's maximum at this stagger in #297; the maximum moves with the kernel's code,
+    # and since WP-061's change of it 1024 ran where this was last run), and at the backend's
+    # maximum, which the sort kernels before the flux patch take. A size past the backend's limit
+    # is T-501's.
     ref = flux2d_or_refusal(D3, Quadratic, st, 32)
     @test ref.err === nothing
     @test same_bits.(flux2d_or_refusal(D3, Quadratic, st, nothing).J, ref.J) == (true, true, true)
@@ -143,4 +144,33 @@ struct OtherBackend <: KernelAbstractions.Backend end
         @test same_bits.(tuned[1:3], fixed[1:3]) == (true, true, true)
         @test any(!iszero, tuned[1])
     end
+end
+
+@testset "T-803 the flux patch is stored one column per cell on the CPU backend and cell-major on another, and the Reference flux has the same bits either way [A4, A7, WP-061]" begin
+    SM, CM = ParticleMeshCore.StencilMajor(), ParticleMeshCore.CellMajor()
+    @test ParticleMeshCore.flux_patch_layout(backend) === SM
+    @test ParticleMeshCore.flux_patch_layout(OtherBackend()) === CM
+    D2 = Dual{Nothing,Float64,2}
+    for T in (TYPES..., D2), shape in SHAPES, st in ((Node(), Node()), (Center(), Node()))
+        grid = grid2(T, flux_g2(shape, st))
+        default = flux2d(Reference(), flux_species_2d(T, grid, 400), shape, st, grid)
+        @test default[4].flux_layout === SM
+        a = flux2d(Reference(), flux_species_2d(T, grid, 400), shape, st, grid; flux_layout = SM)
+        b = flux2d(Reference(), flux_species_2d(T, grid, 400), shape, st, grid; flux_layout = CM)
+        @test same_bits.(default[1:3], a[1:3]) == (true, true, true)
+        @test same_bits.(a[1:3], b[1:3]) == (true, true, true)
+        @test any(!iszero, a[1])
+    end
+    # A workspace of one layout whose patch array has the other's size is refused.
+    T = Float64
+    st = (Node(), Node())
+    grid = grid2(T, flux_g2(Quadratic, st))
+    s = flux_species_2d(T, grid, 400)
+    good = Workspace(s, grid; flux = (Quadratic, st), flux_layout = SM)
+    other = Workspace(s, grid; flux = (Quadratic, st), flux_layout = CM)
+    bad = Workspace(good.key, good.perm, good.ak, good.tmp_i32, good.tmp_T, good.tmp_u8, good.tmp_extras, good.seg_start, good.seg_stop,
+                    other.flux_patch, good.flux, SM)
+    sort_by_cell!(s, grid, good)
+    Jx, Jy, Jz = fields3(T, grid)
+    @test_throws "values per cell in the layout" deposit_flux!(Reference(), Jx, Jy, Jz, s, Quadratic, st, grid, bad; dt = T(1 // 4), quantity_z = QZ2)
 end
