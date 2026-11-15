@@ -24,6 +24,24 @@ maximum, so it fits every kernel.
     SizedLaunch(kernel(backend, workgroupsize), kernel, backend, workgroupsize)
 
 """
+    item_launcher(kernel, backend, workgroupsize)
+
+[`launcher`](@ref) for a kernel whose work item is itself a serial loop with a large state
+carried through it: the 2D flux patch, one cell's particles summed into `3·M₁·M₂` accumulators
+of `T`. A fixed `workgroupsize` is taken as it is. With `nothing`, the CPU backend launches
+work-groups of one work item and every other backend makes its own choice.
+
+The CPU backend runs a work-group on one thread, as a loop over its work items, and tunes the
+group to be large, which suits kernels of a few operations per item. For this kernel the tuned
+group costs a multiple of the group of one once the accumulators are large: 10 times with
+`Dual{Float64,2}` elements at order 2 (324 doubles per work item), while with `Float64` the two
+tie (`reports/wp-061-flux-deposition-cost.md`). The result does not depend on the launch
+shape (T-303).
+"""
+@inline item_launcher(kernel, backend, workgroupsize) = launcher(kernel, backend, workgroupsize)
+@inline item_launcher(kernel, backend::CPU, ::Nothing) = kernel(backend, 1)
+
+"""
     SizedLaunch(instance, kernel, backend, workgroupsize)
 
 The `instance` `kernel(backend, workgroupsize)` of a KernelAbstractions kernel with a fixed

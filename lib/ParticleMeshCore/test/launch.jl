@@ -112,3 +112,29 @@ end
     @test same_bits.(tuned[1:3], small[1:3]) == (true, true, true)
     @test any(!iszero, tuned[1])
 end
+
+"A backend that is not the CPU's, to build (never launch) a kernel on."
+struct OtherBackend <: KernelAbstractions.Backend end
+
+@testset "T-801 the flux patch launches in work-groups of one on the CPU backend, a fixed workgroupsize is kept, another backend chooses [A7, WP-061]" begin
+    # #442: with Dual{Float64,2} elements the CPU backend's tuned work-group costs 10 times the
+    # work-group of one for this kernel (reports/wp-061-flux-deposition-cost.md).
+    k = ParticleMeshCore.flux_patch_2d_kernel!
+    il = ParticleMeshCore.item_launcher
+    wg(kernel) = KernelAbstractions.workgroupsize(kernel)
+    @test wg(il(k, backend, nothing)) === KernelAbstractions.StaticSize{(1,)}
+    sized = il(k, backend, 64)
+    @test sized isa ParticleMeshCore.SizedLaunch && sized.workgroupsize == 64 && wg(sized.instance) === KernelAbstractions.StaticSize{(64,)}
+    @test wg(il(k, OtherBackend(), nothing)) === KernelAbstractions.DynamicSize
+    @test wg(ParticleMeshCore.launcher(k, backend, nothing)) === KernelAbstractions.DynamicSize
+    # The default launch of the Reference flux gives the bits of a fixed size, for the Dual of #442 too.
+    D2 = Dual{Nothing,Float64,2}
+    st = (Node(), Node())
+    for T in (TYPES..., D2)
+        grid = grid2(T, flux_g2(Quadratic, st))
+        tuned = flux2d(Reference(), flux_species_2d(T, grid, 400), Quadratic, st, grid)
+        fixed = flux2d(Reference(), flux_species_2d(T, grid, 400), Quadratic, st, grid; workgroupsize = 7)
+        @test same_bits.(tuned[1:3], fixed[1:3]) == (true, true, true)
+        @test any(!iszero, tuned[1])
+    end
+end

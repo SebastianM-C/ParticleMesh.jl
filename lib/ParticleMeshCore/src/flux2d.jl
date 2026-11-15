@@ -30,13 +30,21 @@ has_flux_extras(s::Species{2}) = all(k -> haskey(s.extras, k), (:old_cell_1, :ol
 @inline old_cell_2d(s, i) = @inbounds (s.extras.old_cell_1[i], s.extras.old_cell_2[i])
 @inline old_offset_2d(s, i) = @inbounds (s.extras.old_offset_1[i], s.extras.old_offset_2[i])
 
+# `outer` and `outer2` build the `M1·M2` entries of a stencil component with `ntuple`, one call of a
+# closure per entry. Both closures are forced inline, the entry's and `f`: left to the compiler's
+# cost model they stay out of line for the larger bodies (`outer2`'s for every element type, all
+# three components' for a `Dual`), and each entry then costs a call and, since `k` is no longer
+# a constant there, an integer division by `M1` (T-800). The arithmetic of an entry is the same
+# either way.
+
 "The column-major outer product `f(a[k1], b[k2])` of two tuples, axis 1 fastest, with its length static."
-@inline outer(f, a::NTuple{M1,Any}, b::NTuple{M2,Any}) where {M1,M2} =
-    ntuple(k -> f(a[(k - 1) % M1 + 1], b[(k - 1) ÷ M1 + 1]), Val(M1 * M2))
+@inline outer(f::F, a::NTuple{M1,Any}, b::NTuple{M2,Any}) where {F,M1,M2} =
+    ntuple(k -> (@inline; @inline f(a[(k - 1) % M1 + 1], b[(k - 1) ÷ M1 + 1])), Val(M1 * M2))
 
 "`outer` over two pairs of tuples of equal length per axis: `f((a[1][k1], a[2][k1]), (b[1][k2], b[2][k2]))`."
-@inline outer2(f, a::NTuple{2,NTuple{M1,Any}}, b::NTuple{2,NTuple{M2,Any}}) where {M1,M2} =
-    ntuple(k -> f((a[1][(k - 1) % M1 + 1], a[2][(k - 1) % M1 + 1]), (b[1][(k - 1) ÷ M1 + 1], b[2][(k - 1) ÷ M1 + 1])), Val(M1 * M2))
+@inline outer2(f::F, a::NTuple{2,NTuple{M1,Any}}, b::NTuple{2,NTuple{M2,Any}}) where {F,M1,M2} =
+    ntuple(k -> (@inline; @inline f((a[1][(k - 1) % M1 + 1], a[2][(k - 1) % M1 + 1]),
+                                    (b[1][(k - 1) ÷ M1 + 1], b[2][(k - 1) ÷ M1 + 1]))), Val(M1 * M2))
 
 """
     flux_stencil(s, i, shape, stagger::NTuple{2}, n::NTuple{2,Int32}, sx::NTuple{2}, quantity_z)
@@ -228,8 +236,8 @@ function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, 
     M = flux_widths(shape, st)
     r = map(x -> flux_reach(shape, x), st)
     lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
-    launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, n, sx, qz,
-                                                            Val(prod(M)); ndrange = prod(n))
+    item_launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, n, sx, qz,
+                                                                 Val(prod(M)); ndrange = prod(n))
     launcher(flux_reduce_2d_kernel!, backend, workgroupsize)(Jx, Jy, Jz, ws.flux_patch, n, Int32(guards(grid)), lo, hi, Int32.(M);
                                                              ndrange = size(Jx))
     return Jx, Jy, Jz

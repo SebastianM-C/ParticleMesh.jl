@@ -346,3 +346,46 @@ end
         @test record!("T-309", T, absdiff(sum(c.Jz), expect) / (ε * np * maximum(i -> absmax(QZ2(s, i)), alive))) <= C
     end
 end
+
+# WP-061, the cost of the 2D flux deposition: T-800 here, T-801 in launch.jl.
+
+"The function a statically dispatched call of optimized code goes to, by name."
+invoked_name(x::Core.MethodInstance) = x.def isa Method ? x.def.name : Symbol(x.def)
+invoked_name(x::Core.CodeInstance) = invoked_name(x.def isa Core.MethodInstance ? x.def : x.def.def)
+invoked_name(x) = Symbol(string(x))
+
+"""
+    stencil_calls(T, shape, st) -> Vector{Symbol}
+
+The calls the optimized code of the 2D `flux_stencil` leaves out of line for the element type
+`T`: the callees of its `:invoke` statements, and `:dynamic` for every call that is not a
+builtin. The error paths of a checked index (`throw_boundserror`) and of a conversion to `Int32`
+(`InexactError`) are left out; the kernels call the stencil under `@inbounds`.
+"""
+function stencil_calls(::Type{T}, shape, st) where {T}
+    s = Species(backend, T, 4; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
+    types = typeof.((s, 1, shape, st, Int32.((8, 8)), (one(T), one(T)), QZ2))
+    ci, _ = only(code_typed(ParticleMeshCore.flux_stencil, types; optimize = true))
+    calls = Symbol[]
+    for stmt in ci.code
+        e = stmt isa Expr && stmt.head === :(=) ? stmt.args[2] : stmt
+        e isa Expr || continue
+        if e.head === :invoke
+            name = invoked_name(e.args[1])
+            name in (:throw_boundserror, :InexactError) || push!(calls, name)
+        elseif e.head === :call
+            f = e.args[1]
+            f = f isa GlobalRef ? getglobal(f.mod, f.name) : f
+            f isa Core.Builtin || f isa Core.IntrinsicFunction || push!(calls, :dynamic)
+        end
+    end
+    return calls
+end
+
+@testset "T-800 the 2D flux stencil compiles to straight-line code, with no call left out of line, for every element type [A7, A8, WP-061]" begin
+    # #442: left to the compiler's cost model, the closures of the stencil's outer products stayed
+    # out of line (36 calls per particle at order 2 for Float32 and Float64, 108 for a Dual).
+    for T in (TYPES..., Dual{Nothing,Float64,2}), shape in SHAPES, st in STAGGER_PAIRS
+        @test isempty(stencil_calls(T, shape, st))
+    end
+end
