@@ -61,10 +61,12 @@ Not in the vector, because the run does not carry a derivative with respect to t
 ([`EMParams`](@ref)): the configuration (the box, the cells, the time step, a laser's `position`
 and `center`, the window's start, the witness's injection time and region, charges and masses),
 the seed, and the background fields `E0` and `B0`. An entry may be a number at which the run is
-not differentiable in practice (the `Inf` of a witness of unbounded width, a zero thermal speed
-that selects a cold load); the vector lists what can be written, and the choice of what to vary
-is the caller's. The three thermal speeds of a Maxwell–Jüttner species are one temperature:
-they must stay equal, partials included.
+not differentiable in practice (the `Inf` of a witness of unbounded width); the vector lists what
+can be written, and the choice of what to vary is the caller's. A species keeps the kind of its
+momentum distribution whatever its thermal speeds become, so the three thermal speeds of a
+Maxwell–Jüttner species, which are one temperature, must stay equal, partials included; that
+load is also only piecewise smooth in its drift and temperature (its rejection sampling), and
+at a drift of exactly zero its derivative with respect to the drift is lost (#PLACEHOLDER).
 
 Every part must be in the element type `T` of `p`: a description that holds a species, a laser
 or a profile of another type (a Float64 species in a Float32 problem) is an `ArgumentError`,
@@ -91,8 +93,10 @@ tunable_count(p::Union{EMProblem,EMParams}) = sum(q -> length(part_names(last(q)
 
 `p` with the entries of [`tunables`](@ref) replaced by `v`, in the element type `S` of `v`: every
 other number of `p` (the box, the time step, the charges, the background fields) is converted
-to `S` (so a `Dual` description is not written back in a plain float type), and what is not a
-number is kept. With `S` the element type of `p`,
+to `S`, and what is not a number is kept, the kind of each species' momentum distribution
+included; so is the configuration that a description holds in a type of its own (a laser's
+`position` and `center`, the witness's injection time and region). A description whose numbers `S` cannot hold (a `Dual` description written back in a
+plain float type, or in duals of another tag) is an `ArgumentError`, and so is an integer `S`. With `S` the element type of `p`,
 `with_tunables(p, tunables(p)) === p`; with `S` a `Dual`, the result is the description of the
 differentiated run, to build a state from (or, for an `EMParams`, to step an existing dual state
 with). The description is built by its constructors, so a vector they refuse (a ramp of
@@ -124,8 +128,16 @@ function with_tunables(p::EMParams, v::AbstractVector{S}) where {S}
 end
 
 function check_tunable_vector(p, v::AbstractVector{S}) where {S}
-    S <: Real && isconcretetype(S) ||
-        throw(ArgumentError("with_tunables: the vector's element type $S must be a concrete real type (it becomes the element type of the result)"))
+    S <: Real && isconcretetype(S) && !(S <: Integer) ||
+        throw(ArgumentError("with_tunables: the vector's element type $S must be a concrete real type that is not an integer (it becomes the element type of the result)"))
+    # every other number of `p` is converted to `S`: one of them says whether `S` can hold them
+    x = first(p.E0)
+    try
+        S(x)
+    catch e
+        e isa MethodError || e isa InexactError || rethrow()
+        throw(ArgumentError("with_tunables: the numbers of the problem, of type $(typeof(x)), cannot be converted to the vector's element type $S"))
+    end
     n = tunable_count(p)
     length(v) == n || throw(ArgumentError("with_tunables: $(length(v)) values for the $n tunables of the problem ($(join(tunable_names(p), ", ")))"))
     return nothing

@@ -6,7 +6,7 @@ using SciMLBase: SciMLBase, DiscreteProblem, remake, solve
 using OrdinaryDiffEqFunctionMap: FunctionMap
 using SciMLStructures: SciMLStructures, Tunable, Constants, Discrete, Caches, Initials
 
-"A periodic 2D description with every tunable a different number: two lasers, two species, a witness bunch."
+"A 2D description, periodic along x and open along y, with every tunable a different number and no part at its default: two lasers, two species, background fields, a witness bunch."
 function tunables_periodic(::Type{T}) where {T}
     cells = (32, 8)
     h = 2 * T(π) / 8
@@ -18,23 +18,33 @@ function tunables_periodic(::Type{T}) where {T}
                               (T(5) / 64, T(6) / 64, T(7) / 64), 1)
     i = SpeciesDescription{T}(:ion, one(T), T(1836), T(3) / 10, T(3) / 32, (2, 1), (1, 2), (T(9) / 64, T(10) / 64, T(11) / 64),
                               (T(13) / 64, T(13) / 64, T(13) / 64), 2)
-    wb = WitnessBunch(; inject = 4.0, region = ((2.0, 6.0), (1.0, 3.0)), momentum = (T(3), T(1) / 2, T(1) / 3), center = (T(4), T(2)),
-                      length = T(5) / 4, width = T(7) / 4)
-    return EMProblem("tunables-periodic", (cells[1] * h, cells[2] * h), cells, T(95) / 100 * h / sqrt(T(2)), 20, (e, i), 3, (1, 0);
-                     lasers = (l1, l2), witness = wb)
+    wb = WitnessBunch(; inject = 4.0, region = ((2.0, 6.0), (1.0, 3.0)), ppc = (2, 3), momentum = (T(3), T(1) / 2, T(1) / 3),
+                      center = (T(4), T(2)), length = T(5) / 4, width = T(7) / 4, charge = T(-2), mass = T(3))
+    return EMProblem("tunables-periodic", (cells[1] * h, cells[2] * h), cells, T(95) / 100 * h / sqrt(T(2)), 20, (e, i), 3, (2, 1);
+                     E0 = (T(1) / 16, T(2) / 16, T(3) / 16), B0 = (T(5) / 16, T(6) / 16, T(7) / 16), lasers = (l1, l2),
+                     boundaries = (:periodic, :open), witness = wb)
 end
 
-"A moving-window 2D description: one laser, a drifting warm species and a density ramp, no witness."
-function tunables_window(::Type{T}) where {T}
+"""
+A moving-window 2D description with a density ramp and a witness bunch (the two optional parts
+together): one laser and one species, drifting and warm in a window that starts at 0, or cold and
+at rest in one that starts at `start` > 0.
+"""
+function tunables_window(::Type{T}; start = 0) where {T}
     cells = (32, 8)
     h = 2 * T(π) / 8
     pulse = GaussianLaser(; a0 = T(2), waist = T(5), duration = T(3), delay = T(18), focus = T(7), position = 4h, center = 4h)
-    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(1) / 10, zero(T), (1, 0), (2, 2), (T(1) / 64, T(2) / 64, T(3) / 64),
-                              (T(5) / 64, T(6) / 64, T(7) / 64), 1; momentum = :gaussian_velocity)
+    drift, thermal = start > 0 ? (ZERO3(T), ZERO3(T)) : ((T(1) / 64, T(2) / 64, T(3) / 64), (T(5) / 64, T(6) / 64, T(7) / 64))
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(1) / 10, zero(T), (1, 0), (2, 2), drift, thermal, 1; momentum = :gaussian_velocity)
+    wb = WitnessBunch(; inject = 4.0, region = ((2.0, 6.0), (1.0, 3.0)), momentum = T(3), center = (T(4), T(2)), length = T(5) / 4)
     return EMProblem("tunables-window", (cells[1] * h, cells[2] * h), cells, T(95) / 100 * h / sqrt(T(2)), 20, (e,), 3, (1, 0);
-                     lasers = (pulse,), boundaries = (:window, :periodic), window = MovingWindow(; start = zero(T)),
-                     profile = DensityRamp(; vacuum = T(6), ramp = T(4)))
+                     lasers = (pulse,), boundaries = (:window, :periodic), window = MovingWindow(; start = T(start)),
+                     profile = DensityRamp(; vacuum = T(6), ramp = T(4)), witness = wb)
 end
+tunables_window_late(::Type{T}) where {T} = tunables_window(T; start = 37)
+
+"The three 2D descriptions of T-770 to T-772, each with the names of its tunables."
+const TUNABLE_FIXTURES = ((tunables_periodic, () -> PERIODIC_NAMES), (tunables_window, () -> WINDOW_NAMES), (tunables_window_late, () -> WINDOW_NAMES))
 
 # The tunables of a description read field by field, written out a second time, independently of
 # `ParticleMeshElectromagnetic.part_values`: what the vector must hold, and in which order.
@@ -60,7 +70,8 @@ const PERIODIC_NAMES = [:laser1_a0, :laser1_waist, :laser1_duration, :laser1_del
 
 const WINDOW_NAMES = [:laser1_a0, :laser1_waist, :laser1_duration, :laser1_delay, :laser1_focus, :laser1_chirp, :laser1_polarization,
                       :laser1_phase, :species1_density, :species1_amplitude, :species1_drift_x, :species1_drift_y, :species1_drift_z,
-                      :species1_thermal_x, :species1_thermal_y, :species1_thermal_z, :profile_vacuum, :profile_ramp]
+                      :species1_thermal_x, :species1_thermal_y, :species1_thermal_z, :profile_vacuum, :profile_ramp, :witness_momentum_x,
+                      :witness_momentum_y, :witness_momentum_z, :witness_center_x, :witness_center_y, :witness_length, :witness_width]
 
 # What `with_tunables` must leave as it was: everything of a description that is not a tunable.
 laser_rest(l) = (l.position, l.center, l.envelope)
@@ -79,8 +90,9 @@ function shifted(names, v::Vector{T}) where {T}
 end
 
 @testset "T-770 the tunables of a description: names, order, and the round trip through the vector [A3, A8, WP-059]" begin
-    for T in TYPES, (build, names) in ((tunables_periodic, PERIODIC_NAMES), (tunables_window, WINDOW_NAMES))
+    for T in TYPES, (build, getnames) in TUNABLE_FIXTURES
         p = build(T)
+        names = getnames()
         v = tunables(p)
         @test v isa Vector{T}
         @test tunable_names(p) == names
@@ -89,7 +101,7 @@ end
         @test with_tunables(p, v) === p                         # egal: every field, with its type and its bits
         # the vector written back: each entry lands in its own field, nothing else moves
         w = shifted(names, v)
-        @test !any(k -> !iszero(v[k]) && w[k] == v[k], eachindex(v))
+        @test !any(k -> !iszero(v[k]) && isfinite(v[k]) && w[k] == v[k], eachindex(v))
         q = with_tunables(p, w)
         @test typeof(q) === typeof(p)
         @test same_bits(expected_tunables(q), w)
@@ -119,21 +131,41 @@ end
         @test same_bits(v, expected_tunables(p))
         @test with_tunables(p, v) === p
         @test with_tunables(params(p), v) === params(p)
+        w = [x * (1 + T(k) / 128) + T(k) / 1024 for (k, x) in enumerate(v)]      # zeros move too
+        q = with_tunables(p, w)
+        @test same_bits(expected_tunables(q), w) && same_bits(tunables(q), w)
+        @test problem_rest(q) === problem_rest(p)
+        @test with_tunables(params(p), w) === params(q)
     end
-    # another element type: the vector's, for every number of the description
-    p = tunables_periodic(Float64)
-    v = tunables(p)
-    for S in (Float32, D3)
+    let p = problem_from_case(load_case("two-stream"), Float64), v = tunables(p)
+        q = with_tunables(p, Float32.(v))
+        @test eltype(q) === Float32 && ndims(q) == 1
+        @test same_bits(expected_tunables(q), Float32.(v))
+        @test q.length === Float32(p.length) && q.kmode === Float32(p.kmode) && q.dt === Float32(p.dt)
+        @test with_tunables(params(p), Float32.(v)) === params(q)
+    end
+    # another element type: the vector's, for every number of the description; what is
+    # configuration in a type of its own (a laser's position and centre, the witness's injection
+    # time and region) stays as it is
+    for (build, _) in TUNABLE_FIXTURES, S in (Float32, D3)
+        p = build(Float64)
+        v = tunables(p)
         q = with_tunables(p, S.(v))
         @test eltype(q) === S
         @test tunables(q) isa Vector{S}
-        @test same_bits(tunables(q), S.(v))
-        @test q.dt === S(p.dt) && q.length === S.(p.length) && q.E0 === S.(p.E0)
-        @test q.species[2].mass === S(1836) && q.witness.charge === S(-1)
-        @test q.lasers[1].position === p.lasers[1].position           # configuration, kept in its own type
+        @test same_bits(tunables(q), S.(v)) && same_bits(expected_tunables(q), S.(v))
+        @test q.dt === S(p.dt) && q.length === S.(p.length) && q.E0 === S.(p.E0) && q.B0 === S.(p.B0)
+        @test (q.name, q.cells, q.nsteps, q.seed, q.kmode, q.boundaries) === (p.name, p.cells, p.nsteps, p.seed, p.kmode, p.boundaries)
+        @test (q.window === nothing) == (p.window === nothing) && (p.window === nothing || q.window.start === S(p.window.start))
+        @test map(d -> (d.charge, d.mass), q.species) === map(d -> (S(d.charge), S(d.mass)), p.species)
+        @test map(species_rest, q.species) == map(species_rest, p.species)
+        @test (q.witness.charge, q.witness.mass) === (S(p.witness.charge), S(p.witness.mass))
+        @test (q.witness.inject, q.witness.region, q.witness.ppc) === (p.witness.inject, p.witness.region, p.witness.ppc)
+        @test map(laser_rest, q.lasers) === map(laser_rest, p.lasers)
         @test eltype(params(q)) === S
         @test with_tunables(params(p), S.(v)) === params(q)
     end
+    @test tunables_periodic(Float64).witness.charge == -2 && tunables_periodic(Float64).species[2].mass == 1836
     # duals: the partials are the vector's
     dv = [D3(x, ForwardDiff.Partials((Float32(k), 0.0f0, 1.0f0))) for (k, x) in enumerate(tunables(tunables_periodic(Float32)))]
     iso = findall(n -> n in (:species2_thermal_x, :species2_thermal_y, :species2_thermal_z), PERIODIC_NAMES)
@@ -143,6 +175,11 @@ end
     @test same_bits(tunables(q), dv)                                  # the partials are carried
     @test ForwardDiff.value.(tunables(q)) == tunables(tunables_periodic(Float32))
     @test with_tunables(q, tunables(q)) === q
+    # a dual description is not written back in a type that cannot hold its numbers
+    for x in (q, params(q))
+        @test_throws ArgumentError with_tunables(x, ForwardDiff.value.(tunables(q)))
+        @test_throws ArgumentError with_tunables(x, ForwardDiff.Dual{:other,Float32,3}.(ForwardDiff.value.(tunables(q))))
+    end
     @test q.dt === D3(tunables_periodic(Float32).dt)                  # the configuration carries no partial
 end
 
@@ -155,6 +192,7 @@ end
         @test_throws ArgumentError with_tunables(x, Real[v...])               # not a concrete element type
         @test_throws ArgumentError with_tunables(x, Any[v...])
         @test_throws ArgumentError with_tunables(x, complex.(v))
+        @test_throws ArgumentError with_tunables(x, round.(Int, v))
     end
     # a part in another element type than the description's
     e32 = SpeciesDescription{Float32}(:electron, -1, 1, 0.1, 0, (1, 0), (2, 2), ZERO3(Float32), ZERO3(Float32), 1)
@@ -181,7 +219,7 @@ end
 end
 
 @testset "T-772 the Tunable portion of the SciML structure is the vector [A9, WP-059]" begin
-    for T in TYPES, p in (tunables_periodic(T), tunables_window(T)), x in (p, params(p))
+    for T in TYPES, p in (tunables_periodic(T), tunables_window(T), tunables_window_late(T)), x in (p, params(p))
         @test SciMLStructures.isscimlstructure(x)
         @test !SciMLStructures.ismutablescimlstructure(x)
         @test SciMLStructures.hasportion(Tunable(), x)
@@ -193,8 +231,12 @@ end
         w = shifted(tunable_names(x), v)
         @test repack(w) === with_tunables(x, w) === SciMLStructures.replace(Tunable(), x, w)
         @test same_bits(SciMLStructures.canonicalize(Tunable(), repack(w))[1], w)
-        v .= 0                                                              # a new vector, no alias of the structure
-        @test same_bits(tunables(x), expected_tunables(x))
+    end
+    # a vector of another element type gives the structure in that type, by repack and by replace
+    for p in (tunables_periodic(Float64), tunables_window_late(Float64)), x in (p, params(p)), S in (Float32, D3)
+        v, repack, _ = SciMLStructures.canonicalize(Tunable(), x)
+        @test eltype(repack(S.(v))) === S
+        @test repack(S.(v)) === with_tunables(x, S.(v)) === SciMLStructures.replace(Tunable(), x, S.(v))
     end
     @test !SciMLStructures.isscimlstructure(EMNumerics())
 end
