@@ -103,7 +103,8 @@ peak_paraxial() = maximum(s -> abs(first(laser_field(vacuum_pulse(), 0.0, 0.0, s
 The vacuum run at `ncx` cells per wavelength along x: test atoms of zero weight on every cell, the
 pulse launched at t = 0 and run until it has passed the focal column by six durations; the
 released fraction (`pending`: nothing is born at zero weight) of the atoms of the focal column
-against their distance from the axis, and the largest |Ey| the run had next to the focus.
+against their distance from the axis, and the largest |Ey| the run had on the Ey node next to the focus
+(interpolated in time between the steps).
 """
 function vacuum_run(level, ncx)
     hx, hy = 2π / ncx, 2π / VAC.rows_per_wavelength
@@ -121,10 +122,13 @@ function vacuum_run(level, ncx)
     g = ParticleMeshCore.guards(st.grid)
     i0, j0 = g + round(Int, VAC.focus / hx), g + cells[2] ÷ 2
     p = params(prob)
-    peak = 0.0
+    peak, y1, y2 = 0.0, 0.0, 0.0
     seconds = @elapsed for k in 1:nsteps
         step!(st, p, k)
-        peak = max(peak, abs(st.fields.Ey[i0, j0]))
+        y3 = abs(st.fields.Ey[i0, j0])
+        # the vertex of the parabola through three samples about a local maximum: the peak between the steps
+        y2 >= y1 && y2 > y3 && (peak = max(peak, y2 - (y1 - y3)^2 / (8 * (y1 - 2y2 + y3))))
+        y1, y2 = y2, y3
     end
     s = ionization_state(st)
     col = argmin(abs.(s.x .- VAC.focus))
