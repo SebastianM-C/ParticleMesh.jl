@@ -32,10 +32,10 @@ engine_refusal(err, wg, kernel) =
     st = (Node(), Node())   # the stagger of the electromagnetic 2D step's current
     wmax = KI.max_work_group_size(backend)
     # #297: Dual{Float32,3}, Quadratic, 2D at 512 and 1024 (PoCL reported 983 work-items as the
-    # flux patch kernel's maximum at this stagger in #297; the maximum moves with the kernel's code,
-    # and since WP-061's change of it 1024 ran where this was last run), and at the backend's
-    # maximum, which the sort kernels before the flux patch take. A size past the backend's limit
-    # is T-501's.
+    # flux patch kernel's maximum at this stagger in #297; the maximum moves with the kernel's code
+    # and with the machine: since WP-061's change of it PoCL reported 3269 on one CPU and ran 4096
+    # on CI's runners), and at the backend's maximum, which the sort kernels before the flux patch
+    # take. A size past the backend's limit is T-501's.
     ref = flux2d_or_refusal(D3, Quadratic, st, 32)
     @test ref.err === nothing
     @test same_bits.(flux2d_or_refusal(D3, Quadratic, st, nothing).J, ref.J) == (true, true, true)
@@ -50,11 +50,20 @@ engine_refusal(err, wg, kernel) =
             @test engine_refusal(r.err, wg, :flux_patch_2d_kernel!)
         end
     end
+    # The per-kernel refusal of #297 needs a flux patch whose own maximum is below the backend's.
+    # PoCL derives the maximum from the kernel's private memory, so where Dual{Float32,3} runs at
+    # the backend's limit, Dual{Float64,8}, with 4.5 times the bytes per value, is the kernel that
+    # is refused there (PoCL reported 727 work-items for it where it reported 3269 for the former).
+    heavy = Dual{Nothing,Float64,8}
+    if outcomes[wmax] === :ran
+        r = flux2d_or_refusal(heavy, Quadratic, st, wmax)
+        outcomes[heavy] = r.err === nothing ? :ran : :refused
+        @test r.err !== nothing && engine_refusal(r.err, wmax, :flux_patch_2d_kernel!)
+    end
     println("T-500 Dual{Float32,3} Quadratic 2D flux on $(nameof(typeof(backend))): ",
-            join(("workgroupsize $wg $(outcomes[wg])" for wg in (512, 1024, wmax)), ", "))
-    # At the backend's limit the Dual flux patch is over its own, smaller, maximum: the per-kernel
-    # refusal of #297, which the 1024 case meets where the kernel's maximum is below 1024.
-    @test outcomes[wmax] === :refused
+            join(("workgroupsize $wg $(outcomes[wg])" for wg in (512, 1024, wmax)), ", "),
+            haskey(outcomes, heavy) ? "; Dual{Float64,8} at workgroupsize $wmax $(outcomes[heavy])" : "")
+    @test :refused in values(outcomes)
     # Float32 and Float64 at 1024: the bits of 32.
     for T in (Float32, Float64)
         a, b = flux2d_or_refusal(T, Quadratic, st, 32), flux2d_or_refusal(T, Quadratic, st, 1024)

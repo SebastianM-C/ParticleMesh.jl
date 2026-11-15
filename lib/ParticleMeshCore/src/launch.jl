@@ -12,7 +12,8 @@ each compiled kernel has its own maximum, which depends on the backend, the kern
 element type: PoCL lowers it for kernels with a large private stack, such as the 2D flux patch
 with `Dual` elements (for `Dual{Float32,3}`, the quadratic shape and the stagger
 `(Node(), Node())` PoCL reported 983 work-items in #297; the number moves with the kernel's
-code, and since WP-061's change of it 1024 fit and the backend's 4096 do not, T-500). It is
+code and with the machine: since WP-061's change of it PoCL reported 3269 on one CPU and ran
+the backend's 4096 on another, T-500). It is
 known only once KernelAbstractions has compiled the kernel for its arguments, inside the
 launch, and KernelAbstractions has no public query for it, so the engine cannot clamp a
 requested size to it. A launch with a size that does not fit is refused before the kernel

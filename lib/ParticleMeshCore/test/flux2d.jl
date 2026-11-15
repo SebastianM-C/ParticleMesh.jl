@@ -354,28 +354,33 @@ invoked_name(x::Core.MethodInstance) = x.def isa Method ? x.def.name : Symbol(x.
 invoked_name(x::Core.CodeInstance) = invoked_name(x.def isa Core.MethodInstance ? x.def : x.def.def)
 invoked_name(x) = Symbol(string(x))
 
+"The function a `:call` of optimized code names: Julia 1.13 writes a `GlobalRef` there, 1.14 the binding it resolved to."
+called(f::GlobalRef) = getglobal(f.mod, f.name)
+called(f::Core.BindingPartition) = f.restriction
+called(f) = f
+
 """
     stencil_calls(T, shape, st) -> Vector{Symbol}
 
 The calls the optimized code of the 2D `flux_stencil` leaves out of line for the element type
 `T`: the callees of its `:invoke` statements, and `:dynamic` for every call that is not a
-builtin. The error paths of a checked index (`throw_boundserror`) and of a conversion to `Int32`
-(`InexactError`) are left out; the kernels call the stencil under `@inbounds`.
+builtin. The error paths are left out, which are the invocations that never return (the throw of
+a checked index, whose name differs between Julia versions) and the `InexactError` of a
+conversion to `Int32`; the kernels call the stencil under `@inbounds`.
 """
 function stencil_calls(::Type{T}, shape, st) where {T}
     s = Species(backend, T, 4; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
     types = typeof.((s, 1, shape, st, Int32.((8, 8)), (one(T), one(T)), QZ2))
     ci, _ = only(code_typed(ParticleMeshCore.flux_stencil, types; optimize = true))
     calls = Symbol[]
-    for stmt in ci.code
+    for (i, stmt) in enumerate(ci.code)
         e = stmt isa Expr && stmt.head === :(=) ? stmt.args[2] : stmt
         e isa Expr || continue
         if e.head === :invoke
             name = invoked_name(e.args[1])
-            name in (:throw_boundserror, :InexactError) || push!(calls, name)
+            ci.ssavaluetypes[i] === Union{} || name === :InexactError || push!(calls, name)
         elseif e.head === :call
-            f = e.args[1]
-            f = f isa GlobalRef ? getglobal(f.mod, f.name) : f
+            f = called(e.args[1])
             f isa Core.Builtin || f isa Core.IntrinsicFunction || push!(calls, :dynamic)
         end
     end
