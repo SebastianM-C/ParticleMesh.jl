@@ -6,24 +6,37 @@ const LASER_TUNABLES = (:a0, :waist, :duration, :delay, :focus, :chirp, :polariz
 const SPECIES_TUNABLES = (:density, :amplitude, :drift_x, :drift_y, :drift_z, :thermal_x, :thermal_y, :thermal_z)
 const PROFILE_TUNABLES = (:vacuum, :ramp)
 const WITNESS_TUNABLES = (:momentum_x, :momentum_y, :momentum_z, :center_x, :center_y, :length, :width)
+const SECTION_TUNABLES = (:section_start, :section_stop, :section_ramp)
+const LEVEL_TUNABLES = (:prefactor, :field, :power)
 
 part_values(l::GaussianLaser) = (l.a0, l.waist, l.duration, l.delay, l.focus, l.chirp, l.polarization, l.phase)
 part_values(d::Union{SpeciesDescription,SpeciesParams}) = (d.density, d.amplitude, d.drift..., d.thermal...)
 part_values(r::DensityRamp) = (r.vacuum, r.ramp)
 part_values(b::Union{WitnessBunch,WitnessParams}) = (b.momentum..., b.center..., b.length, b.width)
+part_values(d::Union{FieldIonization,IonizationParams}) = (d.density, section_values(d.section)..., level_values(d.levels)...)
 part_values(::Nothing) = ()
+
+section_values(::Nothing) = ()
+section_values(s::DopantSection) = (s.start, s.stop, s.ramp)
+level_values(levels::Tuple) = foldl((xs, l) -> (xs..., l.prefactor, l.field, l.power), levels; init = ())
 
 part_names(::GaussianLaser) = LASER_TUNABLES
 part_names(::Union{SpeciesDescription,SpeciesParams}) = SPECIES_TUNABLES
 part_names(::DensityRamp) = PROFILE_TUNABLES
 part_names(::Union{WitnessBunch,WitnessParams}) = WITNESS_TUNABLES
 part_names(::Nothing) = ()
+# The dopant's names depend on the description: a section or none, and the number of levels.
+function part_names(d::Union{FieldIonization,IonizationParams})
+    section = d.section === nothing ? () : SECTION_TUNABLES
+    levels = foldl((xs, j) -> (xs..., map(n -> Symbol(:level, j, :_, n), LEVEL_TUNABLES)...), eachindex(d.levels); init = ())
+    return (:density, section..., levels...)
+end
 
 # The parts that hold tunables, in the order of the vector, each with the prefix of its names.
 function tunable_parts(p::Union{EMProblem,EMParams})
     lasers = ntuple(i -> (Symbol(:laser, i), p.lasers[i]), length(p.lasers))
     species = ntuple(i -> (Symbol(:species, i), p.species[i]), length(p.species))
-    return (lasers..., species..., (:profile, p.profile), (:witness, p.witness))
+    return (lasers..., species..., (:profile, p.profile), (:witness, p.witness), (:ionization, p.ionization))
 end
 
 """
@@ -34,7 +47,9 @@ The names of the entries of [`tunables`](@ref)`(p)`, in its order: for the `i`-t
 for the `i`-th mobile species `species<i>_density`, `_amplitude`, `_drift_x`, `_drift_y`,
 `_drift_z`, `_thermal_x`, `_thermal_y` and `_thermal_z`; with a density profile `profile_vacuum`
 and `profile_ramp`; with a witness bunch `witness_momentum_x`, `_momentum_y`, `_momentum_z`,
-`witness_center_x`, `_center_y`, `witness_length` and `witness_width`.
+`witness_center_x`, `_center_y`, `witness_length` and `witness_width`; with a field ionization
+`ionization_density`, with a section `ionization_section_start`, `_section_stop` and
+`_section_ramp`, and for its `j`-th level `ionization_level<j>_prefactor`, `_field` and `_power`.
 `findfirst(==(:laser1_duration), tunable_names(p))` is the index of an entry.
 """
 function tunable_names(p::Union{EMProblem,EMParams})
@@ -52,14 +67,17 @@ The differentiable parameters of a problem description or of its [`EMParams`](@r
 vector, named by [`tunable_names`](@ref): every number that A3 lets enter through the antenna's
 source (a laser's amplitude, waist, duration, delay, focus, chirp, polarization and phase),
 through the particle weights (a species' density and perturbation amplitude, the density
-profile's vacuum and ramp lengths, a witness bunch's centre, length and width) or through the
-loaded momenta (a species' drift and thermal speeds, the witness's momentum).
+profile's vacuum and ramp lengths, a witness bunch's centre, length and width, a dopant's density
+and its section's start, stop and ramp), through the loaded momenta (a species' drift and thermal
+speeds, the witness's momentum) or through the ionization rates (each level's prefactor, field
+and power).
 [`with_tunables`](@ref) writes a vector back, so a gradient with respect to any of them is the
 derivative of `x -> J(with_tunables(p, x))`.
 
 Not in the vector, because the run does not carry a derivative with respect to them
 ([`EMParams`](@ref)): the configuration (the box, the cells, the time step, a laser's `position`
-and `center`, the window's start, the witness's injection time and region, charges and masses),
+and `center`, the window's start, the witness's injection time and region, charges and masses,
+the dopant's lattice, rows, birth cadence and capacity and its levels' cutoffs),
 the seed, and the background fields `E0` and `B0`. An entry may be a number at which the run is
 not differentiable in practice (the `Inf` of a witness of unbounded width); the vector lists what
 can be written, and the choice of what to vary is the caller's. A species keeps the kind of its
@@ -93,7 +111,7 @@ tunable_count(p::Union{EMProblem,EMParams}) = sum(q -> length(part_names(last(q)
 other number of `p` (the box, the time step, the charges, the background fields) is converted
 to `S`, and what is not a number is kept, the kind of each species' momentum distribution
 included; so is the configuration that a description holds in a type of its own (a laser's
-`position` and `center`, the witness's injection time and region). A description whose numbers `S` cannot hold (a `Dual` description written back in a
+`position` and `center`, the witness's injection time and region, the dopant's rows). A description whose numbers `S` cannot hold (a `Dual` description written back in a
 plain float type, or in duals of another tag) is an `ArgumentError`, and so is an integer `S`. With `S` the element type of `p` and of all its parts,
 `with_tunables(p, tunables(p)) === p`; with `S` a `Dual`, the result is the description of the
 differentiated run, to build a state from (or, for an `EMParams`, to step an existing dual state
@@ -108,11 +126,12 @@ function with_tunables(p::EMProblem{N}, v::AbstractVector{S}) where {N,S}
     species = map(d -> with_part(S, d, v, i), p.species)
     profile = with_part(S, p.profile, v, i)
     witness = with_part(S, p.witness, v, i)
+    ionization = with_part(S, p.ionization, v, i)
     box = N == 1 ? S(p.length) : S.(p.length)
     kmode = N == 1 ? S(p.kmode) : p.kmode
     window = p.window === nothing ? nothing : MovingWindow(S(p.window.start))
     return EMProblem(p.name, box, p.cells, S(p.dt), p.nsteps, species, p.seed, kmode; E0 = S.(p.E0), B0 = S.(p.B0), lasers,
-                     boundaries = p.boundaries, window, profile, witness)
+                     boundaries = p.boundaries, window, profile, witness, ionization)
 end
 
 function with_tunables(p::EMParams, v::AbstractVector{S}) where {S}
@@ -122,7 +141,8 @@ function with_tunables(p::EMParams, v::AbstractVector{S}) where {S}
     species = map(d -> with_part(S, d, v, i), p.species)
     profile = with_part(S, p.profile, v, i)
     witness = with_part(S, p.witness, v, i)
-    return EMParams{S}(; lasers, species, profile, witness, seed = p.seed, E0 = S.(p.E0), B0 = S.(p.B0))
+    ionization = with_part(S, p.ionization, v, i)
+    return EMParams{S}(; lasers, species, profile, witness, ionization, seed = p.seed, E0 = S.(p.E0), B0 = S.(p.B0))
 end
 
 function check_tunable_vector(p, v::AbstractVector{S}) where {S}
@@ -174,5 +194,20 @@ end
 function with_part(::Type{S}, ::WitnessParams, v, i) where {S}
     x = take!(v, i, length(WITNESS_TUNABLES))
     return WitnessParams{S}(x[1:3], x[4:5], x[6], x[7])
+end
+# The dopant's density, section and levels from the next entries, a level's cutoff kept.
+function ionization_numbers(::Type{S}, d, v, i) where {S}
+    density = only(take!(v, i, 1))
+    section = d.section === nothing ? nothing : DopantSection(; NamedTuple{(:start, :stop, :ramp)}(take!(v, i, 3))...)
+    levels = map(l -> ADKLevel(take!(v, i, 3)...; cutoff = S(l.cutoff)), d.levels)
+    return density, levels, section
+end
+function with_part(::Type{S}, d::FieldIonization, v, i) where {S}
+    density, levels, section = ionization_numbers(S, d, v, i)
+    return FieldIonization(; density, levels, section, capacity = d.capacity, ppc = d.ppc, every = d.every, rows = d.rows)
+end
+function with_part(::Type{S}, d::IonizationParams, v, i) where {S}
+    density, levels, section = ionization_numbers(S, d, v, i)
+    return IonizationParams{S}(density, levels, section)
 end
 with_part(::Type, ::Nothing, v, i) = nothing

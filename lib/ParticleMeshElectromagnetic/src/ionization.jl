@@ -1,0 +1,558 @@
+# Field ionization of a dopant at N = 2, deterministic (WP-059, A0, A3, A4, A8, §0.4): macro-atoms
+# on a fixed lattice whose bound populations follow the rate equations of a tunnel-ionization rate
+# (ADK) in the field at each atom, and which release their electrons by weight into free slots of
+# an electron species of their own. No random number is drawn: a standard PIC code decides each
+# ionization by a Monte Carlo draw against 1 − exp(−W·Δt), which a derivative does not pass
+# through, while here the released weight is a smooth function of the field.
+#
+# - The atoms are an engine `Species` that is never pushed (immobile ions, A2): the lattice of
+#   `ppc` points per cell of the engine's quiet start, on every column the plasma is loaded on and
+#   on the rows of the description's `rows`. An atom's weight is the dopant density at its place
+#   over the points per cell, so the density and the doped section enter through the weights only
+#   (A3), and through them the weights of the electrons. With a moving window the atoms shift back
+#   with it, the back column's leave, and the injection column's are loaded fresh at their global
+#   column, as the plasma's are.
+# - Per atom and level j = 1 … L (the transitions the description lists, in order) the bound
+#   population f_j, the part of the atom that has released j − 1 electrons and holds its j-th:
+#   f_1 = 1 and the others 0 at the start. In a step with the rates W_j of the field |Eⁿ| at the
+#   atom, d_j = f_j·(1 − exp(−W_j·Δt)) leaves level j for level j + 1 (the last level's leaves the
+#   list), all levels from the populations at the start of the step, so an atom passes one level
+#   per step. For one level this is the exact solution in a constant field; the populations are
+#   taken at the half steps, as the momenta are, so the rate at tⁿ is the midpoint rule.
+# - The released fraction Σ_j d_j is kept per atom in `pending`. At a birth step (every `every`-th
+#   step) an atom whose weight times `pending` is positive writes one electron of that weight into
+#   a free slot, at the atom's place, with the momentum of an electron at rest at tⁿ taken half a
+#   step back (the pusher's −Δt/2 in Eⁿ, Bⁿ, as `initialize!` centres a load), adds `pending` to
+#   its `emitted` and zeroes it. Electrons of several levels released in one birth are one
+#   particle: they start at one place, at rest. An atom that finds no free slot keeps its
+#   `pending` for the next birth step and is counted ([`ionization_lost`](@ref)), so no charge is
+#   lost.
+# - Charge: an electron is born on top of the ion it leaves, which is immobile, so the birth changes
+#   no charge density and no field, and from then on the electron's current is the engine's
+#   charge-conserving `deposit_flux!`. Gauss's law therefore holds to roundoff with the ions'
+#   charge counted, the atoms' weight times `emitted` at their places ([`ionization_charge!`](@ref)).
+#   The energy the ionization takes from the field (the ionization current) is not modelled.
+# - Static shapes (§0.4 rule 1): the atoms' buffer is the lattice, full and in the engine's sorted
+#   order at every step (columns fastest, then rows, the in-cell index fastest within a cell; a
+#   window's shift writes the fresh column into the slots of the one that left and sorts), so an
+#   atom's slot is its place on the lattice. The electrons' buffer has the capacity the
+#   description gives; a birth step offers every atom slot i the electron slot count + i behind
+#   the electrons' alive count, and the next sort compacts the ones not taken.
+
+"""
+    ADKLevel(prefactor, field, power; cutoff = 64)
+
+One tunnel-ionization transition of an atom or ion, with its rate in a static electric field of
+strength `E` in the form of Ammosov, Delone and Krainov, in A1 units:
+
+    W(E) = prefactor · (field/E)^power · exp(−field/(3E))        (1/ω₀, E in mₑcω₀/e)
+
+In atomic units, for the ionization energy I and the charge Z of the ion left behind,
+`field = 2(2I)^{3/2}`, `power = 2n* − |m| − 1` with `n* = Z/√(2I)` and
+`prefactor = C²·B·I`, `C² = 2^{2n*}/(n*·Γ(n* + l* + 1)·Γ(n* − l*))`,
+`B = (2l + 1)(l + |m|)!/(2^{|m|}·|m|!·(l − |m|)!)`. The conversion to A1 units depends on the
+laser frequency and lives in the user layer (A1; `scripts/ionization/atomic.jl` builds a level
+from an ionization energy in eV and a wavelength). All three numbers may be `Dual`s.
+
+The rate is taken to zero where it is negligible, smoothly (the AD-smoothness rule of A2): for
+`x = field/(3E)` it is multiplied by the C¹ step `s²(3 − 2s)`, `s = clamp(8(cutoff − x)/cutoff, 0, 1)`,
+so it is exactly zero for `x ≥ cutoff` (and at `E = 0`), unchanged for `x ≤ 7·cutoff/8`, and its
+derivative is continuous. With the default the factor acts below `exp(−56)` of the prefactor's
+scale. An atom in a field below the cutoff releases nothing and occupies no electron slot.
+No barrier-suppression correction is applied: at fields far above `field/3` the form is used as
+it stands.
+"""
+struct ADKLevel{T}
+    prefactor::T
+    field::T
+    power::T
+    cutoff::T
+end
+
+function ADKLevel(prefactor, field, power; cutoff = 64)
+    T = float(promote_type(typeof(prefactor), typeof(field), typeof(power), typeof(cutoff)))   # integers as Float64
+    prefactor >= 0 && isfinite(prefactor) || throw(ArgumentError("an ADK level's prefactor must be finite and ≥ 0, got $prefactor"))
+    field > 0 && isfinite(field) || throw(ArgumentError("an ADK level's field must be finite and positive, got $field"))
+    isfinite(power) || throw(ArgumentError("an ADK level's power must be finite, got $power"))
+    cutoff > 0 && isfinite(cutoff) || throw(ArgumentError("an ADK level's cutoff must be finite and positive, got $cutoff"))
+    return ADKLevel{T}(T(prefactor), T(field), T(power), T(cutoff))
+end
+
+"The level in element type `T`."
+level_as(::Type{T}, l::ADKLevel) where {T} = ADKLevel{T}(T(l.prefactor), T(l.field), T(l.power), T(l.cutoff))
+
+# The rate from |E|² (a device function): the test for the cutoff is on E², so no square root and
+# no division is taken where the rate is zero, and a `Dual` field of value zero gives a zero with
+# zero partials, not a NaN.
+@inline function adk_rate_sq(l::ADKLevel{T}, E2::T) where {T}
+    c3 = 3 * l.cutoff
+    c3 * c3 * E2 <= l.field * l.field && return zero(T)      # x = field/(3E) ≥ cutoff; a NaN field goes on and gives a NaN
+    r = l.field / sqrt(E2)
+    x = r / 3
+    s = min(8 * (l.cutoff - x) / l.cutoff, one(T))
+    return l.prefactor * r^l.power * exp(-x) * (s * s * (3 - 2 * s))
+end
+
+"""
+    adk_rate(level::ADKLevel, E) -> rate
+
+The ionization rate of `level` in a field of strength `E ≥ 0` (mₑcω₀/e), in 1/ω₀
+([`ADKLevel`](@ref)); a device function, generic in the element type.
+"""
+@inline function adk_rate(l::ADKLevel{T}, E::S) where {T,S<:Real}
+    R = promote_type(T, S)                     # a field of another type (a host call): both in the common type
+    x = R(E)
+    return adk_rate_sq(level_as(R, l), x * x)
+end
+
+"""
+    DopantSection(; start, stop, ramp)
+
+The longitudinal profile of a dopant along axis 1, in the global (lab) coordinate x of the box (of
+a moving window's first position), c/ω₀: the factor `r(x − start)·(1 − r(x − stop))` with the C¹
+rise `r(s) = sin²(π·s/(2·ramp))` clamped to 0 for `s ≤ 0` and to 1 for `s ≥ ramp`, so the dopant
+rises from `start` to `start + ramp`, holds, and falls from `stop` to `stop + ramp`. It multiplies
+the dopant's density and enters through the atoms' weights only (A3); all three may be `Dual`s.
+`ramp` must be positive and `stop ≥ start`.
+"""
+struct DopantSection{T}
+    start::T
+    stop::T
+    ramp::T
+end
+function DopantSection(; start, stop, ramp)
+    ramp > 0 || throw(ArgumentError("a dopant section needs a positive ramp length, got $ramp"))
+    stop >= start || throw(ArgumentError("a dopant section needs stop ≥ start, got start = $start and stop = $stop"))
+    T = float(promote_type(typeof(start), typeof(stop), typeof(ramp)))
+    return DopantSection{T}(T(start), T(stop), T(ramp))
+end
+
+section_as(::Type{T}, ::Nothing) where {T} = nothing
+section_as(::Type{T}, s::DopantSection) where {T} = DopantSection{T}(T(s.start), T(s.stop), T(s.ramp))
+
+"""
+    FieldIonization(; density, levels, capacity, section = nothing, ppc = (1, 1), every = 1, rows = nothing)
+
+A dopant that the fields ionize, of an [`EMProblem`](@ref) at N = 2 (WP-059), in A1 units, with no
+random numbers: macro-atoms at rest on the lattice of `ppc = (p₁, p₂)` points per cell,
+`((k₁ − ½)/p₁, (k₂ − ½)/p₂)` in each cell, on every column the plasma is loaded on and on the rows
+whose centre lies inside `rows = (y_lo, y_hi)` (c/ω₀; every row by default). An atom's weight is
+`density` (n_c, the density of dopant atoms) times the `section`'s factor at its place
+([`DopantSection`](@ref); 1 without one) over `p₁·p₂`.
+
+`levels` lists the transitions the fields drive, in order, each an [`ADKLevel`](@ref): the atom
+starts with all of them bound and releases one electron per transition, level j + 1 only from the
+part that has passed level j. Electrons the dopant has lost before the run (an L shell taken as
+ionized by the pulse's foot, say) are not listed; they belong to the plasma's density. In every
+step each level's bound population loses the fraction `1 − exp(−W·Δt)` of the rate `W` in the
+field at the atom, and every `every`-th step (the birth steps) an atom releases what it has lost
+since its last birth as one electron of that weight, at rest at the atom's place, into the
+electron species of the ionization ([`ionization_electrons`](@ref): charge −1, mass 1, pushed and
+deposited as the plasma is, `capacity` slots). What an atom loses in the `every` steps between two
+births is born together, at rest at the later birth step, so the momentum the laser leaves an
+electron with is that of the birth step's phase: keep `every·Δt` well below the laser period
+(`every = 1` costs one particle per releasing atom and step). At a birth step atom slot i writes
+into electron slot `alive + i`, so the step needs as many slots as the electrons alive plus the
+highest atom slot that releases (the number of atom slots at most), and every atom of non-zero
+weight in a field above its level's cutoff releases and takes a slot, however small the weight.
+An atom that finds no slot keeps what it has lost for the next birth step and is counted
+([`ionization_lost`](@ref)).
+
+`density`, the levels' numbers and the section's are parameters and may be `Dual`s (A3: they
+enter through the weights and the rates, never through a position, [`IonizationParams`](@ref));
+`ppc`, `every`, `rows` and `capacity` are configuration.
+"""
+struct FieldIonization{T,L,S,R}
+    density::T
+    levels::NTuple{L,ADKLevel{T}}
+    section::S
+    ppc::NTuple{2,Int}
+    every::Int
+    rows::R
+    capacity::Int
+end
+
+function FieldIonization(; density, levels, capacity::Integer, section = nothing, ppc = (1, 1), every::Integer = 1, rows = nothing)
+    lv = levels isa ADKLevel ? (levels,) : Tuple(levels)
+    !isempty(lv) && all(l -> l isa ADKLevel, lv) ||
+        throw(ArgumentError("levels must be one ADKLevel or a non-empty tuple of them, got $levels"))
+    section === nothing || section isa DopantSection || throw(ArgumentError("section must be a DopantSection or nothing, got $section"))
+    T = promote_type(typeof(density), map(l -> typeof(l.prefactor), lv)...)
+    section === nothing || (T = promote_type(T, typeof(section.start)))
+    T = float(T)
+    density >= 0 && isfinite(density) || throw(ArgumentError("the dopant density must be finite and ≥ 0, got $density"))
+    pp = Int.(Tuple(ppc))
+    length(pp) == 2 && all(>(0), pp) || throw(ArgumentError("the dopant lattice needs ppc > 0 on both axes, got $ppc"))
+    every >= 1 || throw(ArgumentError("every must be at least 1 (a birth every `every` steps), got $every"))
+    capacity >= 1 || throw(ArgumentError("the ionization electrons need a capacity of at least one slot, got $capacity"))
+    rw = rows === nothing ? nothing : Float64.(Tuple(rows))
+    rw === nothing || (length(rw) == 2 && rw[1] < rw[2]) || throw(ArgumentError("rows = $rows needs (y_lo, y_hi) with y_lo < y_hi"))
+    sec = section_as(T, section)
+    return FieldIonization{T,length(lv),typeof(sec),typeof(rw)}(T(density), map(l -> level_as(T, l), lv), sec, pp, Int(every), rw,
+                                                              Int(capacity))
+end
+
+"The description in element type `T` (the problem's)."
+function ionization_as(::Type{T}, d::FieldIonization{<:Any,L}) where {T,L}
+    sec = section_as(T, d.section)
+    return FieldIonization{T,L,typeof(sec),typeof(d.rows)}(T(d.density), map(l -> level_as(T, l), d.levels), sec, d.ppc, d.every, d.rows,
+                                                          d.capacity)
+end
+
+"""
+    IonizationParams{T}
+
+The parameters of a [`FieldIonization`](@ref) (A3): the dopant `density` (n_c) and its `section`
+([`DopantSection`](@ref) or `nothing`), read where the atoms are loaded (the initial load and a
+moving window's refill), and the `levels` (a tuple of [`ADKLevel`](@ref)), read by every step's
+rates; all may be `Dual`s. The lattice, the birth cadence and the electrons' capacity are
+configuration of the state.
+"""
+struct IonizationParams{T,L,S}
+    density::T
+    levels::NTuple{L,ADKLevel{T}}
+    section::S
+end
+
+function IonizationParams{T}(density, levels::Tuple, section = nothing) where {T}
+    sec = section_as(T, section)
+    lv = map(l -> level_as(T, l), levels)
+    return IonizationParams{T,length(lv),typeof(sec)}(T(density), lv, sec)
+end
+
+ionization_params(::Type{T}, ::Nothing) where {T} = nothing
+ionization_params(::Type{T}, d::FieldIonization) where {T} = IonizationParams{T}(d.density, d.levels, d.section)
+ionization_params(::Type{T}, d::IonizationParams) where {T} = IonizationParams{T}(d.density, d.levels, d.section)
+
+# The loader's numbers of the dopant profile: the density, and the section's start, stop and ramp
+# (no section: a rise that is over everywhere and a fall that never starts).
+function dopant_density_params(p::IonizationParams{T}) where {T}
+    s = p.section
+    return s === nothing ? (p.density, T(-Inf), T(Inf), one(T)) : (p.density, s.start, s.stop, s.ramp)
+end
+
+"The dopant density at the global coordinate `x` along axis 1 (a device function): `p = (density, start, stop, ramp)`."
+@inline dopant_density(x, p) = p[1] * ramp_factor(x, p[2], p[4]) * (one(x) - ramp_factor(x, p[3], p[4]))
+
+"""
+    IonizationFrame
+
+A [`FieldIonization`](@ref) placed on a grid by the state: the `atoms` (a `Species{2}` that is
+never pushed; `w` the atom's weight, and as extras per atom `pending`, the fraction released since
+its last birth, `emitted`, the fraction born as electrons so far, and `bound_1 … bound_L`, the
+bound population of each level) with the workspace their sort uses, the `electrons` (the species
+the births are written into) with theirs, the birth cadence `every`, the lattice (first row
+`row0`, `nrows` rows, `ncols` columns from column 1, `ppc` points per cell), the device counter
+`lost` of the births that found no free slot, and the scratch `flags` (one per atom slot). The
+dopant's density, section and levels are not here ([`IonizationParams`](@ref)).
+"""
+struct IonizationFrame{A,AW,E,EW,C,F}
+    atoms::A
+    atoms_ws::AW
+    electrons::E
+    electrons_ws::EW
+    every::Int
+    row0::Int32
+    nrows::Int32
+    ncols::Int32
+    ppc::NTuple{2,Int32}
+    lost::C
+    flags::F
+end
+
+"The names and element types of the atoms' extras for `L` levels."
+function atom_extras(::Type{T}, L::Integer) where {T}
+    names = (:pending, :emitted, ntuple(j -> Symbol(:bound_, j), L)...)
+    return NamedTuple{names}(ntuple(_ -> T, L + 2))
+end
+
+"The bound populations of the atoms' extras, as a tuple of `L` arrays."
+@inline bound_populations(x::NamedTuple, ::Val{L}) where {L} = ntuple(j -> x[j + 2], Val(L))
+
+# The lattice of a description on a grid: the first row and the rows (those whose centre lies in
+# `rows`), and the columns from column 1 (the plasma's: all of a static box, those up to the
+# injection column of a moving window).
+function ionization_placement(d::FieldIonization, grid, window)
+    n = ncells(grid)
+    row0, nrows = d.rows === nothing ? (1, n[2]) : witness_cells(d.rows..., cellsize(grid)[2], n[2], 2)
+    ncols = window === nothing ? n[1] : injection_column(window)
+    return (Int32(row0), Int32(nrows), Int32(ncols), Int32.(d.ppc))
+end
+
+function IonizationFrame(problem::EMProblem{2,T}, grid, backend, numerics, window) where {T}
+    d = problem.ionization
+    L = length(d.levels)
+    row0, nrows, ncols, ppc = ionization_placement(d, grid, window)
+    natoms = Int(ncols) * Int(nrows) * prod(d.ppc)
+    atoms = Species(backend, T, natoms; q = one(T), m = one(T), N = 2, extras = atom_extras(T, L))
+    electrons = Species(backend, T, d.capacity; q = -one(T), m = one(T), N = 2, extras = flux_extras(T, 2))
+    flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
+    return IonizationFrame(atoms, Workspace(atoms, grid), electrons, Workspace(electrons, grid; flux), d.every, row0, nrows, ncols, ppc,
+                           KernelAbstractions.zeros(backend, Int32, 1), KernelAbstractions.zeros(backend, Int32, natoms))
+end
+
+"The ionization's frame of a state, or `nothing` (at N = 1, and at N = 2 without a [`FieldIonization`](@ref))."
+ionization_frame(st::EMState) = haskey(st.aux, :ionization) ? st.aux.ionization : nothing
+
+"The ionization's electrons of a state, as a tuple: `()` without ionization."
+born_species(::Nothing) = ()
+born_species(fr::IonizationFrame) = (fr.electrons,)
+born_species(st::EMState) = born_species(ionization_frame(st))
+born_workspaces(::Nothing) = ()
+born_workspaces(fr::IonizationFrame) = (fr.electrons_ws,)
+
+"The species that deposit a current, with their workspaces in the same order: the problem's, then the ionization's electrons."
+deposited_species(st::EMState) = (st.species..., born_species(st)...)
+deposited_workspaces(st::EMState) = (st.ws..., born_workspaces(ionization_frame(st))...)
+
+# --- the atoms' load ----------------------------------------------------------------------------
+
+# The fresh atoms of the window columns col0 … col0 + ncol − 1 on the lattice's rows, at the window
+# position `origin` (global column = window column + origin): work item i is the in-cell index k of
+# the cell (column, row), columns fastest, then rows, k fastest within a cell (the engine's sorted
+# order), written into slot `cell·stride·K + k`, K the points per cell. With `stride = 1` that is
+# slot i, the whole lattice in its order (the initial load, `ncol` the lattice's columns); with
+# `ncol = 1` and `stride` the lattice's columns it is the slots of each row's first column, which a
+# window's shift has just retired. An atom starts with its first level bound and nothing released;
+# it is at rest and stays there.
+@kernel function load_atoms_kernel!(a, dp, dx, ppc::NTuple{2,Int32}, col0::Int32, ncol::Int32, row0::Int32, origin::Int32,
+                                    stride::Int32, ::Val{L}) where {L}
+    i = Int32(@index(Global, Linear))
+    T = eltype(a.w)
+    K = ppc[1] * ppc[2]
+    cell = (i - Int32(1)) ÷ K
+    k = (i - Int32(1)) % K
+    c1 = col0 + cell % ncol
+    c2 = row0 + cell ÷ ncol
+    δ1 = (T(k % ppc[1]) + one(T) / 2) / T(ppc[1])
+    δ2 = (T(k ÷ ppc[1]) + one(T) / 2) / T(ppc[2])
+    x1 = (T(c1 + origin - Int32(1)) + δ1) * dx[1]
+    slot = cell * stride * K + k + Int32(1)
+    @inbounds begin
+        a.cell[1][slot] = c1
+        a.cell[2][slot] = c2
+        a.offset[1][slot] = δ1
+        a.offset[2][slot] = δ2
+        a.u[1][slot] = zero(T)
+        a.u[2][slot] = zero(T)
+        a.u[3][slot] = zero(T)
+        a.w[slot] = dopant_density(x1, dp) / T(K)
+        a.extras.pending[slot] = zero(T)
+        a.extras.emitted[slot] = zero(T)
+        a.status[slot] = ALIVE
+    end
+    b = bound_populations(a.extras, Val(L))
+    ntuple(j -> (@inbounds b[j][slot] = ifelse(j == 1, one(T), zero(T)); nothing), Val(L))
+end
+
+# After `nnew` slots were offered behind the count: the count, capped at the capacity.
+@kernel function bump_count_kernel!(count, nnew::Int32, cap::Int32)
+    @inbounds count[1] = min(count[1] + nnew, cap)
+end
+
+# Load the atoms of `ncol` columns from window column `col0` at the window position `origin`, into
+# the slots `load_atoms_kernel!` names for `stride`.
+function load_atoms!(fr::IonizationFrame, grid, p::IonizationParams, col0::Integer, ncol::Integer, origin::Integer, stride::Integer, wgs)
+    a = fr.atoms
+    nnew = Int(ncol) * Int(fr.nrows) * Int(prod(fr.ppc))
+    launcher(load_atoms_kernel!, get_backend(a), wgs)(a, dopant_density_params(p), cellsize(grid), fr.ppc, Int32(col0), Int32(ncol),
+                                                      fr.row0, Int32(origin), Int32(stride), Val(length(p.levels)); ndrange = nnew)
+    return fr
+end
+
+"The start of a run (`initialize!`): no electron, the counter zero, and the atoms of the lattice loaded in their ground state from the parameters."
+initialize_ionization!(::Nothing, grid, p, wgs) = nothing
+function initialize_ionization!(fr::IonizationFrame, grid, p::IonizationParams, wgs)
+    for s in (fr.atoms, fr.electrons)
+        fill!(s.status, ParticleMeshCore.FREE)
+        fill!(s.count, Int32(0))
+    end
+    fill!(fr.lost, Int32(0))
+    load_atoms!(fr, grid, p, 1, fr.ncols, 0, 1, wgs)
+    fill!(fr.atoms.count, Int32(capacity(fr.atoms)))
+    return nothing
+end
+
+# --- the step ----------------------------------------------------------------------------------
+
+# One work item per atom slot. An alive atom: the fields at its place, each level's rate, the
+# populations after the step from those at its start (level j loses d_j and gains d_{j−1}), and the
+# released fraction added to `pending`. At a birth step, an atom whose weight times `pending` is
+# positive writes its electron into slot count[1] + i when that slot exists (at the atom's place,
+# with the momentum of rest at tⁿ taken half a step back by the pusher), moves `pending` into
+# `emitted`, and otherwise keeps it and raises its flag.
+@kernel function ionize_kernel!(a, e, flags, @Const(count), f, levels::NTuple{L,Any}, pusher, shape, g::Int32, dt, qm_h, birth::Bool,
+                                cap::Int32) where {L}
+    i = Int32(@index(Global, Linear))
+    deferred = Int32(0)
+    @inbounds if a.status[i] == ALIVE
+        T = eltype(a.w)
+        c = particle_cell(a, i, Val(2))
+        δ = particle_offset(a, i, Val(2))
+        E, B = fields_at(f, c, δ, shape, g)
+        E2 = E[1] * E[1] + E[2] * E[2] + E[3] * E[3]
+        b = bound_populations(a.extras, Val(L))
+        old = ntuple(j -> (@inbounds b[j][i]), Val(L))
+        wdt = ntuple(j -> adk_rate_sq(levels[j], E2) * dt, Val(L))
+        out = ntuple(j -> old[j] * -expm1(-wdt[j]), Val(L))
+        ntuple(j -> (@inbounds b[j][i] = old[j] * exp(-wdt[j]) + (j == 1 ? zero(T) : out[max(j - 1, 1)]); nothing), Val(L))
+        pending = a.extras.pending[i] + sum(out)
+        w = a.w[i] * pending
+        if birth && w > zero(T)
+            slot = count[1] + i
+            if slot <= cap
+                u = push_momentum(pusher, (zero(T), zero(T), zero(T)), E, B, qm_h)
+                e.cell[1][slot] = c[1]
+                e.cell[2][slot] = c[2]
+                e.offset[1][slot] = δ[1]
+                e.offset[2][slot] = δ[2]
+                e.u[1][slot] = u[1]
+                e.u[2][slot] = u[2]
+                e.u[3][slot] = u[3]
+                e.w[slot] = w
+                e.status[slot] = ALIVE
+                a.extras.emitted[i] += pending
+                pending = zero(T)
+            else
+                deferred = Int32(1)
+            end
+        end
+        a.extras.pending[i] = pending
+    end
+    @inbounds flags[i] = deferred
+end
+
+"Whether `step!` sorts the species `s` in every step (the charge-conserving current in a mode that sorts), so that its count is the alive count at the start of a step."
+sorted_every_step(st::EMState, s) = st.numerics.current isa Esirkepov && sorts(st, s)
+
+"""
+    ionize!(frame, state, params, k)
+
+The ionization of step `k`, before the push: every atom's populations by the rates in Eⁿ at its
+place, and, when `k` is a birth step (a multiple of the frame's `every`), the births into the
+electrons' slots behind their alive count (the electrons are sorted first where the step does not
+sort them, so that the count is the alive count), the count advanced by one slot per atom slot,
+and the births that found no slot added to `lost`. `nothing` without a frame.
+"""
+ionize!(::Nothing, st, p, k) = nothing
+function ionize!(fr::IonizationFrame, st::EMState, p::EMParams, k::Integer)
+    (; numerics, grid, fields, dt) = st
+    wgs = numerics.workgroupsize
+    a, e = fr.atoms, fr.electrons
+    be = get_backend(a)
+    birth = k % fr.every == 0
+    birth && !sorted_every_step(st, e) && sort_by_cell!(e, grid, fr.electrons_ws; workgroupsize = wgs)
+    launcher(ionize_kernel!, be, wgs)(a, e, fr.flags, e.count, fields, p.ionization.levels, numerics.pusher, numerics.shape,
+                                      Int32(guards(grid)), dt, -e.q / e.m * dt / 4, birth, Int32(capacity(e)); ndrange = capacity(a))
+    if birth
+        launcher(bump_count_kernel!, be, wgs)(e.count, Int32(capacity(a)), Int32(capacity(e)); ndrange = 1)
+        sum!(fr.lost, fr.flags; init = false)
+    end
+    return nothing
+end
+
+# A moving window's shift by one cell, to its position after `s_new` shifts: the electrons one cell
+# back with the back column's retired and the slots compacted; the atoms one cell back, the
+# injection column's atoms written fresh, at their global column, into the slots of the back
+# column's (each row's first, the buffer being in sorted order), and the sort that puts the buffer
+# back in sorted order, the populations with their atoms.
+shift_ionization!(::Nothing, st, p, s_new) = nothing
+function shift_ionization!(fr::IonizationFrame, st::EMState, p::EMParams, s_new::Integer)
+    wgs = st.numerics.workgroupsize
+    (; electrons, atoms) = fr
+    launcher(shift_particles_kernel!, get_backend(electrons), wgs)(electrons; ndrange = capacity(electrons))
+    sort_by_cell!(electrons, st.grid, fr.electrons_ws; workgroupsize = wgs)
+    launcher(shift_particles_kernel!, get_backend(atoms), wgs)(atoms; ndrange = capacity(atoms))
+    load_atoms!(fr, st.grid, p.ionization, fr.ncols, 1, s_new, fr.ncols, wgs)
+    sort_by_cell!(atoms, st.grid, fr.atoms_ws; workgroupsize = wgs)
+    return nothing
+end
+
+# --- the checks of the configuration and the parameters -----------------------------------------
+
+check_ionization_params(::Nothing, ::Nothing) = nothing
+check_ionization_params(fr, p) = throw(ArgumentError("the parameters $(p === nothing ? "have no" : "have an") ionization, the state $(fr === nothing ? "has none" : "has one")"))
+function check_ionization_params(fr::IonizationFrame, p::IonizationParams)
+    L = length(fr.atoms.extras) - 2
+    length(p.levels) == L || throw(ArgumentError("$(length(p.levels)) ionization levels in the parameters, $L in the state"))
+    return nothing
+end
+
+# --- observables (host reads, outside a step) ---------------------------------------------------
+
+function need_ionization(st::EMState)
+    fr = ionization_frame(st)
+    fr === nothing && throw(ArgumentError("the state has no ionization (EMProblem(...; ionization = FieldIonization(...)))"))
+    return fr
+end
+
+"""
+    ionization_electrons(state::EMState{2}) -> Species
+
+The electrons the state's [`FieldIonization`](@ref) has released (the engine's `Species`, charge
+−1 and mass 1: cells, offsets, momenta `u = γv` at the last half step, weights in n_c per
+particle, status). They are pushed, deposited, retired and shifted as the problem's species are,
+and are part of the state's kinetic energy. A sum over them is a smooth function of the
+parameters while none of them has left: an electron that an open edge or a moving window's back
+edge retires takes its weight out at a step that depends on the parameters, as the plasma's
+particles do ([`window_back_band`](@ref), #370). An `ArgumentError` without ionization.
+"""
+ionization_electrons(st::EMState{2}) = need_ionization(st).electrons
+
+"""
+    ionization_state(state::EMState{2}) -> NamedTuple
+
+The dopant atoms of `state`, per atom slot (host arrays): the position `x` and `y` (c/ω₀; window
+coordinates with a moving window), the weight `w` (n_c per atom), the bound population of each
+level `bound` (a tuple of arrays, one per level), the fraction `pending` (released, not yet born),
+the fraction `emitted` (born as electrons) and `alive`. An atom of `L` levels has released
+`pending + emitted = L − Σ_j (L − j + 1)·bound[j]` electrons per atom, to roundoff (level j holds
+the part that has released j − 1); for one level, `bound[1] + pending + emitted = 1`. A device
+read: never inside a step.
+"""
+function ionization_state(st::EMState{2})
+    fr = need_ionization(st)
+    a = fr.atoms
+    h = cellsize(st.grid)
+    L = length(a.extras) - 2
+    x = (Array(a.cell[1]) .- 1 .+ Array(a.offset[1])) .* h[1]
+    y = (Array(a.cell[2]) .- 1 .+ Array(a.offset[2])) .* h[2]
+    return (; x, y, w = Array(a.w), bound = map(Array, bound_populations(a.extras, Val(L))), pending = Array(a.extras.pending),
+            emitted = Array(a.extras.emitted), alive = Array(a.status) .== ALIVE)
+end
+
+"""
+    ionization_lost(state::EMState{2}) -> Int
+
+The births that found no free electron slot since `initialize!` (the electrons' `capacity` was too
+small at that birth step): each such atom kept what it had released and tried again at the next
+birth step, so no charge is lost, but its electrons are born later than they would have been. A
+device read: never inside a step.
+"""
+ionization_lost(st::EMState{2}) = Int(Array(need_ionization(st).lost)[1])
+
+"The charge a dopant atom's ion has gained, `q·w·emitted` (a `deposit!` quantity): the opposite of its born electrons' charge."
+struct EmittedCharge end
+@inline (::EmittedCharge)(s, i) = @inbounds s.q * s.w[i] * s.extras.emitted[i]
+
+"""
+    ionization_charge!(ρ, state::EMState{2}) -> ρ
+
+The charge density of the dopant's ions on the primal nodes: every atom's weight times its
+`emitted` fraction, at the atom's place, deposited in the state's mode as the particles' charge is
+(with a moving window the x-guards dropped, the y-guards folded, as [`window_charge!`](@ref)
+does). It is the opposite of the charge the born electrons had at their birth, so with it Gauss's
+law holds to roundoff in a run with ionization. A diagnostic, outside `step!`.
+"""
+function ionization_charge!(ρ, st::EMState{2})
+    fr = need_ionization(st)
+    (; numerics, grid) = st
+    a = fr.atoms
+    fill!(ρ, zero(eltype(ρ)))
+    mode = deposit_mode(st, a)
+    mode isa Reference && sort_by_cell!(a, grid, fr.atoms_ws)
+    deposit!(mode, ρ, a, numerics.shape, RHO_STAGGER_2D, grid, fr.atoms_ws; quantity = EmittedCharge())
+    zero_x_edges!(window_frame(st), ρ)
+    fold_guards!(ρ, grid)
+    return ρ
+end

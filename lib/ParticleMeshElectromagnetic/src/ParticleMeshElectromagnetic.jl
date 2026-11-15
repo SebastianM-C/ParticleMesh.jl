@@ -4,7 +4,7 @@
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
 `N = 1` and `N = 2` (1D3V and 2D3V; periodic, and at `N = 2` with an open transverse axis
 through an absorbing layer, WP-027, or a convolutional PML, WP-034, and a moving window along axis 1, WP-028, and a witness bunch of test electrons whose mean energy gain is the
-optimization objective, WP-047), with the current a choice of the numerics
+optimization objective, WP-047, and a dopant that the fields ionize by an ADK rate with no random numbers, WP-059), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields at `N = 2`). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
@@ -28,7 +28,7 @@ KernelAbstractions kernel, generic in the element type and within the Reactant r
 
 A run is `state = EMState(problem, numerics)`, `initialize!(state, p)` and `step!(state, p, k)`
 (or `run!`) with `p = params(problem)`: the step is a function of the state and the parameters
-([`EMParams`](@ref): the lasers, the densities and the profile, the witness bunch, the seed; A3),
+([`EMParams`](@ref): the lasers, the densities and the profile, the witness bunch, the dopant, the seed; A3),
 and the state keeps what a run evolves and the configuration it was sized for, no parameter. The
 diagnostics are an observer's ([`observe!`](@ref), [`HistoryRecorder`](@ref)), called at the start
 of each step. The state is closed: [`evolved`](@ref) lists what a run evolves, and with the step
@@ -73,6 +73,8 @@ export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPla
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
+export ADKLevel, adk_rate, DopantSection, FieldIonization, IonizationParams
+export ionization_electrons, ionization_state, ionization_lost, ionization_charge!
 export MovingWindow, DensityRamp, WindowFrame, WindowEdges, WindowClock, window_load, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
 
 include("layout.jl")
@@ -89,6 +91,7 @@ include("boundaries.jl")
 include("pml.jl")
 include("window.jl")
 include("witness.jl")
+include("ionization.jl")
 include("tunables.jl")
 include("restart.jl")
 include("diagnostics.jl")

@@ -1,6 +1,6 @@
 # WP-060: the differentiable parameters of a problem description as one vector, and as the
 # `Tunable` portion of a SciML structure, T-790 to T-793. After lwfa_gradient.jl (the WP-043 case
-# and T-581's gradient) and window_cases.jl (`ZERO3`).
+# and T-581's gradient), window_cases.jl (`ZERO3`) and ionization_cases.jl (`ion_window`).
 
 using SciMLBase: SciMLBase, DiscreteProblem, remake, solve
 using OrdinaryDiffEqFunctionMap: FunctionMap
@@ -30,7 +30,7 @@ A moving-window 2D description with a density ramp and a witness bunch (the two 
 together): one laser and one species, drifting and warm in a window that starts at 0, or cold and
 at rest in one that starts at `start` > 0.
 """
-function tunables_window(::Type{T}; start = 0) where {T}
+function tunables_window(::Type{T}; start = 0, ionization = nothing) where {T}
     cells = (32, 8)
     h = 2 * T(π) / 8
     pulse = GaussianLaser(; a0 = T(2), waist = T(5), duration = T(3), delay = T(18), focus = T(7), position = 4h, center = 4h)
@@ -39,12 +39,22 @@ function tunables_window(::Type{T}; start = 0) where {T}
     wb = WitnessBunch(; inject = 4.0, region = ((2.0, 6.0), (1.0, 3.0)), momentum = T(3), center = (T(4), T(2)), length = T(5) / 4)
     return EMProblem("tunables-window", (cells[1] * h, cells[2] * h), cells, T(95) / 100 * h / sqrt(T(2)), 20, (e,), 3, (1, 0);
                      lasers = (pulse,), boundaries = (:window, :periodic), window = MovingWindow(; start = T(start)),
-                     profile = DensityRamp(; vacuum = T(6), ramp = T(4)), witness = wb)
+                     profile = DensityRamp(; vacuum = T(6), ramp = T(4)), witness = wb, ionization)
 end
 tunables_window_late(::Type{T}) where {T} = tunables_window(T; start = 37)
 
-"The three 2D descriptions of T-790 to T-792, each with the names of its tunables."
-const TUNABLE_FIXTURES = ((tunables_periodic, () -> PERIODIC_NAMES), (tunables_window, () -> WINDOW_NAMES), (tunables_window_late, () -> WINDOW_NAMES))
+"A dopant with every tunable a different number and no configuration at its default: two levels, with a section or without."
+function tunables_dopant(::Type{T}; section = true) where {T}
+    levels = (ADKLevel(T(1) / 5, T(3), T(1); cutoff = T(48)), ADKLevel(T(1) / 7, T(4), T(3) / 2; cutoff = T(40)))
+    sec = section ? DopantSection(; start = T(7), stop = T(9), ramp = T(2)) : nothing
+    return FieldIonization(; density = T(1) / 200, levels, capacity = 512, section = sec, ppc = (2, 1), every = 2, rows = (1.0, 5.0))
+end
+"The window description with all three optional parts: a density ramp, a witness bunch and a dopant with a section."
+tunables_ionized(::Type{T}) where {T} = tunables_window(T; ionization = tunables_dopant(T))
+
+"The 2D descriptions of T-790 to T-792, each with the names of its tunables."
+const TUNABLE_FIXTURES = ((tunables_periodic, () -> PERIODIC_NAMES), (tunables_window, () -> WINDOW_NAMES), (tunables_window_late, () -> WINDOW_NAMES),
+                          (tunables_ionized, () -> IONIZED_NAMES))
 
 # The tunables of a description read field by field, written out a second time, independently of
 # `ParticleMeshElectromagnetic.part_values`: what the vector must hold, and in which order.
@@ -60,6 +70,13 @@ function expected_tunables(p)
     foreach(d -> append!(v, species_fields(d)), p.species)
     p.profile === nothing || append!(v, [p.profile.vacuum, p.profile.ramp])
     p.witness === nothing || append!(v, witness_fields(p.witness))
+    p.ionization === nothing || append!(v, ionization_fields(p.ionization))
+    return v
+end
+function ionization_fields(d)
+    v = [d.density]
+    d.section === nothing || append!(v, [d.section.start, d.section.stop, d.section.ramp])
+    foreach(l -> append!(v, [l.prefactor, l.field, l.power]), d.levels)
     return v
 end
 
@@ -76,12 +93,18 @@ const WINDOW_NAMES = [:laser1_a0, :laser1_waist, :laser1_duration, :laser1_delay
                       :species1_thermal_x, :species1_thermal_y, :species1_thermal_z, :profile_vacuum, :profile_ramp, :witness_momentum_x,
                       :witness_momentum_y, :witness_momentum_z, :witness_center_x, :witness_center_y, :witness_length, :witness_width]
 
+const DOPANT_LEVEL_NAMES = [:ionization_level1_prefactor, :ionization_level1_field, :ionization_level1_power, :ionization_level2_prefactor,
+                            :ionization_level2_field, :ionization_level2_power]
+const IONIZED_NAMES = [WINDOW_NAMES..., :ionization_density, :ionization_section_start, :ionization_section_stop, :ionization_section_ramp,
+                       DOPANT_LEVEL_NAMES...]
+
 # What `with_tunables` must leave as it was: everything of a description that is not a tunable.
 laser_rest(l) = (l.position, l.center, l.envelope)
 species_rest(d) = (d.name, d.charge, d.mass, d.mode, d.ppc, d.stream, d.momentum)
 witness_rest(b) = b === nothing ? nothing : (b.inject, b.region, b.ppc, b.charge, b.mass)
+ionization_rest(d) = d === nothing ? nothing : (d.ppc, d.every, d.rows, d.capacity, map(l -> l.cutoff, d.levels), d.section === nothing)
 problem_rest(p) = (p.name, p.length, p.cells, p.dt, p.nsteps, p.seed, p.kmode, p.E0, p.B0, p.boundaries, p.window, map(laser_rest, p.lasers),
-                   map(species_rest, p.species), witness_rest(p.witness))
+                   map(species_rest, p.species), witness_rest(p.witness), ionization_rest(p.ionization))
 
 # New values for a description: every entry changed by its own factor, zeros kept (a window's
 # amplitude must stay zero), the isotropic thermal speeds of the Maxwell–Jüttner ion kept equal.
@@ -165,10 +188,41 @@ end
         @test (q.witness.charge, q.witness.mass) === (S(p.witness.charge), S(p.witness.mass))
         @test (q.witness.inject, q.witness.region, q.witness.ppc) === (p.witness.inject, p.witness.region, p.witness.ppc)
         @test map(laser_rest, q.lasers) === map(laser_rest, p.lasers)
+        if p.ionization !== nothing
+            a, b = q.ionization, p.ionization
+            @test a isa FieldIonization{S} && map(l -> l.cutoff, a.levels) === map(l -> S(l.cutoff), b.levels)
+            @test (a.ppc, a.every, a.rows, a.capacity) === (b.ppc, b.every, b.rows, b.capacity)
+            @test params(q).ionization isa IonizationParams{S}
+        end
         @test eltype(params(q)) === S
         @test with_tunables(params(p), S.(v)) === params(q)
     end
     @test tunables_periodic(Float64).witness.charge == -2 && tunables_periodic(Float64).species[2].mass == 1836
+    # a dopant without a section: its names have none, and the round trip keeps it so
+    for T in TYPES
+        p = tunables_window(T; ionization = tunables_dopant(T; section = false))
+        @test tunable_names(p) == [WINDOW_NAMES..., :ionization_density, DOPANT_LEVEL_NAMES...] == tunable_names(params(p))
+        v = tunables(p)
+        @test same_bits(v, expected_tunables(p)) && with_tunables(p, v) === p && with_tunables(params(p), v) === params(p)
+        w = shifted(tunable_names(p), v)
+        q = with_tunables(p, w)
+        @test q.ionization.section === nothing && same_bits(expected_tunables(q), w) && problem_rest(q) === problem_rest(p)
+        @test with_tunables(params(p), w) === params(q)
+    end
+    # the dopant of WP-059's window case written by the vector is the one its builder gives for the
+    # same numbers, as a description and as parameters, so the run from it is that case's run
+    let p = ion_window(Float32), names = tunable_names(p), v = D3.(tunables(p))
+        at(n) = findfirst(==(n), names)
+        dual(x, k) = D3(x, ForwardDiff.Partials(ntuple(j -> Float32(j == k), 3)))
+        v[at(:ionization_density)] = dual(1.0f0 / 128, 1)
+        v[at(:ionization_level1_prefactor)] = dual(0.25f0, 2)
+        v[at(:ionization_section_stop)] = dual(35.0f0, 3)
+        q = with_tunables(p, v)
+        ref = ion_window(D3; density = dual(1.0f0 / 128, 1), prefactor = dual(0.25f0, 2), stop = dual(35.0f0, 3))
+        @test q.ionization === ref.ionization
+        @test params(q).ionization === params(ref).ionization === with_tunables(params(p), v).ionization
+        @test q.ionization !== ion_window(D3).ionization
+    end
     # duals: the partials are the vector's
     dv = [D3(x, ForwardDiff.Partials((Float32(k), 0.0f0, 1.0f0))) for (k, x) in enumerate(tunables(tunables_periodic(Float32)))]
     iso = findall(n -> n in (:species2_thermal_x, :species2_thermal_y, :species2_thermal_z), PERIODIC_NAMES)
@@ -226,6 +280,18 @@ end
     @test_throws ArgumentError wset(:profile_ramp, 0.0)
     @test_throws ArgumentError wset(:profile_ramp, -1.0)
     @test_throws ArgumentError wset(:species1_amplitude, 0.1)               # a window's plasma starts neutral
+    # the dopant's constructors refuse too
+    z = tunables_ionized(Float64)
+    zv, zn = tunables(z), tunable_names(z)
+    zset(x, name, val) = (u = copy(zv); u[findfirst(==(name), zn)] = val; with_tunables(x, u))
+    @test_throws ArgumentError zset(z, :ionization_density, -1.0)
+    for x in (z, params(z))
+        @test_throws ArgumentError zset(x, :ionization_section_ramp, 0.0)
+        @test_throws ArgumentError zset(x, :ionization_section_stop, 6.0)        # before its start
+        @test_throws ArgumentError zset(x, :ionization_level2_field, 0.0)
+        @test_throws ArgumentError zset(x, :ionization_level1_prefactor, -0.5)
+        @test_throws ArgumentError with_tunables(x, zv[1:(end - 1)])
+    end
     # a description with no tunable
     empty = EMProblem("empty", p.length, p.cells, p.dt, 5, (), 1, (1, 0))
     @test tunables(empty) == Float64[] && tunable_names(empty) == Symbol[] && tunable_count(empty) == 0
@@ -234,7 +300,7 @@ end
 end
 
 @testset "T-792 the Tunable portion of the SciML structure is the vector [A9, WP-060]" begin
-    for T in TYPES, p in (tunables_periodic(T), tunables_window(T), tunables_window_late(T)), x in (p, params(p))
+    for T in TYPES, p in (tunables_periodic(T), tunables_window(T), tunables_window_late(T), tunables_ionized(T)), x in (p, params(p))
         @test SciMLStructures.isscimlstructure(x)
         @test !SciMLStructures.ismutablescimlstructure(x)
         @test SciMLStructures.hasportion(Tunable(), x)
@@ -248,7 +314,7 @@ end
         @test same_bits(SciMLStructures.canonicalize(Tunable(), repack(w))[1], w)
     end
     # a vector of another element type gives the structure in that type, by repack and by replace
-    for p in (tunables_periodic(Float64), tunables_window_late(Float64)), x in (p, params(p)), S in (Float32, D3)
+    for p in (tunables_periodic(Float64), tunables_window_late(Float64), tunables_ionized(Float64)), x in (p, params(p)), S in (Float32, D3)
         v, repack, _ = SciMLStructures.canonicalize(Tunable(), x)
         @test eltype(repack(S.(v))) === S
         @test repack(S.(v)) === with_tunables(x, S.(v)) === SciMLStructures.replace(Tunable(), x, S.(v))

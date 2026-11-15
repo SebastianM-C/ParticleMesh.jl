@@ -38,7 +38,9 @@ the [`AntennaPlanes`](@ref) of the problem's lasers, where each plane lies on th
 laser; the window's [`WindowEdges`](@ref)), and in `aux`: the spectral workspace and the potential
 `φ` of the initial solve, the moving window's [`WindowFrame`](@ref) (`window`, `nothing` without one; its
 species buffers then hold `(1 + numerics.headroom)` times the window's particles) and the
-[`WitnessFrame`](@ref) of a witness bunch (`witness`, or `nothing`).
+[`WitnessFrame`](@ref) of a witness bunch (`witness`, or `nothing`) and the
+[`IonizationFrame`](@ref) of a dopant (`ionization`, or `nothing`; its electrons are part of `K`,
+after the species).
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the per-cell patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, also
@@ -76,6 +78,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
     window === nothing || check_window_antennas(window, back, map(Antenna, params(problem).lasers, planes))
     witness = problem.witness === nothing ? nothing : WitnessFrame(problem, grid, backend)
+    ionization = problem.ionization === nothing ? nothing : IonizationFrame(problem, grid, backend, numerics, window)
     species = map(problem.species) do d
         cap = prod(n) * prod(d.ppc)
         window === nothing || (cap = ceil(Int, (1 + numerics.headroom) * cap))
@@ -83,10 +86,10 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     end
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
     ws = map(s -> Workspace(s, grid; flux), species)
-    nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), species; init = 0)
+    nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), (species..., born_species(ionization)...); init = 0)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
-           window = window, witness = witness)
+           window = window, witness = witness, ionization = ionization)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
                    field_modifiers(layer, back, planes, window), aux)
@@ -126,7 +129,7 @@ edges_of(::Nothing) = nothing
 function kinetic!(st::EMState{2})
     wgs = st.numerics.workgroupsize
     first = 1
-    for s in st.species
+    for s in deposited_species(st)
         nc = cld(capacity(s), KINETIC_CHUNK)
         launcher(kinetic_chunks_kernel!, get_backend(s), wgs)(st.K, s, Int32(first), Int32(capacity(s)), Int32(KINETIC_CHUNK);
                                                              ndrange = nc)
