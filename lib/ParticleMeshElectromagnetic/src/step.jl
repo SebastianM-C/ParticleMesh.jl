@@ -188,7 +188,7 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
   momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
   guards, and at N = 2 the convolution fields of a PML (in `modifiers`) and in `aux` the
-  window's counters `lost` and `fast` and the witness bunch's particles. With the
+  window's counters `lost` and `fast`, the witness bunch's particles and a dopant's atoms, populations and electrons. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
 - The cache: the kinetic energy buffer `K` that a step leaves for the next observation (at N = 1
@@ -204,7 +204,8 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
   of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
   species' charge and mass, and at N = 2 in `aux` the [`WindowFrame`](@ref) and the
-  [`WitnessFrame`](@ref) (`nothing` where the problem has none). `aux` is empty at N = 1.
+  [`WitnessFrame`](@ref) (`nothing` where the problem has none), and of the
+  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity. `aux` is empty at N = 1.
 - `modifiers`: the tuple of [`FieldModifier`](@ref)s that the mesh solve walks
   ([`solve_fields!`](@ref)), in the order [`field_modifiers`](@ref) gives them: the placed
   absorber of an open axis (a PML's coefficient tables and convolution fields, or an absorbing
@@ -373,6 +374,7 @@ function check_aux_params(st::EMState, p::EMParams)
     window === nothing || check_window_antennas(window, back_absorber(st), map(Antenna, p.lasers, antennas))
     (p.witness === nothing) == (witness_frame(st) === nothing) ||
         throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
+    check_ionization_params(ionization_frame(st), p.ionization)
     p.profile === nothing || window !== nothing ||
         throw(ArgumentError("a density profile is implemented with the moving window only"))
     window === nothing || check_window_params(window, p)
@@ -421,6 +423,12 @@ function check_aux_setup(st::EMState, problem, wrong)
     (b === nothing) == (w === nothing) || wrong("the witness bunch")
     b === nothing || (witness_placement(b, st.grid, st.dt) == (w.kinj, w.c0, w.nc, w.ppc) && w.species.q == oftype(w.species.q, b.charge) && w.species.m == oftype(w.species.m, b.mass)) ||
         wrong("the witness bunch's injection step, lattice, charge or mass")
+    fr = ionization_frame(st)
+    d = problem.ionization
+    (d === nothing) == (fr === nothing) || wrong("the ionization")
+    d === nothing || (ionization_placement(d, st.grid, window) == (fr.row0, fr.nrows, fr.ncols, fr.ppc) && d.every == fr.every &&
+                      d.capacity == capacity(fr.electrons) && length(d.levels) == length(fr.atoms.extras) - 2) ||
+        wrong("the ionization's lattice, birth cadence, capacity or number of levels")
     return nothing
 end
 
@@ -488,6 +496,7 @@ function initialize!(st::EMState{N}, p::EMParams; momenta_at::Symbol = :t0, dens
         load_species!(s, grid, ps, setup, p.seed; density_at, workgroupsize = wgs)
     end
     clear_witness!(witness_frame(st))
+    initialize_ionization!(ionization_frame(st), grid, p.ionization, wgs)
     foreach(a -> fill!(a, zero(T)), st.fields)
     reset_convolution!(st)
     for (s, ws) in zip(st.species, st.ws)
@@ -537,13 +546,13 @@ function current!(::Esirkepov, st::EMState{N}) where {N}
     (; numerics, grid, fields) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
-    for (s, ws) in zip(st.species, st.ws)
+    for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
         sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
     end
     fill!(fields.Jx, zero(T))
     fill!(fields.Jy, zero(T))
     fill!(fields.Jz, zero(T))
-    for (s, ws) in zip(st.species, st.ws)
+    for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
         deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, rho_stagger(Val(N)), grid, ws;
                       dt = st.dt, transverse_currents(Val(N))..., workgroupsize = wgs)
     end
@@ -569,7 +578,10 @@ previous step left in `K`; `nothing` observes nothing); then the module's step o
 
 1. a witness bunch (WP-047, [`WitnessBunch`](@ref)) is injected at the start of its step with the
    parameters' momentum and weights; from then on it is pushed with the species and moved and
-   retired at the edges as they are, and deposits nothing;
+   retired at the edges as they are, and deposits nothing; a dopant (WP-059,
+   [`FieldIonization`](@ref)) is ionized by the rates of the parameters' levels in Eⁿ at its
+   atoms, and at a birth step releases its electrons, which from then on are pushed, deposited,
+   retired and shifted as a species of the problem is;
 2. per species: store the old position as extras, push the momentum in Eⁿ, Bⁿ gathered at xⁿ on
    each component's stagger (the pusher of the numerics) and move the particle along every
    resolved axis, xⁿ⁺¹ = xⁿ + Δt·u/γ;
@@ -624,7 +636,8 @@ function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     window = window_frame(st)
     observe!(observer, st, k)
     inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
-    for s in (st.species..., witness_species(st)...)
+    ionize!(ionization_frame(st), st, p, k)
+    for s in (deposited_species(st)..., witness_species(st)...)
         launcher(push_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
                                                     ndrange = capacity(s))
     end

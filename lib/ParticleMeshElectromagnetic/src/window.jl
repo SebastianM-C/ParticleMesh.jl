@@ -315,7 +315,7 @@ end
 retire_x!(::Nothing, st) = nothing
 function retire_x!(::WindowFrame, st)
     wgs = st.numerics.workgroupsize
-    for s in (st.species..., witness_species(st)...)
+    for s in (deposited_species(st)..., witness_species(st)...)
         launcher(retire_x_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     return nothing
@@ -509,6 +509,7 @@ function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
     for s in witness_species(st)                 # the bunch moves back with the window, unsorted and not refilled
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
+    shift_ionization!(ionization_frame(st), st, p, s_new)
     kinetic!(st)
     return st
 end
@@ -535,14 +536,15 @@ end
 """
     window_charge!(ρ, state::EMState{2}) -> ρ
 
-The charge density of the state's particles on the primal nodes, deposited in the state's mode
+The charge density of the state's particles (the species' and a dopant's electrons; the dopant's
+ions are [`ionization_charge!`](@ref)) on the primal nodes, deposited in the state's mode
 (the species sorted first where the mode needs it), with the window's convention: the x-guards
 dropped (zero outside), the y-guards folded. A diagnostic, outside `step!`.
 """
 function window_charge!(ρ, st::EMState{2})
     (; numerics, grid) = st
     fill!(ρ, zero(eltype(ρ)))
-    for (s, ws) in zip(st.species, st.ws)
+    for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
         sorts(st, s) && sort_by_cell!(s, grid, ws)
         deposit!(deposit_mode(st, s), ρ, s, numerics.shape, RHO_STAGGER_2D, grid, ws)
     end

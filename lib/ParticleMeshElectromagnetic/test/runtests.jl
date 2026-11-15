@@ -15,6 +15,7 @@ include("boundaries_cases.jl") # WP-027: the open boundary's runs and the layer'
 include("pml_cases.jl")        # WP-034: the PML's runs and its discrete theory
 include("window_cases.jl")     # WP-028: the moving window's problems
 include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, after window_cases.jl
+include("ionization_cases.jl") # WP-059: the field ionization's problems, after em2d_cases.jl
 
 # The suite's files in their order; each note says what a file reuses from earlier ones. CI runs
 # them in the groups of groups.toml, in parallel jobs (ParticleMeshCore's test/groups.jl).
@@ -49,6 +50,7 @@ const TEST_FILES = [
     "restart.jl",             # WP-056: T-740 to T-746 and T-748, the closed state and the restart, after params.jl (its helpers)
     "modifiers.jl",           # WP-057: T-750 to T-754 and T-759, the one field solve and its tuple of modifiers, after restart.jl (its helpers)
     "one_step.jl",            # WP-057: T-755 to T-757, the one step body over N, after modifiers.jl (its helpers)
+    "ionization.jl",          # WP-059: T-770 to T-779 and T-781 to T-785, the field ionization of a dopant; its own helpers
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]
