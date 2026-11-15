@@ -732,14 +732,14 @@ scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1); eps(T)·density over the 
 C = 1
 C_weight = 16
 measured = { Float32 = 0.227, Float64 = 0.21, "Dual{Float32,3}" = 0.227 }
-measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17, "RTX 2000 Ada, Float32" = 4.69, "RTX 2000 Ada, Float64" = 3.91, "RTX 2000 Ada, Dual{Float32,3}" = 4.69 }
+measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17, "RTX 2000 Ada, Float32" = 7.42, "RTX 2000 Ada, Float64" = 7.03, "RTX 2000 Ada, Dual{Float32,3}" = 7.42 }
 status = "proposed; the residual is T-473's (the plasma's charge sets it); the weights on CUDA carry the device's sin in the section's ramp (T-780)"
 
 ["T-775"]
 quantity = "Fast against Reference after 110 window steps with ionization, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"
 scale = "eps(Float64)"
 C = 32
-measured = { Float64 = 6.66, "RTX 2000 Ada, Float64" = 5.51 }
+measured = { Float64 = 6.66, "RTX 2000 Ada, Float64" = 5.92 }
 status = "proposed"
 
 ["T-778"]
@@ -780,7 +780,7 @@ status = "proposed; with the formula's own unit the difference is the rounding o
 quantity = "a lattice of 2 × 3 atoms per cell in a static field linear along x with all three components, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x))·n·Δt) of the rate at its own place (measured), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) of its atom's rate (measured_weights), value and partials, off the two columns next to the periodic seam"
 scale = "n·eps(T) for the populations (of order one); n·eps(T)·density/6 for the weights"
 C = 4
-measured = { Float32 = 0.188, Float64 = 0.219, "Dual{Float32,3}" = 0.188 }
+measured = { Float32 = 0.188, Float64 = 0.219, "Dual{Float32,3}" = 0.188, "RTX 2000 Ada, Float32" = 0.281, "RTX 2000 Ada, Float64" = 0.156 }
 measured_weights = { Float32 = 0.0549, Float64 = 0.0549, "Dual{Float32,3}" = 0.0549 }
 status = "proposed"
 
@@ -788,5 +788,5 @@ status = "proposed"
 quantity = "Gauss's law with the dopant ions' charge, |D⁻ₓEx + D⁻_yEy − (ρ + ρ_ions)|, on the node rows off the absorbing layer of a box open along y, after every step from the first birth on, born electrons driven out through the lower edge and retired there, 40 steps, both modes"
 scale = "((n₁ + n₂)·max|ρ| + (2/Δx + 2/Δy)·max|E|)·√(k + 1): T-360's of the charge plus the divergence's own roundoff of the field, the larger here (a uniform field of 1/2 over a born charge density of a few 1e-3)"
 C = 1
-measured = { Float32 = 0.0811, Float64 = 0.119, "Dual{Float32,3}" = 0.0811 }
+measured = { Float32 = 0.0811, Float64 = 0.119, "Dual{Float32,3}" = 0.0811, "RTX 2000 Ada, Float32" = 0.105, "RTX 2000 Ada, Float64" = 0.184 }
 status = "proposed; on the charge's scale alone the residual is 3 to 4 eps, the roundoff of differencing the field"
