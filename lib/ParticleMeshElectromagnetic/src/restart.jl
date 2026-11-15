@@ -31,6 +31,11 @@ window_arrays(w::WindowFrame) = (w.lost..., w.fast...)
 witness_arrays(::Nothing) = ()
 witness_arrays(w::WitnessFrame) = species_arrays(w.species)
 
+# The atoms with their populations (extras that a run evolves, unlike the push's), the electrons
+# and the counter of the births that found no slot.
+ionization_arrays(::Nothing) = ()
+ionization_arrays(fr::IonizationFrame) = (species_arrays(fr.atoms)..., values(fr.atoms.extras)..., species_arrays(fr.electrons)..., fr.lost)
+
 # The evolved arrays of every modifier but the open axis' absorber, in the tuple's order, written
 # out for the tuple's length (static at every length, as the solve's walk).
 @generated function other_evolved(ms::NTuple{M,FieldModifier}) where {M}
@@ -41,10 +46,11 @@ end
 # What a run evolves besides the particles and the fields, in `evolved`'s order: the open axis'
 # absorber's arrays, the window's counters, the arrays of every other modifier in the tuple's
 # order (`evolved_arrays`: the back edge's PML, and any modifier a state was given), the witness
-# bunch. The open axis' absorber comes before the counters whatever its place in the tuple: that
+# bunch, the ionization. The open axis' absorber comes before the counters whatever its place in the tuple: that
 # is the order the list has had since it exists, and no configuration's list moves.
 evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(window_frame(st))...,
-                            other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...)
+                            other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...,
+                            ionization_arrays(ionization_frame(st))...)
 
 """
     evolved(state::EMState) -> Tuple
@@ -60,7 +66,9 @@ What a run evolves, as a flat tuple of the state's own arrays (no copy), in this
    species `fast`; the evolved arrays of every other field modifier in the order of the state's
    tuple ([`evolved_arrays`](@ref): the four convolution fields of the window's back-edge PML,
    `ψBy`, `ψBz`, `ψEy`, `ψEz`, and those of a modifier the state was given with
-   [`with_modifiers`](@ref)); the witness bunch's particles, as a species.
+   [`with_modifiers`](@ref)); the witness bunch's particles, as a species; of a
+   [`FieldIonization`](@ref) the atoms as a species, their extras (`pending`, `emitted` and the
+   bound population of each level), the electrons as a species and the counter `lost`.
 
 The element types stay mixed (`Int32`, `UInt8` and `T`). With the step index `k`, the parameters
 and the configuration the state was built for, these arrays are the whole run: [`snapshot`](@ref)
@@ -125,6 +133,19 @@ function witness_on(w::WitnessFrame, a::Tuple)
     return WitnessFrame(species_on(w.species, take(a, n)), w.kinj, w.c0, w.nc, w.ppc), drop(a, n)
 end
 
+ionization_on(::Nothing, a::Tuple) = (nothing, a)
+function ionization_on(fr::IonizationFrame, a::Tuple)
+    na = Val(species_length(fr.atoms))
+    core, a = species_on(fr.atoms, take(a, na)), drop(a, na)
+    nx = Val(length(fr.atoms.extras))
+    extras, a = NamedTuple{keys(fr.atoms.extras)}(take(a, nx)), drop(a, nx)
+    atoms = typeof(fr.atoms)(core.cell, core.offset, core.u, core.w, core.status, core.count, core.q, core.m, extras)
+    ne = Val(species_length(fr.electrons))
+    electrons, a = species_on(fr.electrons, take(a, ne)), drop(a, ne)
+    return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.row0, fr.nrows, fr.ncols, fr.ppc, a[1], fr.flags),
+           drop(a, Val(1))
+end
+
 # The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order:
 # every modifier is the same modifier over its part of `a` (`on_arrays`).
 function aux_on(st::EMState, a::Tuple)
@@ -132,11 +153,12 @@ function aux_on(st::EMState, a::Tuple)
     window, a = window_on(window_frame(st), a)
     modifiers, a = others_on(st.modifiers, open, a)
     witness, a = witness_on(witness_frame(st), a)
-    return modifiers, aux_with(st.aux, window, witness), a
+    ionization, a = ionization_on(ionization_frame(st), a)
+    return modifiers, aux_with(st.aux, window, witness, ionization), a
 end
 
-aux_with(aux::NamedTuple{()}, window, witness) = aux
-aux_with(aux::NamedTuple, window, witness) = merge(aux, (; window, witness))
+aux_with(aux::NamedTuple{()}, window, witness, ionization) = aux
+aux_with(aux::NamedTuple, window, witness, ionization) = merge(aux, (; window, witness, ionization))
 
 """
     on_evolved(state, arrays::Tuple, K, recorder) -> EMState
