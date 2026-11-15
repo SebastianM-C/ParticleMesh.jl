@@ -30,7 +30,27 @@ include(joinpath(@__DIR__, "..", "problem.jl"))
     # is prob.f above.
     @test runs(prob.p.timer, "plain run").n == length(rec.u) + 1
     @test runs(prob.p.timer, "run with duals").n == length(rec.u)
-    @test runs(prob.p.timer, "plain run").seconds >= 0 && runs(TimerOutput(), "plain run") == (; n = 0, seconds = nothing)
+    @test runs(TimerOutput(), "plain run") == (; n = 0, seconds = nothing)
+    # `runs` gives the mean seconds of a section, and the record's seconds count from its making.
+    slept = TimerOutput()
+    total = @elapsed for _ in 1:4
+        @timeit slept "plain run" sleep(0.05)
+    end
+    @test runs(slept, "plain run").n == 4 && 0.045 <= runs(slept, "plain run").seconds <= total / 4
+    t0 = time()
+    timed = Record(prob, LBFGSB())
+    solve(prob, LBFGSB(); callback = timed, maxiters = 50, reltol = 1e-9)
+    @test 0 <= timed.seconds[1] <= timed.seconds[end] <= time() - t0
+    # A verbose record prints each call, a quiet one nothing.
+    printed = mktemp() do file, io
+        redirect_stdout(io) do
+            Record(prob, LBFGSB(); verbose = true)((; u = [1.0, 2.0], objective = -3.0))
+            Record(prob, LBFGSB())((; u = [7.0, 8.0], objective = -9.0))
+        end
+        close(io)
+        read(file, String)
+    end
+    @test occursin("point 1: u = [1.0, 2.0]  objective = 3.0", printed) && !occursin("7.0", printed)
     # The tolerance reaches the solver: a loose one stops earlier.
     loose = Record(prob, LBFGSB())
     solve(prob, LBFGSB(); callback = loose, maxiters = 50, reltol = 1e-1)
@@ -67,6 +87,8 @@ end
     @test g ≈ ForwardDiff.gradient(w -> Jx((w .* box.scale)...), z) rtol = 1e-14
     @test runs(prob.p.timer, "run with duals").n == 1 && runs(prob.p.timer, "plain run").n == 0
     @test run_kind(z) == "plain run" && run_kind(ForwardDiff.Dual.(z, 1.0)) == "run with duals"
+    # The scale is the problem's parameter: the objective reads it from `p`.
+    @test prob.f(z, (; scale = 2 .* box.scale, timer = TimerOutput())) == Jx(13.0, 190.0)
     # A timer passed in is the one the runs go to.
     timer = TimerOutput()
     shared = case_problem(Jx, box, (6.5, 95.0); timer)

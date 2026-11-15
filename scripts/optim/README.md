@@ -16,7 +16,7 @@ sol.u .* WAKE_BOX.scale                                       # the optimum; sol
 - A box is a named tuple `(; lo, hi, scale)` in physical units. The problem's unknown is `z = x ./ scale`, which is O(1) (A1), with `lb` and `ub` from the box, `sense = MaxSense` and gradients by `AutoForwardDiff()`.
 - `Record` is a callback that keeps every point the solver reports, the objective there and the wall time.
 - The problem's parameters hold a `TimerOutput` (`prob.p.timer`) that counts and times the runs of the case: "plain run" and "run with duals". `runs(timer, kind)` reads it.
-- Any solver of Optimization.jl that takes bounds solves the same problem. OptimizationLBFGSB asks for the value and the gradient separately and does not take `fg` (#440), so a point costs it a plain run and a run with duals.
+- Any solver of Optimization.jl that takes bounds solves the same problem. OptimizationLBFGSB asks for the value and the gradient separately and does not take `fg` (#440), so a point costs it a plain run and a run with duals. Its `reltol` is L-BFGS-B's `pgtol`, an absolute tolerance on the largest component of the projected gradient in z.
 - `bayes.jl` is the Bayesian optimizer of WP-048, a Gaussian process with expected improvement, written out because Julia has no maintained one to take instead. It is one more solver, `solve(prob, BayesianEI(); maxiters = 30, callback = rec)`, with one plain run per point.
 
 ## The cases

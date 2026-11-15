@@ -12,9 +12,11 @@
 #
 # `bayes.jl` adds a Bayesian optimizer as one more solver of the same problem. OptimizationLBFGSB
 # asks for the value and the gradient in separate calls and takes no `fg` (#440), so a point costs
-# it a plain run of the case and a run with duals.
+# it a plain run of the case and a run with duals. It hands `reltol` to L-BFGS-B as `pgtol`: an
+# absolute tolerance on the largest component of the projected gradient, here in z.
 
-using Optimization: Optimization, OptimizationFunction, OptimizationProblem, AutoForwardDiff, MaxSense, ReturnCode, solve
+# `solve`, `LBFGSB` and `ReturnCode` are here for the drivers and tests that include this file.
+using Optimization: OptimizationFunction, OptimizationProblem, AutoForwardDiff, MaxSense, ReturnCode, solve
 using OptimizationBase: OptimizationBase
 using OptimizationLBFGSB: LBFGSB
 using DifferentiationInterface: DifferentiationInterface

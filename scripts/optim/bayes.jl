@@ -10,7 +10,7 @@
 import LinearAlgebra
 using LinearAlgebra: Symmetric, cholesky, diag, dot, norm, I
 using SpecialFunctions: erfc
-using Optimization: Optimization, OptimizationFunction, OptimizationProblem, AutoForwardDiff, MaxSense, ReturnCode, solve
+using Optimization: OptimizationFunction, OptimizationProblem, AutoForwardDiff, MaxSense, ReturnCode, solve
 using OptimizationBase: OptimizationBase, OptimizationCache, OptimizationState, OptimizationStats
 using OptimizationLBFGSB: LBFGSB
 using SciMLBase: SciMLBase
@@ -64,8 +64,9 @@ end
     fit_gp(X, y; starts) -> (; θ, nll)
 
 Maximum marginal likelihood over θ in `θbounds`, by L-BFGS-B with ForwardDiff gradients from a few
-fixed starts (and `starts`, such as the previous fit). A θ whose Gram matrix is not positive
-definite counts as an infinite negative log likelihood.
+fixed starts (and `starts`, such as the previous fit; L-BFGS-B moves a start into the bounds). The
+best of the fits is kept. A θ whose Gram matrix is not positive definite counts as an infinite
+negative log likelihood.
 """
 function fit_gp(X, y; starts = Vector{Float64}[])
     d = length(X[1])
@@ -82,7 +83,7 @@ function fit_gp(X, y; starts = Vector{Float64}[])
     f = OptimizationFunction(nll, AutoForwardDiff())
     best = (; θ = fixed[1], nll = Inf)
     for θ0 in [fixed; starts]
-        sol = solve(OptimizationProblem(f, clamp.(θ0, lo, hi); lb = lo, ub = hi), LBFGSB(); maxiters = 60, reltol = 1e-5)
+        sol = solve(OptimizationProblem(f, θ0; lb = lo, ub = hi), LBFGSB(); maxiters = 60, reltol = 1e-5)
         sol.objective < best.nll && (best = (; θ = sol.u, nll = sol.objective))
     end
     return best
@@ -108,9 +109,9 @@ function expected_improvement(μ, s, ybest, ξ)
 end
 
 """
-    propose(X, y, θ, seed, iter; ξ, ncand, nrefine) -> u
+    propose(X, y, θ, seed, iter; ξ, ncand, nrefine) -> (u, ei)
 
-The next point in the unit box: expected improvement on `ncand` counter-based candidates, then
+The next point in the unit box and its expected improvement: expected improvement on `ncand` counter-based candidates, then
 L-BFGS-B with ForwardDiff gradients from the `nrefine` best of them. Points closer than 1e-6 to an
 evaluated one are skipped.
 """
@@ -133,24 +134,27 @@ function propose(X, y, θ, seed, iter; ξ = 0.0, ncand = 2048, nrefine = 5)
 end
 
 """
-    bayesopt(f, lo, hi; budget, n_init, seed, ξ, ncand, nrefine, verbose) -> (; x, y, best_x, best_y, θ, ei)
+    bayesopt(f, lo, hi; budget, n_init, seed, ξ, ncand, nrefine, stop, verbose) -> (; x, y, best_x, best_y, θ, ei)
 
 Maximize `f` over the box `lo ≤ x ≤ hi` with `budget` evaluations: a Latin hypercube of `n_init`
-points, then one expected-improvement point at a time, refitting the GP's hyperparameters after
-every evaluation. Values are standardized (mean 0, standard deviation 1) before each fit. `x` and
-`y` list every evaluation in order; `ei` holds the acquisition's maximum at each proposal. `f` may
-return `nothing` to stop the search before that evaluation counts.
+points (cut to the budget), then one expected-improvement point at a time, refitting the GP's
+hyperparameters after every evaluation. Values are standardized (mean 0, standard deviation 1)
+before each fit. `x` and `y` list every evaluation in order; `θ` and `ei` hold the fit and the
+acquisition's maximum of each proposal. `stop()` is asked after every evaluation and ends the search
+when it returns `true`.
 """
-function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ = 0.0, ncand = 2048, nrefine = 5, verbose = false)
+function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ = 0.0, ncand = 2048, nrefine = 5,
+                  stop = () -> false, verbose = false)
+    n_init >= 1 || throw(ArgumentError("the initial design needs at least one point, got n_init = $n_init"))
+    budget >= 1 || throw(ArgumentError("the budget must be at least one evaluation, got $budget"))
     d = length(lo)
     to_box(u) = lo .+ u .* (hi .- lo)
     U, y = Vector{Float64}[], Float64[]
     θs, eis = Vector{Float64}[], Float64[]
     result() = (ib = argmax(y); (; x = to_box.(U), y, best_x = to_box(U[ib]), best_y = y[ib], θ = θs, ei = eis))
     for u in latin_hypercube(n_init, d, seed)[1:min(n_init, budget)]
-        v = f(to_box(u))
-        v === nothing && return result()
-        push!(U, u); push!(y, v)
+        push!(U, u); push!(y, f(to_box(u)))
+        stop() && return result()
     end
     while length(y) < budget
         m = sum(y) / length(y)
@@ -159,10 +163,9 @@ function bayesopt(f, lo, hi; budget = 30, n_init = 2length(lo) + 1, seed = 1, ξ
         ys = (y .- m) ./ s
         fit = fit_gp(U, ys; starts = isempty(θs) ? Vector{Float64}[] : [θs[end]])
         u, ei = propose(U, ys, fit.θ, seed, length(y); ξ, ncand, nrefine)
-        v = f(to_box(u))
-        v === nothing && return result()
-        push!(θs, fit.θ); push!(eis, ei); push!(U, u); push!(y, v)
-        verbose && println("  BO $(length(y)): x = ", round.(to_box(u); digits = 4), "  f = ", v, "  EI = ", ei, "  ℓ = ", round.(exp.(fit.θ[1:d]); digits = 3))
+        push!(θs, fit.θ); push!(eis, ei); push!(U, u); push!(y, f(to_box(u)))
+        verbose && println("  BO $(length(y)): x = ", round.(to_box(u); digits = 4), "  f = ", y[end], "  EI = ", ei, "  ℓ = ", round.(exp.(fit.θ[1:d]); digits = 3))
+        stop() && return result()
     end
     return result()
 end
@@ -174,8 +177,10 @@ end
 `solve(prob, BayesianEI(); maxiters, callback)` spends `maxiters` evaluations of the objective, the
 `n_init` of the initial design included (2n + 1 for n unknowns when `nothing`), and needs no
 gradient. The callback is called after every evaluation with the point and the objective there
-(the problem's own, in either sense), and stops the search by returning `true`. `sol.original` is
-`bayesopt`'s result, with every evaluation, the fitted hyperparameters and the acquisition's maxima.
+(the problem's own, in either sense); when it returns `true` the search ends with that evaluation
+(`ReturnCode.Terminated`; a spent budget is `ReturnCode.MaxIters`). `sol.original` is `bayesopt`'s
+result, with every evaluation, the fitted hyperparameters and the acquisition's maxima; its values
+`y` are the maximized ones, minus the objective for a minimization.
 """
 Base.@kwdef struct BayesianEI
     n_init::Union{Nothing,Int} = nothing
@@ -188,12 +193,11 @@ end
 SciMLBase.has_init(::BayesianEI) = true
 SciMLBase.allowsbounds(::BayesianEI) = true
 SciMLBase.requiresbounds(::BayesianEI) = true
-SciMLBase.allowscallback(::BayesianEI) = true
 OptimizationBase.supports_sense(::BayesianEI) = true
 
 function SciMLBase.__solve(cache::OptimizationCache{<:BayesianEI})
     opt = cache.opt
-    budget = OptimizationBase._check_and_convert_maxiters(cache.solver_args.maxiters)
+    budget = cache.solver_args.maxiters
     budget === nothing && throw(ArgumentError("BayesianEI needs `maxiters`, the number of evaluations to spend"))
     sign = cache.sense === MaxSense ? 1 : -1
     evals = Ref(0)
@@ -202,10 +206,10 @@ function SciMLBase.__solve(cache::OptimizationCache{<:BayesianEI})
         v = first(cache.f(x, cache.p))
         evals[] += 1
         halted[] = cache.callback(OptimizationState(; iter = evals[], u = x, objective = v, p = cache.p), v)
-        return halted[] ? nothing : sign * v
+        return sign * v
     end
-    t = @elapsed r = bayesopt(f, cache.lb, cache.ub; budget, n_init = something(opt.n_init, 2length(cache.lb) + 1),
-                             opt.seed, opt.ξ, opt.ncand, opt.nrefine)
+    t = @elapsed r = bayesopt(f, cache.lb, cache.ub; budget = Int(budget), n_init = something(opt.n_init, 2length(cache.lb) + 1),
+                             opt.seed, opt.ξ, opt.ncand, opt.nrefine, stop = () -> halted[])
     stats = OptimizationStats(; iterations = evals[], time = t, fevals = evals[])
     return SciMLBase.build_solution(cache, opt, r.best_x, sign * r.best_y; original = r, stats,
                                     retcode = halted[] ? ReturnCode.Terminated : ReturnCode.MaxIters)
