@@ -162,7 +162,7 @@ function check_tunable_vector(p, v::AbstractVector{S}) where {S}
 end
 
 # The next `n` entries of `v` as a tuple, `i` the number of entries taken so far.
-function take!(v::AbstractVector, i::Base.RefValue{Int}, n::Int)
+function take_next!(v::AbstractVector, i::Base.RefValue{Int}, n::Int)
     first = i[] + firstindex(v)
     i[] += n
     return ntuple(k -> v[first + k - 1], n)
@@ -172,34 +172,34 @@ end
 # A laser keeps its `position` and `center` as they are: they are configuration, of a type of
 # their own.
 function with_part(::Type{S}, l::GaussianLaser{<:Any,P,E}, v, i) where {S,P,E}
-    x = take!(v, i, length(LASER_TUNABLES))
+    x = take_next!(v, i, length(LASER_TUNABLES))
     return GaussianLaser{S,P,E}(x..., l.position, l.center, l.envelope)
 end
 function with_part(::Type{S}, d::SpeciesDescription, v, i) where {S}
-    x = take!(v, i, length(SPECIES_TUNABLES))
+    x = take_next!(v, i, length(SPECIES_TUNABLES))
     return SpeciesDescription{S}(d.name, S(d.charge), S(d.mass), x[1], x[2], d.mode, d.ppc, x[3:5], x[6:8], d.stream; momentum = d.momentum)
 end
 function with_part(::Type{S}, d::SpeciesParams{<:Any,N}, v, i) where {S,N}
-    x = take!(v, i, length(SPECIES_TUNABLES))
+    x = take_next!(v, i, length(SPECIES_TUNABLES))
     return SpeciesParams{S,N}(x[1], x[2], d.wavevector, x[3:5], x[6:8])
 end
 function with_part(::Type{S}, ::DensityRamp, v, i) where {S}
-    x = take!(v, i, length(PROFILE_TUNABLES))
+    x = take_next!(v, i, length(PROFILE_TUNABLES))
     return DensityRamp(; vacuum = x[1], ramp = x[2])
 end
 function with_part(::Type{S}, b::WitnessBunch, v, i) where {S}
-    x = take!(v, i, length(WITNESS_TUNABLES))
+    x = take_next!(v, i, length(WITNESS_TUNABLES))
     return WitnessBunch{S}(b.inject, b.region, b.ppc, x[1:3], x[4:5], x[6], x[7], S(b.charge), S(b.mass))
 end
 function with_part(::Type{S}, ::WitnessParams, v, i) where {S}
-    x = take!(v, i, length(WITNESS_TUNABLES))
+    x = take_next!(v, i, length(WITNESS_TUNABLES))
     return WitnessParams{S}(x[1:3], x[4:5], x[6], x[7])
 end
 # The dopant's density, section and levels from the next entries, a level's cutoff kept.
 function ionization_numbers(::Type{S}, d, v, i) where {S}
-    density = only(take!(v, i, 1))
-    section = d.section === nothing ? nothing : DopantSection(; NamedTuple{(:start, :stop, :ramp)}(take!(v, i, 3))...)
-    levels = map(l -> ADKLevel(take!(v, i, 3)...; cutoff = S(l.cutoff)), d.levels)
+    density = only(take_next!(v, i, 1))
+    section = d.section === nothing ? nothing : DopantSection(; NamedTuple{(:start, :stop, :ramp)}(take_next!(v, i, 3))...)
+    levels = map(l -> ADKLevel(take_next!(v, i, 3)...; cutoff = S(l.cutoff)), d.levels)
     return density, levels, section
 end
 function with_part(::Type{S}, d::FieldIonization, v, i) where {S}
