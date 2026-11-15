@@ -51,6 +51,9 @@ const TUNABLE_FIXTURES = ((tunables_periodic, () -> PERIODIC_NAMES), (tunables_w
 laser_fields(l) = [l.a0, l.waist, l.duration, l.delay, l.focus, l.chirp, l.polarization, l.phase]
 species_fields(d) = [d.density, d.amplitude, d.drift[1], d.drift[2], d.drift[3], d.thermal[1], d.thermal[2], d.thermal[3]]
 witness_fields(b) = [b.momentum[1], b.momentum[2], b.momentum[3], b.center[1], b.center[2], b.length, b.width]
+"The same reading without a common element type, for a description of parts in several types."
+expected_tunables_any(p) = Any[foldl((a, l) -> append!(a, laser_fields(l)), p.lasers; init = Any[])...,
+                               foldl((a, d) -> append!(a, species_fields(d)), p.species; init = Any[])...]
 function expected_tunables(p)
     v = eltype(p)[]
     foreach(l -> append!(v, laser_fields(l)), p.lasers)
@@ -194,13 +197,25 @@ end
         @test_throws ArgumentError with_tunables(x, complex.(v))
         @test_throws ArgumentError with_tunables(x, round.(Int, v))
     end
-    # a part in another element type than the description's
-    e32 = SpeciesDescription{Float32}(:electron, -1, 1, 0.1, 0, (1, 0), (2, 2), ZERO3(Float32), ZERO3(Float32), 1)
-    mixed = EMProblem("mixed", p.length, p.cells, p.dt, 5, (e32,), 1, (1, 0))
-    @test_throws ArgumentError tunables(mixed)
-    @test_throws ArgumentError tunables(params(mixed))
-    l32 = GaussianLaser(; a0 = 1.0f0, waist = 5.0f0, duration = 3.0f0, delay = 18.0f0, focus = 7.0f0, position = 3.0, center = 3.0)
-    @test_throws ArgumentError tunables(EMProblem("mixed", p.length, p.cells, p.dt, 5, (), 1, (1, 0); lasers = (l32,)))
+    # a part in another element type than the description's (T-745's kind of problem, which the
+    # harness solves): the vector is in the common type, and written back it gives one type
+    e64 = SpeciesDescription{Float64}(:electron, -1, 1, 0.1, 0, (1, 0), (2, 2), ZERO3(Float64), ZERO3(Float64), 1)
+    l32 = GaussianLaser(; a0 = 1.0f0, waist = 5.0f0, duration = 3.0f0, delay = 18.0f0, focus = 7.0f0, position = 3.0f0, center = 3.0f0)
+    mixed = EMProblem("mixed", Float32.(p.length), p.cells, Float32(p.dt), 5, (e64,), 1, (1, 0); lasers = (l32,))
+    @test eltype(mixed) === Float32
+    for x in (mixed, params(mixed))
+        mv = tunables(x)
+        @test mv isa Vector{Float64}
+        @test mv[9] === 0.1 && mv[1] === 1.0 && mv == Float64.(expected_tunables_any(mixed))
+        for S in (Float64, Float32)
+            y = with_tunables(x, S.(mv))
+            @test eltype(y) === S && tunables(y) isa Vector{S} && same_bits(tunables(y), S.(mv))
+        end
+        @test SciMLStructures.canonicalize(Tunable(), x)[1] == mv
+    end
+    @test tunables(with_tunables(params(mixed), tunables(mixed))) == tunables(params(with_tunables(mixed, tunables(mixed))))
+    d3mixed = EMProblem("mixed", D3.(Float32.(p.length)), p.cells, D3(Float32(p.dt)), 5, (e64,), 1, (1, 0))
+    @test tunables(d3mixed) isa Vector{promote_type(D3, Float64)}
     # values the description's constructors refuse
     names = tunable_names(p)
     set(x, name, val) = (u = copy(v); u[findfirst(==(name), names)] = val; with_tunables(x, u))

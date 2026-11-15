@@ -68,20 +68,18 @@ Maxwell–Jüttner species, which are one temperature, must stay equal, partials
 load is also only piecewise smooth in its drift and temperature (its rejection sampling), and
 at a drift of exactly zero its derivative with respect to the drift is lost (#443).
 
-Every part must be in the element type `T` of `p`: a description that holds a species, a laser
-or a profile of another type (a Float64 species in a Float32 problem) is an `ArgumentError`,
-since a vector of one type could not give it back.
+A description may hold a part in another element type than its own (a Float64 species in a
+Float32 problem, which the loader reads as it is): the vector is then in the common type of the
+description and its parts, and written back it gives a description in that one type, no longer
+the mixed one.
 """
 function tunables(p::Union{EMProblem,EMParams})
-    T = eltype(p)
-    v = T[]
-    for (prefix, part) in tunable_parts(p), (name, x) in zip(part_names(part), part_values(part))
-        x isa T ||
-            throw(ArgumentError("tunables: $(prefix)_$name is a $(typeof(x)) in a problem of element type $T; " *
-                                "build every part of the description in one element type"))
-        push!(v, x)
+    xs = Any[]
+    for (_, part) in tunable_parts(p)
+        append!(xs, part_values(part))
     end
-    return v
+    T = promote_type(eltype(p), map(typeof, xs)...)
+    return convert(Vector{T}, xs)
 end
 
 "The number of entries of [`tunables`](@ref)`(p)`."
@@ -96,7 +94,7 @@ other number of `p` (the box, the time step, the charges, the background fields)
 to `S`, and what is not a number is kept, the kind of each species' momentum distribution
 included; so is the configuration that a description holds in a type of its own (a laser's
 `position` and `center`, the witness's injection time and region). A description whose numbers `S` cannot hold (a `Dual` description written back in a
-plain float type, or in duals of another tag) is an `ArgumentError`, and so is an integer `S`. With `S` the element type of `p`,
+plain float type, or in duals of another tag) is an `ArgumentError`, and so is an integer `S`. With `S` the element type of `p` and of all its parts,
 `with_tunables(p, tunables(p)) === p`; with `S` a `Dual`, the result is the description of the
 differentiated run, to build a state from (or, for an `EMParams`, to step an existing dual state
 with). The description is built by its constructors, so a vector they refuse (a ramp of
