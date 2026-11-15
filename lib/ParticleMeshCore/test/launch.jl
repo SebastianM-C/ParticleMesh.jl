@@ -127,7 +127,7 @@ end
 struct OtherBackend <: KernelAbstractions.Backend end
 
 @testset "T-801 the flux patch launches in work-groups of one on the CPU backend, a fixed workgroupsize is kept, another backend chooses [A7, WP-061]" begin
-    # #442: with Dual{Float64,2} elements the CPU backend's tuned work-group costs 10 times the
+    # #442: with Dual elements the CPU backend's tuned work-group costs 4 to 11 times the
     # work-group of one for this kernel (reports/wp-061-flux-deposition-cost.md).
     k = ParticleMeshCore.flux_patch_2d_kernel!
     il = ParticleMeshCore.item_launcher
@@ -170,16 +170,21 @@ end
         @test same_bits.(a[1:3], b[1:3]) == (true, true, true)
         @test any(!iszero, a[1])
     end
-    # A workspace of one layout whose patch array has the other's size is refused.
+    # A workspace of one layout whose patch array has the other's size is refused, either way.
     T = Float64
     st = (Node(), Node())
     grid = grid2(T, flux_g2(Quadratic, st))
     s = flux_species_2d(T, grid, 400)
     good = Workspace(s, grid; flux = (Quadratic, st), flux_layout = SM)
     other = Workspace(s, grid; flux = (Quadratic, st), flux_layout = CM)
-    bad = Workspace(good.key, good.perm, good.ak, good.tmp_i32, good.tmp_T, good.tmp_u8, good.tmp_extras, good.seg_start, good.seg_stop,
-                    other.flux_patch, good.flux, SM)
+    # The constructor's own default, which the module's states get, is the backend's layout.
+    plain = Workspace(s, grid; flux = (Quadratic, st))
+    @test plain.flux_layout === SM && size(plain.flux_patch) == size(good.flux_patch) != size(other.flux_patch)
     sort_by_cell!(s, grid, good)
     Jx, Jy, Jz = fields3(T, grid)
-    @test_throws "values per cell in the layout" deposit_flux!(Reference(), Jx, Jy, Jz, s, Quadratic, st, grid, bad; dt = T(1 // 4), quantity_z = QZ2)
+    for (layout, patch) in ((SM, other.flux_patch), (CM, good.flux_patch))
+        bad = Workspace(good.key, good.perm, good.ak, good.tmp_i32, good.tmp_T, good.tmp_u8, good.tmp_extras, good.seg_start, good.seg_stop,
+                        patch, good.flux, layout)
+        @test_throws "values per cell in the layout" deposit_flux!(Reference(), Jx, Jy, Jz, s, Quadratic, st, grid, bad; dt = T(1 // 4), quantity_z = QZ2)
+    end
 end

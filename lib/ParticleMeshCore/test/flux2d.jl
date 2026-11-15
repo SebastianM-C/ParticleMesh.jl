@@ -401,7 +401,7 @@ end
         grid = grid2(T, flux_g2(Quadratic, st))
         s = flux_species_2d(T, grid, 400)
         dt = T(basetype(T)(1 // 4))
-        _, _, _, ws = flux2d(Reference(), s, Quadratic, st, grid; dt, flux_layout = layout)
+        J..., ws = flux2d(Reference(), s, Quadratic, st, grid; dt, flux_layout = layout)
         n = ncells(grid)
         K = prod(ParticleMeshCore.flux_widths(Quadratic, st))
         @test size(ws.flux_patch) == (layout === SM ? (3K, prod(n)) : (prod(n), 3K))
@@ -420,5 +420,13 @@ end
         end
         @test same
         @test 100 < filled < prod(n)          # cells with particles, and empty ones (zeros)
+        # A workspace is reused every step: a deposit overwrites the whole patch, the empty cells'
+        # entries included, whatever the patch held.
+        patch = copy(ws.flux_patch)
+        fill!(ws.flux_patch, one(T))
+        J2 = fields3(T, grid)
+        deposit_flux!(Reference(), J2..., s, Quadratic, st, grid, ws; dt, quantity_z = QZ2)
+        @test same_bits(ws.flux_patch, patch)
+        @test same_bits.(J2, J) == (true, true, true)
     end
 end
