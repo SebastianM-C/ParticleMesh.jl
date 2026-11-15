@@ -20,7 +20,9 @@ The package asks for field ionization without random numbers, released by weight
 **Assumption:** one electron per atom and birth step, of the weight the atom has released since its last birth, at the atom's place, at rest at the start of the step (the pusher's half step back, as `initialize!` centres a load). Electrons from several levels released at one birth are one particle.
 
 - **`every`.** Births every `every` steps bound the number of particles. What is released between births is born at the later step's phase of the laser, so `every·Δt` has to stay well below the laser period; `every = 1` is exact in this respect.
-- **Slots.** Atom slot i is offered electron slot `count + i` at each birth step, so a birth step needs as many free slots as there are atom slots whether or not the atoms release. An atom that finds none keeps its released fraction and is counted; no charge is lost (T-776).
+- **Slots.** Atom slot i is offered electron slot `alive + i` at each birth step, so a birth step needs the electrons alive plus the highest atom slot that releases (T-776 holds a run at exactly that capacity and at one slot fewer). An atom that finds none keeps its released fraction and is counted; no charge is lost (T-776).
+- **No floor on a birth's weight.** Every atom of non-zero weight in a field above its level's cutoff takes a slot at each birth step, however little it releases: in `ion_window`'s run 417 of the 1557 born electrons weigh less than 10⁻⁶ of the heaviest (the breaker's count). A floor would be a threshold a derivative does not pass through; merging or a smooth floor is a follow-up, and until then the capacity is planned from the lattice, not from the charge.
+- **Smooth while the electrons are in the box.** The charge born is a smooth function of the parameters (T-778). A sum over the electrons alive is that only while none has left: one that a moving window's back edge or an open edge retires takes its weight out at a step that depends on the parameters, as the plasma's particles do (#370, `window_back_band`). The breaker's scan of `ion_window` at 122 steps, where electrons have begun to leave, has 8 jumps in 100 points, the largest 7·10⁻⁴ against a median step of 2·10⁻⁵. An objective reads the electrons ahead of the back band, or the atoms' emitted weight.
 - **A species of their own.** The born electrons are not put into one of the problem's species: those buffers, their loads and their window refill stay as they are, and the run without ionization keeps its bits.
 
 ## 4. The ions and the charge
@@ -34,6 +36,8 @@ The package asks for field ionization without random numbers, released by weight
 ## 6. Dimensions and backends
 
 **Assumption:** N = 2 only, as the moving window and the laser antenna are. At N = 1 a problem with ionization is refused.
+
+**Range checks on duals.** The constructors compare with `>`, `>=` and `<` as the module's other descriptions do, and ForwardDiff 1.4 orders two duals of equal value by their partials: a dual whose value sits exactly on a bound (a density of value 0, `stop == start`) is accepted or refused by its tangent. The module has no ForwardDiff dependency to take the value with, and the same holds for every range check of the module, so it is left as it is and listed as a follow-up.
 
 ## 7. Atomic data
 

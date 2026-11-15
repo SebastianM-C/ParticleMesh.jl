@@ -5,10 +5,11 @@ using KernelAbstractions: get_backend
 using ParticleMeshElectromagnetic: ionization_frame, RHO_STAGGER_2D
 
 """
-    ion_in_E(T; E0, B0, levels, density, ppc, every, rows, section, capacity, nsteps, courant, plasma) -> EMProblem{2}
+    ion_in_E(T; E0, B0, levels, density, ppc, every, rows, section, capacity, nsteps, courant, plasma, box, cells, boundaries) -> EMProblem{2}
 
-A dopant in a uniform background field on a periodic box of 16 × 8 cells of 1/2, Δt at `courant`
-(0.9) of the Courant limit: `levels` (one level of prefactor 1/2, field 3 and power 1 by default,
+A dopant in a uniform background field on a periodic box of 16 × 8 cells of 1/2 (`cells` on the
+lengths `box`; `boundaries = (:periodic, :open)` opens the y edges), Δt at `courant` (0.9) of the
+Courant limit: `levels` (one level of prefactor 1/2, field 3 and power 1 by default,
 whose rate in |E| = 1/2 is 3·e⁻² ≈ 0.406) at the density `density` on `ppc` points per cell of the
 rows `rows`, born every `every` steps. Without `plasma` the only species has zero density, and with
 the prescribed fields of `NoCurrent()` the field at every atom is `E0` for the whole run; with
@@ -18,16 +19,15 @@ current. `capacity` defaults to one slot per atom and birth step, and one birth 
 """
 function ion_in_E(::Type{T}; E0 = (one(T) / 2, zero(T), zero(T)), B0 = zero3(T), levels = (ADKLevel(one(T) / 2, T(3), one(T)),),
                   density = one(T) / 100, ppc = (1, 1), every = 1, rows = nothing, section = nothing, capacity = nothing, nsteps = 20,
-                  courant = 9 // 10, plasma = false) where {T}
-    cells = (16, 8)
-    L = (T(8), T(4))
+                  courant = 9 // 10, plasma = false, box = (8, 4), cells = (16, 8), boundaries = (:periodic, :periodic)) where {T}
+    L = (T(box[1]), T(box[2]))
     dt = T(courant) * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:2)))
     tenth = one(T) / 10
     e = plasma ? SpeciesDescription{T}(:electron, -one(T), one(T), one(T), tenth, (2, 1), (2, 2), (3tenth, -2tenth, tenth), (tenth, tenth, tenth), 1) :
         SpeciesDescription{T}(:electron, -one(T), one(T), zero(T), zero(T), (1, 0), (1, 1), zero3(T), zero3(T), 1)
     cap = capacity === nothing ? prod(cells) * prod(ppc) * (nsteps ÷ every + 2) : capacity
     ion = FieldIonization(; density, levels, capacity = cap, section, ppc, every, rows)
-    return EMProblem("ion-in-E", L, cells, dt, nsteps, (e,), 3, (2, 1); E0, B0, ionization = ion)
+    return EMProblem("ion-in-E", L, cells, dt, nsteps, (e,), 3, (2, 1); E0, B0, ionization = ion, boundaries)
 end
 
 """
@@ -42,7 +42,10 @@ level of prefactor `prefactor` (1/5), field 3 and power 1: its rate at |E| = 1 i
 and it is exactly zero below |E| = 1/`cutoff` (1/64 by default, the level's cutoff). At the default
 110 steps (t ≈ 58) the pulse has passed the section and the section is still inside the window; by
 150 steps it has left through the back edge. `capacity` (4096) holds every birth of the run; 2048
-does not. `a0`, `density`, `prefactor` and the section's three numbers may be duals.
+hold the 110 steps' (they need 1912) and not those of 130 steps. `a0`, `density`, `prefactor` and
+the section's three numbers may be duals. The box is too coarse and the run too short for a
+physical result (`every = 2` at 8 cells per wavelength is a sixth of a laser period between
+births): its born charge and energy are quantities for tests.
 """
 function ion_window(::Type{T}; nsteps = 110, a0 = 1, density = T(1) / 200, prefactor = T(1) / 5, start = 28, stop = 34, ramp = 3,
                     every = 2, ppc = (1, 1), rows = (3.2, 9.4), capacity = 4096, plasma = true, cutoff = 64, cells = (64, 16), seed = 1) where {T}
@@ -57,9 +60,9 @@ function ion_window(::Type{T}; nsteps = 110, a0 = 1, density = T(1) / 200, prefa
                      profile = DensityRamp(; vacuum = T(24), ramp = T(8)), ionization = ion)
 end
 
-"The initialized state of an ionization problem with the charge-conserving current (`current = NoCurrent()` for prescribed fields)."
-function ion_state(prob; mode = Reference(), workgroupsize = nothing, current = Esirkepov(), be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current); backend = be)
+"The initialized state of an ionization problem with the charge-conserving current (`current = NoCurrent()` for prescribed fields; `absorber` for an open edge)."
+function ion_state(prob; mode = Reference(), workgroupsize = nothing, current = Esirkepov(), absorber = nothing, be = CPU())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current, absorber); backend = be)
     initialize!(st, prob)
     return st
 end

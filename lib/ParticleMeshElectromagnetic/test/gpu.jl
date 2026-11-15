@@ -175,9 +175,9 @@ else
 
     # T-771's host momenta (`push_momentum` on the host against the device's) and T-775's digests across
     # reruns and launch shapes are among the bodies; T-779's dual objectives are compared with the CPU's
-    @testset "T-780 the field ionization on CUDA: T-771 to T-777 with the CPU's assertions, and the dual objectives of T-779 against the CPU's [A2, A4, A7, A8, WP-059]" begin
+    @testset "T-780 the field ionization on CUDA: T-771 to T-777, T-784 and T-785 with the CPU's assertions, and the dual objectives of T-779 against the CPU's [A2, A4, A7, A8, WP-059]" begin
         rerun_module_on(GPU, (("T-771", body_T771), ("T-772", body_T772), ("T-773", body_T773), ("T-774", body_T774), ("T-775", body_T775),
-                              ("T-776", body_T776), ("T-777", body_T777)))
+                              ("T-776", body_T776), ("T-777", body_T777), ("T-784", body_T784), ("T-785", body_T785)))
         xd = (mkdual(ION_X0[1], 1, 0, 0), mkdual(ION_X0[2], 0, 1, 0), mkdual(ION_X0[3], 0, 0, 1), mkdual(ION_X0[4], 0, 0, 0))
         c, g = ion_objectives(xd), ion_objectives(xd; be = GPU)
         rel = maximum(o -> maximum(abs.(components(g[o]) .- components(c[o])) ./ abs.(components(c[o]))), 1:2)

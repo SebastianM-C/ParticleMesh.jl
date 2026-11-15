@@ -86,7 +86,7 @@ level_as(::Type{T}, l::ADKLevel) where {T} = ADKLevel{T}(T(l.prefactor), T(l.fie
 # zero partials, not a NaN.
 @inline function adk_rate_sq(l::ADKLevel{T}, E2::T) where {T}
     c3 = 3 * l.cutoff
-    l.field * l.field < c3 * c3 * E2 || return zero(T)       # x = field/(3E) < cutoff
+    c3 * c3 * E2 <= l.field * l.field && return zero(T)      # x = field/(3E) ≥ cutoff; a NaN field goes on and gives a NaN
     r = l.field / sqrt(E2)
     x = r / 3
     s = min(8 * (l.cutoff - x) / l.cutoff, one(T))
@@ -151,9 +151,12 @@ electron species of the ionization ([`ionization_electrons`](@ref): charge −1,
 deposited as the plasma is, `capacity` slots). What an atom loses in the `every` steps between two
 births is born together, at rest at the later birth step, so the momentum the laser leaves an
 electron with is that of the birth step's phase: keep `every·Δt` well below the laser period
-(`every = 1` costs one particle per releasing atom and step). A birth step needs one free slot per
-atom slot behind the electrons alive, whether or not the atom releases; an atom that finds none
-keeps what it has lost for the next birth step and is counted ([`ionization_lost`](@ref)).
+(`every = 1` costs one particle per releasing atom and step). At a birth step atom slot i writes
+into electron slot `alive + i`, so the step needs as many slots as the electrons alive plus the
+highest atom slot that releases (the number of atom slots at most), and every atom of non-zero
+weight in a field above its level's cutoff releases and takes a slot, however small the weight.
+An atom that finds no slot keeps what it has lost for the next birth step and is counted
+([`ionization_lost`](@ref)).
 
 `density`, the levels' numbers and the section's are parameters and may be `Dual`s (A3: they
 enter through the weights and the rates, never through a position, [`IonizationParams`](@ref));
@@ -489,7 +492,10 @@ end
 The electrons the state's [`FieldIonization`](@ref) has released (the engine's `Species`, charge
 −1 and mass 1: cells, offsets, momenta `u = γv` at the last half step, weights in n_c per
 particle, status). They are pushed, deposited, retired and shifted as the problem's species are,
-and are part of the state's kinetic energy. An `ArgumentError` without ionization.
+and are part of the state's kinetic energy. A sum over them is a smooth function of the
+parameters while none of them has left: an electron that an open edge or a moving window's back
+edge retires takes its weight out at a step that depends on the parameters, as the plasma's
+particles do ([`window_back_band`](@ref), #370). An `ArgumentError` without ionization.
 """
 ionization_electrons(st::EMState{2}) = need_ionization(st).electrons
 

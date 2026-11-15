@@ -1,9 +1,9 @@
-# WP-059: the deterministic field ionization of a dopant, T-770 to T-779 and T-781 to T-783 (T-780
+# WP-059: the deterministic field ionization of a dopant, T-770 to T-779 and T-781 to T-785 (T-780
 # is their rerun on the GPU, gpu.jl). The atoms' bound populations follow the rate equations of an
 # ADK rate in the field at each atom, and what they release is born by weight on a fixed lattice,
 # with no random number. The problems are in ionization_cases.jl.
 
-using ParticleMeshElectromagnetic: adk_rate_sq, dopant_density, dopant_density_params, level_as
+using ParticleMeshElectromagnetic: adk_rate_sq, dopant_density, dopant_density_params, level_as, injection_column, window_frame, state_view
 using ForwardDiff: ForwardDiff
 
 "The alive electrons of a state's ionization, on the host."
@@ -47,6 +47,7 @@ rise(s, ramp) = s <= 0 ? zero(s) : s >= ramp ? one(s) : sin(oftype(s, π) * s / 
         @test 0 < value_of(adk_rate(l, T(1) / 60)) < bare(1 / 60)
         @test adk_rate(l, 1 // 2) === adk_rate(l, T(1) / 2)        # any real field is taken in the level's type
         @test adk_rate_sq(l, T(1) / 4) === adk_rate(l, T(1) / 2)
+        @test isnan(value_of(adk_rate(l, T(NaN))))                 # a field that is not a number is not a zero rate
     end
     # a dual field of value zero, with partials: the rate and its partials are zero
     z = adk_rate_sq(ADKLevel(mkdual(2, 1, 0, 0), mkdual(2, 0, 1, 0), mkdual(1, 0, 0, 1)), mkdual(0, 1, 2, 3))
@@ -73,10 +74,12 @@ rise(s, ramp) = s <= 0 ? zero(s) : s >= ramp ? one(s) : sin(oftype(s, π) * s / 
     @test ADKLevel(2, 3, 1) === ADKLevel(2.0, 3.0, 1.0; cutoff = 64.0)
     @test ADKLevel(2.0f0, 3, 1) isa ADKLevel{Float32} && ADKLevel(mkdual(2, 1, 0, 0), 3, 1) isa ADKLevel{D3}
     @test level_as(Float32, ADKLevel(2, 3, 1; cutoff = 8)) === ADKLevel(2.0f0, 3.0f0, 1.0f0; cutoff = 8.0f0)
-    for bad in ((-1, 3, 1), (Inf, 3, 1), (2, 0, 1), (2, -3, 1), (2, Inf, 1), (2, 3, NaN))
+    for bad in ((-1, 3, 1), (Inf, 3, 1), (2, 0, 1), (2, -3, 1), (2, Inf, 1), (2, 3, NaN), (2, 3, Inf))
         @test_throws ArgumentError ADKLevel(bad...)
     end
+    @test adk_rate(ADKLevel(0, 3, 1), 1.0) === 0.0              # a level that never ionizes is a level
     @test_throws ArgumentError ADKLevel(2, 3, 1; cutoff = 0)
+    @test_throws ArgumentError ADKLevel(2, 3, 1; cutoff = -1)
     @test_throws ArgumentError ADKLevel(2, 3, 1; cutoff = Inf)
     # the section's profile, from its definition, and with no section the density everywhere
     for T in TYPES
@@ -92,6 +95,7 @@ rise(s, ramp) = s <= 0 ? zero(s) : s >= ramp ? one(s) : sin(oftype(s, π) * s / 
         @test all(x -> dopant_density(T(x), flat) === T(3) / 100, (-1.0e6, 0, 17.5, 1.0e6))
     end
     @test DopantSection(; start = 1, stop = 2, ramp = 1) === DopantSection(; start = 1.0, stop = 2.0, ramp = 1.0)
+    @test DopantSection(; start = 1, stop = 1, ramp = 1).stop == 1          # no flat top: the rise, then the fall
     @test_throws ArgumentError DopantSection(; start = 1, stop = 2, ramp = 0)
     @test_throws ArgumentError DopantSection(; start = 2, stop = 1, ramp = 1)
 end
@@ -202,7 +206,7 @@ end
 
 # --- T-772 ----------------------------------------------------------------------------------
 
-"Three levels whose rates in |E| = 1/2 are of one order (about 0.41, 0.79 and 0.66); `p2` is the second's prefactor."
+"Three levels whose rates in |E| = 1/2 are of one order (about 0.41, 1.57 and 2.64 with `p2 = 1`); `p2` is the second's prefactor."
 chain_levels(::Type{T}; p2 = one(T)) where {T} = (ADKLevel(one(T) / 2, T(3), one(T)), ADKLevel(p2, T(4), T(3) / 2), ADKLevel(one(T), T(6), T(2)))
 
 "The populations of a chain of three levels at time `t` from all of them in the first, the exact solution of the rate equations for constant, distinct rates `W`."
@@ -285,14 +289,16 @@ end
 # --- T-773 ----------------------------------------------------------------------------------
 
 """
-    ion_gauss(st, p, k) -> (; res, bare, scale, ions)
+    ion_gauss(st, p, k) -> (; res, bare, scale, escale, ions)
 
 Gauss's law of a state with ionization after step `k`, per interior node: `res`, the residual
 `D⁻ₓEx + D⁻_yEy − ρ` with ρ the charge of every particle ([`window_charge!`](@ref): the species and
 the born electrons) plus the dopant ions' ([`ionization_charge!`](@ref)), less the neutralizing
-background (the mean of a periodic box; a window's `window_background!`); `bare`, the same without
-the ions; `scale` as T-360, `(n₁ + n₂)·max|ρ|` of the particles; `ions`, the largest ion charge
-density. `absmax` takes a dual's partials.
+background (the mean of a periodic box; a window's `window_background!`; none in a box with an open
+edge, whose runs here start without charge); `bare`, the same without the ions; `scale` as T-360,
+`(n₁ + n₂)·max|ρ|` of the particles; `escale`, the divergence's own roundoff scale
+`(2/Δx + 2/Δy)·max|E|`, which is the larger where a strong field stands over little charge;
+`ions`, the largest ion charge density. `absmax` takes a dual's partials.
 """
 function ion_gauss(st, p, k)
     T = eltype(st.ρ)
@@ -306,13 +312,15 @@ function ion_gauss(st, p, k)
     ρ, ρi, ρ0 = Array(ρ), Array(ρi), Array(ρ0)
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
     I1, I2 = (g + 1):(g + n[1]), (g + 1):(g + n[2])
-    mean(a) = window === nothing ? sum(a[I1, I2]) / prod(n) : zero(T)
+    mean(a) = window === nothing && st.numerics.absorber === nothing ? sum(a[I1, I2]) / prod(n) : zero(T)
     m, mi = mean(ρ), mean(ρi)
     Ex, Ey = Array(st.fields.Ex), Array(st.fields.Ey)
     div(i, j) = (Ex[i, j] - Ex[i - 1, j]) / h[1] + (Ey[i, j] - Ey[i, j - 1]) / h[2]
     res = [absmax(div(i, j) - (ρ[i, j] - m + ρi[i, j] - mi - ρ0[i, j])) for i in I1, j in I2]
     bare = [absmax(div(i, j) - (ρ[i, j] - m - ρ0[i, j])) for i in I1, j in I2]
-    return (; res, bare, scale = sum(n) * maximum(absmax, ρ[I1, I2]), ions = maximum(absmax, ρi[I1, I2]))
+    hv = map(value_of, h)
+    escale = (2 / hv[1] + 2 / hv[2]) * max(maximum(absmax, Ex[I1, I2]), maximum(absmax, Ey[I1, I2]))
+    return (; res, bare, scale = sum(n) * maximum(absmax, ρ[I1, I2]), escale, ions = maximum(absmax, ρi[I1, I2]))
 end
 
 # Gauss's law with ionization, periodic box. An electron is born on top of the immobile ion it
@@ -320,7 +328,8 @@ end
 # one, so D⁻·E − ρ stays what it was to roundoff (T-360) when ρ counts the ions' charge, the atoms'
 # weight times their emitted fraction at their places. A thermal plasma (its particles cross cells
 # and both seams) in the uniform field Ex = 1/2, which the plasma's current then changes, with a
-# dopant of two levels at 0.05 n_c (a dual) on four of the eight rows, born every 2 steps, both
+# dopant of two levels at 0.05 n_c (a dual), two atoms per cell along x on four of the eight rows
+# (an electron born anywhere but at its atom's own offset would show), born every 2 steps, both
 # deposition modes: the residual with the ions stays at roundoff after every step, scaled as T-360,
 # while without them it is the ions' charge less its mean, about half its largest value; no birth
 # is lost, and every atom has released more than one electron.
@@ -328,7 +337,7 @@ function body_T773(be)
     C = emC("T-773")
     for T in TYPES, mode in (Reference(), Fast())
         levels = (ADKLevel(one(T) / 2, T(3), one(T)), ADKLevel(one(T) / 2, T(4), T(3) / 2))
-        prob = ion_in_E(T; levels, density = seeded(T, 1) / 20, every = 2, nsteps = 30, plasma = true, rows = (1.1, 2.9))
+        prob = ion_in_E(T; levels, density = seeded(T, 1) / 20, ppc = (2, 1), every = 2, nsteps = 30, plasma = true, rows = (1.1, 2.9))
         st = ion_state(prob; mode, be)
         p = params(prob)
         r = ion_gauss(st, p, 0)
@@ -344,7 +353,7 @@ function body_T773(be)
         record!("T-773 $(nameof(typeof(mode)))", T, worst, be)
         @test worst <= C
         @test bare > 1 / 4 && r.ions > 1 / 100
-        @test ionization_lost(st) == 0 && born(st).n == 15 * 64
+        @test ionization_lost(st) == 0 && born(st).n == 15 * 128
         @test minimum(value_of, s.emitted) > 1
         @test maximum(abs ∘ value_of, Array(st.fields.Jx)) > 0
     end
@@ -357,24 +366,61 @@ end
 # --- T-774 ----------------------------------------------------------------------------------
 
 # The dopant in the moving window. Gauss's law as T-473 (off nodes 1 and 2 and the antenna's two
-# columns), with the ions' charge: a laser ionizes a doped section of the plasma, the window moves
-# on until the section and its electrons have left through the back edge (150 steps, about 58
-# shifts), both modes; while the section is in the window the residual without the ions is the
-# ions' charge.
+# columns), with the ions' charge: a laser ionizes a doped section of the plasma (two atoms per
+# cell along x), the window moves on until the section and its electrons have left through the
+# back edge (150 steps, about 58 shifts), both modes; while the section is in the window the
+# residual without the ions is the ions' charge (between a half and twice its largest density,
+# wherever that is above 10⁻⁴ n_c). The plasma's refill loses no particle (a box that
+# does fails Gauss's law with or without a dopant).
 #
 # The lattice through the shifts (vacuum, so that a level with the cutoff at |E| = 1/8 is exactly
-# idle behind the pulse): after any number of shifts the atoms' buffer is the full lattice in
-# sorted order, each atom of the weight of the section's profile at its global coordinate, from
-# the definition (with the density and the section's start, stop and ramp duals, their partials
-# too, while the positions carry none); and an atom keeps its populations as it moves back through
-# the buffer: between step 112, when the pulse has left the section, and step 124, 8 shifts later,
-# every atom of the section still in the window has the bits of its bound, pending and emitted
-# fractions, at its new slot (the atoms ahead of the section have no weight and release nothing,
-# but their populations follow the pulse they sit in).
+# idle behind the pulse; 2 × 2 atoms per cell): the lattice's columns are the window's up to its
+# injection column, and after any number of shifts the atoms' buffer is the full lattice in sorted
+# order, each atom of the weight of the section's profile at its global coordinate, from the
+# definition (`ion_lattice`; with the density and the section's start, stop and ramp duals, their
+# partials too, while the positions carry none); and an atom keeps its populations as it moves
+# back through the buffer: between step 112, when the pulse has left the section, and step 124, 8
+# shifts later, every atom of the section still in the window has the bits of its bound, pending
+# and emitted fractions, at its new slot (the atoms ahead of the section have no weight and
+# release nothing, but their populations follow the pulse they sit in). A section that lies ahead
+# of the window at the start (no atom has weight) is loaded by the refill alone, column by column
+# at the window's position then: after 100 steps its weights are the profile's.
+"""
+    ion_lattice(st, k, ppc, (density, start, stop, ramp)) -> (ok, werr)
+
+The atoms' buffer of a window state after step `k` against the definition: `ok` when it is the
+full lattice of `ppc` atoms per cell in the engine's sorted order (columns fastest, then rows, the
+in-cell index fastest within a cell, x the faster of its two) with the in-cell offsets
+`((k₁ − ½)/p₁, (k₂ − ½)/p₂)`; `werr` the largest difference of an atom's weight from the section's
+profile at its global coordinate over the points per cell, in eps of the density's share.
+"""
+function ion_lattice(st, k, ppc, prof)
+    T = eltype(st.ρ)
+    fr = ionization_frame(st)
+    a = fr.atoms
+    ncols, nrows, K = Int(fr.ncols), Int(fr.nrows), prod(ppc)
+    dens, start, stop, ramp = prof
+    h = cellsize(st.grid)[1]
+    sw = window_shifts(st, k)
+    s = ionization_state(st)
+    δ1 = [(T(kk % ppc[1]) + one(T) / 2) / ppc[1] for kk in 0:(K - 1)]
+    δ2 = [(T(kk ÷ ppc[1]) + one(T) / 2) / ppc[2] for kk in 0:(K - 1)]
+    ok = all(s.alive) && length(s.w) == ncols * nrows * K
+    ok &= Array(a.cell[1]) == repeat(Int32.(1:ncols); inner = K, outer = nrows) && Array(a.cell[2]) == repeat(Int32.(fr.row0 .+ (0:(nrows - 1))); inner = ncols * K)
+    ok &= Array(a.offset[1]) == repeat(δ1; outer = ncols * nrows) && Array(a.offset[2]) == repeat(δ2; outer = ncols * nrows)
+    werr = 0.0
+    for c in 1:ncols, kk in 1:K
+        x = (T(c + sw - 1) + δ1[kk]) * h
+        w = dens * rise(x - start, ramp) * (1 - rise(x - stop, ramp)) / K
+        werr = max(werr, maximum(r -> absdiff(s.w[((r - 1) * ncols + c - 1) * K + kk], w), 1:nrows))
+    end
+    return ok, werr * K / (base_eps(T) * value_of(dens))
+end
+
 function body_T774(be)
     C = emC("T-774")
     for T in TYPES, mode in (Reference(), Fast())
-        prob = ion_window(T; nsteps = 150, density = seeded(T, 1) / 200)
+        prob = ion_window(T; nsteps = 150, density = seeded(T, 1) / 200, ppc = (2, 1), capacity = 8192)
         st = ion_state(prob; mode, be)
         p = params(prob)
         ia = antenna_planes(st)[1].ia
@@ -386,62 +432,61 @@ function body_T774(be)
             r = ion_gauss(st, p, k)
             cols = [i for i in axes(r.res, 1) if !(i in (1, 2, ia - 1 - s_win, ia - s_win))]
             worst = max(worst, Float64(maximum(r.res[cols, :]) / (base_eps(T) * r.scale * sqrt(k + 1))))
-            r.ions > 0 && (bare = max(bare, Float64(maximum(r.bare[cols, :]) / r.ions)))
+            r.ions > 1.0e-4 && (bare = max(bare, Float64(maximum(r.bare[cols, :]) / r.ions)))
             released = max(released, maximum(value_of, ionization_state(st).emitted))
         end
         @info "T-774" T mode worst bare released shifts = window_shifts(st, prob.nsteps)
         record!("T-774 $(nameof(typeof(mode)))", T, worst, be)
         @test worst <= C
-        @test bare > 1 / 2
-        @test released > 3 / 10 && ionization_lost(st) == 0
+        @test 1 / 2 < bare < 2
+        @test released > 3 / 10 && ionization_lost(st) == 0 && all(==(0), window_lost(st))
         @test all_zero(ionization_state(st).emitted) && born(st).n == 0        # the section and its electrons have left
     end
     for T in TYPES
         dens, start, stop, ramp = seeded(T, 1) / 200, seeded(T, 28), T(34) + seeded(T, 1) / 2 - T(1) / 2, T(3) + seeded(T, 1) / 4 - T(1) / 4
-        prob = ion_window(T; nsteps = 124, density = dens, start, stop, ramp, plasma = false, cutoff = 8)
+        ppc = (2, 2)
+        K = prod(ppc)
+        prob = ion_window(T; nsteps = 124, density = dens, start, stop, ramp, plasma = false, cutoff = 8, ppc, capacity = 16384)
         st = ion_state(prob; be)
         p = params(prob)
         fr = ionization_frame(st)
         ncols, nrows = Int(fr.ncols), Int(fr.nrows)
-        h = 2 * T(π) / 8
-        slot(c, r) = (r - 1) * ncols + c
-        function lattice_ok(k)
-            s = ionization_state(st)
-            a = fr.atoms
-            c1, c2 = Array(a.cell[1]), Array(a.cell[2])
-            sw = window_shifts(st, k)
-            ok = all(s.alive) && c1 == repeat(Int32.(1:ncols); outer = nrows) && c2 == repeat(Int32.(fr.row0 .+ (0:(nrows - 1))); inner = ncols)
-            ok &= all(==(one(T) / 2), Array(a.offset[1])) && all(==(one(T) / 2), Array(a.offset[2]))
-            werr = maximum(1:ncols) do c
-                x = (T(c + sw - 1) + one(T) / 2) * h
-                w = dens * rise(x - start, ramp) * (1 - rise(x - stop, ramp))
-                maximum(r -> absdiff(s.w[slot(c, r)], w), 1:nrows)
-            end
-            return ok, werr / (base_eps(T) * value_of(dens))
-        end
-        ok, werr = lattice_ok(0)
+        @test ncols == injection_column(window_frame(st)) < 64 && Array(fr.atoms.count)[1] == ncols * nrows * K
+        slots(c, r) = ((r - 1) * ncols + c - 1) * K .+ (1:K)
+        prof = (dens, start, stop, ramp)
+        ok, werr = ion_lattice(st, 0, ppc, prof)
         @test ok && werr <= emC("T-774", "C_weight")
         run!(st, p, 112)
-        ok, w1 = lattice_ok(112)
+        ok, w1 = ion_lattice(st, 112, ppc, prof)
         @test ok
         s1, sw1 = ionization_state(st), window_shifts(st, 112)
         run!(st, p, 12; first = 113)
-        ok, w2 = lattice_ok(124)
+        ok, w2 = ion_lattice(st, 124, ppc, prof)
         @test ok
-        record!("T-774 weights", T, max(werr, w1, w2), be)
         @test max(w1, w2) <= emC("T-774", "C_weight")
         s2 = ionization_state(st)
         moved = window_shifts(st, 124) - sw1
         @test moved >= 5 && sw1 > 20
-        kept = [(slot(c, r), slot(c - moved, r)) for r in 1:nrows for c in (moved + 1):ncols if value_of(s1.w[slot(c, r)]) > 0]
-        @test length(kept) > 40
+        kept = [(i, j) for r in 1:nrows for c in (moved + 1):ncols for (i, j) in zip(slots(c, r), slots(c - moved, r)) if value_of(s1.w[i]) > 0]
+        @test length(kept) > 40 * K
         @test all(((i, j),) -> same_bits([s1.emitted[i], s1.bound[1][i], s1.pending[i]], [s2.emitted[j], s2.bound[1][j], s2.pending[j]]), kept)
-        @test count(((i, j),) -> value_of(s2.emitted[j]) > 1 / 10, kept) > 20        # ionized atoms among them
-        @test all(r -> all(c -> absmax(s2.emitted[slot(c, r)]) == 0 && s2.bound[1][slot(c, r)] == one(T), (ncols - moved + 1):ncols), 1:nrows)   # the fresh columns
+        @test count(((i, j),) -> value_of(s2.emitted[j]) > 1 / 10, kept) > 20 * K        # ionized atoms among them
+        fresh = [i for r in 1:nrows for c in (ncols - moved + 1):ncols for i in slots(c, r)]
+        @test all(i -> absmax(s2.emitted[i]) == 0 && s2.bound[1][i] == one(T), fresh)
         if T === D3
             @test all(a -> all(x -> all(iszero, partials(x)), Array(a)), fr.atoms.offset)
             @test any(x -> any(!iszero, partials(x)), s2.w)
         end
+        # a section ahead of the window: only the refill loads it
+        ppc, prof = (1, 2), (dens, start + 22, stop + 21, ramp)
+        prob = ion_window(T; nsteps = 100, density = dens, start = prof[2], stop = prof[3], ramp, plasma = false, cutoff = 8, ppc)
+        st = ion_state(prob; be)
+        @test all_zero(ionization_state(st).w)
+        run!(st, params(prob), prob.nsteps)
+        ok, w3 = ion_lattice(st, prob.nsteps, ppc, prof)
+        @test ok && w3 <= emC("T-774", "C_weight")
+        @test count(w -> value_of(w) > value_of(dens) / 8, ionization_state(st).w) > 50 && window_shifts(st, prob.nsteps) > 20
+        record!("T-774 weights", T, max(werr, w1, w2, w3), be)
     end
 end
 
@@ -501,9 +546,15 @@ end
 # 256 slots, in step 3 the first 44 atoms find a slot and 84 do not, and from step 4 on none does,
 # so after 6 steps 84 + 3·128 births are counted as lost, 300 electrons are alive, the first 44
 # atoms have emitted 1 − q³ and hold q³ − q⁶ pending, the others 1 − q² and q² − q⁶, and the
-# electrons' weight is still the atoms' emitted weight: no charge is lost. With the
-# charge-conserving current and a plasma (T-773's run with 400 slots) Gauss's law holds to
-# roundoff through the overflow.
+# electrons' weight is still the atoms' emitted weight: no charge is lost; a new `initialize!` zeroes
+# the counter. With the charge-conserving current and a plasma (T-773's run with 400 slots) Gauss's
+# law holds to roundoff through the overflow.
+#
+# What a birth step needs is the electrons alive and the highest atom slot that releases, in a
+# step that sorts the electrons and in one that does not (the birth sorts them first): a section
+# gives 48 of the 128 atoms a weight (columns 5 to 10 of 16, the last of them atom slot 122), so
+# four births need 3·48 + 122 slots; with exactly those none is lost, and with one fewer exactly
+# one is.
 function body_T776(be)
     C = emC("T-771")
     for T in TYPES
@@ -520,6 +571,19 @@ function body_T776(be)
         @test maximum(x -> absdiff(x, 1 - q(2)), s.emitted[45:end]) <= tol && maximum(x -> absdiff(x, q(2) - q(6)), s.pending[45:end]) <= tol
         @test maximum(absmax, s.bound[1] .+ s.pending .+ s.emitted .- one(T)) <= tol
         @test absdiff(sum(el.w), sum(s.w .* s.emitted)) <= tol * absmax(sum(el.w))
+        initialize!(st, prob)
+        @test ionization_lost(st) == 0 && born(st).n == 0
+    end
+    for T in TYPES, (current, mode) in ((NoCurrent(), Reference()), (Esirkepov(), Reference()), (Esirkepov(), Fast()))
+        nrel, imax, nb = 48, 122, 4
+        for lost in (0, 1)
+            prob = ion_in_E(T; every = 2, nsteps = 2 * nb, capacity = (nb - 1) * nrel + imax - lost,
+                            section = DopantSection(; start = T(2), stop = T(4), ramp = one(T)))
+            st = ion_state(prob; current, mode, be)
+            @test count(w -> value_of(w) > 0, ionization_state(st).w) == nrel
+            run!(st, params(prob), prob.nsteps)
+            @test ionization_lost(st) == lost && born(st).n == nb * nrel - lost
+        end
     end
     for T in TYPES, mode in (Reference(), Fast())
         levels = (ADKLevel(one(T) / 2, T(3), one(T)), ADKLevel(one(T) / 2, T(4), T(3) / 2))
@@ -570,7 +634,8 @@ ion_bits(st, k = 0) = (map(bits, evolved(st))..., bits(st.K), map(h -> bits(Arra
 # into a new state, or into a used one whose scratch has been overwritten, continues with the bits
 # of the uninterrupted run: saved before the first birth, at a birth step and the step after it,
 # and after shifts, with electrons leaving and births that found no slot (`ion_window` with 2048
-# slots, 130 steps, Reference mode).
+# slots, 130 steps, Reference mode). A `state_view` over copies of a state's evolved arrays holds
+# the ionization in those copies and continues with the same bits.
 function body_T777(be)
     for T in TYPES
         prob = ion_window(T; nsteps = 130, density = seeded(T, 1) / 200, capacity = 2048)
@@ -604,6 +669,15 @@ function body_T777(be)
             run!(used, p, prob.nsteps - k; first = k + 1)
             @test ion_bits(used, k) == ion_bits(full, k)
         end
+        ran = ion_state(prob; be)
+        run!(ran, p, 81)
+        arrays = map(copy, evolved(ran))
+        at81 = map(bits, evolved(ran))
+        sv = state_view(ran, arrays)
+        @test all(map(===, evolved(sv), arrays))
+        run!(sv, p, prob.nsteps - 81; first = 82)
+        @test map(bits, evolved(sv)) == map(bits, evolved(full)) && bits(sv.K) == bits(full.K)
+        @test map(bits, evolved(ran)) == at81                       # the state it was taken from is where it was
     end
 end
 
@@ -684,6 +758,130 @@ end
     end
 end
 
+# --- T-784 ----------------------------------------------------------------------------------
+
+# The field at the atom's place, and the electron at it. A lattice of 2 × 3 atoms per cell on four
+# rows of a box of 16 × 8 cells of 1/2 × 3/4 (so that neither the axes' spacings nor their points
+# per cell can be exchanged unnoticed), in a prescribed static field with all three components:
+# Ex = 0.3 + x/20, linear along x (curl-free, so it stays; the quadratic gather reproduces a linear
+# field exactly), Ey = 1/10 and Ez = 1/5 uniform. Born every 2 steps, 8 steps:
+# - the atoms are the lattice of the definition, x the faster in-cell index, each of the weight
+#   density/6;
+# - each atom's bound population is exp(−W·t) of the rate in |E| at its own x, with the prefactor's
+#   partials (off the two columns whose stencil reaches across the periodic seam, where the linear
+#   field jumps), and the populations differ along x by more than 0.1;
+# - the fourth birth, in the last step, is one electron per atom, in the atoms' order behind the
+#   three births before it (the electrons' count is the 4 × 384 slots offered), of the weight
+#   (density/6)·q⁶·(1 − q²) of its atom's rate, and it started at its atom: its position less the
+#   step's displacement u/γ·Δt is the atom's, on both axes;
+# - the state's kinetic energy is the born electrons' Σ w·(γ − 1) (the species has no weight);
+# - the ions' charge deposited twice into one array is the ions' charge once.
+function body_T784(be)
+    C = emC("T-784")
+    for T in TYPES
+        dens, pref = seeded(T, 1) / 100, seeded(T, 1) / 2
+        n, every, ppc, box = 8, 2, (2, 3), (8, 6)
+        a, slope, Ey0, Ez0 = T(3) / 10, T(1) / 20, T(1) / 10, T(1) / 5
+        level = ADKLevel(pref, T(3), one(T))
+        prob = ion_in_E(T; E0 = (a, Ey0, Ez0), levels = (level,), density = dens, ppc, every, rows = (1.2, 4.8), nsteps = n, box)
+        st = ion_state(prob; current = NoCurrent(), be)
+        p = params(prob)
+        g, h, dt = guards(st.grid), cellsize(st.grid), prob.dt
+        Ex = Array(st.fields.Ex)                                    # (Center, Node): index i at x = (i − g − ½)·Δx
+        for i in axes(Ex, 1)
+            Ex[i, :] .= a + slope * (T(i - g) - one(T) / 2) * h[1]
+        end
+        copyto!(st.fields.Ex, Ex)
+        natoms = 16 * 4 * 6
+        pts = [((c1 - 1 + (k1 - 0.5) / 2) / 2, (c2 - 1 + (k2 - 0.5) / 3) * 0.75) for c2 in 3:6 for c1 in 1:16 for k2 in 1:3 for k1 in 1:2]
+        s = ionization_state(st)
+        @test length(s.x) == natoms == length(pts) && all(s.alive)
+        @test value_of.(s.x) ≈ first.(pts) rtol = 4 * base_eps(T)
+        @test value_of.(s.y) ≈ last.(pts) rtol = 4 * base_eps(T)
+        @test all(w -> absdiff(w, dens / 6) <= 2 * base_eps(T) * absmax(dens), s.w)
+        run!(st, p, n)
+        s = ionization_state(st)
+        W = [adk_rate(level, sqrt((a + slope * T(x))^2 + Ey0^2 + Ez0^2)) for x in first.(pts)]
+        inner = [i for i in 1:natoms if 1 < (i - 1) ÷ 6 % 16 + 1 < 16]
+        err = maximum(i -> absdiff(s.bound[1][i], exp(-W[i] * dt * n)), inner) / (n * base_eps(T))
+        record!("T-784", T, err, be)
+        @test err <= C
+        @test maximum(value_of, s.bound[1][inner]) - minimum(value_of, s.bound[1][inner]) > 1 / 10
+        e = ionization_electrons(st)
+        @test Array(e.count)[1] == 4 * natoms && born(st).n == 4 * natoms && ionization_lost(st) == 0
+        fourth = (3 * natoms + 1):(4 * natoms)
+        w4 = Array(e.w)[fourth]
+        werr = maximum(i -> absdiff(w4[i], dens / 6 * exp(-W[i] * dt * 6) * -expm1(-W[i] * dt * 2)), inner) / (n * base_eps(T) * value_of(dens) / 6)
+        record!("T-784 weights", T, werr, be)
+        @test werr <= C
+        u = map(c -> value_of.(Array(c)[fourth]), e.u)
+        γ = sqrt.(1 .+ u[1] .^ 2 .+ u[2] .^ 2 .+ u[3] .^ 2)
+        start(d) = (Array(e.cell[d])[fourth] .- 1 .+ value_of.(Array(e.offset[d])[fourth])) .* value_of(h[d]) .- u[d] ./ γ .* value_of(dt)
+        away(x, L) = abs(mod(x + L / 2, L) - L / 2)
+        @test maximum(away.(start(1) .- first.(pts), box[1])) <= 64 * base_eps(T)
+        @test maximum(away.(start(2) .- last.(pts), box[2])) <= 64 * base_eps(T)
+        el = born(st)
+        u2 = el.u[1] .^ 2 .+ el.u[2] .^ 2 .+ el.u[3] .^ 2
+        Kb = sum(el.w .* u2 ./ (sqrt.(1 .+ u2) .+ 1))
+        @test value_of(Kb) > 0 && absdiff(sum(Array(st.K)), Kb) <= 64 * base_eps(T) * absmax(Kb)
+        ρi = field(be, T, st.grid)
+        ionization_charge!(ρi, st)
+        once = bits(ρi)
+        ionization_charge!(ρi, st)
+        @test bits(ρi) == once && any(!iszero, once)
+    end
+end
+
+@testset "T-784 the rate is of the field at the atom's own place, all three components, and an electron starts at its atom, on a lattice of 2 × 3 per cell of unequal sides [A2, A3, A8, WP-059]" begin
+    body_T784(CPU())
+end
+
+# --- T-785 ----------------------------------------------------------------------------------
+
+# The born electrons at an open edge (WP-027). A box of 16 × 16 cells open along y, with an
+# absorbing layer of three cells, in the uniform field Ey = 1/2 (normal to the edges and uniform
+# along x, so it stays where the layer does not damp it), and a dopant on the four rows about the
+# middle, born every 2 steps with the charge-conserving current: the field drives the electrons
+# towards the lower edge, which the first of them pass within the 40 steps. They are retired there
+# as the problem's particles are (fewer are alive than were born, and the alive ones' weight is
+# below the weight the atoms have emitted), no birth is lost, and on the node rows off the layer
+# Gauss's law with the ions' charge holds to roundoff after every step, both modes (the box starts
+# without charge; the scale is T-360's of the charge plus the divergence's own of the field, which
+# is the larger here: a field of 1/2 over a charge density of a few 10⁻³), while without the
+# ions' charge the residual there is more than a quarter of it.
+function body_T785(be)
+    C = emC("T-785")
+    for T in TYPES, mode in (Reference(), Fast())
+        layer, n2, natoms = 3, 16, 16 * 4
+        prob = ion_in_E(T; E0 = (zero(T), one(T) / 2, zero(T)), box = (8, 8), cells = (16, n2), boundaries = (:periodic, :open), rows = (3.1, 4.9),
+                        every = 2, nsteps = 40, density = seeded(T, 1) / 20)
+        st = ion_state(prob; mode, absorber = AbsorbingLayer(; cells = layer, strength = 1, order = 2), be)
+        p = params(prob)
+        free = (layer + 2):(n2 - layer)
+        worst = 0.0
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            r = ion_gauss(st, p, k)
+            worst = max(worst, Float64(maximum(r.res[:, free]) / (base_eps(T) * (r.scale + r.escale) * sqrt(k + 1))))
+        end
+        r = ion_gauss(st, p, prob.nsteps)
+        @test maximum(r.bare[:, free]) > r.ions / 4 > 0
+        s, el = ionization_state(st), born(st)
+        births = (prob.nsteps ÷ 2) * natoms
+        emitted = sum(s.w .* s.emitted)
+        @info "T-785" T mode worst alive = el.n births left = 1 - value_of(sum(el.w)) / value_of(emitted)
+        record!("T-785 $(nameof(typeof(mode)))", T, worst, be)
+        @test worst <= C
+        @test count(x -> value_of(x) > 0, s.emitted) == natoms && ionization_lost(st) == 0
+        @test 0 < el.n < births - natoms
+        @test value_of(sum(el.w)) < 0.95 * value_of(emitted)
+    end
+end
+
+@testset "T-785 born electrons leave through an open edge as the plasma's do: retired there, and Gauss's law with the ions' charge on the free rows [A2, A4, A8, WP-059, WP-027]" begin
+    body_T785(CPU())
+end
+
 # --- T-781 ----------------------------------------------------------------------------------
 
 "Bytes allocated by four steps with births (and a shift or more) of `ion_window` with `ppc` atoms per cell and `capacity` electron slots, after 76 steps."
@@ -720,9 +918,10 @@ end
     @test FieldIonization(; ok..., levels = lv).levels === (lv,)
     @test FieldIonization(; density = 1, levels = (lv, ADKLevel(1.0f0, 2, 3)), capacity = 5).levels isa NTuple{2,ADKLevel{Float64}}
     for bad in ((; levels = ()), (; levels = (1.0,)), (; density = -1.0), (; density = Inf), (; capacity = 0), (; ppc = (0, 1)), (; ppc = (1, 1, 1)),
-                (; every = 0), (; rows = (2.0, 1.0)), (; rows = (1.0,)), (; section = (1.0, 2.0, 3.0)))
+                (; every = 0), (; rows = (2.0, 1.0)), (; rows = (1.0, 1.0)), (; rows = (1.0,)), (; section = (1.0, 2.0, 3.0)))
         @test_throws ArgumentError FieldIonization(; ok..., bad...)
     end
+    @test FieldIonization(; ok..., density = 0).density == 0        # a dopant of no density is a dopant
     prob = ion_in_E(Float64)
     @test prob.ionization isa FieldIonization{Float64,1} && params(prob).ionization isa IonizationParams{Float64,1,Nothing}
     @test ion_in_E(Float32).ionization isa FieldIonization{Float32}
@@ -733,8 +932,10 @@ end
     plain = EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species, prob.seed, prob.kmode; E0 = prob.E0)
     @test_throws ArgumentError initialize!(st, plain)
     @test_throws ArgumentError initialize!(state_2d(plain), prob)
-    for other in (ion_in_E(Float64; ppc = (2, 1)), ion_in_E(Float64; every = 2), ion_in_E(Float64; rows = (1.1, 2.9)), ion_in_E(Float64; capacity = 77),
-                  ion_in_E(Float64; levels = chain_levels(Float64)))
+    cap = prob.ionization.capacity                              # the state's, so that each check below is of the one thing named
+    for other in (ion_in_E(Float64; ppc = (2, 1), capacity = cap), ion_in_E(Float64; every = 2, capacity = cap), ion_in_E(Float64; rows = (1.1, 2.9)),
+                  ion_in_E(Float64; capacity = 77), ion_in_E(Float64; levels = chain_levels(Float64)))
+        @test other.ionization.capacity == cap || other.ionization.capacity == 77
         @test_throws ArgumentError initialize!(st, other)
     end
     @test initialize!(st, ion_in_E(Float64; density = 0.5, levels = (ADKLevel(7.0, 1.0, 2.0),), section = DopantSection(; start = 1, stop = 2, ramp = 1))) === st
@@ -743,6 +944,11 @@ end
     @test_throws ArgumentError step!(st, EMParams(p; ionization = IonizationParams{Float64}(0.01, chain_levels(Float64))), 1)
     @test_throws ArgumentError step!(state_2d(plain), EMParams(params(plain); ionization = p.ionization), 1)
     @test step!(st, EMParams(p; ionization = IonizationParams{Float64}(0.5, (ADKLevel(7.0, 1.0, 2.0),))), 1) === st
+    # parameters rebuilt from parameters keep the ionization, its section too
+    pw = params(ion_window(Float64))
+    @test pw.ionization.section === DopantSection(; start = 28.0, stop = 34.0, ramp = 3.0)
+    @test EMParams(pw; seed = pw.seed).ionization === pw.ionization
+    @test EMParams{Float64}(; species = pw.species, seed = 1, ionization = pw.ionization).ionization === pw.ionization
     for f in (ionization_electrons, ionization_state, ionization_lost)
         @test_throws ArgumentError f(state_2d(plain))
     end
@@ -815,6 +1021,7 @@ Base.include(ION_ATOMS, joinpath(REPO, "scripts", "ionization", "atomic.jl"))
     p1 = A.adk_numbers(20.0, 1; wavelength = λ, l = 1, m = 1)
     @test p1.prefactor ≈ 3 * A.adk_numbers(20.0, 1; wavelength = λ).prefactor rtol = 1.0e-14      # (2l+1)(l+|m|)!/(2^|m|·|m|!·(l−|m|)!) = 3·2/2
     @test p1.power ≈ A.adk_numbers(20.0, 1; wavelength = λ).power - 1 rtol = 1.0e-14
+    @test A.adk_numbers(20.0, 1; wavelength = λ, l = 2, m = 1).prefactor ≈ 15 * A.adk_numbers(20.0, 1; wavelength = λ).prefactor rtol = 1.0e-14   # 5·3!/(2·1·1)
     # the table: nitrogen's seven energies rise, the K shell far above the L shell, and what it does not hold is refused
     N = [A.ionization_energy(:N, Z) for Z in 1:7]
     @test issorted(N) && N[5] == 97.89013 && N[6] == 552.06731 && N[6] / N[5] > 5
