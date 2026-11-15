@@ -78,7 +78,7 @@ end
     box = (lo = [4.0, 60.0], hi = [9.0, 130.0], scale = [6.0, 90.0])
     Jq(τ, f) = 3 - (τ - 7.7)^2 - ((f - 113) / 10)^2
     prob = case_problem(Jq, box, (4.5, 70.0))
-    # L-BFGS-B has no sense of its own: Optimization.jl gives it −J, and its callback too (#440).
+    # L-BFGS-B has no sense of its own: Optimization.jl gives it −J, and its callback too (#441).
     raw = Float64[]
     solve(prob, LBFGSB(); callback = (state, args...) -> (push!(raw, state.objective); false), maxiters = 50)
     @test !OptimizationBase.supports_sense(LBFGSB()) && Record(prob, LBFGSB()).negated

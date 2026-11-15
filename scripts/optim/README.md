@@ -4,12 +4,20 @@ User-layer optimization (F3) of the small 2D LWFA run. Each driver reproduces on
 
 ## The layer (WP-058)
 
-`problem.jl` connects a case to Optimization.jl.
+`problem.jl` makes a case a plain `OptimizationProblem`, and the drivers call `solve` on it themselves.
 
-- `ScaledBox(lo, hi, scale)` is the box of the physical parameters. The optimizers see `z = x ./ scale`, which is O(1) (A1).
-- `Objective(J, box)` runs the case `J(x...)` and logs every run with its kind and wall time. `o(z)` is a plain run. `value_gradient(o, z)` is one run with ForwardDiff duals, one partial per parameter, and returns the value and the gradient in `z`.
-- `maximize(o, z0)` maximizes over the box with L-BFGS-B (OptimizationLBFGSB), at one run with duals per point. `maximize_box(fg, z0, lo, hi)` does the same for any `fg(z) -> (f, ∇f)`. Any other solver of Optimization.jl that takes bounds can be passed as `solver`.
-- `bayes.jl` is the Bayesian optimizer of WP-048, a Gaussian process with expected improvement, written out because Julia has no maintained one to take instead. `bayesopt(o)` takes the same objective.
+```julia
+prob = case_problem(wake_amplitude, WAKE_BOX, (4.5, 70.0))    # J, the box, the start in physical units
+rec = Record(prob, LBFGSB())
+sol = solve(prob, LBFGSB(); callback = rec, maxiters = 25, reltol = 1e-4)
+sol.u .* WAKE_BOX.scale                                       # the optimum; sol.objective is J there
+```
+
+- A box is a named tuple `(; lo, hi, scale)` in physical units. The problem's unknown is `z = x ./ scale`, which is O(1) (A1), with `lb` and `ub` from the box, `sense = MaxSense` and gradients by `AutoForwardDiff()`.
+- `Record` is a callback that keeps every point the solver reports, the objective there and the wall time.
+- The problem's parameters hold a `TimerOutput` (`prob.p.timer`) that counts and times the runs of the case: "plain run" and "run with duals". `runs(timer, kind)` reads it.
+- Any solver of Optimization.jl that takes bounds solves the same problem. OptimizationLBFGSB asks for the value and the gradient separately and does not take `fg` (#440), so a point costs it a plain run and a run with duals.
+- `bayes.jl` is the Bayesian optimizer of WP-048, a Gaussian process with expected improvement, written out because Julia has no maintained one to take instead. It is one more solver, `solve(prob, BayesianEI(); maxiters = 30, callback = rec)`, with one plain run per point.
 
 ## The cases
 
@@ -28,7 +36,8 @@ User-layer optimization (F3) of the small 2D LWFA run. Each driver reproduces on
 | `converge2d.jl` | `reports/wp-051-converged-optimization.md` | The optimum under refinement in Δx, Δy and read-out time, with the slab objective |
 | `witness2d.jl` | `reports/wp-052-fixed-energy-optimization.md` | An interior optimum at fixed laser energy; at fixed a₀ the duration runs to its bound |
 | `witness2d_resolution.jl` | the same report | The fixed-energy optimum at a finer grid (no optimizer) |
+| `solvers.jl` | `reports/wp-058-optimization-jl.md` | The WP-045 problem solved by L-BFGS-B and by MadNLP with a limited-memory Hessian |
 
-The reports record runs made before WP-058 with the hand-written projected BFGS that `problem.jl` replaced, so their call counts and paths are that optimizer's.
+The reports of WP-045 to WP-052 record runs made with the hand-written projected BFGS that Optimization.jl replaced, so their call counts and paths are that optimizer's.
 
-Tests: `julia +1.13 --project=scripts scripts/optim/test/runtests.jl` (T-760 and T-761 for the layer, T-660 to T-665 and T-680 to T-682 for the cases, and T-620 to T-623 for the Bayesian optimizer).
+Tests: `julia +1.13 --project=scripts scripts/optim/test/runtests.jl` (T-760 to T-763 for the layer, T-660 to T-665 and T-680 to T-682 for the cases, and T-620 to T-623 for the Bayesian optimizer).

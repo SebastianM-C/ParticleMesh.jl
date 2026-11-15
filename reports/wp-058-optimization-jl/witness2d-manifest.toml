@@ -1,11 +1,11 @@
 backend = "KernelAbstractions CPU"
-commit = "172c47d299e48218657f8345dcea09fe114848cd"
+commit = "f50a7bf089eb7419aabeb6b07b706bbd5e6af180"
 cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
 dirty = false
 julia = "1.13.4"
-run_id = "optim-witness2d-20261114T002912"
+run_id = "optim-witness2d-20261114T223035"
 threads = 4
-updated = "2026-11-14T00:29:12.894Z"
+updated = "2026-11-14T22:30:35.328Z"
 work_package = "WP-052"
 
 [inputs]
@@ -43,11 +43,11 @@ work_package = "WP-052"
 "lib/ParticleMeshElectromagnetic/src/window.jl" = "sha256:5fec5a0235ac3b6a08d76220355885ed579748fb7ce8e4d6cc6805495a730553"
 "lib/ParticleMeshElectromagnetic/src/witness.jl" = "sha256:416295153d77b0c9d6a6cf0555bcb7abc2b3d7e52391a076cca8ab2067789bfa"
 "lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:0c0bc8ca58688a17ecd768a7820c173745298245c194b27af6f13eea239fbc9f"
-"scripts/Manifest.toml" = "sha256:a856f462f8f9e9bea8292e0afe1dc44a9a988844fb02f53a23e2da12df0bf355"
+"scripts/Manifest.toml" = "sha256:f5209e593946d9c9574a142a641ab03a64789c5c35771968be60492efeb9d226"
 "scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
-"scripts/optim/problem.jl" = "sha256:74a9dd8f44ed6986bd5bfe7978100ddbd09262ccd8fdc0f6350e4d0ab0786fc7"
-"scripts/optim/witness2d.jl" = "sha256:b9d01983dc79804a8f32b987b7b6c9d844e2edc9e1f6e42c8808418d1b033759"
-"scripts/optim/witness2d_case.jl" = "sha256:23604e67221ceb3e3cc223870b6999e3cb6326f189ba12ce9d696be45416bbe2"
+"scripts/optim/problem.jl" = "sha256:8b3ace3f0f68ea96d6f4788ecf0d10e02c4bbf4bf7f128916abf85e0205a4dab"
+"scripts/optim/witness2d.jl" = "sha256:da6da2361b763ccfe1c680ce075094287eea9151788e29cfd73ea131132f1783"
+"scripts/optim/witness2d_case.jl" = "sha256:bf37d9b4018a0f38156592800820eaad2cb6d99d536286f3dda54bbb7b73b6e9"
 
 [parameters]
 cells = [224, 64]

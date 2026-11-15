@@ -1,0 +1,96 @@
+{
+  "checks": [
+    {
+      "check": "every solve succeeds",
+      "detail": "Success, Success, Success, Success",
+      "pass": true
+    },
+    {
+      "check": "every solve ends at the same value",
+      "detail": "J = [0.2586461510582511, 0.2586461432467214, 0.25864615107795325, 0.2586461471357855]",
+      "pass": true
+    }
+  ],
+  "runs": [
+    {
+      "J": 0.2586461510582511,
+      "dual_runs": 6,
+      "dual_seconds": 39.657942115666664,
+      "iterations": 5,
+      "phys": [
+        7.741816292348073,
+        112.96598774349391
+      ],
+      "plain_runs": 6,
+      "plain_seconds": 7.912289183333333,
+      "retcode": "Success",
+      "seconds": 285.88095593452454,
+      "solver": "L-BFGS-B",
+      "start": "start A",
+      "x0": [
+        4.5,
+        70.0
+      ]
+    },
+    {
+      "J": 0.2586461432467214,
+      "dual_runs": 8,
+      "dual_seconds": 38.342027243125,
+      "iterations": 6,
+      "phys": [
+        7.741015834899748,
+        112.95041506200356
+      ],
+      "plain_runs": 7,
+      "plain_seconds": 4.719585391571428,
+      "retcode": "Success",
+      "seconds": 350.7098021507263,
+      "solver": "MadNLP, limited memory",
+      "start": "start A",
+      "x0": [
+        4.5,
+        70.0
+      ]
+    },
+    {
+      "J": 0.25864615107795325,
+      "dual_runs": 5,
+      "dual_seconds": 33.9028646084,
+      "iterations": 4,
+      "phys": [
+        7.741939218651668,
+        112.96586254793523
+      ],
+      "plain_runs": 5,
+      "plain_seconds": 4.247899026000001,
+      "retcode": "Success",
+      "seconds": 190.7540090084076,
+      "solver": "L-BFGS-B",
+      "start": "start B",
+      "x0": [
+        8.5,
+        125.0
+      ]
+    },
+    {
+      "J": 0.2586461471357855,
+      "dual_runs": 7,
+      "dual_seconds": 34.99485856957143,
+      "iterations": 5,
+      "phys": [
+        7.7413596360826755,
+        112.95400933513214
+      ],
+      "plain_runs": 6,
+      "plain_seconds": 4.6581368935,
+      "retcode": "Success",
+      "seconds": 272.91542983055115,
+      "solver": "MadNLP, limited memory",
+      "start": "start B",
+      "x0": [
+        8.5,
+        125.0
+      ]
+    }
+  ]
+}

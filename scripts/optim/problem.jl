@@ -10,7 +10,9 @@
 #     sol = solve(prob, LBFGSB(); callback = rec, maxiters = 25, reltol = 1e-4)
 #     sol.u .* WAKE_BOX.scale        # the optimum in physical units; sol.objective is J there
 #
-# `bayes.jl` adds a Bayesian optimizer as one more solver of the same problem.
+# `bayes.jl` adds a Bayesian optimizer as one more solver of the same problem. OptimizationLBFGSB
+# asks for the value and the gradient in separate calls and takes no `fg` (#440), so a point costs
+# it a plain run of the case and a run with duals.
 
 using Optimization: Optimization, OptimizationFunction, OptimizationProblem, AutoForwardDiff, MaxSense, ReturnCode, solve
 using OptimizationBase: OptimizationBase
@@ -58,7 +60,9 @@ point `u`, the objective there and the wall-clock `seconds` since the record was
 `BayesianEI` call it once per point they evaluate. With `verbose` it prints each call.
 
 A solver without a sense of its own minimizes −J for a `MaxSense` problem, and Optimization.jl
-hands that −J to the callback (#440); the record turns it back, so `objective` is always J.
+hands that −J to the callback (#441); the record turns it back, so `objective` is J. It is not for
+MadNLP, whose callback reports its own scaled objective once per iteration (#441): there, count the
+runs with the problem's timer and read `sol`.
 """
 struct Record
     u::Vector{Vector{Float64}}
