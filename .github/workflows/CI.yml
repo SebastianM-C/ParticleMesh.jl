@@ -278,7 +278,10 @@ jobs:
     needs: [test, reactant, manifests, trace, leak-scan]
     # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
     # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
-    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
+    # The needed results are written out behind `!cancelled()`: without a status function GitHub adds
+    # `success()`, which looks at the whole chain of needed jobs, so the test groups that a pull
+    # request without code paths skips (the `julia` job, behind `test`) would skip the review too (#445).
+    if: ${{ !cancelled() && needs.test.result == 'success' && needs.reactant.result == 'success' && needs.manifests.result == 'success' && needs.trace.result == 'success' && needs.leak-scan.result == 'success' && github.event_name == 'pull_request' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -336,6 +339,8 @@ jobs:
   lens:
     name: Review (${{ matrix.lens }})
     needs: lenses
+    # As for `lenses`: the skipped test groups are in this job's chain too (#445).
+    if: ${{ !cancelled() && needs.lenses.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
