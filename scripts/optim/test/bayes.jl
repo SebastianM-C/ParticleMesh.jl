@@ -1,6 +1,7 @@
 # Tests of the WP-048 Bayesian optimizer on analytic objectives:
 #   julia +1.13 --project=scripts scripts/optim/test/bayes.jl
 using Test
+include(joinpath(@__DIR__, "..", "problem.jl"))
 include(joinpath(@__DIR__, "..", "bayes.jl"))
 
 @testset "T-620 the Latin hypercube puts one point in each stratum and repeats bit for bit [WP-048]" begin
@@ -37,6 +38,14 @@ end
     end
     @test fit_gp(X, y; starts = [fit.θ]).nll <= fit.nll
     @test fit_gp(X[1:4], y[1:4]; starts = [fit.θ]).nll <= gp_nll(clamp.(fit.θ, θbounds(1)...), X[1:4], y[1:4])
+    @test all(θbounds(1)[1] .<= fit.θ .<= θbounds(1)[2])
+    # A start that reaches a better optimum than the fixed starts is the fit; one that reaches a
+    # worse optimum does not replace the best.
+    noise(seed, n) = (v = [uniform01(seed, 2, i) for i in 1:n]; m = sum(v) / n; (v .- m) ./ sqrt(sum(abs2, v .- m) / (n - 1)))
+    X6, y6 = [[uniform01(6, 1, i)] for i in 1:6], noise(6, 6)
+    @test fit_gp(X6, y6; starts = [[log(5.0), log(100.0), log(0.01)]]).nll < fit_gp(X6, y6).nll - 1
+    X8, y8 = [[uniform01(2, 1, i)] for i in 1:8], noise(2, 8)
+    @test fit_gp(X8, y8; starts = [[log(5.0), log(0.01), log(0.1)]]).nll == fit_gp(X8, y8).nll
     μ, s = posterior([0.53], X, fit.θ, C, α)
     @test μ ≈ sin(4π * 0.53) atol = 0.05
     # Expected improvement is non-negative, ≈ 0 where the mean is far below the best with small spread,
@@ -55,16 +64,62 @@ end
 branin(x) = (x[2] - 5.1 / (4π^2) * x[1]^2 + 5 / π * x[1] - 6)^2 + 10 * (1 - 1 / (8π)) * cos(x[1]) + 10
 const BRANIN_MIN = 5 / (4π)   # = 0.3978873577…
 
-@testset "T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations from every seed tried and repeats bit for bit [WP-048]" begin
+@testset "T-622 Bayesian optimization reaches the Branin minimum within 40 evaluations from every seed tried and repeats bit for bit [WP-048, WP-058]" begin
     gaps = Float64[]
     for seed in 1:6
         r = bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 40, seed)
         @test length(r.y) == 40
         push!(gaps, -r.best_y - BRANIN_MIN)
-        @test -r.best_y - BRANIN_MIN < 2e-4          # measured 7e-6 to 3.4e-5; Branin spans about 300 on the box. With ξ = 0.01, seeds 1 to 10 gave 0.006 to 0.13
+        @test -r.best_y - BRANIN_MIN < 2e-4          # measured 1.2e-6 to 5e-5; Branin spans about 300 on the box. With ξ = 0.01, seeds 1 to 10 gave 0.006 to 0.13
         seed == 1 && @test bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 12, seed).y == r.y[1:12]
     end
     println("Branin gaps after 40 evaluations, seeds 1 to 6: ", gaps)
+    # As a solver of Optimization.jl (WP-058): on a case problem it searches the box in scaled
+    # coordinates with one plain run per evaluation, and its callback sees every point with J there.
+    box = (lo = [-5.0, 0.0], hi = [10.0, 15.0], scale = [5.0, 5.0])
+    prob = case_problem((x1, x2) -> -branin([x1, x2]), box, box.lo)
+    rec = Record(prob, BayesianEI())
+    sol = solve(prob, BayesianEI(; seed = 1); maxiters = 12, callback = rec)
+    direct = bayesopt(z -> -branin(z .* box.scale), prob.lb, prob.ub; budget = 12, seed = 1)
+    @test !rec.negated && rec.objective == direct.y == sol.original.y
+    @test rec.u == direct.x && all(u -> all(prob.lb .<= u .<= prob.ub), rec.u)
+    @test sol.u == direct.best_x && sol.objective == direct.best_y == maximum(rec.objective)
+    @test sol.retcode == ReturnCode.MaxIters && sol.stats.fevals == 12
+    @test runs(prob.p.timer, "plain run").n == 12 && runs(prob.p.timer, "run with duals").n == 0
+    # A minimization gives the same points, with the problem's own objective in the record.
+    pmin = OptimizationProblem(OptimizationFunction((z, p) -> branin(z .* box.scale)), copy(prob.lb); lb = prob.lb, ub = prob.ub)
+    rmin = Record(pmin, BayesianEI())
+    smin = solve(pmin, BayesianEI(; seed = 1); maxiters = 12, callback = rmin)
+    @test rmin.u == rec.u && rmin.objective == .-rec.objective && smin.objective == -sol.objective == minimum(rmin.objective)
+    # The other settings reach the search, the callback can stop it, and it refuses to run without
+    # bounds or a budget.
+    @test solve(prob, BayesianEI(; seed = 2); maxiters = 12).original.y != direct.y
+    @test solve(prob, BayesianEI(; seed = 1, n_init = 7); maxiters = 12).original.x[1:7] == [prob.lb .+ u .* (prob.ub .- prob.lb) for u in latin_hypercube(7, 2, 1)]
+    @test solve(prob, BayesianEI(; seed = 1, ξ = 0.5); maxiters = 12).original.y != direct.y
+    @test solve(prob, BayesianEI(); maxiters = 12).original.y == direct.y          # the default seed is bayesopt's
+    # One candidate and no refinement: the sixth point is that candidate.
+    one = solve(prob, BayesianEI(; ncand = 1, nrefine = 0); maxiters = 6)
+    @test one.original.x[6] == prob.lb .+ [uniform01(1, 1005, j) for j in 1:2] .* (prob.ub .- prob.lb)
+    @test one.original.x == bayesopt(z -> -branin(z .* box.scale), prob.lb, prob.ub; budget = 6, ncand = 1, nrefine = 0).x
+    @test solve(prob, BayesianEI(; ncand = 1, nrefine = 1); maxiters = 6).original.x[6] != one.original.x[6]
+    @test sol.stats.iterations == 12
+    # The evaluation at which the callback stops the search counts: in the proposals, in the
+    # initial design, and as the only one.
+    halt = solve(prob, BayesianEI(; seed = 1); maxiters = 12, callback = (state, args...) -> state.iter == 8)
+    @test halt.retcode == ReturnCode.Terminated && halt.original.y == direct.y[1:8]
+    @test halt.stats.fevals == halt.stats.iterations == 8
+    @test length(halt.original.θ) == length(halt.original.ei) == 3 && halt.original.θ == direct.θ[1:3]
+    early = solve(prob, BayesianEI(); maxiters = 12, callback = (state, args...) -> state.iter == 3)
+    @test early.retcode == ReturnCode.Terminated && early.original.y == direct.y[1:3] && isempty(early.original.θ)
+    first1 = solve(prob, BayesianEI(); maxiters = 12, callback = (state, args...) -> true)
+    @test first1.retcode == ReturnCode.Terminated && first1.original.y == direct.y[1:1] && first1.objective == direct.y[1]
+    # A budget below the initial design spends the budget.
+    short = solve(prob, BayesianEI(); maxiters = 3)
+    @test short.stats.fevals == 3 && short.original.y == direct.y[1:3] && short.retcode == ReturnCode.MaxIters
+    @test_throws ArgumentError solve(prob, BayesianEI())
+    @test_throws ArgumentError solve(prob, BayesianEI(; n_init = 0); maxiters = 5)
+    @test_throws ArgumentError bayesopt(x -> -branin(x), [-5.0, 0.0], [10.0, 15.0]; budget = 0)
+    @test_throws OptimizationBase.IncompatibleOptimizerError solve(OptimizationProblem(OptimizationFunction((z, p) -> sum(z)), [0.0, 0.0]), BayesianEI(); maxiters = 5)
 end
 
 @testset "T-623 the proposal depends on the seed, never repeats an evaluated point, and reach counts calls [WP-048]" begin
@@ -75,6 +130,13 @@ end
     u2, _ = propose(X, y, θ, 2, 4; nrefine = 0)
     u3, _ = propose(X, y, θ, 3, 4; nrefine = 0)
     @test u2 != u3                                           # the candidates follow the seed
+    # One candidate: without refinement it is the proposal, a refinement from it improves on it,
+    # and more refinements than candidates are cut to the candidates.
+    u0, v0 = propose(X, y, θ, 2, 4; ncand = 1, nrefine = 0)
+    u1, v1 = propose(X, y, θ, 2, 4; ncand = 1, nrefine = 1)
+    @test u0 == [uniform01(2, 1004, 1)]
+    @test v1 > v0 && u1 != u0
+    @test propose(X, y, θ, 2, 4; ncand = 3, nrefine = 5)[2] >= v1
     # With ξ ≪ 0 expected improvement follows the posterior mean, whose maximum is the best data
     # point of a symmetric sample: the refinement converges onto it and the guard must turn it away.
     Xs = [[x] for x in (0.1, 0.3, 0.5, 0.7, 0.9)]
