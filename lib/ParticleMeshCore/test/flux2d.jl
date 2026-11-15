@@ -347,7 +347,7 @@ end
     end
 end
 
-# WP-061, the cost of the 2D flux deposition: T-800 here, T-801 in launch.jl.
+# WP-061, the cost of the 2D flux deposition: T-800 and T-802 here, T-801 in launch.jl.
 
 "The function a statically dispatched call of optimized code goes to, by name."
 invoked_name(x::Core.MethodInstance) = x.def isa Method ? x.def.name : Symbol(x.def)
@@ -387,5 +387,32 @@ end
     # out of line (36 calls per particle at order 2 for Float32 and Float64, 108 for a Dual).
     for T in (TYPES..., Dual{Nothing,Float64,2}), shape in SHAPES, st in STAGGER_PAIRS
         @test isempty(stencil_calls(T, shape, st))
+    end
+end
+
+@testset "T-802 the flux patch is one contiguous column per cell, its particles' stencils summed in slot order from zero [A4, WP-061]" begin
+    for T in TYPES, st in ((Node(), Node()), (Center(), Node()))
+        grid = grid2(T, flux_g2(Quadratic, st))
+        s = flux_species_2d(T, grid, 400)
+        dt = T(basetype(T)(1 // 4))
+        _, _, _, ws = flux2d(Reference(), s, Quadratic, st, grid; dt)
+        n = ncells(grid)
+        K = prod(ParticleMeshCore.flux_widths(Quadratic, st))
+        @test size(ws.flux_patch) == (3K, prod(n))
+        sx = map(h -> h / dt, cellsize(grid))
+        same, filled = true, 0
+        for L in 1:prod(n)
+            acc = zeros(T, 3K)
+            for i in ws.seg_start[L]:ws.seg_stop[L]
+                _, _, j = ParticleMeshCore.flux_stencil(s, i, Quadratic, st, Int32.(n), sx, QZ2)
+                for c in 1:3, k in 1:K
+                    acc[(c - 1) * K + k] += j[c][k]
+                end
+            end
+            filled += ws.seg_stop[L] >= ws.seg_start[L]
+            same &= same_bits(ws.flux_patch[:, L], acc)
+        end
+        @test same
+        @test 100 < filled < prod(n)          # cells with particles, and empty ones (zero columns)
     end
 end

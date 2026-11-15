@@ -177,9 +177,9 @@ flux_patch_values(shape::Shape, st) = throw(ArgumentError("flux scratch takes ρ
 @inline tuple_add(a::NTuple{K,Any}, b::NTuple{K,Any}) where {K} = ntuple(k -> a[k] + b[k], Val(K))
 
 # One work item per linear cell: its particles in slot order, each stencil entry summed from zero
-# in a register tuple and written once into the cell's patch (`patch[L, k]`, cell-major so that
-# neighbouring work items write neighbouring entries; the three components one after the other,
-# Jx first). An empty cell writes zeros.
+# in a register tuple and written once into the cell's patch (`patch[k, L]`, stencil-major: a
+# cell's entries are one contiguous column, the three components one after the other, Jx first).
+# An empty cell writes zeros.
 @kernel function flux_patch_2d_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), shape, st, n::NTuple{2,Int32}, sx,
                                        quantity_z, ::Val{K}) where {K}
     L = Int32(@index(Global, Linear))
@@ -193,9 +193,9 @@ flux_patch_values(shape::Shape, st) = throw(ArgumentError("flux scratch takes ρ
         az = tuple_add(az, jz)
     end
     @inbounds for k in 1:K
-        patch[L, k] = ax[k]
-        patch[L, K + k] = ay[k]
-        patch[L, 2K + k] = az[k]
+        patch[k, L] = ax[k]
+        patch[K + k, L] = ay[k]
+        patch[2K + k, L] = az[k]
     end
 end
 
@@ -211,9 +211,9 @@ end
     @inbounds for c2 in max(Int32(1), j2 - hi[2]):min(n[2], j2 - lo[2]), c1 in max(Int32(1), j1 - hi[1]):min(n[1], j1 - lo[1])
         L = c1 + (c2 - Int32(1)) * n[1]
         k = (j1 - c1 - lo[1]) + (j2 - c2 - lo[2]) * M[1] + Int32(1)
-        ax += patch[L, k]
-        ay += patch[L, K + k]
-        az += patch[L, 2K + k]
+        ax += patch[k, L]
+        ay += patch[K + k, L]
+        az += patch[2K + k, L]
     end
     @inbounds begin
         Jx[I] += ax
@@ -228,9 +228,9 @@ function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, 
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger, $((shape, st)); the workspace was built with flux = $(ws.flux)"))
     need = flux_patch_values(shape, st)
-    size(ws.flux_patch) == (prod(ncells(grid)), need) ||
+    size(ws.flux_patch) == (need, prod(ncells(grid))) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
-                            "shape and stagger: $need values per cell, the workspace has $(size(ws.flux_patch, 2))"))
+                            "shape and stagger: $need values per cell, the workspace has $(size(ws.flux_patch, 1))"))
     backend = get_backend(s)
     n = Int32.(ncells(grid))
     M = flux_widths(shape, st)

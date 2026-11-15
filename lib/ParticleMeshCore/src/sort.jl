@@ -15,7 +15,7 @@ extras tuple costs nothing.
 `flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
 deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
 cell, `M_d` the flux stencil width of axis `d` (5 or 6 at order 2), in `flux_patch`, a
-`prod(n) × 3·M₁·M₂` array (cell-major). Without it
+`3·M₁·M₂ × prod(n)` array (stencil-major: one column per cell). Without it
 `flux_patch` is empty and costs nothing. `N = 1` needs no flux scratch.
 """
 struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS}
@@ -47,7 +47,7 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing) where
     n = prod(grid.n)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
-    flux_patch = KernelAbstractions.zeros(backend, T, flux === nothing ? 0 : n, flux === nothing ? 0 : flux_patch_values(flux...))
+    flux_patch = KernelAbstractions.zeros(backend, T, flux === nothing ? 0 : flux_patch_values(flux...), flux === nothing ? 0 : n)
     return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux)
 end
 
