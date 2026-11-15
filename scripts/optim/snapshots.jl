@@ -8,8 +8,13 @@
 #   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl witness <tag>
 #   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl sensitivity <tag>
 #   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl backend <cpu|cuda> <tag>
+#   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl frames <wake|witness> <tag>
+#   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl readout <tag>
+#   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl grid <tag>
+#   julia +1.13 --project=scripts -t 8 scripts/optim/snapshots.jl scan <tag> τ1,τ2,…
 #
-# Each writes scripts/runs/optim-snapshots-<tag>/: manifest.toml and <mode>.json. No figure is drawn
+# Each writes scripts/runs/optim-snapshots-<tag>/: manifest.toml and <mode>.json, the frame modes with
+# byte blobs (<mode>-<key>.bin) that the JSON's "blobs" entry describes. No figure is drawn
 # here (CairoMakie is not loaded, so a rented machine need not precompile it).
 
 using ParticleMesh, KernelAbstractions
@@ -329,6 +334,217 @@ function backend_mode(name, tag)
     println("DONE backend")
 end
 
+# --- frame sequences ------------------------------------------------------------------------------
+
+"Byte blobs of a run, written as `<name>-<key>.bin` next to its JSON; `index` says what each holds."
+struct Blobs
+    data::Dict{String,Vector{UInt8}}
+    index::Dict{String,Any}
+end
+Blobs() = Blobs(Dict{String,Vector{UInt8}}(), Dict{String,Any}())
+
+"Append `M` to the blob `key` as bytes, 0 … 254 linear between lo and hi (255 for a missing value)."
+function put8!(b::Blobs, key, M, lo, hi)
+    append!(get!(b.data, key, UInt8[]), (isfinite(x) ? UInt8(clamp(round(Int, 254 * (x - lo) / (hi - lo)), 0, 254)) : 0xff for x in M))
+    e = get!(b.index, key, Dict{String,Any}("type" => "u8", "n" => collect(size(M)), "lo" => lo, "hi" => hi, "frames" => 0))
+    e["frames"] += 1
+    return b
+end
+
+"Append `v` to the blob `key` as little-endian Int16 of round(v·scale)."
+function put16!(b::Blobs, key, v, scale)
+    append!(get!(b.data, key, UInt8[]), reinterpret(UInt8, [htol(Int16(clamp(round(Int, x * scale), -32767, 32767))) for x in v]))
+    e = get!(b.index, key, Dict{String,Any}("type" => "i16", "n" => collect(size(v)), "scale" => scale, "frames" => 0))
+    e["frames"] += 1
+    return b
+end
+
+function save_blobs(b::Blobs, dir, name)
+    for (k, v) in b.data
+        write(joinpath(dir, "$name-$k.bin"), v)
+    end
+    return b.index
+end
+
+"The fields of a state on every `sx`-th column and `sy`-th row of the 2·`half` rows about the axis: n_e/n₀, E_x/E₀ and E_y."
+function put_maps!(b::Blobs, st, ρbuf, n0; sx, sy, half, exr, eyr, with_ey = true)
+    g, n = guards(st.grid), ncells(st.grid)
+    row = g + 1 + n[2] ÷ 2
+    I, J = (g + 1):sx:(g + n[1]), (row - half * sy):sy:(row + half * sy - 1)
+    window_charge!(ρbuf, st)
+    put8!(b, "ne", -Float64.(Array(ρbuf)[I, J]) ./ n0, 0.0, 3.0)
+    put8!(b, "ex", Float64.(Array(st.fields.Ex)[I, J]) ./ sqrt(n0), -exr, exr)
+    with_ey && put8!(b, "ey", Float64.(Array(st.fields.Ey)[I, J]), -eyr, eyr)
+    return b
+end
+
+"The axis lineouts of `lineouts` into `b`: E_x/E₀ (`lex`, ×20000), the laser envelope (`la`, ×100) and n_e/n₀ (`lne`, ×50)."
+function put_lines!(b::Blobs, st, k, n0; ρbuf, stride, ppl)
+    o = lineouts(st, k, n0; ρbuf, stride, ppl)
+    put16!(b, "lex", Float64.(o["Ex"]), 20000)
+    put8!(b, "la", Float64.(o["a"]), 0.0, 2.54)
+    put8!(b, "lne", Float64.(o["ne"]), 0.0, 5.08)
+    return o["shifts"]
+end
+
+"""
+Step `prob` and record a frame at each of `times`: the cropped maps, the axis lineouts, the
+window's shifts and, with a witness bunch, its window positions and gains (row averages) once it
+is injected. Read-only, so the run is the case's own.
+"""
+function record_frames(prob, n0, times; sx, sy, half, exr, eyr, ppl, with_ey = true, witness = false, b = Blobs())
+    st = EMState(prob, EMNumerics(; mode = Reference()))
+    p = params(prob)
+    initialize!(st, p)
+    dt = Float64(prob.dt)
+    ρbuf = field(CPU(), Float64, st.grid)
+    steps = Set(round(Int, t / dt) for t in times)
+    ts, shifts, wframe, alive = Float64[], Int[], Int[], Int[]
+    nrow(v) = (m = length(v) ÷ 2; (v[1:m] .+ v[(m + 1):end]) ./ 2)
+    for k in 1:prob.nsteps
+        step!(st, p, k)
+        k in steps || continue
+        put_maps!(b, st, ρbuf, n0; sx, sy, half, exr, eyr, with_ey)
+        push!(shifts, put_lines!(b, st, k, n0; ρbuf, stride = sx, ppl))
+        push!(ts, k * dt)
+        if witness && k * dt > WCASE.inject + 2dt
+            w = witness_gains(st, p)
+            put16!(b, "wx", nrow(Float64.(w.x)), 500)
+            put16!(b, "wg", nrow(Float64.(w.gain)), 400)
+            push!(wframe, length(ts))
+            push!(alive, count(w.alive))
+        end
+    end
+    meta = Dict{String,Any}("t" => ts, "shifts" => shifts, "wframe" => wframe, "alive" => alive, "dt" => dt, "nsteps" => prob.nsteps,
+                            "band" => window_back_band(st))
+    return st, p, b, meta
+end
+
+"""
+The two runs the page opens with, as frame sequences: `wake`, WP-051's optimum at its converged
+grid (every other column and row of the 96 rows about the axis), and `witness`, WP-052's optimum at
+its own grid with the bunch.
+"""
+function frames_mode(which, tag)
+    if which == "wake"
+        τ, focus, ppl, dy_cells = 8.219217151454469, 118.03939032920552, 32, 2
+        h = 2π / ppl
+        dt = 0.95 / sqrt(1 / h^2 + 1 / (dy_cells * h)^2)
+        dir = out_dir(tag, "frames-wake", Dict{String,Any}("tau" => τ, "focus" => focus, "ppl" => ppl, "dy_cells" => dy_cells))
+        prob = wake_problem(τ, focus; nsteps = ceil(Int, 255 / dt), ppl, dy_cells)
+        st, p, b, meta = record_frames(prob, CASE.density, 60.0:3.0:255.0; sx = 2, sy = 2, half = 24, exr = 0.6, eyr = 1.3, ppl)
+        merge!(meta, Dict{String,Any}("tau" => τ, "focus" => focus, "density" => CASE.density, "dx" => 2h, "dy" => 2 * dy_cells * h))
+    elseif which == "witness"
+        τ, n0, c = 4.935566813273559, 0.07200235514790519, 36.55596361907769
+        dir = out_dir(tag, "frames-witness", Dict{String,Any}("tau" => τ, "density" => n0, "center" => c))
+        prob = witness_problem(τ, n0, c)
+        dt = Float64(prob.dt)
+        st, p, b, meta = record_frames(prob, n0, [60.0:4.0:296.0; prob.nsteps * dt]; sx = 1, sy = 1, half = 12, exr = 1.2, eyr = 2.2, ppl = 16,
+                                       witness = true)
+        h = 2π / 16
+        nrow(v) = (m = length(v) ÷ 2; (v[1:m] .+ v[(m + 1):end]) ./ 2)
+        merge!(meta, Dict{String,Any}("tau" => τ, "density" => n0, "center" => c, "a0" => a0_at_energy(τ), "dx" => h, "dy" => WCASE.dy_cells * h,
+                                      "J" => witness_energy_gain(st, p), "x0" => nrow(lattice_x(st))))
+    else
+        error("frames $which: wake or witness")
+    end
+    meta["blobs"] = save_blobs(b, dir, "frames")
+    open(io -> JSON.print(io, meta), joinpath(dir, "frames.json"), "w")
+    println("DONE frames $which, ", length(meta["t"]), " frames", haskey(meta, "J") ? ", J = $(meta["J"])" : "")
+end
+
+"""
+WP-045's run at its optimum, continued to t = 215: the on-axis E_x of every step from t = 150 on,
+and the window objective read at that step, so the read-out time can be moved after the fact.
+"""
+function readout_mode(tag)
+    τ, focus, n0 = 7.742271854441553, 112.96457420993261, CASE.density
+    dt = Float64(wake_problem(τ, focus).dt)
+    dir = out_dir(tag, "readout", Dict{String,Any}("tau" => τ, "focus" => focus))
+    prob = wake_problem(τ, focus; nsteps = round(Int, 215 / dt))
+    st = EMState(prob, EMNumerics(; mode = Reference()))
+    p = params(prob)
+    initialize!(st, p)
+    g, n = guards(st.grid), ncells(st.grid)
+    row, band = g + 1 + n[2] ÷ 2, window_back_band(st)
+    b = Blobs()
+    ts, Js, shifts = Float64[], Float64[], Int[]
+    for k in 1:prob.nsteps
+        step!(st, p, k)
+        k * dt >= 150 || continue
+        ex = Array(st.fields.Ex)[(g + 1):(g + n[1]), row] ./ sqrt(n0)
+        v = axis_Ex(st)
+        put16!(b, "lex", ex, 20000)
+        push!(ts, k * dt)
+        push!(Js, sqrt(2 * sum(abs2, v) / length(v)) / sqrt(n0))
+        push!(shifts, window_shifts(st, k))
+        k == CASE.nsteps && println("readout at step $k: J = ", Js[end])
+    end
+    meta = Dict{String,Any}("tau" => τ, "focus" => focus, "t" => ts, "J" => Js, "shifts" => shifts, "band" => band, "dx" => 2π / 16, "dt" => dt,
+                            "blobs" => save_blobs(b, dir, "readout"))
+    open(io -> JSON.print(io, meta), joinpath(dir, "readout.json"), "w")
+    println("DONE readout, ", length(ts), " steps")
+end
+
+"""
+WP-045's box as pictures: at every point of the report's 7 × 7 grid and of its two optimizer paths,
+the run's state at the read-out (the maps about the axis and the axis lineouts) with its J, and at
+the grid points the gradient from a run with duals.
+"""
+function grid_mode(tag)
+    rep = JSON.parsefile(joinpath(REPO, "reports", "wp-045-wake-optimization", "wake2d.json"))
+    pts = [(Float64(τ), Float64(f), "grid") for f in rep["grid"]["focus"] for τ in rep["grid"]["tau"]]
+    for o in rep["optimizer"], q in o["path"]
+        push!(pts, (Float64(q["phys"][1]), Float64(q["phys"][2]), String(o["name"])))
+    end
+    haskey(ENV, "PM_SNAPSHOT_LIMIT") && (pts = pts[1:parse(Int, ENV["PM_SNAPSHOT_LIMIT"])])
+    dir = out_dir(tag, "grid", Dict{String,Any}("points" => length(pts)))
+    n0 = CASE.density
+    b = Blobs()
+    rows = Any[]
+    for (τ, f, kind) in pts
+        prob = wake_problem(τ, f)
+        st = EMState(prob, EMNumerics(; mode = Reference()))
+        p = params(prob)
+        initialize!(st, p)
+        run!(st, p, prob.nsteps)
+        ρbuf = field(CPU(), Float64, st.grid)
+        v = axis_Ex(st)
+        r = Dict{String,Any}("tau" => τ, "focus" => f, "kind" => kind, "J" => sqrt(2 * sum(abs2, v) / length(v)) / sqrt(n0))
+        put_maps!(b, st, ρbuf, n0; sx = 1, sy = 1, half = 12, exr = 0.6, eyr = 1.3, with_ey = false)
+        r["shifts"] = put_lines!(b, st, prob.nsteps, n0; ρbuf, stride = 1, ppl = 16)
+        if kind == "grid"
+            d = wake_amplitude(ForwardDiff.Dual{Nothing}(τ, 1.0, 0.0), ForwardDiff.Dual{Nothing}(f, 0.0, 1.0))
+            r["grad"] = collect(ForwardDiff.partials(d))
+        end
+        push!(rows, r)
+        println("grid ", kind, " τ = $τ, focus = $f: J = ", r["J"], haskey(r, "grad") ? ", ∇J = $(r["grad"])" : ""); flush(stdout)
+    end
+    meta = Dict{String,Any}("points" => rows, "band" => 0, "dx" => 2π / 16, "dy" => CASE.dy_cells * 2π / 16, "blobs" => save_blobs(b, dir, "grid"))
+    open(io -> JSON.print(io, meta), joinpath(dir, "grid.json"), "w")
+    println("DONE grid")
+end
+
+"The duration scan at the converged grid with the maps at every lineout time (the durations of `wake`, at WP-051's focus)."
+function scan_mode(tag, taus)
+    ppl, dy_cells, focus = 32, 2, 118.03939032920552
+    h = 2π / ppl
+    dt = 0.95 / sqrt(1 / h^2 + 1 / (dy_cells * h)^2)
+    dir = out_dir(tag, "scan", Dict{String,Any}("taus" => taus, "focus" => focus, "ppl" => ppl, "dy_cells" => dy_cells))
+    b = Blobs()
+    meta = Dict{String,Any}("taus" => taus, "focus" => focus, "dx" => 2h, "dy" => 2 * dy_cells * h, "runs" => Any[])
+    for τ in taus
+        prob = wake_problem(τ, focus; nsteps = ceil(Int, 241 / dt), ppl, dy_cells)
+        _, _, _, m = record_frames(prob, CASE.density, 120.0:15.0:240.0; sx = 2, sy = 2, half = 24, exr = 0.6, eyr = 1.3, ppl, with_ey = false, b)
+        push!(meta["runs"], m)
+        println("scan τ = $τ: ", length(m["t"]), " frames"); flush(stdout)
+    end
+    meta["blobs"] = save_blobs(b, dir, "scan")
+    open(io -> JSON.print(io, meta), joinpath(dir, "scan.json"), "w")
+    println("DONE scan")
+end
+
+
 function main(args)
     mode = args[1]
     if mode == "wake"
@@ -341,8 +557,16 @@ function main(args)
         sensitivity_mode(args[2])
     elseif mode == "backend"
         backend_mode(args[2], args[3])
+    elseif mode == "frames"
+        frames_mode(args[2], args[3])
+    elseif mode == "readout"
+        readout_mode(args[2])
+    elseif mode == "grid"
+        grid_mode(args[2])
+    elseif mode == "scan"
+        scan_mode(args[2], parse.(Float64, split(args[3], ",")))
     else
-        error("mode $mode: wake, witness, sensitivity or backend")
+        error("mode $mode: wake, witness, sensitivity, backend, frames, readout, grid or scan")
     end
 end
 
