@@ -189,10 +189,10 @@ struct CellMajor end
     flux_patch_layout(backend)
 
 The storage order of the flux patches that `Workspace(species, grid; flux)` takes on `backend`:
-`StencilMajor()` on the CPU backend, where it makes the two kernels of the deposition 1.2 to 2.8
-times cheaper than `CellMajor()` on a run of 14336 cells (`reports/wp-061-flux-deposition-cost.md`),
-and `CellMajor()` on every other backend, the order WP-020 chose for a GPU; no GPU measurement
-of one against the other exists.
+`StencilMajor()` on the CPU backend, where the patch kernel costs 1.4 to 2.7 times less with it
+than with `CellMajor()` on a run of 14336 cells at 4 particles per cell
+(`reports/wp-061-flux-deposition-cost.md`), and `CellMajor()` on every other backend, the order
+WP-020 chose for a GPU; no GPU measurement of one against the other exists.
 """
 flux_patch_layout(::CPU) = StencilMajor()
 flux_patch_layout(::KernelAbstractions.Backend) = CellMajor()

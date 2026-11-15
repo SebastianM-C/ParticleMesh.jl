@@ -34,10 +34,11 @@ work-groups of one work item and every other backend makes its own choice.
 
 The CPU backend runs a work-group on one thread, as a loop over its work items, and tunes the
 group to be large, which suits kernels of a few operations per item. For this kernel the tuned
-group costs a multiple of the group of one once the accumulators are large: 10 times with
+group costs a multiple of the group of one once the accumulators are large: 8 times with
 `Dual{Float64,2}` elements at order 2 (324 doubles per work item), while with `Float64` the two
-tie (`reports/wp-061-flux-deposition-cost.md`). The result does not depend on the launch
-shape (T-303).
+are within a factor 1.5 (`reports/wp-061-flux-deposition-cost.md`; #451 has the cause, PoCL's
+work-group function, reduced to a kernel of ten lines). The result does not depend on the
+launch shape (T-303).
 """
 @inline item_launcher(kernel, backend, workgroupsize) = launcher(kernel, backend, workgroupsize)
 @inline item_launcher(kernel, backend::CPU, ::Nothing) = kernel(backend, 1)
