@@ -1961,11 +1961,13 @@ version = "0.1.0-DEV"
     [deps.ParticleMeshElectromagnetic.extensions]
     ParticleMeshElectromagneticOrdinaryDiffEqCoreExt = ["OrdinaryDiffEqCore", "SciMLBase"]
     ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
+    ParticleMeshElectromagneticSciMLStructuresExt = "SciMLStructures"
 
     [deps.ParticleMeshElectromagnetic.weakdeps]
     OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
     RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
     SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+    SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
