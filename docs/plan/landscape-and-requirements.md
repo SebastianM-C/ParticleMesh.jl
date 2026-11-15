@@ -36,7 +36,7 @@ This is the central design question, more than any software choice.
 - Self-injection (the Valenta et al. setting) is a threshold process: wave breaking, trapping near a separatrix, beam loading. The cut-off energy as a function of (a₀, w₀, τ, n₀) has jumps where injection switches on/off and is chaotic at the particle level. A pathwise AD gradient exists almost everywhere but may be dominated by noise and discontinuities. Irshad's 2025 thesis dismisses gradient methods for exactly this reason ("stochastic, non-differentiable objectives").
 - Externally injected test bunch, or a tagged test-particle population in the wake: energy gain is a smooth function of the wake structure (amplitude, phase velocity, dephasing length, depletion). Gradients are informative. This is the objective to start with.
 - Density-downramp injection: deterministic and more controllable than self-injection, still threshold-like.
-- Ionization injection and QED processes are stochastic; they need score-function estimators and are out of scope initially.
+- Ionization injection as PIC codes do it is stochastic, a Monte Carlo draw per macro-atom against the tunnelling probability. Released by weight from atoms on a fixed lattice it is deterministic and smooth in the field (WP-059), and the trapped charge then depends on the laser and on the dopant's section through weights. QED processes are stochastic; they need score-function estimators and are out of scope initially.
 - Chaos: the review by Joglekar et al. (2026) only cautions that gradients must "reflect the underlying continuous physics" (citing Metz et al. on exploding gradients in chaotic systems). Nobody has published gradient-quality studies for LWFA PIC. That is itself a publishable question: at which horizon and particle count does the pathwise gradient of bunch energy w.r.t. a₀ stop agreeing with finite differences?
 
 Surrogate/intermediate objectives worth having in the loop: peak accelerating field E_z behind the driver, wake phase velocity, dephasing length, laser depletion length, energy gain of a test electron injected at a fixed phase. These are smooth and connect to the analytic scalings: the Esarey–Schroeder–Leemans 2009 Rev. Mod. Phys. review, the bubble-regime scalings usually attributed to Lu et al. 2007 (citation unverified, open-items B4), and the closed-form maximum-energy expressions Valenta et al. 2025 derive including diffraction and depletion.
@@ -152,7 +152,7 @@ Physics
 - R1 Target geometry for the first results: 2D Cartesian first (cheaper, method paper); the envelope model instead of quasi-3D RZ (architecture §3).
 - R2 Objective: externally injected bunch energy (smooth) first; self-injection cut-off energy only via smoothed surrogates later (the objective decision itself is deferred, open-items D).
 - R3 Parameters: a₀, w₀, τ, focus position, chirp; n₀, ramp lengths, channel depth. Count ≤ 20 → forward mode suffices.
-- R4 Injection: external bunch and density downramp in scope; ionization injection and QED out of scope for v1.
+- R4 Injection: external bunch, density downramp and ionization injection by weight (WP-059, at N = 2) in scope; QED out of scope for v1.
 
 Numerics
 - R5 Baseline scheme: A2, with a moving window; Lehe/PSATD later.

@@ -6,6 +6,8 @@
 # D⁻·Eⁿ − (ρⁿ − mean ρ) is (F − 1)(ρⁿ − ρ⁰), which T-441 measures. Host references: the
 # `circshift` filter `binomial_host` and the DFT below, neither of which uses the module's kernels.
 
+foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
+
 using ParticleMeshElectromagnetic: RHO_STAGGER_2D, FIELD_LAYOUT_2D
 
 "A random value of `T` in [−1, 1) (each partial of a dual drawn too)."

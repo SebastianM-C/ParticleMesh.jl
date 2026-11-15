@@ -1,0 +1,13 @@
+# The groups of this suite that CI runs in parallel jobs, one group per job (`PM_TEST_GROUP=<n>`,
+# groups.jl and .github/workflows/CI.yml). Each group lists files in the suite's order (TEST_FILES in
+# runtests.jl) and carries the earlier files whose helpers or runs its own files reuse, so that it
+# runs on its own. Every file is in a group or in `full_suite_only`. Each run prints the time of every
+# file, the numbers to rebalance the groups by.
+
+full_suite_only = ["gpu.jl"]   # reruns bodies of the other files on the GPU
+
+groups = [
+    ["transfers.jl", "engine.jl", "engine2d.jl", "spectral.jl", "momenta.jl"],
+    ["particles.jl", "density_at.jl", "allocations.jl", "determinism.jl", "flux.jl", "flux2d.jl", "input_checks.jl",
+     "launch.jl", "switch.jl", "qa.jl"],
+]
