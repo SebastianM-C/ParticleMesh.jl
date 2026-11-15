@@ -68,9 +68,10 @@ fields3(::Type{T}, grid) where {T} = (field(backend, T, grid), field(backend, T,
 The 2D flux of `s` in `mode` on `be` into fresh fields, unfolded, with a flux workspace for
 (`shape`, `st`), sorting first when the mode needs it.
 """
-function flux2d(mode, s, shape, st, grid; dt = basetype(eltype(s))(1 // 4), workgroupsize = nothing, be = CPU(), quantity_z = QZ2)
+function flux2d(mode, s, shape, st, grid; dt = basetype(eltype(s))(1 // 4), workgroupsize = nothing, be = CPU(), quantity_z = QZ2,
+                flux_layout = ParticleMeshCore.flux_patch_layout(get_backend(s)))
     T = eltype(s)
-    ws = Workspace(s, grid; flux = (shape, st))
+    ws = Workspace(s, grid; flux = (shape, st), flux_layout)
     effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     Jx, Jy, Jz = fields3(T, grid)
     on(be, deposit_flux!, mode, Jx, Jy, Jz, s, shape, st, grid, ws; dt = T(dt), quantity_z, workgroupsize)

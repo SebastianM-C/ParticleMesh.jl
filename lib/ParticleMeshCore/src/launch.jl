@@ -10,8 +10,10 @@ A fixed `workgroupsize` has to fit the kernel it launches. Besides the backend's
 (`KernelInterface.max_work_group_size(backend)` work-items, and its per-dimension maximum),
 each compiled kernel has its own maximum, which depends on the backend, the kernel and the
 element type: PoCL lowers it for kernels with a large private stack, such as the 2D flux patch
-with `Dual` elements (983 work-items for `Dual{Float32,3}`, the quadratic shape and the
-stagger `(Node(), Node())`, 1164 at `(Node(), Center())`, as PoCL reported them, #297). It is
+with `Dual` elements (for `Dual{Float32,3}`, the quadratic shape and the stagger
+`(Node(), Node())` PoCL reported 983 work-items in #297; the number moves with the kernel's
+code and with the machine: since WP-061's change of it PoCL reported 3269 on one CPU and ran
+the backend's 4096 on another, T-500). It is
 known only once KernelAbstractions has compiled the kernel for its arguments, inside the
 launch, and KernelAbstractions has no public query for it, so the engine cannot clamp a
 requested size to it. A launch with a size that does not fit is refused before the kernel
@@ -22,6 +24,25 @@ maximum, so it fits every kernel.
 @inline launcher(kernel, backend, ::Nothing) = kernel(backend)
 @inline launcher(kernel, backend, workgroupsize) =
     SizedLaunch(kernel(backend, workgroupsize), kernel, backend, workgroupsize)
+
+"""
+    item_launcher(kernel, backend, workgroupsize)
+
+[`launcher`](@ref) for a kernel whose work item is itself a serial loop with a large state
+carried through it: the 2D flux patch, one cell's particles summed into `3·M₁·M₂` accumulators
+of `T`. A fixed `workgroupsize` is taken as it is. With `nothing`, the CPU backend launches
+work-groups of one work item and every other backend makes its own choice.
+
+The CPU backend runs a work-group on one thread, as a loop over its work items, and tunes the
+group to be large, which suits kernels of a few operations per item. For this kernel the tuned
+group costs a multiple of the group of one once the accumulators are large: 8 times with
+`Dual{Float64,2}` elements at order 2 (324 doubles per work item), while with `Float64` the two
+are within a factor 1.5 (`reports/wp-061-flux-deposition-cost.md`; #451 has the cause, PoCL's
+work-group function, reduced to a kernel of ten lines). The result does not depend on the
+launch shape (T-303).
+"""
+@inline item_launcher(kernel, backend, workgroupsize) = launcher(kernel, backend, workgroupsize)
+@inline item_launcher(kernel, backend::CPU, ::Nothing) = kernel(backend, 1)
 
 """
     SizedLaunch(instance, kernel, backend, workgroupsize)
