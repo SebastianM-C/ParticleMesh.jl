@@ -43,7 +43,7 @@ With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the ste
 with [`state_partition`](@ref), [`remake_reload`](@ref) and [`harness_state`](@ref).
 
 The differentiable parameters of a description are also one vector, [`tunables`](@ref) and
-[`with_tunables`](@ref) (WP-059); with SciMLStructures loaded, a second extension makes them the
+[`with_tunables`](@ref) (WP-060); with SciMLStructures loaded, a second extension makes them the
 `Tunable` portion of an `EMProblem` and of an `EMParams`.
 """
 module ParticleMeshElectromagnetic

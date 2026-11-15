@@ -1,7 +1,7 @@
 """
     ParticleMeshElectromagneticSciMLStructuresExt
 
-The SciMLStructures interface of the electromagnetic module's parameters (WP-059): an
+The SciMLStructures interface of the electromagnetic module's parameters (WP-060): an
 `EMProblem`, the `p` of the harness's `DiscreteProblem`, and an `EMParams` are SciML structures
 whose `Tunable` portion is [`tunables`](@ref), so the SciML tools that ask a problem for its
 parameters as a vector (`SciMLStructures.canonicalize`, `replace`) get the differentiable ones

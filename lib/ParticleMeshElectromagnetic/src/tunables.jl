@@ -1,4 +1,4 @@
-# The parameters of a run as one vector (WP-059): the numbers of a problem description, or of its
+# The parameters of a run as one vector (WP-060): the numbers of a problem description, or of its
 # `EMParams`, that A3 lets a derivative be taken with respect to, read into a vector and written
 # back. Host code on host objects: nothing here reaches a kernel.
 

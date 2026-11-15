@@ -1,5 +1,5 @@
-# WP-059: the differentiable parameters of a problem description as one vector, and as the
-# `Tunable` portion of a SciML structure, T-770 to T-773. After lwfa_gradient.jl (the WP-043 case
+# WP-060: the differentiable parameters of a problem description as one vector, and as the
+# `Tunable` portion of a SciML structure, T-790 to T-793. After lwfa_gradient.jl (the WP-043 case
 # and T-581's gradient) and window_cases.jl (`ZERO3`).
 
 using SciMLBase: SciMLBase, DiscreteProblem, remake, solve
@@ -43,7 +43,7 @@ function tunables_window(::Type{T}; start = 0) where {T}
 end
 tunables_window_late(::Type{T}) where {T} = tunables_window(T; start = 37)
 
-"The three 2D descriptions of T-770 to T-772, each with the names of its tunables."
+"The three 2D descriptions of T-790 to T-792, each with the names of its tunables."
 const TUNABLE_FIXTURES = ((tunables_periodic, () -> PERIODIC_NAMES), (tunables_window, () -> WINDOW_NAMES), (tunables_window_late, () -> WINDOW_NAMES))
 
 # The tunables of a description read field by field, written out a second time, independently of
@@ -92,7 +92,7 @@ function shifted(names, v::Vector{T}) where {T}
     return w
 end
 
-@testset "T-770 the tunables of a description: names, order, and the round trip through the vector [A3, A8, WP-059]" begin
+@testset "T-790 the tunables of a description: names, order, and the round trip through the vector [A3, A8, WP-060]" begin
     for T in TYPES, (build, getnames) in TUNABLE_FIXTURES
         p = build(T)
         names = getnames()
@@ -186,7 +186,7 @@ end
     @test q.dt === D3(tunables_periodic(Float32).dt)                  # the configuration carries no partial
 end
 
-@testset "T-771 what the vector refuses [A3, WP-059]" begin
+@testset "T-791 what the vector refuses [A3, WP-060]" begin
     p = tunables_periodic(Float64)
     v = tunables(p)
     for x in (p, params(p))
@@ -233,7 +233,7 @@ end
     @test_throws ArgumentError with_tunables(empty, [1.0])
 end
 
-@testset "T-772 the Tunable portion of the SciML structure is the vector [A9, WP-059]" begin
+@testset "T-792 the Tunable portion of the SciML structure is the vector [A9, WP-060]" begin
     for T in TYPES, p in (tunables_periodic(T), tunables_window(T), tunables_window_late(T)), x in (p, params(p))
         @test SciMLStructures.isscimlstructure(x)
         @test !SciMLStructures.ismutablescimlstructure(x)
@@ -261,7 +261,7 @@ end
 # replaced by duals, the problem reloaded (`remake_reload`: the density and the ramp enter through
 # the initial load) and solved. It is the same arithmetic as T-581's hand-built dual problem, so
 # the gradient has T-581's bits.
-@testset "T-773 the gradient through solve by the Tunable portion has the bits of the hand-built dual run [A3, A7, WP-059, WP-043]" begin
+@testset "T-793 the gradient through solve by the Tunable portion has the bits of the hand-built dual run [A3, A7, WP-060, WP-043]" begin
     x0 = collect(LWFA_GRADIENT_X0)
     base = lwfa_gradient_problem(LWFA_GRADIENT_X0)
     dprob = DiscreteProblem(base, EMNumerics(; mode = Reference()))
@@ -277,7 +277,7 @@ end
     @test bits([J(x0)]) == bits([lwfa_wake_amplitude(LWFA_GRADIENT_X0)])
     ad = ForwardDiff.gradient(J, x0)
     ref = T581_AD[] === nothing ? ForwardDiff.gradient(x -> lwfa_wake_amplitude(x), x0) : T581_AD[]
-    @info "T-773 gradient by the Tunable portion" ad ref
+    @info "T-793 gradient by the Tunable portion" ad ref
     @test all(!iszero, ad)
     @test bits(ad) == bits(ref)
     # a plain remake keeps u0 and the cache: with parameters of another element type it is refused, not run
