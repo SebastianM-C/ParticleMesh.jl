@@ -1,0 +1,164 @@
+{
+  "backend": "cpu",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "gpu": null,
+  "phases": [
+    "push",
+    "sort",
+    "deposit",
+    "window",
+    "fields",
+    "other"
+  ],
+  "rows": [
+    {
+      "T": "Float32",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "deposit_flux": 0.002822187,
+        "patch_kernel": 0.001907324,
+        "patch_layout": [
+          14336,
+          108
+        ],
+        "reduce_kernel": 0.000457571,
+        "sort_sorted": 0.001018538
+      },
+      "mode": "Reference",
+      "phases": {
+        "deposit": 1.6739458760000017,
+        "fields": 0.059162235999999986,
+        "other": 0.14169620699999994,
+        "push": 0.9089595189999988,
+        "sort": 1.2578741019999993,
+        "window": 0.689492886
+      },
+      "run": 4.733227221,
+      "shifts": 196,
+      "steps": 512,
+      "total": 4.734699274
+    },
+    {
+      "T": "Float32",
+      "alive": 56571,
+      "capacity": 71680,
+      "mode": "Fast",
+      "phases": {
+        "deposit": 8.015979592000004,
+        "fields": 0.06008358200000003,
+        "other": 0.23031306900000023,
+        "push": 0.938232358999999,
+        "sort": 0.00012348200000000004,
+        "window": 0.6980222600000003
+      },
+      "run": 10.205580233,
+      "shifts": 196,
+      "steps": 512,
+      "total": 9.946832022
+    },
+    {
+      "T": "Float64",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "deposit_flux": 0.003934034,
+        "patch_kernel": 0.003050034,
+        "patch_layout": [
+          14336,
+          108
+        ],
+        "reduce_kernel": 0.000643166,
+        "sort_sorted": 0.001273001
+      },
+      "mode": "Reference",
+      "phases": {
+        "deposit": 2.165686488,
+        "fields": 0.06846651300000005,
+        "other": 0.11871089599999983,
+        "push": 0.8259175099999997,
+        "sort": 1.4705650550000007,
+        "window": 0.6280594120000004
+      },
+      "run": 5.489531642,
+      "shifts": 196,
+      "steps": 512,
+      "total": 5.281357176
+    },
+    {
+      "T": "Float64",
+      "alive": 56571,
+      "capacity": 71680,
+      "mode": "Fast",
+      "phases": {
+        "deposit": 7.474832044000002,
+        "fields": 0.06509664800000005,
+        "other": 0.12805494000000026,
+        "push": 0.7535780499999992,
+        "sort": 0.0001060140000000001,
+        "window": 0.7277903279999994
+      },
+      "run": 9.556605856,
+      "shifts": 196,
+      "steps": 512,
+      "total": 9.153333071
+    },
+    {
+      "T": "Dual{Float32,2}",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "deposit_flux": 0.053152733,
+        "patch_kernel": 0.051795098,
+        "patch_layout": [
+          14336,
+          108
+        ],
+        "reduce_kernel": 0.000813319,
+        "sort_sorted": 0.001531429
+      },
+      "mode": "Reference",
+      "phases": {
+        "deposit": 30.14074985499999,
+        "fields": 0.12674724300000018,
+        "other": 0.5066157060000009,
+        "push": 3.713314855999998,
+        "sort": 1.7187443159999996,
+        "window": 0.8327142370000002
+      },
+      "run": 37.112718407,
+      "shifts": 196,
+      "steps": 512,
+      "total": 37.046806705
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "deposit_flux": 0.054179676,
+        "patch_kernel": 0.051549957,
+        "patch_layout": [
+          14336,
+          108
+        ],
+        "reduce_kernel": 0.001015606,
+        "sort_sorted": 0.002826798
+      },
+      "mode": "Reference",
+      "phases": {
+        "deposit": 31.567655629000015,
+        "fields": 0.17232911300000012,
+        "other": 0.3581327470000005,
+        "push": 2.013963729999999,
+        "sort": 2.577359544999999,
+        "window": 1.268729644
+      },
+      "run": 38.581471585,
+      "shifts": 196,
+      "steps": 512,
+      "total": 37.967095352
+    }
+  ],
+  "threads": 4
+}

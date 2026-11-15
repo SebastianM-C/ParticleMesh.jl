@@ -11,8 +11,12 @@
 # second run is timed, so that no compilation is in the numbers (the moving window's kernels first
 # run at the first shift). `fast` adds the Fast mode for the plain element types.
 #
-# To compare two trees, run the script in each of them (copy this file into the other tree if it
-# is not there: each run's manifest records its tree's commit and the hashes of its inputs).
+# To compare trees, run the script in each of them (copy this file into the other tree if it is
+# not there: each run's manifest records its tree's commit and the hashes of its inputs), then
+#
+#   julia +1.13 --project=scripts scripts/optim/step_timing.jl compare <label>=<run directory> ...
+#
+# which reads the runs' sidecars and writes one table and one figure of them, in the order given.
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "wake2d_case.jl"))
 using ParticleMeshElectromagnetic
@@ -26,10 +30,10 @@ const BACKEND_NAME = isempty(ARGS) ? "cpu" : ARGS[1]
 if BACKEND_NAME == "cuda"
     @eval using CUDACore: CUDACore, CUDABackend
     @eval const BE = CUDABackend()
-elseif BACKEND_NAME == "cpu"
+elseif BACKEND_NAME in ("cpu", "compare")
     const BE = CPU()
 else
-    error("step_timing.jl: the backend is cpu or cuda, got $BACKEND_NAME")
+    error("step_timing.jl: the first argument is cpu, cuda or compare, got $BACKEND_NAME")
 end
 
 "The element types of the run: the label and the case's two free parameters (duration, focus) in that type."
@@ -241,4 +245,93 @@ function main()
     return dir
 end
 
-main()
+"The label and the sidecar of each `<label>=<run directory>` argument, the directory relative to the working directory."
+function compared_runs(args)
+    return map(args) do a
+        label, dir = split(a, '='; limit = 2)
+        dir = abspath(dir)
+        (; label = String(label), dir, data = JSON.parsefile(joinpath(dir, "step_timing.json")),
+         manifest = TOML.parsefile(joinpath(dir, "manifest.toml")))
+    end
+end
+
+"The Markdown table of several runs: seconds per run and in the deposit phase per element type and mode, one column pair per run."
+function compare_table(runs)
+    io = IOBuffer()
+    println(io, "| element type | mode | ", join(("`run!` $(r.label)" for r in runs), " | "), " | ", join(("deposit $(r.label)" for r in runs), " | "), " |")
+    println(io, "|---|---|", join(("---" for _ in 1:2length(runs)), "|"), "|")
+    for row in runs[1].data["rows"]
+        same = [only(filter(x -> x["T"] == row["T"] && x["mode"] == row["mode"], r.data["rows"])) for r in runs]
+        println(io, "| `", row["T"], "` | ", row["mode"], " | ", join((fmt(x["run"]) for x in same), " | "), " | ",
+                join((fmt(x["phases"]["deposit"]) for x in same), " | "), " |")
+    end
+    return String(take!(io))
+end
+
+"The Markdown table of the deposition's kernels in several runs: milliseconds per call of the patch and the reduce kernel."
+function compare_kernel_table(runs)
+    io = IOBuffer()
+    println(io, "| element type | ", join(("patch $(r.label)" for r in runs), " | "), " | ", join(("reduce $(r.label)" for r in runs), " | "), " |")
+    println(io, "|---|", join(("---" for _ in 1:2length(runs)), "|"), "|")
+    for row in runs[1].data["rows"]
+        row["mode"] == "Reference" || continue
+        same = [only(filter(x -> x["T"] == row["T"] && x["mode"] == "Reference", r.data["rows"]))["kernels"] for r in runs]
+        println(io, "| `", row["T"], "` | ", join((fmt(1e3 * k["patch_kernel"]) for k in same), " | "), " | ",
+                join((fmt(1e3 * k["reduce_kernel"]) for k in same), " | "), " |")
+    end
+    return String(take!(io))
+end
+
+"Per element type and mode, one stacked bar of the phases per run."
+function compare_figure(runs, title)
+    rows = runs[1].data["rows"]
+    fig = Figure(; size = (1100, 460))
+    ax = Axis(fig[1, 1]; title, ylabel = "seconds per run", xticks = (1:length(rows), ["$(r["T"])\n$(r["mode"])" for r in rows]))
+    colors = Makie.wong_colors()
+    w = 0.8 / length(runs)
+    top = 0.0
+    for (i, row) in enumerate(rows), (j, r) in enumerate(runs)
+        x = only(filter(y -> y["T"] == row["T"] && y["mode"] == row["mode"], r.data["rows"]))
+        base = 0.0
+        pos = i - 0.4 + (j - 0.5) * w
+        for (c, ph) in enumerate(PHASES)
+            v = x["phases"][string(ph)]
+            barplot!(ax, [pos], [v]; offset = [base], width = 0.92w, color = colors[c], label = string(ph))
+            base += v
+        end
+        text!(ax, pos, base; text = r.label, rotation = pi / 2, align = (:left, :center), fontsize = 9, offset = (0, 3))
+        top = max(top, base)
+    end
+    ylims!(ax, 0, 1.3 * top)   # room for the labels above the tallest bar
+    axislegend(ax; unique = true, position = :lt)
+    return fig
+end
+
+"`compare <label>=<run directory> ...`: one table and one figure of several runs of this script."
+function compare(args)
+    runs = compared_runs(args)
+    first_ = runs[1].data
+    all(r -> r.data["backend"] == first_["backend"] && r.data["threads"] == first_["threads"] && r.data["cpu"] == first_["cpu"] &&
+             r.data["gpu"] == first_["gpu"], runs) || error("step_timing.jl compare: the runs are of different machines, backends or thread counts")
+    sidecars = [joinpath(r.dir, f) for r in runs for f in ("step_timing.json", "manifest.toml")]
+    dir = run_dir("step-timing-compare", @__FILE__; prefix = "optim", work_package = "WP-061",
+                  backend = first_["backend"] == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
+                  params = Dict{String,Any}("runs" => [Dict("label" => r.label, "run_id" => r.manifest["run_id"], "commit" => r.manifest["commit"],
+                                                            "dirty" => r.manifest["dirty"]) for r in runs]),
+                  extra_inputs = filter(f -> startswith(f, REPO), sidecars))
+    where_ = first_["gpu"] === nothing ? "$(first_["threads"]) threads, $(first_["cpu"])" : first_["gpu"]
+    nsteps = first_["rows"][1]["steps"]
+    fig = compare_figure(runs, "WP-045 case, $nsteps steps, $where_")
+    save_plot(dir, "step_timing_compare", fig,
+              Dict("where" => where_, "runs" => [Dict("label" => r.label, "run_id" => r.manifest["run_id"], "commit" => r.manifest["commit"],
+                                                      "dirty" => r.manifest["dirty"], "rows" => r.data["rows"]) for r in runs]))
+    tables = "Seconds per run of $nsteps steps and in its deposit phase ($where_); the runs: " *
+             join(("$(r.label) = `$(r.manifest["run_id"])` at `$(r.manifest["commit"][1:7])`" for r in runs), ", ") * ".\n\n" * compare_table(runs) *
+             "\nMilliseconds per call of the deposition's kernels on the last state:\n\n" * compare_kernel_table(runs)
+    write(joinpath(dir, "tables.md"), tables)
+    print(tables)
+    println("step_timing compare: outputs in ", relpath(dir, REPO))
+    return dir
+end
+
+BACKEND_NAME == "compare" ? compare(ARGS[2:end]) : main()

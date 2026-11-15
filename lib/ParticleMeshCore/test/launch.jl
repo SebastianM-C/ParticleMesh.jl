@@ -127,6 +127,12 @@ struct OtherBackend <: KernelAbstractions.Backend end
     @test sized isa ParticleMeshCore.SizedLaunch && sized.workgroupsize == 64 && wg(sized.instance) === KernelAbstractions.StaticSize{(64,)}
     @test wg(il(k, OtherBackend(), nothing)) === KernelAbstractions.DynamicSize
     @test wg(ParticleMeshCore.launcher(k, backend, nothing)) === KernelAbstractions.DynamicSize
+    # The Reference deposit launches its patch kernel through item_launcher and its reduction through launcher.
+    lowered = only(code_lowered(ParticleMeshCore._deposit_flux_2d!, Tuple{Reference,Vararg{Any,11}}))
+    refname(x) = x isa Core.SSAValue ? refname(lowered.code[x.id]) : x isa GlobalRef ? x.name : x isa Symbol ? x : nothing
+    launches = [(refname(e.args[1]), refname(e.args[2])) for e in lowered.code if e isa Expr && e.head === :call && length(e.args) >= 2]
+    @test (:item_launcher, :flux_patch_2d_kernel!) in launches
+    @test (:launcher, :flux_reduce_2d_kernel!) in launches
     # The default launch of the Reference flux gives the bits of a fixed size, for the Dual of #442 too.
     D2 = Dual{Nothing,Float64,2}
     st = (Node(), Node())
