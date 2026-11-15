@@ -15,7 +15,8 @@
 #    lib/ParticleMeshElectromagnetic/test/ionization_cases.jl) on 33 values of a₀ from 0.6 to 1.4,
 #    and at 9 of them the ForwardDiff derivative from one dual run each, drawn as tangents; and at
 #    a₀ = 1 the derivative in each of four parameters against a central difference.
-#   julia +1.13 --project=scripts -t 4 scripts/ionization/ionization.jl
+#   julia +1.13 --project=scripts -t 4 scripts/ionization/ionization.jl                 the run, its figures and tables
+#   julia +1.13 --project=scripts scripts/ionization/ionization.jl table <run directory>   the report's table from a run's sidecars
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 const ParticleMeshCore = ParticleMesh.ParticleMeshCore
 using ParticleMeshElectromagnetic
@@ -88,13 +89,20 @@ const VAC = (; a0 = 2.0, waist = 10.0, duration = 20.0, delay = 70.0, position =
 vacuum_pulse() = GaussianLaser(; a0 = VAC.a0, waist = VAC.waist, duration = VAC.duration, delay = VAC.delay, focus = VAC.focus,
                                position = VAC.position, center = VAC.length[2] / 2)
 
-"The fraction released at the transverse distance `dy` from the axis in the focal plane, from the paraxial field: 1 − exp(−∫W(|e(s)|)ds), trapezoid rule at `ds`."
-function analytic_fraction(level, dy; ds = 1.0e-3)
+"The fraction released at the transverse distance `dy` from the axis in the focal plane, from the paraxial field times `scale`: 1 − exp(−∫W(scale·|e(s)|)ds), trapezoid rule at `ds`."
+function analytic_fraction(level, dy; ds = 1.0e-3, scale = 1.0)
     pulse = vacuum_pulse()
     s = (-6 * VAC.duration):ds:(6 * VAC.duration)
-    w = [adk_rate(level, abs(first(laser_field(pulse, 0.0, dy, x)))) for x in s]
+    w = [adk_rate(level, scale * abs(first(laser_field(pulse, 0.0, dy, x)))) for x in s]
     return -expm1(-ds * (sum(w) - (first(w) + last(w)) / 2))
 end
+
+"""
+What the quadratic-spline gather leaves of the amplitude of a plane wave of `ncx` cells per
+wavelength along x at a particle's place: sinc³(k·Δx/2) with k·Δx = 2π/ncx (the transform of the
+quadratic B-spline at the wave's wavenumber). The atoms take their field through that gather.
+"""
+gather_factor(ncx) = (sin(π / ncx) / (π / ncx))^3
 
 "The largest |e| of the paraxial field on the axis in the focal plane."
 peak_paraxial() = maximum(s -> abs(first(laser_field(vacuum_pulse(), 0.0, 0.0, s))), -4:1.0e-3:4)
@@ -217,6 +225,47 @@ end
 
 sig(x) = string(round(x; sigdigits = 4))
 
+"""
+    report_table(dir) -> String
+
+The table of reports/wp-059-field-ionization.md from the sidecars of the run directory `dir`
+(`julia +1.13 --project=scripts scripts/ionization/ionization.jl table <dir>`): the rates against
+FBPIC's coefficient lines; per vacuum run the fraction next to the axis, the integral of the rate
+in the paraxial field there, the same integral with the field multiplied by `gather_factor` and by
+the run's peak |Ey| over the paraxial field's at that distance from the axis (computed here, from
+the sidecar's level), and the largest difference over the column; and the derivatives of the two
+objectives with their relative difference to a central difference.
+"""
+function report_table(dir)
+    rates = JSON.parsefile(joinpath(dir, "adk_rates.json"))["largest_relative_difference"]
+    vac = JSON.parsefile(joinpath(dir, "vacuum_fraction.json"))
+    der = JSON.parsefile(joinpath(dir, "objective_scan.json"))["derivatives"]
+    lv = vac["level"]
+    level = ADKLevel(lv["prefactor"], lv["field"], lv["power"]; cutoff = lv["cutoff"])
+    io = IOBuffer()
+    println(io, "| measure | value |")
+    println(io, "|---|---|")
+    println(io, "| rates against FBPIC's coefficient lines with the formula's unit of energy, every rate: largest relative difference | ",
+            sig(rates["rydberg, every rate above 1e-300"]), " |")
+    println(io, "| the same with FBPIC's unit of energy, rates above 1e-12 ω₀; above 1e-3 ω₀ | ", sig(rates["fbpic, rates above 1e-12"]), "; ",
+            sig(rates["fbpic, rates above 1e-3"]), " |")
+    for r in vac["runs"]
+        n, dy = r["cells_per_wavelength"], r["nearest_axis_dy"]
+        off_axis = exp(-(dy / VAC.waist)^2)                      # the paraxial amplitude at dy over the axis' (focal plane)
+        seen = gather_factor(n) * r["peak_Ey_at_focus"] / (r["peak_Ey_paraxial"] * off_axis)
+        println(io, "| vacuum pulse at λ₀/", n, " (Δt = ", sig(r["dt"]), ", ", r["steps"], " steps), fraction released next to the axis: the run; the integral; ",
+                "the integral with the field times ", sig(seen), "; largest difference to the integral over the column | ", sig(r["nearest_axis_fraction"]), "; ",
+                sig(r["nearest_axis_analytic"]), "; ", sig(analytic_fraction(level, dy; scale = seen)), "; ", sig(r["largest_abs_difference"]), " |")
+    end
+    for name in ("charge", "energy")
+        rows = filter(r -> r["objective"] == name, der)
+        println(io, "| born ", name, ", ForwardDiff derivative in ", join((r["parameter"] for r in rows), ", "), " | ",
+                join((sig(r["forwarddiff"]) for r in rows), "; "), " |")
+        println(io, "| born ", name, ", relative difference to a central difference | ", join((sig(r["relative_difference"]) for r in rows), "; "), " |")
+    end
+    return String(take!(io))
+end
+
 function ionization_report()
     dir = run_dir("ionization", @__FILE__; work_package = "WP-059", prefix = "ionization",
                   extra_inputs = [joinpath(@__DIR__, "atomic.jl"), joinpath(@__DIR__, "ionization_energies.toml"), joinpath(@__DIR__, "fbpic_reference.toml"),
@@ -244,5 +293,10 @@ function ionization_report()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    ionization_report()
+    if length(ARGS) == 2 && ARGS[1] == "table"
+        print(report_table(ARGS[2]))
+    else
+        println()
+        print(report_table(ionization_report()))
+    end
 end
