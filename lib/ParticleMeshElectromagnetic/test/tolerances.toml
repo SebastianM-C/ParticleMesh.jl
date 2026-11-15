@@ -698,3 +698,95 @@ scale = "convergence with resolution (below 1 the differences shrink)"
 C = 0.5
 measured = { "RTX 4080 SUPER, Dual{Float32,3}" = 0.287, "CPU, Float64 duals" = 0.28 }
 status = "proposed; the largest ratio is the duration partial's (density 0.23, a₀ 0.19, the primal 0.19)"
+
+["T-771"]
+quantity = "one ionization level in a constant prescribed field, 20 steps, born every 3: the atoms' bound population against exp(−W·n·Δt) (measured), their emitted and pending fractions and their sum against 1, the born electrons' momenta against −Ex·Δt·(n − k_b + ½) (measured_momenta) and weights against the released fraction (measured_weights), value and partials; T-776's populations in a full buffer take the same C"
+scale = "n·eps(T)·max(|value|, |partials|) of the closed form, n the steps"
+C = 2
+measured = { Float32 = 0.29, Float64 = 0.248, "Dual{Float32,3}" = 0.29 }
+measured_momenta = { Float32 = 0.144, Float64 = 0.0718, "Dual{Float32,3}" = 0.144 }
+measured_weights = { Float32 = 0.211, Float64 = 0.215, "Dual{Float32,3}" = 0.211 }
+status = "proposed"
+
+["T-772"]
+quantity = "a chain of three levels in a constant field: the bound populations against the per-step recurrence computed on the host, after each of 12 steps (C); against the exact solution of the rate equations at t = 12·Δt₀ with Δt₀, Δt₀/2 and Δt₀/4 (Float64): the largest error of the second and third populations at Δt₀ (error_max) and the ratio of the errors per halving (ratio_min to ratio_max)"
+scale = "k·eps(T) after k steps (populations of order one); the convergence ratios are not roundoff bounds: first order gives 2"
+C = 4
+error_max = 0.05
+ratio_min = 1.8
+ratio_max = 2.5
+measured = { Float32 = 0.5, Float64 = 0.0417, "Dual{Float32,3}" = 0.5 }
+measured_ratios = { first = 2.22, second = 2.11 }
+status = "proposed"
+
+["T-773"]
+quantity = "Gauss's law with the dopant ions' charge, |D⁻ₓEx + D⁻_yEy − (ρ + ρ_ions − mean)|, after every step of a thermal plasma with a dopant of two levels (two atoms per cell along x) being ionized on four of eight rows, 30 steps, both modes; T-776's run with a full electron buffer (one atom per cell) takes the same C"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.111, Float64 = 0.115, "Dual{Float32,3}" = 0.134 }
+status = "proposed"
+
+["T-774"]
+quantity = "Gauss's law with the ions' charge across window shifts, D⁻·E − (ρ + ρ_ions − ρ₀(s)), off nodes 1, 2 and the antenna's two columns, a laser ionizing a doped section with two atoms per cell along x, 150 steps, both modes (C); the atoms' weights on a lattice of 2 × 2 per cell after 0, 31 and 39 shifts, and those of a section loaded by the refill alone after 25 shifts (1 × 2 per cell), against the section's profile at the global coordinate, value and partials (C_weight)"
+scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1); eps(T)·density over the points per cell for the weights"
+C = 1
+C_weight = 16
+measured = { Float32 = 0.227, Float64 = 0.21, "Dual{Float32,3}" = 0.227 }
+measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17, "RTX 2000 Ada, Float32" = 7.42, "RTX 2000 Ada, Float64" = 7.03, "RTX 2000 Ada, Dual{Float32,3}" = 7.42 }
+status = "proposed; the residual is T-473's (the plasma's charge sets it); the weights on CUDA carry the device's sin in the section's ramp (T-780)"
+
+["T-775"]
+quantity = "Fast against Reference after 110 window steps with ionization, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"
+scale = "eps(Float64)"
+C = 32
+measured = { Float64 = 6.66, "RTX 2000 Ada, Float64" = 5.92 }
+status = "proposed"
+
+["T-778"]
+quantity = "ForwardDiff against the finite-difference floor of A7 (fd_scan, Float64, Reference): the born charge and the born electrons' kinetic energy of the small ionization-injection run (ion_window, 110 steps) in a₀, the dopant density, the level's prefactor and the section's start: rel/floor at the minimising step (C) and the floor itself (floor_max)"
+scale = "the measured floor"
+C = 4
+floor_max = 1e-6
+measured_charge = { a0 = 0.0776, density = 0.0651, prefactor = 0.411, start = 0.0629 }
+measured_energy = { a0 = 0.079, density = 0.0914, prefactor = 0.125, start = 0.0637 }
+measured_floor = { a0 = 1.62e-10, density = 1.04e-11, prefactor = 1.76e-10, start = 3.32e-8 }
+status = "proposed; AD and FD agree to 3e-11 relative in a₀, the density and the prefactor and to 2e-9 in the section's start"
+
+["T-779"]
+quantity = "the Dual{Float32,3} partials (a₀, density, prefactor) of the born charge and energy of ion_window against the Float64 ForwardDiff Jacobian, and the Float32 primal against Float64: largest relative difference"
+scale = "relative (Float32 against Float64 after 110 steps; not a roundoff bound)"
+C = 1e-5
+measured = { charge = 4.73e-7, energy = 5.14e-7 }
+measured_primal = { charge = 2.49e-7, energy = 4.49e-7 }
+status = "proposed"
+
+["T-780"]
+quantity = "the Dual{Float32,3} born charge and energy of ion_window (primal and the partials in a₀, density, prefactor), Reference, on CUDA against the CPU: largest relative difference"
+scale = "relative (two backends' Float32 arithmetic after 110 steps, not a roundoff bound)"
+C = 1e-5
+measured = { "RTX 2000 Ada" = 3.31e-7 }
+status = "proposed; T-779's bound, for the same quantity between two element types"
+
+["T-783"]
+quantity = "the ADK level built from an ionization energy and a wavelength (scripts/ionization/atomic.jl) against FBPIC 0.27.1's coefficient lines, every level of H, He, N and Ar at 0.8 µm, a₀ = 0.25 to 8: with half a Hartree as the unit of energy, the rates (rate) and n*, C² (nstar); with FBPIC's own unit (hydrogen's measured ionization energy), the rates above 1e-12 ω₀ (rate_fbpic)"
+scale = "relative"
+rate = 1e-7
+nstar = 1e-9
+rate_fbpic = 0.1
+measured = { "rate, half a Hartree" = 1.85e-8, "n*, half a Hartree" = 7.12e-12, "C², half a Hartree" = 1.64e-11, "rate, FBPIC's unit" = 0.0407, "n*, FBPIC's unit" = 2.67e-4 }
+status = "proposed; with the formula's own unit the difference is the rounding of the constants' printed digits times the exponent (up to several hundred where the rate is 1e-300); with FBPIC's unit the 4 % is at a rate of 1e-12 ω₀ and falls to below 1 % for rates above 1e-3 ω₀ (scripts/ionization/ionization.jl prints both)"
+
+["T-784"]
+quantity = "a lattice of 2 × 3 atoms per cell in a static field linear along x with all three components, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x))·n·Δt) of the rate at its own place (measured), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) of its atom's rate (measured_weights), value and partials, off the two columns next to the periodic seam"
+scale = "n·eps(T) for the populations (of order one); n·eps(T)·density/6 for the weights"
+C = 4
+measured = { Float32 = 0.188, Float64 = 0.219, "Dual{Float32,3}" = 0.188, "RTX 2000 Ada, Float32" = 0.281, "RTX 2000 Ada, Float64" = 0.156 }
+measured_weights = { Float32 = 0.0549, Float64 = 0.0549, "Dual{Float32,3}" = 0.0549 }
+status = "proposed"
+
+["T-785"]
+quantity = "Gauss's law with the dopant ions' charge, |D⁻ₓEx + D⁻_yEy − (ρ + ρ_ions)|, on the node rows off the absorbing layer of a box open along y, after every step from the first birth on, born electrons driven out through the lower edge and retired there, 40 steps, both modes"
+scale = "((n₁ + n₂)·max|ρ| + (2/Δx + 2/Δy)·max|E|)·√(k + 1): T-360's of the charge plus the divergence's own roundoff of the field, the larger here (a uniform field of 1/2 over a born charge density of a few 1e-3)"
+C = 1
+measured = { Float32 = 0.0811, Float64 = 0.119, "Dual{Float32,3}" = 0.0811, "RTX 2000 Ada, Float32" = 0.105, "RTX 2000 Ada, Float64" = 0.184 }
+status = "proposed; on the charge's scale alone the residual is 3 to 4 eps, the roundoff of differencing the field"

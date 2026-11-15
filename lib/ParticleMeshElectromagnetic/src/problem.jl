@@ -115,13 +115,15 @@ loads draw in velocity); a window that starts later than t = 0 takes only cold s
 rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
 finished its pulse before the window passes it (checked by the state). At N = 2 a `witness`, a
 [`WitnessBunch`](@ref) (WP-047), adds test particles injected during the run whose mean energy
-gain is the optimization objective; they change nothing else in the run. At N = 1
+gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
+a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
+without random numbers, its electrons born by weight into a species of their own. At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
 
     EMProblem(name, length, cells, dt, nsteps, species, seed, kmode; E0 = zeros, B0 = zeros, lasers = (), boundaries = periodic,
-              window = nothing, profile = nothing, witness = nothing)
+              window = nothing, profile = nothing, witness = nothing, ionization = nothing)
 
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2), that the cells and the particles per cell are positive, at N = 2 that
@@ -129,7 +131,7 @@ of each at N = 2), that the cells and the particles per cell are positive, at N 
 `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1 together with
 a `window` and the conditions above (an `ArgumentError` otherwise).
 """
-struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB}
+struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB,IZ}
     name::String
     length::L
     cells::C
@@ -145,11 +147,12 @@ struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB}
     window::W
     profile::PR
     witness::WB
+    ionization::IZ
 end
 
 function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, seed::Integer, kmode;
                    E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = (),
-                   boundaries = nothing, window = nothing, profile = nothing, witness = nothing) where {T}
+                   boundaries = nothing, window = nothing, profile = nothing, witness = nothing, ionization = nothing) where {T}
     N = cells isa Integer ? 1 : length(cells)
     N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
     M = N == 1 ? Int : NTuple{2,Int}
@@ -202,12 +205,16 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     witness === nothing || witness isa WitnessBunch || throw(ArgumentError("witness must be a WitnessBunch, got $witness"))
     witness === nothing || N == 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
     wb = witness === nothing ? nothing : witness_as(T, witness)
+    ionization === nothing || ionization isa FieldIonization || throw(ArgumentError("ionization must be a FieldIonization, got $ionization"))
+    ionization === nothing || N == 2 || throw(ArgumentError("field ionization is implemented at N = 2 only"))
+    iz = ionization === nothing ? nothing : ionization_as(T, ionization)
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode
     win = window === nothing ? nothing : MovingWindow(T(window.start))
-    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd),typeof(win),typeof(profile),typeof(wb)}(
-        String(name), L, c, dt, Int(nsteps), species, Int(seed), k, T.(Tuple(E0)), T.(Tuple(B0)), lasers, bd, win, profile, wb)
+    return EMProblem{N,T,typeof(species),typeof(L),typeof(c),typeof(k),typeof(lasers),typeof(bd),typeof(win),typeof(profile),typeof(wb),
+                     typeof(iz)}(
+        String(name), L, c, dt, Int(nsteps), species, Int(seed), k, T.(Tuple(E0)), T.(Tuple(B0)), lasers, bd, win, profile, wb, iz)
 end
 
 Base.eltype(::EMProblem{N,T}) where {N,T} = T
@@ -338,6 +345,8 @@ and [`step!`](@ref) read as numbers, in the state's element type `T`:
   species' densities are;
 - `witness`: the [`WitnessParams`](@ref) of a witness bunch, or `nothing`, read at its injection
   step and by [`witness_gains`](@ref);
+- `ionization`: the [`IonizationParams`](@ref) of a dopant, or `nothing`: its density and section,
+  read where its atoms are loaded, and its levels, read by every step's rates;
 - `seed`: the seed of the momentum draws (initial load and refill);
 - `E0`, `B0`: the uniform background fields added at t = 0 (not differentiable: the addition
   tests them for zero on the host).
@@ -359,32 +368,34 @@ and `initialize!` and `step!` ask it. A derivative with respect to a number of t
 the dual problem, and `initialize!(state, problem)` refuses a problem whose configuration is not
 the state's ([`check_setup`](@ref)).
 
-    EMParams{T}(; species, lasers = (), profile = nothing, witness = nothing, seed, E0 = zeros, B0 = zeros)
+    EMParams{T}(; species, lasers = (), profile = nothing, witness = nothing, ionization = nothing, seed, E0 = zeros, B0 = zeros)
     EMParams(p::EMParams; lasers = p.lasers, species = p.species, ...)
 
 build them from their parts (the lasers and the profile converted to `T`), or from another set
 with some parts replaced.
 """
-struct EMParams{T,LZ<:Tuple,SP<:Tuple,PR,WB}
+struct EMParams{T,LZ<:Tuple,SP<:Tuple,PR,WB,IZ}
     lasers::LZ
     species::SP
     profile::PR
     witness::WB
+    ionization::IZ
     seed::Int
     E0::NTuple{3,T}
     B0::NTuple{3,T}
 end
 
-function EMParams{T}(; species::Tuple, lasers::Tuple = (), profile = nothing, witness = nothing, seed::Integer,
+function EMParams{T}(; species::Tuple, lasers::Tuple = (), profile = nothing, witness = nothing, ionization = nothing, seed::Integer,
                      E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3)) where {T}
     lz = map(l -> convert_laser(T, l), lasers)
     pr = profile === nothing ? nothing : DensityRamp{T}(T(profile.vacuum), T(profile.ramp))
-    return EMParams{T,typeof(lz),typeof(species),typeof(pr),typeof(witness)}(lz, species, pr, witness, Int(seed), T.(Tuple(E0)),
-                                                                           T.(Tuple(B0)))
+    iz = ionization_params(T, ionization)
+    return EMParams{T,typeof(lz),typeof(species),typeof(pr),typeof(witness),typeof(iz)}(lz, species, pr, witness, iz, Int(seed),
+                                                                                      T.(Tuple(E0)), T.(Tuple(B0)))
 end
 
-EMParams(p::EMParams{T}; lasers = p.lasers, species = p.species, profile = p.profile, witness = p.witness, seed = p.seed,
-         E0 = p.E0, B0 = p.B0) where {T} = EMParams{T}(; lasers, species, profile, witness, seed, E0, B0)
+EMParams(p::EMParams{T}; lasers = p.lasers, species = p.species, profile = p.profile, witness = p.witness, ionization = p.ionization,
+         seed = p.seed, E0 = p.E0, B0 = p.B0) where {T} = EMParams{T}(; lasers, species, profile, witness, ionization, seed, E0, B0)
 
 Base.eltype(::EMParams{T}) where {T} = T
 
@@ -402,8 +413,8 @@ function params(problem::EMProblem{N,T}) where {N,T}
     species = map(d -> species_params(T, d, wavevector(d.mode, problem.length)), problem.species)
     b = problem.witness
     witness = b === nothing ? nothing : WitnessParams{T}(b.momentum, b.center, b.length, b.width)
-    return EMParams{T}(; lasers = problem.lasers, species, profile = problem.profile, witness, seed = problem.seed,
-                       E0 = problem.E0, B0 = problem.B0)
+    return EMParams{T}(; lasers = problem.lasers, species, profile = problem.profile, witness, ionization = problem.ionization,
+                       seed = problem.seed, E0 = problem.E0, B0 = problem.B0)
 end
 
 # The description's numbers in the description's own type, the wave vector in the problem's.
