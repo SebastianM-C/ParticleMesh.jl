@@ -730,16 +730,16 @@ status = "proposed"
 quantity = "Gauss's law with the ions' charge across window shifts, D⁻·E − (ρ + ρ_ions − ρ₀(s)), off nodes 1, 2 and the antenna's two columns, a laser ionizing a doped section, 150 steps, both modes (C); the atoms' weights after 0, 31 and 39 shifts against the section's profile at the global column, value and partials (C_weight)"
 scale = "as T-360: (n₁ + n₂)·max|ρ|·√(k + 1); eps(T)·density for the weights"
 C = 1
-C_weight = 8
+C_weight = 16
 measured = { Float32 = 0.227, Float64 = 0.222, "Dual{Float32,3}" = 0.227 }
-measured_weight = { Float32 = 0.781, Float64 = 0.977, "Dual{Float32,3}" = 0.781 }
-status = "proposed; the residual is T-473's (the plasma's charge sets it)"
+measured_weight = { Float32 = 0.781, Float64 = 0.977, "Dual{Float32,3}" = 0.781, "RTX 2000 Ada, Float32" = 4.69, "RTX 2000 Ada, Float64" = 3.91, "RTX 2000 Ada, Dual{Float32,3}" = 4.69 }
+status = "proposed; the residual is T-473's (the plasma's charge sets it); the weights on CUDA carry the device's sin in the section's ramp (T-780)"
 
 ["T-775"]
 quantity = "Fast against Reference after 110 window steps with ionization, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"
 scale = "eps(Float64)"
 C = 32
-measured = { Float64 = 6.66 }
+measured = { Float64 = 6.66, "RTX 2000 Ada, Float64" = 5.51 }
 status = "proposed"
 
 ["T-778"]
@@ -763,8 +763,9 @@ status = "proposed"
 ["T-780"]
 quantity = "the Dual{Float32,3} born charge and energy of ion_window (primal and the partials in a₀, density, prefactor), Reference, on CUDA against the CPU: largest relative difference"
 scale = "relative (two backends' Float32 arithmetic after 110 steps, not a roundoff bound)"
-C = 1e-4
-status = "proposed; not yet measured on a GPU"
+C = 1e-5
+measured = { "RTX 2000 Ada" = 3.31e-7 }
+status = "proposed; T-779's bound, for the same quantity between two element types"
 
 ["T-783"]
 quantity = "the ADK level built from an ionization energy and a wavelength (scripts/ionization/atomic.jl) against FBPIC 0.27.1's coefficient lines, every level of H, He, N and Ar at 0.8 µm, a₀ = 0.25 to 8: with half a Hartree as the unit of energy, the rates (rate) and n*, C² (nstar); with FBPIC's own unit (hydrogen's measured ionization energy), the rates above 1e-12 ω₀ (rate_fbpic)"
