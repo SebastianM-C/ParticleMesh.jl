@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | Work package | WP-062 (`trace/wp/WP-062-recorder-options.md`); goals A4, A7, A8 |
-| Commits | `main` at `fa4953f`; the branch at `ec76c38` |
+| Commits | `main` at `fa4953f`; the branch at `ec76c38` for the timing, `6d7fd7b` for the code as tested last |
 | Runs | `optim-recorder-timing-cuda-20261116T175209` (`main`, the script copied into its tree as an untracked file) and `optim-recorder-timing-cuda-20261116T175518` (branch, clean), one after the other on one machine |
 | Input hashes | SHA-256 of every input in each run's manifest: `wp-062-recorder-options/gpu-main/manifest.toml` and `gpu-branch/manifest.toml` |
 | Environment | Julia 1.13.3, CUDACore 6.5.1, KernelAbstractions CUDA backend, NVIDIA GeForce RTX 4080 SUPER, Intel Core i9-14900K, 4 threads; a desktop session was on the same card |
@@ -47,7 +47,7 @@ The branch:
 
 ## 3. Verification
 
-The electromagnetic package's suite with `PM_TEST_GPU=1` on the same machine: 122 605 tests pass, the recorder's among them (T-810 to T-814). The bits of a default run are unchanged: the suite's recorded digests and determinism tests hold with the kinetic energy computed after the window's shift instead of before the mesh solve and again in the shift.
+The electromagnetic package's suite with `PM_TEST_GPU=1` on the same machine, at the tree the timing ran in: 122 605 tests pass. The bits of a default run are unchanged: the suite's recorded digests and determinism tests hold with the kinetic energy computed after the window's shift instead of before the mesh solve and again in the shift. After the breakers' findings (the cache's flag, T-814) the suite passes on the CPU (101 683 tests, `PM_TEST_GPU=0`) and the recorder's bodies T-810, T-811 and T-814 pass on the card (840 assertions); the whole suite was not run on the card again, which other jobs then shared, and the timing is of the tree before the flag (one host flag read and written per step).
 
 ## 4. Not shown, and open
 
