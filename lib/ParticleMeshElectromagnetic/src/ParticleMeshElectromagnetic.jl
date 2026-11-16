@@ -64,7 +64,7 @@ export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCu
 export EMParams, SpeciesParams, WitnessParams, params, check_params
 export tunables, tunable_names, tunable_count, with_tunables
 export EMState, initialize!, step!, run!, check_setup, reset_convolution!
-export HistoryRecorder, observe!
+export HistoryRecorder, observe!, RECORD_GROUPS, recorded_steps, reads_kinetic
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export evolved, EMSnapshot, snapshot, restore!, save_snapshot, load_snapshot

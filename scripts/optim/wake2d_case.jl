@@ -55,7 +55,7 @@ end
 
 function wake_state(duration, focus; kw...)
     prob = wake_problem(duration, focus; kw...)
-    st = EMState(prob, EMNumerics(; mode = Reference()))
+    st = EMState(prob, EMNumerics(; mode = Reference()); record = ())     # the objective reads the fields of the end; no history
     initialize!(st, prob)
     run!(st, params(prob), prob.nsteps)
     return st

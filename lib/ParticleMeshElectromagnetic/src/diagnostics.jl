@@ -5,6 +5,37 @@
 
 const HISTORY_KEYS = (:WEx, :WEy, :WEz, :WBx, :WBy, :WBz, :K, :Ex_re, :Ex_im, :Ey_re, :Ey_im, :Bz_re, :Bz_im)
 
+"""
+    RECORD_GROUPS
+
+The groups of quantities a [`HistoryRecorder`](@ref) can record, the values of its `record`
+keyword: `:field_energy` (the six energies `WEx … WBz`), `:kinetic` (`K`) and `:modes` (every
+Fourier amplitude at the diagnostic mode).
+"""
+const RECORD_GROUPS = (:field_energy, :kinetic, :modes)
+const ENERGY_KEYS = (:WEx, :WEy, :WEz, :WBx, :WBy, :WBz)
+
+# Which groups a recorder records, in its type: the recording kernels are compiled for the
+# selection, so a group that is not recorded costs no work item and no history.
+struct RecordSelection{E,K,M} end
+sel_energy(::RecordSelection{E}) where {E} = Val(E)
+sel_kinetic(::RecordSelection{E,K}) where {E,K} = Val(K)
+sel_modes(::RecordSelection{E,K,M}) where {E,K,M} = Val(M)
+@inline on(::Val{true}) = true
+@inline on(::Val{false}) = false
+
+function RecordSelection(record)
+    groups = record isa Symbol ? (record,) : Tuple(record)
+    all(g -> g in RECORD_GROUPS, groups) ||
+        throw(ArgumentError("record takes groups of $RECORD_GROUPS, got $record"))
+    return RecordSelection{:field_energy in groups,:kinetic in groups,:modes in groups}()
+end
+
+"The history keys of `keys` (all of a dimension) that the selection records, in their order."
+function recorded_keys(keys, sel::RecordSelection)
+    return Tuple(k for k in keys if (k in ENERGY_KEYS ? on(sel_energy(sel)) : k === :K ? on(sel_kinetic(sel)) : on(sel_modes(sel))))
+end
+
 @inline function energy_sum(a, g::Int32, n::Int32, ::Type{T}) where {T}
     w = zero(T)
     @inbounds for j in Int32(1):n
@@ -25,9 +56,8 @@ end
     return re * 2 / T(n), im * 2 / T(n)
 end
 
-@kernel function diagnostics_kernel!(h, f, @Const(K), dx, kmode, n::Int32, g::Int32, len::Int32, k::Int32)
-    T = eltype(K)
-    half = one(T) / 2
+@inline record_energies_1d!(::Val{false}, h, f, g, n, dx, k, ::Type{T}) where {T} = nothing
+@inline function record_energies_1d!(::Val{true}, h, f, g::Int32, n::Int32, dx, k::Int32, ::Type{T}) where {T}
     @inbounds begin
         h.WEx[k] = energy_sum(f.Ex, g, n, T) * dx / 2
         h.WEy[k] = energy_sum(f.Ey, g, n, T) * dx / 2
@@ -35,17 +65,39 @@ end
         h.WBx[k] = energy_sum(f.Bx, g, n, T) * dx / 2
         h.WBy[k] = energy_sum(f.By, g, n, T) * dx / 2
         h.WBz[k] = energy_sum(f.Bz, g, n, T) * dx / 2
-        # The kinetic energy density was deposited with guards and not folded: sum every entry.
-        kin = zero(T)
-        for j in Int32(1):len
-            kin += K[j]
-        end
-        h.K[k] = kin * dx
-        kdx = kmode * dx
+    end
+    return nothing
+end
+
+@inline record_kinetic!(::Val{false}, h, K, len, dA, k, ::Type{T}) where {T} = nothing
+# Sums every entry of `K` in index order: at N = 1 the kinetic energy density, deposited with
+# guards and not folded; at N = 2 the chunks.
+@inline function record_kinetic!(::Val{true}, h, K, len::Int32, dA, k::Int32, ::Type{T}) where {T}
+    kin = zero(T)
+    @inbounds for j in Int32(1):len
+        kin += K[j]
+    end
+    @inbounds h.K[k] = kin * dA
+    return nothing
+end
+
+@inline record_modes_1d!(::Val{false}, h, f, g, n, dx, kmode, k, ::Type{T}) where {T} = nothing
+@inline function record_modes_1d!(::Val{true}, h, f, g::Int32, n::Int32, dx, kmode, k::Int32, ::Type{T}) where {T}
+    half = one(T) / 2
+    kdx = kmode * dx
+    @inbounds begin
         h.Ex_re[k], h.Ex_im[k] = mode_sum(f.Ex, g, n, kdx, half, T)
         h.Ey_re[k], h.Ey_im[k] = mode_sum(f.Ey, g, n, kdx, zero(T), T)
         h.Bz_re[k], h.Bz_im[k] = mode_sum(f.Bz, g, n, kdx, half, T)
     end
+    return nothing
+end
+
+@kernel function diagnostics_kernel!(h, f, @Const(K), dx, kmode, n::Int32, g::Int32, len::Int32, k::Int32, sel)
+    T = eltype(K)
+    record_energies_1d!(sel_energy(sel), h, f, g, n, dx, k, T)
+    record_kinetic!(sel_kinetic(sel), h, K, len, dx, k, T)
+    record_modes_1d!(sel_modes(sel), h, f, g, n, dx, kmode, k, T)
 end
 
 # --- N = 2: parallel reductions in a fixed association order -------------------------------
@@ -65,9 +117,10 @@ const DIAG_ROWS = 16
 # zero, in increasing j₂: the squares of the six components and the Fourier sums of Ex, Ey, Bz,
 # Bx and By, each with the phases of its own stagger (Ex and By at (Center, Node), Ey and Bx at
 # (Node, Center), Bz at (Center, Center)). Adjacent work items read adjacent memory.
-@kernel function diagnostics_rows_2d_kernel!(P, f, @Const(t1), @Const(t2), n2::Int32, g::Int32)
+@kernel function diagnostics_rows_2d_kernel!(P, f, @Const(t1), @Const(t2), n2::Int32, g::Int32, sel)
     j1 = Int32(@index(Global, Linear))
     T = eltype(P)
+    energy, modes = on(sel_energy(sel)), on(sel_modes(sel))
     i1 = g + j1
     @inbounds begin
         c1N, s1N, c1C, s1C = t1[j1, 1], t1[j1, 2], t1[j1, 3], t1[j1, 4]
@@ -78,29 +131,37 @@ const DIAG_ROWS = 16
             c2N, s2N, c2C, s2C = t2[j2, 1], t2[j2, 2], t2[j2, 3], t2[j2, 4]
             ex, ey, ez = f.Ex[i1, i2], f.Ey[i1, i2], f.Ez[i1, i2]
             bx, by, bz = f.Bx[i1, i2], f.By[i1, i2], f.Bz[i1, i2]
-            wEx += ex * ex
-            wEy += ey * ey
-            wEz += ez * ez
-            wBx += bx * bx
-            wBy += by * by
-            wBz += bz * bz
-            cs, sn = phase(c1C, s1C, c2N, s2N)
-            exr += ex * cs
-            exi -= ex * sn
-            byr += by * cs
-            byi -= by * sn
-            cs, sn = phase(c1N, s1N, c2C, s2C)
-            eyr += ey * cs
-            eyi -= ey * sn
-            bxr += bx * cs
-            bxi -= bx * sn
-            cs, sn = phase(c1C, s1C, c2C, s2C)
-            bzr += bz * cs
-            bzi -= bz * sn
+            if energy
+                wEx += ex * ex
+                wEy += ey * ey
+                wEz += ez * ez
+                wBx += bx * bx
+                wBy += by * by
+                wBz += bz * bz
+            end
+            if modes
+                cs, sn = phase(c1C, s1C, c2N, s2N)
+                exr += ex * cs
+                exi -= ex * sn
+                byr += by * cs
+                byi -= by * sn
+                cs, sn = phase(c1N, s1N, c2C, s2C)
+                eyr += ey * cs
+                eyi -= ey * sn
+                bxr += bx * cs
+                bxi -= bx * sn
+                cs, sn = phase(c1C, s1C, c2C, s2C)
+                bzr += bz * cs
+                bzi -= bz * sn
+            end
         end
-        P[1, j1], P[2, j1], P[3, j1], P[4, j1], P[5, j1], P[6, j1] = wEx, wEy, wEz, wBx, wBy, wBz
-        P[7, j1], P[8, j1], P[9, j1], P[10, j1], P[11, j1], P[12, j1] = exr, exi, eyr, eyi, bzr, bzi
-        P[13, j1], P[14, j1], P[15, j1], P[16, j1] = bxr, bxi, byr, byi
+        if energy
+            P[1, j1], P[2, j1], P[3, j1], P[4, j1], P[5, j1], P[6, j1] = wEx, wEy, wEz, wBx, wBy, wBz
+        end
+        if modes
+            P[7, j1], P[8, j1], P[9, j1], P[10, j1], P[11, j1], P[12, j1] = exr, exi, eyr, eyi, bzr, bzi
+            P[13, j1], P[14, j1], P[15, j1], P[16, j1] = bxr, bxi, byr, byi
+        end
     end
 end
 
@@ -112,10 +173,8 @@ end
     return acc
 end
 
-# Stage 2: one work item adds the rows' partial sums in increasing j₁ and the kinetic-energy
-# chunks in order, and writes entry k of the histories.
-@kernel function diagnostics_total_2d_kernel!(h, @Const(P), @Const(K), n1::Int32, nK::Int32, dA, amp, khat, k::Int32)
-    T = eltype(K)
+@inline record_energies_2d!(::Val{false}, h, P, n1, dA, k, ::Type{T}) where {T} = nothing
+@inline function record_energies_2d!(::Val{true}, h, P, n1::Int32, dA, k::Int32, ::Type{T}) where {T}
     @inbounds begin
         h.WEx[k] = row_sum(P, 1, n1, T) * dA / 2
         h.WEy[k] = row_sum(P, 2, n1, T) * dA / 2
@@ -123,11 +182,13 @@ end
         h.WBx[k] = row_sum(P, 4, n1, T) * dA / 2
         h.WBy[k] = row_sum(P, 5, n1, T) * dA / 2
         h.WBz[k] = row_sum(P, 6, n1, T) * dA / 2
-        kin = zero(T)
-        for j in Int32(1):nK
-            kin += K[j]
-        end
-        h.K[k] = kin * dA
+    end
+    return nothing
+end
+
+@inline record_modes_2d!(::Val{false}, h, P, n1, amp, khat, k, ::Type{T}) where {T} = nothing
+@inline function record_modes_2d!(::Val{true}, h, P, n1::Int32, amp, khat, k::Int32, ::Type{T}) where {T}
+    @inbounds begin
         exr, exi = row_sum(P, 7, n1, T) * amp, row_sum(P, 8, n1, T) * amp
         eyr, eyi = row_sum(P, 9, n1, T) * amp, row_sum(P, 10, n1, T) * amp
         h.Ex_re[k], h.Ex_im[k] = exr, exi
@@ -142,6 +203,16 @@ end
         h.Bt_re[k] = khat[1] * byr - khat[2] * bxr
         h.Bt_im[k] = khat[1] * byi - khat[2] * bxi
     end
+    return nothing
+end
+
+# Stage 2: one work item adds the rows' partial sums in increasing j₁ and the kinetic-energy
+# chunks in order, and writes entry k of the histories the selection records.
+@kernel function diagnostics_total_2d_kernel!(h, @Const(P), @Const(K), n1::Int32, nK::Int32, dA, amp, khat, k::Int32, sel)
+    T = eltype(P)
+    record_energies_2d!(sel_energy(sel), h, P, n1, dA, k, T)
+    record_kinetic!(sel_kinetic(sel), h, K, nK, dA, k, T)
+    record_modes_2d!(sel_modes(sel), h, P, n1, amp, khat, k, T)
 end
 
 # Per-axis phase tables of the diagnostic mode m on n nodes: columns cos and sin of 2π·m·x/n at
@@ -163,33 +234,59 @@ end
 """
     HistoryRecorder{N}
 
-The module's observer: the per-step diagnostic histories `hist` of a run at N = 1 or 2 (the keys
-of `HISTORY_KEYS`, at N = 2 of `HISTORY_KEYS_2D`; one entry per step, on the state's backend) for
-the diagnostic mode `kmode` (the wavenumber at N = 1; the integer mode per axis at N = 2), and in
-`aux` what only N = 2 needs: the unit vector `khat` along the mode's wave vector, the phase tables
-of each axis (written once) and the per-row partial sums. A state owns one as its default
-observer (`state.recorder`, for the problem's `kmode` and `nsteps`); another one, for another mode
-or length, is passed to `step!` or `run!` as `observer`. Read it with [`histories`](@ref).
+The module's observer: the diagnostic histories `hist` of a run at N = 1 or 2 (the keys of
+`HISTORY_KEYS`, at N = 2 of `HISTORY_KEYS_2D`, on the state's backend) for the diagnostic mode
+`kmode` (the wavenumber at N = 1; the integer mode per axis at N = 2), and in `aux` what only
+N = 2 needs: the unit vector `khat` along the mode's wave vector, the phase tables of each axis
+(written once) and the per-row partial sums. A state owns one as its default observer
+(`state.recorder`, for the problem's `kmode` and `nsteps`); another one, for another mode, length,
+cadence or selection, is passed to `step!` or `run!` as `observer`. Read it with
+[`histories`](@ref).
 
-    HistoryRecorder(problem::EMProblem, state::EMState; kmode = problem.kmode, nsteps = problem.nsteps)
+    HistoryRecorder(problem::EMProblem, state::EMState; kmode = problem.kmode, nsteps = problem.nsteps,
+                    every = 1, record = RECORD_GROUPS)
 
-A recorder for `state`, built for `problem`, with its own histories.
+A recorder for `state`, built for `problem`, with its own histories, covering the steps
+1 … `nsteps`. It records at the steps 1, 1 + `every`, 1 + 2`every`, … ([`recorded_steps`](@ref)),
+one history entry per recorded step, and it records the groups of `record`
+([`RECORD_GROUPS`](@ref): `:field_energy`, `:kinetic`, `:modes`; a symbol or a collection of
+them, `()` for none): the histories of the other groups do not exist, and their sums are not
+computed. What is recorded has the bits of the same entry of a recorder that records every step
+and every group.
 """
-struct HistoryRecorder{N,H<:NamedTuple,K,X<:NamedTuple}
+struct HistoryRecorder{N,H<:NamedTuple,K,X<:NamedTuple,S<:RecordSelection}
     hist::H
     kmode::K
     aux::X
+    nsteps::Int
+    every::Int
+    record::S
 end
 
-function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{1}, box, kmode, nsteps::Integer; workgroupsize = nothing) where {T}
-    hist = NamedTuple{HISTORY_KEYS}(ntuple(_ -> KernelAbstractions.zeros(backend, T, nsteps), length(HISTORY_KEYS)))
-    return HistoryRecorder{1,typeof(hist),T,@NamedTuple{}}(hist, T(kmode), NamedTuple())
+function check_cadence(nsteps::Integer, every::Integer)
+    nsteps >= 0 || throw(ArgumentError("a recorder covers nsteps ≥ 0 steps, got $nsteps"))
+    every >= 1 || throw(ArgumentError("a recorder records every `every` ≥ 1 steps, got every = $every"))
+    return cld(nsteps, every)
 end
 
-function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{2}, box, kmode::NTuple{2,Int}, nsteps::Integer; workgroupsize = nothing) where {T}
+function history_arrays(backend, ::Type{T}, keys, sel::RecordSelection, entries::Integer) where {T}
+    ks = recorded_keys(keys, sel)
+    return NamedTuple{ks}(ntuple(_ -> KernelAbstractions.zeros(backend, T, entries), length(ks)))
+end
+
+function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{1}, box, kmode, nsteps::Integer; workgroupsize = nothing, every::Integer = 1,
+                         record = RECORD_GROUPS) where {T}
+    sel = RecordSelection(record)
+    hist = history_arrays(backend, T, HISTORY_KEYS, sel, check_cadence(nsteps, every))
+    return HistoryRecorder{1,typeof(hist),T,@NamedTuple{},typeof(sel)}(hist, T(kmode), NamedTuple(), Int(nsteps), Int(every), sel)
+end
+
+function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{2}, box, kmode::NTuple{2,Int}, nsteps::Integer; workgroupsize = nothing,
+                         every::Integer = 1, record = RECORD_GROUPS) where {T}
     kmode == (0, 0) && throw(ArgumentError("the diagnostic mode must not be (0, 0)"))
+    sel = RecordSelection(record)
     n = ncells(grid)
-    hist = NamedTuple{HISTORY_KEYS_2D}(ntuple(_ -> KernelAbstractions.zeros(backend, T, nsteps), length(HISTORY_KEYS_2D)))
+    hist = history_arrays(backend, T, HISTORY_KEYS_2D, sel, check_cadence(nsteps, every))
     tables = ntuple(Val(2)) do d
         t = KernelAbstractions.allocate(backend, T, n[d], 4)
         launcher(phase_table_kernel!, backend, workgroupsize)(t, kmode[d], n[d]; ndrange = n[d])
@@ -198,27 +295,61 @@ function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{2}, box, kmode::
     k = ntuple(d -> 2 * T(π) * kmode[d] / box[d], Val(2))
     knorm = sqrt(k[1] * k[1] + k[2] * k[2])
     aux = (khat = (k[1] / knorm, k[2] / knorm), tables = tables, partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS, n[1]))
-    return HistoryRecorder{2,typeof(hist),NTuple{2,Int},typeof(aux)}(hist, kmode, aux)
+    return HistoryRecorder{2,typeof(hist),NTuple{2,Int},typeof(aux),typeof(sel)}(hist, kmode, aux, Int(nsteps), Int(every), sel)
 end
 
-HistoryRecorder(problem::EMProblem{N,T}, st::EMState{N,T}; kmode = problem.kmode, nsteps::Integer = problem.nsteps) where {N,T} =
-    HistoryRecorder(get_backend(st.ρ), T, st.grid, problem.length, kmode, nsteps; workgroupsize = st.numerics.workgroupsize)
+HistoryRecorder(problem::EMProblem{N,T}, st::EMState{N,T}; kmode = problem.kmode, nsteps::Integer = problem.nsteps, every::Integer = 1,
+                record = RECORD_GROUPS) where {N,T} =
+    HistoryRecorder(get_backend(st.ρ), T, st.grid, problem.length, kmode, nsteps; workgroupsize = st.numerics.workgroupsize, every, record)
 
 """
     empty_recorder(recorder::HistoryRecorder) -> HistoryRecorder
 
-A recorder of the same mode and length with histories of its own, zero, and at N = 2 partial sums
-of its own; the phase tables, written once, are shared.
+A recorder of the same mode, length, cadence and selection with histories of its own, zero, and
+at N = 2 partial sums of its own; the phase tables, written once, are shared.
 """
-empty_recorder(r::HistoryRecorder) = typeof(r)(map(h -> fill!(similar(h), zero(eltype(h))), r.hist), r.kmode, own_scratch(r.aux))
+empty_recorder(r::HistoryRecorder) =
+    typeof(r)(map(h -> fill!(similar(h), zero(eltype(h))), r.hist), r.kmode, own_scratch(r.aux), r.nsteps, r.every, r.record)
 own_scratch(aux::NamedTuple{()}) = aux
 own_scratch(aux::NamedTuple) = merge(aux, (; partials = similar(aux.partials)))
 
-"The number of steps a recorder holds."
-Base.length(r::HistoryRecorder) = length(r.hist.K)
+"The number of steps a recorder covers (its histories hold one entry per recorded step, [`recorded_steps`](@ref))."
+Base.length(r::HistoryRecorder) = r.nsteps
 
-# The step is a host integer (not device data): the recording kernels write entry k of the
-# histories under @inbounds, so a k outside them must not reach a kernel.
+"""
+    recorded_steps(recorder) -> StepRange
+    recorded_steps(state) -> StepRange
+
+The steps whose start a recorder records (of a state: its own recorder's), entry `i` of its
+histories being that of step `recorded_steps(recorder)[i]`, at t = (step − 1)Δt.
+"""
+recorded_steps(r::HistoryRecorder) = 1:r.every:r.nsteps
+recorded_steps(st::EMState) = recorded_steps(st.recorder)
+
+"Whether `r` records at step `k` (a host integer); steps past its length included, which `check_step` refuses."
+records_at(r::HistoryRecorder, k::Integer) = (k - 1) % r.every == 0
+
+"The recorder's selection of groups, as the tuple of [`RECORD_GROUPS`](@ref) it records."
+recorded_groups(r::HistoryRecorder) =
+    Tuple(g for (g, v) in zip(RECORD_GROUPS, (sel_energy(r.record), sel_kinetic(r.record), sel_modes(r.record))) if on(v))
+
+"""
+    reads_kinetic(observer, k) -> Bool
+
+Whether `observer`, shown the state at the start of step `k`, reads the kinetic-energy cache
+`state.K`; where it does not, the step before leaves the cache as it was (`step!`). A
+[`HistoryRecorder`](@ref) reads it at the steps it records, when it records `:kinetic` (so one
+with `record = ()` never does); a `Tuple` reads it when one of its observers does; anything
+else, `nothing` included, is taken to read it at every step, so that a run without an observer
+leaves `state.K` current after every step. An observer type of your own that does not read `K`
+can say so with a method.
+"""
+reads_kinetic(r::HistoryRecorder, k::Integer) = on(sel_kinetic(r.record)) && records_at(r, k)
+reads_kinetic(os::Tuple, k::Integer) = any(o -> reads_kinetic(o, k), os)
+reads_kinetic(f, k::Integer) = true
+
+# The step is a host integer (not device data): the recording kernels write an entry of the
+# histories under @inbounds, so a k outside the recorder's steps must not reach a kernel.
 check_step(r::HistoryRecorder, k::Integer) =
     1 <= k <= length(r) || throw(ArgumentError("step $k outside the $(length(r)) steps the recorder was allocated for"))
 
@@ -230,8 +361,9 @@ with Eⁿ, Bⁿ in the fields, the particles at xⁿ with their momenta at n −
 energy at n − 1/2 in `state.K`. An observer reads the state and writes only what it owns.
 
 - `nothing` observes nothing (the step then has no limit on `k`);
-- a [`HistoryRecorder`](@ref) writes entry `k` of its histories (an `ArgumentError` for a `k`
-  outside them);
+- a [`HistoryRecorder`](@ref) writes, at the steps it records ([`recorded_steps`](@ref)), the
+  entry of step `k` of the histories of the groups it records (an `ArgumentError` for a `k`
+  outside its steps, recorded or not);
 - a `Tuple` of observers is observed in order;
 - anything else is called as `observer(state, k)`.
 
@@ -255,27 +387,38 @@ observe!(os::Tuple, st::EMState, k::Integer) = (foreach(o -> observe!(o, st, k),
 observe!(r::HistoryRecorder{M}, st::EMState{N}, k::Integer) where {M,N} =
     throw(ArgumentError("a recorder of N = $M cannot observe a state of N = $N"))
 
-function observe!(r::HistoryRecorder{1}, st::EMState{1}, k::Integer)
+# Entry of step k in the histories, or 0 where the recorder records nothing at step k.
+function history_entry(r::HistoryRecorder, k::Integer)
     check_step(r, k)
+    (records_at(r, k) && !isempty(r.hist)) || return 0
+    return (k - 1) ÷ r.every + 1
+end
+
+function observe!(r::HistoryRecorder{1}, st::EMState{1}, k::Integer)
+    e = history_entry(r, k)
+    e == 0 && return nothing
     grid = st.grid
     diagnostics_kernel!(get_backend(st.ρ))(r.hist, st.fields, st.K, cellsize(grid), r.kmode, Int32(ncells(grid)), Int32(guards(grid)),
-                                           Int32(length(st.K)), Int32(k); ndrange = 1)
+                                           Int32(length(st.K)), Int32(e), r.record; ndrange = 1)
     return nothing
 end
 
 function observe!(r::HistoryRecorder{2}, st::EMState{2}, k::Integer)
-    check_step(r, k)
+    e = history_entry(r, k)
     grid = st.grid
     T = eltype(st.ρ)
     n = ncells(grid)
     (size(r.aux.tables[1], 1), size(r.aux.tables[2], 1)) == n ||
         throw(ArgumentError("the recorder's phase tables are for $((size(r.aux.tables[1], 1), size(r.aux.tables[2], 1))) cells, the state has $n"))
+    e == 0 && return nothing
     dx = cellsize(grid)
     be = get_backend(st.ρ)
-    launcher(diagnostics_rows_2d_kernel!, be, st.numerics.workgroupsize)(r.aux.partials, st.fields, r.aux.tables[1], r.aux.tables[2],
-                                                                        Int32(n[2]), Int32(guards(grid)); ndrange = n[1])
+    # the rows' partial sums serve the energies and the modes; the kinetic energy needs none
+    (on(sel_energy(r.record)) || on(sel_modes(r.record))) &&
+        launcher(diagnostics_rows_2d_kernel!, be, st.numerics.workgroupsize)(r.aux.partials, st.fields, r.aux.tables[1], r.aux.tables[2],
+                                                                            Int32(n[2]), Int32(guards(grid)), r.record; ndrange = n[1])
     diagnostics_total_2d_kernel!(be)(r.hist, r.aux.partials, st.K, Int32(n[1]), Int32(length(st.K)), dx[1] * dx[2],
-                                     2 / T(n[1] * n[2]), r.aux.khat, Int32(k); ndrange = 1)
+                                     2 / T(n[1] * n[2]), r.aux.khat, Int32(e), r.record; ndrange = 1)
     return nothing
 end
 
@@ -283,8 +426,9 @@ end
     histories(recorder::HistoryRecorder) -> NamedTuple
     histories(state) -> NamedTuple
 
-Host copies of the per-step diagnostics of a recorder (of the state's own, `state.recorder`),
-entry `k` recorded at the start of step `k`, at
+Host copies of the diagnostics of a recorder (of the state's own, `state.recorder`), one entry
+per recorded step and only the groups it records ([`recorded_steps`](@ref); every step and every
+group by default), the entry of step `k` recorded at the start of step `k`, at
 t = (k − 1)Δt: the field energies `WEx … WBz` = ½Σ(component)²Δx of Eⁿ and Bⁿ (in mₑc²·n_c·c/ω₀,
 A1), the kinetic energy `K` = Σ m·w·(γ − 1)·Δx at t − Δt/2, and the real and imaginary parts of the
 Fourier amplitude at `kmode` of Ex, Ey and Bz (each at its own stagger). At N = 2 it also holds
