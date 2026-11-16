@@ -4,14 +4,14 @@
 - The history recorder takes `every` (record every n-th step) and `record` (the groups `:field_energy`, `:kinetic`, `:modes`), on `HistoryRecorder` and, for a state's own recorder, on `EMState`. A step computes the kinetic-energy cache once, after the window's shift, and only where the next step's observer reads it.
 - What a recorder with options records has the bits of the same entries of the recorder that records every step and every group, and a run's evolved arrays are the same under every recorder, on the CPU (Float32, Float64, `Dual{Float32,3}`) and on CUDA (T-810, T-811, T-813).
 - On an RTX 4080 SUPER the WP-045 case (224 × 64 cells) takes 0.29 ms per step with `record = ()` against 0.56 on `main` in Float32, and 2.29 against 4.75 in `Dual{Float64,2}`: 1.9 to 2.1 times fewer milliseconds. At 448 × 128 cells with 16 particles per cell the factor is 1.5.
-- With the default recorder the step is 6 to 11 % faster than on `main`, from the one kinetic-energy launch per step where a moving window made two.
-- Recording every 16th step costs within 5 % of recording nothing, except one case (M, `Dual{Float64,2}`: 27.7 against 23.1 ms, one run).
+- With the default recorder the step is 8 to 11 % faster than on `main`, from the one kinetic-energy launch per step where a moving window made two.
+- Recording every 16th step costs within 6 % of recording nothing, except one case (M, `Dual{Float64,2}`: 27.7 against 23.1 ms, one run).
 
 | | |
 |---|---|
 | Work package | WP-062 (`trace/wp/WP-062-recorder-options.md`); goals A4, A7, A8 |
 | Commits | `main` at `fa4953f`; the branch at `ec76c38` |
-| Runs | `optim-recorder-timing-cuda-20261116T175209` (`main`, the script copied into its tree, so its manifest says dirty) and `optim-recorder-timing-cuda-20261116T175518` (branch, clean), one after the other on one machine |
+| Runs | `optim-recorder-timing-cuda-20261116T175209` (`main`, the script copied into its tree as an untracked file) and `optim-recorder-timing-cuda-20261116T175518` (branch, clean), one after the other on one machine |
 | Input hashes | SHA-256 of every input in each run's manifest: `wp-062-recorder-options/gpu-main/manifest.toml` and `gpu-branch/manifest.toml` |
 | Environment | Julia 1.13.3, CUDACore 6.5.1, KernelAbstractions CUDA backend, NVIDIA GeForce RTX 4080 SUPER, Intel Core i9-14900K, 4 threads; a desktop session was on the same card |
 | Figures | per run `recorder_timing.png` with its sidecar `recorder_timing.json`, and `tables.md` |
