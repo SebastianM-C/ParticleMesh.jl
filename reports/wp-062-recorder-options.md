@@ -53,6 +53,6 @@ The electromagnetic package's suite with `PM_TEST_GPU=1` on the same machine, at
 
 - No CPU timing: on the CPU the diagnostics were not the cost (WP-061's report).
 - `observer = nothing` keeps the kinetic-energy cache current after every step, as before, so it does not get the saving; a state built with `record = ()` does. `scripts/optim/wake2d_case.jl`'s `wake_state` now builds its state that way.
-- With a recorder that does not read the cache at the next step, `state.K` is stale after a step and marked so (`state.fresh`). An observer that reads it then (another recorder, a function, the step index started again) gets it recomputed first (T-814); a reader of `state.K` itself calls `refresh_caches!`, and `scripts/digest/digest.jl`, which hashes `state.K`, does not.
-- `kinetic_energy_history` and `total_energy_history` average consecutive entries, so they are for histories of every step; given a recorder or a state of another cadence they refuse, given its bare histories they cannot tell.
+- With a recorder that does not read the cache at the next step, `state.K` is stale after a step and marked so (`state.fresh`). An observer that reads it then (another recorder, a function, the step index started again) gets it recomputed first (T-814), and so does `scripts/digest/digest.jl` before it hashes it; another reader of `state.K` itself calls `refresh_caches!`.
+- The histories of a recorder with a cadence hold the step of each entry (`steps`), and `kinetic_energy_history` and `total_energy_history`, which average consecutive steps, refuse them.
 - The sort and the flux patch kernel, the larger costs at scale, are not touched here.

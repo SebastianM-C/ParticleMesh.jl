@@ -38,10 +38,12 @@ function body_T810(be)
                 k in ParticleMeshElectromagnetic.ENERGY_KEYS ? :field_energy in groups : k === :K ? :kinetic in groups : :modes in groups
             end
             steps = 1:opt.every:prob.nsteps
-            @test keys(h) == want
+            # the histories of a cadence hold the step of each entry besides the recorded keys
+            @test keys(h) == ((opt.every == 1 || isempty(want)) ? want : (want..., :steps))
+            haskey(h, :steps) && @test h.steps == collect(steps)
             @test recorded_steps(st) == steps && length(st.recorder) == prob.nsteps
-            @test all(k -> length(h[k]) == length(steps), keys(h))
-            @test all(k -> same_bits(h[k], hf[k][steps]), keys(h))        # the entries of the full recorder, bit for bit
+            @test all(k -> length(h[k]) == length(steps), want)
+            @test all(k -> same_bits(h[k], hf[k][steps]), want)           # the entries of the full recorder, bit for bit
             @test same_evolved(st, full)                                  # the run does not depend on what is recorded
         end
     end
@@ -198,6 +200,9 @@ end
     sparse = recorder_run(prob, num, CPU(); every = 4)
     @test_throws ArgumentError kinetic_energy_history(sparse)
     @test_throws ArgumentError total_energy_history(sparse.recorder)
+    @test_throws ArgumentError kinetic_energy_history(histories(sparse))            # the bare histories too: they hold their steps
+    @test_throws ArgumentError total_energy_history(histories(sparse.recorder))
+    @test histories(sparse).steps == [1, 5, 9, 13] && !haskey(histories(recorder_run(prob, num, CPU())), :steps)
     full = recorder_run(prob, num, CPU())
     @test kinetic_energy_history(full) == kinetic_energy_history(histories(full)) && total_energy_history(full) == total_energy_history(histories(full))
     @test_throws ArgumentError EMState(prob, num; record = nothing)

@@ -446,9 +446,14 @@ A1), the kinetic energy `K` = Σ m·w·(γ − 1)·Δx at t − Δt/2, and the r
 Fourier amplitude at `kmode` of Ex, Ey and Bz (each at its own stagger). At N = 2 it also holds
 `El_re`, `El_im`, the amplitude of the longitudinal projection k̂·E, `Bx_*`, `By_*` and
 `Bt_re`, `Bt_im`, the amplitude of ê·B with ê = ẑ × k̂, and its energies are sums over ΔxΔy
-([`observe!`](@ref)).
+([`observe!`](@ref)). The histories of a recorder that does not record every step (`every` > 1)
+also hold `steps`, the step of each entry: they are not a history per step, and the functions
+that need one ([`kinetic_energy_history`](@ref), [`total_energy_history`](@ref)) refuse them.
 """
-histories(r::HistoryRecorder) = map(Array, r.hist)
+function histories(r::HistoryRecorder)
+    h = map(Array, r.hist)
+    return (r.every == 1 || isempty(h)) ? h : merge(h, (; steps = collect(recorded_steps(r))))
+end
 histories(st::EMState) = histories(st.recorder)
 
 "Field energy per step: the sum of the six component energies."
@@ -458,22 +463,20 @@ field_energy(h::NamedTuple) = h.WEx .+ h.WEy .+ h.WEz .+ h.WBx .+ h.WBy .+ h.WBz
     kinetic_energy_history(h) -> Vector
 
 The kinetic energy at integer times n = 0 … N − 2 (steps 1 … N − 1), as the mean of the values at
-n − 1/2 and n + 1/2 recorded by steps n + 1 and n + 2: `h` holds the histories of every step
-(`every = 1`). Given the recorder or the state instead of its histories, one that does not
-record every step is refused with an `ArgumentError` (the mean of entries `every` steps apart is
-not the energy at a time).
+n − 1/2 and n + 1/2 recorded by steps n + 1 and n + 2, of the histories `h` of every step, or of
+the recorder or the state that holds them. The histories of a recorder that does not record
+every step (they hold `steps`, [`histories`](@ref)) are refused with an `ArgumentError`: the mean
+of entries `every` steps apart is not the energy at a time.
 """
-kinetic_energy_history(h::NamedTuple) = (h.K[1:(end - 1)] .+ h.K[2:end]) ./ 2
-kinetic_energy_history(r::HistoryRecorder) = kinetic_energy_history(histories(every_step(r)))
-kinetic_energy_history(st::EMState) = kinetic_energy_history(st.recorder)
+kinetic_energy_history(h::NamedTuple) = (k = every_step(h).K; (k[1:(end - 1)] .+ k[2:end]) ./ 2)
+kinetic_energy_history(x::Union{HistoryRecorder,EMState}) = kinetic_energy_history(histories(x))
 
-"Total energy (fields plus kinetic) at integer times, steps 1 … N − 1, of the histories of every step; of a recorder or a state as [`kinetic_energy_history`](@ref)."
-total_energy_history(h::NamedTuple) = field_energy(h)[1:(end - 1)] .+ kinetic_energy_history(h)
-total_energy_history(r::HistoryRecorder) = total_energy_history(histories(every_step(r)))
-total_energy_history(st::EMState) = total_energy_history(st.recorder)
+"Total energy (fields plus kinetic) at integer times, steps 1 … N − 1, of the histories of every step; refused otherwise, as [`kinetic_energy_history`](@ref) is."
+total_energy_history(h::NamedTuple) = field_energy(every_step(h))[1:(end - 1)] .+ kinetic_energy_history(h)
+total_energy_history(x::Union{HistoryRecorder,EMState}) = total_energy_history(histories(x))
 
-every_step(r::HistoryRecorder) =
-    r.every == 1 ? r : throw(ArgumentError("the energy at integer times is the mean of two consecutive steps' entries, and the recorder records every $(r.every) steps"))
+every_step(h::NamedTuple) = haskey(h, :steps) ?
+    throw(ArgumentError("the energy at integer times is the mean of two consecutive steps' entries, and these histories are of the steps $(h.steps)")) : h
 
 "Amplitude history |â| of the mode at `kmode` of `:Ex`, `:Ey` or `:Bz` (at N = 2 also `:El`, `:Bx`, `:By`, `:Bt`)."
 mode_amplitude_history(h::NamedTuple, c::Symbol) = hypot.(getfield(h, Symbol(c, :_re)), getfield(h, Symbol(c, :_im)))
