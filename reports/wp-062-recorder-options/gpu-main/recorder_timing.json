@@ -1,0 +1,81 @@
+{
+  "backend": "cuda",
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+  "options": false,
+  "rows": [
+    {
+      "T": "Float32",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "default",
+      "ms_per_step": 0.5610898789062501,
+      "seconds": 0.287278018,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "default",
+      "ms_per_step": 1.49615892578125,
+      "seconds": 0.76603337,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "default",
+      "ms_per_step": 4.74651682421875,
+      "seconds": 2.430216614,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "default",
+      "ms_per_step": 2.388080033203125,
+      "seconds": 2.445393954,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "default",
+      "ms_per_step": 8.215333981445312,
+      "seconds": 8.412501997,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "default",
+      "ms_per_step": 35.848018756835934,
+      "seconds": 36.708371207,
+      "size": "M",
+      "steps": 1024
+    }
+  ],
+  "threads": 4
+}
