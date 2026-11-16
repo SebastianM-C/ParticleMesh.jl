@@ -162,8 +162,8 @@ else
         rerun_module_on(GPU, (("T-730", body_T730), ("T-731", body_T731), ("T-734", body_T734)))
     end
 
-    @testset "T-813 the recorder's cadence and selection on CUDA: T-810 and T-811 with the CPU's assertions [A4, A8, WP-062]" begin
-        rerun_module_on(GPU, (("T-810", body_T810), ("T-811", body_T811)))
+    @testset "T-813 the recorder's cadence and selection on CUDA: T-810, T-811 and T-814 with the CPU's assertions [A4, A8, WP-062]" begin
+        rerun_module_on(GPU, (("T-810", body_T810), ("T-811", body_T811), ("T-814", body_T814)))
     end
 
     @testset "T-747 the restart on CUDA: T-740, T-741, T-742 and T-744 with the CPU's assertions [A4, A8, WP-056]" begin

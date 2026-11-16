@@ -6,9 +6,9 @@
 # continues from the next step with the bits of the uninterrupted run (Reference mode, A4).
 #
 # Everything else in an `EMState` is configuration (fixed when the state is built), scratch (written
-# before it is read, within one call) or the one cache a step leaves for the next: the kinetic
-# energy `K` at n − 1/2, a function of the evolved momenta, weights and status that the next
-# step's observer reads, with at N = 1 the sort's segment bounds its deposition reads
+# before it is read, within one call) or the one cache a step leaves for the next where the next
+# step's observer reads it (WP-062; the host flag `fresh` says whether it did): the kinetic
+# energy `K` at n − 1/2, a function of the evolved momenta, weights and status, with at N = 1 the sort's segment bounds its deposition reads
 # (`refresh_caches!`). The step's inputs besides the state are the parameters and the step index:
 # the window's position, the antennas' switch-off and the witness bunch's injection are functions
 # of `k`.
@@ -166,13 +166,14 @@ aux_with(aux::NamedTuple, window, witness, ionization) = merge(aux, (; window, w
 An `EMState` with the configuration and the scratch of `state`, whose evolved arrays are `arrays`:
 as many arrays as [`evolved`](@ref)`(state)`, each of the type of its place there (an
 `ArgumentError` otherwise; a comparison of types, so nothing is converted and nothing copied),
-with the kinetic-energy cache `K` and the `recorder` given. The cache belongs to the arrays: `K`
+with the kinetic-energy cache `K`, the `recorder` and the cache's flag `fresh` given (a new
+one, stale, by default). The cache belongs to the arrays: `K`
 is valid for them once [`refresh_caches!`](@ref) or a step has written it through this state, so
 a caller hands every set of arrays a buffer of its own (the harness: one for the integrator's
 state, apart from its cache state's; [`state_view`](@ref) allocates one). The sizes are the
 caller's to check where the arrays come from outside (`check_evolved`).
 """
-function on_evolved(st::EMState, a::Tuple, K, recorder)
+function on_evolved(st::EMState, a::Tuple, K, recorder, fresh::Base.RefValue{Bool} = Ref(false))
     a isa typeof(evolved(st)) ||
         throw(ArgumentError("the arrays are not of the types of the state's evolved arrays (`evolved`): $(length(a)) arrays " *
                             "against $(length(evolved(st))), or another array or element type"))
@@ -180,7 +181,7 @@ function on_evolved(st::EMState, a::Tuple, K, recorder)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     modifiers, aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux)
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux, fresh)
 end
 
 """
@@ -206,9 +207,12 @@ end
     refresh_caches!(state) -> state
 
 Rebuild what the state caches of its evolved arrays: the kinetic energy `K` at the current
-momenta, which the next step's observer reads ([`observe!`](@ref)). `initialize!` and every step
-leave it valid; whoever writes the evolved arrays otherwise calls this ([`restore!`](@ref) does,
-and the harness at the first step of a solve, whose `u0` its cache has not seen). At N = 2 `K` is
+momenta, which the next step's observer reads ([`observe!`](@ref)), and mark it current
+(`state.fresh`). `initialize!` leaves it current, and a step does where its observer reads it at
+the next step ([`reads_kinetic`](@ref): the default recorder, a function or `nothing` at every
+step); whoever writes the evolved arrays otherwise calls this ([`restore!`](@ref) does, and the
+harness at the first step of a solve, whose `u0` its cache has not seen), and `observe!` calls
+it for an observer that reads a cache a step left stale. At N = 2 `K` is
 the fixed chunks' sums over the slots as they are. At N = 1 it is a deposition, which in a mode
 that sorts reads the sort's segment bounds, so the species are sorted first: the identity
 permutation on the particles of a step's end or of `initialize!`, which are sorted, so the bits of

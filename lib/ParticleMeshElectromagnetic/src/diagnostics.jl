@@ -25,6 +25,8 @@ sel_modes(::RecordSelection{E,K,M}) where {E,K,M} = Val(M)
 @inline on(::Val{false}) = false
 
 function RecordSelection(record)
+    record isa Union{Symbol,Tuple,AbstractVector,AbstractSet} ||
+        throw(ArgumentError("record takes a group of $RECORD_GROUPS or a collection of them, got $(repr(record))"))
     groups = record isa Symbol ? (record,) : Tuple(record)
     all(g -> g in RECORD_GROUPS, groups) ||
         throw(ArgumentError("record takes groups of $RECORD_GROUPS, got $record"))
@@ -265,7 +267,7 @@ end
 
 function check_cadence(nsteps::Integer, every::Integer)
     nsteps >= 0 || throw(ArgumentError("a recorder covers nsteps ≥ 0 steps, got $nsteps"))
-    every >= 1 || throw(ArgumentError("a recorder records every `every` ≥ 1 steps, got every = $every"))
+    (every isa Bool || every < 1) && throw(ArgumentError("a recorder records every `every` ≥ 1 steps (an integer), got every = $every"))
     return cld(nsteps, every)
 end
 
@@ -326,7 +328,7 @@ histories being that of step `recorded_steps(recorder)[i]`, at t = (step − 1)�
 recorded_steps(r::HistoryRecorder) = 1:r.every:r.nsteps
 recorded_steps(st::EMState) = recorded_steps(st.recorder)
 
-"Whether `r` records at step `k` (a host integer); steps past its length included, which `check_step` refuses."
+"Whether step `k` (a host integer) is on the recorder's cadence: its recorded steps and their continuation past its length, which `check_step` refuses."
 records_at(r::HistoryRecorder, k::Integer) = (k - 1) % r.every == 0
 
 "The recorder's selection of groups, as the tuple of [`RECORD_GROUPS`](@ref) it records."
@@ -337,9 +339,10 @@ recorded_groups(r::HistoryRecorder) =
     reads_kinetic(observer, k) -> Bool
 
 Whether `observer`, shown the state at the start of step `k`, reads the kinetic-energy cache
-`state.K`; where it does not, the step before leaves the cache as it was (`step!`). A
-[`HistoryRecorder`](@ref) reads it at the steps it records, when it records `:kinetic` (so one
-with `record = ()` never does); a `Tuple` reads it when one of its observers does; anything
+`state.K`; where it does not, the step before leaves the cache as it was and marks it stale
+(`step!`). A [`HistoryRecorder`](@ref) that records `:kinetic` reads it at the steps of its
+cadence, 1, 1 + `every`, … (past its length too, so that the last step of a run of a recorder of
+every step leaves the cache current), and one that does not record it never does (`record = ()`); a `Tuple` reads it when one of its observers does; anything
 else, `nothing` included, is taken to read it at every step, so that a run without an observer
 leaves `state.K` current after every step. An observer type of your own that does not read `K`
 can say so with a method.
@@ -358,7 +361,11 @@ check_step(r::HistoryRecorder, k::Integer) =
 
 What a step does first: show `observer` the state at the start of step `k`, at t = (k − 1)Δt,
 with Eⁿ, Bⁿ in the fields, the particles at xⁿ with their momenta at n − 1/2, and the kinetic
-energy at n − 1/2 in `state.K`. An observer reads the state and writes only what it owns.
+energy at n − 1/2 in `state.K`. An observer reads the state and writes only what it owns, with
+one exception: where the cache `K` is stale (the step before ran with an observer that does not
+read it at step `k`, [`reads_kinetic`](@ref)) and this observer reads it, `observe!` first
+recomputes it ([`refresh_caches!`](@ref)), so what an observer reads or records is the kinetic
+energy of the particles as they are.
 
 - `nothing` observes nothing (the step then has no limit on `k`);
 - a [`HistoryRecorder`](@ref) writes, at the steps it records ([`recorded_steps`](@ref)), the
@@ -381,7 +388,10 @@ depend on the thread count or the launch shape; the phases come from the recorde
 tables (no trigonometric evaluation per step).
 """
 observe!(::Nothing, st::EMState, k::Integer) = nothing
-observe!(f, st::EMState, k::Integer) = (f(st, k); nothing)
+observe!(f, st::EMState, k::Integer) = (reads_kinetic(f, k) && current_kinetic!(st); f(st, k); nothing)
+
+"The state with its kinetic-energy cache current: recomputed where a step left it stale (`state.fresh`)."
+current_kinetic!(st::EMState) = st.fresh[] ? st : refresh_caches!(st)
 observe!(os::Tuple, st::EMState, k::Integer) = (foreach(o -> observe!(o, st, k), os); nothing)
 
 observe!(r::HistoryRecorder{M}, st::EMState{N}, k::Integer) where {M,N} =
@@ -397,6 +407,7 @@ end
 function observe!(r::HistoryRecorder{1}, st::EMState{1}, k::Integer)
     e = history_entry(r, k)
     e == 0 && return nothing
+    on(sel_kinetic(r.record)) && current_kinetic!(st)
     grid = st.grid
     diagnostics_kernel!(get_backend(st.ρ))(r.hist, st.fields, st.K, cellsize(grid), r.kmode, Int32(ncells(grid)), Int32(guards(grid)),
                                            Int32(length(st.K)), Int32(e), r.record; ndrange = 1)
@@ -411,6 +422,7 @@ function observe!(r::HistoryRecorder{2}, st::EMState{2}, k::Integer)
     (size(r.aux.tables[1], 1), size(r.aux.tables[2], 1)) == n ||
         throw(ArgumentError("the recorder's phase tables are for $((size(r.aux.tables[1], 1), size(r.aux.tables[2], 1))) cells, the state has $n"))
     e == 0 && return nothing
+    on(sel_kinetic(r.record)) && current_kinetic!(st)
     dx = cellsize(grid)
     be = get_backend(st.ρ)
     # the rows' partial sums serve the energies and the modes; the kinetic energy needs none
@@ -446,12 +458,22 @@ field_energy(h::NamedTuple) = h.WEx .+ h.WEy .+ h.WEz .+ h.WBx .+ h.WBy .+ h.WBz
     kinetic_energy_history(h) -> Vector
 
 The kinetic energy at integer times n = 0 … N − 2 (steps 1 … N − 1), as the mean of the values at
-n − 1/2 and n + 1/2 recorded by steps n + 1 and n + 2.
+n − 1/2 and n + 1/2 recorded by steps n + 1 and n + 2: `h` holds the histories of every step
+(`every = 1`). Given the recorder or the state instead of its histories, one that does not
+record every step is refused with an `ArgumentError` (the mean of entries `every` steps apart is
+not the energy at a time).
 """
 kinetic_energy_history(h::NamedTuple) = (h.K[1:(end - 1)] .+ h.K[2:end]) ./ 2
+kinetic_energy_history(r::HistoryRecorder) = kinetic_energy_history(histories(every_step(r)))
+kinetic_energy_history(st::EMState) = kinetic_energy_history(st.recorder)
 
-"Total energy (fields plus kinetic) at integer times, steps 1 … N − 1."
+"Total energy (fields plus kinetic) at integer times, steps 1 … N − 1, of the histories of every step; of a recorder or a state as [`kinetic_energy_history`](@ref)."
 total_energy_history(h::NamedTuple) = field_energy(h)[1:(end - 1)] .+ kinetic_energy_history(h)
+total_energy_history(r::HistoryRecorder) = total_energy_history(histories(every_step(r)))
+total_energy_history(st::EMState) = total_energy_history(st.recorder)
+
+every_step(r::HistoryRecorder) =
+    r.every == 1 ? r : throw(ArgumentError("the energy at integer times is the mean of two consecutive steps' entries, and the recorder records every $(r.every) steps"))
 
 "Amplitude history |â| of the mode at `kmode` of `:Ex`, `:Ey` or `:Bz` (at N = 2 also `:El`, `:Bx`, `:By`, `:Bt`)."
 mode_amplitude_history(h::NamedTuple, c::Symbol) = hypot.(getfield(h, Symbol(c, :_re)), getfield(h, Symbol(c, :_im)))

@@ -92,7 +92,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
            window = window, witness = witness, ionization = ionization)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
-                   field_modifiers(layer, back, planes, window), aux)
+                   field_modifiers(layer, back, planes, window), aux, Ref(false))
 end
 
 """
@@ -135,6 +135,7 @@ function kinetic!(st::EMState{2})
                                                              ndrange = nc)
         first += nc
     end
+    st.fresh[] = true
     return st
 end
 

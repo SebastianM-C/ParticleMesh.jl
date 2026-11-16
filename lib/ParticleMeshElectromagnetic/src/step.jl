@@ -191,10 +191,13 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   window's counters `lost` and `fast`, the witness bunch's particles and a dopant's atoms, populations and electrons. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
-- The cache: the kinetic energy buffer `K` that a step leaves for the next observation (at N = 1
-  the kinetic energy density, a field; at N = 2 the kinetic energy of fixed chunks of particle
-  slots, in order), a function of the evolved momenta, weights and status, rebuilt by
-  `refresh_caches!` where the evolved arrays are written from outside.
+- The cache: the kinetic energy buffer `K` for the next observation (at N = 1 the kinetic energy
+  density, a field; at N = 2 the kinetic energy of fixed chunks of particle slots, in order), a
+  function of the evolved momenta, weights and status, and `fresh`, a host flag that says
+  whether `K` is that of the evolved arrays as they are. A step leaves `K` current where its
+  observer reads it at the next step ([`reads_kinetic`](@ref)) and stale otherwise;
+  `refresh_caches!` rebuilds it, and [`observe!`](@ref) does so first for an observer that reads
+  a stale `K`.
 - Scratch, written before it is read within a call: the species' workspaces `ws` and extras (the
   old position the push stores), the field `ρ` (the charge for the initial field, then the scratch
   of the current filter and of the window's shift), and at N = 2 in `aux` the spectral workspace
@@ -230,6 +233,7 @@ struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:Name
     setup::SU
     modifiers::MD
     aux::X
+    fresh::Base.RefValue{Bool}
 end
 
 "The placed absorber of a state's open axis (a [`LayerFactors`](@ref) or a [`PMLFields`](@ref)), or `nothing`."
@@ -253,7 +257,7 @@ the parameters go by them), so a tuple with two of one of them is an `ArgumentEr
 """
 function with_modifiers(st::EMState, modifiers::Tuple)
     check_modifiers(modifiers)
-    return EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux)
+    return EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux, st.fresh)
 end
 
 # At most one of each modifier that a state finds by its type (a host check of the tuple's types).
@@ -298,7 +302,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = numerics.workgroupsize, every,
                                record)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
-                   field(backend, T, grid), recorder, map(species_setup, problem.species), (), NamedTuple())
+                   field(backend, T, grid), recorder, map(species_setup, problem.species), (), NamedTuple(), Ref(false))
 end
 
 # The mode the depositions of `s` run in: the step sorts when it is `Reference()` and passes it,
@@ -314,6 +318,7 @@ function kinetic!(st::EMState{1})
         deposit!(deposit_mode(st, s), st.K, s, numerics.shape, RHO_STAGGER, grid, ws; quantity = KineticEnergy(),
                  workgroupsize = numerics.workgroupsize)
     end
+    st.fresh[] = true
     return st
 end
 
@@ -609,8 +614,10 @@ previous step left in `K`; `nothing` observes nothing); then the module's step o
    observer reads it at the start of step `k + 1` ([`reads_kinetic`](@ref): the default recorder
    does at every step, and so does `nothing` or a function; a recorder that records every
    `every` steps or without `:kinetic` only where it records it, one with `record = ()` never). Where it does not, the step leaves `K` as it
-   was, stale: an observer of another kind shown the state then, or a reader of `state.K`, first
-   calls [`refresh_caches!`](@ref).
+   was and marks it stale (`state.fresh`): an observer that reads the kinetic energy of a state
+   with a stale cache, because the observer or the step index changed between two steps,
+   gets it recomputed first ([`observe!`](@ref)), and a reader of `state.K` itself calls
+   [`refresh_caches!`](@ref).
 
 With `Esirkepov()` and no filter passes, Gauss's law then holds to roundoff after every step, from
 continuity (T-212, T-360), off the antenna columns with lasers (T-406), and off the layer rows
@@ -643,6 +650,7 @@ function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     dt_dx = map(h -> dt / h, grid.dx)
     window = window_frame(st)
     observe!(observer, st, k)
+    st.fresh[] = false                     # from here on the particles change: `K` is of the step's start
     inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
     ionize!(ionization_frame(st), st, p, k)
     for s in (deposited_species(st)..., witness_species(st)...)

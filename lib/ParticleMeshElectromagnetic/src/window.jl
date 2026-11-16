@@ -488,9 +488,9 @@ x-guards and the front column zero but for Ex on the front face, which is carrie
 convolution fields with them (front column zero), every particle one cell back with the back column's retired, the
 slots compacted by the sort, the fresh plasma of the [`injection_column`](@ref) loaded behind the
 alive count from the parameters ([`window_load`](@ref): the weights of the densities and the
-profile at the global column, A3). The kinetic-energy cache `K` is then stale: `step!`, which
-calls this at the end of a step, computes it after the shift where its observer reads it, and
-another caller uses [`refresh_caches!`](@ref). The window position it moves to is the caller's
+profile at the global column, A3). The kinetic-energy cache `K` is then stale and marked so:
+`step!`, which calls this at the end of a step, computes it after the shift where its observer
+reads it, and another caller uses [`refresh_caches!`](@ref). The window position it moves to is the caller's
 (the count of shifts).
 """
 function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
@@ -498,6 +498,7 @@ function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
     w = aux.window
     wgs = numerics.workgroupsize
     g, n = guards(grid), ncells(grid)
+    st.fresh[] = false
     for a in (fields.Ex, fields.Ey, fields.Ez, fields.Bx, fields.By, fields.Bz)
         copyto!(st.ρ, a)
         launcher(shift_columns_kernel!, get_backend(a), wgs)(a, st.ρ, Int32(g + 1), Int32(g + n[1]), a === fields.Ex; ndrange = size(a))

@@ -1,4 +1,4 @@
-# WP-062, the recorder's cadence and selection: T-810 to T-812 (T-813 reruns T-810 and T-811 on
+# WP-062, the recorder's cadence and selection: T-810 to T-812 and T-814 (T-813 reruns T-810, T-811 and T-814 on
 # CUDA, gpu.jl). The checks are exact: what a recorder with options records has the bits of the
 # same entries of the recorder that records every step and every group, and the run's evolved
 # arrays do not depend on the observer.
@@ -119,8 +119,9 @@ end
         @test_throws ArgumentError EMState(prob, num; record = :energy)
         @test_throws ArgumentError HistoryRecorder(prob, st; record = (:kinetic, :fields))
         @test_throws ArgumentError HistoryRecorder(prob, st; every = -2)
-        @test_throws ArgumentError observe!(r, st, prob.nsteps + 1)          # a recorded step past the length (14 = 1 + 13)
-        @test_throws ArgumentError observe!(r, st, prob.nsteps + 2)          # a step it would not record, past the length
+        @test_throws ArgumentError observe!(r, st, prob.nsteps + 1)          # steps past the length that are not on its cadence
+        @test_throws ArgumentError observe!(r, st, prob.nsteps + 2)
+        @test_throws ArgumentError observe!(r, st, 16)                       # and one that is: no entry 6 of 5 is written
         @test_throws ArgumentError observe!(r, st, 0)
         observe!(r, st, 2)                                                   # not a recorded step: nothing written
         @test all(iszero, Array(r.hist.K))
@@ -128,6 +129,7 @@ end
         @test findall(!iszero, Array(r.hist.K)) == [2]
         e = ParticleMeshElectromagnetic.empty_recorder(r)
         @test e.every == 3 && e.nsteps == r.nsteps && keys(e.hist) == (:K,) && all(iszero, Array(e.hist.K)) && e.hist.K !== r.hist.K
+        ndims(st) == 2 && @test e.aux.partials !== r.aux.partials && e.aux.tables === r.aux.tables
         v = ParticleMeshElectromagnetic.state_view(st, evolved(st))
         @test v.recorder.every == 3 && keys(v.recorder.hist) == (:K,) && recorded_steps(v) == 1:3:13
         none = HistoryRecorder(prob, st; record = ())
@@ -137,4 +139,67 @@ end
         short = HistoryRecorder(prob, st; nsteps = 7, every = 3)
         @test recorded_steps(short) == 1:3:7 && length(short.hist.K) == 3 && length(HistoryRecorder(prob, st; nsteps = 0).hist.K) == 0
     end
+end
+
+# What an observer reads or records is the kinetic energy of the particles as they are, also where
+# the step before did not compute the cache for it: another observer from one step to the next, a
+# recorder shown the state by hand, the step index started again on the same state.
+function body_T814(be)
+    for T in (Float32, Float64), (prob, num) in recorder_problems(T)
+        p = params(prob)
+        n = prob.nsteps
+        hf = histories(recorder_run(prob, num, be))
+        for cut in (1, 2, 4, 6, 12), opt in ((every = 4, record = RECORD_GROUPS), (every = 1, record = ()), (every = 5, record = :modes))
+            # the state's own recorder up to `cut`, then a recorder of every step
+            st = EMState(prob, num; backend = be, opt...)
+            initialize!(st, prob)
+            run!(st, p, cut)
+            r = HistoryRecorder(prob, st)
+            run!(st, p, n - cut; first = cut + 1, observer = r)
+            @test same_bits(histories(r).K[(cut + 1):n], hf.K[(cut + 1):n])
+            # the same, then a function that reads the cache
+            st = EMState(prob, num; backend = be, opt...)
+            initialize!(st, prob)
+            run!(st, p, cut)
+            seen = T[]
+            run!(st, p, n - cut; first = cut + 1, observer = (s, k) -> push!(seen, kinetic_seen(s)))
+            @test same_bits(seen, hf.K[(cut + 1):n])
+            # a recorder shown the state by hand after `cut` steps
+            st = EMState(prob, num; backend = be, opt...)
+            initialize!(st, prob)
+            run!(st, p, cut)
+            r = HistoryRecorder(prob, st; record = :kinetic)
+            observe!(r, st, cut + 1)
+            @test same_bits(histories(r).K[(cut + 1):(cut + 1)], hf.K[(cut + 1):(cut + 1)]) && st.fresh[]
+        end
+        # two recorders of different cadences one after the other
+        st = EMState(prob, num; backend = be, record = ())
+        initialize!(st, prob)
+        r4, r3 = HistoryRecorder(prob, st; every = 4), HistoryRecorder(prob, st; every = 3)
+        run!(st, p, 6; observer = r4)
+        run!(st, p, n - 6; first = 7, observer = r3)
+        @test same_bits(histories(r4).K[1:2], hf.K[[1, 5]]) && same_bits(histories(r3).K[3:end], hf.K[7:3:n])
+        # the step index started again: the second run's first entry is of the particles after the first run
+        sparse = EMState(prob, num; backend = be, every = 4)
+        dense = EMState(prob, num; backend = be)
+        for s in (sparse, dense)
+            initialize!(s, prob)
+            run!(s, p, 7)
+            run!(s, p, 7)
+        end
+        @test same_bits(histories(sparse).K, histories(dense).K[1:4:end]) && same_evolved(sparse, dense)
+    end
+    return nothing
+end
+
+@testset "T-814 an observer reads the kinetic energy of the particles as they are, whatever observed the step before [A4, A7, WP-062]" begin
+    body_T814(CPU())
+    prob, num = recorder_problems(Float64)[2]
+    sparse = recorder_run(prob, num, CPU(); every = 4)
+    @test_throws ArgumentError kinetic_energy_history(sparse)
+    @test_throws ArgumentError total_energy_history(sparse.recorder)
+    full = recorder_run(prob, num, CPU())
+    @test kinetic_energy_history(full) == kinetic_energy_history(histories(full)) && total_energy_history(full) == total_energy_history(histories(full))
+    @test_throws ArgumentError EMState(prob, num; record = nothing)
+    @test_throws ArgumentError EMState(prob, num; every = true)
 end

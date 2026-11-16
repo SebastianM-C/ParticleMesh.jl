@@ -2,7 +2,7 @@
 
 **Summary.**
 - The history recorder takes `every` (record every n-th step) and `record` (the groups `:field_energy`, `:kinetic`, `:modes`), on `HistoryRecorder` and, for a state's own recorder, on `EMState`. A step computes the kinetic-energy cache once, after the window's shift, and only where the next step's observer reads it.
-- What a recorder with options records has the bits of the same entries of the recorder that records every step and every group, and a run's evolved arrays are the same under every recorder, on the CPU (Float32, Float64, `Dual{Float32,3}`) and on CUDA (T-810, T-811, T-813).
+- What a recorder with options records has the bits of the same entries of the recorder that records every step and every group, and a run's evolved arrays are the same under every recorder, on the CPU (Float32, Float64, `Dual{Float32,3}`) and on CUDA (T-810, T-811, T-814; T-813 on CUDA).
 - On an RTX 4080 SUPER the WP-045 case (224 × 64 cells) takes 0.29 ms per step with `record = ()` against 0.56 on `main` in Float32, and 2.29 against 4.75 in `Dual{Float64,2}`: 1.9 to 2.1 times fewer milliseconds. At 448 × 128 cells with 16 particles per cell the factor is 1.5.
 - With the default recorder the step is 8 to 11 % faster than on `main`, from the one kinetic-energy launch per step where a moving window made two.
 - Recording every 16th step costs within 6 % of recording nothing, except one case (M, `Dual{Float64,2}`: 27.7 against 23.1 ms, one run).
@@ -47,11 +47,12 @@ The branch:
 
 ## 3. Verification
 
-The electromagnetic package's suite with `PM_TEST_GPU=1` on the same machine: 122 605 tests pass, the recorder's among them (T-810 to T-813). The bits of a default run are unchanged: the suite's recorded digests and determinism tests hold with the kinetic energy computed after the window's shift instead of before the mesh solve and again in the shift.
+The electromagnetic package's suite with `PM_TEST_GPU=1` on the same machine: 122 605 tests pass, the recorder's among them (T-810 to T-814). The bits of a default run are unchanged: the suite's recorded digests and determinism tests hold with the kinetic energy computed after the window's shift instead of before the mesh solve and again in the shift.
 
 ## 4. Not shown, and open
 
 - No CPU timing: on the CPU the diagnostics were not the cost (WP-061's report).
 - `observer = nothing` keeps the kinetic-energy cache current after every step, as before, so it does not get the saving; a state built with `record = ()` does. `scripts/optim/wake2d_case.jl`'s `wake_state` now builds its state that way.
-- With a recorder that does not read the cache at the next step, `state.K` is stale after a step; `refresh_caches!` makes it current. An observer of another kind shown such a state by hand reads a stale cache.
+- With a recorder that does not read the cache at the next step, `state.K` is stale after a step and marked so (`state.fresh`). An observer that reads it then (another recorder, a function, the step index started again) gets it recomputed first (T-814); a reader of `state.K` itself calls `refresh_caches!`, and `scripts/digest/digest.jl`, which hashes `state.K`, does not.
+- `kinetic_energy_history` and `total_energy_history` average consecutive entries, so they are for histories of every step; given a recorder or a state of another cadence they refuse, given its bare histories they cannot tell.
 - The sort and the flux patch kernel, the larger costs at scale, are not touched here.
