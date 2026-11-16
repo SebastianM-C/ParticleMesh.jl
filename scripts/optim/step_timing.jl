@@ -93,10 +93,10 @@ function timed_step!(st, p, k, times)
         end
         PME.filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs, edges = window)
         PME.retire!(PME.open_absorber(st), st)
-        PME.kinetic!(st)
     end
     timed!(() -> PME.solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs), times, :fields)
     timed!(() -> PME.advance_window!(window, st, p, k), times, :window)
+    timed!(() -> PME.reads_kinetic(st.recorder, k + 1) && PME.kinetic!(st), times, :other)
     return st
 end
 

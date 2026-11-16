@@ -23,7 +23,7 @@ const KINETIC_CHUNK = 256
 end
 
 """
-    EMState(problem::EMProblem{2}, numerics; backend = CPU())
+    EMState(problem::EMProblem{2}, numerics; backend = CPU(), every = 1, record = RECORD_GROUPS)
 
 The state of a 2D problem ([`EMState`](@ref)): the grid of `problem.cells` cells per axis with
 [`em_guard_width`](@ref) guards, the time step `problem.dt`, one species per
@@ -31,7 +31,7 @@ The state of a 2D problem ([`EMState`](@ref)): the grid of `problem.cells` cells
 `flux_extras(T, 2)` (the old position per axis, which the push stores), the workspaces, the fields
 of [`field_layout`](@ref)`(Val(2))`, `ρ`, the kinetic-energy chunks `K` (one entry per
 [`KINETIC_CHUNK`](@ref) slots of each species; none without species), the default [`HistoryRecorder`](@ref) for
-`problem.kmode` and `problem.nsteps` steps, the field modifiers of the mesh solve
+`problem.kmode` and `problem.nsteps` steps (recording every `every` steps the groups of `record`), the field modifiers of the mesh solve
 ([`field_modifiers`](@ref): the absorber placed on the grid, the absorbing layer's
 [`LayerFactors`](@ref) or the PML's [`PMLFields`](@ref); the back edge's [`BackPMLFields`](@ref);
 the [`AntennaPlanes`](@ref) of the problem's lasers, where each plane lies on the grid, not the
@@ -54,7 +54,7 @@ the two together yet), and unless the problem's own parameters fit the planes an
 ([`check_params`](@ref)'s conditions: with a window, every pulse over before the window passes its
 antenna).
 """
-function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU()) where {T}
+function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(), every::Integer = 1, record = RECORD_GROUPS) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
         throw(ArgumentError("a 2D state takes current = Esirkepov() or NoCurrent() in EMNumerics, got $(numerics.current)"))
     n = problem.cells
@@ -87,12 +87,12 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU())
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
     ws = map(s -> Workspace(s, grid; flux), species)
     nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), (species..., born_species(ionization)...); init = 0)
-    recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs)
+    recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs, every, record)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            window = window, witness = witness, ionization = ionization)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
-                   field_modifiers(layer, back, planes, window), aux)
+                   field_modifiers(layer, back, planes, window), aux, Ref(false))
 end
 
 """
@@ -135,6 +135,7 @@ function kinetic!(st::EMState{2})
                                                              ndrange = nc)
         first += nc
     end
+    st.fresh[] = true
     return st
 end
 

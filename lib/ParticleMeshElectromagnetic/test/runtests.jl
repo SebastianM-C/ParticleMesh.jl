@@ -48,6 +48,7 @@ const TEST_FILES = [
     "tunables.jl",            # WP-060: T-790 to T-793, the parameters as one vector and as a SciML structure, after lwfa_gradient.jl (its case and T-581's gradient)
     "harness.jl",             # after gradient.jl: T-105 reuses its run
     "params.jl",              # WP-055: T-730 to T-735, the step as a function of the state and the parameters, after harness.jl
+    "recorder.jl",            # WP-062: T-810 to T-812 and T-814, the recorder's cadence and selection; its own helpers
     "restart.jl",             # WP-056: T-740 to T-746 and T-748, the closed state and the restart, after params.jl (its helpers)
     "modifiers.jl",           # WP-057: T-750 to T-754 and T-759, the one field solve and its tuple of modifiers, after restart.jl (its helpers)
     "one_step.jl",            # WP-057: T-755 to T-757, the one step body over N, after modifiers.jl (its helpers)

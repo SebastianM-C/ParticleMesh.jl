@@ -16,7 +16,7 @@ groups = [
     ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "window.jl", "pml_back.jl", "lwfa_gradient.jl",
      "witness.jl", "tunables.jl"],
     # the gradient, the harness and the state layer built on it, and the quality checks
-    ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
+    ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "recorder.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
     # the field ionization, which reuses no other file
     ["ionization.jl"],
 ]

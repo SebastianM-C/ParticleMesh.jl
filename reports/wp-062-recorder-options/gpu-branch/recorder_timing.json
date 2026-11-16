@@ -1,0 +1,297 @@
+{
+  "backend": "cuda",
+  "cpu": "Intel(R) Core(TM) i9-14900K",
+  "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+  "options": true,
+  "rows": [
+    {
+      "T": "Float32",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "default",
+      "ms_per_step": 0.509675306640625,
+      "seconds": 0.260953757,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "every = 16",
+      "ms_per_step": 0.304348,
+      "seconds": 0.155826176,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "field energy, every = 16",
+      "ms_per_step": 0.292633626953125,
+      "seconds": 0.149828417,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "record = ()",
+      "ms_per_step": 0.2901156015625,
+      "seconds": 0.148539188,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "default",
+      "ms_per_step": 1.333491150390625,
+      "seconds": 0.682747469,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "every = 16",
+      "ms_per_step": 0.752902427734375,
+      "seconds": 0.385486043,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "field energy, every = 16",
+      "ms_per_step": 0.71965946484375,
+      "seconds": 0.368465646,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "record = ()",
+      "ms_per_step": 0.757903953125,
+      "seconds": 0.388046824,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "default",
+      "ms_per_step": 4.352127935546875,
+      "seconds": 2.228289503,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "every = 16",
+      "ms_per_step": 2.4155294160156253,
+      "seconds": 1.236751061,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "field energy, every = 16",
+      "ms_per_step": 2.318215994140625,
+      "seconds": 1.186926589,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        224,
+        64
+      ],
+      "config": "record = ()",
+      "ms_per_step": 2.29368130078125,
+      "seconds": 1.174364826,
+      "size": "S",
+      "steps": 512
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "default",
+      "ms_per_step": 2.1836184404296874,
+      "seconds": 2.236025283,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "every = 16",
+      "ms_per_step": 1.6597295390625,
+      "seconds": 1.699563048,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "field energy, every = 16",
+      "ms_per_step": 1.6288897119140626,
+      "seconds": 1.667983065,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float32",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "record = ()",
+      "ms_per_step": 1.6216085292968752,
+      "seconds": 1.660527134,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "default",
+      "ms_per_step": 7.458504316406249,
+      "seconds": 7.63750842,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "every = 16",
+      "ms_per_step": 5.557468376953126,
+      "seconds": 5.690847618,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "field energy, every = 16",
+      "ms_per_step": 5.441305974609375,
+      "seconds": 5.571897318,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Float64",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "record = ()",
+      "ms_per_step": 5.435634149414063,
+      "seconds": 5.566089369,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "default",
+      "ms_per_step": 32.40531620703125,
+      "seconds": 33.183043796,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "every = 16",
+      "ms_per_step": 27.741673343749998,
+      "seconds": 28.407473504,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "field energy, every = 16",
+      "ms_per_step": 24.060762141601565,
+      "seconds": 24.638220433,
+      "size": "M",
+      "steps": 1024
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "cells": [
+        448,
+        128
+      ],
+      "config": "record = ()",
+      "ms_per_step": 23.10006444921875,
+      "seconds": 23.654465996,
+      "size": "M",
+      "steps": 1024
+    }
+  ],
+  "threads": 4
+}
