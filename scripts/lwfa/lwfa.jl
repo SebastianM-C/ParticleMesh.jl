@@ -106,10 +106,10 @@
 #   at the output (`spectrum_region`: from the foremost window back, Smilei's, to ParticleMesh's
 #   injection column), in one unit (`spectrum_scale`). ParticleMesh bins its particles of that
 #   region; Smilei's window histogram has the strips outside it taken off (two more
-#   DiagParticleBinning with a `moving_x` axis). PIConGPU's would be binned from an electron dump,
-#   which its runs do not write (picongpu.jl's header, "Diagnostics"): its histogram is the
-#   plugin's, over its whole simulated domain, and compares in the highest energy group and the
-#   highest occupied bin only.
+#   DiagParticleBinning with a `moving_x` axis). PIConGPU's is binned from the electron dump of
+#   its plasma run (picongpu.jl's header, "Diagnostics"); a run without that dump has the plugin's
+#   histogram, over its whole simulated domain, which compares in the highest energy group and
+#   the highest occupied bin only.
 # - Numerics. Yee, Esirkepov, quadratic shapes, Boris, no current filter, Float64, Reference mode
 #   in ParticleMesh. Transverse boundaries periodic in all codes (the box is 7.2 waists wide);
 #   along x Smilei has Silver–Müller boundaries, ParticleMesh its field-free outside, which
