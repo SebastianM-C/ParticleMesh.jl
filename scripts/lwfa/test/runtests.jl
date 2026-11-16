@@ -170,8 +170,13 @@ cnum(text, key) = parse(Float64, match(Regex("\\b$key = ([-+0-9.eE]+)"), text).c
     vac = picongpu_param_files(CASE; plasma = false)
     @test occursin("InitPipeline = pmacc::mp_list<>", vac["speciesInitialization.param"])
     @test !occursin("energyHistogram", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
-    # the plasma run asks openPMD for the species too; the deck lists no particles, so none are written (picongpu.jl's header)
-    @test occursin("using FileOutputParticles = MakeSeq_t<>;", f["fileOutput.param"])
+    # the plasma run dumps its electrons, with WriteSpecies.hpp shadowed so that the dump returns (picongpu.jl's header, #412); the vacuum run has neither
+    @test occursin("using FileOutputParticles = VectorAllSpecies;", f["fileOutput.param"])
+    @test occursin("using FileOutputParticles = MakeSeq_t<>;", vac["fileOutput.param"])
+    run_sh = picongpu_run_script(picongpu_parameters(CASE))
+    @test occursin("> setup/include/picongpu/plugins/openPMD/WriteSpecies.hpp", run_sh)
+    @test findfirst("WriteSpecies.hpp", run_sh)[1] < findfirst("pic-build", run_sh)[1]
+    @test !occursin("WriteSpecies.hpp", picongpu_run_script(picongpu_parameters(CASE; plasma = false)))
     @test occursin("--openPMD.source species_all,fields_all ", args)
     @test occursin("--openPMD.source fields_all ", picongpu_arguments(picongpu_parameters(CASE; plasma = false)))
 end

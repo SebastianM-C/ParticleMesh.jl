@@ -54,16 +54,24 @@
 #   in keV, real electrons per bin, with one underflow and one overflow column). That histogram
 #   covers the whole simulated domain: the local domains, which slide by a whole one at a time,
 #   so it reaches up to a local domain behind the window's back, where the electrons the other
-#   codes have dropped still are, and ahead of its front. It is the spectrum of a PIConGPU summary
-#   (`spectrum_covers` says so), and compares with the other codes' only in what does not depend
-#   on the region: the highest energy group and the highest occupied bin.
-#   The reader can bin an electron dump over `spectrum_region` (lwfa.jl) instead, with the kinetic
-#   energy (γ − 1)·mₑc², and the plasma deck asks openPMD for the species; but `fileOutput.param`
-#   lists no particles, so none are written. With every species listed
-#   (`FileOutputParticles = VectorAllSpecies`) the plasma run of A5's case on the RTX 4080 SUPER
-#   computed its 10 777 steps and then did not exit, and left a file that cannot be read (two
-#   devices along the window axis, HDF5 backend; the commit that reverted it has the details). So
-#   that reader has met synthetic files only (T-704, T-705).
+#   codes have dropped still are, and ahead of its front. A summary keeps it as `spectrum_plugin`; it is
+#   the spectrum only of a run whose electron dump is missing or cannot be read (`spectrum_covers`
+#   says so), and then compares with the other codes' only in what does not depend on the region:
+#   the highest energy group and the highest occupied bin.
+#   The plasma deck also dumps the window's electrons (`FileOutputParticles = VectorAllSpecies`,
+#   `--openPMD.source species_all,fields_all`), and the reader bins them over `spectrum_region`
+#   (lwfa.jl) with the kinetic energy (γ − 1)·mₑc²; that is the spectrum of a summary whose
+#   `spectrum_covers` is "region".
+# - The shadowed `WriteSpecies.hpp`. PIConGPU 0.8.0's particle dump hangs on parallel HDF5 when a
+#   rank has no particle inside the window, which the hidden local domain guarantees at step 0:
+#   the rank that stores a chunk creates the species' datasets as it stores them (position,
+#   momentum, weighting, positionOffset), the empty rank creates them at the next flush in the
+#   order of their names, and parallel HDF5 needs object creation in the same order on every rank.
+#   The file is then unreadable and the close of the iteration never returns (with one file for
+#   all iterations: the run computes every step and does not exit). `run.sh` therefore copies
+#   `plugins/openPMD/WriteSpecies.hpp` into the setup, where it shadows the source's, with one
+#   flush added after the datasets are declared, so every rank creates them there, in one order;
+#   it refuses to build if the line it extends is not found.
 
 include(joinpath(REPO, "scripts", "crosscode", "picongpu.jl"))
 using .PIConGPUDeck: reference_units
@@ -443,11 +451,25 @@ function picongpu_param_files(case; plasma = true, precision = "Float64")
         using FieldTmpSolvers = MakeSeq_t<ChargeDensity_Seq>;
         using NativeFileOutputFields = MakeSeq_t<FieldE>;
         using FileOutputFields = MakeSeq_t<NativeFileOutputFields, FieldTmpSolvers>;
-        using FileOutputParticles = MakeSeq_t<>;
+        /* the electrons of the plasma run, for the spectrum over the comparison's region */
+        using FileOutputParticles = $(plasma ? "VectorAllSpecies" : "MakeSeq_t<>");
     } // namespace picongpu
     """
     return f
 end
+
+"""
+The lines of run.sh that shadow PIConGPU's `WriteSpecies.hpp` in the setup with one flush added
+after the species' datasets are declared (the header's "The shadowed `WriteSpecies.hpp`"), and
+stop the run when the declaring line is not there to extend.
+"""
+const PIC_SHADOW_WRITE_SPECIES = raw"""
+mkdir -p setup/include/picongpu/plugins/openPMD
+sed 's|^\( *\)initParticleAttributes(params, particleSpecies, basename, globalNumParticles);|&\n\1eventSystem::getTransactionEvent().waitForFinished();\n\1params->openPMDSeries->flush(PreferredFlushTarget::Buffer);|' \
+  "$PICSRC/include/picongpu/plugins/openPMD/WriteSpecies.hpp" > setup/include/picongpu/plugins/openPMD/WriteSpecies.hpp
+[ "$(grep -c 'openPMDSeries->flush(PreferredFlushTarget::Buffer)' setup/include/picongpu/plugins/openPMD/WriteSpecies.hpp)" = 2 ] \
+  || { echo "WriteSpecies.hpp: the line that declares the particle datasets was not found"; exit 1; }
+"""
 
 """
     picongpu_arguments(p) -> String
@@ -491,7 +513,7 @@ function picongpu_run_script(p)
     rm -rf setup openPMD ./*.dat
     pic-create "\$PIC_EXAMPLES/Empty" setup > build.log 2>&1
     cp params/*.param setup/include/picongpu/param/
-    (cd setup && pic-build -j 16) >> build.log 2>&1 || { tail -n 60 build.log; exit 1; }
+    $(p.plasma ? PIC_SHADOW_WRITE_SPECIES : "")    (cd setup && pic-build -j 16) >> build.log 2>&1 || { tail -n 60 build.log; exit 1; }
     echo "# compile end: $stamp" >> container.txt
     echo "# start: $stamp" >> container.txt
     mpiexec -n $(p.layout.devices) setup/bin/picongpu $(picongpu_arguments(p)) > picongpu.log 2>&1 \\
