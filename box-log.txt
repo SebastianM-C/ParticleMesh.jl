@@ -1,0 +1,77 @@
+## step 0 (julia): exit 0 after 126s
+| element type | mode | `run!` | push | sort | deposit | window | fields | other |
+|---|---|---|---|---|---|---|---|---|
+| `Float32` | Fast | 1.4 | 0.16 | 0.0 | 0.91 | 0.13 | 0.05 | 0.05 |
+
+| element type | mode | `run!` | push | sort | deposit | window | fields | other |
+|---|---|---|---|---|---|---|---|---|
+| `Float64` | Fast | 1.45 | 0.17 | 0.0 | 0.75 | 0.28 | 0.45 | 0.06 |
+
+| element type | mode | `run!` | push | sort | deposit | window | fields | other |
+|---|---|---|---|---|---|---|---|---|
+| `Dual{Float32,2}` | Reference | 3.19 | 0.59 | 0.88 | 0.95 | 0.36 | 0.1 | 0.13 |
+
+| element type | mode | `run!` | push | sort | deposit | window | fields | other |
+|---|---|---|---|---|---|---|---|---|
+| `Dual{Float64,2}` | Reference | 4.86 | 0.65 | 1.39 | 1.13 | 0.61 | 0.13 | 0.14 |
+
+Seconds per run of 512 steps (16 threads, AMD EPYC 9655 96-Core Processor):
+
+| element type | mode | `run!` | push | sort | deposit | window | fields | other |
+|---|---|---|---|---|---|---|---|---|
+| `Float32` | Reference | 1.08 | 0.17 | 0.34 | 0.25 | 0.13 | 0.05 | 0.05 |
+| `Float32` | Fast | 1.4 | 0.16 | 0.0 | 0.91 | 0.13 | 0.05 | 0.05 |
+| `Float64` | Reference | 1.44 | 0.18 | 0.67 | 0.3 | 0.23 | 0.07 | 0.06 |
+| `Float64` | Fast | 1.45 | 0.17 | 0.0 | 0.75 | 0.28 | 0.45 | 0.06 |
+| `Dual{Float32,2}` | Reference | 3.19 | 0.59 | 0.88 | 0.95 | 0.36 | 0.1 | 0.13 |
+| `Dual{Float64,2}` | Reference | 4.86 | 0.65 | 1.39 | 1.13 | 0.61 | 0.13 | 0.14 |
+
+Milliseconds per call on the last state:
+
+| element type | `deposit_flux!` | patch kernel | reduce kernel | `sort_by_cell!` (sorted input) |
+|---|---|---|---|---|
+| `Float32` | 0.45 | 0.23 | 0.08 | 0.52 |
+| `Float64` | 0.63 | 0.23 | 0.09 | 1.16 |
+| `Dual{Float32,2}` | 1.83 | 1.07 | 0.11 | 1.19 |
+| `Dual{Float64,2}` | 2.14 | 1.17 | 0.13 | 2.13 |
+
+Milliseconds per call of the patch kernel per work-group:
+
+| element type | `nothing` | `1` | `8` | `64` | `512` |
+|---|---|---|---|---|---|
+| `Float32` | 0.22 | 0.23 | 0.23 | 0.23 | 0.24 |
+| `Float64` | 0.27 | 0.23 | 0.3 | 0.28 | 0.31 |
+| `Dual{Float32,2}` | 6.83 | 1.08 | 3.04 | 3.16 | 24.4 |
+| `Dual{Float64,2}` | 12.5 | 1.18 | 3.08 | 6.34 | 39.0 |
+
+Milliseconds per call of the deposition per patch layout:
+
+| element type | `deposit_flux!` StencilMajor | patch StencilMajor | reduce StencilMajor | `deposit_flux!` CellMajor | patch CellMajor | reduce CellMajor |
+|---|---|---|---|---|---|---|
+| `Float32` | 0.46 | 0.23 | 0.08 | 0.99 | 0.76 | 0.12 |
+| `Float64` | 0.53 | 0.22 | 0.09 | 1.1 | 0.83 | 0.12 |
+| `Dual{Float32,2}` | 1.83 | 1.08 | 0.11 | 2.22 | 1.77 | 0.15 |
+| `Dual{Float64,2}` | 2.14 | 1.19 | 0.13 | 2.56 | 1.91 | 0.17 |
+step_timing: outputs in scripts/runs/optim-step-timing-cpu-20261117T092351
+
+## step 1 (julia): exit 1 after 1s
+ERROR: IOError: open("scripts/runs/wp041-bins-nodes/manifest.toml", 577, 33188): no such file or directory (ENOENT)
+Stacktrace:
+ [1] _uv_error(prefix::String, c::Int32)
+   @ Base ./libuv.jl:114
+ [2] uv_error
+   @ ./libuv.jl:113 [inlined]
+ [3] open(path::String, flags::UInt16, mode::UInt64)
+   @ Base.Filesystem ./filesystem.jl:190
+ [4] sendfile(src::String, dst::String)
+   @ Base.Filesystem ./file.jl:1315
+ [5] cp(src::String, dst::String; force::Bool, follow_symlinks::Bool)
+   @ Base.Filesystem ./file.jl:446
+ [6] top-level scope
+   @ ./none:1
+ [7] eval(m::Module, e::Any)
+   @ Core ./boot.jl:489
+ [8] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:310
+ [9] _start()
+   @ Base ./client.jl:577
