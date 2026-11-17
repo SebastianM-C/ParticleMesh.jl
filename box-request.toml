@@ -1,0 +1,15 @@
+timeout = 7200
+category = "benchmark"
+outputs = ["scripts/runs/wp041-bins-nodes", "scripts/runs/wp041-bins-cells"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/step_timing.jl", "cpu", "fast"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "mkpath(\"scripts/runs/wp041-bins-nodes\"); mkpath(\"scripts/runs/wp041-bins-cells\"); d = sort(filter(startswith(\"optim-step-timing-cpu\"), readdir(\"scripts/runs\"))); for f in readdir(joinpath(\"scripts/runs\", last(d))); cp(joinpath(\"scripts/runs\", last(d), f), joinpath(\"scripts/runs/wp041-bins-nodes\", f); force = true); end"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/step_timing.jl", "cpu", "fast", "cells"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "mkpath(\"scripts/runs/wp041-bins-nodes\"); mkpath(\"scripts/runs/wp041-bins-cells\"); d = sort(filter(startswith(\"optim-step-timing-cpu\"), readdir(\"scripts/runs\"))); for f in readdir(joinpath(\"scripts/runs\", last(d))); cp(joinpath(\"scripts/runs\", last(d), f), joinpath(\"scripts/runs/wp041-bins-cells\", f); force = true); end"]
