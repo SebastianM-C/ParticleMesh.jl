@@ -197,19 +197,19 @@ measured = { Float32 = 1.70, Float64 = 2.02, "Dual{Float32,3}" = 2.06 }
 status = "proposed"
 
 ["T-301"]
-quantity = "Jz of a particle at rest against quantity_z × the tensor weights (WP-041); Σ Jz - Σ quantity_z of a moved species; per-node Jx, Jy, Jz of one particle against Esirkepov's weights by hand; N = 1 per-node Jy, Jz against quantity·(W_old + W_new)/2 by hand"
+quantity = "Jz of a particle at rest against quantity_z × the tensor weights (WP-041); Σ Jz - Σ quantity_z of a moved species; per-node Jx, Jy, Jz of one particle over six moves against Esirkepov's weights by hand; N = 1 per-node Jy, Jz against quantity·(W_old + W_new)/2 by hand"
 scale = "|quantity_z| at rest; count·max|quantity_z|; |q·w·Δx_d/Δt| and |quantity_z| (Float64); |quantity| (Float64)"
 C = 16
 C_hand = 8
 C_1d = 8
-measured = { Float32 = 0.0474, Float64 = 0.0676, "Dual{Float32,3}" = 1.08, at_rest = { Float32 = 0.521, Float64 = 0.260, "Dual{Float32,3}" = 0.521 }, hand_Float64 = 1.25, "1d_Float64" = 1.59 }
+measured = { Float32 = 0.0474, Float64 = 0.0676, "Dual{Float32,3}" = 1.08, at_rest = { Float32 = 0.521, Float64 = 0.260, "Dual{Float32,3}" = 0.521 }, hand_Float64 = 2.19, "1d_Float64" = 1.59 }
 status = "proposed"
 
 ["T-302"]
 quantity = "per-node difference of Reference and Fast Jx, Jy, Jz at N = 2"
-scale = "Σ over the particles whose cell frame holds the node of the particle's largest |contribution| to the component (3840 particles on 16 × 12 cells): Fast() adds in the particle's frame (WP-041), so a node of Reference's roundoff tail holds no Fast contribution"
+scale = "Σ over the particles whose cell frame holds the node of the particle's |contribution| to the component there, or of its largest |contribution| where the node is outside the particle's own frame (3840 particles on 16 × 12 cells): Fast() adds in the particle's frame (WP-041), so a node of Reference's roundoff tail holds no Fast contribution"
 C = 32
-measured = { Float32 = 0.311, Float64 = 0.360 }
+measured = { Float32 = 0.577, Float64 = 0.668 }
 status = "proposed"
 
 ["T-304"]

@@ -86,18 +86,20 @@ end
         r = record!("T-301", T, absdiff(sum(c.Jz), expect) / (base_eps(T) * length(alive) * maximum(i -> absmax(QZ2(c.s, i)), alive)))
         @test r <= C
     end
-    # One particle crossing a face on each axis, per node against Esirkepov's weights evaluated by
-    # hand (PIConGPU's form of W_z, with the ⅓ ΔSx·ΔSy term), Float64, in both modes.
+    # One particle crossing a face on each axis (or none, or both by a hair, or landing on a face),
+    # per node against Esirkepov's weights evaluated by hand (PIConGPU's form of W_z, with the
+    # ⅓ ΔSx·ΔSy term), Float64, in both modes: the moves keep the stencil inside `nodes`.
     Ch = tolC("T-301", "C_hand")
-    for shape in SHAPES, st in STAGGER_PAIRS, mode in MODES
+    moves = (((6, 5), (0.7, 0.2), (0.55, -0.45)), ((4, 3), (0.1, 0.9), (-0.8, 0.35)), ((8, 5), (0.45, 0.55), (0.3, 0.95)),
+             ((5, 4), (0.999, 0.001), (0.002, -0.003)), ((7, 5), (0.5, 0.5), (-0.5, 0.5)), ((6, 4), (0.3, 0.6), (0.2, 0.1)))
+    for shape in SHAPES, st in STAGGER_PAIRS, mode in MODES, (c0, δ0, Δ) in moves
         grid = grid2(Float64, flux_g2(shape, st))
         g = guards(grid)
         s = Species(backend, Float64, 1; q = -1, m = 1, N = 2, extras = flux_extras(Float64, 2))
-        c0, δ0, Δ = (6, 5), (0.7, 0.2), (0.55, -0.45)
         s.extras.old_cell_1[1], s.extras.old_cell_2[1] = Int32.(c0)
         s.extras.old_offset_1[1], s.extras.old_offset_2[1] = δ0
         c, δ = advance(Int32.(c0), δ0, Δ, Int32.(ncells(grid)))
-        @test c == (7, 4)
+        @test all(c .+ δ .≈ c0 .+ δ0 .+ Δ)
         s.cell[1][1], s.cell[2][1] = c
         s.offset[1][1], s.offset[2][1] = δ
         s.w[1], s.u[2][1], s.status[1] = 0.8, -0.6, ParticleMeshCore.ALIVE
@@ -115,9 +117,10 @@ end
             end
         end
         @test sum(Jz) ≈ QZ2(s, 1)
-        @test any(k -> abs(hz[k] - 0.5 * (hand_weight(shape, st[1], X0[1], k[1]) * hand_weight(shape, st[2], X0[2], k[2]) +
-                                          hand_weight(shape, st[1], X1[1], k[1]) * hand_weight(shape, st[2], X1[2], k[2])) * QZ2(s, 1)) >
-                         1e-3 * abs(QZ2(s, 1)), keys(hz))           # W_z is not the average of the old and new products
+        Δ == moves[1][3] &&                                       # W_z is not the average of the old and new products
+            @test any(k -> abs(hz[k] - 0.5 * (hand_weight(shape, st[1], X0[1], k[1]) * hand_weight(shape, st[2], X0[2], k[2]) +
+                                              hand_weight(shape, st[1], X1[1], k[1]) * hand_weight(shape, st[2], X1[2], k[2])) * QZ2(s, 1)) >
+                             1e-3 * abs(QZ2(s, 1)), keys(hz))
         record!("T-301 hand", Float64, worst)
         @test worst <= Ch
     end
@@ -363,17 +366,17 @@ called(f::Core.BindingPartition) = f.restriction
 called(f) = f
 
 """
-    stencil_calls(T, shape, st) -> Vector{Symbol}
+    stencil_calls(T, shape, st, frame) -> Vector{Symbol}
 
-The calls the optimized code of the 2D `flux_stencil` leaves out of line for the element type
-`T`: the callees of its `:invoke` statements, and `:dynamic` for every call that is not a
+The calls the optimized code of the 2D `flux_stencil` in `frame` (the cell's, Reference(), or the
+particle's, Fast()) leaves out of line for the element type `T`: the callees of its `:invoke` statements, and `:dynamic` for every call that is not a
 builtin. The error paths are left out, which are the invocations that never return (the throw of
 a checked index, whose name differs between Julia versions) and the `InexactError` of a
 conversion to `Int32`; the kernels call the stencil under `@inbounds`.
 """
-function stencil_calls(::Type{T}, shape, st) where {T}
+function stencil_calls(::Type{T}, shape, st, frame) where {T}
     s = Species(backend, T, 4; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
-    types = typeof.((s, 1, shape, st, Int32.((8, 8)), (one(T), one(T)), QZ2))
+    types = typeof.((s, 1, shape, st, Int32.((8, 8)), (one(T), one(T)), QZ2, frame))
     ci, _ = only(code_typed(ParticleMeshCore.flux_stencil, types; optimize = true))
     calls = Symbol[]
     for (i, stmt) in enumerate(ci.code)
@@ -393,8 +396,9 @@ end
 @testset "T-800 the 2D flux stencil compiles to straight-line code, with no call left out of line, for every element type [A7, A8, WP-061]" begin
     # #442: left to the compiler's cost model, the closures of the stencil's outer products stayed
     # out of line (36 calls per particle at order 2 for Float32 and Float64, 108 for a Dual).
-    for T in (TYPES..., Dual{Nothing,Float64,2}), shape in SHAPES, st in STAGGER_PAIRS
-        @test isempty(stencil_calls(T, shape, st))
+    for T in (TYPES..., Dual{Nothing,Float64,2}), shape in SHAPES, st in STAGGER_PAIRS,
+        frame in (ParticleMeshCore.CellFrame(), ParticleMeshCore.ParticleFrame())
+        @test isempty(stencil_calls(T, shape, st, frame))
     end
 end
 
