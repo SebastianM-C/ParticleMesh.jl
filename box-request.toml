@@ -1,0 +1,9 @@
+timeout = 21600
+category = "validation"
+outputs = ["scripts/runs/wp065-energy32", "scripts/runs/wp065-density32"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "energy", "32x2", "scripts/runs/wp065-energy32", "jobs=4", "threads=4"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "density", "32x2", "scripts/runs/wp065-density32", "jobs=4", "threads=4"]
