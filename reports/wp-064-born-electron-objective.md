@@ -14,7 +14,7 @@
 | | |
 |---|---|
 | Work package | WP-064 (`trace/wp/WP-064-born-electron-objective.md`); goals A0, A1, A3, A4, A7 |
-| Commits | the run's code `bbc3bb9` (`dirty = false`) |
+| Commits | the run's code `bbc3bb9` (`dirty = false`); a later commit drops the table of ionization energies from the driver's list of hashed inputs, since `main` now reads them from Mendeleev.jl (#462), with which the base run's J has the same bits |
 | Runs | `optim-born2d-20261117T024038`, from `julia +1.13 --project=scripts -t 4 scripts/optim/born2d.jl 16` (2517 s); it repeats the bits of J and of every born-electron number of `optim-born2d-20261117T012425` (commit `55c4ffd`), whose guard read only ahead of x = 12 |
 | Input hashes | SHA-256 of every input file in `wp-064-born-electron-objective/optim-born2d-20261117T024038/manifest.toml` |
 | Environment | Julia 1.13.4, Float64, Reference mode, the KernelAbstractions CPU backend; Intel Xeon Processor @ 2.10GHz (the model string the CPU reports), 4 vCPUs of a cloud VM, 4 threads |
