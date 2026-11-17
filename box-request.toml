@@ -1,0 +1,9 @@
+timeout = 21600
+category = "validation"
+outputs = ["scripts/runs/wp065-fd32", "scripts/runs/wp065-xonly"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "xonly", "32x1,48x1,64x1", "scripts/runs/wp065-xonly", "jobs=4", "threads=4"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "fd", "32x2", "scripts/runs/wp065-fd32", "jobs=4", "threads=4"]
