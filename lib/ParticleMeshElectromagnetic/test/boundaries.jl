@@ -364,19 +364,22 @@ function step_bytes_open(mode; ppc, cells)
     p = params(prob)
     step!(st, p, 1)
     step!(st, p, 2)
-    return @allocated step!(st, p, 3)
+    bytes = @allocated step!(st, p, 3)
+    return bytes, count(s -> ParticleMeshElectromagnetic.sorts(st, s), st.species)   # and the step's sorts
 end
 
 @testset "T-457 allocation per open-boundary step does not grow with particle count or grid size [A7, WP-027]" begin
     for mode in (Reference(), Fast())
-        small = step_bytes_open(mode; ppc = (2, 2), cells = (16, 16))
-        more_particles = step_bytes_open(mode; ppc = (8, 8), cells = (16, 16))
-        larger_grid = step_bytes_open(mode; ppc = (2, 2), cells = (64, 48))
-        @info "T-457 bytes per open-boundary step" mode small more_particles larger_grid threads = Threads.nthreads()
+        small, sorts = step_bytes_open(mode; ppc = (2, 2), cells = (16, 16))
+        more_particles, _ = step_bytes_open(mode; ppc = (8, 8), cells = (16, 16))
+        larger_grid, _ = step_bytes_open(mode; ppc = (2, 2), cells = (64, 48))
+        @info "T-457 bytes per open-boundary step" mode small more_particles larger_grid sorts threads = Threads.nthreads()
         # at more than one thread the Reference sort allocates per particle (#82, as T-220); CI runs one thread
+        # each sort may add Base's radix count buffer, bounded whatever the size (`SORT_COUNTS_BYTES`, as T-220)
+        bound = small + sorts * SORT_COUNTS_BYTES
         if Threads.nthreads() == 1 || mode isa Fast
-            @test_alloc more_particles <= small
-            @test_alloc larger_grid <= small
+            @test_alloc more_particles <= bound
+            @test_alloc larger_grid <= bound
         end
     end
 end
