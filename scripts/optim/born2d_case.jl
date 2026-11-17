@@ -19,9 +19,11 @@ Fixed parameters of the case (A1 units).
 - The box is 14 λ₀ long (`ppl` cells per λ₀ along x) and 128 cells of Δy = π/4 wide, a moving
   window with PMLs at the open y edges and at the back, as the run of the ionization explainer
   page: the laser (waist 10, duration 6, focus at x = 80) enters a plasma of density 0.072 n_c
-  behind a ramp at x = 64 to 72.
+  behind a ramp from x = 64 to 104. The ramp is that long on purpose: behind one of 8 c/ω₀ the wake
+  traps the plasma's own electrons at every a₀ from 1.5 up, behind this one only above a₀ ≈ 2
+  (#465; `born2d.jl` reports the guard at every point).
 - The dopant is nitrogen at 1 % of the plasma density on the 36 rows around the axis, in the
-  section x = 76 to 100 (ramps of 4), with the two K-shell levels N⁵⁺ → N⁶⁺ → N⁷⁺ at 0.8 µm. The
+  section x = 108 to 132 (ramps of 4), which starts 4 c/ω₀ behind the ramp's end, with the two K-shell levels N⁵⁺ → N⁶⁺ → N⁷⁺ at 0.8 µm. The
   L shell is left out: the pulse's foot ionizes it completely, far ahead of the wake, and its
   electrons are part of the plasma's density. ADK rates with no barrier-suppression correction
   and no ionization current (WP-059), so the charge injected is not a physical prediction.
@@ -32,21 +34,22 @@ Fixed parameters of the case (A1 units).
 - `u_fast` is the momentum above which a born electron is listed as trapped in the run's tables;
   the objective does not use it.
 """
-const BCASE = (waist = 10.0, delay = 54.0, focus = 80.0, vacuum = 64.0, ramp = 8.0, start = 108.0, a0 = 2.2,
+const BCASE = (waist = 10.0, delay = 54.0, focus = 80.0, vacuum = 64.0, ramp = 40.0, start = 108.0, a0 = 1.9,
                duration = 6.0, density = 0.072, ppl = 32, length_wavelengths = 14, rows = 128, dy = π / 4, ppc = (2, 2),
                t_end = 300.0, pml_y = 12, pml_x_wavelengths = 0.25,
-               dopant = 0.00072, section = (start = 76.0, stop = 100.0, ramp = 4.0), half_rows = 18, cutoff = 24.0,
+               dopant = 0.00072, section = (start = 108.0, stop = 132.0, ramp = 4.0), half_rows = 18, cutoff = 24.0,
                every = 1, capacity = 400_000, wavelength = 0.8e-6, fade = (12.0, 24.0), u_fast = 5.0)
 
 """
-    born_problem(a0, dopant; t_end, ppl, every, capacity, section) -> EMProblem{2}
+    born_problem(a0, dopant; t_end, ppl, every, capacity, section, duration, density, ramp) -> EMProblem{2}
 
 The case at a normalized vector potential `a0` and a dopant density `dopant` (n_c); the element
 type follows the arguments. `ppl` cells per λ₀ along x at the same box and the same Δy (it must be
-a multiple of 8), `t_end` the read-out time.
+a multiple of 8), `t_end` the read-out time, `ramp` the length of the plasma's density ramp (the
+dopant's `section` does not move with it: pass both).
 """
 function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, every::Integer = BCASE.every,
-                      capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density)
+                      capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp)
     ppl % 8 == 0 || throw(ArgumentError("ppl must be a multiple of 8 to keep Δy = π/4, got $ppl"))
     T = promote_type(typeof(a0), typeof(dopant), typeof(duration), typeof(density), Float64)
     z3 = (zero(T), zero(T), zero(T))
@@ -67,7 +70,7 @@ function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end,
                           section = DopantSection(; start = T(section.start), stop = T(section.stop), ramp = T(section.ramp)))
     return EMProblem("born2d", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
                      lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = T(BCASE.start)),
-                     profile = DensityRamp(; vacuum = T(BCASE.vacuum), ramp = T(BCASE.ramp)), ionization = ion)
+                     profile = DensityRamp(; vacuum = T(BCASE.vacuum), ramp = T(ramp)), ionization = ion)
 end
 
 "The case's numerics: Reference mode, PMLs at the open y edges and at the window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the back edge, at least 6 cells)."

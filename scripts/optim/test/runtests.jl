@@ -316,7 +316,7 @@ end
 include(joinpath(@__DIR__, "bayes.jl"))
 
 # Tests of the WP-064 case (born2d_case.jl): the objective on ionization-born electrons. T-833 and
-# T-834 run the case at λ₀/8 to t = 150, about a minute in all.
+# T-834 run the case at λ₀/8 to t = 190, about a minute in all.
 include(joinpath(@__DIR__, "..", "born2d_case.jl"))
 
 "The case's state at λ₀/8 before its first step, with `n` hand-made born electrons written into the first slots."
@@ -448,11 +448,11 @@ end
     @test plasma_fast_energy(st) == 0
 end
 
-"The state of the case at λ₀/8 at t = 150."
-born_small_state(a0, dopant = BCASE.dopant; kw...) = born_state(a0, dopant; ppl = 8, t_end = 150.0, capacity = 60_000, kw...)
-"The objective of the case at λ₀/8 read at t = 150."
-born_small(a0, dopant = BCASE.dopant; kw...) = born_objective(a0, dopant; ppl = 8, t_end = 150.0, capacity = 60_000, kw...)
-# At t = 150 the born electrons of this run lie at window x = 33 to 56: the case's weight is 1 on
+"The state of the case at λ₀/8 at t = 190."
+born_small_state(a0, dopant = BCASE.dopant; kw...) = born_state(a0, dopant; ppl = 8, t_end = 190.0, capacity = 60_000, kw...)
+"The objective of the case at λ₀/8 read at t = 190."
+born_small(a0, dopant = BCASE.dopant; kw...) = born_objective(a0, dopant; ppl = 8, t_end = 190.0, capacity = 60_000, kw...)
+# At t = 190 the born electrons of this run lie at window x = 27 to 53: the case's weight is 1 on
 # all of them, and this one cuts through them.
 const ACROSS = (30.0, 50.0)
 
@@ -464,13 +464,13 @@ const ACROSS = (30.0, 50.0)
     sta = (born_small_state(a0 + ha), born_small_state(a0 - ha))
     for fade in (BCASE.fade, ACROSS)
         Jd, J = born_energy(std; fade), born_energy(st; fade)
-        @test J > 1.0e-3                                                        # the K shell ionizes and the electrons gain energy
+        @test J > 1.0e-4                                                        # the K shell ionizes and the electrons gain energy
         @test ForwardDiff.value(Jd) == J                                        # the duals do not change the run
         fd_a = (born_energy(sta[1]; fade) - born_energy(sta[2]; fade)) / 2ha
         @test ForwardDiff.partials(Jd)[1] ≈ fd_a rtol = 1.0e-5
         @test ForwardDiff.partials(Jd)[1] > 0
     end
-    @test 0.5 * born_energy(st) < born_energy(st; fade = ACROSS) < 0.9 * born_energy(st)   # the second weight does cut (0.84 measured)
+    @test 0.1 * born_energy(st) < born_energy(st; fade = ACROSS) < 0.5 * born_energy(st)   # the second weight does cut (0.22 measured)
     Jd, J = born_energy(std), born_energy(st)
     ad = ForwardDiff.partials(Jd)
     hd = BCASE.dopant * 2.0^-8
@@ -487,10 +487,10 @@ end
     s = born_summary(st)
     @test s.energy === born_energy(st) === born_small(2.2)                      # a second run: the same bits in J
     @test born_small(2.2; fade = ACROSS) === born_energy(st; fade = ACROSS) < s.energy
-    @test s.born ≈ s.alive rtol = 1.0e-12                                       # at t = 150 no born electron has left the window
+    @test s.born ≈ s.alive rtol = 1.0e-12                                       # at t = 190 no born electron has left the window
     @test s.particles == count(==(ALIVE), ionization_electrons(st).status) > 4000
     @test s.plasma_peak == plasma_peak_energy(st) > 0
-    @test_throws ErrorException born_state(2.2; ppl = 8, t_end = 150.0, capacity = 1000)   # the run needs more than 4000 slots
+    @test_throws ErrorException born_state(2.2; ppl = 8, t_end = 190.0, capacity = 1000)   # the run needs more than 4000 slots
 end
 
 @testset "T-835 the summary's weights on hand-placed electrons: alive, counted, fast, and the plasma's [WP-064]" begin
