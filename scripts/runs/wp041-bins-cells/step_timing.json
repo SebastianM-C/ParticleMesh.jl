@@ -1,0 +1,246 @@
+{
+  "backend": "cpu",
+  "cpu": "AMD EPYC 9655 96-Core Processor",
+  "gpu": null,
+  "phases": [
+    "push",
+    "sort",
+    "deposit",
+    "window",
+    "fields",
+    "other"
+  ],
+  "rows": [
+    {
+      "T": "Float32",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "by_layout": {
+          "CellMajor": {
+            "deposit_flux": 0.001273828,
+            "patch_kernel": 0.001066897,
+            "reduce_kernel": 0.000172091
+          },
+          "StencilMajor": {
+            "deposit_flux": 0.000377162,
+            "patch_kernel": 0.000259371,
+            "reduce_kernel": 9.6e-5
+          }
+        },
+        "by_workgroup": {
+          "1": 0.000292421,
+          "512": 0.000344841,
+          "64": 0.000361753,
+          "8": 0.000357102,
+          "nothing": 0.000367571
+        },
+        "deposit_flux": 0.000375232,
+        "patch_kernel": 0.000252611,
+        "patch_layout": [
+          108,
+          14336
+        ],
+        "reduce_kernel": 9.777e-5,
+        "sort_sorted": 0.000346522
+      },
+      "mode": "Reference",
+      "node_bins": false,
+      "phases": {
+        "deposit": 0.1930525180000002,
+        "fields": 0.024143281000000013,
+        "other": 0.03917702700000011,
+        "push": 0.1886469210000001,
+        "sort": 0.2780673639999999,
+        "window": 0.106634353
+      },
+      "run": 0.925176282,
+      "shifts": 196,
+      "steps": 512,
+      "total": 0.830705041
+    },
+    {
+      "T": "Float32",
+      "alive": 56571,
+      "capacity": 71680,
+      "mode": "Fast",
+      "node_bins": false,
+      "phases": {
+        "deposit": 0.6708076619999995,
+        "fields": 0.09312020299999997,
+        "other": 0.048700803000000015,
+        "push": 0.18345785499999998,
+        "sort": 1.903999999999994e-5,
+        "window": 0.11212569600000001
+      },
+      "run": 1.137353713,
+      "shifts": 196,
+      "steps": 512,
+      "total": 1.109043009
+    },
+    {
+      "T": "Float64",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "by_layout": {
+          "CellMajor": {
+            "deposit_flux": 0.001499698,
+            "patch_kernel": 0.001309117,
+            "reduce_kernel": 0.000179051
+          },
+          "StencilMajor": {
+            "deposit_flux": 0.000435332,
+            "patch_kernel": 0.000307271,
+            "reduce_kernel": 0.00010272
+          }
+        },
+        "by_workgroup": {
+          "1": 0.000314871,
+          "512": 0.000535843,
+          "64": 0.000566174,
+          "8": 0.000488732,
+          "nothing": 0.000465282
+        },
+        "deposit_flux": 0.000723444,
+        "patch_kernel": 0.000320192,
+        "patch_layout": [
+          108,
+          14336
+        ],
+        "reduce_kernel": 0.00011142,
+        "sort_sorted": 0.000496093
+      },
+      "mode": "Reference",
+      "node_bins": false,
+      "phases": {
+        "deposit": 0.22150692500000005,
+        "fields": 0.028307140999999987,
+        "other": 0.049517899000000025,
+        "push": 0.19506298600000002,
+        "sort": 0.3143936129999998,
+        "window": 0.11458616999999997
+      },
+      "run": 0.994497419,
+      "shifts": 196,
+      "steps": 512,
+      "total": 0.924666487
+    },
+    {
+      "T": "Float64",
+      "alive": 56571,
+      "capacity": 71680,
+      "mode": "Fast",
+      "node_bins": false,
+      "phases": {
+        "deposit": 0.6199756099999999,
+        "fields": 0.030004123000000004,
+        "other": 0.049000255999999964,
+        "push": 0.18718035699999988,
+        "sort": 2.0199999999999966e-5,
+        "window": 0.2246960430000001
+      },
+      "run": 1.114106212,
+      "shifts": 196,
+      "steps": 512,
+      "total": 1.111737984
+    },
+    {
+      "T": "Dual{Float32,2}",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "by_layout": {
+          "CellMajor": {
+            "deposit_flux": 0.002596113,
+            "patch_kernel": 0.002302801,
+            "reduce_kernel": 0.000207322
+          },
+          "StencilMajor": {
+            "deposit_flux": 0.001616598,
+            "patch_kernel": 0.001446227,
+            "reduce_kernel": 0.000162231
+          }
+        },
+        "by_workgroup": {
+          "1": 0.001447768,
+          "512": 0.035084889,
+          "64": 0.004762724,
+          "8": 0.004343271,
+          "nothing": 0.009177105
+        },
+        "deposit_flux": 0.001654038,
+        "patch_kernel": 0.001462727,
+        "patch_layout": [
+          108,
+          14336
+        ],
+        "reduce_kernel": 0.00015798,
+        "sort_sorted": 0.000608093
+      },
+      "mode": "Reference",
+      "node_bins": false,
+      "phases": {
+        "deposit": 0.887477439,
+        "fields": 0.050861776999999976,
+        "other": 0.13933111900000003,
+        "push": 0.6642276419999998,
+        "sort": 0.4049595489999996,
+        "window": 0.17232036499999986
+      },
+      "run": 2.546749022,
+      "shifts": 196,
+      "steps": 512,
+      "total": 2.323160414
+    },
+    {
+      "T": "Dual{Float64,2}",
+      "alive": 56571,
+      "capacity": 71680,
+      "kernels": {
+        "by_layout": {
+          "CellMajor": {
+            "deposit_flux": 0.003062914,
+            "patch_kernel": 0.002627492,
+            "reduce_kernel": 0.000316952
+          },
+          "StencilMajor": {
+            "deposit_flux": 0.00200481,
+            "patch_kernel": 0.001662878,
+            "reduce_kernel": 0.000308453
+          }
+        },
+        "by_workgroup": {
+          "1": 0.001701198,
+          "512": 0.060495005,
+          "64": 0.009220622,
+          "8": 0.004623772,
+          "nothing": 0.018682505
+        },
+        "deposit_flux": 0.00210788,
+        "patch_kernel": 0.001662488,
+        "patch_layout": [
+          108,
+          14336
+        ],
+        "reduce_kernel": 0.000324971,
+        "sort_sorted": 0.000891004
+      },
+      "mode": "Reference",
+      "node_bins": false,
+      "phases": {
+        "deposit": 1.3090208009999995,
+        "fields": 0.07166962499999996,
+        "other": 0.1689204599999998,
+        "push": 0.8536501880000003,
+        "sort": 0.6263771450000002,
+        "window": 0.2699838639999999
+      },
+      "run": 3.335619236,
+      "shifts": 196,
+      "steps": 512,
+      "total": 3.304851797
+    }
+  ],
+  "threads": 16
+}
