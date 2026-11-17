@@ -1850,7 +1850,7 @@ end
         @test distances_table_of(joinpath(dir, "scan.json")) == distances_table(d, [32, 64])
     end
     # the tables the two reports carry are this function's, of the committed comparison and scan
-    for (report, data) in (("lwfa-2d-a5.md", "lwfa-2d-a5/lwfa-a5-4-compare/comparison.json"), ("wp-054-lwfa-resolution-scan.md", "wp-054-lwfa-resolution-scan/scan/scan.json"))
+    for (report, data) in (("lwfa-2d-a5.md", "lwfa-2d-a5/lwfa-a5-5-compare/comparison.json"), ("wp-054-lwfa-resolution-scan.md", "wp-054-lwfa-resolution-scan/scan/scan.json"))
         reports = joinpath(REPO, "reports")
         @test occursin(distances_table_of(joinpath(reports, data)), read(joinpath(reports, report), String))
     end

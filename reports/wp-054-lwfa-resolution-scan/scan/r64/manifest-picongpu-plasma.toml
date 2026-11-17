@@ -1,13 +1,13 @@
 arguments = "-d 1 2 -r 2 -g 512 6192 -s 14352 --periodic 1 0 -m --windowMovePoint 0.837047803617571 --autoAdjustGrid 0 --fieldAbsorber exponential --currentInterpolation none --openPMD.period 1104 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source species_all,fields_all --fields_energy.period 1104 --e_energyHistogram.period 1104 --e_energyHistogram.filter all --e_energyHistogram.binCount 500 --e_energyHistogram.minEnergy 0.0 --e_energyHistogram.maxEnergy 51099.89506917531"
 case = "lwfa-2d-r64"
 code = "PIConGPU 0.8.0"
-commit = "a991f960d06dd38663e63eb09b2bd0c861dabfc2"
+commit = "9c2164972b6e75fb1992bba01ecc3d5e9cc37d5d"
 dirty = false
 generator = "scripts/lwfa/lwfa.jl"
 precision = "Float64"
 reference_wavelength_m = 8.0e-7
-run_id = "lwfa-scan-r64/picongpu-plasma"
-updated = "2026-11-12T07:25:04.832Z"
+run_id = "lwfa-e412-r64/picongpu-plasma"
+updated = "2026-11-16T23:41:38.435Z"
 
 [inputs]
 "case.toml" = "sha256:0b0dc95320a71d7efd12872c6a60e87464551e68d6c121eeb00aded81c4fbe90"
@@ -15,7 +15,7 @@ updated = "2026-11-12T07:25:04.832Z"
 "params/density.param" = "sha256:202c1aae30d219b91d3553f9c7894bc4dfeae80d30802d3c3a821a03bcbd76d8"
 "params/dimension.param" = "sha256:12c5c19fb9204dfb4e1bb4b401151192e3e1231ec71e368f0fb683809a921966"
 "params/fieldSolver.param" = "sha256:69a1a37e5992ac37a077895613c18d2851f30f77bbf904a6e0495f6d170c0733"
-"params/fileOutput.param" = "sha256:24154d04588e0a774d72e46ad6e9dd804f27c7b83b7069c47e239733002a9ea2"
+"params/fileOutput.param" = "sha256:684f9142a0f801a33f4e6133bde4d2de7ee5c522257aa4222c3fb9b16b8eec25"
 "params/incidentField.param" = "sha256:3ad44883645967a5bee50a2a11c45203b366236c10a36717a037325b7357fab3"
 "params/memory.param" = "sha256:e576f9a1f2d360a6f1a14b151d6c29326b613f8128fc892b4a7fcd6be43de936"
 "params/particle.param" = "sha256:54868f6386b8b13c97d7507191f2d9f8b4c5a7ecd97b9a45156b360fc842eabd"
@@ -24,7 +24,7 @@ updated = "2026-11-12T07:25:04.832Z"
 "params/species.param" = "sha256:4ee28d602e07d9c837723926d730ed8e6612ac030a3fdae43ef168e4fc201009"
 "params/speciesDefinition.param" = "sha256:dd18a78260766dc7934011959dbb88c25dfd2d578437eabdc8ba0a2d8d4918c9"
 "params/speciesInitialization.param" = "sha256:9ae478b5b47a5e11009697fdb30158c3ec664d6bdb8315d05ed477029d27c8b4"
-"run.sh" = "sha256:b5fb3da2a3003a4ed97b89f1b8efc1c01e5f4cebd09f9b0ec020de8a5dc0ddc5"
+"run.sh" = "sha256:26c747ec68f3c7c1271da61d430a0965afffe3f985d72179d5ac7a3ef24f8fe1"
 
 [layout]
 cells = [512, 6192]
