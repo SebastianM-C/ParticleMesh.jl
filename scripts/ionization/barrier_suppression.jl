@@ -21,8 +21,9 @@
 include(joinpath(@__DIR__, "ionization.jl"))        # the user layer, the vacuum pulse's run and integral
 
 const HARTREE_EV = FINE_STRUCTURE^2 * ELECTRON_REST_ENERGY_EV
-"mₑcω₀/e and ω₀ in atomic units at the report's wavelength."
-const AU_FIELD, AU_RATE = field_unit_au(WAVELENGTH), photon_energy(WAVELENGTH) / FINE_STRUCTURE^2
+# mₑcω₀/e and ω₀ in atomic units at the report's wavelength
+const AU_FIELD = field_unit_au(WAVELENGTH)
+const AU_RATE = photon_energy(WAVELENGTH) / FINE_STRUCTURE^2
 
 "He, Li⁺, N⁵⁺, … for the helium-like ion of `element`."
 helium_like_label(element, Z) = Z == 2 ? "He" : element * ("⁺", "²⁺", "³⁺", "⁴⁺", "⁵⁺", "⁶⁺", "⁷⁺", "⁸⁺", "⁹⁺", "¹⁰⁺", "¹¹⁺", "¹²⁺", "¹³⁺", "¹⁴⁺", "¹⁵⁺", "¹⁶⁺")[Z - 2]
