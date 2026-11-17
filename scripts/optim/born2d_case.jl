@@ -83,21 +83,26 @@ born_numerics(ppl::Integer = BCASE.ppl, ny::Integer = 1) =
     EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
 
 "The case's state at its start and its parameters; `ppl`, `ny` and the rest as [`born_problem`](@ref)."
-function born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, ny::Integer = 1, kw...)
-    prob = born_problem(a0, dopant; ppl, ny, kw...)
+born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, ny::Integer = 1, kw...) =
+    start_of(born_problem(a0, dopant; ppl, ny, kw...); ppl, ny)
+
+"The state of a problem of the case at its start, with the case's numerics at the `ppl` and `ny` the problem was made with, its parameters, and the problem."
+function start_of(prob; ppl::Integer, ny::Integer)
     st = EMState(prob, born_numerics(ppl, ny); record = ())
     p = params(prob)
     initialize!(st, p)
     return st, p, prob
 end
 
-"The case's state after its run. A birth that found no free slot is an error: the capacity was too small."
-function born_state(a0 = BCASE.a0, dopant = BCASE.dopant; kw...)
-    st, p, prob = born_start(a0, dopant; kw...)
+"The state at the end of the run of a start (a state, its parameters and its problem). A birth that found no free slot is an error: the capacity was too small."
+function run_to_end((st, p, prob))
     run!(st, p, prob.nsteps)
     ionization_lost(st) == 0 || error("$(ionization_lost(st)) births found no free slot: raise `capacity`")
     return st
 end
+
+"The case's state after its run (the arguments of [`born_start`](@ref))."
+born_state(a0 = BCASE.a0, dopant = BCASE.dopant; kw...) = run_to_end(born_start(a0, dopant; kw...))
 
 """
     smooth_rise(x, lo, hi)

@@ -61,11 +61,9 @@ function trapped_problem(duration, waist, focus, delay, density; energy = budget
     return born_problem(a0, TCASE.dopant_fraction * density; duration, waist, focus, delay, density, kw...)
 end
 
-"The case's state after its run at the five parameters (keywords as [`trapped_problem`](@ref)); a birth without a free slot is an error."
-function trapped_state(duration, waist, focus, delay, density; energy = budget(), kw...)
-    a0 = a0_for_energy(duration, waist; energy)
-    return born_state(a0, TCASE.dopant_fraction * density; duration, waist, focus, delay, density, kw...)
-end
+"The case's state after its run at the five parameters: the run of [`trapped_problem`](@ref)'s problem (and its keywords); a birth without a free slot is an error."
+trapped_state(duration, waist, focus, delay, density; ppl::Integer = BCASE.ppl, ny::Integer = 1, kw...) =
+    run_to_end(start_of(trapped_problem(duration, waist, focus, delay, density; ppl, ny, kw...); ppl, ny))
 
 # The summand of a slot: weight × kinetic energy × position weight × trapping weight, zero for a free slot.
 @inline function slot_trapped(status, c1, o1, u1, u2, u3, w, h1, lo, hi, ulo, uhi)

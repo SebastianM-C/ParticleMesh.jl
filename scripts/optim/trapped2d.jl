@@ -136,7 +136,7 @@ function run_campaign(jobs, dir)
     asyncmap(todo; ntasks = n) do j
         log = joinpath(dir, j["id"] * ".log")
         cmd = `$(Base.julia_cmd()) --project=$(joinpath(REPO, "scripts")) -t $th $(@__FILE__) job $dir $(JSON.json(j))`
-        t = @elapsed ok = success(pipeline(cmd; stdout = log, stderr = log))
+        t = @elapsed ok = open(io -> success(pipeline(cmd; stdout = io, stderr = io)), log, "w")
         ok || push!(failed, j["id"])
         println(ok ? "done " : "FAILED ", j["id"], " in ", round(t; digits = 1), " s"); flush(stdout)
     end

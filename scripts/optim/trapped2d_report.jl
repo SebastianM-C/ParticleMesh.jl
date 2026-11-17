@@ -22,9 +22,9 @@ function fd_rows(jobs)
     rows = Dict{String,Any}[]
     for (id, j) in jobs
         startswith(id, "fd-") && j["sign"] == 1 || continue
-        m = jobs[replace(id, r"-p$" => "-m")]
+        m = get(jobs, replace(id, r"-p$" => "-m"), nothing)
         c = get(jobs, "conv-$(j["point"])-r$(j["ppl"])x$(j["ny"])", nothing)
-        c === nothing && continue
+        (m === nothing || c === nothing) && continue
         fd = (j["J"] - m["J"]) / (2 * j["h"])
         ad = c["gradient"][j["direction"]]
         push!(rows, Dict{String,Any}("point" => j["point"], "ppl" => j["ppl"], "ny" => j["ny"], "direction" => DIRECTIONS[j["direction"]],
