@@ -1,0 +1,20 @@
+branch = "runs/wp041-bin-ParticleMeshElectromagnetic"
+request_commit = "d4965be82b8a57a5a515f832e5e22897f6344750"
+started = "2026-11-17T07:20:25Z"
+category = "test"
+outputs = []
+finished = "2026-11-17T07:20:31Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T07:20:25Z"
+exit = 1
+seconds = 6
