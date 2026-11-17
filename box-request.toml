@@ -1,0 +1,9 @@
+timeout = 21600
+category = "validation"
+outputs = ["scripts/runs/wp065-fine32", "scripts/runs/wp065-fine48"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "fine", "32x2", "scripts/runs/wp065-fine32", "jobs=4", "threads=4"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "fine", "48x3", "scripts/runs/wp065-fine48", "jobs=4", "threads=4"]
