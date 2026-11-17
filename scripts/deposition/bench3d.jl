@@ -6,9 +6,12 @@
 # The state is `ppc` particles per cell at random offsets, every one moved by a random
 # displacement below half a cell per axis (common.jl). The sorts are timed on the moved state
 # with the segments of the sort before the move, the depositions on the sorted state; each time
-# is the least of 7 calls with the device waited for. The variants are compared with one another
-# before they are timed (check.jl holds each to continuity on a small grid). Writes
-# `bench3d.json`, `tables.md` and a manifest into scripts/runs/deposition-bench3d-<backend>-<time>/.
+# is the least of 7 calls with the device waited for (`PM_BENCH_REPS` sets another count). The
+# variants are compared with one another before they are timed (check.jl holds each to continuity
+# on a small grid). A tile size whose buffers would take more than 3 GiB is skipped
+# (`PM_BENCH_MAX_GIB` sets another limit), and so are the atomics in the 6-wide frame above
+# 40 million particles, where one call takes tens of seconds. Writes `bench3d.json`, `tables.md`
+# and a manifest into scripts/runs/deposition-bench3d-<backend>-<time>/.
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "common.jl"))
 
@@ -22,6 +25,8 @@ else
     error("bench3d.jl: the first argument is cpu or cuda, got $BACKEND_NAME")
 end
 
+const REPS = parse(Int, get(ENV, "PM_BENCH_REPS", "7"))
+const MAX_GIB = parse(Float64, get(ENV, "PM_BENCH_MAX_GIB", "3"))
 const ELEMENTS = Dict("f32" => Float32, "f64" => Float64, "d32" => Dual{Nothing,Float32,3})
 type_label(::Type{T}) where {T} = T <: Dual ? "Dual{$(base_type(T)),3}" : string(T)
 
@@ -51,17 +56,17 @@ function measure(::Type{T}, n, ppc) where {T}
 
     # the sorts, on the moved state
     b = IncrementalSort(s, grid)
-    time_["engine sort_by_cell!"] = ms(least(() -> PMC.sort_by_cell!(s, grid, ws), BE; reps = 7, setup = () -> restore!(s, U)))
+    time_["engine sort_by_cell!"] = ms(least(() -> PMC.sort_by_cell!(s, grid, ws), BE; reps = REPS, setup = () -> restore!(s, U)))
     restore!(s, U)
     PMC.sort_by_cell!(s, grid, ws)
     incremental_sort!(b, U, grid, seg0...)
     n1 = PMC.alive_count(s)
     diff["incremental sort"] = !(all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
                                  Array(b.seg_start) == Array(ws.seg_start) && Array(b.seg_stop) == Array(ws.seg_stop) && PMC.alive_count(b.dst) == n1)
-    time_["incremental sort, two buffers"] = ms(least(() -> incremental_sort!(b, U, grid, seg0...), BE; reps = 7))
+    time_["incremental sort, two buffers"] = ms(least(() -> incremental_sort!(b, U, grid, seg0...), BE; reps = REPS))
     work = copy_species(U)
     segW = map(copy, seg0)
-    time_["incremental sort, copied back"] = ms(least(() -> incremental_sort!(b, work, grid, segW...; copy_back = true), BE; reps = 7,
+    time_["incremental sort, copied back"] = ms(least(() -> incremental_sort!(b, work, grid, segW...; copy_back = true), BE; reps = REPS,
                                                       setup = () -> (restore!(work, U); foreach(copyto!, segW, seg0))))
     work = nothing
 
@@ -74,7 +79,7 @@ function measure(::Type{T}, n, ppc) where {T}
     function variant!(f, name)
         a = zero_fields(BE, T, grid)
         diff[name] = field_difference(f(a), ref)
-        time_[name] = ms(least(() -> f(J), BE; reps = 7))
+        time_[name] = ms(least(() -> f(J), BE; reps = REPS))
         return nothing
     end
     variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing), "tiles S = 4")
@@ -82,7 +87,7 @@ function measure(::Type{T}, n, ppc) where {T}
                            "tiles S = 4, work-groups of one")
     for S in (1, 2, 8)
         bytes = 3 * (S + 5)^3 * prod(cld.(n, S)) * sizeof(T)
-        if bytes > 3 * 2^30
+        if bytes > MAX_GIB * 2^30
             println("skipping tiles S = $S: its buffers would take $(round(bytes / 2^30; digits = 1)) GiB")
             continue
         end
@@ -96,11 +101,13 @@ function measure(::Type{T}, n, ppc) where {T}
                      "coloured tiles S = $S, work-groups of one")
     end
     if T <: AbstractFloat
+        wide = n1 <= 40_000_000
+        wide || println("skipping the atomics in the 6-wide frame: $n1 particles")
         variant!(a -> deposit_atomic!(a, s, MinFrame(), shape, stg, grid, sx, nothing), "atomics 4 × 4 × 4, sorted particles")
-        variant!(a -> deposit_atomic!(a, s, CellFrame(), shape, stg, grid, sx, nothing), "atomics 6 × 6 × 6, sorted particles")
+        wide && variant!(a -> deposit_atomic!(a, s, CellFrame(), shape, stg, grid, sx, nothing), "atomics 6 × 6 × 6, sorted particles")
         let r = shuffled(s)
             variant!(a -> deposit_atomic!(a, r, MinFrame(), shape, stg, grid, sx, nothing), "atomics 4 × 4 × 4, shuffled particles")
-            variant!(a -> deposit_atomic!(a, r, CellFrame(), shape, stg, grid, sx, nothing), "atomics 6 × 6 × 6, shuffled particles")
+            wide && variant!(a -> deposit_atomic!(a, r, CellFrame(), shape, stg, grid, sx, nothing), "atomics 6 × 6 × 6, shuffled particles")
         end
     end
     return Dict{String,Any}("T" => type_label(T), "cells" => collect(n), "ppc" => ppc, "alive" => n1, "capacity" => PMC.capacity(s),
@@ -129,7 +136,8 @@ function main()
     extra = gpu === nothing ? Dict{String,Any}() : Dict{String,Any}("gpu" => gpu, "cudacore" => string(pkgversion(CUDACore)))
     dir = run_dir("bench3d-$BACKEND_NAME", @__FILE__; prefix = "deposition", work_package = "deposition study",
                   backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
-                  params = Dict{String,Any}("cells" => collect(n), "ppc" => ppc, "elements" => collect(String, elements)),
+                  params = Dict{String,Any}("cells" => collect(n), "ppc" => ppc, "elements" => collect(String, elements), "reps" => REPS,
+                                            "max_buffer_gib" => MAX_GIB),
                   extra_inputs = [joinpath(@__DIR__, "proto.jl"), joinpath(@__DIR__, "common.jl")], extra)
     rows = Dict{String,Any}[]
     for e in elements

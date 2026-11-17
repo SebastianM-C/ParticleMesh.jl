@@ -12,6 +12,7 @@ and the engine's tests do not cover it.
 | `check.jl` | Every variant against the engine (2D, to roundoff; the incremental sort bitwise) and against discrete continuity (2D and 3D), in Float32, Float64 and `Dual{Float32,3}` on the CPU backend |
 | `bench2d.jl` | The engine and the variants on states of the WP-045 case at three sizes, on the CPU or CUDA |
 | `bench3d.jl` | The sorts and the 3D variants on a synthetic 3D state, on the CPU or CUDA |
+| `phases2d.jl` | The engine's step per phase (push, sort, deposit, window, fields) on the sizes of `bench2d.jl`, on the CPU or CUDA |
 
 ```
 julia +1.13 -t 4 --project=scripts scripts/deposition/check.jl
@@ -19,6 +20,6 @@ julia +1.13 -t 4 --project=scripts scripts/deposition/bench2d.jl cpu S,M f32,f64
 julia +1.13 -t 4 --project=scripts scripts/deposition/bench3d.jl cpu 48x48x48 8 f32,f64,d32
 ```
 
-Each benchmark writes its numbers (`bench2d.json` or `bench3d.json`), a table (`tables.md`) and a
-manifest into `scripts/runs/deposition-<name>-<time>/`. The numbers are single-machine
+Each benchmark writes its numbers (`bench2d.json`, `bench3d.json` or `phases2d.json`), a table
+(`tables.md`) and a manifest into `scripts/runs/deposition-<name>-<time>/`. The numbers are single-machine
 measurements and have not been independently reviewed.
