@@ -719,3 +719,18 @@ end
         @test born_numerics(ppl).absorber.cells == 12
     end
 end
+
+@testset "T-894 the case runs in Float32, with J and its derivative within 10⁻⁴ of Float64 [A8, WP-065]" begin
+    kw = (; ppl = 8, t_end = 190.0, capacity = 60_000, energy = budget(2.2), float = Float32)
+    st32 = trapped_state(TCASE.x0...; kw...)
+    @test eltype(st32.species[1].w) == Float32 && eltype(ionization_electrons(st32).w) == Float32
+    J32 = trapped_energy(st32; fade = BCASE.fade, rise = (0.5, 3.0))
+    @test J32 isa Float32
+    J64 = trapped_small(TCASE.x0...)
+    @test J32 ≈ J64 rtol = 1.0e-4                                               # 1.6·10⁻⁵ measured
+    # a Float32 dual keeps the run in Float32, and its derivative in the focus is Float64's
+    d32 = trapped_energy(trapped_state(6.0f0, 10.0f0, ForwardDiff.Dual{Nothing}(80.0f0, 1.0f0), 54.0f0, 0.072f0; kw...); fade = BCASE.fade, rise = (0.5, 3.0))
+    d64 = trapped_small(6.0, 10.0, ForwardDiff.Dual{Nothing}(80.0, 1.0), 54.0, 0.072)
+    @test d32 isa ForwardDiff.Dual{Nothing,Float32}
+    @test ForwardDiff.partials(d32)[1] ≈ ForwardDiff.partials(d64)[1] rtol = 1.0e-4
+end

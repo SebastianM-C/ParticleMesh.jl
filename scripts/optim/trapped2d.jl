@@ -15,7 +15,8 @@
 #             duals), density (a line in the density, with duals);
 #       resolutions: ppl×ny pairs, e.g. 16x1,32x2 (Δx = λ₀/ppl, Δy = π/(4·ny));
 #       dir: the run directory (made if missing; by default scripts/runs/optim-trapped2d-<kind>-<stamp>);
-#       jobs=N, threads=M: as PM_JOBS and PM_JOB_THREADS (for a request of scripts/cpu-box.sh, which sets no environment)
+#       jobs=N, threads=M: as PM_JOBS and PM_JOB_THREADS (for a request of scripts/cpu-box.sh, which sets no environment);
+#       float=32 runs every job in Float32 (default 64), backend=cuda on the GPU (default cpu)
 #   julia +1.13 --project=scripts -t 4 scripts/optim/trapped2d.jl job <dir> <job JSON>
 #   julia +1.13 --project=scripts scripts/optim/trapped2d.jl report <out dir> <run dir>...
 #
@@ -43,6 +44,14 @@ const FD_POWERS = (5, 9, 13, 17)
 const RISES = ((2.0, 4.0), (4.0, 6.0))
 
 job_id(parts...) = join(string.(parts), "-")
+
+"The backend of a job: the CPU, or CUDA (loaded on first use; the scripts environment has CUDACore)."
+function job_backend(name)
+    name == "cpu" && return CPU()
+    name == "cuda" || error("a job's backend is cpu or cuda, got $name")
+    @eval Main using CUDACore: CUDABackend
+    return Base.invokelatest(() -> Main.CUDABackend())
+end
 
 function campaign_jobs(kind, res)
     jobs = Dict{String,Any}[]
@@ -104,20 +113,23 @@ is the plain run's J bit for bit, T-892).
 """
 function run_job(job)
     x, a0E, ppl, ny = Float64.(job["x"]), Float64(job["a0E"]), Int(job["ppl"]), Int(job["ny"])
+    F = get(job, "float", 64) == 32 ? Float32 : Float64
+    backend = job_backend(get(job, "backend", "cpu"))
     if job["mode"] == "grad"
-        D(v, i) = ForwardDiff.Dual{Nothing}(v, ntuple(j -> Float64(i == j), 6))
+        D(v, i) = ForwardDiff.Dual{Nothing}(F(v), ntuple(j -> F(i == j), 6))
         args = [D(x[i], i) for i in 1:5]
         energy = budget(D(a0E, 6))
     else
-        args, energy = x, budget(a0E)
+        args, energy = F.(x), F(budget(a0E))
     end
-    t = @elapsed st = trapped_state(args...; energy, ppl, ny)
+    t = @elapsed st = trapped_state(args...; energy, ppl, ny, float = F, backend)
     J = trapped_energy(st)
     out = Dict{String,Any}(job)
     merge!(out, Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st))))
     out["J"] = Float64(value_of(J))
     out["seconds"] = t
     out["threads"] = Threads.nthreads()
+    out["eltype"] = string(F)
     out["cells"] = collect(ncells(st.grid))
     out["a0"] = a0_for_energy(x[1], x[2]; energy = budget(a0E))
     for r in RISES
@@ -156,11 +168,19 @@ end
 function main_campaign(kind, resarg, dir = nothing)
     res = [Tuple(parse.(Int, split(s, "x"))) for s in split(resarg, ",")]
     jobs = campaign_jobs(kind, res)
+    # the element type and the backend, for every job; a Float32 or CUDA job's id says so
+    F, be = parse(Int, get(ENV, "PM_FLOAT", "64")), get(ENV, "PM_BACKEND", "cpu")
+    for j in jobs
+        j["float"], j["backend"] = F, be
+        F == 32 && (j["id"] *= "-f32")
+        be == "cuda" && (j["id"] *= "-cuda")
+    end
     params = Dict{String,Any}("kind" => kind, "resolutions" => [collect(r) for r in res], "jobs" => length(jobs),
                               "case" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v isa NamedTuple ? Dict(string(a) => b for (a, b) in pairs(v)) : v) for (k, v) in pairs(BCASE)),
                               "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
-                              "pm_jobs" => get(ENV, "PM_JOBS", "1"), "pm_job_threads" => get(ENV, "PM_JOB_THREADS", string(Threads.nthreads())))
+                              "pm_jobs" => get(ENV, "PM_JOBS", "1"), "float" => get(ENV, "PM_FLOAT", "64"), "job_backend" => get(ENV, "PM_BACKEND", "cpu"), "pm_job_threads" => get(ENV, "PM_JOB_THREADS", string(Threads.nthreads())))
     d = run_dir("trapped2d-$kind", @__FILE__; prefix = "optim", work_package = "WP-065", dir,
+                backend = be == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                 extra_inputs = [joinpath(@__DIR__, "trapped2d_case.jl"), joinpath(@__DIR__, "born2d_case.jl"),
                                 joinpath(@__DIR__, "..", "ionization", "atomic.jl")], params)
     open(io -> JSON.print(io, jobs, 2), joinpath(d, "jobs.json"), "w")
@@ -174,11 +194,11 @@ if length(ARGS) >= 1 && ARGS[1] == "job"
     open(io -> JSON.print(io, out, 2), joinpath(ARGS[2], job["id"] * ".json"), "w")
     println(job["id"], ": J = ", out["J"], " in ", round(out["seconds"]; digits = 1), " s")
 elseif length(ARGS) >= 3 && ARGS[1] == "campaign"
-    opts = filter(a -> occursin(r"^(jobs|threads)=\d+$", a), ARGS[4:end])
+    opts = filter(a -> occursin(r"^(jobs|threads|float|backend)=\w+$", a), ARGS[4:end])
     rest = setdiff(ARGS[4:end], opts)
     for o in opts
         k, v = split(o, "=")
-        ENV[k == "jobs" ? "PM_JOBS" : "PM_JOB_THREADS"] = v
+        ENV[Dict("jobs" => "PM_JOBS", "threads" => "PM_JOB_THREADS", "float" => "PM_FLOAT", "backend" => "PM_BACKEND")[k]] = v
     end
     main_campaign(ARGS[2], ARGS[3], isempty(rest) ? nothing : rest[1])
 elseif length(ARGS) >= 3 && ARGS[1] == "report"
