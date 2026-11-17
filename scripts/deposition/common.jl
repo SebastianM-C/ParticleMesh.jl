@@ -179,6 +179,8 @@ sortperm_workspace(ws) = PMC.AK.workspace(PMC.AK.sortperm!, ws.perm, ws.key)
 
 "Whether the engine has the sort from the order of the last sort (`resort_by_cell!`, WP-041)."
 has_resort() = isdefined(PMC, :resort_by_cell!)
+"Whether the engine sorts and deposits by bins (`CellBins`, `NodeBins`: WP-041's nearest-node bins)."
+has_bins() = isdefined(PMC, :NodeBins)
 
 "Whether the next `resort_by_cell!` of `s` with `ws` starts from the order of the last sort, and is not the full sort (host values)."
 starts_from_order(ws, s, grid) = ws.resort !== nothing && all(>=(3), grid.n) &&

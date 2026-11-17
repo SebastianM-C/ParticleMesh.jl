@@ -971,11 +971,26 @@ end
     @inbounds perm[j] = key[j] % cap + 1
 end
 
+"""
+The engine's sort keys of `s` into `ws.key` (N ≥ 2). The key kernel takes the species and the
+workspace's bins where the engine has bins (WP-041's nearest-node bins), the cell and status arrays before.
+"""
+function engine_keys!(ws, s::PMC.Species, grid; workgroupsize = nothing)
+    cap = Int64(PMC.capacity(s))
+    keys! = PMC.launcher(PMC.sort_key_nd_kernel!, get_backend(s), workgroupsize)
+    if isdefined(PMC, :CellBins)
+        keys!(ws.key, s, ws.bins, Int64.(grid.n), Int64(prod(grid.n)), cap; ndrange = cap)
+    else
+        keys!(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), cap; ndrange = cap)
+    end
+    return ws.key
+end
+
 "`ws.perm` as `sort_by_cell!` finds it (N ≥ 2), from `AK.sort!(ws.key; alg, workspace)` and a decode; the keys are left sorted."
 function perm_by_key_sort!(ws, s::PMC.Species, grid; alg = AK.Auto(), workspace = nothing, workgroupsize = nothing)
     backend = get_backend(s)
     cap = Int64(PMC.capacity(s))
-    PMC.launcher(PMC.sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), cap; ndrange = cap)
+    engine_keys!(ws, s, grid; workgroupsize)
     AK.sort!(ws.key; alg, workspace)
     PMC.launcher(perm_from_keys_kernel!, backend, workgroupsize)(ws.perm, ws.key, cap; ndrange = cap)
     return ws.perm

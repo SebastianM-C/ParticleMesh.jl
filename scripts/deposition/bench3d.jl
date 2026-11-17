@@ -70,13 +70,12 @@ function measure(::Type{T}, n, ppc) where {T}
     wr === nothing || timed!(() -> PMC.sort_by_cell!(s, grid, wr), "engine sort_by_cell!, workspace with append"; setup = () -> restore!(s, U))
     timed!(() -> PMC.sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
     timed!("engine sort: keys and sortperm! alone"; setup = () -> restore!(s, U)) do
-        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(PMC.capacity(s));
-                                                           ndrange = PMC.capacity(s))
+        engine_keys!(ws, s, grid)
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = wsp)
     end
     if wanted("engine sort: keys, sort!")                         # the permutation from a plain sort of the keys (they end in the slot)
         restore!(s, U)
-        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(PMC.capacity(s)); ndrange = PMC.capacity(s))
+        engine_keys!(ws, s, grid)
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = wsp)
         perm0 = Array(ws.perm)
         for (alg, tag) in (BE isa CPU ? ((PMC.AK.Auto(), "the default sort"),) : ((PMC.AK.MergeSort(), "merge sort"), (PMC.AK.RadixSort(), "radix sort")))

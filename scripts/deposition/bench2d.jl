@@ -7,7 +7,8 @@
 # give the sorted state every deposition variant is timed on, and one further push the unsorted
 # state (with the segments of the sort before it) that the sorts are timed on, the engine's sort
 # from the last order (`resort_by_cell!`, WP-041) among them where the engine has it, with the full
-# sort in that sort's workspace (its gather is another one). Each time is the least of 9 calls,
+# sort in that sort's workspace (its gather is another one), and the engine's deposition and sort by
+# nearest-node bins (WP-041) where the engine has them. Each time is the least of 9 calls,
 # with the device waited for. Every variant is compared with the engine on the
 # same state before it is timed (the incremental sort bitwise, the depositions to roundoff), and
 # the differences are in the output. Writes `bench2d.json`, `tables.md` and a manifest into
@@ -56,9 +57,12 @@ function push_once!(st)
     return st
 end
 
+"The module's numerics with the sort by cell, which every prototype here assumes; the engine's nearest-node bins (WP-041) have rows of their own."
+numerics(mode) = :node_bins in fieldnames(EMNumerics) ? EMNumerics(; mode, node_bins = false) : EMNumerics(; mode)
+
 function final_state(x, size, mode)
     prob = wake_problem(x...; SIZES[size]...)
-    st = EMState(prob, EMNumerics(; mode); backend = BE, record = ())
+    st = EMState(prob, numerics(mode); backend = BE, record = ())
     initialize!(st, prob)
     run!(st, params(prob), prob.nsteps)
     return st
@@ -109,9 +113,21 @@ function measure(size, label, x)
     restore!(s, V)
     variant!(a -> PMC._deposit_flux_2d!(Reference(), a..., s, shape, stg, grid, ws, sx, qz, nothing), "engine: patch + reduce")
     M = PMC.flux_widths(shape, stg)
+    frame = has_bins() ? (PMC.CellFrame(),) : ()                  # the patch kernel takes the bins' frame where the engine has bins
     timed!("engine: patch kernel alone") do
-        PMC.item_launcher(PMC.flux_patch_2d_kernel!, BE, nothing)(ws.flux_patch, s, seg..., shape, stg, n, sx, qz, ws.flux_layout, Val(prod(M));
-                                                                  ndrange = prod(n))
+        PMC.item_launcher(PMC.flux_patch_2d_kernel!, BE, nothing)(ws.flux_patch, s, seg..., shape, stg, frame..., n, sx, qz, ws.flux_layout,
+                                                                  Val(prod(M)); ndrange = prod(n))
+    end
+    if has_bins()
+        # the engine's nearest-node bins: of the flux's shape and stagger on both axes (a periodic box), and with the cell on x, as
+        # the module bins the species of a moving window; each on a copy of the state sorted by its bins
+        for (tag, bins) in ((", node bins", PMC.NodeBins(shape, stg)), (", node bins on y", PMC.NodeBins(shape, (PME.cell_stagger(shape), stg[2]))))
+            wanted("engine: patch + reduce" * tag) || continue
+            sb = copy_species(s)
+            wb = Workspace(sb, grid; flux = (shape, stg), bins)
+            sort_by_cell!(sb, grid, wb)
+            variant!(a -> PMC._deposit_flux_2d!(Reference(), a..., sb, shape, stg, grid, wb, sx, qz, nothing), "engine: patch + reduce" * tag; fold = true)
+        end
     end
     variant!(a -> deposit_patch!(a, s, factored_stencil, shape, stg, grid, ws, sx, qz), "patch, factored stencil")
     variant!(a -> deposit_patch!(a, s, :split, shape, stg, grid, ws, sx, qz), "patch, one component per launch")
@@ -157,6 +173,16 @@ function measure(size, label, x)
         wr = Workspace(s, grid; append = grid.n[2] * prod(SIZES[size].ppc))
         sort_by_cell!(s, grid, wr)
     end
+    # the sort by nearest-node bins starts from its own state, sorted by those bins before the push (after a sort by cell the
+    # particles are out of the bins' order, which a sort pays for), and the state goes back to the one sorted by cell
+    wb, Ub = nothing, nothing
+    if has_bins() && wanted("engine sort_by_cell!, node bins")
+        wb = Workspace(s, grid; bins = PMC.NodeBins(shape, stg))
+        sort_by_cell!(s, grid, wb)
+        push_once!(st)
+        Ub = copy_species(s)
+        restore!(s, V)
+    end
     countV = copy(s.count)
     push_once!(st)
     U = copy_species(s)
@@ -165,15 +191,19 @@ function measure(size, label, x)
         wanted("engine resort_by_cell!") && resort_row!(time_, diff, s, grid, wr, U, segV, countV)
         timed!(() -> sort_by_cell!(s, grid, wr), "engine sort_by_cell!, workspace with append"; setup = () -> restore!(s, U))
     end
+    if wb !== nothing
+        timed!(() -> sort_by_cell!(s, grid, wb), "engine sort_by_cell!, node bins"; setup = () -> restore!(s, Ub))
+        # the same sort on the state sorted by cell before the push: what the order of the input is worth
+        timed!(() -> sort_by_cell!(s, grid, wb), "engine sort_by_cell!, node bins, from the cells' order"; setup = () -> restore!(s, U))
+    end
     timed!(() -> sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
     timed!("engine sort: keys and sortperm! alone"; setup = () -> restore!(s, U)) do
-        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(capacity(s));
-                                                           ndrange = capacity(s))
+        engine_keys!(ws, s, grid)
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = wsp)
     end
     if wanted("engine sort: keys, sort!")                         # the permutation from a plain sort of the keys (they end in the slot)
         restore!(s, U)
-        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(capacity(s)); ndrange = capacity(s))
+        engine_keys!(ws, s, grid)
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = wsp)
         perm0 = Array(ws.perm)
         for (alg, tag) in (BE isa CPU ? ((PMC.AK.Auto(), "the default sort"),) : ((PMC.AK.MergeSort(), "merge sort"), (PMC.AK.RadixSort(), "radix sort")))
