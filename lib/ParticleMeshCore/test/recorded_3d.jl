@@ -4,8 +4,8 @@
 # the launch shape from each line. SPECTRAL_RECORDED was computed on 2cfcf7a (main before the solve
 # was written over N) and E3D_RECORDED on 67db321, both in this package's test environment (the
 # committed manifest) on the CPU backend with Julia 1.13 at 1 and 4 threads (identical). The Dual
-# lines also depend on the ForwardDiff version: another one gave other bits for them, and the same
-# bits for Float32 and Float64. A change to these bits is a change of a Reference result (A4):
+# lines also depend on the versions of the environment's packages: a scratch environment resolved
+# afresh gave other bits for them, and the same bits for Float32 and Float64. A change to these bits is a change of a Reference result (A4):
 # replace the lines only when the change is intended, and say so in the PR.
 
 const SPECTRAL_RECORDED = String[
