@@ -899,8 +899,10 @@ end
     larger_buffer = ion_step_bytes(; ppc = (1, 1), capacity = 4 * 4096)
     @info "T-781 bytes per four steps" small more_atoms larger_buffer threads = Threads.nthreads()
     if Threads.nthreads() == 1
-        @test_alloc more_atoms <= small
-        @test_alloc larger_buffer <= small
+        # each step's two sorts (the plasma's and the born electrons') may each add Base's radix count buffer
+        bound = small + 4 * 2 * SORT_COUNTS_BYTES
+        @test_alloc more_atoms <= bound
+        @test_alloc larger_buffer <= bound
     end
 end
 

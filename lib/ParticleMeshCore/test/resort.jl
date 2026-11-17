@@ -130,7 +130,7 @@ end
     @test count(>(5000), s.extras.tag) > 20                    # the added particles are in
 end
 
-@testset "T-851 resort_by_cell! is the full sort without append, before a first sort, after forget_order! and below 3 cells per axis [A4, WP-041]" begin
+@testset "T-851 resort_by_cell! is the full sort without append, before a first sort, after forget_order!, on arrays other than its last sort's and below 3 cells per axis [A4, WP-041]" begin
     T = Float32
     # without append: the full sort at every call, so a species changed in any way is still sorted
     grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
@@ -161,6 +161,25 @@ end
     sort_by_cell!(x, grid, wx)
     resort_by_cell!(y, grid, wy)
     @test same_sort(x, wx, y, wy)
+    # a workspace whose last sort was of other arrays: the full sort
+    z = deepcopy(y)
+    z.cell[1] .= Int32.(mod1.(5 .* (1:600), 16))
+    zc, wz = deepcopy(z), Workspace(z, grid)
+    resort_by_cell!(z, grid, wy)
+    sort_by_cell!(zc, grid, wz)
+    @test same_sort(z, wy, zc, wz)
+    # outside the precondition (a full buffer, every particle moved 2 or 3 cells): a wrong order,
+    # but every write within the arrays (the suite runs with bounds checks; without the bound on
+    # the permutation's writes, 6 of these 24 cases write past its end)
+    g75 = PeriodicGrid((7, 5), (1 / 2, 1 / 2), 1)
+    for seed in 1:6, step in (-3, -2, 2, 3)
+        f = resort_species(Float64, (7, 5), 280, 280; seed)
+        wf = Workspace(f, g75; append = 0)
+        resort_by_cell!(f, g75, wf)
+        f.cell[1] .= Int32.(mod1.(f.cell[1] .+ step, 7))
+        resort_by_cell!(f, g75, wf)
+        @test all(in(1:280), wf.perm)
+    end
     g2 = PeriodicGrid((2, 12), (1 / 2, 1 / 2), 1)
     for k in 1:2
         c = resort_species(T, (2, 12), 300, 200; seed = k)

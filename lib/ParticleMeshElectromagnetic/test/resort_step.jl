@@ -110,3 +110,45 @@ evolved_digest(st) = foldl((h, a) -> hash(bits(a), h), evolved(st); init = UInt6
     end
     @test evolved_digest(view) == want
 end
+
+# The status, the count and the bits of the alive slots of every species (the plasma, the atoms
+# and the born electrons), and the fields' bits: what a state initialized again must repeat (its
+# free slots keep what the run before left).
+function alive_record(st)
+    fr = ParticleMeshElectromagnetic.ionization_frame(st)
+    sp = (st.species..., fr.atoms, fr.electrons)
+    rec(s) = (alive = Array(s.status) .== ParticleMeshCore.ALIVE;
+              (Array(s.status), Array(s.count), map(a -> bits(Array(a)[alive]), (s.cell..., s.offset..., s.u..., s.w))...))
+    return (map(rec, sp), map(a -> bits(Array(a)), values(st.fields)))
+end
+
+@testset "T-855 a used state initialized again, and a state and a state over other arrays stepping in turn, keep the run's bits with the sort from the last order [A4, WP-041]" begin
+    # initialize! on a state that ran, with births from the first steps on: the born electrons'
+    # workspace holds an order of electrons that initialize! removes
+    prob = ion_in_E(Float32; plasma = true, nsteps = 20)
+    p = params(prob)
+    st = EMState(prob, EMNumerics(; mode = Reference(), resort = true); backend = CPU())
+    initialize!(st, prob)
+    foreach(k -> step!(st, p, k), 1:20)
+    want = alive_record(st)
+    @test Int(ParticleMeshElectromagnetic.ionization_frame(st).electrons.count[1]) > 0   # electrons alive at the end
+    initialize!(st, prob)
+    foreach(k -> step!(st, p, k), 1:20)
+    @test alive_record(st) == want
+    # a state and a view over a copy of its earlier arrays share the workspaces: the view's steps
+    # leave them with the view's order, and the state's next sort is the full one
+    prob = ion_window(Float32; nsteps = 150)
+    p = params(prob)
+    mk() = (s = EMState(prob, EMNumerics(; mode = Reference(), resort = true); backend = CPU()); initialize!(s, prob); s)
+    ref, st = mk(), mk()
+    foreach(k -> step!(ref, p, k), 1:150)
+    local snap
+    for k in 1:100
+        step!(st, p, k)
+        k == 50 && (snap = snapshot(st, k))
+    end
+    view = ParticleMeshElectromagnetic.state_view(st, map(copy, snap.arrays))
+    foreach(k -> step!(view, p, k), 51:60)
+    foreach(k -> step!(st, p, k), 101:150)
+    @test evolved_digest(st) == evolved_digest(ref)
+end

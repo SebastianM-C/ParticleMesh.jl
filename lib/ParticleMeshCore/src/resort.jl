@@ -13,8 +13,8 @@ cell the `3^N` move counts `hist` (later the ranks), the new counts `cnt` and th
 `cum`, the new segment bounds; per slot the free flags and their running sums (the free slots go
 last in slot order); the tail of up to `append` slots behind the last sort's count, with its keys,
 its permutation, the sortperm workspace and its per-cell bounds; the scan workspaces; the alive
-count of the last sort (`sorted_count`, on the device) and whether there was one (`ordered`, on
-the host); and `spare`, a second copy of every particle array, into which both sorts gather the
+count of the last sort (`sorted_count`, on the device), whether there was one (`ordered`, on
+the host) and the status array of the species it sorted (`sorted_on`, compared by `===`); and `spare`, a second copy of every particle array, into which both sorts gather the
 whole species in one launch and from which one launch copies it back (two launches where the
 gather array by array through the shared buffers takes two per array).
 """
@@ -37,6 +37,7 @@ struct ResortScratch{MI,VI,VK,VP,AT,AC,AS,SP}
     spare::SP
     append::Int
     ordered::Base.RefValue{Bool}
+    sorted_on::Base.RefValue{Any}
 end
 
 function ResortScratch(s::Species{N}, ncell::Integer, append::Integer) where {N}
@@ -52,7 +53,7 @@ function ResortScratch(s::Species{N}, ncell::Integer, append::Integer) where {N}
     return ResortScratch(z(3^N, ncell), cnt, cum, KernelAbstractions.ones(backend, Int32, ncell), z(ncell), free, free_cum, z(1),
                          tail_key, tail_perm, tail_ak, KernelAbstractions.ones(backend, Int32, ncell), z(ncell),
                          AK.workspace(AK.accumulate!, +, cum, cnt), AK.workspace(AK.accumulate!, +, free_cum, free),
-                         map(similar, species_arrays(s)), Int(append), Ref(false))
+                         map(similar, species_arrays(s)), Int(append), Ref(false), Ref{Any}(nothing))
 end
 
 resort_bytes(::Nothing) = 0
@@ -63,21 +64,26 @@ function resort_bytes(r::ResortScratch)
     return sum(sizeof, arrays) + sum(sizeof, r.spare) + sum(p -> p === nothing ? 0 : AK.nbytes(p), plans)
 end
 
-# After a full sort: the order is known, and its count is the start of the next tail.
+# After a full sort: the order is known, of these arrays, and its count is the start of the next tail.
 note_sorted!(::Nothing, s) = nothing
 function note_sorted!(r::ResortScratch, s)
     copyto!(r.sorted_count, s.count)
     r.ordered[] = true
+    r.sorted_on[] = s.status
     return nothing
 end
+
+# Whether the workspace holds the order of its last sort of these arrays (host values only).
+knows_order(r::ResortScratch, s) = r.ordered[] && r.sorted_on[] === s.status
 
 """
     forget_order!(ws::Workspace) -> ws
 
 Forget the order of the workspace's last sort, so that its next [`resort_by_cell!`](@ref) is the
 full sort: for a caller that wrote the species' arrays other than by the moves and appends that
-`resort_by_cell!` takes (a restart from saved arrays, a state over other arrays). A host flag;
-nothing for a workspace without append scratch.
+`resort_by_cell!` takes (a restart from saved arrays into the same arrays, a reload). A host
+flag; nothing for a workspace without append scratch. Arrays other than those of its last sort
+need no call: `resort_by_cell!` compares them (`===`) and sorts them in full.
 """
 forget_order!(ws::Workspace) = (forget_order!(ws.resort); ws)
 forget_order!(::Nothing) = nothing
@@ -99,8 +105,8 @@ increasing order, axis 1 fastest.
 end
 
 # The bin `1:3^N` of a move from cell `c` to cell `cn`, each axis' step -1, 0, 1 as 0, 1, 2 (axis 1
-# fastest). A larger move is outside the precondition; it is clamped into the bins, so that it
-# cannot write out of bounds.
+# fastest). A larger move is outside the precondition; it is clamped into the bins, and the
+# permutation's writes are bounded, so that it cannot write out of bounds (it gives a wrong order).
 @inline function resort_bin(c::NTuple{N,Int32}, cn::NTuple{N,Int32}, n::NTuple{N,Int32}) where {N}
     k = Int32(1)
     for d in 1:N
@@ -204,7 +210,8 @@ end
             k = resort_bin(c, cn, n)
             r = hist[k, Ls]
             hist[k, Ls] = r + Int32(1)
-            perm[new_start[linear_cell(cn, n)] + r] = Int(i)
+            p = new_start[linear_cell(cn, n)] + r
+            1 <= p <= length(perm) && (perm[p] = Int(i))   # always, within the precondition
         end
     end
 end
@@ -219,7 +226,8 @@ end
         L = key[j] ÷ append + 1
         if L <= ncell
             ntail = tail_stop[L] - tail_start[L] + Int32(1)
-            perm[new_start[L] + cnt[L] - ntail + (Int32(q) - tail_start[L])] = Int(sorted_count[1]) + j
+            p = new_start[L] + cnt[L] - ntail + (Int32(q) - tail_start[L])
+            1 <= p <= length(perm) && (perm[p] = Int(sorted_count[1]) + j)
         end
     end
 end
@@ -243,8 +251,10 @@ and placed after each cell's others; the arrays then move by `sort_by_cell!`'s g
 is per cell and per tail slot, where `sort_by_cell!` sorts a key per slot.
 
 It is `sort_by_cell!` itself for a workspace built without `append` (`Workspace(species, grid;
-append)`), without a sort of `species` with `ws` before (`sort_by_cell!` or `resort_by_cell!`),
-and with fewer than 3 cells on an axis; that choice is made on the host from host values and
+append)`), without a sort of `species` with `ws` as the last sort of `ws` (`sort_by_cell!` or
+`resort_by_cell!`; the same arrays, compared by `===`, so a workspace shared by two states over
+different arrays that step in turn sorts each in full), after [`forget_order!`](@ref), and with
+fewer than 3 cells on an axis; that choice is made on the host from host values and
 reads no device data (§0.4).
 
 Preconditions, not detected: since the last sort, every particle alive then has moved by less
@@ -257,7 +267,7 @@ sort is the full one.
 """
 function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; workgroupsize = nothing) where {N}
     r = ws.resort
-    (r !== nothing && r.ordered[] && all(>=(3), grid.n)) || return sort_by_cell!(s, grid, ws; workgroupsize)
+    (r !== nothing && knows_order(r, s) && all(>=(3), grid.n)) || return sort_by_cell!(s, grid, ws; workgroupsize)
     check_workspace(ws, s, grid)
     backend = get_backend(s)
     cap = capacity(s)

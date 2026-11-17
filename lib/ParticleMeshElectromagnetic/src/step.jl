@@ -501,6 +501,7 @@ function initialize!(st::EMState{N}, p::EMParams; momenta_at::Symbol = :t0, dens
     (; numerics, grid) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
+    foreach(forget_order!, deposited_workspaces(st))     # a state that ran before: its sorts' orders are of other particles
     for (i, (s, ps, setup)) in enumerate(zip(st.species, p.species, st.setup))
         fill!(s.status, ParticleMeshCore.FREE)
         window === nothing || (load_window_species!(window, i, s, grid, wgs, window_load(setup, ps, p), setup.name); continue)

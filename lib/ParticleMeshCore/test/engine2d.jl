@@ -449,6 +449,8 @@ end
         for name in ("sort", "reference", "fast", "gather", "fill", "fold", "load")
             small = bytes[(name, (16, 12), (2, 3))]
             sort_allocates = name == "sort" && Threads.nthreads() > 1
+            # One task: Base's radix count buffer, bounded whatever the size (`SORT_COUNTS_BYTES`).
+            small += name == "sort" && !sort_allocates ? SORT_COUNTS_BYTES : 0
             @test_alloc bytes[(name, (16, 12), (4, 6))] <= small broken = sort_allocates
             @test_alloc bytes[(name, (32, 24), (2, 3))] <= small broken = sort_allocates
         end
