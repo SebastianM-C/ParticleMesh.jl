@@ -25,7 +25,7 @@ include(joinpath(@__DIR__, "problem.jl"))
 
 "The scan's range in a₀ as a box of problem.jl: one parameter, z = a₀/2."
 const BORN_BOX = (lo = [1.5], hi = [2.4], scale = [2.0])
-const RUN = (a0 = 1.65, scan = 13, fine = 33, fine_step = 2.0^-12, fd_powers = 3:2:17, series_every = 5.0)
+const RUN = (a0 = 1.9, scan = 13, fine = 33, fine_step = 2.0^-12, fd_powers = 3:2:17, series_every = 5.0)
 
 plain(s::NamedTuple) = Dict{String,Any}(string(k) => v for (k, v) in pairs(s))
 
@@ -106,6 +106,8 @@ function main(ppl)
     check("the base run traps born electrons", last_row["fast_counted"] > 0.2 * born_total, "trapped weight $(last_row["fast_counted"]) of $(born_total) born")
     check("the trapped electrons are where the position weight is 1", last_row["fast_counted"] >= (1 - 1e-3) * last_row["fast"],
           "trapped and counted $(last_row["fast_counted"]), trapped $(last_row["fast"])")
+    check("the plasma does not inject itself in the base run", last_row["plasma_fast_window"] == 0,
+          "plasma weight above $(BCASE.u_fast) mₑc² in the whole window $(last_row["plasma_fast_window"]), highest plasma energy $(last_row["plasma_peak_window"])")
     save()
 
     # 2. The scan in a₀, through the Optimization.jl problem (z = a₀/2).
