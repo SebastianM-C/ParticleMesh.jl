@@ -298,7 +298,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
     species = map(problem.species) do d
         Species(backend, T, n * d.ppc; q = d.charge, m = d.mass, extras = (old_cell = Int32, old_offset = T))
     end
-    ws = map(s -> Workspace(s, grid; append = sort_append(numerics, 0)), species)
+    ws = map(s -> Workspace(s, grid; append = sort_append(numerics, 0), bins = sort_bins(numerics, Val(1))), species)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = numerics.workgroupsize, every,
                                record)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
@@ -312,6 +312,10 @@ deposit_mode(st::EMState, s) = effective_mode(st.numerics.mode, eltype(s))
 # The `append` of a species' workspace: the most particles added behind its count between two
 # sorts (`resort_by_cell!`'s tail), or `nothing` for the full sort of every step.
 sort_append(numerics::EMNumerics, k::Integer) = numerics.resort ? Int(k) : nothing
+
+# The bins of a species' sort (`EMNumerics(; node_bins)`): the first node of the particles' stencil
+# with the numerics' shape and ρ's stagger, or the cell.
+sort_bins(numerics::EMNumerics, ::Val{N}) where {N} = numerics.node_bins ? NodeBins(numerics.shape, ntuple(_ -> RHO_STAGGER, Val(N))) : CellBins()
 sorts(st::EMState, s) = deposit_mode(st, s) isa Reference
 
 "Deposit the kinetic energy density at the current momenta into `st.K` (positions sorted if the mode needs it)."

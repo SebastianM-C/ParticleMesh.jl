@@ -1,4 +1,5 @@
-# WP-041: the step's sort from the order of the last sort (`EMNumerics(; resort)`), T-852.
+# WP-041: the step's sort from the order of the last sort (`EMNumerics(; resort)`), T-852 to T-855;
+# the deposition by nearest-node bins (`EMNumerics(; node_bins)`), T-865.
 
 """
     resort_digests(T; resort, mode, nsteps) -> Vector{UInt64}
@@ -41,12 +42,12 @@ end
 end
 
 # Whether the slots up to the count of a workspace's last sort hold alive particles each inside
-# its cell's segment: the sorted state that the window's refill and the next sort start from.
+# its bin's segment (its cell's, for `CellBins()`): the sorted state that the window's refill and the next sort start from.
 function sorted_state(s, ws, n)
     m = Int(ws.resort.sorted_count[1])
     return all(1:m) do i
         s.status[i] == ParticleMeshCore.ALIVE || return false
-        L = ParticleMeshCore.linear_cell(ntuple(d -> s.cell[d][i], 2), Int32.(n))
+        L = ParticleMeshCore.linear_cell(ParticleMeshCore.particle_bin(ws.bins, s, i, Int32.(n)), Int32.(n))
         return ws.seg_start[L] <= i <= ws.seg_stop[L]
     end
 end
@@ -153,4 +154,45 @@ end
     foreach(k -> step!(view, p, k), 51:60)
     foreach(k -> step!(st, p, k), 101:150)
     @test evolved_digest(st) == evolved_digest(ref)
+end
+
+"""
+    node_bins_gap(T; nsteps) -> (worst, gaps, shifts, nborn)
+
+`ion_window`'s Reference run with `EMNumerics(; node_bins)` on and off: per field array, the largest
+|on − off| over `eps(T)·max|off|` after `nsteps` steps, and the largest of them.
+"""
+function node_bins_gap(::Type{T}; nsteps = 150) where {T}
+    prob = ion_window(T; nsteps)
+    p = params(prob)
+    sts = map((true, false)) do nb
+        st = EMState(prob, EMNumerics(; mode = Reference(), node_bins = nb); backend = CPU())
+        initialize!(st, prob)
+        st
+    end
+    nborn = 0
+    for k in 1:nsteps
+        foreach(st -> step!(st, p, k), sts)
+        nborn = max(nborn, born(sts[1]).n)
+    end
+    on, off = sts
+    gaps = Dict{Symbol,Float64}()
+    for f in fieldnames(typeof(off.fields))
+        y = getfield(off.fields, f)
+        y isa AbstractArray || continue
+        m = Float64(maximum(absmax, y))
+        m > 0 && (gaps[f] = Float64(maximum(absdiff.(getfield(on.fields, f), y))) / (base_eps(T) * m))
+    end
+    return maximum(values(gaps)), gaps, window_shifts(on, nsteps), nborn
+end
+
+@testset "T-865 the step's deposition by nearest-node bins follows the cells' run to roundoff through the window's shifts and the births [A2, A4, WP-041]" begin
+    C = emC("T-865")
+    for T in (Float32, Float64, D3)
+        worst, gaps, shifts, nborn = node_bins_gap(T)
+        @test shifts > 40 && nborn > 0                   # the run refills and gives births
+        @test haskey(gaps, :Jx) && haskey(gaps, :Ex)     # the plasma carries current and a wake
+        @test record!("T-865", T, worst) <= C
+        @test worst > 0                                  # the bins change the order of the sums
+    end
 end

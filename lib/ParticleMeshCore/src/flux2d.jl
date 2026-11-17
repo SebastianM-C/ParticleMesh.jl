@@ -60,11 +60,30 @@ Smilei do. `Fast()` adds in the particle's frame.
 struct CellFrame end
 struct ParticleFrame end
 
-@inline axis_frame(::CellFrame, shape, stagger, c, δ, c0, δ0, n) = flux_axis_weights(shape, stagger, c, δ, c0, δ0, n)
-@inline axis_frame(::ParticleFrame, shape, stagger, c, δ, c0, δ0, n) = flux_axis_frame(shape, stagger, c, δ, c0, δ0, n)
+"""
+    BinFrame(bins)
+
+The node range of a particle's 2D flux stencil per axis in the frame of its bin (`NodeBins` or
+`CellBins`): the `M` nodes of `flux_bin_reach` around the bin, the same for every particle of a
+bin, which the `Reference()` patch needs. With `CellBins()` it is `CellFrame()`, the same bits; with
+`NodeBins` of the flux's shape and ρ's stagger, 5 nodes per axis at order 2 on nodes where the cell's
+frame has 6.
+"""
+struct BinFrame{B}
+    bins::B
+end
+
+@inline axis_frame(::CellFrame, shape, stagger, c, δ, c0, δ0, n, d) = flux_axis_weights(shape, stagger, c, δ, c0, δ0, n)
+@inline axis_frame(::ParticleFrame, shape, stagger, c, δ, c0, δ0, n, d) = flux_axis_frame(shape, stagger, c, δ, c0, δ0, n)
+@inline function axis_frame(fr::BinFrame, shape, stagger, c, δ, c0, δ0, n, d)
+    lo, _ = flux_bin_reach(fr.bins, shape, stagger, d)
+    h = bin_shift(fr.bins, d, δ)                                    # the bin is the cell c + h
+    return (lo, flux_axis_weights_at(shape, stagger, c, δ, c0, δ0, n, h + lo, flux_bin_width(fr.bins, shape, stagger, d))...)
+end
 
 # The prefix sums of a component along its own axis on the frame's nodes.
 @inline frame_prefix(::CellFrame, D) = prefix_sums(D)
+@inline frame_prefix(::BinFrame, D) = prefix_sums(D)
 @inline frame_prefix(::ParticleFrame, D) = Base.front(prefix_sums(D))
 
 """
@@ -101,8 +120,8 @@ the cell frame's other nodes hold zeros, and along a component's own axis the pr
     δ = particle_offset(s, i, Val(2))
     c0 = old_cell_2d(s, i)
     δ0 = old_offset_2d(s, i)
-    lo1, Wo1, Wn1 = axis_frame(frame, shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1])
-    lo2, Wo2, Wn2 = axis_frame(frame, shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2])
+    lo1, Wo1, Wn1 = axis_frame(frame, shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1], 1)
+    lo2, Wo2, Wn2 = axis_frame(frame, shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2], 2)
     D1, D2 = map(-, Wn1, Wo1), map(-, Wn2, Wo2)
     A1, A2 = map((a, b) -> (a + b) / 2, Wo1, Wn1), map((a, b) -> (a + b) / 2, Wo2, Wn2)
     @inbounds qw = s.q * s.w[i]
@@ -199,18 +218,20 @@ end
 # The Reference() path: per-cell patches, then a per-node reduction (the mechanism measured in
 # reports/wp-020-flux-2d.md against per-node recomputation and per-particle scratch).
 
-"The per-axis stencil width of the 2D flux as plain integers."
-@inline flux_widths(shape::Shape, st::NTuple{2,Stagger}) = map(s -> _valof(flux_width(shape, s)), st)
+"The per-axis stencil width of the 2D flux in the frame of a bin (`flux_bin_width`) as plain integers."
+@inline flux_widths(shape::Shape, st::NTuple{2,Stagger}, bins = CellBins()) =
+    (_valof(flux_bin_width(bins, shape, st[1], 1)), _valof(flux_bin_width(bins, shape, st[2], 2)))
 _valof(::Val{V}) where {V} = V
 
 """
-    flux_patch_values(shape, stagger::NTuple{2,Stagger})
+    flux_patch_values(shape, stagger::NTuple{2,Stagger}, bins = CellBins())
 
-Values of `T` per linear cell in the flux patch of `Workspace(species, grid; flux = (shape,
-stagger))`: `3·M₁·M₂`, three components on the `M₁ × M₂` flux stencil.
+Values of `T` per linear bin in the flux patch of `Workspace(species, grid; flux = (shape,
+stagger), bins)`: `3·M₁·M₂`, three components on the `M₁ × M₂` flux stencil of a bin
+(`flux_bin_reach`): 108 at order 2 on nodes by cell, 75 by `NodeBins` of that shape and stagger.
 """
-flux_patch_values(shape::Shape, st::NTuple{2,Stagger}) = 3 * prod(flux_widths(shape, st))
-flux_patch_values(shape::Shape, st) = throw(ArgumentError("flux scratch takes ρ's stagger pair at N = 2, got $st"))
+flux_patch_values(shape::Shape, st::NTuple{2,Stagger}, bins = CellBins()) = 3 * prod(flux_widths(shape, st, bins))
+flux_patch_values(shape::Shape, st, bins = CellBins()) = throw(ArgumentError("flux scratch takes ρ's stagger pair at N = 2, got $st"))
 
 """
     StencilMajor(), CellMajor()
@@ -247,18 +268,18 @@ flux_patch_size(::CellMajor, values, cells) = (cells, values)
 "Elementwise sum of two tuples of one length."
 @inline tuple_add(a::NTuple{K,Any}, b::NTuple{K,Any}) where {K} = ntuple(k -> a[k] + b[k], Val(K))
 
-# One work item per linear cell: its particles in slot order, each stencil entry summed from zero
+# One work item per linear bin (cell, for `CellBins()`): its particles in slot order, each stencil entry summed from zero
 # in a register tuple and written once into the cell's patch (value `k` of cell `L` at
 # `patch_index(layout, k, L)`, the three components one after the other, Jx first). An empty cell
 # writes zeros.
-@kernel function flux_patch_2d_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), shape, st, n::NTuple{2,Int32}, sx,
+@kernel function flux_patch_2d_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), shape, st, frame, n::NTuple{2,Int32}, sx,
                                        quantity_z, layout, ::Val{K}) where {K}
     L = Int32(@index(Global, Linear))
     T = eltype(patch)
     ax = ntuple(_ -> zero(T), Val(K))
     ay, az = ax, ax
     @inbounds for i in seg_start[L]:seg_stop[L]
-        _, _, (jx, jy, jz) = flux_stencil(s, i, shape, st, n, sx, quantity_z)
+        _, _, (jx, jy, jz) = flux_stencil(s, i, shape, st, n, sx, quantity_z, frame)
         ax = tuple_add(ax, jx)
         ay = tuple_add(ay, jy)
         az = tuple_add(az, jz)
@@ -270,7 +291,7 @@ flux_patch_size(::CellMajor, values, cells) = (cells, values)
     end
 end
 
-# One work item per node (guards included): the patches of the cells whose flux stencil reaches
+# One work item per node (guards included): the patches of the bins whose flux stencil reaches
 # it, in increasing column-major linear index, summed from zero.
 @kernel function flux_reduce_2d_kernel!(Jx, Jy, Jz, @Const(patch), layout, n::NTuple{2,Int32}, g::Int32, lo::NTuple{2,Int32},
                                         hi::NTuple{2,Int32}, M::NTuple{2,Int32})
@@ -298,17 +319,19 @@ function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, 
     ws.flux == (shape, st) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger, $((shape, st)); the workspace was built with flux = $(ws.flux)"))
-    need = flux_patch_values(shape, st)
+    need = flux_patch_values(shape, st, ws.bins)
     size(ws.flux_patch) == flux_patch_size(ws.flux_layout, need, prod(ncells(grid))) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger: $need values per cell in the layout $(ws.flux_layout), the workspace's patch array " *
                             "is $(size(ws.flux_patch))"))
     backend = get_backend(s)
     n = Int32.(ncells(grid))
-    M = flux_widths(shape, st)
-    r = map(x -> flux_reach(shape, x), st)
+    M = flux_widths(shape, st, ws.bins)
+    r = (flux_bin_reach(ws.bins, shape, st[1], 1), flux_bin_reach(ws.bins, shape, st[2], 2))
+    check_bin_guards(grid, r)
     lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
-    item_launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, n, sx, qz,
+    frame = ws.bins isa CellBins ? CellFrame() : BinFrame(ws.bins)
+    item_launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, frame, n, sx, qz,
                                                                  ws.flux_layout, Val(prod(M)); ndrange = prod(n))
     launcher(flux_reduce_2d_kernel!, backend, workgroupsize)(Jx, Jy, Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), lo, hi,
                                                              Int32.(M); ndrange = size(Jx))

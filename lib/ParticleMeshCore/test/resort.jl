@@ -79,20 +79,21 @@ same_sort(a, wa, b, wb) = all(same_bits(x, y) for (x, y) in zip(species_arrays(a
                           wa.perm == wb.perm && wa.seg_start == wb.seg_start && wa.seg_stop == wb.seg_stop
 
 """
-    resort_run(T, n; steps, append, wgs, seed, np, pfree, gap) -> Vector{Bool}
+    resort_run(T, n; steps, append, wgs, seed, np, pfree, gap, bins) -> Vector{Bool}
 
 Two copies of one species of `np` particles in `12·prod(n)` slots, one sorted by `sort_by_cell!`
-and one by `resort_by_cell!` with a workspace of `append`, through `steps` rounds of moves, frees
-and (every second round) `append` particles added behind the count (every `gap`-th slot left
-free, none for `gap = 0`), a fraction `pfree` freed per round; per round whether the two hold the
-same bits.
+and one by `resort_by_cell!` with a workspace of `append`, both with `bins`, through `steps` rounds
+of moves, frees and (every second round) `append` particles added behind the count (every `gap`-th
+slot left free, none for `gap = 0`), a fraction `pfree` freed per round; per round whether the two
+hold the same bits.
 """
-function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1, np = 8 * prod(n), pfree = 1 / 20, gap = 3) where {T,N}
+function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1, np = 8 * prod(n), pfree = 1 / 20, gap = 3,
+                    bins = CellBins()) where {T,N}
     cap = 3 * prod(n) * 4
     grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
     a = resort_species(T, n, cap, np; seed)
     b = deepcopy(a)
-    wa, wb = Workspace(a, grid), Workspace(b, grid; append)
+    wa, wb = Workspace(a, grid; bins), Workspace(b, grid; append, bins)
     sort_by_cell!(a, grid, wa; workgroupsize = wgs)
     resort_by_cell!(b, grid, wb; workgroupsize = wgs)          # no sort before: the full sort
     same = [same_sort(a, wa, b, wb)]

@@ -184,7 +184,7 @@ end
     Jx, Jy, Jz = fields3(T, grid)
     for (layout, patch) in ((SM, other.flux_patch), (CM, good.flux_patch))
         bad = Workspace(good.key, good.perm, good.ak, good.tmp_i32, good.tmp_T, good.tmp_u8, good.tmp_extras, good.seg_start, good.seg_stop,
-                        patch, good.flux, layout, good.resort)
+                        patch, good.flux, layout, good.resort, good.bins)
         @test_throws "values per cell in the layout" deposit_flux!(Reference(), Jx, Jy, Jz, s, Quadratic, st, grid, bad; dt = T(1 // 4), quantity_z = QZ2)
     end
 end
