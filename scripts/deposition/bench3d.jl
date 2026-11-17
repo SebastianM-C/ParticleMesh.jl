@@ -1,0 +1,148 @@
+# A 3D flux deposition and the sorts on a synthetic 3D state (the engine has no 3D flux
+# deposition; `sort_by_cell!` is generic in N):
+#
+#   julia +1.13 -t 4 --project=scripts scripts/deposition/bench3d.jl [cpu|cuda] [cells, e.g. 64x64x64] [ppc] [f32,f64,d32]
+#
+# The state is `ppc` particles per cell at random offsets, every one moved by a random
+# displacement below half a cell per axis (common.jl). The sorts are timed on the moved state
+# with the segments of the sort before the move, the depositions on the sorted state; each time
+# is the least of 7 calls with the device waited for. The variants are compared with one another
+# before they are timed (check.jl holds each to continuity on a small grid). Writes
+# `bench3d.json`, `tables.md` and a manifest into scripts/runs/deposition-bench3d-<backend>-<time>/.
+include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
+include(joinpath(@__DIR__, "common.jl"))
+
+const BACKEND_NAME = isempty(ARGS) ? "cpu" : ARGS[1]
+if BACKEND_NAME == "cuda"
+    @eval using CUDACore: CUDACore, CUDABackend
+    @eval const BE = CUDABackend()
+elseif BACKEND_NAME == "cpu"
+    const BE = CPU()
+else
+    error("bench3d.jl: the first argument is cpu or cuda, got $BACKEND_NAME")
+end
+
+const ELEMENTS = Dict("f32" => Float32, "f64" => Float64, "d32" => Dual{Nothing,Float32,3})
+type_label(::Type{T}) where {T} = T <: Dual ? "Dual{$(base_type(T)),3}" : string(T)
+
+function shuffled(s)
+    c = copy_species(s)
+    perm = randperm(Xoshiro(3), PMC.capacity(s))
+    foreach((a, b) -> copyto!(a, Array(b)[perm]), species_arrays(c), species_arrays(s))
+    return c
+end
+
+ms(t) = 1e3 * t
+
+function measure(::Type{T}, n, ppc) where {T}
+    V = base_type(T)
+    shape, stg = PMC.Quadratic, (PMC.Node(), PMC.Node(), PMC.Node())
+    grid = PMC.PeriodicGrid(n, ntuple(_ -> T(V(0.2)), 3), 3)
+    dt = T(V(0.1))
+    sx = map(h -> h / dt, grid.dx)
+    s = synthetic_species(BE, T, grid; ppc)
+    ws = PMC.Workspace(s, grid)
+    PMC.sort_by_cell!(s, grid, ws)
+    seg0 = (copy(ws.seg_start), copy(ws.seg_stop))
+    move!(s, grid; dmax = 0.5)
+    U = copy_species(s)
+    time_ = Dict{String,Any}()
+    diff = Dict{String,Any}()
+
+    # the sorts, on the moved state
+    b = IncrementalSort(s, grid)
+    time_["engine sort_by_cell!"] = ms(least(() -> PMC.sort_by_cell!(s, grid, ws), BE; reps = 7, setup = () -> restore!(s, U)))
+    restore!(s, U)
+    PMC.sort_by_cell!(s, grid, ws)
+    incremental_sort!(b, U, grid, seg0...)
+    n1 = PMC.alive_count(s)
+    diff["incremental sort"] = !(all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
+                                 Array(b.seg_start) == Array(ws.seg_start) && Array(b.seg_stop) == Array(ws.seg_stop) && PMC.alive_count(b.dst) == n1)
+    time_["incremental sort, two buffers"] = ms(least(() -> incremental_sort!(b, U, grid, seg0...), BE; reps = 7))
+    work = copy_species(U)
+    segW = map(copy, seg0)
+    time_["incremental sort, copied back"] = ms(least(() -> incremental_sort!(b, work, grid, segW...; copy_back = true), BE; reps = 7,
+                                                      setup = () -> (restore!(work, U); foreach(copyto!, segW, seg0))))
+    work = nothing
+
+    # the depositions, on the sorted state (`s`, with its segments in `ws`)
+    seg = (ws.seg_start, ws.seg_stop)
+    J = zero_fields(BE, T, grid)
+    ref = zero_fields(BE, T, grid)
+    tb4 = TileBuffers(BE, T, grid, shape, stg, 4)
+    deposit_tiles!(ref, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing)
+    function variant!(f, name)
+        a = zero_fields(BE, T, grid)
+        diff[name] = field_difference(f(a), ref)
+        time_[name] = ms(least(() -> f(J), BE; reps = 7))
+        return nothing
+    end
+    variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing), "tiles S = 4")
+    BE isa CPU && variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing; launch = PMC.item_launcher),
+                           "tiles S = 4, work-groups of one")
+    for S in (1, 2, 8)
+        bytes = 3 * (S + 5)^3 * prod(cld.(n, S)) * sizeof(T)
+        if bytes > 3 * 2^30
+            println("skipping tiles S = $S: its buffers would take $(round(bytes / 2^30; digits = 1)) GiB")
+            continue
+        end
+        tb = TileBuffers(BE, T, grid, shape, stg, S)
+        variant!(a -> deposit_tiles!(a, tb, s, MinFrame(), shape, stg, grid, seg..., sx, nothing), "tiles S = $S")
+    end
+    for S in (5, 8)
+        variant!(a -> deposit_coloured!(a, s, MinFrame(), shape, stg, grid, seg..., sx, nothing, S), "coloured tiles S = $S")
+        BE isa CPU && S == 8 &&
+            variant!(a -> deposit_coloured!(a, s, MinFrame(), shape, stg, grid, seg..., sx, nothing, S; launch = PMC.item_launcher),
+                     "coloured tiles S = $S, work-groups of one")
+    end
+    if T <: AbstractFloat
+        variant!(a -> deposit_atomic!(a, s, MinFrame(), shape, stg, grid, sx, nothing), "atomics 4 × 4 × 4, sorted particles")
+        variant!(a -> deposit_atomic!(a, s, CellFrame(), shape, stg, grid, sx, nothing), "atomics 6 × 6 × 6, sorted particles")
+        let r = shuffled(s)
+            variant!(a -> deposit_atomic!(a, r, MinFrame(), shape, stg, grid, sx, nothing), "atomics 4 × 4 × 4, shuffled particles")
+            variant!(a -> deposit_atomic!(a, r, CellFrame(), shape, stg, grid, sx, nothing), "atomics 6 × 6 × 6, shuffled particles")
+        end
+    end
+    return Dict{String,Any}("T" => type_label(T), "cells" => collect(n), "ppc" => ppc, "alive" => n1, "capacity" => PMC.capacity(s),
+                            "ms" => time_, "difference" => diff)
+end
+
+fmt(x) = x >= 100 ? string(round(Int, x)) : x >= 10 ? string(round(x; digits = 1)) : x >= 1 ? string(round(x; digits = 2)) : string(round(x; sigdigits = 2))
+
+function table(rows)
+    io = IOBuffer()
+    r1 = first(rows)
+    println(io, "$(join(r1["cells"], " × ")) cells, $(r1["ppc"]) particles per cell, $(r1["alive"]) particles. Milliseconds per call (nanoseconds per particle).\n")
+    println(io, "| | ", join(("`$(r["T"])`" for r in rows), " | "), " |")
+    println(io, "|---|", join(("---" for _ in rows), "|"), "|")
+    for name in sort(unique(vcat((collect(keys(r["ms"])) for r in rows)...)))
+        println(io, "| ", name, " | ", join((haskey(r["ms"], name) ? "$(fmt(r["ms"][name])) ($(fmt(1e6 * r["ms"][name] / r["alive"])))" : "" for r in rows), " | "), " |")
+    end
+    return String(take!(io))
+end
+
+function main()
+    n = length(ARGS) >= 2 ? Tuple(parse.(Int, split(ARGS[2], "x"))) : (32, 32, 32)
+    ppc = length(ARGS) >= 3 ? parse(Int, ARGS[3]) : 8
+    elements = length(ARGS) >= 4 ? split(ARGS[4], ",") : ["f32", "f64", "d32"]
+    gpu = BACKEND_NAME == "cuda" ? CUDACore.name(CUDACore.device()) : nothing
+    extra = gpu === nothing ? Dict{String,Any}() : Dict{String,Any}("gpu" => gpu, "cudacore" => string(pkgversion(CUDACore)))
+    dir = run_dir("bench3d-$BACKEND_NAME", @__FILE__; prefix = "deposition", work_package = "deposition study",
+                  backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
+                  params = Dict{String,Any}("cells" => collect(n), "ppc" => ppc, "elements" => collect(String, elements)),
+                  extra_inputs = [joinpath(@__DIR__, "proto.jl"), joinpath(@__DIR__, "common.jl")], extra)
+    rows = Dict{String,Any}[]
+    for e in elements
+        push!(rows, measure(ELEMENTS[e], n, ppc))
+        println(table(rows[end:end]))
+        bad = filter(((k, v),) -> v isa Bool ? v : v > (occursin("32", rows[end]["T"]) ? 1e-3 : 1e-10), rows[end]["difference"])
+        isempty(bad) || println("DIFFERENCES ABOVE ROUNDOFF: ", bad)
+        open(io -> JSON.print(io, Dict("rows" => rows, "threads" => Threads.nthreads(), "cpu" => cpu_model(), "gpu" => gpu, "backend" => BACKEND_NAME), 2),
+             joinpath(dir, "bench3d.json"), "w")
+    end
+    write(joinpath(dir, "tables.md"), table(rows))
+    println("wrote ", relpath(dir, REPO))
+    return dir
+end
+
+Base.invokelatest(main)
