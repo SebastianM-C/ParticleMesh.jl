@@ -212,8 +212,8 @@ end
     end
 end
 
-"A GPU backend type for T-890: `key_sort_alg` reads only the backend's type."
-struct KeySortFakeGPU <: KernelAbstractions.GPU end
+"A non-CPU backend type for T-890: `key_sort_alg` reads only the backend's type."
+struct KeySortFakeGPU <: KernelAbstractions.Backend end
 
 @testset "T-890 the key sort's algorithm is radix sort on a GPU backend from 2^20 slots and AcceleratedKernels' Auto otherwise, and an explicit one gives the default's bits [A4, WP-041]" begin
     AK = ParticleMeshCore.AK

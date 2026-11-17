@@ -53,13 +53,13 @@ end
 """
     key_sort_alg(backend, capacity)
 
-The algorithm that sorts a workspace's `Int64` keys: `AK.RadixSort()` on a GPU backend from
+The algorithm that sorts a workspace's `Int64` keys: `AK.RadixSort()` on any backend but the CPU from
 `2^20` slots, AcceleratedKernels' `AK.Auto()` otherwise. `Auto()` switches to radix sort for
 64-bit keys only from `2^23` elements on CUDA (AcceleratedKernels 0.5); on an RTX 5090 radix sort
 of keys built like these is already 1.2× faster at `2^20`, 1.6× at `2^22` and 2.2× at `2^23`, and
 on smaller arrays the two are within a few percent. The CPU backend keeps `Auto()`, whose radix sort is a GPU kernel.
 """
-key_sort_alg(backend, cap::Integer) = backend isa KernelAbstractions.GPU && cap >= (1 << 20) ? AK.RadixSort() : AK.Auto()
+key_sort_alg(backend, cap::Integer) = !(backend isa KernelAbstractions.CPU) && cap >= (1 << 20) ? AK.RadixSort() : AK.Auto()
 
 function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
                    flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins(),
