@@ -12,7 +12,9 @@
 #   fused_swap64   one launch gathers every array into a second set, no copy back, `Int64` permutation
 #   fused_swap32   the same with an `Int32` permutation
 # and the sorts: `sort_by_cell!` (key sort, gather, segments) and `resort_by_cell!` (from the
-# order of the last sort), both with the engine's default gather.
+# order of the last sort), both with the engine's default gather of the tree the script runs in
+# (`sort_by_cell_noswap` and `resort_by_cell_noswap`: with `Workspace(; swap = false)` where the
+# tree has that keyword).
 #
 # The state: a species sorted by nearest-node bins (order 2, `Node()` on both axes, the module's
 # default), 16 particles per cell, the last 3 % of the slots free, then 30 % of the alive
@@ -118,8 +120,8 @@ function bench(sizename, tname; reps)
     saved = map(copy, gather_arrays(s))
     ws = Workspace(s, grid; bins, append = 0)
     sort_by_cell!(s, grid, ws)                     # ws.perm: this step's permutation
-    perm64 = copy(ws.perm)
-    perm32 = similar(perm64, Int32); copyto!(perm32, Int32.(Array(perm64)))
+    perm32 = similar(ws.perm, Int32); copyto!(perm32, Int32.(Array(ws.perm)))
+    perm64 = similar(ws.perm, Int64); copyto!(perm64, Int64.(Array(ws.perm)))
     a = gather_arrays(s)
     spare = map(similar, a)
     tmp = Dict(E => similar(s.w, E, cap) for E in unique(map(eltype, a)))
@@ -171,6 +173,11 @@ function bench(sizename, tname; reps)
     end
     out["sort_by_cell"] = time_sort(() -> sort_by_cell!(s, grid, ws))
     out["resort_by_cell"] = time_sort(() -> resort_by_cell!(s, grid, ws))
+    if :swap in Base.kwarg_decl(only(methods(Workspace, (typeof(s), typeof(grid)))))
+        ws = Workspace(s, grid; bins, append = 0, swap = false)
+        out["sort_by_cell_noswap"] = time_sort(() -> sort_by_cell!(s, grid, ws))
+        out["resort_by_cell_noswap"] = time_sort(() -> resort_by_cell!(s, grid, ws))
+    end
     out["particles"] = cap
     out["bytes_per_slot"] = sum(x -> sizeof(eltype(x)), a)
     return out
@@ -178,14 +185,15 @@ end
 
 function main()
     reps = BACKEND_NAME == "cuda" ? 30 : 7
-    forms = ("per_array", "fused_copy", "per_array_swap", "fused_swap64", "fused_swap32", "sort_by_cell", "resort_by_cell")
+    forms = ("per_array", "fused_copy", "per_array_swap", "fused_swap64", "fused_swap32", "sort_by_cell", "resort_by_cell",
+             "sort_by_cell_noswap", "resort_by_cell_noswap")
     results = Dict{String,Any}()
     println("| size | type | slots | B/slot | ", join(forms, " | "), " |")
     println("|", repeat("---|", 4 + length(forms)))
     for sz in SIZE_LIST, tn in TYPE_LIST
         r = bench(sz, tn; reps)
         results["$sz/$tn"] = r
-        println("| $sz | $tn | $(r["particles"]) | $(r["bytes_per_slot"]) | ", join((string(round(r[f]; digits = 3)) for f in forms), " | "), " |")
+        println("| $sz | $tn | $(r["particles"]) | $(r["bytes_per_slot"]) | ", join((haskey(r, f) ? string(round(r[f]; digits = 3)) : "-" for f in forms), " | "), " |")
     end
     dir = run_dir("gather-$BACKEND_NAME", @__FILE__; prefix = "sort", work_package = "WP-041",
                   params = Dict{String,Any}("sizes" => SIZE_LIST, "types" => TYPE_LIST, "ppc" => PPC, "moved" => MOVED,
