@@ -790,3 +790,42 @@ scale = "((n₁ + n₂)·max|ρ| + (2/Δx + 2/Δy)·max|E|)·√(k + 1): T-360's
 C = 1
 measured = { Float32 = 0.0811, Float64 = 0.119, "Dual{Float32,3}" = 0.0811, "RTX 2000 Ada, Float32" = 0.105, "RTX 2000 Ada, Float64" = 0.184 }
 status = "proposed; on the charge's scale alone the residual is 3 to 4 eps, the roundoff of differencing the field"
+
+["T-821"]
+quantity = "the Tong–Lin level built from an ionization energy and a wavelength (scripts/ionization/atomic.jl, α of tong_lin.toml) against the MCTDHF static-field rates of helium-like ions of Lötstedt, Ciappina and Yamanouchi (Phys. Rev. A 102, 013112, supplementary table), He, Li⁺, N⁵⁺, O⁶⁺, Ne⁸⁺ and Ar¹⁶⁺: |W/W_ref − 1| for fields from 0.7 to 1.75 of the barrier's field E_bs (rate), below (rate_below, down to 0.43 E_bs) and above (rate_above, up to 2.9 E_bs for He); and the least ratio of the ADK rate without the factor to the reference from 0.95 E_bs on (adk_over_min)"
+scale = "relative (an empirical fit against another method's rates, not a roundoff bound)"
+rate = 0.15
+rate_below = 0.35
+rate_above = 0.55
+adk_over_min = 1.8
+measured = { "0.7 to 1.75 E_bs" = 0.119, "below 0.7 E_bs" = 0.314, "above 1.75 E_bs" = 0.479, "least ADK/reference from 0.95 E_bs" = 1.91 }
+status = "proposed; the reference's own numerical accuracy is not stated in the file; the paper gives about 10 % for the fitting formula against it"
+
+["T-822"]
+quantity = "a chain of three levels of three types (one defined in the tests, a Tong–Lin level, an ADK level) in a constant field: the bound populations against the per-step recurrence computed on the host with each level's own rate, after each of 12 steps, value and partials"
+scale = "k·eps(T) after k steps (populations of order one)"
+C = 4
+measured = { Float32 = 0.0833, Float64 = 0.0, "Dual{Float32,3}" = 0.0833 }
+status = "proposed; T-772's bound"
+
+["T-823"]
+quantity = "one Tong–Lin level in a constant prescribed field, 20 steps, born every 3: the atoms' bound population against exp(−W·n·Δt) with W = prefactor·6·exp(−2 − suppression/6) (measured) and the born electrons' weights against the released fraction (measured_weights), value and the partials in the density, the prefactor and the suppression"
+scale = "n·eps(T)·max(|value|, |partials|) of the closed form, n the steps"
+C = 2
+measured = { Float32 = 0.14, Float64 = 0.0468, "Dual{Float32,3}" = 0.139 }
+measured_weights = { Float32 = 0.127, Float64 = 0.0927, "Dual{Float32,3}" = 0.136 }
+status = "proposed; T-771's bound"
+
+["T-825"]
+quantity = "ForwardDiff against the finite-difference floor of A7 (fd_scan, Float64, Reference): the born charge and the born electrons' kinetic energy of the small ionization-injection run (ion_window, 110 steps) with a Tong–Lin level, in a₀ and the level's suppression: rel/floor at the minimising step (C) and the floor itself (floor_max); the Dual{Float32,3} partials and primal against the Float64 ones, largest relative difference (dual)"
+scale = "the measured floor; relative for the Dual{Float32,3} comparison (Float32 against Float64 after 110 steps)"
+C = 4
+floor_max = 1e-6
+dual = 1e-5
+measured_charge = { a0 = 0.234, suppression = 0.834 }
+measured_energy = { a0 = 0.0274, suppression = 0.0843 }
+measured_floor_charge = { a0 = 9.43e-11, suppression = 5.55e-11 }
+measured_floor_energy = { a0 = 5.48e-10, suppression = 9.42e-11 }
+measured_dual = { charge = 8.54e-7, energy = 9.52e-7 }
+measured_dual_primal = { charge = 2.08e-7, energy = 9.45e-7 }
+status = "proposed; T-778's and T-779's bounds"

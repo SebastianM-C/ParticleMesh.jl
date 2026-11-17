@@ -1,0 +1,96 @@
+backend = "KernelAbstractions CPU"
+commit = "176b369e5593b6e086255ae334417ea785d50024"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = false
+julia = "1.13.4"
+run_id = "ionization-barrier-suppression-20261117T011420"
+threads = 4
+updated = "2026-11-17T01:14:21.011Z"
+work_package = "WP-063"
+
+[inputs]
+"Manifest.toml" = "sha256:01778a789e836f1843cfd9c04157a18bd44bea134dae4ee9c891fa72f08989a3"
+"lib/ParticleMeshCore/src/ParticleMeshCore.jl" = "sha256:1de5e8c8b389ccb2b1283cebcbaf5b2b44b26899d627229bade1c78c6e9f7468"
+"lib/ParticleMeshCore/src/flux.jl" = "sha256:f648236cbfa327c335feb86b72844a8c82dec6060fd94f3223b878268fb365f5"
+"lib/ParticleMeshCore/src/flux2d.jl" = "sha256:31b961198a6cc9be625b30580a17f263c16e2863c466331b4fc25644dfa17134"
+"lib/ParticleMeshCore/src/grid.jl" = "sha256:0b9d9e800aa8187d39a03af8b4d2cafcbb1f6209303ef4c2f0c8c77bc42eac9a"
+"lib/ParticleMeshCore/src/guards.jl" = "sha256:729765cb14534dcb484e183069b2f25c3b0f2a2ef64476ce38db26cf35d58081"
+"lib/ParticleMeshCore/src/launch.jl" = "sha256:99255fee7b06fe7bbe1fee45ac69ae69b2b6c49fe62342e14aa4b001cc6482dd"
+"lib/ParticleMeshCore/src/loading.jl" = "sha256:fcfea20a72f1804a2e715395f847a1a0e34db64a16f773d9b9c4c3c9e337651a"
+"lib/ParticleMeshCore/src/mesh_ops.jl" = "sha256:148de47341cba831e4f1bc86857e81e0a83f32c1af18a966cb111f37e25ebaa5"
+"lib/ParticleMeshCore/src/momenta.jl" = "sha256:4337198f17854d7227053b83b0b9a6e0ac3fc33a9782f156ee3d543b9df40633"
+"lib/ParticleMeshCore/src/philox.jl" = "sha256:1e1a94494624b5ff8f12961d30a4594239b6a7c4b173b77d115ccf91feaabeed"
+"lib/ParticleMeshCore/src/shapes.jl" = "sha256:a568caeb820ed2b58247d9a3ec03a853926e431517137cfd613e54691bad4f11"
+"lib/ParticleMeshCore/src/sort.jl" = "sha256:c737dc34e770336a328098d6a3b1f35ac19cd4ca89092f53c6451dfb06372915"
+"lib/ParticleMeshCore/src/species.jl" = "sha256:46dab7661d587d436dc2eaed93a45b928a9bc479155bab52fb0223ec3be96ae5"
+"lib/ParticleMeshCore/src/spectral.jl" = "sha256:021acb29a6e832c53292884c44da8ad2afc745c91c96282176cc018df0b0a8f2"
+"lib/ParticleMeshCore/src/transfers.jl" = "sha256:d9af2f3c99130c2dc2655aec6a810078551b7234b2b2671d054347e0ef02865c"
+"lib/ParticleMeshElectromagnetic/src/ParticleMeshElectromagnetic.jl" = "sha256:1151b764bc18be5cf37d558ccd4f2de9fb3deaaba8a2597c11ddf658830c677c"
+"lib/ParticleMeshElectromagnetic/src/antenna.jl" = "sha256:eb46da675194e1d8ac68c056e775c9ea0535adc9e3fb7d947fa8504b202f5caa"
+"lib/ParticleMeshElectromagnetic/src/boundaries.jl" = "sha256:30b3596f66e53b0b08e53a4104840d8d046cf7d7c12bedf8982f35b9ebffbc8e"
+"lib/ParticleMeshElectromagnetic/src/diagnostics.jl" = "sha256:4a94ea6087d49fc56f675d87768b4b901eb273f12567a38448b086707f7df807"
+"lib/ParticleMeshElectromagnetic/src/filter.jl" = "sha256:24970a85fe208b2eebdb8da06e47e30c765e8d924cba8fe7f49b2bb6ace159b3"
+"lib/ParticleMeshElectromagnetic/src/harness.jl" = "sha256:c1beb256d8f85ecc03894c36c0ca2629826e4f5ba5629a41576c8330cfb21dad"
+"lib/ParticleMeshElectromagnetic/src/ionization.jl" = "sha256:5d36b6437b447cc09d65e2858efca363f8e5a0b100596307f8ca7c5eb277b593"
+"lib/ParticleMeshElectromagnetic/src/layout.jl" = "sha256:9de140ea1414c6dbb181ce71c2ef54d68b492a6c741bf3a9159674f309a30a34"
+"lib/ParticleMeshElectromagnetic/src/modifiers.jl" = "sha256:83b412a08030959dc97a45ce7832e5b2098cc959aa65399e476cad6a7554f34f"
+"lib/ParticleMeshElectromagnetic/src/pml.jl" = "sha256:b3b1d81060dfa59bd3c47852ae98da68cd38c3a6627440bb458592269cdc9517"
+"lib/ParticleMeshElectromagnetic/src/problem.jl" = "sha256:8e50fef46def8d912fe051dadf0486fa62698b24f9b4678ca7e41659fa643a20"
+"lib/ParticleMeshElectromagnetic/src/pushers.jl" = "sha256:1b29eb7c0b826f74bd99e980445be361f2d4669a1a9934356a45a365bbee5e94"
+"lib/ParticleMeshElectromagnetic/src/restart.jl" = "sha256:e824bcf402f22bf363d417563424020e1d6ceecd469903abe1c6e4c3e0c32bb5"
+"lib/ParticleMeshElectromagnetic/src/step.jl" = "sha256:8d950d177e0c9538b81c8b0c739183a406225b366e483b7a3d2978c75c4f60be"
+"lib/ParticleMeshElectromagnetic/src/step2d.jl" = "sha256:0ff051e3d7859cba18788a4b292ea653e73a14ebd8a3d3efbed0a2ce5d625a8b"
+"lib/ParticleMeshElectromagnetic/src/test_particles.jl" = "sha256:e096696b918c7aeeb26146a6fea8173e5bb9027e6f0e6642fe2013e196f8e555"
+"lib/ParticleMeshElectromagnetic/src/tunables.jl" = "sha256:b888f1041b4ceeb8d2677f9a33969b8b1d8fba61976844a1d385231d83a332e3"
+"lib/ParticleMeshElectromagnetic/src/window.jl" = "sha256:111fdbf1c2335c025f2d20e40718ca7458e1284e9947e0388704636d7de1c9fe"
+"lib/ParticleMeshElectromagnetic/src/witness.jl" = "sha256:416295153d77b0c9d6a6cf0555bcb7abc2b3d7e52391a076cca8ab2067789bfa"
+"lib/ParticleMeshElectromagnetic/src/yee.jl" = "sha256:0c0bc8ca58688a17ecd768a7820c173745298245c194b27af6f13eea239fbc9f"
+"lib/ParticleMeshElectromagnetic/test/ionization_cases.jl" = "sha256:0014590f43957932a60a6edcdc996bb67eca376cb1861530182b7bf6e1f4fa9b"
+"scripts/Manifest.toml" = "sha256:9f0ae76c93f365a02f57f6ceb256f6a6c969868ec7b3a03a403e48e17926bb0d"
+"scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
+"scripts/ionization/atomic.jl" = "sha256:2a9594c3547cbdefbddaf1891ee1419227090fc4e45889ae6f4911afea42a342"
+"scripts/ionization/barrier_suppression.jl" = "sha256:ccd46aebb72c1dead712c0a5b215210b1b5732c385ff91ce5e533f447dba9b75"
+"scripts/ionization/ionization.jl" = "sha256:ef7e957d927f24c42c78d97e9998e6ac684c45cd35423c8d4eb5616b5636ed8d"
+"scripts/ionization/ionization_energies.toml" = "sha256:d39f99a7c0aac2405b580bc4fbb801188fd646ed47199c945d124f4014ece563"
+"scripts/ionization/tong_lin.toml" = "sha256:0e22114740a94c371de77f508b2dc83853c9c017b33798089da4930f17c7d301"
+
+[parameters]
+mode = "Reference"
+type = "Float64"
+vacuum_a0 = [1.8, 2.2, 2.6]
+vacuum_cells_per_wavelength = 32
+wavelength_m = 8.0e-7
+
+    [parameters.injection]
+    a0 = 2.2
+    capacity = 400000
+    cells = [448, 128]
+    cells_per_wavelength = 32
+    cutoff = 24.0
+    delay = 54.0
+    density = 0.072
+    dopant = 0.00072
+    duration = 6.0
+    dy_cells = 4
+    fast = 5.0
+    focus = 80.0
+    half_rows = 18
+    pml_x = 8
+    pml_y = 12
+    ppc = [2, 2]
+    ramp = 8.0
+    section = [76.0, 100.0, 4.0]
+    t_end = 300.0
+    vacuum = 64.0
+    waist = 10.0
+    window_start = 108.0
+
+    [parameters.vacuum]
+    a0 = 2.0
+    delay = 70.0
+    duration = 20.0
+    focus = 60.0
+    length = [240.0, 60.0]
+    position = 4.0
+    rows_per_wavelength = 8
+    waist = 10.0

@@ -7,7 +7,6 @@ const SPECIES_TUNABLES = (:density, :amplitude, :drift_x, :drift_y, :drift_z, :t
 const PROFILE_TUNABLES = (:vacuum, :ramp)
 const WITNESS_TUNABLES = (:momentum_x, :momentum_y, :momentum_z, :center_x, :center_y, :length, :width)
 const SECTION_TUNABLES = (:section_start, :section_stop, :section_ramp)
-const LEVEL_TUNABLES = (:prefactor, :field, :power)
 
 part_values(l::GaussianLaser) = (l.a0, l.waist, l.duration, l.delay, l.focus, l.chirp, l.polarization, l.phase)
 part_values(d::Union{SpeciesDescription,SpeciesParams}) = (d.density, d.amplitude, d.drift..., d.thermal...)
@@ -18,17 +17,18 @@ part_values(::Nothing) = ()
 
 section_values(::Nothing) = ()
 section_values(s::DopantSection) = (s.start, s.stop, s.ramp)
-level_values(levels::Tuple) = foldl((xs, l) -> (xs..., l.prefactor, l.field, l.power), levels; init = ())
+level_values(levels::Tuple) = foldl((xs, l) -> (xs..., values(level_numbers(l))...), levels; init = ())
 
 part_names(::GaussianLaser) = LASER_TUNABLES
 part_names(::Union{SpeciesDescription,SpeciesParams}) = SPECIES_TUNABLES
 part_names(::DensityRamp) = PROFILE_TUNABLES
 part_names(::Union{WitnessBunch,WitnessParams}) = WITNESS_TUNABLES
 part_names(::Nothing) = ()
-# The dopant's names depend on the description: a section or none, and the number of levels.
+# The dopant's names depend on the description: a section or none, and each level's numbers
+# (those of its type: `level_numbers`).
 function part_names(d::Union{FieldIonization,IonizationParams})
     section = d.section === nothing ? () : SECTION_TUNABLES
-    levels = foldl((xs, j) -> (xs..., map(n -> Symbol(:level, j, :_, n), LEVEL_TUNABLES)...), eachindex(d.levels); init = ())
+    levels = foldl((xs, j) -> (xs..., map(n -> Symbol(:level, j, :_, n), keys(level_numbers(d.levels[j])))...), eachindex(d.levels); init = ())
     return (:density, section..., levels...)
 end
 
@@ -49,7 +49,9 @@ for the `i`-th mobile species `species<i>_density`, `_amplitude`, `_drift_x`, `_
 and `profile_ramp`; with a witness bunch `witness_momentum_x`, `_momentum_y`, `_momentum_z`,
 `witness_center_x`, `_center_y`, `witness_length` and `witness_width`; with a field ionization
 `ionization_density`, with a section `ionization_section_start`, `_section_stop` and
-`_section_ramp`, and for its `j`-th level `ionization_level<j>_prefactor`, `_field` and `_power`.
+`_section_ramp`, and for its `j`-th level the numbers of the level's type
+([`IonizationLevel`](@ref)): `ionization_level<j>_prefactor`, `_field` and `_power` for an
+[`ADKLevel`](@ref), and after them `_suppression` for a [`TongLinLevel`](@ref).
 `findfirst(==(:laser1_duration), tunable_names(p))` is the index of an entry.
 """
 function tunable_names(p::Union{EMProblem,EMParams})
@@ -69,8 +71,8 @@ source (a laser's amplitude, waist, duration, delay, focus, chirp, polarization 
 through the particle weights (a species' density and perturbation amplitude, the density
 profile's vacuum and ramp lengths, a witness bunch's centre, length and width, a dopant's density
 and its section's start, stop and ramp), through the loaded momenta (a species' drift and thermal
-speeds, the witness's momentum) or through the ionization rates (each level's prefactor, field
-and power).
+speeds, the witness's momentum) or through the ionization rates (each level's numbers: prefactor,
+field and power, and a barrier-suppression level's suppression).
 [`with_tunables`](@ref) writes a vector back, so a gradient with respect to any of them is the
 derivative of `x -> J(with_tunables(p, x))`.
 
@@ -199,7 +201,7 @@ end
 function ionization_numbers(::Type{S}, d, v, i) where {S}
     density = only(take_next!(v, i, 1))
     section = d.section === nothing ? nothing : DopantSection(; NamedTuple{(:start, :stop, :ramp)}(take_next!(v, i, 3))...)
-    levels = map(l -> ADKLevel(take_next!(v, i, 3)...; cutoff = S(l.cutoff)), d.levels)
+    levels = map(l -> with_level_numbers(l, S, take_next!(v, i, length(level_numbers(l)))), d.levels)
     return density, levels, section
 end
 function with_part(::Type{S}, d::FieldIonization, v, i) where {S}

@@ -8,7 +8,7 @@ The package asks for field ionization without random numbers, released by weight
 
 - **l\*.** FBPIC's choice, l* = n*₀ − 1 with n*₀ of the neutral atom, is the default of the user layer. The convention l* = n* − 1 per level is available (`lstar = :level`); that it is Smilei's is the author's memory, not checked.
 - **The unit of energy.** The formula is in atomic units, so the user layer uses half a Hartree. FBPIC uses hydrogen's measured ionization energy instead, 5.3·10⁻⁴ smaller, which moves n* by 2.7·10⁻⁴ and the rates by what T-783 measures. Not followed, because it is not the unit the formula is written in.
-- **No barrier-suppression correction.** Above the barrier-suppression field the ADK form overestimates the rate. For a level that the pulse's foot ionizes completely this changes when, by a few steps, not how much. For a level ionized near the peak of a strong pulse it matters; a follow-up issue holds it.
+- **No barrier-suppression correction in the ADK level.** Above the barrier-suppression field the ADK form overestimates the rate. For a level that the pulse's foot ionizes completely this changes when, by a few steps, not how much. For a level ionized near the peak of a strong pulse it matters: `TongLinLevel` is the level with the correction (WP-063, `questions/wp-063-barrier-suppression.md`).
 - **The cutoff.** The rate is taken to exactly zero, with a continuous derivative, where `field/(3E)` exceeds `cutoff` (64 by default, a factor below e⁻⁵⁶ of the prefactor). An atom in a weaker field releases nothing and occupies no electron slot.
 
 ## 2. The populations

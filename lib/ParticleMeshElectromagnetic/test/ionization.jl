@@ -3,7 +3,7 @@
 # ADK rate in the field at each atom, and what they release is born by weight on a fixed lattice,
 # with no random number. The problems are in ionization_cases.jl.
 
-using ParticleMeshElectromagnetic: adk_rate_sq, dopant_density, dopant_density_params, level_as, injection_column, window_frame, state_view
+using ParticleMeshElectromagnetic: ionization_rate_sq, dopant_density, dopant_density_params, level_as, injection_column, window_frame, state_view
 using ForwardDiff: ForwardDiff
 
 "The alive electrons of a state's ionization, on the host."
@@ -46,11 +46,11 @@ rise(s, ramp) = s <= 0 ? zero(s) : s >= ramp ? one(s) : sin(oftype(s, π) * s / 
         @test value_of(adk_rate(l, T(1) / 20)) ≈ bare(1 / 20) rtol = 64 * base_eps(T)
         @test 0 < value_of(adk_rate(l, T(1) / 60)) < bare(1 / 60)
         @test adk_rate(l, 1 // 2) === adk_rate(l, T(1) / 2)        # any real field is taken in the level's type
-        @test adk_rate_sq(l, T(1) / 4) === adk_rate(l, T(1) / 2)
+        @test ionization_rate_sq(l, T(1) / 4) === adk_rate(l, T(1) / 2)
         @test isnan(value_of(adk_rate(l, T(NaN))))                 # a field that is not a number is not a zero rate
     end
     # a dual field of value zero, with partials: the rate and its partials are zero
-    z = adk_rate_sq(ADKLevel(mkdual(2, 1, 0, 0), mkdual(2, 0, 1, 0), mkdual(1, 0, 0, 1)), mkdual(0, 1, 2, 3))
+    z = ionization_rate_sq(ADKLevel(mkdual(2, 1, 0, 0), mkdual(2, 0, 1, 0), mkdual(1, 0, 0, 1)), mkdual(0, 1, 2, 3))
     @test z isa D3 && absmax(z) == 0
     # the cutoff is C¹ (Float64): the bare rate's value and slope at 7·cutoff/8, zero slope at the cutoff
     l = ADKLevel(0.75, 3.0, 1.5; cutoff = 16)

@@ -1,7 +1,7 @@
 # Field ionization of a dopant at N = 2, deterministic (WP-059, A0, A3, A4, A8, §0.4): macro-atoms
-# on a fixed lattice whose bound populations follow the rate equations of a tunnel-ionization rate
-# (ADK) in the field at each atom, and which release their electrons by weight into free slots of
-# an electron species of their own. No random number is drawn: a standard PIC code decides each
+# on a fixed lattice whose bound populations follow the rate equations of a field-ionization rate
+# in the field at each atom (each level's own law, chosen by its type: `IonizationLevel`), and
+# which release their electrons by weight into free slots of an electron species of their own. No random number is drawn: a standard PIC code decides each
 # ionization by a Monte Carlo draw against 1 − exp(−W·Δt), which a derivative does not pass
 # through, while here the released weight is a smooth function of the field.
 #
@@ -40,10 +40,62 @@
 #   the electrons' alive count, and the next sort compacts the ones not taken.
 
 """
+    IonizationLevel{T}
+
+One transition of an atom or ion that a static electric field drives, with its numbers in element
+type `T`. The rate law is the level's type: [`ADKLevel`](@ref) is the tunnelling rate and
+[`TongLinLevel`](@ref) the same with a barrier-suppression factor, and a [`FieldIonization`](@ref)
+may list levels of different types. A level type `MyLevel{T} <: IonizationLevel{T}` of isbits
+fields plugs in with four methods:
+
+- `ionization_rate_sq(level::MyLevel{T}, E2::T) -> T`: the rate (1/ω₀) from the squared field
+  strength `E2 = |E|²` ((mₑcω₀/e)²), a device function within §0.4 (no allocation, no float
+  literal). It must be ≥ 0 and C¹ in the field and in the level's numbers (A2), and exactly zero
+  with zero partials at `E2 = 0`: an atom in no field releases nothing and takes no electron slot.
+- `level_as(S, level) -> MyLevel{S}`: the level in the element type `S`, also a device function.
+- `level_numbers(level) -> NamedTuple`: the numbers that are parameters (A3: they enter through
+  the rate and may be `Dual`s). Their names are the level's tunables,
+  `ionization_level<j>_<name>` ([`tunable_names`](@ref)).
+- `with_level_numbers(level, S, numbers::Tuple) -> MyLevel{S}`: the level with these numbers, in
+  the order of `level_numbers`, built by its checking constructor, the rest of the level (what is
+  configuration, such as a cutoff) kept and converted to `S`.
+"""
+abstract type IonizationLevel{T} end
+
+"The element type of a level's numbers."
+level_eltype(::IonizationLevel{T}) where {T} = T
+
+function ionization_rate_sq end
+function level_as end
+function level_numbers end
+function with_level_numbers end
+
+"""
+    ionization_rate(level::IonizationLevel, E) -> rate
+
+The ionization rate of `level` in a field of strength `E ≥ 0` (mₑcω₀/e), in 1/ω₀, by the level's
+law ([`IonizationLevel`](@ref)); a device function, generic in the element type.
+"""
+@inline function ionization_rate(l::IonizationLevel{T}, E::S) where {T,S<:Real}
+    R = promote_type(T, S)                     # a field of another type (a host call): both in the common type
+    x = R(E)
+    return ionization_rate_sq(level_as(R, l), x * x)
+end
+
+# The checks the level types' constructors share: the numbers of the tunnelling form.
+function check_tunnel_numbers(name, prefactor, field, power, cutoff)
+    prefactor >= 0 && isfinite(prefactor) || throw(ArgumentError("$name level's prefactor must be finite and ≥ 0, got $prefactor"))
+    field > 0 && isfinite(field) || throw(ArgumentError("$name level's field must be finite and positive, got $field"))
+    isfinite(power) || throw(ArgumentError("$name level's power must be finite, got $power"))
+    cutoff > 0 && isfinite(cutoff) || throw(ArgumentError("$name level's cutoff must be finite and positive, got $cutoff"))
+    return nothing
+end
+
+"""
     ADKLevel(prefactor, field, power; cutoff = 64)
 
-One tunnel-ionization transition of an atom or ion, with its rate in a static electric field of
-strength `E` in the form of Ammosov, Delone and Krainov, in A1 units:
+One tunnel-ionization transition of an atom or ion ([`IonizationLevel`](@ref)), with its rate in a
+static electric field of strength `E` in the form of Ammosov, Delone and Krainov, in A1 units:
 
     W(E) = prefactor · (field/E)^power · exp(−field/(3E))        (1/ω₀, E in mₑcω₀/e)
 
@@ -59,10 +111,11 @@ The rate is taken to zero where it is negligible, smoothly (the AD-smoothness ru
 so it is exactly zero for `x ≥ cutoff` (and at `E = 0`), unchanged for `x ≤ 7·cutoff/8`, and its
 derivative is continuous. With the default the factor acts below `exp(−56)` of the prefactor's
 scale. An atom in a field below the cutoff releases nothing and occupies no electron slot.
-No barrier-suppression correction is applied: at fields far above `field/3` the form is used as
-it stands.
+No barrier-suppression correction is applied: the form is used as it stands at any field, and
+above the field `field/(32n*)` at which the barrier is gone it overestimates the rate
+([`TongLinLevel`](@ref) has the correction).
 """
-struct ADKLevel{T}
+struct ADKLevel{T} <: IonizationLevel{T}
     prefactor::T
     field::T
     power::T
@@ -71,20 +124,18 @@ end
 
 function ADKLevel(prefactor, field, power; cutoff = 64)
     T = float(promote_type(typeof(prefactor), typeof(field), typeof(power), typeof(cutoff)))   # integers as Float64
-    prefactor >= 0 && isfinite(prefactor) || throw(ArgumentError("an ADK level's prefactor must be finite and ≥ 0, got $prefactor"))
-    field > 0 && isfinite(field) || throw(ArgumentError("an ADK level's field must be finite and positive, got $field"))
-    isfinite(power) || throw(ArgumentError("an ADK level's power must be finite, got $power"))
-    cutoff > 0 && isfinite(cutoff) || throw(ArgumentError("an ADK level's cutoff must be finite and positive, got $cutoff"))
+    check_tunnel_numbers("an ADK", prefactor, field, power, cutoff)
     return ADKLevel{T}(T(prefactor), T(field), T(power), T(cutoff))
 end
 
-"The level in element type `T`."
 level_as(::Type{T}, l::ADKLevel) where {T} = ADKLevel{T}(T(l.prefactor), T(l.field), T(l.power), T(l.cutoff))
+level_numbers(l::ADKLevel) = (; prefactor = l.prefactor, field = l.field, power = l.power)
+with_level_numbers(l::ADKLevel, ::Type{S}, x::NTuple{3,Any}) where {S} = ADKLevel(x...; cutoff = S(l.cutoff))
 
 # The rate from |E|² (a device function): the test for the cutoff is on E², so no square root and
 # no division is taken where the rate is zero, and a `Dual` field of value zero gives a zero with
 # zero partials, not a NaN.
-@inline function adk_rate_sq(l::ADKLevel{T}, E2::T) where {T}
+@inline function ionization_rate_sq(l::ADKLevel{T}, E2::T) where {T}
     c3 = 3 * l.cutoff
     c3 * c3 * E2 <= l.field * l.field && return zero(T)      # x = field/(3E) ≥ cutoff; a NaN field goes on and gives a NaN
     r = l.field / sqrt(E2)
@@ -96,13 +147,61 @@ end
 """
     adk_rate(level::ADKLevel, E) -> rate
 
-The ionization rate of `level` in a field of strength `E ≥ 0` (mₑcω₀/e), in 1/ω₀
-([`ADKLevel`](@ref)); a device function, generic in the element type.
+The ionization rate of an [`ADKLevel`](@ref) in a field of strength `E ≥ 0` (mₑcω₀/e), in 1/ω₀:
+its [`ionization_rate`](@ref).
 """
-@inline function adk_rate(l::ADKLevel{T}, E::S) where {T,S<:Real}
-    R = promote_type(T, S)                     # a field of another type (a host call): both in the common type
-    x = R(E)
-    return adk_rate_sq(level_as(R, l), x * x)
+@inline adk_rate(l::ADKLevel, E::Real) = ionization_rate(l, E)
+
+"""
+    TongLinLevel(prefactor, field, power, suppression; cutoff = 64)
+
+One field-ionization transition of an atom or ion ([`IonizationLevel`](@ref)) whose rate holds
+past the field at which the barrier is gone: the tunnelling rate of an [`ADKLevel`](@ref) of the
+same `prefactor`, `field`, `power` and `cutoff`, times the empirical factor of Tong and Lin
+(J. Phys. B 38 (2005) 2593), in A1 units
+
+    W(E) = prefactor · (field/E)^power · exp(−field/(3E)) · exp(−suppression·E/field)
+
+In atomic units the factor is `exp(−α·(Z²/I)·E/(2I)^{3/2})` with the fitted number α of the
+species (6 for hydrogen), I the ionization energy and Z the charge of the ion left behind, so
+`suppression = 4α·n*²`, a pure number (`n* = Z/√(2I)`; the user layer computes it,
+`scripts/ionization/atomic.jl`). The barrier is gone at `E_bs = I²/(4Z) = field/(32n*)`, where
+the factor is `exp(−α·n*/8)`.
+
+The factor is smooth in the field and in the level's four numbers, which may all be `Dual`s; at
+weak fields it goes to 1 and the rate to the tunnelling rate, with the same cutoff. It is a fit
+of rates computed up to about twice `E_bs`: far above that the rate falls to zero with rising
+field, which no atom does, so a level in fields several times its `E_bs` needs another law.
+`suppression = 0` is the [`ADKLevel`](@ref)'s rate, bit for bit.
+"""
+struct TongLinLevel{T} <: IonizationLevel{T}
+    prefactor::T
+    field::T
+    power::T
+    suppression::T
+    cutoff::T
+end
+
+function TongLinLevel(prefactor, field, power, suppression; cutoff = 64)
+    T = float(promote_type(typeof(prefactor), typeof(field), typeof(power), typeof(suppression), typeof(cutoff)))
+    check_tunnel_numbers("a Tong–Lin", prefactor, field, power, cutoff)
+    suppression >= 0 && isfinite(suppression) || throw(ArgumentError("a Tong–Lin level's suppression must be finite and ≥ 0, got $suppression"))
+    return TongLinLevel{T}(T(prefactor), T(field), T(power), T(suppression), T(cutoff))
+end
+
+level_as(::Type{T}, l::TongLinLevel) where {T} = TongLinLevel{T}(T(l.prefactor), T(l.field), T(l.power), T(l.suppression), T(l.cutoff))
+level_numbers(l::TongLinLevel) = (; prefactor = l.prefactor, field = l.field, power = l.power, suppression = l.suppression)
+with_level_numbers(l::TongLinLevel, ::Type{S}, x::NTuple{4,Any}) where {S} = TongLinLevel(x...; cutoff = S(l.cutoff))
+
+# The ADK level's rate with the factor's exponent −suppression·E/field = −suppression/r added to
+# the tunnelling exponent: one exponential, and with a zero suppression the same bits.
+@inline function ionization_rate_sq(l::TongLinLevel{T}, E2::T) where {T}
+    c3 = 3 * l.cutoff
+    c3 * c3 * E2 <= l.field * l.field && return zero(T)
+    r = l.field / sqrt(E2)
+    x = r / 3
+    s = min(8 * (l.cutoff - x) / l.cutoff, one(T))
+    return l.prefactor * r^l.power * exp(-x - l.suppression / r) * (s * s * (3 - 2 * s))
 end
 
 """
@@ -140,7 +239,8 @@ whose centre lies inside `rows = (y_lo, y_hi)` (c/ω₀; every row by default). 
 `density` (n_c, the density of dopant atoms) times the `section`'s factor at its place
 ([`DopantSection`](@ref); 1 without one) over `p₁·p₂`.
 
-`levels` lists the transitions the fields drive, in order, each an [`ADKLevel`](@ref): the atom
+`levels` lists the transitions the fields drive, in order, each an [`IonizationLevel`](@ref) with
+the rate law of its type (an [`ADKLevel`](@ref), a [`TongLinLevel`](@ref)): the atom
 starts with all of them bound and releases one electron per transition, level j + 1 only from the
 part that has passed level j. Electrons the dopant has lost before the run (an L shell taken as
 ionized by the pulse's foot, say) are not listed; they belong to the plasma's density. In every
@@ -162,9 +262,9 @@ An atom that finds no slot keeps what it has lost for the next birth step and is
 enter through the weights and the rates, never through a position, [`IonizationParams`](@ref));
 `ppc`, `every`, `rows` and `capacity` are configuration.
 """
-struct FieldIonization{T,L,S,R}
+struct FieldIonization{T,L,S,R,LV<:NTuple{L,IonizationLevel{T}}}
     density::T
-    levels::NTuple{L,ADKLevel{T}}
+    levels::LV
     section::S
     ppc::NTuple{2,Int}
     every::Int
@@ -173,11 +273,11 @@ struct FieldIonization{T,L,S,R}
 end
 
 function FieldIonization(; density, levels, capacity::Integer, section = nothing, ppc = (1, 1), every::Integer = 1, rows = nothing)
-    lv = levels isa ADKLevel ? (levels,) : Tuple(levels)
-    !isempty(lv) && all(l -> l isa ADKLevel, lv) ||
-        throw(ArgumentError("levels must be one ADKLevel or a non-empty tuple of them, got $levels"))
+    lv = levels isa IonizationLevel ? (levels,) : Tuple(levels)
+    !isempty(lv) && all(l -> l isa IonizationLevel, lv) ||
+        throw(ArgumentError("levels must be one IonizationLevel (an ADKLevel, a TongLinLevel) or a non-empty tuple of them, got $levels"))
     section === nothing || section isa DopantSection || throw(ArgumentError("section must be a DopantSection or nothing, got $section"))
-    T = promote_type(typeof(density), map(l -> typeof(l.prefactor), lv)...)
+    T = promote_type(typeof(density), map(level_eltype, lv)...)
     section === nothing || (T = promote_type(T, typeof(section.start)))
     T = float(T)
     density >= 0 && isfinite(density) || throw(ArgumentError("the dopant density must be finite and ≥ 0, got $density"))
@@ -188,15 +288,15 @@ function FieldIonization(; density, levels, capacity::Integer, section = nothing
     rw = rows === nothing ? nothing : Float64.(Tuple(rows))
     rw === nothing || (length(rw) == 2 && rw[1] < rw[2]) || throw(ArgumentError("rows = $rows needs (y_lo, y_hi) with y_lo < y_hi"))
     sec = section_as(T, section)
-    return FieldIonization{T,length(lv),typeof(sec),typeof(rw)}(T(density), map(l -> level_as(T, l), lv), sec, pp, Int(every), rw,
-                                                              Int(capacity))
+    lvT = map(l -> level_as(T, l), lv)
+    return FieldIonization{T,length(lv),typeof(sec),typeof(rw),typeof(lvT)}(T(density), lvT, sec, pp, Int(every), rw, Int(capacity))
 end
 
 "The description in element type `T` (the problem's)."
 function ionization_as(::Type{T}, d::FieldIonization{<:Any,L}) where {T,L}
     sec = section_as(T, d.section)
-    return FieldIonization{T,L,typeof(sec),typeof(d.rows)}(T(d.density), map(l -> level_as(T, l), d.levels), sec, d.ppc, d.every, d.rows,
-                                                          d.capacity)
+    lv = map(l -> level_as(T, l), d.levels)
+    return FieldIonization{T,L,typeof(sec),typeof(d.rows),typeof(lv)}(T(d.density), lv, sec, d.ppc, d.every, d.rows, d.capacity)
 end
 
 """
@@ -204,20 +304,20 @@ end
 
 The parameters of a [`FieldIonization`](@ref) (A3): the dopant `density` (n_c) and its `section`
 ([`DopantSection`](@ref) or `nothing`), read where the atoms are loaded (the initial load and a
-moving window's refill), and the `levels` (a tuple of [`ADKLevel`](@ref)), read by every step's
-rates; all may be `Dual`s. The lattice, the birth cadence and the electrons' capacity are
+moving window's refill), and the `levels` (a tuple of [`IonizationLevel`](@ref)s), read by every
+step's rates; all may be `Dual`s. The lattice, the birth cadence and the electrons' capacity are
 configuration of the state.
 """
-struct IonizationParams{T,L,S}
+struct IonizationParams{T,L,S,LV<:NTuple{L,IonizationLevel{T}}}
     density::T
-    levels::NTuple{L,ADKLevel{T}}
+    levels::LV
     section::S
 end
 
 function IonizationParams{T}(density, levels::Tuple, section = nothing) where {T}
     sec = section_as(T, section)
     lv = map(l -> level_as(T, l), levels)
-    return IonizationParams{T,length(lv),typeof(sec)}(T(density), lv, sec)
+    return IonizationParams{T,length(lv),typeof(sec),typeof(lv)}(T(density), lv, sec)
 end
 
 ionization_params(::Type{T}, ::Nothing) where {T} = nothing
@@ -393,7 +493,7 @@ end
         E2 = E[1] * E[1] + E[2] * E[2] + E[3] * E[3]
         b = bound_populations(a.extras, Val(L))
         old = ntuple(j -> (@inbounds b[j][i]), Val(L))
-        wdt = ntuple(j -> adk_rate_sq(levels[j], E2) * dt, Val(L))
+        wdt = map(l -> ionization_rate_sq(l, E2) * dt, levels)
         out = ntuple(j -> old[j] * -expm1(-wdt[j]), Val(L))
         ntuple(j -> (@inbounds b[j][i] = old[j] * exp(-wdt[j]) + (j == 1 ? zero(T) : out[max(j - 1, 1)]); nothing), Val(L))
         pending = a.extras.pending[i] + sum(out)
