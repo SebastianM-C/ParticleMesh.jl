@@ -26,9 +26,9 @@ Fixed parameters of the case (A1 units).
   electrons are part of the plasma's density. ADK rates with no barrier-suppression correction
   and no ionization current (WP-059), so the charge injected is not a physical prediction.
 - `fade = (lo, hi)` is the objective's position weight in window x (c/ω₀): 0 behind `lo`, 1 ahead
-  of `hi`. At the read-out the pulse's centre is at window x ≈ 54 and the first bucket reaches
-  back to about x ≈ 30 (`born2d.jl` measures both), so the weight is 1 over the bucket; the back
-  band ends at x ≈ 2.4 at λ₀/32.
+  of `hi`. At the read-out of the λ₀/16 run at a₀ = 1.65 the pulse's peak is at window x ≈ 47 and the
+  first bucket lies between the zero crossings of E_x at x ≈ 27 and 40 (`born2d.jl` measures both),
+  so the weight is 1 over the bucket; the back band ends at x ≈ 3.5 at λ₀/16.
 - `u_fast` is the momentum above which a born electron is listed as trapped in the run's tables;
   the objective does not use it.
 """

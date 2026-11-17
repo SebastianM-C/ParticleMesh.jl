@@ -177,7 +177,7 @@ function plot_results(dir, out)
     lines!(ax, t, [r["counted"] for r in s]; label = "counted by the position weight")
     lines!(ax, t, [r["fast_counted"] for r in s]; label = "counted, u_x > $(out["case"]["u_fast"])")
     lines!(ax, t, [r["plasma_fast"] for r in s]; label = "plasma electrons above $(out["case"]["u_fast"]) mₑc²", color = :crimson)
-    axislegend(ax; position = :lt)
+    axislegend(ax; position = :rc, labelsize = 11)
     axJ = Axis(fig[1, 2]; xlabel = "time (1/ω₀)", ylabel = "J (n_c·mₑc²·(c/ω₀)²)", title = "The objective and the guard in time")
     lines!(axJ, t, [r["energy"] for r in s]; label = "J")
     axG = Axis(fig[1, 2]; yaxisposition = :right, ylabel = "γ − 1 (mₑc²)", ygridvisible = false, xgridvisible = false)
@@ -229,10 +229,10 @@ sig(x) = string(round(x; sigdigits = 4))
 """
     report_table(dir) -> String
 
-The tables of reports/wp-064-born-electron-objective.md from the results.json of the run directory `dir`.
+The tables of reports/wp-064-born-electron-objective.md from the figure's sidecar `born2d.json` in the run directory `dir`.
 """
 function report_table(dir)
-    out = JSON.parsefile(joinpath(dir, "results.json"))
+    out = JSON.parsefile(joinpath(dir, "born2d.json"))
     io = IOBuffer()
     println(io, "| a₀ | J | dJ/da₀ (ForwardDiff) | born electrons trapped | plasma electrons above $(out["case"]["u_fast"]) mₑc² | plasma's highest γ − 1 | born mean energy |")
     println(io, "|---|---|---|---|---|---|---|")
@@ -262,7 +262,7 @@ function report_table(dir)
 end
 
 if length(ARGS) == 2 && ARGS[1] == "replot"
-    plot_results(ARGS[2], JSON.parsefile(joinpath(ARGS[2], "results.json")))
+    plot_results(ARGS[2], JSON.parsefile(joinpath(ARGS[2], "born2d.json")))
 elseif length(ARGS) == 2 && ARGS[1] == "table"
     print(report_table(ARGS[2]))
 else
