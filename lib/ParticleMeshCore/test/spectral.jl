@@ -84,7 +84,7 @@ end
         @test spectral_worker(nt) == INPROCESS_SPECTRAL                 # 1 and 4 threads
     end
     # and the bits recorded on a commit (recorded_3d.jl, WP-042), so a change to them fails here
-    backend isa CPU && @test recorded_2d_lines(INPROCESS_SPECTRAL) == SPECTRAL_RECORDED
+    backend isa CPU && @test_recorded recorded_2d_lines(INPROCESS_SPECTRAL) == SPECTRAL_RECORDED
     # A reused workspace and an in-place solve (φ === s) give the same bits as a fresh one.
     for T in TYPES, grid in (grid2(T, 2), PeriodicGrid(64, basetype(T)(3 // 8), 2))
         s = solve_input(T, grid)

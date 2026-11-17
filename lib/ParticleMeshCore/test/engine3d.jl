@@ -465,5 +465,5 @@ end
         @test e3d_worker(nt) == INPROCESS_3D                             # 1 and 4 threads
     end
     # and the bits recorded on a commit (recorded_3d.jl), so a change to them fails here
-    backend isa CPU && @test recorded_2d_lines(INPROCESS_3D) == E3D_RECORDED
+    backend isa CPU && @test_recorded recorded_2d_lines(INPROCESS_3D) == E3D_RECORDED
 end

@@ -8,6 +8,20 @@
 # afresh gave other bits for them, and the same bits for Float32 and Float64. A change to these bits is a change of a Reference result (A4):
 # replace the lines only when the change is intended, and say so in the PR.
 
+"""
+    @test_recorded ex
+
+`@test ex` on Julia 1.13, the release these digests were recorded with, and `@test_skip ex`
+(recorded as broken) on later ones: the 1.14 pre-release gives other bits for the periodic solve
+on the CPU (CI's `Julia pre` job on #471), while 1.13 gives the recorded ones on CI's machine and
+on the one they were recorded on.
+"""
+macro test_recorded(ex)
+    skip = Expr(:macrocall, Symbol("@test_skip"), __source__, ex)
+    test = Expr(:macrocall, Symbol("@test"), __source__, ex)
+    esc(:(VERSION >= v"1.14-" ? $skip : $test))
+end
+
 const SPECTRAL_RECORDED = String[
     "psolve|Float32|n=64|15989489460706605151",
     "psolve|Float32|n=37|14655268538146931380",
