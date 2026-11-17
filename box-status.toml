@@ -1,0 +1,41 @@
+branch = "runs/wp041-sortcmp"
+request_commit = "9130786539df152bce5a348eef093f3d354f2978"
+started = "2026-11-17T06:41:09Z"
+category = "benchmark"
+outputs = ["scripts/runs/wp041-steptiming-resort", "scripts/runs/wp041-steptiming-fullsort"]
+finished = "2026-11-17T06:44:54Z"
+ok = true
+files_returned = 10
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T06:41:09Z"
+exit = 0
+seconds = 121
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T06:43:10Z"
+exit = 0
+seconds = 0
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T06:43:10Z"
+exit = 0
+seconds = 104
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T06:44:54Z"
+exit = 0
+seconds = 0
