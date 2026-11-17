@@ -172,6 +172,36 @@ zero_fields(backend, ::Type{T}, grid::PMC.PeriodicGrid{N}) where {T,N} =
     ntuple(_ -> KernelAbstractions.zeros(backend, T, (grid.n .+ 2grid.g)...), N == 2 ? 3 : N)
 zero!(J) = foreach(a -> fill!(a, zero(eltype(a))), J)
 
+# --- the engine's sorts ----------------------------------------------------------------------------
+
+"A workspace of `AK.sortperm!` on the keys of `ws` (the engine's own is `sort!`'s once it sorts the keys alone, WP-041)."
+sortperm_workspace(ws) = PMC.AK.workspace(PMC.AK.sortperm!, ws.perm, ws.key)
+
+"Whether the engine has the sort from the order of the last sort (`resort_by_cell!`, WP-041)."
+has_resort() = isdefined(PMC, :resort_by_cell!)
+
+"""
+    resort_row!(time_, diff, s, grid, wr, U, seg0, count0; name, reps)
+
+The engine's `resort_by_cell!` on the moved state `U`, from the order of the sort before the move:
+its segments `seg0` and count `count0` go back into the workspace `wr` (built with `append`, and
+sorted with once) before every call. Records the time, and whether the result differs from the
+engine's full sort of `U` in any array, the permutation, the segments or the count.
+"""
+function resort_row!(time_, diff, s, grid, wr, U, seg0, count0; name = "engine resort_by_cell!", reps = 9)
+    backend = get_backend(s)
+    setup() = (restore!(s, U); copyto!(wr.seg_start, seg0[1]); copyto!(wr.seg_stop, seg0[2]); copyto!(wr.resort.sorted_count, count0); nothing)
+    setup()
+    PMC.resort_by_cell!(s, grid, wr)
+    e = copy_species(U)
+    we = PMC.Workspace(e, grid)
+    PMC.sort_by_cell!(e, grid, we)
+    diff[name] = !(all(map(same, species_arrays(s), species_arrays(e))) && Array(wr.perm) == Array(we.perm) &&
+                   Array(wr.seg_start) == Array(we.seg_start) && Array(wr.seg_stop) == Array(we.seg_stop) && Array(s.count) == Array(e.count))
+    time_[name] = 1e3 * least(() -> PMC.resort_by_cell!(s, grid, wr), backend; reps, setup)
+    return nothing
+end
+
 # --- timing --------------------------------------------------------------------------------------
 
 "Seconds per call of `f()` on the device: the least of `reps` calls after one warm-up call; `setup()` runs before each call, untimed."

@@ -5,8 +5,9 @@
 #
 # Per size and element type the case runs to its end in Reference mode; one more push and a sort
 # give the sorted state every deposition variant is timed on, and one further push the unsorted
-# state (with the segments of the sort before it) that the sorts are timed on. Each time is the
-# least of 9 calls, with the device waited for. Every variant is compared with the engine on the
+# state (with the segments of the sort before it) that the sorts are timed on, the engine's sort
+# from the last order (`resort_by_cell!`, WP-041) among them where the engine has it. Each time is
+# the least of 9 calls, with the device waited for. Every variant is compared with the engine on the
 # same state before it is timed (the incremental sort bitwise, the depositions to roundoff), and
 # the differences are in the output. Writes `bench2d.json`, `tables.md` and a manifest into
 # scripts/runs/deposition-bench2d-<backend>-<time>/. `PM_BENCH_ONLY` (substrings of the row names,
@@ -148,18 +149,22 @@ function measure(size, label, x)
     end
 
     # the unsorted state: the sorts
+    countV = copy(s.count)
     push_once!(st)
     U = copy_species(s)
+    wsp = sortperm_workspace(ws)
+    # the sort from the last order, in the state's own workspace (its tail is a window's refill), where the engine has it
+    has_resort() && ws.resort !== nothing && wanted("engine resort_by_cell!") && resort_row!(time_, diff, s, grid, ws, U, segV, countV)
     timed!(() -> sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
     timed!("engine sort: keys and sortperm! alone"; setup = () -> restore!(s, U)) do
         PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(capacity(s));
                                                            ndrange = capacity(s))
-        PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
+        PMC.AK.sortperm!(ws.perm, ws.key; workspace = wsp)
     end
     if wanted("engine sort: keys, sort!")                         # the permutation from a plain sort of the keys (they end in the slot)
         restore!(s, U)
         PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(capacity(s)); ndrange = capacity(s))
-        PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
+        PMC.AK.sortperm!(ws.perm, ws.key; workspace = wsp)
         perm0 = Array(ws.perm)
         for (alg, tag) in (BE isa CPU ? ((PMC.AK.Auto(), "the default sort"),) : ((PMC.AK.MergeSort(), "merge sort"), (PMC.AK.RadixSort(), "radix sort")))
             name = "engine sort: keys, sort! (" * tag * ") and decode alone"
