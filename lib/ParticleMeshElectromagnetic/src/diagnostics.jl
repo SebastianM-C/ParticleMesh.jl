@@ -589,6 +589,8 @@ the recorder's phase tables are for the grid's cells and `entry` is one of its e
 function record_entry!(r::HistoryRecorder{3}, fields::NamedTuple, K, grid::PeriodicGrid{3}, e::Integer; workgroupsize = nothing)
     n = ncells(grid)
     check_tables(r, grid)
+    full = n .+ 2guards(grid)
+    all(a -> size(a) == full, fields) || throw(ArgumentError("every field must have the grid's field size $full"))
     isempty(r.hist) && return r
     1 <= e <= length(first(r.hist)) || throw(ArgumentError("entry $e outside the $(length(first(r.hist))) entries of the recorder's histories"))
     T = eltype(K)

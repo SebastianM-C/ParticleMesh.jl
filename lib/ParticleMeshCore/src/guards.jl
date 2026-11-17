@@ -98,6 +98,9 @@ end
 @inline foreach_axis(f::F, ::Tuple{}) where {F} = nothing
 @inline foreach_axis(f::F, vals::Tuple) where {F} = (f(first(vals)); foreach_axis(f, Base.tail(vals)))
 
+check_guarded(a, grid::PeriodicGrid) = size(a) == ncells(grid) .+ 2guards(grid) ||
+    throw(ArgumentError("the array has size $(size(a)), the grid's fields have $(ncells(grid) .+ 2guards(grid))"))
+
 function guard_pass!(kernel, a, grid::PeriodicGrid{N}, vd::Val{d}, workgroupsize) where {N,d}
     n, g = ncells(grid), guards(grid)
     range, off = guard_pass(n, g, d)
@@ -106,12 +109,14 @@ function guard_pass!(kernel, a, grid::PeriodicGrid{N}, vd::Val{d}, workgroupsize
 end
 
 function fill_guards!(a::AbstractArray{<:Any,N}, grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
+    check_guarded(a, grid)
     guards(grid) == 0 && return a
     foreach_axis(vd -> guard_pass!(fill_guards_axis_kernel!, a, grid, vd, workgroupsize), axis_vals(Val(N)))
     return a
 end
 
 function fold_guards!(a::AbstractArray{<:Any,N}, grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
+    check_guarded(a, grid)
     guards(grid) == 0 && return a
     foreach_axis(vd -> guard_pass!(fold_guards_axis_kernel!, a, grid, vd, workgroupsize), reverse(axis_vals(Val(N))))
     return a

@@ -151,6 +151,7 @@ end
 # The host checks of the N ≥ 2 load: the last slot it writes.
 function check_quiet_load(s::Species, grid::PeriodicGrid{N}, ppc::NTuple{N,Integer}, first::Integer) where {N}
     all(>(0), ppc) && prod(ppc) < 2^16 || throw(ArgumentError("ppc = $ppc: each ≥ 1 and prod(ppc) < 2^16 for the counter layout"))
+    first >= 1 || throw(ArgumentError("first = $first: the first slot to write is at least 1"))
     total = prod(ncells(grid)) * prod(ppc)
     last = first - 1 + total
     last <= capacity(s) || throw(ArgumentError("capacity $(capacity(s)) < $last particles"))

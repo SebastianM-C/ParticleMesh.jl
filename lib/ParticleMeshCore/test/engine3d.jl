@@ -106,6 +106,11 @@ function body_T871(be)
 end
 
 @testset "T-871 3D fill and fold [A7, A8, WP-042]" begin
+    # an array that is not the grid's field size is refused, at N = 3 and N = 2
+    for (g, a) in ((grid3(Float64, 1), zeros(9, 7, 6)), (grid3(Float64, 1), zeros(12, 10, 9)), (PeriodicGrid((4, 5), (1.0, 1.0), 2), zeros(8, 8)))
+        @test_throws ArgumentError fill_guards!(a, g)
+        @test_throws ArgumentError fold_guards!(a, g)
+    end
     body_T871(CPU())
     # The one kernel of every N ≥ 2 at N = 2, against the image and the exact fold (T-263 has its adjointness).
     for T in TYPES, g in (1, 2), n in ((4, 9), (9, 5))
@@ -261,6 +266,9 @@ end
     @test_throws ArgumentError load_quiet!(full, g64, ObliqueDensity3(), p64, (2, 0, 3); seed = 1, stream = 1)
     @test_throws ArgumentError load_quiet!(full, g64, ObliqueDensity3(), p64, (64, 32, 32); seed = 1, stream = 1)             # prod = 2^16
     @test_throws ArgumentError load_quiet!(full, g64, ObliqueDensity3(), p64, PPC3; seed = 1, stream = 1, density_at = :node)
+    @test_throws ArgumentError load_quiet!(full, g64, ObliqueDensity3(), p64, PPC3; seed = 1, stream = 1, first = 0)           # no slot 0
+    @test_throws ArgumentError load_quiet!(full, g64, ObliqueDensity3(), p64, PPC3, GaussianMomentum((0.0, 0.0, 0.0), (0.1, 0.1, 0.1));
+                                           seed = 1, stream = 1, first = 0)
     @test_throws ArgumentError load_quiet!(full, g64, ObliqueDensity3(), p64, PPC3, GaussianMomentum((0.0, 0.0, 0.0), (0.1, 0.1, 0.1));
                                            seed = 1, stream = 1, first = 2)
 end

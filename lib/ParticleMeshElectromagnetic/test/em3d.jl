@@ -251,6 +251,8 @@ em3_box(grid) = ncells(grid) .* cellsize(grid)
         @test_throws ArgumentError HistoryRecorder(backend, T, grid, box, (0, 0, 0), 5)
         @test_throws ArgumentError PME.record_entry!(r, f, K, em3_grid(T; n = (12, 8, 12)), 2)
         @test_throws ArgumentError PME.record_entry!(r, f, K, grid, 0)
+        wide = PeriodicGrid(ncells(grid), cellsize(grid), guards(grid) + 1)        # fields of another guard width
+        @test_throws ArgumentError PME.record_entry!(r, em_fields(backend, T, wide), K, grid, 2)
         @test_throws ArgumentError PME.record_entry!(r, f, K, grid, 6)
     end
 end
