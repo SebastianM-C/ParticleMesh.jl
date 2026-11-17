@@ -2,14 +2,16 @@
 # step, per element type, and the 2D Reference flux deposition's two kernels on the run's last
 # state (WP-061, #442).
 #
-#   julia +1.13 -t 4 --project=scripts scripts/optim/step_timing.jl [cpu|cuda] [fast]
+#   julia +1.13 -t 4 --project=scripts scripts/optim/step_timing.jl [cpu|cuda] [fast] [fullsort]
 #
 # The phases are those of the module's `step!`, which `timed_step!` repeats with a timer around
 # each (on a device the timer waits for the phase, `KernelAbstractions.synchronize`); a test of the
 # module holds `step!`'s bits, this script only its order, and it prints the plain `run!` time of
 # the same run next to the sum of its own phases. Every case runs twice in one process and the
 # second run is timed, so that no compilation is in the numbers (the moving window's kernels first
-# run at the first shift). `fast` adds the Fast mode for the plain element types.
+# run at the first shift). `fast` adds the Fast mode for the plain element types; `fullsort` runs
+# the step with the full sort of every step (`EMNumerics(; resort = false)`) instead of the sort
+# from the last order.
 #
 # To compare trees, run the script in each of them (copy this file into the other tree if it is
 # not there: each run's manifest records its tree's commit and the hashes of its inputs), then
@@ -163,9 +165,9 @@ end
 const WORKGROUPS = (nothing, 1, 8, 64, 512)
 
 "One element type and mode: the phases of the second of two runs, the plain `run!` time, the deposition's kernels."
-function measure(label, (duration, focus), mode)
+function measure(label, (duration, focus), mode; resort = true)
     prob = wake_problem(duration, focus)
-    numerics = EMNumerics(; mode)
+    numerics = EMNumerics(; mode, resort)
     p = params(prob)
     times = Dict{Symbol,Float64}()
     local st, total
@@ -265,17 +267,18 @@ end
 
 function main()
     fast = "fast" in ARGS
+    resort = !("fullsort" in ARGS)
     gpu = BACKEND_NAME == "cuda" ? CUDACore.name(CUDACore.device()) : nothing
     extra = gpu === nothing ? Dict{String,Any}() : Dict{String,Any}("gpu" => gpu, "cudacore" => string(pkgversion(CUDACore)))
     dir = run_dir("step-timing-$BACKEND_NAME", @__FILE__; prefix = "optim", work_package = "WP-061",
                   backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                   params = Dict{String,Any}("case" => "wake_problem(7, 100)", "cells" => collect(CASE.cells), "ppc" => collect(CASE.ppc),
-                                            "nsteps" => CASE.nsteps, "fast" => fast),
+                                            "nsteps" => CASE.nsteps, "fast" => fast, "resort" => resort),
                   extra_inputs = [joinpath(@__DIR__, "wake2d_case.jl")], extra)
     rows = Dict{String,Any}[]
     for (label, x) in element_cases()
-        push!(rows, measure(label, x, Reference()))
-        fast && !startswith(label, "Dual") && push!(rows, measure(label, x, Fast()))
+        push!(rows, measure(label, x, Reference(); resort))
+        fast && !startswith(label, "Dual") && push!(rows, measure(label, x, Fast(); resort))
         println(phase_table(rows[end:end]))
     end
     where_ = gpu === nothing ? "$(Threads.nthreads()) threads, $(cpu_model())" : gpu

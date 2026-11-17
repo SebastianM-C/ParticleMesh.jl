@@ -25,14 +25,16 @@ function resort_digests(::Type{T}; resort, mode = Reference(), nsteps = 150) whe
         nborn = max(nborn, born(st).n)
     end
     used = all(w -> resort ? w.resort !== nothing && w.resort.ordered[] : w.resort === nothing, (st.ws..., fr.electrons_ws))
-    return out, used, window_shifts(st, nsteps), nborn
+    resorts = resort ? map(w -> w.resort.resorts[], (st.ws..., fr.electrons_ws)) : nothing
+    return out, used, window_shifts(st, nsteps), nborn, resorts
 end
 
 @testset "T-852 the step sorting from the last order gives the bits of the full sort at every step, with window refills and ionization births [A4, WP-041]" begin
     for (T, mode) in ((Float32, Reference()), (Float64, Reference()), (D3, Reference()), (D3, Fast()))
-        inc, used_inc, shifts, nborn = resort_digests(T; resort = true, mode)
-        full, used_full, _, _ = resort_digests(T; resort = false, mode)
+        inc, used_inc, shifts, nborn, resorts = resort_digests(T; resort = true, mode)
+        full, used_full, _, _, _ = resort_digests(T; resort = false, mode)
         @test used_inc && used_full
+        @test all(>(150), resorts)                # every step's sort and the shifts' (208 and 207 measured)
         @test shifts > 40 && nborn > 0           # the run refills and gives births
         @test inc == full
     end

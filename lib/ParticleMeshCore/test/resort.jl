@@ -12,7 +12,7 @@ ResortLCG(seed::Integer) = ResortLCG(UInt64(seed) * 0x9e3779b97f4a7c15 + 0x2545f
     resort_species(T, n, cap, np; seed)
 
 `np` alive particles of element type `T` on `n` cells per axis in a species of capacity `cap`, in
-random cells and slots (the slots are not in cell order), with the extras `tag::Int32` (the
+random cells and slots (the slots are not in cell order), three distinct momentum components, with the extras `tag::Int32` (the
 particle's id) and `x::T`, and the slots past `np` free.
 """
 function resort_species(::Type{T}, n::NTuple{N,Int}, cap, np; seed = 1) where {T,N}
@@ -24,7 +24,9 @@ function resort_species(::Type{T}, n::NTuple{N,Int}, cap, np; seed = 1) where {T
             s.offset[d][i] = seeded(T, rng())
         end
         s.w[i] = seeded(T, 1 / 2 + rng())
-        s.u[1][i] = seeded(T, 2rng() - 1)
+        for d in 1:3
+            s.u[d][i] = seeded(T, 2rng() - 1)
+        end
         s.status[i] = ParticleMeshCore.ALIVE
         s.extras.tag[i] = Int32(i)
         s.extras.x[i] = seeded(T, i / 7)
@@ -49,15 +51,16 @@ function resort_move!(s::Species{N}, n, rng; pfree = 1 / 20) where {N}
     return s
 end
 
-# Add particles behind the count, as a refill or a birth does: up to `k` slots, every third one
-# left free (a gap), in random cells, and the count advanced by `k` as `bump_count_kernel!` does.
-function resort_append!(s::Species{N}, n, k, rng; tag0) where {N}
+# Add particles behind the count, as a refill or a birth does: up to `k` slots, every `gap`-th one
+# left free (none for `gap = 0`), in random cells, and the count advanced by `k` as
+# `bump_count_kernel!` does.
+function resort_append!(s::Species{N}, n, k, rng; tag0, gap = 3) where {N}
     T = eltype(s)
     c0 = Int(s.count[1])
     for j in 1:k
         i = c0 + j
         i <= capacity(s) || break
-        j % 3 == 0 && continue
+        gap > 0 && j % gap == 0 && continue
         for d in 1:N
             s.cell[d][i] = rng(n[d])
             s.offset[d][i] = seeded(T, rng())
@@ -76,14 +79,15 @@ same_sort(a, wa, b, wb) = all(same_bits(x, y) for (x, y) in zip(species_arrays(a
                           wa.perm == wb.perm && wa.seg_start == wb.seg_start && wa.seg_stop == wb.seg_stop
 
 """
-    resort_run(T, n; steps, append, wgs, seed, np, pfree) -> Vector{Bool}
+    resort_run(T, n; steps, append, wgs, seed, np, pfree, gap) -> Vector{Bool}
 
 Two copies of one species of `np` particles in `12·prod(n)` slots, one sorted by `sort_by_cell!`
 and one by `resort_by_cell!` with a workspace of `append`, through `steps` rounds of moves, frees
-and (every second round) `append` particles added behind the count, a fraction `pfree` freed per
-round; per round whether the two hold the same bits.
+and (every second round) `append` particles added behind the count (every `gap`-th slot left
+free, none for `gap = 0`), a fraction `pfree` freed per round; per round whether the two hold the
+same bits.
 """
-function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1, np = 8 * prod(n), pfree = 1 / 20) where {T,N}
+function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1, np = 8 * prod(n), pfree = 1 / 20, gap = 3) where {T,N}
     cap = 3 * prod(n) * 4
     grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
     a = resort_species(T, n, cap, np; seed)
@@ -96,7 +100,7 @@ function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = n
         for (s, w) in ((a, wa), (b, wb))
             rng = ResortLCG(seed + 100k)
             resort_move!(s, n, rng; pfree)
-            iseven(k) && resort_append!(s, n, append, rng; tag0 = 1000k)
+            iseven(k) && resort_append!(s, n, append, rng; tag0 = 1000k, gap)
         end
         sort_by_cell!(a, grid, wa; workgroupsize = wgs)
         resort_by_cell!(b, grid, wb; workgroupsize = wgs)
@@ -114,9 +118,21 @@ end
     for n in ((7,), (16, 12), (3, 4, 3))
         @test all(resort_run(Float32, n; np = 12 * prod(n) - 10, pfree = 0))
     end
+    # a tail with every slot alive, inside the capacity: its last particle closes its cell's segment
+    for n in ((7,), (16, 12), (3, 4, 3))
+        @test all(resort_run(Float64, n; gap = 0))
+    end
+    # fewer particles than cells: empty cells, whose segments are (1, 0) in both sorts
+    for n in ((7,), (16, 12), (3, 4, 3))
+        @test all(resort_run(Float32, n; np = prod(n) ÷ 2))
+    end
     # The slots are in the order of the full sort, and the count is the alive count.
     grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
     s = resort_species(Float64, (16, 12), 2304, 1536)
+    # the one-launch gather moves every array of the species: the cells, offsets, momenta, weight, status and extras
+    a = ParticleMeshCore.species_arrays(s)
+    @test length(a) == 2 * 2 + 5 + length(s.extras) &&
+          all(x -> count(y -> x === y, a) == 1, (s.cell..., s.offset..., s.u..., s.w, s.status, values(s.extras)...))
     ws = Workspace(s, grid; append = 40)
     sort_by_cell!(s, grid, ws)
     resort_move!(s, (16, 12), ResortLCG(5))

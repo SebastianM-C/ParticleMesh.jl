@@ -14,7 +14,8 @@ cell the `3^N` move counts `hist` (later the ranks), the new counts `cnt` and th
 last in slot order); the tail of up to `append` slots behind the last sort's count, with its keys,
 its permutation, the sortperm workspace and its per-cell bounds; the scan workspaces; the alive
 count of the last sort (`sorted_count`, on the device), whether there was one (`ordered`, on
-the host) and the status array of the species it sorted (`sorted_on`, compared by `===`); and `spare`, a second copy of every particle array, into which both sorts gather the
+the host), the status array of the species it sorted (`sorted_on`, compared by `===`) and the
+number of calls that sorted from the last order instead of in full (`resorts`, on the host); and `spare`, a second copy of every particle array, into which both sorts gather the
 whole species in one launch and from which one launch copies it back (two launches where the
 gather array by array through the shared buffers takes two per array).
 """
@@ -38,6 +39,7 @@ struct ResortScratch{MI,VI,VK,VP,AT,AC,AS,SP}
     append::Int
     ordered::Base.RefValue{Bool}
     sorted_on::Base.RefValue{Any}
+    resorts::Base.RefValue{Int}
 end
 
 function ResortScratch(s::Species{N}, ncell::Integer, append::Integer) where {N}
@@ -53,7 +55,7 @@ function ResortScratch(s::Species{N}, ncell::Integer, append::Integer) where {N}
     return ResortScratch(z(3^N, ncell), cnt, cum, KernelAbstractions.ones(backend, Int32, ncell), z(ncell), free, free_cum, z(1),
                          tail_key, tail_perm, tail_ak, KernelAbstractions.ones(backend, Int32, ncell), z(ncell),
                          AK.workspace(AK.accumulate!, +, cum, cnt), AK.workspace(AK.accumulate!, +, free_cum, free),
-                         map(similar, species_arrays(s)), Int(append), Ref(false), Ref{Any}(nothing))
+                         map(similar, species_arrays(s)), Int(append), Ref(false), Ref{Any}(nothing), Ref(0))
 end
 
 resort_bytes(::Nothing) = 0
@@ -297,5 +299,6 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     copyto!(ws.seg_stop, r.new_stop)
     permute_species!(s, ws, workgroupsize)
     copyto!(r.sorted_count, s.count)
+    r.resorts[] += 1
     return s
 end
