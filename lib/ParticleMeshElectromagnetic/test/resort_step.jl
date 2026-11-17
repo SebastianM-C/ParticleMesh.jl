@@ -186,7 +186,7 @@ function node_bins_gap(::Type{T}; nsteps = 150) where {T}
     return maximum(values(gaps)), gaps, window_shifts(on, nsteps), nborn
 end
 
-@testset "T-865 the step's deposition by nearest-node bins follows the cells' run to roundoff through the window's shifts and the births [A2, A4, WP-041]" begin
+@testset "T-865 the step's deposition by nearest-node bins follows the cells' run to roundoff through the window's shifts and the births, and keeps the cell on the window's x axis [A2, A4, WP-041]" begin
     C = emC("T-865")
     for T in (Float32, Float64, D3)
         worst, gaps, shifts, nborn = node_bins_gap(T)
@@ -195,4 +195,24 @@ end
         @test record!("T-865", T, worst) <= C
         @test worst > 0                                  # the bins change the order of the sums
     end
+    # On the window's x axis the bin is the cell. Before the window starts its front is a fixed edge
+    # that the plasma reaches, and a particle past the middle of the last column keeps its charge in
+    # that column; a periodic node bin would move it to the back columns (found by the PR's breaker).
+    prob = window_lwfa(Float64; start = 1000, nsteps = 2)
+    cols = map((false, true)) do nb
+        st = EMState(prob, EMNumerics(; node_bins = nb))
+        initialize!(st, prob)
+        s, n1, g = st.species[1], st.grid.n[1], guards(st.grid)
+        i = findfirst(k -> s.status[k] == ParticleMeshCore.ALIVE && s.w[k] > 0, 1:capacity(s))
+        s.cell[1][i], s.offset[1][i] = n1, 3 / 4
+        ρ, ρ0 = field(CPU(), Float64, st.grid), field(CPU(), Float64, st.grid)
+        window_charge!(ρ, st)
+        j = findfirst(k -> s.status[k] == ParticleMeshCore.ALIVE && s.cell[1][k] == n1 && s.offset[1][k] == 3 / 4, 1:capacity(s))
+        s.w[j] = 0
+        window_charge!(ρ0, st)
+        d = (ρ .- ρ0)[(g + 1):(g + n1), :]
+        (findall(c -> any(!iszero, d[c, :]), 1:n1), sum(d), n1)
+    end
+    @test cols[1][1] == cols[2][1] == [cols[1][3]]
+    @test cols[2][2] ≈ cols[1][2] rtol = 1e-12
 end

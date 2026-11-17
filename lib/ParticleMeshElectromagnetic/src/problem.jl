@@ -273,8 +273,8 @@ array per sorted species to the scratch. `node_bins` groups the particles of the
 the first node of their stencil with the shape and ρ's stagger (the engine's `NodeBins`, WP-041)
 instead of by cell: at order 2 the `Reference()` deposits then walk 3 bins per axis where they
 walk 4 cells, and the 2D flux patch holds 5 × 5 nodes per bin where a cell's holds 6 × 6; the
-current changes at roundoff (another order of summation), deterministic either way. The species
-loaded for the window's background charge and the ionization's atoms keep cells.
+current changes at roundoff (another order of summation), deterministic either way. On the
+window's x axis, which is not periodic, the bin is the cell. The ionization's atoms keep cells.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     shape::S

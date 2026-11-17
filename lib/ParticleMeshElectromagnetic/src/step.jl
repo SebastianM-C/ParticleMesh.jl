@@ -314,8 +314,15 @@ deposit_mode(st::EMState, s) = effective_mode(st.numerics.mode, eltype(s))
 sort_append(numerics::EMNumerics, k::Integer) = numerics.resort ? Int(k) : nothing
 
 # The bins of a species' sort (`EMNumerics(; node_bins)`): the first node of the particles' stencil
-# with the numerics' shape and ρ's stagger, or the cell.
-sort_bins(numerics::EMNumerics, ::Val{N}) where {N} = numerics.node_bins ? NodeBins(numerics.shape, ntuple(_ -> RHO_STAGGER, Val(N))) : CellBins()
+# with the numerics' shape and ρ's stagger, or the cell. A node bin is wrapped periodically, which
+# moves a particle near the last node of an axis to the first bin; the window's x axis is not
+# periodic (its edges are dropped, not folded), so there the bin stays the cell: the stagger whose
+# stencil does not shift with the offset (`NodeBins`' `h` is 0 for every offset).
+sort_bins(numerics::EMNumerics, ::Val{N}; window::Bool = false) where {N} =
+    numerics.node_bins ? NodeBins(numerics.shape, ntuple(d -> d == 1 && window ? cell_stagger(numerics.shape) : RHO_STAGGER, Val(N))) :
+    CellBins()
+cell_stagger(::Shape{1}) = Node()
+cell_stagger(::Shape{2}) = Center()
 sorts(st::EMState, s) = deposit_mode(st, s) isa Reference
 
 "Deposit the kinetic energy density at the current momenta into `st.K` (positions sorted if the mode needs it)."

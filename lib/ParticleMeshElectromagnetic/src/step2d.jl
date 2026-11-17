@@ -87,7 +87,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
     # a window refills one column of a species behind its count after each shift's sort
     ws = map((s, d) -> Workspace(s, grid; flux, append = sort_append(numerics, window === nothing ? 0 : n[2] * prod(d.ppc)),
-                                 bins = sort_bins(numerics, Val(2))), species,
+                                 bins = sort_bins(numerics, Val(2); window = window !== nothing)), species,
              problem.species)
     nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), (species..., born_species(ionization)...); init = 0)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs, every, record)
