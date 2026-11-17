@@ -57,8 +57,9 @@ and the pulse are where they are in the case, in the lab frame). The element typ
 argument's own type when it is a dual (a dual of `float` keeps the run in `float`).
 
 Float32 is enough for the objective and its ForwardDiff gradient: at λ₀/16, a₀ = 2.175 (WP-065's
-`trapped_energy`, with duals of Float32 on an RTX 5090), J in Float32 is within 5·10⁻⁷ of Float64
-and each of the five partials within 9·10⁻⁶; at λ₀/8 to t = 190 within 1.6·10⁻⁵ (T-914). Float64 stays the default for the central
+`trapped_energy`), Float32 duals on an RTX 5090 give J within 6·10⁻⁶ of Float64 on the CPU and the
+six partials (the five parameters and the budget) within 3.3·10⁻³, below the changes with
+resolution that WP-065 studies; at λ₀/8 to t = 190, J within 1.6·10⁻⁵ (T-914). Float64 stays the default for the central
 differences that check the gradient: their steps reach 2⁻¹⁸ of a parameter, below Float32's
 resolution of it (2⁻²⁴), where the difference of two Float32 runs is roundoff.
 """
