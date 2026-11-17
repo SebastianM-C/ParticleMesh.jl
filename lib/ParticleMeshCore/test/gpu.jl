@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -89,6 +89,10 @@ else
         end
         rerun_on(GPU, (("T-263", body_T263), ("T-264", body_T264), ("T-265", be -> body_T265(be; nodes = false)),
                        ("T-267", body_T267), ("T-269", body_T269), ("T-530", body_T530), ("T-531", body_T531)))
+    end
+
+    @testset "T-876 the engine's N = 3 fill and fold, load, sort, gather and deposition on CUDA [A7, A8, WP-042]" begin
+        rerun_on(GPU, (("T-871", body_T871), ("T-872", body_T872), ("T-873", body_T873)))
     end
 
     @testset "T-192 Reference mode of the engine on CUDA is bitwise across reruns and launch shapes [A4, WP-013]" begin

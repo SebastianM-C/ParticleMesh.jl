@@ -246,12 +246,12 @@ status = "proposed; before the #203 fixes Vay measured 39 and the exact rotation
 # The measured values are the largest over N = 1 and N = 2; the solver is bitwise across thread
 # counts (T-327), so one measurement covers 1 and 4 threads.
 ["T-320"]
-quantity = "an oblique discrete eigenmode (m = 3 at N = 1, (3, −2) at N = 2) in each polarization against the exact Yee relation: largest field error over every E and B component, value and partials (C); phase error and relative amplitude error of its Fourier coefficient (C_phase)"
+quantity = "an oblique discrete eigenmode (m = 3 at N = 1, (3, −2) at N = 2, (3, −2, 1) at N = 3) in each polarization against the exact Yee relation: largest field error over every E and B component, value and partials (C); phase error and relative amplitude error of its Fourier coefficient (C_phase)"
 scale = "steps (amplitude 1), 400 steps at Δt = 1/2 and 95/100 of the Courant limit"
 C = 0.5
 C_phase = 0.5
-measured = { Float32 = 0.0797, Float64 = 0.135, "Dual{Float32,3}" = 0.0797 }
-measured_phase = { Float32 = 0.065, Float64 = 0.121, "Dual{Float32,3}" = 0.065 }
+measured = { Float32 = 0.139, Float64 = 0.135, "Dual{Float32,3}" = 0.139 }
+measured_phase = { Float32 = 0.13, Float64 = 0.121, "Dual{Float32,3}" = 0.13 }
 status = "proposed"
 
 ["T-321"]
@@ -262,11 +262,13 @@ errors = { n1 = [6.35e-4, 1.57e-4, 3.92e-5], axis = [2.74e-3, 6.80e-4, 1.70e-4],
 status = "proposed; the anisotropy (diagonal error / axis error, 0.55) is in reports/wp-022-yee-nd.md"
 
 ["T-322"]
-quantity = "∇·B by forward differences, change after up to 200 steps (C); one step's change of the backward-difference ∇·E plus Δt·∇·J with a prescribed J (C_current); random fields, every part of the duals, 95/100 of the Courant limit"
+quantity = "∇·B by forward differences, change after up to 200 steps (C at N = 1 and 2, C_3d at N = 3 on 12 × 8 × 10 cells); one step's change of the backward-difference ∇·E plus Δt·∇·J with a prescribed J (C_current); random fields, every part of the duals, 95/100 of the Courant limit"
 scale = "max|B|·Σ_d 2/Δ_d·steps (C); max(|E|, |B|, Δt|J|)·Σ_d 2/Δ_d (C_current)"
 C = 0.2
+C_3d = 0.5
 C_current = 1
 measured = { Float32 = 0.0379, Float64 = 0.0328, "Dual{Float32,3}" = 0.0471 }
+measured_3d = { Float32 = 0.171, Float64 = 0.191, "Dual{Float32,3}" = 0.227 }
 measured_current = { Float32 = 0.354, Float64 = 0.323, "Dual{Float32,3}" = 0.388 }
 status = "proposed"
 
@@ -829,3 +831,31 @@ measured_floor_energy = { a0 = 5.48e-10, suppression = 9.42e-11 }
 measured_dual = { charge = 8.54e-7, energy = 9.52e-7 }
 measured_dual_primal = { charge = 2.08e-7, energy = 9.45e-7 }
 status = "proposed; T-778's and T-779's bounds"
+
+# WP-042, the module at N = 3 outside the push and the current (12 × 8 × 10 cells of 1/4 × 3/8 × 1/2).
+
+["T-881"]
+quantity = "3D initial field of a quiet-loaded cosine charge, mode (1, 2, -1), 2 × 1 × 3 particles per cell, orders 1 and 2, Reference and Fast: backward-difference divergence of E minus (ρ − mean ρ) per node (C); the folded charge against 1 + a·ΠR_d·cos θ (C_charge); Ex, Ey, Ez against the closed form with the Yee-consistent symbol, per value and partial (C_field)"
+scale = "(Σ_d n_d)·(max|ρ| + ‖L‖·max|φ|) (C); |q·n₀| (C_charge); (Σ_d n_d)·|q·n₀|·max|reference| over the three components (C_field)"
+C = 0.5
+C_charge = 16
+C_field = 8
+measured = { Float32 = 0.111, Float64 = 0.125, "Dual{Float32,3}" = 0.123, charge_Float32 = 2.93, charge_Float64 = 3.0, "charge_Dual{Float32,3}" = 2.93, field_Float32 = 1.45, field_Float64 = 2.96, "field_Dual{Float32,3}" = 1.42 }
+status = "proposed"
+
+["T-882"]
+quantity = "3D recorder on random fields: the six field energies and the kinetic energy, relative (C); the Fourier amplitudes of the six components and of k̂·E at the mode (1, -2, 3) against BigFloat sums over each component's Yee positions (C_modes); the amplitudes of a pure mode A_c·cos(k·x − φ_c) (C_pure)"
+scale = "the value (C); 2·mean|field| (C_modes); 1 (amplitudes up to 1.25, C_pure)"
+C = 8
+C_modes = 1
+C_pure = 8
+measured = { Float32 = 0.943, Float64 = 0.984, "Dual{Float32,3}" = 0.77, modes_Float32 = 0.0566, modes_Float64 = 0.0854, "modes_Dual{Float32,3}" = 0.08, pure_Float32 = 0.839, pure_Float64 = 1.5, "pure_Dual{Float32,3}" = 0.839 }
+status = "proposed"
+
+["T-883"]
+quantity = "a 3D state: the recorded amplitudes of Ex, Ey, Ez of the initial field at the charge's mode against the closed form i·A·S_d/K² (C); the kinetic-energy chunks against the host's Float64 sums (C_kinetic)"
+scale = "(Σ_d n_d)·A·|S|/K² (C); the largest chunk (256 slots, C_kinetic)"
+C = 1
+C_kinetic = 32
+measured = { Float32 = 0.0298, Float64 = 0.107, "Dual{Float32,3}" = 0.0347, kinetic_Float32 = 4.21, kinetic_Float64 = 0.717, "kinetic_Dual{Float32,3}" = 4.23 }
+status = "proposed"

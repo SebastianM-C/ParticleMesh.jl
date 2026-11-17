@@ -17,7 +17,9 @@ shapes and no host-side branching on device data (`docs/plan/architecture-draft.
 every launch takes `workgroupsize = nothing` (the backend default), which selects the launch
 shape only; a fixed size the kernel cannot take is refused with an `ArgumentError` (`launcher`).
 `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
-the prefix sum, which is `N = 1` only). The contracts are those of
+the prefix sum, which is `N = 1` only). At `N = 3` the grid, the fill/fold pair, the quiet start,
+the sort, the gather, the deposition of a quantity and the periodic solve with its gradient are
+implemented and tested; the flux deposition is not. The contracts are those of
 `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore
@@ -39,7 +41,7 @@ export GaussianVelocity, GaussianMomentum, MaxwellJuttner, draws_momentum
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
 export deposit_flux!, flux_guard_width, flux_extras
 export philox4x32, uniform_open, box_muller
-export load_quiet!, quiet_particle_2d
+export load_quiet!, quiet_particle, quiet_particle_2d
 
 include("launch.jl")
 include("grid.jl")

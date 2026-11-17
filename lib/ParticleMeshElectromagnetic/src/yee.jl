@@ -14,8 +14,8 @@
 """
     Yee()
 
-The Yee FDTD solver in the mesh-solve slot (A2, A10), for any number N of resolved axes (N = 1
-and N = 2 claimed and tested): B in two half steps around a full E step, so that E and B are both
+The Yee FDTD solver in the mesh-solve slot (A2, A10), for any number N of resolved axes (N = 1,
+2 and 3 tested): B in two half steps around a full E step, so that E and B are both
 known at integer times for the push. Its stability limit is [`courant_limit`](@ref).
 """
 struct Yee end

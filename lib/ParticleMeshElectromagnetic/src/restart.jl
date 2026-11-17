@@ -212,13 +212,13 @@ momenta, which the next step's observer reads ([`observe!`](@ref)), and mark it 
 the next step ([`reads_kinetic`](@ref): the default recorder, a function or `nothing` at every
 step); whoever writes the evolved arrays otherwise calls this ([`restore!`](@ref) does, and the
 harness at the first step of a solve, whose `u0` its cache has not seen), and `observe!` calls
-it for an observer that reads a cache a step left stale. At N = 2 `K` is
+it for an observer that reads a cache a step left stale. At N ≥ 2 `K` is
 the fixed chunks' sums over the slots as they are. At N = 1 it is a deposition, which in a mode
 that sorts reads the sort's segment bounds, so the species are sorted first: the identity
 permutation on the particles of a step's end or of `initialize!`, which are sorted, so the bits of
 `K` are those the step left.
 """
-refresh_caches!(st::EMState{2}) = kinetic!(st)
+refresh_caches!(st::EMState) = kinetic!(st)
 function refresh_caches!(st::EMState{1})
     for (s, ws) in zip(st.species, st.ws)
         sorts(st, s) && sort_by_cell!(s, st.grid, ws; workgroupsize = st.numerics.workgroupsize)
