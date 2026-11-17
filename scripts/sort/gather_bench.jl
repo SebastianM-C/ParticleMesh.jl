@@ -90,6 +90,20 @@ end
 
 gather_arrays(s) = species_arrays(s)
 
+# One step's moves of a sorted state: 30 % of the alive particles to a neighbouring cell on one axis.
+function move!(s, n, seed)
+    cx, cy = Array(s.cell[1]), Array(s.cell[2])
+    rng = MersenneTwister(seed)
+    alive = Array(s.status) .== ALIVE
+    for i in eachindex(cx)
+        (alive[i] && rand(rng) < MOVED) || continue
+        st = rand(rng, (-1, 1))
+        rand(rng, Bool) ? (cx[i] = Int32(mod1(cx[i] + st, n[1]))) : (cy[i] = Int32(mod1(cy[i] + st, n[2])))
+    end
+    copyto!(s.cell[1], cx); copyto!(s.cell[2], cy)
+    return s
+end
+
 @kernel function gather32_kernel!(dst, @Const(src), @Const(perm))
     i = @index(Global, Linear)
     @inbounds PMC.copy_each!(dst, src, i, perm[i])
@@ -152,17 +166,7 @@ function bench(sizename, tname; reps)
         for r in 1:(reps + 2)
             foreach(copyto!, gather_arrays(s), sorted)
             sort_by_cell!(s, grid, ws)                                 # the order of the last sort
-            moved = map(copy, gather_arrays(s))
-            # move the sorted state by the same moves: 30 % of the alive to a neighbouring cell
-            cx, cy = Array(s.cell[1]), Array(s.cell[2])
-            rng = MersenneTwister(r)
-            alive = Array(s.status) .== ALIVE
-            for i in eachindex(cx)
-                (alive[i] && rand(rng) < MOVED) || continue
-                st = rand(rng, (-1, 1))
-                rand(rng, Bool) ? (cx[i] = Int32(mod1(cx[i] + st, n[1]))) : (cy[i] = Int32(mod1(cy[i] + st, n[2])))
-            end
-            copyto!(s.cell[1], cx); copyto!(s.cell[2], cy)
+            move!(s, n, r)
             KernelAbstractions.synchronize(BE)
             t0 = time_ns()
             f()
@@ -178,6 +182,23 @@ function bench(sizename, tname; reps)
         out["sort_by_cell_noswap"] = time_sort(() -> sort_by_cell!(s, grid, ws))
         out["resort_by_cell_noswap"] = time_sort(() -> resort_by_cell!(s, grid, ws))
     end
+    # the bits: the default sort and resort against the copy-back sort, from the same moved state
+    if haskey(out, "sort_by_cell_noswap")
+        bits(x) = reinterpret(UInt8, Array(x))
+        same = true
+        for f in (sort_by_cell!, resort_by_cell!)
+            states = map((true, false)) do sw
+                foreach(copyto!, gather_arrays(s), saved)
+                w = Workspace(s, grid; bins, append = 64, swap = sw)
+                sort_by_cell!(s, grid, w)
+                move!(s, n, 99)
+                f(s, grid, w)
+                (map(a -> bits(a), gather_arrays(s)), Array(w.perm), Array(w.seg_start), Array(w.seg_stop), Array(s.count))
+            end
+            same &= states[1] == states[2]
+        end
+        out["same_bits_swap_noswap"] = same
+    end
     out["particles"] = cap
     out["bytes_per_slot"] = sum(x -> sizeof(eltype(x)), a)
     return out
@@ -188,12 +209,13 @@ function main()
     forms = ("per_array", "fused_copy", "per_array_swap", "fused_swap64", "fused_swap32", "sort_by_cell", "resort_by_cell",
              "sort_by_cell_noswap", "resort_by_cell_noswap")
     results = Dict{String,Any}()
-    println("| size | type | slots | B/slot | ", join(forms, " | "), " |")
-    println("|", repeat("---|", 4 + length(forms)))
+    println("| size | type | slots | B/slot | ", join(forms, " | "), " | same bits |")
+    println("|", repeat("---|", 5 + length(forms)))
     for sz in SIZE_LIST, tn in TYPE_LIST
         r = bench(sz, tn; reps)
         results["$sz/$tn"] = r
-        println("| $sz | $tn | $(r["particles"]) | $(r["bytes_per_slot"]) | ", join((haskey(r, f) ? string(round(r[f]; digits = 3)) : "-" for f in forms), " | "), " |")
+        println("| $sz | $tn | $(r["particles"]) | $(r["bytes_per_slot"]) | ", join((haskey(r, f) ? string(round(r[f]; digits = 3)) : "-" for f in forms), " | "),
+                " | ", get(r, "same_bits_swap_noswap", "-"), " |")
     end
     dir = run_dir("gather-$BACKEND_NAME", @__FILE__; prefix = "sort", work_package = "WP-041",
                   params = Dict{String,Any}("sizes" => SIZE_LIST, "types" => TYPE_LIST, "ppc" => PPC, "moved" => MOVED,
