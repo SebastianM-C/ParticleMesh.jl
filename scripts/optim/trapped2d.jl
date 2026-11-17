@@ -112,7 +112,7 @@ end
 
 One run of the case at the job's point and resolution. A plain job gives J and the summary; a
 grad job runs with duals in the five parameters and the budget's a₀ and adds the gradient (its J
-is the plain run's J bit for bit, T-892).
+is the plain run's J bit for bit, T-912).
 """
 function run_job(job)
     x, a0E, ppl, ny = Float64.(job["x"]), Float64(job["a0E"]), Int(job["ppl"]), Int(job["ny"])
