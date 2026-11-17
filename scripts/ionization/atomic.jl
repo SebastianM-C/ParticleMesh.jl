@@ -35,6 +35,8 @@
 
 using TOML: TOML
 using SpecialFunctions: gamma
+using Mendeleev: Mendeleev, chem_elements
+using Unitful: @u_str, ustrip
 using ParticleMeshElectromagnetic: ADKLevel, TongLinLevel
 
 "CODATA 2022, as scipy 1.18.1's `scipy.constants` lists them: α, mₑc² in eV, and h·c in eV·m (exact since 2019)."
@@ -42,8 +44,26 @@ const FINE_STRUCTURE = 7.2973525643e-3
 const ELECTRON_REST_ENERGY_EV = 510998.95069
 const HC_EV_M = 1.2398419843320026e-6
 
-"Ionization energies in eV per element symbol (`ionization_energies.toml`, which names its source)."
-const IONIZATION_ENERGIES_EV = TOML.parsefile(joinpath(@__DIR__, "ionization_energies.toml"))
+"The element of a symbol such as `:N` in Mendeleev.jl's table; an unknown symbol is an `ArgumentError`."
+function chem_element(element)
+    key = Symbol(element)
+    haskey(chem_elements, key) || throw(ArgumentError("no element $key in Mendeleev.jl's table"))
+    return chem_elements[key]
+end
+
+"""
+    ionization_energies(element) -> eV per charge
+
+The energies of the successive ionizations of `element` (a symbol such as `:N`) in eV, the neutral
+atom's first: Mendeleev.jl's `ionenergy`, whose values are those of the NIST Atomic Spectra
+Database. They change only with the Mendeleev.jl version the manifest pins; T-783 holds H, He, N
+and Ar to the table FBPIC ships, and a run records the ones it used ([`atomic_record`](@ref)).
+"""
+function ionization_energies(element)
+    e = chem_element(element).ionenergy
+    ismissing(e) && throw(ArgumentError("Mendeleev.jl has no ionization energies for $element"))
+    return ustrip.(u"eV", e)
+end
 
 """
     ionization_energy(element, charge) -> eV
@@ -52,12 +72,22 @@ The energy that takes `element` (a symbol such as `:N`) from the charge `charge 
 `ionization_energy(:N, 6)` is that of N⁵⁺ → N⁶⁺.
 """
 function ionization_energy(element, charge::Integer)
-    key = String(element)
-    haskey(IONIZATION_ENERGIES_EV, key) || throw(ArgumentError("no ionization energies for $key; the table has $(sort(collect(keys(IONIZATION_ENERGIES_EV))))"))
-    e = IONIZATION_ENERGIES_EV[key]
-    1 <= charge <= length(e) || throw(ArgumentError("$key has the charges 1 to $(length(e)) to reach, got $charge"))
-    return Float64(e[charge])
+    e = ionization_energies(element)
+    1 <= charge <= length(e) || throw(ArgumentError("$element has the charges 1 to $(length(e)) to reach, got $charge"))
+    ismissing(e[charge]) && throw(ArgumentError("Mendeleev.jl has no ionization energy for $element → charge $charge"))
+    return e[charge]
 end
+
+"""
+    atomic_record(elements) -> Dict
+
+What a run's manifest keeps of the atomic data it used: the Mendeleev.jl version and the
+ionization energies in eV of each of `elements` (NaN where the package has none for a charge), so
+that a record does not depend on the package's data staying as it is.
+"""
+atomic_record(elements) =
+    Dict{String,Any}("source" => "Mendeleev.jl $(pkgversion(Mendeleev))",
+                     "ionization_energies_eV" => Dict{String,Any}(String(el) => coalesce.(ionization_energies(el), NaN) for el in elements))
 
 "The photon energy ħω₀/(mₑc²) of a laser of vacuum wavelength `wavelength` (m)."
 photon_energy(wavelength) = HC_EV_M / wavelength / ELECTRON_REST_ENERGY_EV
@@ -109,11 +139,8 @@ end
 "The factor of Tong and Lin: its fitted numbers α and the reference rates of helium-like ions (`tong_lin.toml`, which names its sources)."
 const TONG_LIN = TOML.parsefile(joinpath(@__DIR__, "tong_lin.toml"))
 
-"The nuclear charge of `element`: the number of ionization energies the table holds for it."
-function nuclear_charge(element)
-    ionization_energy(element, 1)
-    return length(IONIZATION_ENERGIES_EV[String(element)])
-end
+"The nuclear charge of `element`."
+nuclear_charge(element) = chem_element(element).atomic_number
 
 """
     tong_lin_alpha(element, charge) -> α
