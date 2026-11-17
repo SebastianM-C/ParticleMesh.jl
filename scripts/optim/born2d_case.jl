@@ -109,7 +109,7 @@ Refuses a position weight that is not 0 on the window's back band: `fade[1]` mus
 of the band's end (`window_back_band` columns from the back edge), and `fade[2] > fade[1]`.
 """
 function check_fade(st, fade)
-    band = window_back_band(st) * Float64(value_of(cellsize(st.grid)[1]))
+    band = back_band_end(st)
     fade[2] > fade[1] || throw(ArgumentError("the position weight needs fade[2] > fade[1], got $fade"))
     fade[1] >= band || throw(ArgumentError("the position weight must vanish on the window's back band, which ends at x = $band; got fade[1] = $(fade[1])"))
     return nothing
@@ -148,48 +148,73 @@ end
 "The objective of the case at `a0` and `dopant` (the keywords of [`born_problem`](@ref) and `fade`)."
 born_objective(a0 = BCASE.a0, dopant = BCASE.dopant; fade = BCASE.fade, kw...) = born_energy(born_state(a0, dopant; kw...); fade)
 
+"The window x at which the back band ends: a read-out starts there or ahead of it (`window_back_band`)."
+back_band_end(st) = window_back_band(st) * Float64(value_of(cellsize(st.grid)[1]))
+
+function check_from(st, from)
+    from >= back_band_end(st) || throw(ArgumentError("the guard reads ahead of the window's back band, which ends at x = $(back_band_end(st)); got from = $from"))
+    return nothing
+end
+
+# The alive particles of non-zero weight of a plasma species ahead of `from`, as plain numbers:
+# window x, kinetic energy, weight. The particles loaded in the vacuum and at the ramp's foot have
+# the weight zero (the profile enters through weights, A3) and move as test particles; they carry
+# nothing.
+function plasma_arrays(s, h1, from)
+    f(a) = Float64.(value_of.(Array(a)))
+    x = (Array(s.cell[1]) .- 1 .+ f(s.offset[1])) .* h1
+    w = f(s.w)
+    keep = (Array(s.status) .== ALIVE) .& (w .> 0) .& (x .>= from)
+    u = map(a -> f(a)[keep], s.u)
+    return x[keep], sqrt.(1 .+ u[1] .^ 2 .+ u[2] .^ 2 .+ u[3] .^ 2) .- 1, w[keep]
+end
+
 """
-    plasma_peak_energy(st; fade = BCASE.fade) -> γ − 1
+    plasma_peak_energy(st; from = BCASE.fade[1]) -> γ − 1
 
 The guard that goes with the objective: the highest kinetic energy (mₑc²) of an alive electron of
-non-zero weight of the plasma's species ahead of `fade[1]`, a plain number. In the laser a plasma electron quivers up
-to about a₀²/2; a value far above that says plasma electrons were injected into the wake
-themselves, energy the objective does not see.
+non-zero weight of the plasma's species at window x ≥ `from`, a plain number. In the laser a
+plasma electron quivers up to about a₀²/2; a value far above that says plasma electrons were
+injected into the wake themselves, energy the objective does not see. The default reads where the
+objective's position weight is not zero; `from = back_band_end(st)` reads the whole window ahead
+of the back band, the buckets behind the first one included.
 """
-function plasma_peak_energy(st; fade = BCASE.fade)
-    check_fade(st, fade)
+function plasma_peak_energy(st; from = BCASE.fade[1])
+    check_from(st, from)
     h1 = Float64(value_of(cellsize(st.grid)[1]))
-    peak = 0.0
-    for s in st.species
-        x, g, _ = plasma_arrays(s, h1)
-        keep = x .>= fade[1]
-        any(keep) && (peak = max(peak, maximum(g[keep])))
+    return maximum(st.species; init = 0.0) do s
+        maximum(plasma_arrays(s, h1, from)[2]; init = 0.0)
     end
-    return peak
-end
-
-# The alive particles of non-zero weight of a plasma species as plain numbers: window x, kinetic
-# energy, weight. The particles loaded in the vacuum and at the ramp's foot have the weight zero
-# (the profile enters through weights, A3) and move as test particles; they carry nothing.
-function plasma_arrays(s, h1)
-    alive = (Array(s.status) .== ALIVE) .& (value_of.(Array(s.w)) .> 0)
-    f(a) = Float64.(value_of.(Array(a)))[alive]
-    u = map(f, s.u)
-    return (Array(s.cell[1])[alive] .- 1 .+ f(s.offset[1])) .* h1, sqrt.(1 .+ u[1] .^ 2 .+ u[2] .^ 2 .+ u[3] .^ 2) .- 1, f(s.w)
 end
 
 """
-    plasma_fast_weight(st; fade = BCASE.fade, energy = BCASE.u_fast) -> weight
+    plasma_fast_weight(st; from = BCASE.fade[1], energy = BCASE.u_fast) -> weight
 
-The weight (times Δx·Δy) of the plasma's electrons ahead of `fade[1]` whose kinetic energy exceeds
-`energy` (mₑc²): the charge the wake has injected from the plasma itself.
+The weight (times Δx·Δy) of the plasma's electrons at window x ≥ `from` whose kinetic energy
+exceeds `energy` (mₑc²): the charge the wake has injected from the plasma itself. A count with a
+hard cut: it changes in steps of a particle's weight.
 """
-function plasma_fast_weight(st; fade = BCASE.fade, energy = BCASE.u_fast)
-    check_fade(st, fade)
+function plasma_fast_weight(st; from = BCASE.fade[1], energy = BCASE.u_fast)
+    check_from(st, from)
     h = Float64.(value_of.(cellsize(st.grid)))
     return h[1] * h[2] * sum(st.species; init = 0.0) do s
-        x, g, w = plasma_arrays(s, h[1])
-        sum(w[(x .>= fade[1]) .& (g .> energy)]; init = 0.0)
+        _, g, w = plasma_arrays(s, h[1], from)
+        sum(w[g .> energy]; init = 0.0)
+    end
+end
+
+"""
+    plasma_fast_energy(st; from = BCASE.fade[1], energy = BCASE.u_fast) -> energy
+
+The kinetic energy Δx·Δy·Σ w(γ − 1) of the electrons [`plasma_fast_weight`](@ref) counts, in the
+objective's units: what the plasma's own injected electrons carry next to J.
+"""
+function plasma_fast_energy(st; from = BCASE.fade[1], energy = BCASE.u_fast)
+    check_from(st, from)
+    h = Float64.(value_of.(cellsize(st.grid)))
+    return h[1] * h[2] * sum(st.species; init = 0.0) do s
+        _, g, w = plasma_arrays(s, h[1], from)
+        sum((w .* g)[g .> energy]; init = 0.0)
     end
 end
 
@@ -199,9 +224,11 @@ end
 Plain numbers about the born electrons for a run's tables: `born`, the weight the atoms have
 released as electrons, summed over the atoms still in the window (Σ w·emitted); `alive`, the weight still in the
 window; `counted`, Σ w·S(x); `fast`, the weight with u_x > `u_fast`; `fast_counted`, the same times
-S(x); `u_max`; `energy`, the objective; `mean_energy`, energy over counted weight (mₑc²); `plasma_peak`, [`plasma_peak_energy`](@ref); and `plasma_fast`, [`plasma_fast_weight`](@ref) above `u_fast`. Weights are times Δx·Δy (n_c·(c/ω₀)²).
+S(x); `u_max`; `energy`, the objective; `mean_energy`, energy over counted weight (mₑc²); `plasma_peak`, `plasma_fast` and `plasma_fast_energy`, the guards ([`plasma_peak_energy`](@ref), [`plasma_fast_weight`](@ref) and [`plasma_fast_energy`](@ref) above `u_fast`) ahead of `fade[1]`; and the same three with `_window`, ahead of the back band. Weights are times Δx·Δy (n_c·(c/ω₀)²).
 """
 function born_summary(st; fade = BCASE.fade, u_fast = BCASE.u_fast)
+    check_fade(st, fade)
+    band = back_band_end(st)
     h = Float64.(value_of.(cellsize(st.grid)))
     area = h[1] * h[2]
     e = ionization_electrons(st)
@@ -216,6 +243,9 @@ function born_summary(st; fade = BCASE.fade, u_fast = BCASE.u_fast)
     counted = sum(w .* S)
     return (; born = area * born, alive = area * sum(w), counted = area * counted, fast = area * sum(w[ux .> u_fast]),
             fast_counted = area * sum((w .* S)[ux .> u_fast]), u_max = isempty(ux) ? 0.0 : maximum(ux), energy,
-            mean_energy = counted > 0 ? energy / (area * counted) : 0.0, plasma_peak = plasma_peak_energy(st; fade),
-            plasma_fast = plasma_fast_weight(st; fade, energy = u_fast), particles = count(alive))
+            mean_energy = counted > 0 ? energy / (area * counted) : 0.0, plasma_peak = plasma_peak_energy(st; from = fade[1]),
+            plasma_fast = plasma_fast_weight(st; from = fade[1], energy = u_fast),
+            plasma_fast_energy = plasma_fast_energy(st; from = fade[1], energy = u_fast),
+            plasma_peak_window = plasma_peak_energy(st; from = band), plasma_fast_window = plasma_fast_weight(st; from = band, energy = u_fast),
+            plasma_fast_energy_window = plasma_fast_energy(st; from = band, energy = u_fast), particles = count(alive))
 end

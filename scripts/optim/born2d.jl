@@ -4,7 +4,7 @@
 # a scan of J in one parameter, the pulse's a₀. No optimizer runs here.
 #
 # 1. The base run in time: J, the born, counted and trapped weight, and the guard on the plasma's
-#    own electrons, every `series_every` c/ω₀, with the pulse's place and the wake's zero crossings
+#    own electrons (where J reads, and over the whole window ahead of the back band), every `series_every` c/ω₀, with the pulse's place and the wake's zero crossings
 #    at the read-out (where the position weight has to be 1).
 # 2. The scan: J at `scan` values of a₀ from plain runs, and at every second one the ForwardDiff
 #    derivative from a run with duals, through the Optimization.jl problem of problem.jl; the
@@ -125,6 +125,8 @@ function main(ppl)
         out["scan"] = scan
         save()
     end
+    check("at every a₀ the trapped born electrons are where the position weight is 1", all(r -> r["fast_counted"] >= (1 - 1e-3) * r["fast"], scan),
+          "smallest counted share of the trapped weight: $(minimum(r["fast_counted"] / r["fast"] for r in scan))")
     check("the run with duals returns the plain run's J", all(r -> !haskey(r, "J_dual") || r["J_dual"] == r["energy"], scan), "at $(count(r -> haskey(r, "J_dual"), scan)) points")
 
     # 3. At the base a₀: the derivative against central differences, and the fine scan.
@@ -176,7 +178,7 @@ function plot_results(dir, out)
     lines!(ax, t, [r["alive"] for r in s]; label = "born, in the window")
     lines!(ax, t, [r["counted"] for r in s]; label = "counted by the position weight")
     lines!(ax, t, [r["fast_counted"] for r in s]; label = "counted, u_x > $(out["case"]["u_fast"])")
-    lines!(ax, t, [r["plasma_fast"] for r in s]; label = "plasma electrons above $(out["case"]["u_fast"]) mₑc²", color = :crimson)
+    lines!(ax, t, [r["plasma_fast"] for r in s]; label = "plasma above $(out["case"]["u_fast"]) mₑc², where J reads", color = :crimson)
     axislegend(ax; position = :rc, labelsize = 11)
     axJ = Axis(fig[1, 2]; xlabel = "time (1/ω₀)", ylabel = "J (n_c·mₑc²·(c/ω₀)²)", title = "The objective and the guard in time")
     lines!(axJ, t, [r["energy"] for r in s]; label = "J")
@@ -215,7 +217,9 @@ function plot_results(dir, out)
     ax3 = Axis(fig[2, 2]; xlabel = "a₀", ylabel = "weight (n_c·(c/ω₀)²)", yscale = log10, title = "Trapped charge: born electrons and the plasma's own")
     scatterlines!(ax3, a, [q["fast_counted"] for q in sc]; label = "born, counted, u_x > $(out["case"]["u_fast"])")
     pf = [q["plasma_fast"] for q in sc]
-    any(>(0), pf) && scatterlines!(ax3, a[pf .> 0], pf[pf .> 0]; color = :crimson, label = "plasma above $(out["case"]["u_fast"]) mₑc²")
+    any(>(0), pf) && scatterlines!(ax3, a[pf .> 0], pf[pf .> 0]; color = :crimson, label = "plasma above $(out["case"]["u_fast"]) mₑc², where J reads")
+    pw = [q["plasma_fast_window"] for q in sc]
+    any(>(0), pw) && scatterlines!(ax3, a[pw .> 0], pw[pw .> 0]; color = :crimson, linestyle = :dash, label = "plasma above $(out["case"]["u_fast"]) mₑc², whole window")
     axislegend(ax3; position = :rb)
     d = out["derivative"]
     ax4 = Axis(fig[2, 3]; xlabel = "finite-difference step h", ylabel = "|FD − AD| / |AD|", xscale = log2, yscale = log10,
@@ -234,11 +238,12 @@ The tables of reports/wp-064-born-electron-objective.md from the figure's sideca
 function report_table(dir)
     out = JSON.parsefile(joinpath(dir, "born2d.json"))
     io = IOBuffer()
-    println(io, "| a₀ | J | dJ/da₀ (ForwardDiff) | born electrons trapped | plasma electrons above $(out["case"]["u_fast"]) mₑc² | plasma's highest γ − 1 | born mean energy |")
-    println(io, "|---|---|---|---|---|---|---|")
+    println(io, "| a₀ | J | dJ/da₀ (ForwardDiff) | born electrons trapped | born mean energy | plasma above $(out["case"]["u_fast"]) mₑc², where J reads: weight | its energy | its highest γ − 1 | plasma above $(out["case"]["u_fast"]) mₑc², whole window: weight | its energy |")
+    println(io, "|---|---|---|---|---|---|---|---|---|---|")
     for q in out["scan"]
         println(io, "| ", sig(q["a0"]), " | ", sig(q["energy"]), " | ", haskey(q, "dJ_da0") ? sig(q["dJ_da0"]) : "", " | ", sig(q["fast_counted"]), " | ",
-                sig(q["plasma_fast"]), " | ", sig(q["plasma_peak"]), " | ", sig(q["mean_energy"]), " |")
+                sig(q["mean_energy"]), " | ", sig(q["plasma_fast"]), " | ", sig(q["plasma_fast_energy"]), " | ", sig(q["plasma_peak"]), " | ",
+                sig(q["plasma_fast_window"]), " | ", sig(q["plasma_fast_energy_window"]), " |")
     end
     d, f, c, r = out["derivative"], out["fine"], out["cost"], out["readout"]
     last_row = out["series"][end]
@@ -248,8 +253,10 @@ function report_table(dir)
     println(io, "| Grid, steps, threads | λ₀/", out["case"]["ppl"], ", ", r["steps"], " steps, ", out["threads"], " threads |")
     println(io, "| Base run (a₀ = ", sig(d["a0"]), "): born weight, trapped and counted | ", sig(r["born_total"]), ", ", sig(last_row["fast_counted"]), " (",
             sig(100 * last_row["fast_counted"] / r["born_total"]), " %) |")
-    println(io, "| Base run: plasma electrons above ", out["case"]["u_fast"], " mₑc², against the trapped born weight | ", sig(last_row["plasma_fast"]), " (",
+    println(io, "| Base run: plasma electrons above ", out["case"]["u_fast"], " mₑc² where J reads (window x ≥ ", out["case"]["fade"][1], "), against the trapped born weight | ", sig(last_row["plasma_fast"]), " (",
             sig(100 * last_row["plasma_fast"] / last_row["fast_counted"]), " %) |")
+    println(io, "| Base run: the same over the whole window ahead of the back band | ", sig(last_row["plasma_fast_window"]), " (",
+            sig(last_row["plasma_fast_window"] / last_row["fast_counted"]), " times) |")
     println(io, "| J and dJ/da₀ at the base | ", sig(d["J"]), ", ", sig(d["forwarddiff"]), " |")
     println(io, "| Steepness d ln J / d ln a₀ | ", sig(d["log_slope"]), " |")
     println(io, "| Best abs(FD − AD)/abs(AD), at h | ", sig(d["best_relative_difference"]), ", ", sig(d["central"][argmin([q["relative_difference"] for q in d["central"]])]["h"]), " |")

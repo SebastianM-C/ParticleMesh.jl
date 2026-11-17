@@ -395,7 +395,7 @@ end
     @test dS ≈ ws[5] * (g5 - 1) * 15 / 8 / 12 rtol = 8eps()                       # mid-fade: only the weight's slope
 end
 
-@testset "T-832 the guard reads the plasma's weighted electrons ahead of the fade, not the born ones [WP-064]" begin
+@testset "T-832 the guard reads the plasma's weighted electrons ahead of a chosen place, not the born ones [WP-064]" begin
     st = born_test_state([30.0], [(40.0, 0.0, 0.0)], [1.0e-3])
     h = cellsize(st.grid)
     @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st) == 0            # a cold plasma; the born electron at γ ≈ 40 is not read
@@ -433,9 +433,19 @@ end
     s.status[i] = 0x00
     @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st; energy = 4.0) == 0
     s.status[i] = ALIVE
-    @test_throws ArgumentError plasma_fast_weight(st; fade = (1.0, 24.0))
-    @test plasma_peak_energy(st; fade = (8.0, 24.0)) == plasma_peak_energy(st)  # x ≈ 1.96 is still behind
-    @test_throws ArgumentError plasma_peak_energy(st; fade = (1.0, 24.0))       # inside the back band
+    @test_throws ArgumentError plasma_fast_weight(st; from = 1.0)
+    @test plasma_peak_energy(st; from = 8.0) == plasma_peak_energy(st)           # x ≈ 1.96 is still behind
+    @test_throws ArgumentError plasma_peak_energy(st; from = 1.0)               # inside the back band
+    @test_throws ArgumentError plasma_fast_energy(st; from = 1.0)
+    # from the back band's end the whole window is read: the fast particle behind the fade too (u_x = 20)
+    band = back_band_end(st)
+    s.cell[1][j] = floor(Int, band / h[1]) + 2; s.offset[1][j] = 0.5
+    @test plasma_peak_energy(st) ≈ sqrt(27) - 1 rtol = 4eps()
+    @test plasma_peak_energy(st; from = band) ≈ sqrt(401) - 1 rtol = 4eps()
+    @test plasma_fast_weight(st; from = band) ≈ h[1] * h[2] * s.w[j] rtol = 4eps()
+    @test plasma_fast_energy(st; from = band) ≈ h[1] * h[2] * s.w[j] * (sqrt(401) - 1) rtol = 4eps()
+    @test plasma_fast_energy(st; from = band, energy = 4.0) ≈ h[1] * h[2] * (s.w[j] * (sqrt(401) - 1) + s.w[i] * (sqrt(27) - 1)) rtol = 4eps()
+    @test plasma_fast_energy(st) == 0
 end
 
 "The state of the case at λ₀/8 at t = 150."
@@ -512,5 +522,15 @@ end
     s = born_summary(st)
     @test s.plasma_peak ≈ sqrt(65) - 1 rtol = 4eps()
     @test s.plasma_fast ≈ area * 2.0e-3 rtol = 4eps()
+    @test s.plasma_fast_energy ≈ area * 2.0e-3 * (sqrt(65) - 1) rtol = 4eps()
+    @test (s.plasma_peak_window, s.plasma_fast_window, s.plasma_fast_energy_window) == (s.plasma_peak, s.plasma_fast, s.plasma_fast_energy)
     @test born_summary(st; u_fast = 8.0).plasma_fast == 0
+    # a second fast one between the back band and the fade is in the window's numbers only
+    k = findfirst(j -> p.status[j] == ALIVE && back_band_end(st) + 1 <= (p.cell[1][j] - 1 + p.offset[1][j]) * h[1] < 11.0, eachindex(p.w))
+    p.w[k] = 5.0e-3; p.u[2][k] = 12.0
+    s2 = born_summary(st)
+    @test (s2.plasma_peak, s2.plasma_fast, s2.plasma_fast_energy) == (s.plasma_peak, s.plasma_fast, s.plasma_fast_energy)
+    @test s2.plasma_peak_window ≈ sqrt(145) - 1 rtol = 4eps()
+    @test s2.plasma_fast_window ≈ area * 7.0e-3 rtol = 4eps()
+    @test s2.plasma_fast_energy_window ≈ area * (2.0e-3 * (sqrt(65) - 1) + 5.0e-3 * (sqrt(145) - 1)) rtol = 4eps()
 end
