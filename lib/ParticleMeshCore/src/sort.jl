@@ -1,6 +1,6 @@
 """
     Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend), append = nothing,
-              bins = CellBins())
+              bins = CellBins(), key_sort = key_sort_alg(backend, capacity(species)))
 
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
@@ -15,6 +15,10 @@ stencils (`NodeBins(shape, stagger)`, WP-041), which the sort, `resort_by_cell!`
 the same element type where there is one (so `Int32`- and `T`-valued extras cost no scratch),
 otherwise one new buffer per further element type, shared by the extras of that type. An empty
 extras tuple costs nothing.
+
+`key_sort` is the AcceleratedKernels algorithm that sorts the keys ([`key_sort_alg`](@ref) by
+default). The keys are unique, so every algorithm gives the same permutation: the choice changes
+the time, never the bits.
 
 `append = k` (an integer ≥ 0) adds the scratch of [`resort_by_cell!`](@ref) (`resort`, a
 [`ResortScratch`](@ref)), which sorts from the order of the last sort with a tail of up to `k`
@@ -46,15 +50,27 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS,B}
     bins::B
 end
 
+"""
+    key_sort_alg(backend, capacity)
+
+The algorithm that sorts a workspace's `Int64` keys: `AK.RadixSort()` on a GPU backend from
+`2^20` slots, AcceleratedKernels' `AK.Auto()` otherwise. `Auto()` switches to radix sort for
+64-bit keys only from `2^23` elements on CUDA (AcceleratedKernels 0.5); on an RTX 5090 radix sort
+of keys built like these is already 1.2× faster at `2^20`, 1.6× at `2^22` and 2.2× at `2^23`, and
+on smaller arrays the two are within a few percent. The CPU backend keeps `Auto()`, whose radix sort is a GPU kernel.
+"""
+key_sort_alg(backend, cap::Integer) = backend isa KernelAbstractions.GPU && cap >= (1 << 20) ? AK.RadixSort() : AK.Auto()
+
 function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
-                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins()) where {N,T}
+                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins(),
+                   key_sort = key_sort_alg(get_backend(s), capacity(s))) where {N,T}
     flux === nothing || N == 2 ||
         throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
     backend = get_backend(s)
     cap = capacity(s)
     key = KernelAbstractions.zeros(backend, Int64, cap)
     perm = KernelAbstractions.zeros(backend, Int, cap)
-    ak = AK.workspace(AK.sort!, key)
+    ak = AK.workspace(AK.sort!, key; alg = key_sort)
     tmp_i32 = KernelAbstractions.zeros(backend, Int32, cap)
     tmp_T = KernelAbstractions.zeros(backend, T, cap)
     tmp_u8 = KernelAbstractions.zeros(backend, UInt8, cap)
@@ -123,10 +139,10 @@ end
     @inbounds perm[j] = Int(key[j] % cap) + 1
 end
 
-# Sort the keys in place with AcceleratedKernels' `sort!` (the algorithm its `Auto()` picks for the
-# backend and length) and decode the permutation; `ws.key` is left sorted.
+# Sort the keys in place with AcceleratedKernels' `sort!`, with the algorithm the workspace's sort
+# plan resolved from its `key_sort`, and decode the permutation; `ws.key` is left sorted.
 function sort_keys!(ws, cap, backend, workgroupsize)
-    AK.sort!(ws.key; workspace = ws.ak)
+    AK.sort!(ws.key; alg = ws.ak.plan.alg, workspace = ws.ak)
     launcher(perm_from_keys_kernel!, backend, workgroupsize)(ws.perm, ws.key, Int64(cap); ndrange = cap)
     return nothing
 end

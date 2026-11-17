@@ -137,10 +137,13 @@ the cell frame's other nodes hold zeros, and along a component's own axis the pr
     return ((lo1, lo2), (length(Wo1), length(Wo2)), (jx, jy, jz))
 end
 
-# Atomic adds of the column-major block `v` of `M1` rows at the field index `(b1, b2)`.
+# Atomic adds of the column-major block `v` of `M1` rows at the field index `(b1, b2)`. The adds
+# are `:monotonic` (relaxed): nothing reads `J` before the kernel ends, so they need atomicity and
+# no ordering, and Atomix's default sequentially consistent adds stalled the kernel on memory
+# barriers (Nsight Compute on an RTX 5090: 28 barrier stall cycles per issued instruction, the top reason).
 @inline function atomic_add_block!(J, v::NTuple{K,Any}, b1::Int, b2::Int, ::Val{M1}) where {K,M1}
     for k in 1:K
-        @inbounds Atomix.@atomic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
+        @inbounds Atomix.@atomic :monotonic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
     end
     return nothing
 end
