@@ -1,7 +1,7 @@
 # The engine's sort and 2D flux deposition against the prototypes of proto.jl, on states of the
 # WP-045 case (scripts/optim/wake2d_case.jl):
 #
-#   julia +1.13 -t 4 --project=scripts scripts/deposition/bench2d.jl [cpu|cuda] [S,M,L] [f32,f64,d32,d64]
+#   julia +1.13 -t 4 --project=scripts scripts/deposition/bench2d.jl [cpu|cuda] [S,M,L] [f32,f64,d32,d64,d32x3]
 #
 # Per size and element type the case runs to its end in Reference mode; one more push and a sort
 # give the sorted state every deposition variant is timed on, and one further push the unsorted
@@ -36,8 +36,11 @@ const SIZES = Dict("S" => (ppl = 16, dy_cells = 4, ppc = (2, 2), nsteps = 512),
                    "L" => (ppl = 32, dy_cells = 1, ppc = (4, 4), nsteps = 1400))
 
 d2(::Type{T}) where {T} = (Dual{Nothing}(T(7), one(T), zero(T)), Dual{Nothing}(T(100), zero(T), one(T)))
+"The two parameters with three partials, the width of the A8 test matrix: the third repeats the second's direction."
+d3(::Type{T}) where {T} = (Dual{Nothing}(T(7), one(T), zero(T), zero(T)), Dual{Nothing}(T(100), zero(T), one(T), one(T)))
 const ELEMENTS = Dict("f32" => ("Float32", (7.0f0, 100.0f0)), "f64" => ("Float64", (7.0, 100.0)),
-                      "d32" => ("Dual{Float32,2}", d2(Float32)), "d64" => ("Dual{Float64,2}", d2(Float64)))
+                      "d32" => ("Dual{Float32,2}", d2(Float32)), "d64" => ("Dual{Float64,2}", d2(Float64)),
+                      "d32x3" => ("Dual{Float32,3}", d3(Float32)))
 
 "The module's push of one step, and the window's retirement after it (step.jl)."
 function push_once!(st)
