@@ -243,7 +243,7 @@ struct NoCurrent end
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
                current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, back_absorber = nothing, headroom = 1/4,
-               resort = true)
+               resort = false)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
@@ -267,7 +267,9 @@ that stay in the window longer than the plasma at rest (a refill that finds no f
 counted, [`window_lost`](@ref)); other states ignore it. `resort` sorts the particles of a
 `Reference()` step from their order of the last sort (the engine's `resort_by_cell!`, WP-041),
 with the particles a window refill or a birth added since merged in; `false` sorts every key
-anew (`sort_by_cell!`). Both give the same bits.
+anew (`sort_by_cell!`). Both give the same bits. The default is `false`: on the CPU the full sort
+of the keys is as fast (WP-041's step timings), and `true` adds a second copy of every particle
+array per sorted species to the scratch.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     shape::S
@@ -285,7 +287,7 @@ end
 
 function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
                     current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, back_absorber = nothing,
-                    headroom::Real = 1 / 4, resort::Bool = true)
+                    headroom::Real = 1 / 4, resort::Bool = false)
     headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
     return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort)
 end

@@ -9,7 +9,12 @@
 # before it is read, within one call) or the one cache a step leaves for the next where the next
 # step's observer reads it (WP-062; the host flag `fresh` says whether it did): the kinetic
 # energy `K` at n − 1/2, a function of the evolved momenta, weights and status, with at N = 1 the sort's segment bounds its deposition reads
-# (`refresh_caches!`). The step's inputs besides the state are the parameters and the step index:
+# (`refresh_caches!`). With `EMNumerics(; resort = true)` a step also leaves the order of its last
+# sort in each deposited workspace (the segments, the alive count, the arrays sorted), which the next
+# step's sort starts from (`resort_by_cell!`, WP-041); it belongs to the arrays it was taken on, so
+# a state over other arrays sorts in full, and whatever writes the evolved arrays between two steps
+# calls `forget_order!` on those workspaces (`refresh_after_write!` here, `initialize!`, the harness's
+# first step). The step's inputs besides the state are the parameters and the step index:
 # the window's position, the antennas' switch-off and the witness bunch's injection are functions
 # of `k`.
 #
