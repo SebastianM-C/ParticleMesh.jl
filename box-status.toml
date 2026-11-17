@@ -1,0 +1,41 @@
+branch = "runs/wp041-bins3"
+request_commit = "c3ca0a711f41def78fe833f7770dc339ecccd44a"
+started = "2026-11-17T09:29:47Z"
+category = "benchmark"
+outputs = ["scripts/runs/wp041-bins-nodes", "scripts/runs/wp041-bins-cells"]
+finished = "2026-11-17T09:33:44Z"
+ok = true
+files_returned = 8
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T09:29:47Z"
+exit = 0
+seconds = 120
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T09:31:47Z"
+exit = 0
+seconds = 0
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T09:31:47Z"
+exit = 0
+seconds = 116
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T09:33:44Z"
+exit = 0
+seconds = 0
