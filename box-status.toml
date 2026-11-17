@@ -1,0 +1,20 @@
+branch = "runs/wp041-bin-core-t1"
+request_commit = "d2b587646b29073af307484ff1e97451e7f77240"
+started = "2026-11-17T08:21:29Z"
+category = "test"
+outputs = []
+finished = "2026-11-17T08:38:19Z"
+ok = true
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T08:21:29Z"
+exit = 0
+seconds = 1010
