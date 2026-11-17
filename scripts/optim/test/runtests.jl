@@ -733,4 +733,8 @@ end
     d64 = trapped_small(6.0, 10.0, ForwardDiff.Dual{Nothing}(80.0, 1.0), 54.0, 0.072)
     @test d32 isa ForwardDiff.Dual{Nothing,Float32}
     @test ForwardDiff.partials(d32)[1] ≈ ForwardDiff.partials(d64)[1] rtol = 1.0e-4
+    # a Float32 dual in the density stays Float32 through the dopant's fraction of it
+    stn = trapped_state(6.0f0, 10.0f0, 80.0f0, 54.0f0, ForwardDiff.Dual{Nothing}(0.072f0, 1.0f0); kw..., t_end = 1.0)
+    @test eltype(ionization_electrons(stn).w) == ForwardDiff.Dual{Nothing,Float32,1}
+    @test trapped_capacity(16, 1) == BCASE.capacity && trapped_capacity(64, 4) == 2_560_000
 end
