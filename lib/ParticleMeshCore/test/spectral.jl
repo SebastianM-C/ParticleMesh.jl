@@ -204,5 +204,5 @@ end
     @test_throws ArgumentError gradient_periodic!(G, φ[:, 1:(end - 1)], grid)
     @test_throws ArgumentError gradient_periodic!((G[1][1:(end - 1), :], G[2]), φ, grid)
     @test_throws ArgumentError gradient_periodic!((G[1], G[2][:, 1:(end - 1)]), φ, grid)
-    @test_throws ArgumentError SpectralWorkspace(backend, Float64, PeriodicGrid((4, 4, 4), (1.0, 1.0, 1.0), 1))
+    @test_throws ArgumentError SpectralWorkspace(backend, Float64, PeriodicGrid((4, 4, 4, 4), (1.0, 1.0, 1.0, 1.0), 1))
 end

@@ -195,6 +195,14 @@ entry, O(prod(n)·Σ_d n_d) per solve: meant for the field at t = 0, at test siz
 Allocation per call does not grow with the grid size (T-315). `workgroupsize` selects the launch
 shape only (contract 12).
 """
+# The transform along each axis of `vals` in turn (static axes, so every launch is inferred): the
+# spectrum moves from the pair `cur` to the pair `other`, which then swap. Returns `(cur, other)`.
+dft_axes!(axis!, ws, n, σ, cur::Int, other::Int, ::Tuple{}) = (cur, other)
+function dft_axes!(axis!, ws, n, σ, cur::Int, other::Int, vals::Tuple{Val{d},Vararg}) where {d}
+    axis!(ws.re[other], ws.im[other], ws.re[cur], ws.im[cur], ws.cos[d], ws.sin[d], n[d], σ, first(vals); ndrange = n)
+    return dft_axes!(axis!, ws, n, σ, other, cur, Base.tail(vals))
+end
+
 function inverse_laplacian_periodic!(φ::AbstractArray{T,N}, s::AbstractArray{T,N}, grid::PeriodicGrid{N}, ws::SpectralWorkspace{N};
                                      workgroupsize = nothing) where {T,N}
     check_spectral(φ, s, grid, ws)
@@ -205,15 +213,9 @@ function inverse_laplacian_periodic!(φ::AbstractArray{T,N}, s::AbstractArray{T,
     cur, other = 1, min(N, 2)
     launcher(dft_real_axis1_kernel!, backend, workgroupsize)(ws.re[cur], ws.im[cur], s, ws.cos[1], ws.sin[1], n[1], g; ndrange = n)
     axis! = launcher(dft_axis_kernel!, backend, workgroupsize)
-    for d in 2:N
-        axis!(ws.re[other], ws.im[other], ws.re[cur], ws.im[cur], ws.cos[d], ws.sin[d], n[d], -one(T), Val(d); ndrange = n)
-        cur, other = other, cur
-    end
+    cur, other = dft_axes!(axis!, ws, n, -one(T), cur, other, Base.tail(axis_vals(Val(N))))
     launcher(inverse_symbol_kernel!, backend, workgroupsize)(ws.re[cur], ws.im[cur], n, h; ndrange = n)
-    for d in N:-1:2
-        axis!(ws.re[other], ws.im[other], ws.re[cur], ws.im[cur], ws.cos[d], ws.sin[d], n[d], one(T), Val(d); ndrange = n)
-        cur, other = other, cur
-    end
+    cur, other = dft_axes!(axis!, ws, n, one(T), cur, other, reverse(Base.tail(axis_vals(Val(N)))))
     launcher(idft_real_axis1_kernel!, backend, workgroupsize)(φ, ws.re[cur], ws.im[cur], ws.cos[1], ws.sin[1], n[1], g, T(prod(n));
                                                              ndrange = n)
     fill_guards!(φ, grid; workgroupsize)
@@ -255,8 +257,9 @@ function gradient_periodic!(G::NTuple{N,AbstractArray{T,N}}, φ::AbstractArray{T
     any(Gd -> Gd === φ, G) && throw(ArgumentError("gradient_periodic! cannot write the gradient into φ"))
     backend = get_backend(φ)
     kernel! = launcher(forward_difference_kernel!, backend, workgroupsize)
-    for d in 1:N
-        kernel!(G[d], φ, grid.n[d], guards(grid), Val(d), T(grid.dx[d]); ndrange = grid.n)
+    foreach_axis(axis_vals(Val(N))) do vd
+        d = axis_of(vd)
+        kernel!(G[d], φ, grid.n[d], guards(grid), vd, T(grid.dx[d]); ndrange = grid.n)
         fill_guards!(G[d], grid; workgroupsize)
     end
     return G

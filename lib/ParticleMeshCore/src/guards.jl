@@ -92,25 +92,27 @@ end
     end
 end
 
-function guard_pass!(kernel, a, grid::PeriodicGrid{N}, d::Int, workgroupsize) where {N}
+"The axes 1…N as a tuple of `Val`s: a loop over them (`foreach_axis`) has a static axis in every iteration."
+@inline axis_vals(::Val{N}) where {N} = ntuple(Val, Val(N))
+@inline axis_of(::Val{d}) where {d} = d
+@inline foreach_axis(f::F, ::Tuple{}) where {F} = nothing
+@inline foreach_axis(f::F, vals::Tuple) where {F} = (f(first(vals)); foreach_axis(f, Base.tail(vals)))
+
+function guard_pass!(kernel, a, grid::PeriodicGrid{N}, vd::Val{d}, workgroupsize) where {N,d}
     n, g = ncells(grid), guards(grid)
     range, off = guard_pass(n, g, d)
-    launcher(kernel, get_backend(a), workgroupsize)(a, Val(d), n[d], g, off; ndrange = range)
+    launcher(kernel, get_backend(a), workgroupsize)(a, vd, n[d], g, off; ndrange = range)
     return a
 end
 
 function fill_guards!(a::AbstractArray{<:Any,N}, grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
     guards(grid) == 0 && return a
-    for d in 1:N
-        guard_pass!(fill_guards_axis_kernel!, a, grid, d, workgroupsize)
-    end
+    foreach_axis(vd -> guard_pass!(fill_guards_axis_kernel!, a, grid, vd, workgroupsize), axis_vals(Val(N)))
     return a
 end
 
 function fold_guards!(a::AbstractArray{<:Any,N}, grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
     guards(grid) == 0 && return a
-    for d in N:-1:1
-        guard_pass!(fold_guards_axis_kernel!, a, grid, d, workgroupsize)
-    end
+    foreach_axis(vd -> guard_pass!(fold_guards_axis_kernel!, a, grid, vd, workgroupsize), reverse(axis_vals(Val(N))))
     return a
 end
