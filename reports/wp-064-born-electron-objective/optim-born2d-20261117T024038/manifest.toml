@@ -1,11 +1,11 @@
 backend = "KernelAbstractions CPU"
-commit = "55c4ffd2b9843a8d135f25d4364d46bbfda70c62"
+commit = "bbc3bb99d8600a5f54e0508f8f5be100e12f25e1"
 cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
 dirty = false
 julia = "1.13.4"
-run_id = "optim-born2d-20261117T012425"
+run_id = "optim-born2d-20261117T024038"
 threads = 4
-updated = "2026-11-17T01:24:25.192Z"
+updated = "2026-11-17T02:40:38.132Z"
 work_package = "WP-064"
 
 [inputs]
@@ -49,8 +49,8 @@ work_package = "WP-064"
 "scripts/engine2d/common.jl" = "sha256:c477145830b54801458a7c184312eab8444e7cbe15bf884cb707f1a309605028"
 "scripts/ionization/atomic.jl" = "sha256:de2e74e426209ddc2e1e44007406995c92197135dbc3a95c14b16157a9165106"
 "scripts/ionization/ionization_energies.toml" = "sha256:d39f99a7c0aac2405b580bc4fbb801188fd646ed47199c945d124f4014ece563"
-"scripts/optim/born2d.jl" = "sha256:ef66294382b4510b27ad40a888278ff20283b70eab189e76fca6a0c050f1c095"
-"scripts/optim/born2d_case.jl" = "sha256:996736dd695982d06fb5ec4092642475fd58b74e60bc460de15bea27055433f3"
+"scripts/optim/born2d.jl" = "sha256:300437ba7a1450b1d9eaf84e48eb5675476cc70f698f14957b7618f2ac47e846"
+"scripts/optim/born2d_case.jl" = "sha256:b148b6963d28d263b7b9131005cb178c230456da7b1b60762c1336a66ea100a9"
 "scripts/optim/problem.jl" = "sha256:18af1f0cd9854804d42d561dfd3efd2516986a6303c460b3e26cd0c5c985b43a"
 
 [parameters]
