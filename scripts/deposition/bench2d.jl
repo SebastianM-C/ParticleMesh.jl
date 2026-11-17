@@ -159,11 +159,13 @@ function measure(size, label, x)
     same_as_engine(b) = all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
                         Array(b.dst.status) == Array(s.status) && Array(b.seg_start) == Array(ws.seg_start) &&
                         Array(b.seg_stop) == Array(ws.seg_stop) && alive_count(b.dst) == n1
-    for (name, make, sort!) in (("incremental sort", IncrementalSort, incremental_sort!), ("incremental sort, scatter form", ScatterSort, scatter_sort!))
+    for (name, make, sort!) in (("incremental sort", IncrementalSort, incremental_sort!), ("incremental sort, scatter form", ScatterSort, scatter_sort!),
+                               ("incremental sort, permutation form", PermSort, perm_sort!))
         wanted(name) || continue
         b = make(s, grid)
         sort!(b, U, grid, segV...)
         diff[name] = !same_as_engine(b)
+        b isa PermSort && timed!(() -> incremental_perm!(b, U, grid, segV...), "$name, the permutation alone")
         timed!(() -> sort!(b, U, grid, segV...), "$name, two buffers")
         work = copy_species(U)
         segW = map(copy, segV)

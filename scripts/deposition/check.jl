@@ -40,6 +40,12 @@ function check_sort(s, grid, ws, label)
     ok = arrays && same(b2.dst.status, e.status) && same(b2.seg_start, we.seg_start) && same(b2.seg_stop, we.seg_stop) &&
          PMC.alive_count(b2.dst) == count
     report("$label incremental sort, scatter form == sort_by_cell!", !ok, false)
+    b3 = PermSort(s, grid)
+    perm_sort!(b3, s, grid, ws.seg_start, ws.seg_stop)
+    arrays = all(((x, y),) -> Array(x)[alive] == Array(y)[alive], zip(species_arrays(b3.dst), species_arrays(e)))
+    ok = arrays && same(b3.dst.status, e.status) && same(b3.seg_start, we.seg_start) && same(b3.seg_stop, we.seg_stop) &&
+         PMC.alive_count(b3.dst) == count && Array(b3.perm)[alive] == Array(we.perm)[alive]
+    report("$label incremental sort, permutation form == sort_by_cell!", !ok, false)
     incremental_sort!(b, s, grid, ws.seg_start, ws.seg_stop; copy_back = true)      # leaves `s` sorted, its segments in `ws`
     return nothing
 end

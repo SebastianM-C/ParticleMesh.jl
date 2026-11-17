@@ -60,16 +60,23 @@ function measure(::Type{T}, n, ppc) where {T}
     # the sorts, on the moved state
     timed!(f, name; kw...) = wanted(name) && (time_[name] = ms(least(f, BE; reps = REPS, kw...)); nothing)
     timed!(() -> PMC.sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
+    timed!("engine sort: keys and sortperm! alone"; setup = () -> restore!(s, U)) do
+        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(PMC.capacity(s));
+                                                           ndrange = PMC.capacity(s))
+        PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
+    end
     restore!(s, U)
     PMC.sort_by_cell!(s, grid, ws)
     n1 = PMC.alive_count(s)
     same_as_engine(b) = all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
                         Array(b.seg_start) == Array(ws.seg_start) && Array(b.seg_stop) == Array(ws.seg_stop) && PMC.alive_count(b.dst) == n1
-    for (name, make, sort!) in (("incremental sort", IncrementalSort, incremental_sort!), ("incremental sort, scatter form", ScatterSort, scatter_sort!))
+    for (name, make, sort!) in (("incremental sort", IncrementalSort, incremental_sort!), ("incremental sort, scatter form", ScatterSort, scatter_sort!),
+                               ("incremental sort, permutation form", PermSort, perm_sort!))
         wanted(name) || continue
         b = make(s, grid)
         sort!(b, U, grid, seg0...)
         diff[name] = !same_as_engine(b)
+        b isa PermSort && timed!(() -> incremental_perm!(b, U, grid, seg0...), "$name, the permutation alone")
         timed!(() -> sort!(b, U, grid, seg0...), "$name, two buffers")
         work = copy_species(U)
         segW = map(copy, seg0)

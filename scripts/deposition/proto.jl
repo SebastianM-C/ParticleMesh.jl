@@ -677,6 +677,87 @@ function scatter_sort!(b::ScatterSort, s::PMC.Species{N}, grid, seg_start, seg_s
     return b
 end
 
+# --- the incremental sort, permutation form ------------------------------------------------------
+#
+# The scatter form writes every array of a particle from the work item of its source cell, to
+# addresses that follow no order. Here the per-cell passes build only the permutation the
+# engine's sort would find (`perm[j]` is the slot that slot `j` held before), and the arrays
+# move through the engine's gather, one work item per slot: the counting and the ranking
+# replace the keys and `sortperm!`, the rest is the engine's.
+
+# One work item per source cell: its alive particles, in slot order, each to the next rank of
+# its bin, as an entry of the permutation.
+@kernel function scatter_perm_kernel!(perm, @Const(cell), @Const(status), rank, @Const(old_start), @Const(old_stop), @Const(new_start),
+                                      n::NTuple{N,Int32}) where {N}
+    I = @index(Global, NTuple)
+    c = map(Int32, I)
+    Ls = PMC.linear_cell(c, n)
+    @inbounds for i in old_start[Ls]:old_stop[Ls]
+        if status[i] == PMC.ALIVE
+            cn = map(a -> a[i], cell)
+            k = direction(c, cn, n)
+            r = rank[k, Ls]
+            rank[k, Ls] = r + Int32(1)
+            perm[new_start[PMC.linear_cell(cn, n)] + r] = i
+        end
+    end
+end
+
+# The slots past the alive ones keep their own content (their status is set free afterwards).
+@kernel function perm_tail_kernel!(perm, @Const(cum), ncell::Int32)
+    i = Int32(@index(Global, Linear))
+    @inbounds if i > cum[ncell]
+        perm[i] = i
+    end
+end
+
+"The second buffer and the scratch of the permutation form: 3^N bins per cell and the permutation."
+struct PermSort{S,VI,MI}
+    dst::S
+    hist::MI
+    cnt::VI
+    cum::VI
+    seg_start::VI
+    seg_stop::VI
+    perm::VI
+end
+
+function PermSort(s::PMC.Species, grid::PMC.PeriodicGrid)
+    b = ScatterSort(s, grid)
+    return PermSort(b.dst, b.hist, b.cnt, b.cum, b.seg_start, b.seg_stop, KernelAbstractions.zeros(get_backend(s), Int32, PMC.capacity(s)))
+end
+
+"The permutation of the sort by (cell, slot) in `b.perm` and the new segments in `b`, from the segments of the last sort."
+function incremental_perm!(b::PermSort, s::PMC.Species{N}, grid, seg_start, seg_stop; workgroupsize = nothing) where {N}
+    backend = get_backend(s)
+    cap, n, ncell = PMC.capacity(s), Int32.(grid.n), prod(grid.n)
+    all(>=(3), grid.n) || throw(ArgumentError("the incremental sort needs at least 3 cells per axis"))
+    PMC.launcher(scatter_count_kernel!, backend, workgroupsize)(b.hist, s.cell, s.status, seg_start, seg_stop, n; ndrange = grid.n)
+    PMC.launcher(scatter_rank_kernel!, backend, workgroupsize)(b.cnt, b.hist, n; ndrange = grid.n)
+    AK.accumulate!(+, b.cum, b.cnt)
+    PMC.launcher(new_segments_kernel!, backend, workgroupsize)(b.seg_start, b.seg_stop, b.dst.count, b.cum, b.cnt, Int32(ncell); ndrange = ncell)
+    PMC.launcher(perm_tail_kernel!, backend, workgroupsize)(b.perm, b.cum, Int32(ncell); ndrange = cap)
+    PMC.launcher(scatter_perm_kernel!, backend, workgroupsize)(b.perm, s.cell, s.status, b.hist, seg_start, seg_stop, b.seg_start, n; ndrange = grid.n)
+    return b
+end
+
+"`incremental_sort!` in its permutation form: the same arguments, precondition and result."
+function perm_sort!(b::PermSort, s::PMC.Species{N}, grid, seg_start, seg_stop; workgroupsize = nothing, copy_back = false) where {N}
+    backend = get_backend(s)
+    cap, ncell = PMC.capacity(s), prod(grid.n)
+    incremental_perm!(b, s, grid, seg_start, seg_stop; workgroupsize)
+    gather! = PMC.launcher(PMC.gather_perm_kernel!, backend, workgroupsize)
+    foreach((d, a) -> gather!(d, a, b.perm; ndrange = cap), species_arrays(b.dst), species_arrays(s))
+    PMC.launcher(free_tail_kernel!, backend, workgroupsize)(b.dst.status, b.cum, Int32(ncell); ndrange = cap)
+    if copy_back
+        foreach(copyto!, species_arrays(s), species_arrays(b.dst))
+        copyto!(s.count, b.dst.count)
+        copyto!(seg_start, b.seg_start)
+        copyto!(seg_stop, b.seg_stop)
+    end
+    return b
+end
+
 # --- a patch in registers at N = 3, one component per launch -------------------------------------
 #
 # The engine's 2D mechanism at N = 3: one work item per cell sums its particles' stencils in a
