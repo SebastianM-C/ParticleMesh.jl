@@ -1,0 +1,14 @@
+branch = "runs/wp041-steptiming-pr1"
+request_commit = "ae07679b1bd2935c1665c5e393b0c209e399a2a2"
+started = "2026-11-17T03:20:16Z"
+steps = []
+category = "benchmark"
+error = "a julia step names its project once, as --project=<path in the repository>"
+finished = "2026-11-17T03:20:16Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
