@@ -180,6 +180,10 @@ sortperm_workspace(ws) = PMC.AK.workspace(PMC.AK.sortperm!, ws.perm, ws.key)
 "Whether the engine has the sort from the order of the last sort (`resort_by_cell!`, WP-041)."
 has_resort() = isdefined(PMC, :resort_by_cell!)
 
+"Whether the next `resort_by_cell!` of `s` with `ws` starts from the order of the last sort, and is not the full sort (host values)."
+resorts(ws, s, grid) = ws.resort !== nothing && all(>=(3), grid.n) &&
+                       (isdefined(PMC, :knows_order) ? PMC.knows_order(ws.resort, s) : ws.resort.ordered[])
+
 """
     resort_row!(time_, diff, s, grid, wr, U, seg0, count0; name, reps)
 
@@ -192,6 +196,7 @@ function resort_row!(time_, diff, s, grid, wr, U, seg0, count0; name = "engine r
     backend = get_backend(s)
     setup() = (restore!(s, U); copyto!(wr.seg_start, seg0[1]); copyto!(wr.seg_stop, seg0[2]); copyto!(wr.resort.sorted_count, count0); nothing)
     setup()
+    resorts(wr, s, grid) || error("resort_row!: the workspace does not hold the order of these arrays, so the row would time the full sort")
     PMC.resort_by_cell!(s, grid, wr)
     e = copy_species(U)
     we = PMC.Workspace(e, grid)
