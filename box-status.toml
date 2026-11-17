@@ -1,0 +1,27 @@
+branch = "runs/wp041-steptiming-main2"
+request_commit = "d8b5c71c03c2083720df6de724b14f1f5575a874"
+started = "2026-11-17T04:20:13Z"
+category = "benchmark"
+outputs = ["scripts/runs/wp041-steptiming-main2"]
+finished = "2026-11-17T04:22:33Z"
+ok = true
+files_returned = 5
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T04:20:14Z"
+exit = 0
+seconds = 139
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T04:22:33Z"
+exit = 0
+seconds = 0
