@@ -438,12 +438,13 @@ function campaign_jobs(name)
         for every in (2, 4)
             pair!(jobs, jid("num", "r64x4", "every$every"); ppl = 64, ny = 4, every)
         end
-    elseif name == "rough"
+    elseif name in ("rough", "rough16")
         # 33 plain runs a relative 2⁻¹⁰ apart in one parameter, with the gradient at the middle and the ends
         cfgs = [("r16x1-p2x2", (; ppl = 16, ny = 1)), ("r32x2-p1x1", (; ppl = 32, ny = 2, ppc = [1, 1])), ("r32x2-p2x2", (; ppl = 32, ny = 2)),
                 ("r32x2-p4x4", (; ppl = 32, ny = 2, ppc = [4, 4])), ("r32x2-p2x2-i2x2", (; ppl = 32, ny = 2, ion_ppc = [2, 2])),
                 ("r32x2-p2x2-f32", (; ppl = 32, ny = 2, T = "f32")), ("r48x3-p2x2", (; ppl = 48, ny = 3)),
                 ("r32x2-p2x2-tonglin", (; ppl = 32, ny = 2, law = "tonglin"))]
+        name == "rough16" && (cfgs = cfgs[1:1])   # the λ₀/16 configuration alone, small enough for a CPU
         for (name_, cfg) in cfgs, (dir, di) in (("duration", 1), ("density", 5)), s in -16:16
             x = collect(TCASE.x0)
             x[di] *= 1 + s * 2.0^-10
