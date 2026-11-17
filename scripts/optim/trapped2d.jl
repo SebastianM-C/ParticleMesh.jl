@@ -194,6 +194,8 @@ end
 
 if length(ARGS) >= 1 && ARGS[1] == "job"
     job = JSON.parse(ARGS[3])
+    # load CUDACore at top level, so that run_job (a later world) sees the CUDA backend's methods
+    get(job, "backend", "cpu") == "cuda" && job_backend("cuda")
     out = run_job(job)
     open(io -> JSON.print(io, out, 2), joinpath(ARGS[2], job["id"] * ".json"), "w")
     println(job["id"], ": J = ", out["J"], " in ", round(out["seconds"]; digits = 1), " s")
