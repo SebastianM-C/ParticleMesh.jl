@@ -150,7 +150,7 @@ function fraction_figure(dir)
         push!(runs, row)
         scatter!(ax, [a0], [r.fraction[i0]]; marker = :xcross, color = :black, markersize = 12)
     end
-    axislegend(ax; position = :rb, labelsize = 10)
+    axislegend(ax; position = :rc, labelsize = 10)
     axr = Axis(fig[1, 2]; yscale = log10, xlabel = "field (mₑcω₀/e)", ylabel = "rate (1/ω₀)", title = "the rates of nitrogen's K shell: N⁵⁺ → N⁶⁺ (thick), N⁶⁺ → N⁷⁺ (thin)")
     e = range(0.8, 8.0; length = 240)
     for (k, (name, make)) in enumerate(VARIANTS), (j, level) in enumerate(make(1.0e6))
@@ -221,7 +221,7 @@ function injection_run(levels)
 end
 
 function injection_figure(dir)
-    fig = Figure(size = (1100, 440))
+    fig = Figure(size = (1100, 480))
     axc = Axis(fig[1, 1]; xlabel = "t (1/ω₀)", ylabel = "born electrons in the window (cells of dopant)",
                title = "all born electrons (thin) and those with uₓ > $(INJ.fast) (thick)")
     axs = Axis(fig[1, 2]; xlabel = "uₓ = γvₓ/c", ylabel = "weight per unit uₓ (cells of dopant)", title = "the born electrons' spectrum at t = $(INJ.t_end)/ω₀, a₀ = $(INJ.a0)")
@@ -237,7 +237,7 @@ function injection_figure(dir)
         lines!(axc, r.t, r.fast; color = VARIANT_COLORS[k], linestyle = VARIANT_STYLES[k], linewidth = 2.5, label = name)
         stairs!(axs, r.edges[1:(end - 1)] .+ 0.5, r.spectrum; step = :center, color = VARIANT_COLORS[k], linestyle = VARIANT_STYLES[k], label = name)
     end
-    axislegend(axc; position = :lt, labelsize = 10)
+    Legend(fig[2, 1:2], axc; orientation = :horizontal, labelsize = 10, framevisible = false)
     println("wrote ", save_plot(dir, "bsi_injection", fig, Dict("case" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(INJ)),
                                                                 "runs" => rows)))
     return rows
