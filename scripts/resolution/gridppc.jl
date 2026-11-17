@@ -460,6 +460,15 @@ function campaign_jobs(name)
             x[di] *= 1 + sgn * 2.0^-pw
             plain!(jobs, jid("fd", name_, dir, pw, sgn > 0 ? "p" : "m"); cfg..., x, series = false, direction = dir, power = pw, sign = sgn)
         end
+    elseif name == "comp"
+        # does the particle shape's smoothing of the laser field explain the grid error? The same grids with the laser field raised
+        # by what the shape removes at the laser wavelength, 1/sinc(Δx/2)^(order + 1), and with the linear shape, which removes less
+        for (ppl, ny) in ((16, 1), (24, 1), (32, 1), (16, 2), (32, 2), (48, 1), (48, 3))
+            blur(order) = (sin(π / ppl) / (π / ppl))^(order + 1)
+            plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "quad"); ppl, ny, a0_scale = 1 / blur(2))
+            plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "linear"); ppl, ny, shape = 1)
+            plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "lincomp"); ppl, ny, shape = 1, a0_scale = 1 / blur(1))
+        end
     elseif name == "frames"
         for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
             plain!(jobs, jid("frames", "r$(ppl)x$(ny)"); ppl, ny, frames = 60)
