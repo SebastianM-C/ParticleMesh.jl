@@ -133,8 +133,10 @@ over the electrons the state's `FieldIonization` has released and that are alive
 an energy per unit length along z. `S` is [`smooth_rise`](@ref) of the window coordinate
 x between `fade[1]` and `fade[2]`: an electron that falls behind the wake leaves the sum smoothly
 before it reaches the back band, where the window's edge would take it out at a step that depends
-on the parameters (#370, `questions/wp-059-field-ionization.md` §3). The sum is taken in slot
-order over the device arrays, so it runs on any backend.
+on the parameters (#370, `questions/wp-059-field-ionization.md` §3). The summands are taken over
+the device arrays, so it runs on any backend, and added on the host one after the other in slot
+order: Base's `sum` lets the compiler reassociate for SIMD, differently for `Float64` and for a
+dual on some CPUs, and a run with duals must give the plain run's `J` bit for bit (T-833).
 """
 function born_energy(st; fade = BCASE.fade)
     check_fade(st, fade)
@@ -142,7 +144,7 @@ function born_energy(st; fade = BCASE.fade)
     h = cellsize(st.grid)
     T = eltype(e.w)
     lo, hi = T(fade[1]), T(fade[2])
-    return h[1] * h[2] * sum(slot_energy.(e.status, e.cell[1], e.offset[1], e.u[1], e.u[2], e.u[3], e.w, h[1], lo, hi))
+    return h[1] * h[2] * foldl(+, Array(slot_energy.(e.status, e.cell[1], e.offset[1], e.u[1], e.u[2], e.u[3], e.w, h[1], lo, hi)))
 end
 
 "The objective of the case at `a0` and `dopant` (the keywords of [`born_problem`](@ref) and `fade`)."
