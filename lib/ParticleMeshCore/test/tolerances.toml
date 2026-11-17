@@ -357,11 +357,13 @@ measured = { Float32 = 0.0289, Float64 = 0.032, "Dual{Float32,3}" = 0.179 }
 status = "proposed"
 
 ["T-872"]
-quantity = "3D load: Σw against the lattice sum n₀·cells of an oblique cosine density, mode (1, 2, -1); each weight against the density in Float64"
-scale = "count·max|w|; |w| per weight"
+quantity = "3D load: Σw against the lattice sum n₀·cells of an oblique cosine density, mode (1, 2, -1); each weight against the density in Float64; each momentum against the host's Philox and Box–Muller draw (C_draws on the CPU, C_draws_device on a device, whose Box–Muller differs from the host's by up to 3 ulp, T-193)"
+scale = "count·max|w|; |w| per weight; |vdrift| + |vth·z| per momentum component"
 C = 16
 C_weights = 8
-measured = { Float32 = 0.485, Float64 = 0.0, "Dual{Float32,3}" = 1.45, weights_Float32 = 1.26, weights_Float64 = 0.0, "weights_Dual{Float32,3}" = 1.26 }
+C_draws = 2
+C_draws_device = 6
+measured = { Float32 = 0.485, Float64 = 0.0, "Dual{Float32,3}" = 1.45, weights_Float32 = 1.26, weights_Float64 = 0.0, "weights_Dual{Float32,3}" = 1.26, draws_Float32 = 1.75, draws_Float64 = 1.27, "draws_Dual{Float32,3}" = 1.92 }
 status = "proposed"
 
 ["T-873"]
