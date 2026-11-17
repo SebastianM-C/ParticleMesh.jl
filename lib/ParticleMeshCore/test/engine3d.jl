@@ -134,6 +134,7 @@ incell_3d(k, ppc) = Tuple(CartesianIndices(ppc)[k])
 "T-872's load checks on `be`."
 function body_T872(be)
     C, Cw = tolC("T-872"), tolC("T-872", "C_weights")
+    Cu = tolC("T-872", be isa CPU ? "C_draws" : "C_draws_device")
     for T in TYPES, at in (:particle, :cell_centre)
         B = basetype(T)
         grid = grid3(T, 2)
@@ -161,8 +162,16 @@ function body_T872(be)
             r = philox4x32((UInt32(c[1]), UInt32(c[2]), UInt32(c[3]), UInt32(k) << 16), key)
             z = (box_muller(T, r[1], r[2])..., box_muller(T, r[3], r[4])[1])
             u = ntuple(d -> vdrift[d] + vth[d] * z[d], 3)
-            # within 2 ulp of |vdrift| + |vth·z| (the kernel may contract to FMAs; u can cancel to near zero)
-            u_ok &= all(d -> absdiff(s.u[d][i], u[d]) <= 2eps(B) * (absmax(vdrift[d]) + absmax(vth[d] * z[d])), 1:3)
+            # in units of eps·(|vdrift| + |vth·z|) (u can cancel to near zero): within C_draws on the
+            # CPU, where the kernel may contract to FMAs, and within C_draws_device on a device,
+            # whose Box–Muller differs from the host's by a few ulp (T-193)
+            for d in 1:3
+                scale = eps(B) * (absmax(vdrift[d]) + absmax(vth[d] * z[d]))
+                diff = absdiff(s.u[d][i], u[d])
+                ur = scale == 0 ? (diff == 0 ? 0.0 : Inf) : Float64(diff / scale)
+                record!("T-872 draws", T, ur, be)
+                u_ok &= ur <= Cu
+            end
             # the weight against the density in Float64, with the parameters as `T` holds them, at the
             # particle (or at its cell's centre)
             x = ntuple(d -> (c[d] - 1 + (at === :particle ? Float64(value_of(δ[d])) : 0.5)) * Float64(h[d]), 3)
