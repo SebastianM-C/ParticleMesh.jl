@@ -1,4 +1,5 @@
-# WP-041: the step's sort from the order of the last sort (`EMNumerics(; resort)`), T-852.
+# WP-041: the step's sort from the order of the last sort (`EMNumerics(; resort)`), T-852 to T-855;
+# the deposition by nearest-node bins (`EMNumerics(; node_bins)`), T-865.
 
 """
     resort_digests(T; resort, mode, nsteps) -> Vector{UInt64}
@@ -41,12 +42,12 @@ end
 end
 
 # Whether the slots up to the count of a workspace's last sort hold alive particles each inside
-# its cell's segment: the sorted state that the window's refill and the next sort start from.
+# its bin's segment (its cell's, for `CellBins()`): the sorted state that the window's refill and the next sort start from.
 function sorted_state(s, ws, n)
     m = Int(ws.resort.sorted_count[1])
     return all(1:m) do i
         s.status[i] == ParticleMeshCore.ALIVE || return false
-        L = ParticleMeshCore.linear_cell(ntuple(d -> s.cell[d][i], 2), Int32.(n))
+        L = ParticleMeshCore.linear_cell(ParticleMeshCore.particle_bin(ws.bins, s, i, Int32.(n)), Int32.(n))
         return ws.seg_start[L] <= i <= ws.seg_stop[L]
     end
 end
@@ -153,4 +154,85 @@ end
     foreach(k -> step!(view, p, k), 51:60)
     foreach(k -> step!(st, p, k), 101:150)
     @test evolved_digest(st) == evolved_digest(ref)
+end
+
+"""
+    node_bins_gap(T; nsteps) -> (worst, gaps, shifts, nborn)
+
+`ion_window`'s Reference run with `EMNumerics(; node_bins)` on and off: per field array, the largest
+|on − off| over `eps(T)·max|off|` after `nsteps` steps, and the largest of them.
+"""
+function node_bins_gap(::Type{T}; nsteps = 150) where {T}
+    prob = ion_window(T; nsteps)
+    p = params(prob)
+    sts = map((true, false)) do nb
+        st = EMState(prob, EMNumerics(; mode = Reference(), node_bins = nb); backend = CPU())
+        initialize!(st, prob)
+        st
+    end
+    nborn = 0
+    for k in 1:nsteps
+        foreach(st -> step!(st, p, k), sts)
+        nborn = max(nborn, born(sts[1]).n)
+    end
+    on, off = sts
+    gaps = Dict{Symbol,Float64}()
+    for f in fieldnames(typeof(off.fields))
+        y = getfield(off.fields, f)
+        y isa AbstractArray || continue
+        m = Float64(maximum(absmax, y))
+        m > 0 && (gaps[f] = Float64(maximum(absdiff.(getfield(on.fields, f), y))) / (base_eps(T) * m))
+    end
+    return maximum(values(gaps)), gaps, window_shifts(on, nsteps), nborn
+end
+
+@testset "T-865 the step's deposition by nearest-node bins follows the cells' run to roundoff through the window's shifts and the births, and keeps the cell on the window's x axis [A2, A4, WP-041]" begin
+    C = emC("T-865")
+    for T in (Float32, Float64, D3)
+        worst, gaps, shifts, nborn = node_bins_gap(T)
+        @test shifts > 40 && nborn > 0                   # the run refills and gives births
+        @test haskey(gaps, :Jx) && haskey(gaps, :Ex)     # the plasma carries current and a wake
+        @test record!("T-865", T, worst) <= C
+        @test worst > 0                                  # the bins change the order of the sums
+    end
+    # On the window's x axis the bin is the cell. Before the window starts its front is a fixed edge
+    # that the plasma reaches, and a particle past the middle of the last column keeps its charge in
+    # that column; a periodic node bin would move it to the back columns (found by the PR's breaker).
+    prob = window_lwfa(Float64; start = 1000, nsteps = 2)
+    cols = map((false, true)) do nb
+        st = EMState(prob, EMNumerics(; node_bins = nb))
+        initialize!(st, prob)
+        s, n1, g = st.species[1], st.grid.n[1], guards(st.grid)
+        i = findfirst(k -> s.status[k] == ParticleMeshCore.ALIVE && s.w[k] > 0, 1:capacity(s))
+        s.cell[1][i], s.offset[1][i] = n1, 3 / 4
+        ρ, ρ0 = field(CPU(), Float64, st.grid), field(CPU(), Float64, st.grid)
+        window_charge!(ρ, st)
+        j = findfirst(k -> s.status[k] == ParticleMeshCore.ALIVE && s.cell[1][k] == n1 && s.offset[1][k] == 3 / 4, 1:capacity(s))
+        s.w[j] = 0
+        window_charge!(ρ0, st)
+        d = (ρ .- ρ0)[(g + 1):(g + n1), :]
+        (findall(c -> any(!iszero, d[c, :]), 1:n1), sum(d), n1)
+    end
+    @test cols[1][1] == cols[2][1] == [cols[1][3]]
+    @test cols[2][2] ≈ cols[1][2] rtol = 1e-12
+    # Every sorted workspace of a state carries the numerics' bins: the species of a 1D and a 2D
+    # state, and a window's species and born electrons (the cell on x); cells with the flag off. The
+    # atoms keep cells either way. (Bits alone cannot show a workspace that ignores the flag: the two
+    # runs agree to roundoff.)
+    for nb in (true, false)
+        num = EMNumerics(; mode = Reference(), node_bins = nb)
+        one_d = EMState(beams_1d(Float64), num)
+        two_d = EMState(plasma_step_2d(Float64), num)
+        win = EMState(ion_window(Float64), num)
+        ion = win.aux.ionization
+        shape = num.shape
+        xstag = shape === Quadratic ? Center() : Node()      # the stagger whose stencil does not shift
+        want1 = nb ? NodeBins(shape, (Node(),)) : CellBins()
+        want2 = nb ? NodeBins(shape, (Node(), Node())) : CellBins()
+        wantw = nb ? NodeBins(shape, (xstag, Node())) : CellBins()
+        @test all(w -> w.bins == want1, one_d.ws)
+        @test all(w -> w.bins == want2, two_d.ws)
+        @test all(w -> w.bins == wantw, (win.ws..., ion.electrons_ws))
+        @test ion.atoms_ws.bins == CellBins()
+    end
 end

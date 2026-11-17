@@ -684,8 +684,8 @@ status = "proposed"
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case on the CPU (primal and the partials in a₀, duration, density), Reference, against the values pinned here: largest relative difference"
 scale = "relative; a Reference run is bitwise on one backend (A4), C leaves room for another CPU's code generation"
 C = 1e-6
-pinned = [0.10209018, 0.089227244, 0.0069649536, 0.65158737]
-status = "proposed; pinned again with WP-041's factored 2D flux stencil, which moved them by 1.6e-6 (roundoff over the run); measured 4.5e-9 against these (their decimals) on the sandbox's Intel Xeon, 4 threads"
+pinned = [0.1020901, 0.089227244, 0.0069649583, 0.65158296]
+status = "proposed; pinned again with WP-041's nearest-node bins (the cell on the window's x axis), whose summation order moved them by up to 6.8e-6 (the density partial; roundoff over the run, as the factored flux stencil's 1.6e-6 before)"
 
 ["T-611"]
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case (primal and the partials in a₀, duration, density), Reference, on CUDA against the CPU: largest relative difference"
@@ -859,3 +859,10 @@ C = 1
 C_kinetic = 32
 measured = { Float32 = 0.0298, Float64 = 0.107, "Dual{Float32,3}" = 0.0347, kinetic_Float32 = 4.21, kinetic_Float64 = 0.717, "kinetic_Dual{Float32,3}" = 4.23 }
 status = "proposed"
+
+["T-865"]
+quantity = "per field array, max |on − off| after ion_window's 150 Reference steps with EMNumerics(; node_bins) on and off (58 window shifts, ionization births), the largest over the arrays"
+scale = "eps(T)·max|off| of the array; the bins change only the order in which a node's contributions are added, and the run carries that roundoff for 150 steps"
+C = 64
+measured = { Float32 = 37.7, Float64 = 30.7, "Dual{Float32,3}" = 37.7 }
+status = "proposed; the largest gap is in Ex, the wake, and grows with the steps (20.9 and 33.3 eps at 80 steps for Float32 and Float64); Dual{Float32,3}'s values are Float32's bit for bit"

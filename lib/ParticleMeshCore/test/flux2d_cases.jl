@@ -69,9 +69,9 @@ The 2D flux of `s` in `mode` on `be` into fresh fields, unfolded, with a flux wo
 (`shape`, `st`), sorting first when the mode needs it.
 """
 function flux2d(mode, s, shape, st, grid; dt = basetype(eltype(s))(1 // 4), workgroupsize = nothing, be = CPU(), quantity_z = QZ2,
-                flux_layout = ParticleMeshCore.flux_patch_layout(get_backend(s)))
+                flux_layout = ParticleMeshCore.flux_patch_layout(get_backend(s)), bins = CellBins())
     T = eltype(s)
-    ws = Workspace(s, grid; flux = (shape, st), flux_layout)
+    ws = Workspace(s, grid; flux = (shape, st), flux_layout, bins)
     effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     Jx, Jy, Jz = fields3(T, grid)
     on(be, deposit_flux!, mode, Jx, Jy, Jz, s, shape, st, grid, ws; dt = T(dt), quantity_z, workgroupsize)
@@ -79,17 +79,17 @@ function flux2d(mode, s, shape, st, grid; dt = basetype(eltype(s))(1 // 4), work
 end
 
 """
-    continuity_case_2d(T, mode, shape, st; np, seed, workgroupsize, be)
+    continuity_case_2d(T, mode, shape, st; np, seed, workgroupsize, be, dt, bins = CellBins())
 
 One step of `flux_species_2d` on the 16 × 12 test grid: ρ at the old positions, then, after a
 sort, ρ at the new positions in `mode` and the flux. Unfolded host fields.
 """
 function continuity_case_2d(::Type{T}, mode, shape, st; np = 400, seed = 3, workgroupsize = nothing, be = CPU(),
-                            dt = basetype(T)(1 // 4)) where {T}
+                            dt = basetype(T)(1 // 4), bins = CellBins()) where {T}
     grid = grid2(T, flux_g2(shape, st))
     s = flux_species_2d(T, grid, np; seed)
     ρold = deposited_2d(Reference(), at_old_positions_2d(s), shape, st, grid; be)
-    ws = Workspace(s, grid; flux = (shape, st))
+    ws = Workspace(s, grid; flux = (shape, st), bins)
     on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     ρnew = on(be, deposit!, mode, field(backend, T, grid), s, shape, st, grid, ws)
     Jx, Jy, Jz = fields3(T, grid)

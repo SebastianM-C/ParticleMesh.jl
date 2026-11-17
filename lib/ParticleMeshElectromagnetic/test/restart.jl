@@ -716,9 +716,12 @@ end
                for i in findall(==(ParticleMeshCore.ALIVE), Array(s.status))]
     for (mode, sorted) in ((Reference(), true), (Fast(), false))
         st = restore!(EMState(prob, numerics_from_case(case; mode)), snap)
-        for (s, f) in zip(st.species, fast.species)
+        for (s, f, w) in zip(st.species, fast.species, st.ws)
+            n = (Int32(st.grid.n[1]),)
+            bin(i) = ParticleMeshCore.particle_bin(w.bins, s, i, n)[1]
+            alive = findall(==(ParticleMeshCore.ALIVE), Array(s.status))
             @test sort(rows(s)) == sort(rows(f))                                    # the same particles
-            @test issorted(first.(rows(s))) == sorted                               # sorted by cell exactly in the mode that sorts
+            @test issorted(bin.(alive)) == sorted                                   # sorted by bin exactly in the mode that sorts
             @test (rows(s) == rows(f)) == !sorted                                   # so in another slot order there
         end
         @test all(same_bits.(Array.(values(st.fields)), Array.(values(fast.fields))))

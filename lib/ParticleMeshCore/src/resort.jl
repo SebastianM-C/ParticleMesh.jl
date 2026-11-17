@@ -118,15 +118,15 @@ end
 end
 
 # One work item per source cell: its alive particles per move.
-@kernel function resort_count_kernel!(hist, cell, @Const(status), @Const(seg_start), @Const(seg_stop), n::NTuple{N,Int32}) where {N}
+@kernel function resort_count_kernel!(hist, s, bins, @Const(seg_start), @Const(seg_stop), n::NTuple{N,Int32}) where {N}
     Ls = Int32(@index(Global, Linear))
     c = cartesian_cell(Ls, n)
     @inbounds for k in axes(hist, 1)
         hist[k, Ls] = Int32(0)
     end
     @inbounds for i in seg_start[Ls]:seg_stop[Ls]
-        if status[i] == ALIVE
-            k = resort_bin(c, map(a -> a[i], cell), n)
+        if s.status[i] == ALIVE
+            k = resort_bin(c, particle_bin(bins, s, i, n), n)
             hist[k, Ls] += Int32(1)
         end
     end
@@ -134,12 +134,12 @@ end
 
 # One work item per tail slot `sc + j`: the key `(cell, j)` of an alive particle, free slots after
 # all of them by `j`; unique, so the tail's permutation is fixed.
-@kernel function tail_key_kernel!(key, cell, @Const(status), @Const(sorted_count), n, ncell::Int64, append::Int64, cap::Int32)
+@kernel function tail_key_kernel!(key, s, bins, @Const(sorted_count), n, ncell::Int64, append::Int64, cap::Int32)
     j = @index(Global, Linear)
     @inbounds begin
         i = sorted_count[1] + Int32(j)
-        alive = i <= cap && status[min(i, cap)] == ALIVE
-        L = alive ? Int64(linear_cell(map(a -> a[min(i, cap)], cell), n)) : ncell + 1
+        alive = i <= cap && s.status[min(i, cap)] == ALIVE
+        L = alive ? Int64(linear_cell(particle_bin(bins, s, min(i, cap), n), n)) : ncell + 1
         key[j] = (L - 1) * append + (j - 1)
     end
 end
@@ -202,13 +202,13 @@ end
 
 # One work item per source cell: its alive particles in slot order, each to the next rank of its
 # bin, as an entry of the permutation (`perm[j]` is the slot that slot `j` holds before).
-@kernel function resort_perm_kernel!(perm, cell, @Const(status), hist, @Const(seg_start), @Const(seg_stop), @Const(new_start),
+@kernel function resort_perm_kernel!(perm, s, bins, hist, @Const(seg_start), @Const(seg_stop), @Const(new_start),
                                      n::NTuple{N,Int32}) where {N}
     Ls = Int32(@index(Global, Linear))
     c = cartesian_cell(Ls, n)
     @inbounds for i in seg_start[Ls]:seg_stop[Ls]
-        if status[i] == ALIVE
-            cn = map(a -> a[i], cell)
+        if s.status[i] == ALIVE
+            cn = particle_bin(bins, s, i, n)
             k = resort_bin(c, cn, n)
             r = hist[k, Ls]
             hist[k, Ls] = r + Int32(1)
@@ -252,6 +252,9 @@ entries of the permutation, and the particles added since the last sort are sort
 and placed after each cell's others; the arrays then move by `sort_by_cell!`'s gather. The work
 is per cell and per tail slot, where `sort_by_cell!` sorts a key per slot.
 
+With `NodeBins` (`Workspace(species, grid; bins)`) the bins take the cells' part throughout: a
+particle that moves by less than one cell moves by at most one bin per axis.
+
 It is `sort_by_cell!` itself for a workspace built without `append` (`Workspace(species, grid;
 append)`), without a sort of `species` with `ws` as the last sort of `ws` (`sort_by_cell!` or
 `resort_by_cell!`; the same arrays, compared by `===`, so a workspace shared by two states over
@@ -276,10 +279,9 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     n = Int32.(grid.n)
     ncell = prod(grid.n)
     launch(k) = launcher(k, backend, workgroupsize)
-    cells = s.cell
-    launch(resort_count_kernel!)(r.hist, cells, s.status, ws.seg_start, ws.seg_stop, n; ndrange = ncell)
+    launch(resort_count_kernel!)(r.hist, s, ws.bins, ws.seg_start, ws.seg_stop, n; ndrange = ncell)
     if r.append > 0
-        launch(tail_key_kernel!)(r.tail_key, cells, s.status, r.sorted_count, n, Int64(ncell), Int64(r.append), Int32(cap);
+        launch(tail_key_kernel!)(r.tail_key, s, ws.bins, r.sorted_count, n, Int64(ncell), Int64(r.append), Int32(cap);
                                  ndrange = r.append)
         AK.sortperm!(r.tail_perm, r.tail_key; workspace = r.tail_ak)
         launch(reset_bounds_kernel!)(r.tail_start, r.tail_stop; ndrange = ncell)
@@ -290,7 +292,7 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     launch(resort_segments_kernel!)(r.new_start, r.new_stop, s.count, r.cum, r.cnt, Int32(ncell); ndrange = ncell)
     launch(free_flag_kernel!)(r.free, s.status; ndrange = cap)
     AK.accumulate!(+, r.free_cum, r.free; workspace = r.scan_slots)
-    launch(resort_perm_kernel!)(ws.perm, cells, s.status, r.hist, ws.seg_start, ws.seg_stop, r.new_start, n; ndrange = ncell)
+    launch(resort_perm_kernel!)(ws.perm, s, ws.bins, r.hist, ws.seg_start, ws.seg_stop, r.new_start, n; ndrange = ncell)
     r.append > 0 &&
         launch(tail_perm_kernel!)(ws.perm, r.tail_key, r.tail_perm, r.tail_start, r.tail_stop, r.new_start, r.cnt, r.sorted_count,
                                   Int64(ncell), Int64(r.append); ndrange = r.append)

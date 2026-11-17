@@ -243,7 +243,7 @@ struct NoCurrent end
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
                current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, back_absorber = nothing, headroom = 1/4,
-               resort = false)
+               resort = false, node_bins = true)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
@@ -269,7 +269,12 @@ counted, [`window_lost`](@ref)); other states ignore it. `resort` sorts the part
 with the particles a window refill or a birth added since merged in; `false` sorts every key
 anew (`sort_by_cell!`). Both give the same bits. The default is `false`: on the CPU the full sort
 of the keys is as fast (WP-041's step timings), and `true` adds a second copy of every particle
-array per sorted species to the scratch.
+array per sorted species to the scratch. `node_bins` groups the particles of the sort by
+the first node of their stencil with the shape and ρ's stagger (the engine's `NodeBins`, WP-041)
+instead of by cell: at order 2 the `Reference()` deposits then walk 3 bins per axis where they
+walk 4 cells, and the 2D flux patch holds 5 × 5 nodes per bin where a cell's holds 6 × 6; the
+current changes at roundoff (another order of summation), deterministic either way. On the
+window's x axis, which is not periodic, the bin is the cell. The ionization's atoms keep cells.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     shape::S
@@ -283,13 +288,14 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     back_absorber::K
     headroom::Float64
     resort::Bool
+    node_bins::Bool
 end
 
 function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
                     current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, back_absorber = nothing,
-                    headroom::Real = 1 / 4, resort::Bool = false)
+                    headroom::Real = 1 / 4, resort::Bool = false, node_bins::Bool = true)
     headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
-    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort)
+    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort, node_bins)
 end
 
 """

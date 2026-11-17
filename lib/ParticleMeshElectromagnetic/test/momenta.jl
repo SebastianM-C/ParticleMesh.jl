@@ -15,6 +15,7 @@ function loaded_and_engine(prob, dist; be = CPU())
     k = N == 1 ? (d.density, d.amplitude, 2 * T(π) * d.mode / prob.length) :
         (d.density, d.amplitude, ntuple(a -> 2 * T(π) * d.mode[a] / prob.length[a], 2)...)
     load_quiet!(s, st.grid, ParticleMeshElectromagnetic.CosineProfile(), k, d.ppc, dist; seed = prob.seed, stream = d.stream)
+    sort_by_cell!(s, st.grid, Workspace(s, st.grid; bins = st.ws[1].bins))   # in initialize!'s order (node bins by default)
     return st.species[1], s
 end
 
