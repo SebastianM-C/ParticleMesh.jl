@@ -495,6 +495,57 @@ C = 4
 measured = { Float32 = 1.30, Float64 = 1.04 }
 status = "proposed"
 
+# WP-066: shaped pulses on the antenna
+["T-901"]
+quantity = "SpectralEnvelope against the closed-form transform-limited, GDD and TOD (Airy) envelopes, max over s"
+scale = "eps(T)·(1 + span·max|s|/duration), the largest phase the quadrature's sincos rounds"
+C = 4
+measured = { GDD = { Float32 = 0.0556, Float64 = 0.0617 }, TL = { Float32 = 0.0802, Float64 = 0.0741 }, TOD = { Float32 = 0.0278, Float64 = 0.181 } }
+status = "proposed"
+
+["T-902"]
+quantity = "|∫|A|²/(duration·√(π/2)) − 1|, |centroid − closed form|/rms and |variance/closed form − 1| by the trapezoid rule over one period"
+scale = "1e-12 (Float64); 1e-6 of the peak for the FOD tail beyond six of envelope_extent's durations (fod_tail)"
+C = 1
+measured = { Float64 = 4.44e-4, fod_tail = 0.284 }
+status = "proposed"
+
+["T-903"]
+quantity = "PupilBeam: paraxial residual and U″ − ∂²U/∂y² over na² (C·samples·eps); |Gaussian pupil − GaussianBeam| (U, and U″ times waist²) over exp(−1/fill²), the pupil's truncation; tilt, defocus and power over 1000·eps"
+scale = "eps (Float64)"
+C = 1
+measured = { pde = 1.86e-3, gaussian = 0.0109, tilt = 1.03e-3, defocus = 3.91e-3, power = 0.01 }
+status = "proposed"
+
+["T-904"]
+quantity = "|Strehl − (1 − (2πσ)²)| over (2πσ)⁴ for a uniform pupil with P₃ to P₅"
+scale = "(2πσ)⁴, the next order of the expansion"
+C = 1
+measured = { Float64 = 0.421 }
+status = "proposed"
+
+["T-905"]
+quantity = "ShapedLaser(GaussianBeam, GaussianEnvelope) against GaussianLaser over 64·eps(T) (C, values and partials); |flux/laser_energy − 1| over exp(−τ²/2) (τ = 6), the overlap with 2ω₀, for a pupil beam with a spectral phase"
+scale = "64·eps(T); exp(−18)"
+C = 1
+measured = { gaussian = { Float64 = 0.0156, "Dual{Float32,3}" = 0.313 }, flux = 0.257 }
+status = "proposed"
+
+["T-906"]
+quantity = "relative L² difference of the launched ω₀ transform from the Yee angular-spectrum propagation of the incident field (C); energy behind the plane over the pulse's, 50 after the centroid crossed it, before the backward wave wraps round the periodic box (C_leak; the antenna is exact at ω₀ only, as in T-401)"
+scale = "(3/16)·√⟨k_y⁸⟩ over the pupil's angular spectrum (C); absolute (C_leak)"
+C = 2
+C_leak = 1e-5
+measured = { Ey = { Float32 = 1.35, Float64 = 1.35, "Dual{Float32,3}" = 1.35 }, Ez = { Float32 = 0.774, Float64 = 0.773, "Dual{Float32,3}" = 0.774 }, C_leak = { Float32 = 2.13e-6, Float64 = 2.13e-6, "Dual{Float32,3}" = 2.13e-6 } }
+status = "proposed"
+
+["T-907"]
+quantity = "AD against the finite-difference floor of the ω₀ intensity on the axis of a probe, in a P₃ aberration and in the GDD"
+scale = "rel/floor_rel at the minimising step (A7)"
+C = 1
+measured = { coma = 0.112, gdd = 0.112 }
+status = "proposed"
+
 # WP-029: the binomial current filter
 ["T-440"]
 quantity = "binomial! on a random field (value and partials), 1D 16 cells and 2D 12 × 10, 1, 2, 3, 5 passes: every DFT coefficient of the output against H_p(m) = Π_d cos^{2p}(π m_d/n_d) times the input's; one mode on each 2D stagger against H_p times the mode"

@@ -40,6 +40,10 @@ one mesh solve, [`solve_fields!`](@ref), which walks the state's tuple of field 
 ([`FieldModifier`](@ref): the absorbers, the antennas, a moving window's edges) around the
 solver's sub-steps.
 
+The laser antennas launch a [`GaussianLaser`](@ref) or a [`ShapedLaser`](@ref), whose transverse
+profile and temporal envelope come from the submodule [`PulseShapes`](@ref) (a spectral phase,
+a near field and wavefront aberrations; WP-066), which depends on nothing of this package.
+
 With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
 `DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
 with [`state_partition`](@ref), [`remake_reload`](@ref) and [`harness_state`](@ref).
@@ -72,12 +76,18 @@ export histories, field_energy, kinetic_energy_history, total_energy_history, mo
 export evolved, EMSnapshot, snapshot, restore!, save_snapshot, load_snapshot
 export state_partition, remake_reload, harness_state
 export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPlanes, laser_energy, laser_field
+export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
 export IonizationLevel, ionization_rate, ADKLevel, adk_rate, TongLinLevel, DopantSection, FieldIonization, IonizationParams
 export ionization_electrons, ionization_state, ionization_lost, ionization_charge!
 export MovingWindow, DensityRamp, WindowFrame, WindowEdges, WindowClock, window_load, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
+
+include("PulseShapes/PulseShapes.jl")
+using .PulseShapes: PulseShapes, TemporalEnvelope, GaussianEnvelope, SpectralEnvelope, TransverseProfile, GaussianBeam, PupilBeam,
+                    GaussianPupil, SuperGaussianPupil, UniformPupil, envelope, envelope_extent, envelope_energy, profile,
+                    profile_moments, aliasing_period, parameter_names, parameter_values, with_parameter_values, convert_eltype
 
 include("layout.jl")
 include("yee.jl")
@@ -89,6 +99,7 @@ include("problem.jl")
 include("step.jl")
 include("step2d.jl")
 include("antenna.jl")
+include("shaped.jl")
 include("boundaries.jl")
 include("pml.jl")
 include("window.jl")

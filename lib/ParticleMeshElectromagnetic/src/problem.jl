@@ -101,7 +101,7 @@ A2), the `seed` of the velocity draws, the diagnostic `kmode`, the uniform backg
 `E0` and `B0` (three components each, zero by default), which [`initialize!`](@ref) adds to the
 fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
 not differentiable parameters, A3: the addition tests them for zero on the host), and the
-`lasers`, a tuple of [`GaussianLaser`](@ref) descriptions launched by antenna planes during
+`lasers`, a tuple of [`GaussianLaser`](@ref) or [`ShapedLaser`](@ref) descriptions launched by antenna planes during
 the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
 at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
@@ -171,7 +171,7 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         all(>(0), d.ppc) || throw(ArgumentError("species $(d.name): ppc = $(d.ppc) must be positive"))
     end
     isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
-    all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
+    all(is_laser, lasers) || throw(ArgumentError("lasers must be GaussianLaser or ShapedLaser descriptions, got $(map(typeof, lasers))"))
     boundaries isa Union{Symbol,AbstractString} &&
         throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic, :open and :window per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
@@ -352,7 +352,7 @@ end
 The parameters of a run (A3), everything of the problem description that [`initialize!`](@ref)
 and [`step!`](@ref) read as numbers, in the state's element type `T`:
 
-- `lasers`: the [`GaussianLaser`](@ref)s, read by the antennas' source in every step;
+- `lasers`: the [`GaussianLaser`](@ref)s and [`ShapedLaser`](@ref)s, read by the antennas' source in every step;
 - `species`: one [`SpeciesParams`](@ref) per mobile species, read by the initial load and by the
   moving window's refill;
 - `profile`: the [`DensityRamp`](@ref) of a moving-window plasma, or `nothing`, read where the

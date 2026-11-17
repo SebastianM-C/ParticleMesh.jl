@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -194,6 +194,10 @@ else
     # a tuple of levels of three types in one kernel, one of them defined in the tests; the suppressed rate's partials; the zero-suppression bits
     @testset "T-827 the levels' rate laws on CUDA: T-822, T-823 and T-824 with the CPU's assertions [A2, A4, A8, WP-063]" begin
         rerun_module_on(GPU, (("T-822", body_T822), ("T-823", body_T823), ("T-824", body_T824)))
+    end
+
+    @testset "T-909 the shaped antenna on CUDA passes T-906 with the CPU's tolerances [A2, A7, A8, WP-066]" begin
+        rerun_module_on(GPU, (("T-906", body_T906),))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin

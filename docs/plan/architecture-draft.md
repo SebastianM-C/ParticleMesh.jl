@@ -204,7 +204,7 @@ What EDM already gives, and how it maps onto PIC:
 |---|---|
 | `ChargedParticle(external_field, radiation_model)` composed from `ParticleDynamics`, `EMFieldDynamics`, forces | same components with a `GridField` input in place of `external_field`: E and B at the particle are kernel inputs; `mtkcompile` + `build_function` yield a device-callable force or RHS |
 | Landau–Lifshitz generated for any field | radiation reaction in the pusher for free; quantum-corrected LL later as one more component |
-| LaserTypes.jl fields, unit systems | laser antenna/initial fields and density profiles as symbolic expressions compiled to kernels; SI/natural units handled once |
+| LaserTypes.jl fields, unit systems | laser antenna/initial fields and density profiles as symbolic expressions compiled to kernels; SI/natural units handled once. The antenna's pulse shapes (spectral phase, near field, aberration modes) live meanwhile in `PulseShapes`, a submodule of the electromagnetic module that depends on nothing of ParticleMesh, so it can move upstream once LaserTypes evaluates its fields as isbits, cache-free, generic-`T` functions (WP-066) |
 | parameters via SymbolicIndexingInterface, tunables | the active-parameter set for the tangent layer |
 | run manifests, campaigns, dashboard | unchanged |
 
