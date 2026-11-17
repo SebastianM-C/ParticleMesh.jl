@@ -1,0 +1,20 @@
+branch = "runs/wp063-cpu-suite"
+request_commit = "78782b826effcd26c23ff3ca23cf0895be84eceb"
+started = "2026-11-17T01:13:00Z"
+category = "test"
+outputs = []
+finished = "2026-11-17T01:13:19Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T01:13:00Z"
+exit = 1
+seconds = 19
