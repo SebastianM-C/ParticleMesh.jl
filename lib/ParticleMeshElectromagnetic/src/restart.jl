@@ -198,7 +198,7 @@ state saved from such a mode.
 """
 function state_view(st::EMState, a::Tuple, recorder = empty_recorder(st.recorder))
     check_evolved(st, a)
-    return refresh_caches!(on_evolved(st, a, similar(st.K), recorder))
+    return refresh_after_write!(on_evolved(st, a, similar(st.K), recorder))
 end
 
 # --- the cache ------------------------------------------------------------------------------------
@@ -210,8 +210,9 @@ Rebuild what the state caches of its evolved arrays: the kinetic energy `K` at t
 momenta, which the next step's observer reads ([`observe!`](@ref)), and mark it current
 (`state.fresh`). `initialize!` leaves it current, and a step does where its observer reads it at
 the next step ([`reads_kinetic`](@ref): the default recorder, a function or `nothing` at every
-step); whoever writes the evolved arrays otherwise calls this ([`restore!`](@ref) does, and the
-harness at the first step of a solve, whose `u0` its cache has not seen), and `observe!` calls
+step); whoever writes the evolved arrays otherwise calls this, through
+[`refresh_after_write!`](@ref) ([`restore!`](@ref) does, and the harness at the first step of a
+solve, whose `u0` its cache has not seen), and `observe!` calls
 it for an observer that reads a cache a step left stale. At N = 2 `K` is
 the fixed chunks' sums over the slots as they are. At N = 1 it is a deposition, which in a mode
 that sorts reads the sort's segment bounds, so the species are sorted first: the identity
@@ -224,6 +225,20 @@ function refresh_caches!(st::EMState{1})
         sorts(st, s) && sort_by_cell!(s, st.grid, ws; workgroupsize = st.numerics.workgroupsize)
     end
     return kinetic!(st)
+end
+
+"""
+    refresh_after_write!(state) -> state
+
+What a caller that wrote the state's evolved arrays from elsewhere does before the next step
+([`restore!`](@ref), [`state_view`](@ref), the harness at the first step of a solve): every
+workspace forgets the order of its last sort ([`forget_order!`](@ref)), since it was taken on other
+arrays, so the next step's sort is the full one, which gives the bits that a sort from the right
+order would (T-854); then [`refresh_caches!`](@ref).
+"""
+function refresh_after_write!(st::EMState)
+    foreach(forget_order!, deposited_workspaces(st))
+    return refresh_caches!(st)
 end
 
 # --- snapshot and restore -------------------------------------------------------------------------
@@ -316,7 +331,7 @@ end
 
 restore!(st::EMState, arrays::Tuple) = (check_evolved(st, arrays); write_evolved!(st, arrays))
 
-write_evolved!(st::EMState, arrays::Tuple) = (copy_arrays!(evolved(st), arrays); refresh_caches!(st))
+write_evolved!(st::EMState, arrays::Tuple) = (copy_arrays!(evolved(st), arrays); refresh_after_write!(st))
 
 # --- files ----------------------------------------------------------------------------------------
 

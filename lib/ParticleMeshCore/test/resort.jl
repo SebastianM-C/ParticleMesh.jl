@@ -72,19 +72,21 @@ end
 
 "Whether two species and their workspaces hold the same bits: every array, the permutation, the segments."
 same_sort(a, wa, b, wb) = all(same_bits(x, y) for (x, y) in zip(species_arrays(a), species_arrays(b))) &&
+                          Array(a.count) == Array(b.count) &&
                           wa.perm == wb.perm && wa.seg_start == wb.seg_start && wa.seg_stop == wb.seg_stop
 
 """
-    resort_run(T, n; steps, append, wgs) -> Vector{Bool}
+    resort_run(T, n; steps, append, wgs, seed, np, pfree) -> Vector{Bool}
 
-Two copies of one species, one sorted by `sort_by_cell!` and one by `resort_by_cell!` with a
-workspace of `append`, through `steps` rounds of moves, frees and (every second round) `append`
-particles added behind the count; per round whether the two hold the same bits.
+Two copies of one species of `np` particles in `12·prod(n)` slots, one sorted by `sort_by_cell!`
+and one by `resort_by_cell!` with a workspace of `append`, through `steps` rounds of moves, frees
+and (every second round) `append` particles added behind the count, a fraction `pfree` freed per
+round; per round whether the two hold the same bits.
 """
-function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1) where {T,N}
+function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1, np = 8 * prod(n), pfree = 1 / 20) where {T,N}
     cap = 3 * prod(n) * 4
     grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
-    a = resort_species(T, n, cap, 2 * prod(n) * 4; seed)
+    a = resort_species(T, n, cap, np; seed)
     b = deepcopy(a)
     wa, wb = Workspace(a, grid), Workspace(b, grid; append)
     sort_by_cell!(a, grid, wa; workgroupsize = wgs)
@@ -93,7 +95,7 @@ function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = n
     for k in 1:steps
         for (s, w) in ((a, wa), (b, wb))
             rng = ResortLCG(seed + 100k)
-            resort_move!(s, n, rng)
+            resort_move!(s, n, rng; pfree)
             iseven(k) && resort_append!(s, n, append, rng; tag0 = 1000k)
         end
         sort_by_cell!(a, grid, wa; workgroupsize = wgs)
@@ -107,6 +109,10 @@ end
     for T in TYPES, n in ((7,), (16, 12), (5, 4), (3, 4, 3)), wgs in WG_SIZES
         same = resort_run(T, n; wgs)
         @test length(same) == 7 && all(same)
+    end
+    # a full species: the tail of `append` slots behind the count runs past the capacity
+    for n in ((7,), (16, 12), (3, 4, 3))
+        @test all(resort_run(Float32, n; np = 12 * prod(n) - 10, pfree = 0))
     end
     # The slots are in the order of the full sort, and the count is the alive count.
     grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
@@ -124,7 +130,7 @@ end
     @test count(>(5000), s.extras.tag) > 20                    # the added particles are in
 end
 
-@testset "T-851 resort_by_cell! is the full sort without append, before a first sort and below 3 cells per axis [A4, WP-041]" begin
+@testset "T-851 resort_by_cell! is the full sort without append, before a first sort, after forget_order! and below 3 cells per axis [A4, WP-041]" begin
     T = Float32
     # without append: the full sort at every call, so a species changed in any way is still sorted
     grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
@@ -147,6 +153,14 @@ end
     sort_by_cell!(x, grid, wx)
     resort_by_cell!(y, grid, wy)
     @test wy.resort.ordered[] && same_sort(x, wx, y, wy)
+    # after forget_order!: the full sort, so arrays written from elsewhere are sorted
+    for (s, w) in ((x, wx), (y, wy))
+        s.cell[1] .= Int32.(mod1.(7 .* (1:600), 16))         # moves of many cells, as a restart from other arrays
+    end
+    @test forget_order!(wy) === wy && !wy.resort.ordered[] && forget_order!(wx) === wx
+    sort_by_cell!(x, grid, wx)
+    resort_by_cell!(y, grid, wy)
+    @test same_sort(x, wx, y, wy)
     g2 = PeriodicGrid((2, 12), (1 / 2, 1 / 2), 1)
     for k in 1:2
         c = resort_species(T, (2, 12), 300, 200; seed = k)

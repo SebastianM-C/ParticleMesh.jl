@@ -72,6 +72,18 @@ function note_sorted!(r::ResortScratch, s)
 end
 
 """
+    forget_order!(ws::Workspace) -> ws
+
+Forget the order of the workspace's last sort, so that its next [`resort_by_cell!`](@ref) is the
+full sort: for a caller that wrote the species' arrays other than by the moves and appends that
+`resort_by_cell!` takes (a restart from saved arrays, a state over other arrays). A host flag;
+nothing for a workspace without append scratch.
+"""
+forget_order!(ws::Workspace) = (forget_order!(ws.resort); ws)
+forget_order!(::Nothing) = nothing
+forget_order!(r::ResortScratch) = (r.ordered[] = false; nothing)
+
+"""
     resort_neighbours(c, n)
 
 The cells within one cell of `c` per axis on a periodic grid of `n ≥ 3` cells per axis, `3^N` of
@@ -239,7 +251,9 @@ Preconditions, not detected: since the last sort, every particle alive then has 
 than one cell per axis (periodically, the seams and the corners included) or been freed, and
 every particle made alive since then sits in the `append` slots behind that sort's alive count
 (as `load_window_columns!`-style loads and births behind `species.count` place them), in any
-order and at any place. Nothing else may write the arrays in between.
+order and at any place. Nothing else may write the arrays in between: whoever does (a restart,
+arrays copied in from elsewhere) calls [`forget_order!`](@ref) on the workspace, and the next
+sort is the full one.
 """
 function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; workgroupsize = nothing) where {N}
     r = ws.resort

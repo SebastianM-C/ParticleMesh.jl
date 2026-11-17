@@ -24,7 +24,7 @@ module ParticleMeshElectromagneticSciMLExt
 
 using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: EMState, EMProblem, EMNumerics, EMParams, params, check_setup, initialize!, step!, with_modifiers
-using ParticleMeshElectromagnetic: evolved, on_evolved, state_view, restore!, refresh_caches!, copy_arrays!, check_evolved
+using ParticleMeshElectromagnetic: evolved, on_evolved, state_view, restore!, refresh_caches!, refresh_after_write!, copy_arrays!, check_evolved
 import ParticleMeshElectromagnetic: state_partition, remake_reload, harness_state
 using KernelAbstractions: CPU
 using SciMLBase: SciMLBase, DiscreteProblem, DiscreteFunction, AbstractSciMLProblem, AbstractTimeseriesSolution
@@ -92,7 +92,7 @@ function (m::EMMap)(u, uprev, p, t)
     # a solve's first step: `u` is a copy of a `u0` that may come from anywhere (`remake`)
     k == 1 && check_evolved(m.state, u.x)
     st = state_on(m, u)
-    k == 1 && (check_fit(m.state, p); refresh_caches!(st))
+    k == 1 && (check_fit(m.state, p); refresh_after_write!(st))
     step!(st, pk, k)
     m.done[] = k
     m.owner[] = a

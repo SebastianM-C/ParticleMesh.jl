@@ -70,3 +70,43 @@ end
     @test checked > 40 && nborn > 0
     @test ok
 end
+
+"A hash of the bits of the state's evolved arrays."
+evolved_digest(st) = foldl((h, a) -> hash(bits(a), h), evolved(st); init = UInt64(0))
+
+@testset "T-854 a restart into a used state, or a state over saved arrays, sorts anew and continues the run's bits [A4, WP-041]" begin
+    # the snapshot after step 100: the laser is in the plasma, the window shifts and the dopant
+    # gives births, so the particles change cells between that step and the state's step 150
+    nsteps, k0 = 150, 100
+    prob = ion_window(Float32; nsteps)
+    p = params(prob)
+    new_state() = (st = EMState(prob, EMNumerics(; mode = Reference(), resort = true); backend = CPU()); initialize!(st, prob); st)
+    ref = new_state()
+    local snap
+    nborn = 0
+    for k in 1:nsteps
+        step!(ref, p, k)
+        k == k0 && (snap = snapshot(ref, k))
+        k > k0 && (nborn = max(nborn, born(ref).n))
+    end
+    @test window_shifts(ref, nsteps) - window_shifts(ref, k0) > 10 && nborn > 0
+    want = evolved_digest(ref)
+    # restore! into the state that ran on to step 150, and into a new one
+    for st in (ref, new_state())
+        restore!(st, snap)
+        for k in (k0 + 1):nsteps
+            step!(st, p, k)
+        end
+        @test evolved_digest(st) == want
+    end
+    # a state over copies of the saved arrays, from a state that ran to the end
+    used = new_state()
+    for k in 1:nsteps
+        step!(used, p, k)
+    end
+    view = ParticleMeshElectromagnetic.state_view(used, map(copy, snap.arrays))
+    for k in (k0 + 1):nsteps
+        step!(view, p, k)
+    end
+    @test evolved_digest(view) == want
+end

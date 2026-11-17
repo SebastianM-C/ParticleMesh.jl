@@ -33,7 +33,7 @@ export Species, capacity, alive_count
 export Shape, Linear, Quadratic, Node, Center, order, guard_width, shape_weights, tensor_weights, advance
 export fill_guards!, fold_guards!
 export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
-export Workspace, sort_by_cell!, resort_by_cell!, deposit!, gather!, ChargeWeight
+export Workspace, sort_by_cell!, resort_by_cell!, forget_order!, deposit!, gather!, ChargeWeight
 export cumsum_periodic!
 export GaussianVelocity, GaussianMomentum, MaxwellJuttner, draws_momentum
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
