@@ -73,7 +73,7 @@ export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPla
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
-export ADKLevel, adk_rate, DopantSection, FieldIonization, IonizationParams
+export IonizationLevel, ionization_rate, ADKLevel, adk_rate, TongLinLevel, DopantSection, FieldIonization, IonizationParams
 export ionization_electrons, ionization_state, ionization_lost, ionization_charge!
 export MovingWindow, DensityRamp, WindowFrame, WindowEdges, WindowClock, window_load, window_shifts, window_back_band, window_lost, window_superluminal, window_charge!, window_background!
 

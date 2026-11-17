@@ -86,14 +86,14 @@ end
 const VAC = (; a0 = 2.0, waist = 10.0, duration = 20.0, delay = 70.0, position = 4.0, focus = 60.0, length = (240.0, 60.0), rows_per_wavelength = 8)
 
 "The pulse of the vacuum runs, with the antenna at `position` and the focus on the column the atoms are read on."
-vacuum_pulse() = GaussianLaser(; a0 = VAC.a0, waist = VAC.waist, duration = VAC.duration, delay = VAC.delay, focus = VAC.focus,
+vacuum_pulse(; a0 = VAC.a0) = GaussianLaser(; a0, waist = VAC.waist, duration = VAC.duration, delay = VAC.delay, focus = VAC.focus,
                                position = VAC.position, center = VAC.length[2] / 2)
 
 "The fraction released at the transverse distance `dy` from the axis in the focal plane, from the paraxial field times `scale`: 1 − exp(−∫W(scale·|e(s)|)ds), trapezoid rule at `ds`."
-function analytic_fraction(level, dy; ds = 1.0e-3, scale = 1.0)
-    pulse = vacuum_pulse()
+function analytic_fraction(level, dy; ds = 1.0e-3, scale = 1.0, a0 = VAC.a0)
+    pulse = vacuum_pulse(; a0)
     s = (-6 * VAC.duration):ds:(6 * VAC.duration)
-    w = [adk_rate(level, scale * abs(first(laser_field(pulse, 0.0, dy, x)))) for x in s]
+    w = [ionization_rate(level, scale * abs(first(laser_field(pulse, 0.0, dy, x)))) for x in s]
     return -expm1(-ds * (sum(w) - (first(w) + last(w)) / 2))
 end
 
@@ -105,21 +105,21 @@ quadratic B-spline at the wave's wavenumber). The atoms take their field through
 gather_factor(ncx) = (sin(π / ncx) / (π / ncx))^3
 
 "The largest |e| of the paraxial field on the axis in the focal plane."
-peak_paraxial() = maximum(s -> abs(first(laser_field(vacuum_pulse(), 0.0, 0.0, s))), -4:1.0e-3:4)
+peak_paraxial(; a0 = VAC.a0) = maximum(s -> abs(first(laser_field(vacuum_pulse(; a0), 0.0, 0.0, s))), -4:1.0e-3:4)
 
 """
-The vacuum run at `ncx` cells per wavelength along x: test atoms of zero weight on every cell, the
+The vacuum run at `ncx` cells per wavelength along x, of a pulse of amplitude `a0`: test atoms of zero weight on every cell, the
 pulse launched at t = 0 and run until it has passed the focal column by six durations; the
 released fraction (`pending`: nothing is born at zero weight) of the atoms of the focal column
 against their distance from the axis, and the largest |Ey| the run had on the Ey node next to the focus
 (interpolated in time between the steps).
 """
-function vacuum_run(level, ncx)
+function vacuum_run(level, ncx; a0 = VAC.a0)
     hx, hy = 2π / ncx, 2π / VAC.rows_per_wavelength
     cells = (round(Int, VAC.length[1] / hx), round(Int, VAC.length[2] / hy))
     L = (cells[1] * hx, cells[2] * hy)
     dt = 0.95 / sqrt(1 / hx^2 + 1 / hy^2)
-    pulse = GaussianLaser(; a0 = VAC.a0, waist = VAC.waist, duration = VAC.duration, delay = VAC.delay, focus = VAC.focus,
+    pulse = GaussianLaser(; a0, waist = VAC.waist, duration = VAC.duration, delay = VAC.delay, focus = VAC.focus,
                           position = VAC.position, center = L[2] / 2)
     nsteps = ceil(Int, (VAC.delay + VAC.focus - VAC.position + 6 * VAC.duration) / dt)
     ion = FieldIonization(; density = 0.0, levels = (level,), capacity = 1)

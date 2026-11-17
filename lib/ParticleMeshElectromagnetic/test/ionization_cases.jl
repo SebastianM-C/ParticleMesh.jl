@@ -31,7 +31,7 @@ function ion_in_E(::Type{T}; E0 = (one(T) / 2, zero(T), zero(T)), B0 = zero3(T),
 end
 
 """
-    ion_window(T; nsteps, a0, density, prefactor, start, stop, ramp, every, ppc, rows, capacity, plasma, cutoff) -> EMProblem{2}
+    ion_window(T; nsteps, a0, density, prefactor, start, stop, ramp, every, ppc, rows, capacity, plasma, cutoff, levels) -> EMProblem{2}
 
 A small ionization-injection run: `window_lwfa`'s box and pulse (window_cases.jl: 8 cells per laser
 wavelength, 64 × 16 cells, a Gaussian pulse of a₀ = 1, waist 6 and duration 3 from an antenna at
@@ -39,7 +39,8 @@ x = 6, a cold plasma of 0.02 n_c behind a vacuum of 24 c/ω₀ and a ramp of 8, 
 from t = 33) with a dopant of the density `density` (0.005 n_c) in the section that rises over
 `ramp` (3) from `start` (28) and falls from `stop` (34), on the 8 rows about the axis, with one
 level of prefactor `prefactor` (1/5), field 3 and power 1: its rate at |E| = 1 is 0.6·e⁻¹ ≈ 0.22,
-and it is exactly zero below |E| = 1/`cutoff` (1/64 by default, the level's cutoff). At the default
+and it is exactly zero below |E| = 1/`cutoff` (1/64 by default, the level's cutoff); `levels`
+replaces it. At the default
 110 steps (t ≈ 58) the pulse has passed the section and the section is still inside the window; by
 150 steps it has left through the back edge. `capacity` (4096) holds every birth of the run; 2048
 hold the 110 steps' (they need 1912) and not those of 130 steps. `a0`, `density`, `prefactor` and
@@ -48,12 +49,13 @@ physical result (`every = 2` at 8 cells per wavelength is a sixth of a laser per
 births): its born charge and energy are quantities for tests.
 """
 function ion_window(::Type{T}; nsteps = 110, a0 = 1, density = T(1) / 200, prefactor = T(1) / 5, start = 28, stop = 34, ramp = 3,
-                    every = 2, ppc = (1, 1), rows = (3.2, 9.4), capacity = 4096, plasma = true, cutoff = 64, cells = (64, 16), seed = 1) where {T}
+                    every = 2, ppc = (1, 1), rows = (3.2, 9.4), capacity = 4096, plasma = true, cutoff = 64, cells = (64, 16), seed = 1,
+                    levels = (ADKLevel(T(prefactor), T(3), one(T); cutoff = T(cutoff)),)) where {T}
     h = 2 * T(π) / 8
     dt = T(95) / 100 * h / sqrt(T(2))
     pulse = GaussianLaser(; a0 = T(a0), waist = T(6), duration = T(3), delay = T(18), focus = T(6), position = T(6), center = cells[2] * h / 2)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(2) / 100, zero(T), (1, 0), (2, 2), zero3(T), zero3(T), 1)
-    ion = FieldIonization(; density = T(density), levels = (ADKLevel(T(prefactor), T(3), one(T); cutoff = T(cutoff)),), capacity, ppc, every, rows,
+    ion = FieldIonization(; density = T(density), levels, capacity, ppc, every, rows,
                           section = DopantSection(; start = T(start), stop = T(stop), ramp = T(ramp)))
     return EMProblem("ion-window", (cells[1] * h, cells[2] * h), cells, dt, nsteps, plasma ? (e,) : (), seed, (1, 0); lasers = (pulse,),
                      boundaries = (:window, :periodic), window = MovingWindow(; start = T(33)),
