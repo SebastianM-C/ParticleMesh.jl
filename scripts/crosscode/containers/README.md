@@ -10,9 +10,9 @@ One recipe per code family, `<family>.Containerfile`, with this directory as the
 
 ## Tags
 
-Inside the factory the machine's image builder (`crosscode-image`, run by the owner) builds the image and tags it `localhost/particlemesh-<family>:<hash>` with a hash of the recipe files computed by its own rule; the runner refuses a run when the image for the worktree's recipe is not built and names the expected tag. The run manifest records the image id from the runner's log.
+Inside the factory the machine's image builder (`crosscode-image`, run by the owner) builds the image and tags it `localhost/particlemesh-<family>:<hash>` with a hash of the recipe files computed by its own rule; the machine's GPU command refuses a run when the image for the worktree's recipe is not built and names the expected tag. The run manifest records the image id from the job's log.
 
-Outside the factory an image is tagged by its own rule (`run-smilei.sh` takes the image as its second argument or defaults to this tag; PIConGPU has no outside runner yet), `particlemesh-<family>:<first 16 hex of SHA-256 over the recipe and the files in <family>/ in sorted path order>`, which is not the factory runner's tag:
+Outside the factory an image is tagged by its own rule (`run-smilei.sh` takes the image as its second argument or defaults to this tag; PIConGPU has no outside runner yet), `particlemesh-<family>:<first 16 hex of SHA-256 over the recipe and the files in <family>/ in sorted path order>`, which is not the factory's tag:
 
 ```
 cd scripts/crosscode/containers
@@ -21,7 +21,7 @@ hash=$( { echo $family.Containerfile; find $family -type f 2>/dev/null; } | LC_A
 podman build -f $family.Containerfile -t particlemesh-$family:$hash .
 ```
 
-The build needs the network (apt, NVIDIA's CUDA repository for `picongpu` and its HPC SDK repository for `smilei-gpu`, and GitHub). Neither GPU build needs a GPU. The `smilei-gpu` image is large: the SDK package alone is about 3.2 GB to download. Compiling one 2D setup in a runner job took about 1 min 10 s with `-j 16` in the smoke run (`questions/wp-017-picongpu-image.md` §5), and every run pays that compile again; the time and memory of the image build, whose own smoke compile uses `-j "$(nproc)"`, were not measured. A changed recipe gives a new tag either way, so a run names the recipe it came from.
+The build needs the network (apt, NVIDIA's CUDA repository for `picongpu` and its HPC SDK repository for `smilei-gpu`, and GitHub). Neither GPU build needs a GPU. The `smilei-gpu` image is large: the SDK package alone is about 3.2 GB to download. Compiling one 2D setup in a factory job took about 1 min 10 s with `-j 16` in the smoke run (`questions/wp-017-picongpu-image.md` §5), and every run pays that compile again; the time and memory of the image build, whose own smoke compile uses `-j "$(nproc)"`, were not measured. A changed recipe gives a new tag either way, so a run names the recipe it came from.
 
 ## Pinning
 
@@ -29,4 +29,4 @@ The `FROM` line names a digest, and every source is fetched at a release tag and
 
 ## Running
 
-The case runs use the generated `scripts/runs/<tag>/run.sh` (see `scripts/crosscode/README.md`): inside the factory through the machine's runner, outside it with `scripts/crosscode/run-smilei.sh`.
+The case runs use the generated `scripts/runs/<tag>/run.sh` (see `scripts/crosscode/README.md`): inside the factory with the machine's GPU command, outside it with `scripts/crosscode/run-smilei.sh`.

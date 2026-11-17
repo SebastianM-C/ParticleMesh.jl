@@ -193,30 +193,30 @@ status = "proposed"
 quantity = "2D discrete continuity per node, |(ρ_new - ρ_old)/Δt + (Jx[j] - Jx[j - e₁])/Δx₁ + (Jy[j] - Jy[j - e₂])/Δx₂|"
 scale = "max|ρ|/Δt (400 particles, orders 1 and 2, every stagger pair, both modes)"
 C = 8
-measured = { Float32 = 1.57, Float64 = 1.98, "Dual{Float32,3}" = 2.41 }
+measured = { Float32 = 1.70, Float64 = 2.02, "Dual{Float32,3}" = 2.06 }
 status = "proposed"
 
 ["T-301"]
-quantity = "Σ Jz - Σ quantity_z of a moved species; per-node Jx, Jy, Jz of one particle against Esirkepov's weights by hand; N = 1 per-node Jy, Jz against quantity·(W_old + W_new)/2 by hand"
-scale = "count·max|quantity_z|; |q·w·Δx_d/Δt| and |quantity_z| (Float64); |quantity| (Float64)"
+quantity = "Jz of a particle at rest against quantity_z × the tensor weights (WP-041); Σ Jz - Σ quantity_z of a moved species; per-node Jx, Jy, Jz of one particle over six moves against Esirkepov's weights by hand; N = 1 per-node Jy, Jz against quantity·(W_old + W_new)/2 by hand"
+scale = "|quantity_z| at rest; count·max|quantity_z|; |q·w·Δx_d/Δt| and |quantity_z| (Float64); |quantity| (Float64)"
 C = 16
 C_hand = 8
 C_1d = 8
-measured = { Float32 = 0.0474, Float64 = 0.0947, "Dual{Float32,3}" = 0.866, hand_Float64 = 1.25, "1d_Float64" = 1.59 }
+measured = { Float32 = 0.0474, Float64 = 0.0676, "Dual{Float32,3}" = 1.08, at_rest = { Float32 = 0.521, Float64 = 0.260, "Dual{Float32,3}" = 0.521 }, hand_Float64 = 2.19, "1d_Float64" = 1.59 }
 status = "proposed"
 
 ["T-302"]
 quantity = "per-node difference of Reference and Fast Jx, Jy, Jz at N = 2"
-scale = "Σ|contributions| per node (3840 particles on 16 × 12 cells)"
+scale = "Σ over the particles whose cell frame holds the node of the particle's |contribution| to the component there, or of its largest |contribution| where the node is outside the particle's own frame (3840 particles on 16 × 12 cells): Fast() adds in the particle's frame (WP-041), so a node of Reference's roundoff tail holds no Fast contribution"
 C = 32
-measured = { Float32 = 3.74, Float64 = 2.32 }
+measured = { Float32 = 0.577, Float64 = 0.668 }
 status = "proposed"
 
 ["T-304"]
 quantity = "y-sum of the 2D Jx and Jz of a y-constant load moving along x against the 1D deposit_flux! of the same particles"
 scale = "n_y·max|J_1D|"
 C = 8
-measured = { Float32 = 3.2, Float64 = 3.43, "Dual{Float32,3}" = 0.464 }
+measured = { Float32 = 3.16, Float64 = 3.43, "Dual{Float32,3}" = 0.464 }
 status = "proposed"
 
 ["T-305"]
@@ -238,7 +238,7 @@ status = "proposed: as T-116; the ratios per direction (axis 1, axis 2, diagonal
 quantity = "Σ Jx - Σ q·w·Δ₁·Δx₁/Δt, Σ Jy - Σ q·w·Δ₂·Δx₂/Δt, Σ Jz - Σ quantity_z at N = 2"
 scale = "count·max|q·w·Δx_d/Δt|; count·max|quantity_z|"
 C = 16
-measured = { Float32 = 0.0946, Float64 = 0.108, "Dual{Float32,3}" = 1.59 }
+measured = { Float32 = 0.0811, Float64 = 0.108, "Dual{Float32,3}" = 1.59 }
 status = "proposed"
 
 # WP-013, the engine on CUDA (RTX 4080 SUPER, CUDACore 6.5). Where a CUDA ratio exceeds a CPU
@@ -382,3 +382,13 @@ C_mean = 0.05
 C_mode = 0.5
 measured = { Float32 = 0.0338, Float64 = 0.0425, "Dual{Float32,3}" = 0.0275, mean_Float32 = 0.00589, mean_Float64 = 0.0026, "mean_Dual{Float32,3}" = 0.00993, mode_Float32 = 0.21, mode_Float64 = 0.209, "mode_Dual{Float32,3}" = 0.21 }
 status = "proposed"
+
+# WP-041: the particle-frame stencil of Fast() (T-840).
+
+["T-840"]
+quantity = "a cell-frame Jx (Jy) value past the particle's frame along axis 1 (2): the prefix sum of all weight changes times the transverse average"
+scale = "|q·w·Δx_d/Δt| (|quantity_z| for Jz), per particle"
+C = 8
+measured = { Float32 = 0.686, Float64 = 0.722, "Dual{Float32,3}" = 0.827 }
+status = "proposed"
+

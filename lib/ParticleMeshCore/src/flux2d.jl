@@ -47,59 +47,96 @@ has_flux_extras(s::Species{2}) = all(k -> haskey(s.extras, k), (:old_cell_1, :ol
                                     (b[1][(k - 1) ÷ M1 + 1], b[2][(k - 1) ÷ M1 + 1]))), Val(M1 * M2))
 
 """
-    flux_stencil(s, i, shape, stagger::NTuple{2}, n::NTuple{2,Int32}, sx::NTuple{2}, quantity_z)
-        -> (lo, M, (jx, jy, jz))
+    CellFrame(), ParticleFrame()
+
+The node range of a particle's 2D flux stencil per axis. `CellFrame()`: the `M` nodes of
+`flux_reach` around the particle's current cell (6 at order 2 on nodes), the same for every
+particle of a cell, which the `Reference()` patch needs. `ParticleFrame()`: the `P + 2` nodes of
+the union of the particle's old and new stencil (`flux_axis_frame`, 4 at order 2), along the
+component's own axis one fewer (`P + 1`): the prefix sum of the weight changes on the last node is
+the sum of all of them, zero up to roundoff, so that column is left out, as PIConGPU, WarpX and
+Smilei do. `Fast()` adds in the particle's frame.
+"""
+struct CellFrame end
+struct ParticleFrame end
+
+@inline axis_frame(::CellFrame, shape, stagger, c, δ, c0, δ0, n) = flux_axis_weights(shape, stagger, c, δ, c0, δ0, n)
+@inline axis_frame(::ParticleFrame, shape, stagger, c, δ, c0, δ0, n) = flux_axis_frame(shape, stagger, c, δ, c0, δ0, n)
+
+# The prefix sums of a component along its own axis on the frame's nodes.
+@inline frame_prefix(::CellFrame, D) = prefix_sums(D)
+@inline frame_prefix(::ParticleFrame, D) = Base.front(prefix_sums(D))
+
+"""
+    flux_stencil(s, i, shape, stagger::NTuple{2}, n::NTuple{2,Int32}, sx::NTuple{2}, quantity_z,
+                 frame = CellFrame()) -> (lo, M, (jx, jy, jz))
 
 The device-level 2D flux of particle `i`: its contributions to the nodes
-`cell .+ lo .+ (k1, k2) .- 1`, `k_d = 1:M[d]`, of Jx, Jy and Jz, each an `NTuple{M[1]·M[2]}`
-listed column-major. The frame is the particle's current cell; its old cell is at most one cell
-away per axis, periodically on `n`. With `S0_d`, `S1_d` the old and new 1D shape weights of axis
-`d` on its node range (`flux_axis_weights`), `ΔS_d = S1_d - S0_d`, `A_d = (S0_d + S1_d)/2` and
-`P_d` the prefix sum of `ΔS_d` in increasing node order, Esirkepov's decomposition is
+`cell .+ lo .+ (k1, k2) .- 1` of Jx, Jy and Jz, each a tuple listed column-major. In the
+`CellFrame()` every component covers `k_d = 1:M[d]` (`flux_reach`) and `M` is returned; in the
+`ParticleFrame()` (`flux_axis_frame`) `lo` is the particle's first node, Jx covers
+`(P + 1) × (P + 2)` nodes, Jy `(P + 2) × (P + 1)` and Jz `(P + 2) × (P + 2)`, and `M` is
+`(P + 2, P + 2)`. The particle's old cell is at most one cell away per axis, periodically on `n`.
+With `S0_d`, `S1_d` the old and new 1D shape weights of axis `d` on the frame's nodes,
+`ΔS_d = S1_d - S0_d`, `A_d = (S0_d + S1_d)/2`, `P_d` the prefix sum of `ΔS_d` in increasing node
+order and `k_d = -(q·w·sx_d)`, Esirkepov's decomposition is
 
-    jx[k1, k2] = -(q·w·sx₁) · (P_1[k1] · A_2[k2])
-    jy[k1, k2] = -(q·w·sx₂) · (A_1[k1] · P_2[k2])
-    jz[k1, k2] = quantity_z(s, i) · (A_1[k1]·A_2[k2] + ΔS_1[k1]·ΔS_2[k2]/12),
+    jx[k1, k2] = (k_1·P_1[k1]) · A_2[k2]
+    jy[k1, k2] = A_1[k1] · (k_2·P_2[k2])
+    jz[k1, k2] = (qz·A_1[k1]) · A_2[k2] + ((qz·ΔS_1[k1]) / 12) · ΔS_2[k2],     qz = quantity_z(s, i),
 
-with `sx_d = Δx_d/Δt`. Expanded, `jx` is `-(q·w·sx₁) Σ_{m ≤ k1} ΔS_1[m]·(S0_2[k2] + ΔS_2[k2]/2)`, the
-form of Smilei's `Projector2D2Order::currents` and PIConGPU's `Esirkepov2D`, and the weight of
-`jz` is `S0_1·S0_2 + (ΔS_1·S0_2 + S0_1·ΔS_2)/2 + ΔS_1·ΔS_2/3`, Esirkepov's out-of-plane weight,
-which is not the average of the old and new products. At rest (`ΔS = 0`) `jx`, `jy` are zero and
-`jz` is bitwise `quantity_z` times the tensor-product weights `deposit!` uses. The contributions
-of a particle are the same bits in every mode and mechanism.
+each axis' factor scaled once before the outer product (#454), with `sx_d = Δx_d/Δt`. Expanded,
+`jx` is `-(q·w·sx₁) Σ_{m ≤ k1} ΔS_1[m]·(S0_2[k2] + ΔS_2[k2]/2)`, the form of Smilei's
+`Projector2D2Order::currents` and PIConGPU's `Esirkepov2D`, and the weight of `jz` is
+`S0_1·S0_2 + (ΔS_1·S0_2 + S0_1·ΔS_2)/2 + ΔS_1·ΔS_2/3`, Esirkepov's out-of-plane weight, which is
+not the average of the old and new products. At rest (`ΔS = 0`) `jx`, `jy` are zero. On the nodes
+both frames hold, a particle's contributions are the same bits in both (the cell frame's extra
+nodes have `ΔS = 0` before the particle's first node, so its prefix sums there are exact zeros);
+the cell frame's other nodes hold zeros, and along a component's own axis the prefix sum of all
+`ΔS` (T-840).
 """
-@inline function flux_stencil(s, i, shape::Shape, st::NTuple{2,Stagger}, n::NTuple{2,Int32}, sx::NTuple{2,Any}, quantity_z)
+@inline function flux_stencil(s, i, shape::Shape, st::NTuple{2,Stagger}, n::NTuple{2,Int32}, sx::NTuple{2,Any}, quantity_z,
+                              frame = CellFrame())
     c = particle_cell(s, i, Val(2))
     δ = particle_offset(s, i, Val(2))
     c0 = old_cell_2d(s, i)
     δ0 = old_offset_2d(s, i)
-    lo1, Wo1, Wn1 = flux_axis_weights(shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1])
-    lo2, Wo2, Wn2 = flux_axis_weights(shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2])
+    lo1, Wo1, Wn1 = axis_frame(frame, shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1])
+    lo2, Wo2, Wn2 = axis_frame(frame, shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2])
     D1, D2 = map(-, Wn1, Wo1), map(-, Wn2, Wo2)
     A1, A2 = map((a, b) -> (a + b) / 2, Wo1, Wn1), map((a, b) -> (a + b) / 2, Wo2, Wn2)
-    P1, P2 = prefix_sums(D1), prefix_sums(D2)
     @inbounds qw = s.q * s.w[i]
-    qws1, qws2 = qw * sx[1], qw * sx[2]
+    k1, k2 = -(qw * sx[1]), -(qw * sx[2])
+    p1 = map(x -> k1 * x, frame_prefix(frame, D1))
+    p2 = map(x -> k2 * x, frame_prefix(frame, D2))
     qz = quantity_z(s, i)
-    T = typeof(qw)
-    jx = outer((p, a) -> -qws1 * (p * a), P1, A2)
-    jy = outer((a, p) -> -qws2 * (a * p), A1, P2)
-    jz = outer2(((a1, d1), (a2, d2)) -> qz * (a1 * a2 + d1 * d2 / T(12)), (A1, D1), (A2, D2))
+    a1 = map(x -> qz * x, A1)
+    e1 = map(x -> qz * x / 12, D1)
+    jx = outer((p, a) -> p * a, p1, A2)
+    jy = outer((a, p) -> a * p, A1, p2)
+    jz = outer2(((a, e), (b, d)) -> a * b + e * d, (a1, e1), (A2, D2))
     return ((lo1, lo2), (length(Wo1), length(Wo2)), (jx, jy, jz))
 end
 
-@kernel function flux_atomic_2d_kernel!(Jx, Jy, Jz, s, shape, st, n::NTuple{2,Int32}, g::Int32, sx, quantity_z)
+# Atomic adds of the column-major block `v` of `M1` rows at the field index `(b1, b2)`.
+@inline function atomic_add_block!(J, v::NTuple{K,Any}, b1::Int, b2::Int, ::Val{M1}) where {K,M1}
+    for k in 1:K
+        @inbounds Atomix.@atomic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
+    end
+    return nothing
+end
+
+# One work item per particle, in the particle's frame: 2(P + 1)(P + 2) + (P + 2)² atomic adds
+# (40 at order 2, against 108 in the cell's frame).
+@kernel function flux_atomic_2d_kernel!(Jx, Jy, Jz, s, shape::Shape{P}, st, n::NTuple{2,Int32}, g::Int32, sx, quantity_z) where {P}
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
-        lo, M, (jx, jy, jz) = flux_stencil(s, i, shape, st, n, sx, quantity_z)
+        f, _, (jx, jy, jz) = flux_stencil(s, i, shape, st, n, sx, quantity_z, ParticleFrame())
         c = particle_cell(s, i, Val(2))
-        b1, b2 = Int(c[1] + lo[1] + g), Int(c[2] + lo[2] + g)
-        for k in 1:length(jx)
-            idx = CartesianIndex(b1 + (k - 1) % M[1], b2 + (k - 1) ÷ M[1])
-            Atomix.@atomic Jx[idx] += jx[k]
-            Atomix.@atomic Jy[idx] += jy[k]
-            Atomix.@atomic Jz[idx] += jz[k]
-        end
+        b1, b2 = Int(c[1] + f[1] + g), Int(c[2] + f[2] + g)
+        atomic_add_block!(Jx, jx, b1, b2, Val(P + 1))
+        atomic_add_block!(Jy, jy, b1, b2, Val(P + 2))
+        atomic_add_block!(Jz, jz, b1, b2, Val(P + 2))
     end
 end
 
@@ -130,8 +167,10 @@ and Jy (T-308).
 Preconditions: every particle moved less than one cell per axis since the old position was
 stored, the seams and the corner included (not detected); at least 3 cells per axis; at least
 `maximum(flux_guard_width(shape, stagger))` guard cells (checked). The guard convention is
-`deposit!`'s (fold each field). `Fast()` adds with atomics, one work item per particle, and falls
-back to `Reference()` for element types without them (`effective_mode`), sorting first (T-345). `Reference()` needs
+`deposit!`'s (fold each field). `Fast()` adds with atomics, one work item per particle, in the
+particle's frame (`ParticleFrame()`: 40 adds at order 2 where the cell's frame has 108), so it
+differs from `Reference()` per node by roundoff, the prefix sums of all weight changes it leaves
+out included (T-302), and falls back to `Reference()` for element types without them (`effective_mode`), sorting first (T-345). `Reference()` needs
 `sort_by_cell!` after the move and a workspace built with `Workspace(species, grid; flux = (shape,
 stagger))`; it is bitwise across reruns, thread counts and launch shapes (T-303).
 """

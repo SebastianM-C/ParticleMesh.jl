@@ -47,6 +47,26 @@ current cell `c` as the frame; the old cell `c0` is at most one cell away, perio
     return (lo, Wo, Wn)
 end
 
+"""
+    flux_axis_frame(shape::Shape{P}, stagger, c, δ, c0, δ0, n) -> (f, Wo, Wn)
+
+One axis of a particle's flux stencil in the particle's own frame: the old and new shape weights
+on the `P + 2` nodes `c + f + m - 1`, `m = 1:P+2`, the union of the old and the new stencil
+(zero where one does not reach), with `f` the first node of either relative to the current cell
+`c`. The old cell `c0` is at most one cell away, periodically on `n`, so the two stencils' first
+nodes differ by at most one. On the nodes the two frames share, the weights are those of
+`flux_axis_weights`, which are zero on every other node of the cell's frame.
+"""
+@inline function flux_axis_frame(shape::Shape{P}, stagger::Stagger, c::Int32, δ, c0::Int32, δ0, n::Int32) where {P}
+    f1, w1 = shape_weights(shape, stagger, δ)
+    fo, w0 = shape_weights(shape, stagger, δ0)
+    f0 = fo + mod(c0 - c + Int32(1), n) - Int32(1)     # the old stencil's first node relative to the current cell
+    f = min(f1, f0)
+    Wn = ntuple(m -> pick(w1, f + Int32(m - 1) - f1), Val(P + 2))
+    Wo = ntuple(m -> pick(w0, f + Int32(m - 1) - f0), Val(P + 2))
+    return (f, Wo, Wn)
+end
+
 # Running sums of a tuple, each one the serial left-to-right sum of its prefix (so every entry
 # is the same bits as a sequential prefix sum), with the length static.
 @inline function prefix_sums(t::NTuple{M,T}) where {M,T}

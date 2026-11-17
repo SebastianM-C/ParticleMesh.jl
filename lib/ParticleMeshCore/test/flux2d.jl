@@ -55,8 +55,9 @@ end
 
 @testset "T-301 the out-of-plane weights; the 1D transverse average [A2, WP-020]" begin
     C = tolC("T-301")
-    # A particle moving only in z deposits Jz = quantity × its tensor-product weights, exactly,
-    # and no Jx, Jy; one particle per run, so both modes add to zero.
+    # A particle moving only in z deposits Jz = quantity × its tensor-product weights, to roundoff
+    # (the stencil scales axis 1's weights by the quantity before the outer product, #454), and
+    # exactly no Jx, Jy; one particle per run, so both modes add to zero.
     for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, mode in MODES, δ in ((0.3, 0.8), (0.0, 0.55), (0.97, 0.5))
         grid = grid2(T, flux_g2(shape, st))
         s = Species(backend, T, 2; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
@@ -72,7 +73,9 @@ end
         for k in eachindex(W)
             expect[5 + f1 + mod1(k, P1) - 1 + guards(grid), 7 + f2 + (k - 1) ÷ P1 + guards(grid)] = QZ2(s, 1) * W[k]
         end
-        @test all(a -> components(Jz[a]) == components(expect[a]), eachindex(Jz))
+        @test all(a -> iszero(expect[a]) == iszero(Jz[a]), eachindex(Jz))
+        worst = maximum(a -> absdiff(Jz[a], expect[a]), eachindex(Jz)) / (base_eps(T) * absmax(QZ2(s, 1)))
+        @test record!("T-301 at rest", T, worst) <= C
         @test all(iszero, Jx) && all(iszero, Jy)
     end
     # Moving in x, y and z: Σ Jz = q·w·u (the quantity), to roundoff, for every particle of a moved species.
@@ -83,18 +86,20 @@ end
         r = record!("T-301", T, absdiff(sum(c.Jz), expect) / (base_eps(T) * length(alive) * maximum(i -> absmax(QZ2(c.s, i)), alive)))
         @test r <= C
     end
-    # One particle crossing a face on each axis, per node against Esirkepov's weights evaluated by
-    # hand (PIConGPU's form of W_z, with the ⅓ ΔSx·ΔSy term), Float64, in both modes.
+    # One particle crossing a face on each axis (or none, or both by a hair, or landing on a face),
+    # per node against Esirkepov's weights evaluated by hand (PIConGPU's form of W_z, with the
+    # ⅓ ΔSx·ΔSy term), Float64, in both modes: the moves keep the stencil inside `nodes`.
     Ch = tolC("T-301", "C_hand")
-    for shape in SHAPES, st in STAGGER_PAIRS, mode in MODES
+    moves = (((6, 5), (0.7, 0.2), (0.55, -0.45)), ((4, 3), (0.1, 0.9), (-0.8, 0.35)), ((8, 5), (0.45, 0.55), (0.3, 0.95)),
+             ((5, 4), (0.999, 0.001), (0.002, -0.003)), ((7, 5), (0.5, 0.5), (-0.5, 0.5)), ((6, 4), (0.3, 0.6), (0.2, 0.1)))
+    for shape in SHAPES, st in STAGGER_PAIRS, mode in MODES, (c0, δ0, Δ) in moves
         grid = grid2(Float64, flux_g2(shape, st))
         g = guards(grid)
         s = Species(backend, Float64, 1; q = -1, m = 1, N = 2, extras = flux_extras(Float64, 2))
-        c0, δ0, Δ = (6, 5), (0.7, 0.2), (0.55, -0.45)
         s.extras.old_cell_1[1], s.extras.old_cell_2[1] = Int32.(c0)
         s.extras.old_offset_1[1], s.extras.old_offset_2[1] = δ0
         c, δ = advance(Int32.(c0), δ0, Δ, Int32.(ncells(grid)))
-        @test c == (7, 4)
+        @test all(c .+ δ .≈ c0 .+ δ0 .+ Δ)
         s.cell[1][1], s.cell[2][1] = c
         s.offset[1][1], s.offset[2][1] = δ
         s.w[1], s.u[2][1], s.status[1] = 0.8, -0.6, ParticleMeshCore.ALIVE
@@ -112,9 +117,10 @@ end
             end
         end
         @test sum(Jz) ≈ QZ2(s, 1)
-        @test any(k -> abs(hz[k] - 0.5 * (hand_weight(shape, st[1], X0[1], k[1]) * hand_weight(shape, st[2], X0[2], k[2]) +
-                                          hand_weight(shape, st[1], X1[1], k[1]) * hand_weight(shape, st[2], X1[2], k[2])) * QZ2(s, 1)) >
-                         1e-3 * abs(QZ2(s, 1)), keys(hz))           # W_z is not the average of the old and new products
+        Δ == moves[1][3] &&                                       # W_z is not the average of the old and new products
+            @test any(k -> abs(hz[k] - 0.5 * (hand_weight(shape, st[1], X0[1], k[1]) * hand_weight(shape, st[2], X0[2], k[2]) +
+                                              hand_weight(shape, st[1], X1[1], k[1]) * hand_weight(shape, st[2], X1[2], k[2])) * QZ2(s, 1)) >
+                             1e-3 * abs(QZ2(s, 1)), keys(hz))
         record!("T-301 hand", Float64, worst)
         @test worst <= Ch
     end
@@ -360,17 +366,17 @@ called(f::Core.BindingPartition) = f.restriction
 called(f) = f
 
 """
-    stencil_calls(T, shape, st) -> Vector{Symbol}
+    stencil_calls(T, shape, st, frame) -> Vector{Symbol}
 
-The calls the optimized code of the 2D `flux_stencil` leaves out of line for the element type
-`T`: the callees of its `:invoke` statements, and `:dynamic` for every call that is not a
+The calls the optimized code of the 2D `flux_stencil` in `frame` (the cell's, Reference(), or the
+particle's, Fast()) leaves out of line for the element type `T`: the callees of its `:invoke` statements, and `:dynamic` for every call that is not a
 builtin. The error paths are left out, which are the invocations that never return (the throw of
 a checked index, whose name differs between Julia versions) and the `InexactError` of a
 conversion to `Int32`; the kernels call the stencil under `@inbounds`.
 """
-function stencil_calls(::Type{T}, shape, st) where {T}
+function stencil_calls(::Type{T}, shape, st, frame) where {T}
     s = Species(backend, T, 4; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
-    types = typeof.((s, 1, shape, st, Int32.((8, 8)), (one(T), one(T)), QZ2))
+    types = typeof.((s, 1, shape, st, Int32.((8, 8)), (one(T), one(T)), QZ2, frame))
     ci, _ = only(code_typed(ParticleMeshCore.flux_stencil, types; optimize = true))
     calls = Symbol[]
     for (i, stmt) in enumerate(ci.code)
@@ -390,8 +396,9 @@ end
 @testset "T-800 the 2D flux stencil compiles to straight-line code, with no call left out of line, for every element type [A7, A8, WP-061]" begin
     # #442: left to the compiler's cost model, the closures of the stencil's outer products stayed
     # out of line (36 calls per particle at order 2 for Float32 and Float64, 108 for a Dual).
-    for T in (TYPES..., Dual{Nothing,Float64,2}), shape in SHAPES, st in STAGGER_PAIRS
-        @test isempty(stencil_calls(T, shape, st))
+    for T in (TYPES..., Dual{Nothing,Float64,2}), shape in SHAPES, st in STAGGER_PAIRS,
+        frame in (ParticleMeshCore.CellFrame(), ParticleMeshCore.ParticleFrame())
+        @test isempty(stencil_calls(T, shape, st, frame))
     end
 end
 
@@ -428,5 +435,48 @@ end
         deposit_flux!(Reference(), J2..., s, Quadratic, st, grid, ws; dt, quantity_z = QZ2)
         @test same_bits(ws.flux_patch, patch)
         @test same_bits.(J2, J) == (true, true, true)
+    end
+end
+
+@testset "T-840 Fast's particle-frame stencil is the cell frame's on its nodes, bit for bit; the cell frame's other nodes hold zeros and, along the component's axis, the roundoff sum of all weight changes [A2, A4, WP-041]" begin
+    C = tolC("T-840")
+    for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS
+        P = order(shape)
+        grid = grid2(T, flux_g2(shape, st))
+        s = flux_species_2d(T, grid, 400)
+        n = Int32.(ncells(grid))
+        sx = map(h -> h / T(basetype(T)(1 // 4)), cellsize(grid))
+        shared, zeros_ok, tails, worst = true, true, 0, 0.0
+        for i in 1:capacity(s)
+            s.status[i] == ParticleMeshCore.ALIVE || continue
+            lo, M, JC = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2)
+            f, MP, JP = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2, ParticleMeshCore.ParticleFrame())
+            @test MP == (P + 2, P + 2) && map(length, JP) == ((P + 1) * (P + 2), (P + 2) * (P + 1), (P + 2)^2)
+            @test all(d -> lo[d] <= f[d] && f[d] + P + 1 <= lo[d] + M[d] - 1, 1:2)
+            for c in 1:3
+                R = (P + 2 - (c == 1), P + 2 - (c == 2))      # the particle frame's rows of this component
+                scale = c == 3 ? absmax(QZ2(s, i)) : absmax(s.q * s.w[i] * sx[c])
+                for k2 in 1:M[2], k1 in 1:M[1]
+                    v = JC[c][k1 + (k2 - 1) * M[1]]
+                    m = (k1 + lo[1] - f[1], k2 + lo[2] - f[2])  # the node in the particle's frame
+                    if all(d -> 1 <= m[d] <= R[d], 1:2)
+                        shared &= same_bits([v], [JP[c][m[1] + (m[2] - 1) * R[1]]])
+                    elseif c != 3 && m[c] > R[c] && all(d -> d == c || 1 <= m[d] <= R[d], 1:2)
+                        # past the frame along the component's own axis: the prefix sum of all ΔS
+                        # times the transverse average, the same value on every such node
+                        kk = c == 1 ? (M[1], k2) : (k1, M[2])
+                        shared &= same_bits([v], [JC[c][kk[1] + (kk[2] - 1) * M[1]]])
+                        tails += 1
+                        worst = max(worst, absmax(v) / (base_eps(T) * scale))
+                    else
+                        zeros_ok &= iszero(v)
+                    end
+                end
+            end
+        end
+        @test shared
+        @test zeros_ok
+        @test tails > 0
+        @test record!("T-840", T, worst) <= C
     end
 end

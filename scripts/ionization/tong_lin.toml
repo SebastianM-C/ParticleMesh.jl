@@ -43,7 +43,7 @@ hydrogen_like = 6.0
 
 # Static-field ionization rates of helium-like ions computed with the multiconfiguration time-dependent
 # Hartree–Fock method: the supplementary text file of Lötstedt et al. as the arXiv source of
-# arXiv:2201.03840 holds it (`IonizationRates.txt`), the rows of the ions `ionization_energies.toml` has.
+# arXiv:2201.03840 holds it (`IonizationRates.txt`), the rows of He, Li⁺, N⁵⁺, O⁶⁺, Ne⁸⁺ and Ar¹⁶⁺.
 # `scaled_field` is F' = 8F/Z³ in atomic units and `rate` the rate in atomic units at that field. That the
 # rates are the unscaled ones is this file's reading: the text file does not say, and with the paper's
 # scaled rate W' = 4W/Z² instead the formula above would miss every row with Z > 2 by the factor Z²/4. The

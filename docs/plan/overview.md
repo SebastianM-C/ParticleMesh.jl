@@ -10,12 +10,12 @@ Software: a generic particle–mesh engine with pluggable physics modules, the e
 
 Validation: the 1D benchmarks and one matched 2D LWFA case against Smilei and PIConGPU (A5), conservation residuals and gradient checks to the tolerances of A7, FP32-versus-FP64 drift (open-items B5).
 
-Factory: the owner sets the goals and vetoes derived work from the daily digest (A0); the links are in `trace/README.md`, and the compute split, the overseer, the human interface and the merge policy in `factory-and-observability.md` (§2, §3d, §3e, F4).
+Factory: the owner sets the goals (A0) and plans and reviews outside the repository; the links are in `trace/README.md`, and the compute split, the human interface and the merge policy in `factory-and-observability.md` (§2, §3e, F4).
 
 ```
- you ──edit docs/goals, answer questions, veto from the digest───────────┐
+ you ──edit docs/goals, answer questions─────────────────────────────────┐
    ▲                                                                      ▼
- daily digest ◄── overseer (reads artifacts, no GPU) ◄── coverage  ◄── repository
+ planning and review, outside the repository ◄────────── coverage  ◄── repository
  dashboard                                                 ▲   ▲   ▲        ▲
  steering session                                          │   │   │        │
                       factory sessions / workflows ────────┘   │   └── GPU runs on the 4080 (on demand)
@@ -39,7 +39,7 @@ Derived design choices without a goal id (2D Cartesian first with the envelope m
 4. **Safety of unattended runs.** Unattended sessions run under a separate configuration directory with the Bash sandbox on and the deny rules of `.claude/settings.json`; CI's leak scan rejects IP addresses, ssh URLs and private keys. Open: a separate user account or container with no access to the owner's credentials, and a check that also rejects hostnames and private package names.
 
 ### Before the first GPU package
-5. **Testing and CI design.** Test tiers (unit, conservation, benchmark, cross-code, gradient), runtime budgets per tier, which run on GitHub Actions and which on the GPU runner or the nightly loop, where expected values and cross-code reference outputs live (size, LFS or a self-hosted server), how failures become trace records.
+5. **Testing and CI design.** Test tiers (unit, conservation, benchmark, cross-code, gradient), runtime budgets per tier, which run on GitHub Actions and which on the local GPU or the nightly loop, where expected values and cross-code reference outputs live (size, LFS or a self-hosted server), how failures become trace records.
 6. **Artifact and data management.** Run record format (reuse EDM's manifests or generalize them), where plots and large outputs go, retention, the publishing path to the dashboard, content addressing of inputs.
 7. **Dashboard.** Reuse the EDM dashboard pattern (static viewer plus builder) with the trace views added, or build new; hosting and access.
 8. **Differentiable diagnostics** (B3), **FP32 drift test** (B5), **symbolic spike criteria** (B6), **Reactant compatibility spike** (B9), **Molly interface study** (B10).

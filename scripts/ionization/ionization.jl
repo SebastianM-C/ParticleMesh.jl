@@ -268,9 +268,10 @@ end
 
 function ionization_report()
     dir = run_dir("ionization", @__FILE__; work_package = "WP-059", prefix = "ionization",
-                  extra_inputs = [joinpath(@__DIR__, "atomic.jl"), joinpath(@__DIR__, "ionization_energies.toml"), joinpath(@__DIR__, "fbpic_reference.toml"),
+                  extra_inputs = [joinpath(@__DIR__, "atomic.jl"), joinpath(@__DIR__, "fbpic_reference.toml"),
                                   joinpath(EM_TEST, "ionization_cases.jl")],
                   params = Dict{String,Any}("wavelength_m" => WAVELENGTH, "type" => "Float64", "mode" => "Reference",
+                                            "atomic_data" => atomic_record(unique(lv["element"] for lv in TOML.parsefile(joinpath(@__DIR__, "fbpic_reference.toml"))["levels"])),
                                             "vacuum" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(VAC)),
                                             "vacuum_cells_per_wavelength" => [16, 32, 64], "scan_x0" => collect(X0)))
     summary = rates_figure(dir)
