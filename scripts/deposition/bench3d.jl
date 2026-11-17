@@ -125,13 +125,18 @@ function measure(::Type{T}, n, ppc) where {T}
         patch = patch3_buffer(BE, T, grid, shape, stp)
         variant!(a -> deposit_patch3!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx), name; fold = near)
         if near                                                  # the straight-line stencil, and fewer accumulators per launch for wide element types
-            full = deposit_patch3!(zero_fields(BE, T, grid), patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx)
+            slabs(a, layers) = deposit_patch3_slabs!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers)
+            full = map(Array, deposit_patch3!(zero_fields(BE, T, grid), patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx))
+            whole = map(Array, slabs(zero_fields(BE, T, grid), 5))
             for layers in (5, 3, 2, 1)
                 tag = "patch in registers, nearest-node binning, straight-line stencil, $(layers == 5 ? "all" : layers) planes per launch"
                 wanted(tag) || continue
-                b = deposit_patch3_slabs!(zero_fields(BE, T, grid), patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers)
-                diff[tag * " == the patch above (bits)"] = !all(map((x, y) -> Array(x) == Array(y), full, b))
-                variant!(a -> deposit_patch3_slabs!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers), tag; fold = true)
+                if layers == 5                                   # the two codings of the stencil: equal on the CPU, to roundoff in the derivative parts on CUDA
+                    diff[tag * ": against the patch above"] = field_difference(whole, full)
+                else                                             # the split itself: the same sums in the same order
+                    diff[tag * " == all planes per launch (bits)"] = !all(map(same, whole, slabs(zero_fields(BE, T, grid), layers)))
+                end
+                variant!(a -> slabs(a, layers), tag; fold = true)
             end
         end
     end

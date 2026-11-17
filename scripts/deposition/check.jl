@@ -20,8 +20,6 @@ function report(name, value, bound)
     return ok
 end
 
-same(a, b) = Array(a) == Array(b)
-
 function check_sort(s, grid, ws, label)
     b = IncrementalSort(s, grid)
     e = copy_species(s)

@@ -13,6 +13,12 @@ lift(::Type{Dual{G,V,P}}, x, rng) where {G,V,P} = Dual{G}(V(x), ntuple(_ -> V(ra
 base_type(::Type{T}) where {T<:AbstractFloat} = T
 base_type(::Type{Dual{G,V,P}}) where {G,V,P} = V
 
+"Whether two arrays hold the same bits: values and derivative parts, signed zeros and NaNs included."
+function same(a, b)
+    x, y = Array(a), Array(b)
+    return size(x) == size(y) && reinterpret(UInt8, vec(x)) == reinterpret(UInt8, vec(y))
+end
+
 mag(x::Real) = abs(x)
 mag(x::Dual) = max(abs(ForwardDiff.value(x)), maximum(abs, ForwardDiff.partials(x); init = zero(ForwardDiff.valtype(x))))
 maxmag(a) = maximum(mag, a; init = 0.0)
