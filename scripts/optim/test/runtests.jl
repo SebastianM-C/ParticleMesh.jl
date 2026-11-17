@@ -579,8 +579,8 @@ end
     ws = [1.0e-3, 2.0e-3, 5.0e-4, 7.0e-4, 3.0e-4, 1.1e-3]
     st = born_test_state(xs, us, ws)
     h = cellsize(st.grid)
-    # λ₀/8's back band ends at x ≈ 7.1, behind the case's weight from 4: these read with WP-064's (12, 24)
-    @test_throws ArgumentError trapped_energy(st)
+    # the case's position weight is WP-064's first-bucket weight (12, 24)
+    @test TCASE.fade == BCASE.fade
     tparts(st; kw...) = trapped_parts(st; fade = BCASE.fade, kw...)
     tenergy(st; kw...) = trapped_energy(st; fade = BCASE.fade, kw...)
     S(x) = (q = clamp((x - 12) / 12, 0, 1); q^3 * (10 - 15q + 6q^2))
@@ -635,6 +635,15 @@ end
     @test s.mean_energy_born ≈ s.J_born / s.weight_born rtol = 4eps()
     @test s.fast_born_window ≈ h[1] * h[2] * (ws[2] + ws[5]) rtol = 8eps()   # u_x > 5 ahead of the back band (x = 5 is inside it at λ₀/8)
     @test s.ux_max_born == 10.0 && s.particles == 6 + count(==(ALIVE), p.status)
+    # a fast plasma electron between the back band's end (7.1) and the weight (12) is dark current, not J
+    k = findfirst(j -> p.status[j] == ALIVE && back_band_end(st) + 0.5 <= (p.cell[1][j] - 1 + p.offset[1][j]) * h[1] < 11.5, eachindex(p.w))
+    p.w[k] = 5.0e-3; p.u[1][k] = 6.0
+    sd = trapped_summary(st; fade = BCASE.fade)
+    @test sd.dark_weight ≈ h[1] * h[2] * 5.0e-3 rtol = 8eps()
+    @test sd.dark_energy ≈ h[1] * h[2] * 5.0e-3 * (sqrt(37.0) - 1) rtol = 8eps()
+    @test sd.J === s.J
+    @test sd.fast_plasma_window ≈ h[1] * h[2] * 5.0e-3 rtol = 8eps()
+    @test s.dark_weight == 0
     # a fast born electron between the back band's end (7.1) and the weight (12) is in the window's number only
     st9 = born_test_state([xs; 9.0], [us; (6.0, 0.0, 0.0)], [ws; 4.0e-4])
     s9 = trapped_summary(st9; fade = BCASE.fade)
@@ -656,8 +665,10 @@ trapped_small(x...; kw...) = trapped_objective(x...; ppl = 8, t_end = 190.0, cap
     parts = trapped_parts(st; rise = (0.5, 3.0), fade = BCASE.fade)
     @test parts.born > 0 && parts.plasma > 0                                    # both species are read
     ad = ForwardDiff.partials(Jd)
-    # the delay moves the carrier's phase: J oscillates in it on a scale of 1/ω₀, and its central
-    # differences reach ForwardDiff only below steps of about 10⁻³ (8 % off at x·2⁻⁸, 5·10⁻⁵ at x·2⁻¹⁶)
+    # At this early time J is mostly the plasma's quiver in the pulse (the rise from 0.5 reaches
+    # it): the test is of the derivative through both species, not of trapping. J is rough in the
+    # delay below its scale (central differences there reach ForwardDiff only at steps below about
+    # 10⁻³), so every direction is checked at a relative step of 2⁻¹⁸.
     for i in 1:5
         hi = x0[i] * 2.0^-18
         xp, xm = copy(x0), copy(x0)
@@ -683,6 +694,13 @@ end
     @test born_numerics(16, 2).back_absorber.cells == born_numerics(16).back_absorber.cells
     @test born_start(; ppl = 16, ny = 2, t_end = 1.0, capacity = 10)[1].numerics.absorber.cells == 2 * BCASE.pml_y
     @test_throws ArgumentError born_problem(; ppl = 16, ny = 0)
+    # a longer window keeps more wake behind: its front, and so the lab frame's pulse and plasma, stay where they were
+    pe = born_problem(; ppl = 16, t_end = 1.0, extend = 4)
+    @test pe.cells == (18 * 16, 128)
+    @test pe.window.start ≈ BCASE.start + 8π rtol = 4eps()
+    @test pe.length[1] - pe.window.start ≈ p1.length[1] - p1.window.start rtol = 8eps()   # the front's lab position at any time after both start
+    @test pe.lasers[1].position == p1.lasers[1].position
+    @test_throws ArgumentError born_problem(; ppl = 16, extend = -1)
     # the case's position weight starts ahead of the back band at λ₀/16 and finer
     for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
         st, _, _ = born_start(; ppl, ny, t_end = 1.0, capacity = 10)

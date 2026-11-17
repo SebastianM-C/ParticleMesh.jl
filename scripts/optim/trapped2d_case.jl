@@ -19,15 +19,16 @@ Fixed parameters of the WP-065 case beyond [`BCASE`](@ref) (A1 units).
   so an electron with u_x above about 3.6 outruns the wake and stays in the bucket; the plasma's
   own electrons quiver below u_x ≈ 1 in the clean runs of WP-064 (their highest γ − 1 is 0.3 to
   1.0), and the born electrons are born near rest.
-- `fade = (lo, hi)` is the position weight in window x (c/ω₀), as WP-064's but reaching back to
-  just ahead of the window's back band (which ends at x ≈ 3.5 at λ₀/16 and nearer the edge at
-  finer grids): the plasma's own electrons, once injected, sit in the buckets behind the first
-  one (behind x = 12 in WP-064), and every trapped electron counts. WP-064's first-bucket weight
-  (12, 24) is read beside it.
+- `fade = (lo, hi)` is the position weight in window x (c/ω₀), WP-064's: 1 over the first bucket
+  behind the pulse, 0 behind x = 12, so J counts every trapped electron of the first bucket,
+  born or the plasma's own. The plasma injects itself in this case only into the buckets behind
+  the first, wave-breaking charge that grows with the length of wake the window keeps (4.7 times
+  the born energy at a₀ = 2.4 at λ₀/16 with the window 4 λ₀ longer, 23 times with it 6 λ₀ longer):
+  it is the dark current, reported beside J ([`trapped_summary`](@ref)) and not counted in it.
 - `x0` is the base point (duration, waist, focus, delay, density); `names` and `scale` give each
   parameter's name and the scale of z = x ./ scale in problem.jl.
 """
-const TCASE = (a0_energy = 1.9, budgets = (1.9, 2.175, 2.4), dopant_fraction = 0.01, rise = (3.0, 5.0), fade = (4.0, 10.0),
+const TCASE = (a0_energy = 1.9, budgets = (1.9, 2.175, 2.4), dopant_fraction = 0.01, rise = (3.0, 5.0), fade = (12.0, 24.0),
                x0 = (6.0, 10.0, 80.0, 54.0, 0.072), names = ("duration", "waist", "focus", "delay", "density"),
                scale = (6.0, 10.0, 80.0, 54.0, 0.072))
 
@@ -139,7 +140,9 @@ Plain numbers for a run's tables: `J` and its parts `J_born` and `J_plasma`; the
 Σ w·S·R of each (`weight_born`, `weight_plasma`, times Δx·Δy) and their mean energies (mₑc²); the
 weight of each with u_x above `rise[2]` over the whole window ahead of the back band
 (`fast_born_window`, `fast_plasma_window`), which shows trapped charge the position weight leaves
-out; the highest u_x of each; and the number of alive particles.
+out; the highest u_x of each; the dark current, the plasma's electrons with u_x above `rise[2]`
+between the back band's end and `fade[1]` (`dark_weight`, and `dark_energy` in J's units); and the
+number of alive particles.
 """
 function trapped_summary(st; fade = TCASE.fade, rise = TCASE.rise)
     parts = trapped_parts(st; fade, rise)
@@ -148,6 +151,7 @@ function trapped_summary(st; fade = TCASE.fade, rise = TCASE.rise)
     band = back_band_end(st)
     counted(q) = area * sum(q.w .* smooth_rise.(q.x, fade[1], fade[2]) .* smooth_rise.(q.ux, rise[1], rise[2]); init = 0.0)
     window(q) = area * sum(q.w[(q.ux .> rise[2]) .& (q.x .>= band)]; init = 0.0)
+    dark(q, v) = area * sum((q.w .* v)[(q.ux .> rise[2]) .& (q.x .>= band) .& (q.x .< fade[1])]; init = 0.0)
     b = species_arrays(ionization_electrons(st), h[1])
     ps = [species_arrays(s, h[1]) for s in st.species]
     Jb, Jp = Float64(value_of(parts.born)), Float64(value_of(parts.plasma))
@@ -155,6 +159,7 @@ function trapped_summary(st; fade = TCASE.fade, rise = TCASE.rise)
     return (; J = Jb + Jp, J_born = Jb, J_plasma = Jp, weight_born = wb, weight_plasma = wp,
             mean_energy_born = wb > 0 ? Jb / wb : 0.0, mean_energy_plasma = wp > 0 ? Jp / wp : 0.0,
             fast_born_window = window(b), fast_plasma_window = sum(window, ps),
+            dark_weight = sum(q -> dark(q, 1.0), ps), dark_energy = sum(q -> dark(q, q.energy), ps),
             ux_max_born = maximum(b.ux; init = 0.0), ux_max_plasma = maximum(q -> maximum(q.ux; init = 0.0), ps),
             particles = length(b.w) + sum(q -> length(q.w), ps))
 end

@@ -49,18 +49,22 @@ type follows the arguments. `ppl` cells per λ₀ along x at the same box (it mu
 8), and `ny` times as many cells along y as the case's 128 of Δy = π/4 (Δy = π/(4·ny), with the
 PMLs and the dopant's rows the same width); `t_end` the read-out time, `ramp` the length of the
 plasma's density ramp (the dopant's `section` does not move with it: pass both); `waist`,
-`delay` and `focus` the pulse's ([`GaussianLaser`](@ref)).
+`delay` and `focus` the pulse's ([`GaussianLaser`](@ref)); `extend` whole wavelengths added to
+the window behind the case's 14, with the window's start delayed by as much, so that the box at
+every time holds the case's box and that much more of the wake behind it (the front, the plasma
+and the pulse are where they are in the case, in the lab frame).
 """
 function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, ny::Integer = 1, every::Integer = BCASE.every,
                       capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp,
-                      waist = BCASE.waist, delay = BCASE.delay, focus = BCASE.focus)
+                      waist = BCASE.waist, delay = BCASE.delay, focus = BCASE.focus, extend::Integer = 0)
     ppl % 8 == 0 || throw(ArgumentError("ppl must be a multiple of 8 to keep Δy = π/4, got $ppl"))
     ny >= 1 || throw(ArgumentError("ny must be at least 1, got $ny"))
+    extend >= 0 || throw(ArgumentError("extend must be at least 0, got $extend"))
     T = promote_type(typeof(a0), typeof(dopant), typeof(duration), typeof(density), typeof(waist), typeof(delay), typeof(focus), Float64)
     z3 = (zero(T), zero(T), zero(T))
     h = 2 * T(π) / ppl
     hy = (ppl ÷ 8) * h / ny
-    cells = (BCASE.length_wavelengths * ppl, BCASE.rows * ny)
+    cells = ((BCASE.length_wavelengths + extend) * ppl, BCASE.rows * ny)
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
     nsteps = ceil(Int, t_end / Float64(value_of(dt)))
     hy64 = Float64(value_of(hy))
@@ -74,7 +78,7 @@ function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end,
                           rows = (yc - BCASE.half_rows * ny * hy64, yc + BCASE.half_rows * ny * hy64),
                           section = DopantSection(; start = T(section.start), stop = T(section.stop), ramp = T(section.ramp)))
     return EMProblem("born2d", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
-                     lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = T(BCASE.start)),
+                     lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = T(BCASE.start) + extend * 2 * T(π)),
                      profile = DensityRamp(; vacuum = T(BCASE.vacuum), ramp = T(ramp)), ionization = ion)
 end
 

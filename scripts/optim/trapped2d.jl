@@ -1,4 +1,4 @@
-# WP-065: the objective over every trapped electron (trapped2d_case.jl) at a fixed laser energy,
+# WP-065: the objective over every trapped electron of the first bucket (trapped2d_case.jl) at a fixed laser energy,
 # under refinement, and its ForwardDiff gradient in the five parameters (duration, waist, focus,
 # delay, density) and in the energy budget against central differences. No optimizer runs here.
 #
@@ -10,6 +10,7 @@
 #
 #   julia +1.13 --project=scripts scripts/optim/trapped2d.jl campaign <kind> <resolutions> [dir] [jobs=N] [threads=M]
 #       kind: converge (the five points, with duals), xonly (plain runs with Δy kept at π/4),
+#             fine (17 plain runs 2⁻¹⁰ apart in the budget at two points and in the delay at one: roughness),
 #             fd (central differences at the points), energy (a line in the energy budget, with
 #             duals), density (a line in the density, with duals);
 #       resolutions: ppl×ny pairs, e.g. 16x1,32x2 (Δx = λ₀/ppl, Δy = π/(4·ny));
@@ -37,7 +38,7 @@ end
 "The six directions of a gradient job: the five parameters, then the budget's a₀ (`a0E`)."
 const DIRECTIONS = (TCASE.names..., "a0E")
 "Relative central-difference steps 2^-k of the fd campaign."
-const FD_POWERS = (5, 9, 13)
+const FD_POWERS = (5, 9, 13, 17)
 "The read-out's sensitivity to the weights' edges: J again from the same state with these."
 const RISES = ((2.0, 4.0), (4.0, 6.0))
 
@@ -71,6 +72,13 @@ function campaign_jobs(kind, res)
                 add!(job_id("fd", p.name, r, DIRECTIONS[i], k, sgn > 0 ? "p" : "m"), a0E, x, ppl, ny, "plain";
                      point = p.name, direction = i, power = k, sign = sgn, h = h)
             end
+        elseif kind == "fine"
+            # roughness: 17 runs a relative 2⁻¹⁰ apart in the budget's a₀ at E2.175 and E2.4, and in the delay at E2.175
+            for (p, i) in ((POINTS[2], 6), (POINTS[3], 6), (POINTS[2], 4)), k in -8:8
+                x, a0E = copy(p.x), p.a0E
+                i == 6 ? (a0E += k * a0E * 2.0^-10) : (x[i] += k * x[i] * 2.0^-10)
+                add!(job_id("fine", p.name, DIRECTIONS[i], k, r), a0E, x, ppl, ny, "plain"; point = p.name, direction = i, step = k)
+            end
         elseif kind == "energy"
             for a in range(1.8, 2.6; length = 17)
                 add!(job_id("energy", round(a; digits = 3), r), a, collect(TCASE.x0), ppl, ny, "grad")
@@ -80,7 +88,7 @@ function campaign_jobs(kind, res)
                 add!(job_id("density", round(n; digits = 4), r), 2.175, [collect(TCASE.x0)[1:4]; n], ppl, ny, "grad")
             end
         else
-            error("unknown campaign kind $kind: converge, xonly, fd, energy or density")
+            error("unknown campaign kind $kind: converge, xonly, fine, fd, energy or density")
         end
     end
     # the longest first, so that the last jobs to finish are short ones
@@ -116,6 +124,7 @@ function run_job(job)
         out["J_rise_$(r[1])_$(r[2])"] = Float64(value_of(trapped_energy(st; rise = r)))
     end
     out["J_first_bucket"] = Float64(value_of(trapped_energy(st; fade = BCASE.fade)))
+    out["J_from_4"] = Float64(value_of(trapped_energy(st; fade = (4.0, 10.0))))
     out["J_born_label"] = Float64(value_of(born_energy(st)))
     if job["mode"] == "grad"
         out["gradient"] = collect(ForwardDiff.partials(J))

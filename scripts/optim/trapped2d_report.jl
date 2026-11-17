@@ -12,10 +12,15 @@ function load_jobs(dirs)
     return out
 end
 
+# J is the first bucket's (`TCASE.fade`). Runs made while the case's weight reached back to x = 4
+# hold that J under "J" and the first bucket's under "J_first_bucket"; their born gradient is the
+# first bucket's (no born electron lies behind x = 12, and no plasma electron is trapped in the first bucket).
+jval(j) = j["J_first_bucket"]
+jgrad(j) = haskey(j, "J_from_4") ? j["gradient"] : j["gradient_born"]
 res_label(j) = "λ₀/$(j["ppl"]), Δy = π/$(4 * j["ny"])"
 res_key(j) = (j["ppl"], j["ny"])
 "The gradient in z = x ./ scale (the five parameters, then the budget's a₀ at scale 1), over J: d ln J / dz."
-log_gradient(j) = j["gradient"] .* [collect(TCASE.scale); 1.0] ./ j["J"]
+log_gradient(j) = jgrad(j) .* [collect(TCASE.scale); 1.0] ./ jval(j)
 
 "Central differences of the fd jobs against the gradient of the conv job at the same point and resolution."
 function fd_rows(jobs)
@@ -25,8 +30,8 @@ function fd_rows(jobs)
         m = get(jobs, replace(id, r"-p$" => "-m"), nothing)
         c = get(jobs, "conv-$(j["point"])-r$(j["ppl"])x$(j["ny"])", nothing)
         (m === nothing || c === nothing) && continue
-        fd = (j["J"] - m["J"]) / (2 * j["h"])
-        ad = c["gradient"][j["direction"]]
+        fd = (jval(j) - jval(m)) / (2 * j["h"])
+        ad = jgrad(c)[j["direction"]]
         push!(rows, Dict{String,Any}("point" => j["point"], "ppl" => j["ppl"], "ny" => j["ny"], "direction" => DIRECTIONS[j["direction"]],
                                      "power" => j["power"], "h" => j["h"], "fd" => fd, "ad" => ad, "relative_difference" => abs(fd - ad) / abs(ad)))
     end
@@ -42,10 +47,10 @@ function line_rows(jobs, kind)
     for r in unique(res_key.(sel))
         js = sort([j for j in sel if res_key(j) == r]; by = coord)
         x = coord.(js)
-        J = [j["J"] for j in js]
-        g = [j["gradient"][k] for j in js]
+        J = [jval(j) for j in js]
+        g = [jgrad(j)[k] for j in js]
         mismatch = [abs((J[i + 1] - J[i - 1]) / (x[i + 1] - x[i - 1]) - g[i]) / abs(g[i]) for i in 2:(length(js) - 1)]
-        out[r] = Dict{String,Any}("x" => x, "J" => J, "dJ" => g, "J_born" => [j["J_born"] for j in js], "J_plasma" => [j["J_plasma"] for j in js],
+        out[r] = Dict{String,Any}("x" => x, "J" => J, "dJ" => g, "dark" => [j["fast_plasma_window"] for j in js], "born_trapped" => [j["weight_born"] for j in js],
                                   "mismatch_x" => x[2:(end - 1)], "mismatch" => mismatch, "label" => res_label(js[1]))
     end
     return out
@@ -68,19 +73,20 @@ function report(outdir, dirs)
               title = "J under refinement (solid: x and y; dashed: x only)")
     for (c, p) in enumerate(pts)
         js = filter(j -> j["point"] == p, conv)
-        isempty(js) || scatterlines!(ax, [j["ppl"] for j in js], [j["J"] for j in js]; color = colors[c], label = p)
+        isempty(js) || scatterlines!(ax, [j["ppl"] for j in js], [jval(j) for j in js]; color = colors[c], label = p)
         xs = filter(j -> j["point"] == p, xonly)
-        isempty(xs) || scatterlines!(ax, [j["ppl"] for j in xs], [j["J"] for j in xs]; color = colors[c], linestyle = :dash)
+        isempty(xs) || scatterlines!(ax, [j["ppl"] for j in xs], [jval(j) for j in xs]; color = colors[c], linestyle = :dash)
     end
     axislegend(ax; position = :rb, labelsize = 11)
 
-    ax = Axis(fig[1, 2]; xlabel = "cells per λ₀ along x", ylabel = "share of J", xticks = [16, 32, 48, 64],
-              title = "The plasma's own electrons' share of J (solid) and the first bucket's (dashed)")
+    ax = Axis(fig[1, 2]; xlabel = "cells per λ₀ along x", ylabel = "weight (n_c·(c/ω₀)²)", yscale = log10, xticks = [16, 32, 48, 64],
+              title = "Trapped weight: first bucket (solid), dark current behind it (dashed)")
     for (c, p) in enumerate(pts)
         js = filter(j -> j["point"] == p, conv)
         isempty(js) && continue
-        scatterlines!(ax, [j["ppl"] for j in js], [j["J_plasma"] / j["J"] for j in js]; color = colors[c], label = p)
-        scatterlines!(ax, [j["ppl"] for j in js], [j["J_first_bucket"] / j["J"] for j in js]; color = colors[c], linestyle = :dash)
+        scatterlines!(ax, [j["ppl"] for j in js], [j["weight_born"] for j in js]; color = colors[c], label = p)
+        d = [j["fast_plasma_window"] for j in js]
+        any(>(0), d) && scatterlines!(ax, [j["ppl"] for j in js][d .> 0], d[d .> 0]; color = colors[c], linestyle = :dash)
     end
     axislegend(ax; position = :lc, labelsize = 11)
 
@@ -101,7 +107,7 @@ function report(outdir, dirs)
         scatter!(ax, [2.0^-x["power"] for x in q], [max(x["relative_difference"], 1e-16) for x in q]; color = colors[c], marker = markers[r[1]],
                  label = r == res_key(conv[1]) ? name : nothing)
     end
-    axislegend(ax; position = :rb, labelsize = 11, unique = true)
+    isempty(fd) || axislegend(ax; position = :rb, labelsize = 11, unique = true)
 
     for (col, kind, xl) in ((2, "energy", "a₀ of the energy budget (at τ = 6, w = 10)"), (3, "density", "plasma density (n_c), budget of a₀ = 2.175"))
         l = lines[kind]
@@ -116,13 +122,13 @@ function report(outdir, dirs)
                 yt = J .+ g .* [-d, d]
                 all(>(0), yt) && lines!(ax, [x - d, x + d], yt; color = :black, linewidth = 1.5)
             end
-            pj = v["J_plasma"]
+            pj = v["dark"]
             any(>(0), pj) && scatter!(ax, v["x"][pj .> 0], pj[pj .> 0]; color = colors[c], marker = :xcross, markersize = 9)
             isempty(v["mismatch"]) || scatterlines!(ax2, v["mismatch_x"], max.(v["mismatch"], 1e-16); color = colors[c], label = v["label"])
         end
-        axislegend(ax; position = :rb, labelsize = 10)
+        isempty(l) || axislegend(ax; position = :rb, labelsize = 10)
     end
-    Label(fig[3, 1], "×: the plasma's own electrons' part of J\nblack: ForwardDiff tangents"; tellwidth = false)
+    Label(fig[3, 1], "×: dark current, the plasma's weight above u_x = 5\nahead of the back band (n_c·(c/ω₀)², not in J)\nblack: ForwardDiff tangents"; tellwidth = false)
     save_plot(outdir, "trapped2d", fig, side)
     open(io -> print(io, tables(conv, xonly, fd, lines)), joinpath(outdir, "tables.md"), "w")
     println(tables(conv, xonly, fd, lines))
@@ -133,14 +139,13 @@ sig(x) = string(round(x; sigdigits = 4))
 
 function tables(conv, xonly, fd, lines)
     io = IOBuffer()
-    println(io, "| point | grid | J | change from the coarser grid | born part | plasma part | first bucket | trapped weight (born, plasma) | a₀ | seconds (threads) |")
-    println(io, "|---|---|---|---|---|---|---|---|---|---|")
+    println(io, "| point | grid | J (first bucket) | change from the coarser grid | its trapped weight | dark current: plasma weight above u_x = 5 in the window | a₀ | seconds (threads) |")
+    println(io, "|---|---|---|---|---|---|---|---|")
     for p in POINTS
         js = filter(j -> j["point"] == p.name, conv)
         for (i, j) in enumerate(js)
-            ch = i == 1 ? "" : sig(100 * (j["J"] / js[i - 1]["J"] - 1)) * " %"
-            println(io, "| ", p.name, " | ", res_label(j), " | ", sig(j["J"]), " | ", ch, " | ", sig(j["J_born"]), " | ", sig(j["J_plasma"]), " | ",
-                    sig(j["J_first_bucket"]), " | ", sig(j["weight_born"]), ", ", sig(j["weight_plasma"]), " | ", sig(j["a0"]), " | ",
+            ch = i == 1 ? "" : sig(100 * (jval(j) / jval(js[i - 1]) - 1)) * " %"
+            println(io, "| ", p.name, " | ", res_label(j), " | ", sig(jval(j)), " | ", ch, " | ", sig(j["weight_born"]), " | ", sig(j["fast_plasma_window"]), " | ", sig(j["a0"]), " | ",
                     round(Int, j["seconds"]), " (", j["threads"], ") |")
         end
     end
@@ -149,7 +154,7 @@ function tables(conv, xonly, fd, lines)
         println(io, "|---|---|---|---|")
         for j in xonly
             c = findfirst(q -> q["point"] == j["point"] && q["ppl"] == j["ppl"], conv)
-            println(io, "| ", j["point"], " | ", res_label(j), " | ", sig(j["J"]), " | ", c === nothing ? "" : sig(100 * (j["J"] / conv[c]["J"] - 1)) * " %", " |")
+            println(io, "| ", j["point"], " | ", res_label(j), " | ", sig(jval(j)), " | ", c === nothing ? "" : sig(100 * (jval(j) / jval(conv[c]) - 1)) * " %", " |")
         end
     end
     println(io, "\n| point | grid | ", join(["∂ln J/∂z: " * d for d in DIRECTIONS], " | "), " |")
@@ -168,11 +173,11 @@ function tables(conv, xonly, fd, lines)
     end
     for (kind, l) in lines
         isempty(l) && continue
-        println(io, "\n| $kind line, grid | points | J from … to | largest |secant − tangent|/|tangent| | where the plasma's part first exceeds 1 % of J |")
+        println(io, "\n| $kind line, grid | points | J from … to | largest |secant − tangent|/|tangent| | where the dark current first exceeds the trapped weight's 1 % |")
         println(io, "|---|---|---|---|---|")
         for r in sort(collect(keys(l)))
             v = l[r]
-            k = findfirst(i -> v["J_plasma"][i] > 0.01 * v["J"][i], eachindex(v["J"]))
+            k = findfirst(i -> v["dark"][i] > 0.01 * v["born_trapped"][i], eachindex(v["J"]))
             println(io, "| ", v["label"], " | ", length(v["x"]), " | ", sig(v["J"][1]), " … ", sig(v["J"][end]), " | ",
                     isempty(v["mismatch"]) ? "" : sig(maximum(v["mismatch"])), " | ", k === nothing ? "nowhere" : sig(v["x"][k]), " |")
         end
