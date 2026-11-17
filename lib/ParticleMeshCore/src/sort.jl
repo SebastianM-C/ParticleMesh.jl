@@ -107,10 +107,11 @@ end
 
 # Total order: alive particles by (cell, slot), free slots after all of them by slot. Keys are
 # unique, so every correct sort gives the same permutation on every backend and thread count.
+# The bin is read only for an alive slot: a free slot's offset is not state and may be anything.
 @kernel function sort_key_kernel!(key, s, bins, n::Int64, cap::Int64)
     i = @index(Global, Linear)
     @inbounds begin
-        c = ifelse(s.status[i] == ALIVE, Int64(particle_bin(bins, s, i, (Int32(n),))[1]) - 1, n)
+        c = s.status[i] == ALIVE ? Int64(particle_bin(bins, s, i, (Int32(n),))[1]) - 1 : n
         key[i] = c * cap + (i - 1)
     end
 end
@@ -249,8 +250,7 @@ end
 @kernel function sort_key_nd_kernel!(key, s, bins, n, ncell::Int64, cap::Int64)
     i = @index(Global, Linear)
     @inbounds begin
-        L = linear_cell(map(Int64, particle_bin(bins, s, i, map(Int32, n))), n)
-        c = ifelse(s.status[i] == ALIVE, L - 1, ncell)
+        c = s.status[i] == ALIVE ? linear_cell(map(Int64, particle_bin(bins, s, i, map(Int32, n))), n) - 1 : ncell
         key[i] = c * cap + (i - 1)
     end
 end
