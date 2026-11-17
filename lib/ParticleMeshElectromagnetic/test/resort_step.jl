@@ -215,4 +215,24 @@ end
     end
     @test cols[1][1] == cols[2][1] == [cols[1][3]]
     @test cols[2][2] ≈ cols[1][2] rtol = 1e-12
+    # Every sorted workspace of a state carries the numerics' bins: the species of a 1D and a 2D
+    # state, and a window's species and born electrons (the cell on x); cells with the flag off. The
+    # atoms keep cells either way. (Bits alone cannot show a workspace that ignores the flag: the two
+    # runs agree to roundoff.)
+    for nb in (true, false)
+        num = EMNumerics(; mode = Reference(), node_bins = nb)
+        one_d = EMState(beams_1d(Float64), num)
+        two_d = EMState(plasma_step_2d(Float64), num)
+        win = EMState(ion_window(Float64), num)
+        ion = win.aux.ionization
+        shape = num.shape
+        xstag = shape === Quadratic ? Center() : Node()      # the stagger whose stencil does not shift
+        want1 = nb ? NodeBins(shape, (Node(),)) : CellBins()
+        want2 = nb ? NodeBins(shape, (Node(), Node())) : CellBins()
+        wantw = nb ? NodeBins(shape, (xstag, Node())) : CellBins()
+        @test all(w -> w.bins == want1, one_d.ws)
+        @test all(w -> w.bins == want2, two_d.ws)
+        @test all(w -> w.bins == wantw, (win.ws..., ion.electrons_ws))
+        @test ion.atoms_ws.bins == CellBins()
+    end
 end
