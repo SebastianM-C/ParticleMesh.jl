@@ -1,0 +1,6 @@
+timeout = 43200
+category = "validation"
+outputs = ["scripts/runs/wp065-conv"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "converge", "32x2,48x3,64x4", "scripts/runs/wp065-conv", "jobs=4", "threads=4"]
