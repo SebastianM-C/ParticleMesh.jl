@@ -46,6 +46,9 @@ function check_sort(s, grid, ws, label)
     ok = arrays && same(b3.dst.status, e.status) && same(b3.seg_start, we.seg_start) && same(b3.seg_stop, we.seg_stop) &&
          PMC.alive_count(b3.dst) == count && Array(b3.perm)[alive] == Array(we.perm)[alive]
     report("$label incremental sort, permutation form == sort_by_cell!", !ok, false)
+    wk = PMC.Workspace(s, grid)
+    perm_by_key_sort!(wk, s, grid)
+    report("$label sort! of the keys and decode == the engine's sortperm!", Array(wk.perm) != Array(we.perm), false)
     incremental_sort!(b, s, grid, ws.seg_start, ws.seg_stop; copy_back = true)      # leaves `s` sorted, its segments in `ws`
     return nothing
 end
@@ -106,6 +109,15 @@ function check(::Type{T}, N; n, ppc, tol) where {T}
         report("$label patch in registers, nearest-node binning: continuity", continuity_residual(a, s, shape, st, grid, dt), tol)
         report("$label patch in registers, nearest-node binning: against $(variants[1][1]), folded",
                field_difference(folded_host(a, grid), folded_host(ref, grid)), tol)
+        for layers in (1, 2)                                     # the same sums in the same order, fewer of them per launch
+            b = deposit_patch3_slabs!(J(), patch3_buffer(BE, T, grid, shape, stc), sh, shape, stc, grid, wsh.seg_start, wsh.seg_stop, sx, layers)
+            report("$label patch in registers, nearest-node binning, $layers planes per launch == all planes at once (bits)",
+                   !all(map(same, a, b)), false)
+        end
+        let c = variants[end][2]
+            b = deposit_patch3_slabs!(J(), patch3_buffer(BE, T, grid, shape, st), s, shape, st, grid, seg..., sx, 2)
+            report("$label patch in registers, cell binning, 2 planes per launch == all planes at once (bits)", !all(map(same, c, b)), false)
+        end
     end
     for (name, a) in variants
         report("$label $name: continuity", continuity_residual(a, s, shape, st, grid, dt), tol)

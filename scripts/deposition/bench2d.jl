@@ -153,6 +153,19 @@ function measure(size, label, x)
                                                            ndrange = capacity(s))
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
     end
+    if wanted("engine sort: keys, sort!")                         # the permutation from a plain sort of the keys (they end in the slot)
+        restore!(s, U)
+        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(capacity(s)); ndrange = capacity(s))
+        PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
+        perm0 = Array(ws.perm)
+        for (alg, tag) in (BE isa CPU ? ((PMC.AK.Auto(), "the default sort"),) : ((PMC.AK.MergeSort(), "merge sort"), (PMC.AK.RadixSort(), "radix sort")))
+            name = "engine sort: keys, sort! (" * tag * ") and decode alone"
+            wk = PMC.AK.workspace(PMC.AK.sort!, ws.key; alg)
+            perm_by_key_sort!(ws, s, grid; alg, workspace = wk)
+            diff[name] = Array(ws.perm) != perm0
+            timed!(() -> perm_by_key_sort!(ws, s, grid; alg, workspace = wk), name; setup = () -> restore!(s, U))
+        end
+    end
     restore!(s, U)
     sort_by_cell!(s, grid, ws)                                   # the engine's result, to compare with
     n1 = alive_count(s)

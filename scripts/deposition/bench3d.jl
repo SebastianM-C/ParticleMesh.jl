@@ -65,6 +65,19 @@ function measure(::Type{T}, n, ppc) where {T}
                                                            ndrange = PMC.capacity(s))
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
     end
+    if wanted("engine sort: keys, sort!")                         # the permutation from a plain sort of the keys (they end in the slot)
+        restore!(s, U)
+        PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(PMC.capacity(s)); ndrange = PMC.capacity(s))
+        PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
+        perm0 = Array(ws.perm)
+        for (alg, tag) in (BE isa CPU ? ((PMC.AK.Auto(), "the default sort"),) : ((PMC.AK.MergeSort(), "merge sort"), (PMC.AK.RadixSort(), "radix sort")))
+            name = "engine sort: keys, sort! (" * tag * ") and decode alone"
+            wk = PMC.AK.workspace(PMC.AK.sort!, ws.key; alg)
+            perm_by_key_sort!(ws, s, grid; alg, workspace = wk)
+            diff[name] = Array(ws.perm) != perm0
+            timed!(() -> perm_by_key_sort!(ws, s, grid; alg, workspace = wk), name; setup = () -> restore!(s, U))
+        end
+    end
     restore!(s, U)
     PMC.sort_by_cell!(s, grid, ws)
     n1 = PMC.alive_count(s)
@@ -111,6 +124,10 @@ function measure(::Type{T}, n, ppc) where {T}
         near && PMC.sort_by_cell!(sp, grid, wsp)
         patch = patch3_buffer(BE, T, grid, shape, stp)
         variant!(a -> deposit_patch3!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx), name; fold = near)
+        for layers in (1, 2, 3)                                  # fewer accumulators per launch, for wide element types
+            near && variant!(a -> deposit_patch3_slabs!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers),
+                             "patch in registers, nearest-node binning, $layers planes per launch"; fold = true)
+        end
     end
     variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing), "tiles S = 4")
     BE isa CPU && variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing; launch = PMC.item_launcher),

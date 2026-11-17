@@ -862,3 +862,72 @@ function deposit_patch3!(J, patch, s, shape, st::NTuple{3,PMC.Stagger}, grid, se
     end
     return J
 end
+
+# --- the 3D register patch in slabs --------------------------------------------------------------
+#
+# With a wide element type the 100 or 180 accumulators of a component no longer stay in registers
+# (400 numbers for `Dual{Float32,3}` with nearest-node binning). A launch can take `layers`
+# planes of the cell's frame along the third axis instead: the entries `K0 + 1 : K0 + Ks` of the
+# component's tuple, 20 or 25 per plane with nearest-node binning. A cell sums the same particles
+# in the same order whatever the split, so the patch and the result are those of
+# `deposit_patch3!` bit for bit; the price is one evaluation of a particle's weights per launch.
+
+"The entries `K0 + 1 : K0 + Ks` of `component_stencil` (the others are never used, and the compiler drops them)."
+@inline function slab_stencil(comp, s, i, shape, st, n, sx, vK::Val, ::Val{K0}, ::Val{Ks}) where {K0,Ks}
+    full = component_stencil(comp, s, i, shape, st, n, sx, vK)
+    return ntuple(l -> @inbounds(full[l + K0]), Val(Ks))
+end
+
+@kernel function patch3_slab_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), comp, shape, st, n::NTuple{3,Int32}, sx, layout, vK::Val,
+                                     vK0::Val{K0}, ::Val{Ks}) where {K0,Ks}
+    L = Int32(@index(Global, Linear))
+    T = eltype(patch)
+    acc = ntuple(_ -> zero(T), Val(Ks))
+    @inbounds for i in seg_start[L]:seg_stop[L]
+        acc = PMC.tuple_add(acc, slab_stencil(comp, s, i, shape, st, n, sx, vK, vK0, Val(Ks)))
+    end
+    @inbounds for k in 1:Ks
+        patch[PMC.patch_index(layout, K0 + k, L)...] = acc[k]
+    end
+end
+
+"`deposit_patch3!` with `layers` planes of the frame's third axis per launch."
+function deposit_patch3_slabs!(J, patch, s, shape, st::NTuple{3,PMC.Stagger}, grid, seg_start, seg_stop, sx, layers::Integer; workgroupsize = nothing)
+    backend = get_backend(s)
+    n = Int32.(grid.n)
+    M = map(x -> PMC._valof(PMC.flux_width(shape, x)), st)
+    lo = map(x -> PMC.flux_reach(shape, x)[1], st)
+    for C in 1:3
+        W = ntuple(d -> M[d] - (d == C), 3)
+        plane = W[1] * W[2]
+        for a in 1:layers:W[3]
+            count = min(layers, W[3] - a + 1)
+            PMC.item_launcher(patch3_slab_kernel!, backend, workgroupsize)(patch.buf, s, seg_start, seg_stop, Val(C), shape, st, n, sx, patch.layout,
+                                                                          Val(prod(W)), Val((a - 1) * plane), Val(count * plane); ndrange = prod(n))
+        end
+        PMC.launcher(reduce3_kernel!, backend, workgroupsize)(J[C], patch.buf, patch.layout, n, Int32(grid.g), lo, Int32.(W); ndrange = size(J[C]))
+    end
+    return J
+end
+
+# --- the engine's permutation from a plain sort of its keys --------------------------------------
+#
+# The engine's keys are unique and end in the slot (`c·capacity + slot - 1`, sort.jl), so the
+# sorted keys are the permutation: `AK.sortperm!`, a merge sort that moves keys and indices, can
+# be an `AK.sort!` of the keys alone and one decode. For `sort!`, AcceleratedKernels also has a
+# radix sort on GPUs.
+
+@kernel function perm_from_keys_kernel!(perm, @Const(key), cap::Int64)
+    j = @index(Global, Linear)
+    @inbounds perm[j] = key[j] % cap + 1
+end
+
+"`ws.perm` as `sort_by_cell!` finds it (N ≥ 2), from `AK.sort!(ws.key; alg, workspace)` and a decode; the keys are left sorted."
+function perm_by_key_sort!(ws, s::PMC.Species, grid; alg = AK.Auto(), workspace = nothing, workgroupsize = nothing)
+    backend = get_backend(s)
+    cap = Int64(PMC.capacity(s))
+    PMC.launcher(PMC.sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), cap; ndrange = cap)
+    AK.sort!(ws.key; alg, workspace)
+    PMC.launcher(perm_from_keys_kernel!, backend, workgroupsize)(ws.perm, ws.key, cap; ndrange = cap)
+    return ws.perm
+end
