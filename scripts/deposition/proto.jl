@@ -562,3 +562,222 @@ function incremental_sort!(b::IncrementalSort, s::PMC.Species{N}, grid, seg_star
     end
     return b
 end
+
+# --- the incremental sort, scatter form ----------------------------------------------------------
+#
+# The same precondition and the same result as the gather form above, with every particle read
+# once per pass instead of 3^N times. A source cell counts its particles per direction of their
+# move (3^N bins); a destination cell walks its 3^N sources in increasing linear index, sums
+# the bins that point at it and leaves in each the rank its particles start at in the
+# destination's new segment; the move then walks each source cell once, in slot order. A bin
+# belongs to one source and one destination, so no two work items write the same value.
+
+"The move `-1, 0, 1` from cell `c` to cell `cn` on a periodic axis of `n ≥ 3` cells, as `0, 1, 2`."
+@inline axis_step(c::Int32, cn::Int32, n::Int32) = mod(cn - c + Int32(1), n)
+
+"The bin `1:3^N` of the move from cell `c` to its neighbour `cn`."
+@inline direction(c::NTuple{2,Int32}, cn::NTuple{2,Int32}, n::NTuple{2,Int32}) =
+    Int32(1) + axis_step(c[1], cn[1], n[1]) + Int32(3) * axis_step(c[2], cn[2], n[2])
+@inline direction(c::NTuple{3,Int32}, cn::NTuple{3,Int32}, n::NTuple{3,Int32}) =
+    Int32(1) + axis_step(c[1], cn[1], n[1]) + Int32(3) * axis_step(c[2], cn[2], n[2]) + Int32(9) * axis_step(c[3], cn[3], n[3])
+
+"The 3^N neighbours of cell `c` (itself included), in increasing linear index."
+@inline function neighbor_tuples(c::NTuple{2,Int32}, n::NTuple{2,Int32})
+    t1, t2 = triple(c[1], n[1]), triple(c[2], n[2])
+    return ntuple(k -> (t1[(k - 1) % 3 + 1], t2[(k - 1) ÷ 3 + 1]), Val(9))
+end
+@inline function neighbor_tuples(c::NTuple{3,Int32}, n::NTuple{3,Int32})
+    t1, t2, t3 = triple(c[1], n[1]), triple(c[2], n[2]), triple(c[3], n[3])
+    return ntuple(k -> (t1[(k - 1) % 3 + 1], t2[((k - 1) ÷ 3) % 3 + 1], t3[(k - 1) ÷ 9 + 1]), Val(27))
+end
+
+# One work item per source cell: its alive particles per direction.
+@kernel function scatter_count_kernel!(hist, cell, @Const(status), @Const(seg_start), @Const(seg_stop), n::NTuple{N,Int32}) where {N}
+    I = @index(Global, NTuple)
+    c = map(Int32, I)
+    Ls = PMC.linear_cell(c, n)
+    @inbounds for k in axes(hist, 1)
+        hist[k, Ls] = Int32(0)
+    end
+    @inbounds for i in seg_start[Ls]:seg_stop[Ls]
+        if status[i] == PMC.ALIVE
+            hist[direction(c, map(a -> a[i], cell), n), Ls] += Int32(1)
+        end
+    end
+end
+
+# One work item per destination cell: its count, and in every bin that points at it the number
+# of its particles that come from sources before that one.
+@kernel function scatter_rank_kernel!(cnt, hist, n::NTuple{N,Int32}) where {N}
+    I = @index(Global, NTuple)
+    c = map(Int32, I)
+    r = Int32(0)
+    @inbounds for cs in neighbor_tuples(c, n)
+        Ls = PMC.linear_cell(cs, n)
+        k = direction(cs, c, n)
+        m = hist[k, Ls]
+        hist[k, Ls] = r
+        r += m
+    end
+    @inbounds cnt[PMC.linear_cell(c, n)] = r
+end
+
+# One work item per source cell: its alive particles, in slot order, each to the next rank of
+# its bin.
+@kernel function scatter_move_kernel!(dst, src, rank, @Const(old_start), @Const(old_stop), @Const(new_start), n::NTuple{N,Int32}) where {N}
+    I = @index(Global, NTuple)
+    c = map(Int32, I)
+    Ls = PMC.linear_cell(c, n)
+    @inbounds for i in old_start[Ls]:old_stop[Ls]
+        if src.status[i] == PMC.ALIVE
+            cn = map(a -> a[i], src.cell)
+            k = direction(c, cn, n)
+            r = rank[k, Ls]
+            rank[k, Ls] = r + Int32(1)
+            copy_slot!(dst, src, new_start[PMC.linear_cell(cn, n)] + r, i)
+        end
+    end
+end
+
+"The second buffer and the scratch of the scatter form: 3^N bins per cell."
+struct ScatterSort{S,VI,MI}
+    dst::S
+    hist::MI
+    cnt::VI
+    cum::VI
+    seg_start::VI
+    seg_stop::VI
+end
+
+function ScatterSort(s::PMC.Species{N,T}, grid::PMC.PeriodicGrid{N}) where {N,T}
+    backend = get_backend(s)
+    dst = PMC.Species(backend, T, PMC.capacity(s); q = s.q, m = s.m, N, extras = map(eltype, s.extras))
+    z(k...) = KernelAbstractions.zeros(backend, Int32, k...)
+    ncell = prod(grid.n)
+    return ScatterSort(dst, z(3^N, ncell), z(ncell), z(ncell), z(ncell), z(ncell))
+end
+
+"`incremental_sort!` in its scatter form: the same arguments, precondition and result."
+function scatter_sort!(b::ScatterSort, s::PMC.Species{N}, grid, seg_start, seg_stop; workgroupsize = nothing, copy_back = false) where {N}
+    backend = get_backend(s)
+    cap, n, ncell = PMC.capacity(s), Int32.(grid.n), prod(grid.n)
+    all(>=(3), grid.n) || throw(ArgumentError("the incremental sort needs at least 3 cells per axis"))
+    PMC.launcher(scatter_count_kernel!, backend, workgroupsize)(b.hist, s.cell, s.status, seg_start, seg_stop, n; ndrange = grid.n)
+    PMC.launcher(scatter_rank_kernel!, backend, workgroupsize)(b.cnt, b.hist, n; ndrange = grid.n)
+    AK.accumulate!(+, b.cum, b.cnt)
+    PMC.launcher(new_segments_kernel!, backend, workgroupsize)(b.seg_start, b.seg_stop, b.dst.count, b.cum, b.cnt, Int32(ncell); ndrange = ncell)
+    PMC.launcher(scatter_move_kernel!, backend, workgroupsize)(b.dst, s, b.hist, seg_start, seg_stop, b.seg_start, n; ndrange = grid.n)
+    PMC.launcher(free_tail_kernel!, backend, workgroupsize)(b.dst.status, b.cum, Int32(ncell); ndrange = cap)
+    if copy_back
+        foreach(copyto!, species_arrays(s), species_arrays(b.dst))
+        copyto!(s.count, b.dst.count)
+        copyto!(seg_start, b.seg_start)
+        copyto!(seg_stop, b.seg_stop)
+    end
+    return b
+end
+
+# --- a patch in registers at N = 3, one component per launch -------------------------------------
+#
+# The engine's 2D mechanism at N = 3: one work item per cell sums its particles' stencils in a
+# tuple (registers on a GPU) and writes it once, then one work item per node sums the cells that
+# reach it, in increasing linear index. All three components at once would be 3·6³ = 648 values
+# per cell at order 2 on nodes. One component per launch, without the last (zero) column of its
+# prefix sum, is 5·6·6 = 180, and 4·5·5 = 100 when the particles are binned by nearest node (the
+# `Center()` frame). The patch array holds one component at a time.
+
+"The old and new weights of the three axes in the cell's frame, as differences and averages: `((D1, D2, D3), (A1, A2, A3))`."
+@inline function axis_parts(s, i, shape, st::NTuple{3,PMC.Stagger}, n::NTuple{3,Int32})
+    c = PMC.particle_cell(s, i, Val(3))
+    δ = PMC.particle_offset(s, i, Val(3))
+    c0 = old_cell_3d(s, i)
+    δ0 = old_offset_3d(s, i)
+    _, Wo1, Wn1 = PMC.flux_axis_weights(shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1])
+    _, Wo2, Wn2 = PMC.flux_axis_weights(shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2])
+    _, Wo3, Wn3 = PMC.flux_axis_weights(shape, st[3], c[3], δ[3], c0[3], δ0[3], n[3])
+    return ((map(-, Wn1, Wo1), map(-, Wn2, Wo2), map(-, Wn3, Wo3)), (map(avg, Wo1, Wn1), map(avg, Wo2, Wn2), map(avg, Wo3, Wn3)))
+end
+
+"`Aa ⊗ Ab + Da ⊗ Db / 12`, the first index fastest."
+@inline function transverse(Aa::NTuple{Ma,Any}, Ab::NTuple{Mb,Any}, Da::NTuple{Ma,Any}, Db::NTuple{Mb,Any}) where {Ma,Mb}
+    Eb = map(x -> x / 12, Db)
+    return ntuple(j -> Aa[(j - 1) % Ma + 1] * Ab[(j - 1) ÷ Ma + 1] + Da[(j - 1) % Ma + 1] * Eb[(j - 1) ÷ Ma + 1], Val(Ma * Mb))
+end
+
+# One particle's values of one component, the first axis fastest, on the `M` nodes of the cell's
+# frame per axis and one fewer along the component's own axis.
+@inline function component_stencil(::Val{1}, s, i, shape, st, n, sx, ::Val{K}) where {K}
+    (D1, D2, D3), (_, A2, A3) = axis_parts(s, i, shape, st, n)
+    @inbounds k = -(s.q * s.w[i] * sx[1])
+    p = map(x -> k * x, PMC.prefix_sums(D1))
+    t = transverse(A2, A3, D2, D3)
+    W = length(D1) - 1
+    return ntuple(l -> p[(l - 1) % W + 1] * t[(l - 1) ÷ W + 1], Val(K))
+end
+@inline function component_stencil(::Val{2}, s, i, shape, st, n, sx, ::Val{K}) where {K}
+    (D1, D2, D3), (A1, _, A3) = axis_parts(s, i, shape, st, n)
+    @inbounds k = -(s.q * s.w[i] * sx[2])
+    p = map(x -> k * x, PMC.prefix_sums(D2))
+    t = transverse(A1, A3, D1, D3)
+    M1, W = length(D1), length(D2) - 1
+    return ntuple(l -> p[((l - 1) ÷ M1) % W + 1] * t[(l - 1) % M1 + 1 + ((l - 1) ÷ (M1 * W)) * M1], Val(K))
+end
+@inline function component_stencil(::Val{3}, s, i, shape, st, n, sx, ::Val{K}) where {K}
+    (D1, D2, D3), (A1, A2, _) = axis_parts(s, i, shape, st, n)
+    @inbounds k = -(s.q * s.w[i] * sx[3])
+    p = map(x -> k * x, PMC.prefix_sums(D3))
+    t = transverse(A1, A2, D1, D2)
+    M12 = length(D1) * length(D2)
+    return ntuple(l -> p[(l - 1) ÷ M12 + 1] * t[(l - 1) % M12 + 1], Val(K))
+end
+
+@kernel function patch3_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), comp, shape, st, n::NTuple{3,Int32}, sx, layout, ::Val{K}) where {K}
+    L = Int32(@index(Global, Linear))
+    T = eltype(patch)
+    acc = ntuple(_ -> zero(T), Val(K))
+    @inbounds for i in seg_start[L]:seg_stop[L]
+        acc = PMC.tuple_add(acc, component_stencil(comp, s, i, shape, st, n, sx, Val(K)))
+    end
+    @inbounds for k in 1:K
+        patch[PMC.patch_index(layout, k, L)...] = acc[k]
+    end
+end
+
+# One work item per node (guards included): the cells whose frame holds it, in increasing linear
+# index, summed from zero. `W` is the frame's width per axis for this component.
+@kernel function reduce3_kernel!(J, @Const(patch), layout, n::NTuple{3,Int32}, g::Int32, lo::NTuple{3,Int32}, W::NTuple{3,Int32})
+    I = @index(Global, Cartesian)
+    T = eltype(J)
+    j1, j2, j3 = Int32(I[1]) - g - lo[1], Int32(I[2]) - g - lo[2], Int32(I[3]) - g - lo[3]
+    a = zero(T)
+    @inbounds for c3 in max(Int32(1), j3 - W[3] + Int32(1)):min(n[3], j3), c2 in max(Int32(1), j2 - W[2] + Int32(1)):min(n[2], j2),
+                  c1 in max(Int32(1), j1 - W[1] + Int32(1)):min(n[1], j1)
+        L = c1 + ((c2 - Int32(1)) + (c3 - Int32(1)) * n[2]) * n[1]
+        k = (j1 - c1) + ((j2 - c2) + (j3 - c3) * W[2]) * W[1] + Int32(1)
+        a += patch[PMC.patch_index(layout, k, L)...]
+    end
+    @inbounds J[I] += a
+end
+
+"The patch array of the 3D patch deposition: the values of one component per cell."
+function patch3_buffer(backend, ::Type{T}, grid::PMC.PeriodicGrid{3}, shape, st::NTuple{3,PMC.Stagger}) where {T}
+    M = map(x -> PMC._valof(PMC.flux_width(shape, x)), st)
+    K = maximum(C -> prod(ntuple(d -> M[d] - (d == C), 3)), 1:3)
+    layout = PMC.flux_patch_layout(backend)
+    return (buf = KernelAbstractions.zeros(backend, T, PMC.flux_patch_size(layout, K, prod(grid.n))...), layout = layout)
+end
+
+"The flux of a species sorted by cell (the cells of the stagger's binning), by per-cell patches, one component per launch."
+function deposit_patch3!(J, patch, s, shape, st::NTuple{3,PMC.Stagger}, grid, seg_start, seg_stop, sx; workgroupsize = nothing)
+    backend = get_backend(s)
+    n = Int32.(grid.n)
+    M = map(x -> PMC._valof(PMC.flux_width(shape, x)), st)
+    lo = map(x -> PMC.flux_reach(shape, x)[1], st)
+    for C in 1:3
+        W = ntuple(d -> M[d] - (d == C), 3)
+        PMC.item_launcher(patch3_kernel!, backend, workgroupsize)(patch.buf, s, seg_start, seg_stop, Val(C), shape, st, n, sx, patch.layout,
+                                                                 Val(prod(W)); ndrange = prod(n))
+        PMC.launcher(reduce3_kernel!, backend, workgroupsize)(J[C], patch.buf, patch.layout, n, Int32(grid.g), lo, Int32.(W); ndrange = size(J[C]))
+    end
+    return J
+end

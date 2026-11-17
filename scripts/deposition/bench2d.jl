@@ -9,7 +9,8 @@
 # least of 9 calls, with the device waited for. Every variant is compared with the engine on the
 # same state before it is timed (the incremental sort bitwise, the depositions to roundoff), and
 # the differences are in the output. Writes `bench2d.json`, `tables.md` and a manifest into
-# scripts/runs/deposition-bench2d-<backend>-<time>/.
+# scripts/runs/deposition-bench2d-<backend>-<time>/. `PM_BENCH_ONLY` (substrings of the row names,
+# separated by commas) limits a run to the rows that match.
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "..", "optim", "wake2d_case.jl"))
 include(joinpath(@__DIR__, "common.jl"))
@@ -25,6 +26,9 @@ elseif BACKEND_NAME == "cpu"
 else
     error("bench2d.jl: the first argument is cpu or cuda, got $BACKEND_NAME")
 end
+
+const ONLY = filter(!isempty, split(get(ENV, "PM_BENCH_ONLY", ""), ","))
+wanted(name) = isempty(ONLY) || any(o -> occursin(o, name), ONLY)
 
 "The sizes: the case's box at `ppl` cells per wavelength along x, Δy = `dy_cells`·Δx, run to t ≈ 185."
 const SIZES = Dict("S" => (ppl = 16, dy_cells = 4, ppc = (2, 2), nsteps = 512),
@@ -53,26 +57,6 @@ function final_state(x, size, mode)
     initialize!(st, prob)
     run!(st, params(prob), prob.nsteps)
     return st
-end
-
-"The species moved by half a cell per axis (new and old position), for which cell binning at `Center()` is nearest-node binning at `Node()`."
-function half_cell_shifted(s::PMC.Species{2,T}, grid) where {T}
-    c = copy_species(s)
-    h = one(T) / 2
-    for (cells, offsets) in ((c.cell, c.offset), ((c.extras.old_cell_1, c.extras.old_cell_2), (c.extras.old_offset_1, c.extras.old_offset_2)))
-        for d in 1:2
-            cell, δ = Array(cells[d]), Array(offsets[d])
-            for i in eachindex(cell)
-                y = δ[i] + h
-                up = y >= one(T)
-                δ[i] = up ? y - one(T) : y
-                cell[i] = mod1(cell[i] + Int32(up), Int32(grid.n[d]))
-            end
-            copyto!(cells[d], cell)
-            copyto!(offsets[d], δ)
-        end
-    end
-    return c
 end
 
 "A copy of the species with its slots in a random order."
@@ -109,30 +93,38 @@ function measure(size, label, x)
     PMC._deposit_flux_2d!(Reference(), ref..., s, shape, stg, grid, ws, sx, qz, nothing)
     folded(a) = (foreach(x -> fold_guards!(x, grid), a); a)
     ref_folded = folded(map(copy, ref))
+    timed!(f, name; kw...) = wanted(name) && (time_[name] = ms(least(f, BE; kw...)); nothing)
     function variant!(f, name; fold = false)                     # `fold`: the variant bins its particles in other cells at the seam
+        wanted(name) || return nothing
         diff[name] = fold ? field_difference(folded(f(fresh())), ref_folded) : field_difference(f(fresh()), ref)
         time_[name] = ms(least(() -> f(J), BE))
         return nothing
     end
-    time_["push"] = ms(least(() -> push_once!(st), BE; setup = () -> restore!(s, V)))
+    timed!(() -> push_once!(st), "push"; setup = () -> restore!(s, V))
     restore!(s, V)
     variant!(a -> PMC._deposit_flux_2d!(Reference(), a..., s, shape, stg, grid, ws, sx, qz, nothing), "engine: patch + reduce")
     M = PMC.flux_widths(shape, stg)
-    time_["engine: patch kernel alone"] = ms(least(BE) do
+    timed!("engine: patch kernel alone") do
         PMC.item_launcher(PMC.flux_patch_2d_kernel!, BE, nothing)(ws.flux_patch, s, seg..., shape, stg, n, sx, qz, ws.flux_layout, Val(prod(M));
                                                                   ndrange = prod(n))
-    end)
+    end
     variant!(a -> deposit_patch!(a, s, factored_stencil, shape, stg, grid, ws, sx, qz), "patch, factored stencil")
     variant!(a -> deposit_patch!(a, s, :split, shape, stg, grid, ws, sx, qz), "patch, one component per launch")
-    let stc = (Center(), Center()), sh = half_cell_shifted(s, grid)
+    if wanted("nearest-node")
+        stc = (Center(), Center())
+        sh = half_cell_shifted(s, grid)
         wsh = Workspace(sh, grid; flux = (shape, stc))
         sort_by_cell!(sh, grid, wsh)
         variant!(a -> PMC._deposit_flux_2d!(Reference(), a..., sh, shape, stc, grid, wsh, sx, qz, nothing), "patch, nearest-node binning (5 × 5)";
                  fold = true)
+        variant!(a -> deposit_patch!(a, sh, factored_stencil, shape, stc, grid, wsh, sx, qz), "patch, nearest-node binning, factored stencil"; fold = true)
+        variant!(a -> deposit_patch!(a, sh, :split, shape, stc, grid, wsh, sx, qz), "patch, nearest-node binning, one component per launch";
+                 fold = true)
     end
     for (S, frame) in ((1, CellFrame()), (1, MinFrame()), (2, MinFrame()), (4, MinFrame()), (8, MinFrame()), (16, MinFrame()))
-        tb = TileBuffers(BE, T, grid, shape, stg, S)
         name = "tiles S = $S" * (frame isa CellFrame ? ", cell frame" : "")
+        wanted(name) || continue
+        tb = TileBuffers(BE, T, grid, shape, stg, S)
         variant!(a -> deposit_tiles!(a, tb, s, frame, shape, stg, grid, seg..., sx, qz), name)
         BE isa CPU && S == 4 &&
             variant!(a -> deposit_tiles!(a, tb, s, frame, shape, stg, grid, seg..., sx, qz; launch = PMC.item_launcher), name * ", work-groups of one")
@@ -143,7 +135,7 @@ function measure(size, label, x)
             variant!(a -> deposit_coloured!(a, s, MinFrame(), shape, stg, grid, seg..., sx, qz, S; launch = PMC.item_launcher),
                      "coloured tiles S = $S, work-groups of one")
     end
-    if T <: AbstractFloat
+    if T <: AbstractFloat && wanted("atomics")
         variant!(a -> PMC._deposit_flux_2d!(Fast(), a..., s, shape, stg, grid, ws, sx, qz, nothing), "engine atomics, sorted particles")
         variant!(a -> deposit_atomic!(a, s, MinFrame(), shape, stg, grid, sx, qz), "atomics 4 × 4, sorted particles")
         let r = shuffled(s)
@@ -155,29 +147,33 @@ function measure(size, label, x)
     # the unsorted state: the sorts
     push_once!(st)
     U = copy_species(s)
-    b = IncrementalSort(s, grid)
-    time_["engine sort_by_cell!"] = ms(least(() -> sort_by_cell!(s, grid, ws), BE; setup = () -> restore!(s, U)))
-    time_["engine sort: keys and sortperm! alone"] = ms(least(BE; setup = () -> restore!(s, U)) do
+    timed!(() -> sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
+    timed!("engine sort: keys and sortperm! alone"; setup = () -> restore!(s, U)) do
         PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(capacity(s));
                                                            ndrange = capacity(s))
         PMC.AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
-    end)
+    end
     restore!(s, U)
     sort_by_cell!(s, grid, ws)                                   # the engine's result, to compare with
-    incremental_sort!(b, U, grid, segV...)
     n1 = alive_count(s)
-    diff["incremental sort"] = !(all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
-                                 Array(b.dst.status) == Array(s.status) && Array(b.seg_start) == Array(ws.seg_start) &&
-                                 Array(b.seg_stop) == Array(ws.seg_stop) && alive_count(b.dst) == n1)
-    time_["incremental sort, two buffers"] = ms(least(() -> incremental_sort!(b, U, grid, segV...), BE))
-    work = copy_species(U)
-    segW = map(copy, segV)
-    time_["incremental sort, copied back"] = ms(least(() -> incremental_sort!(b, work, grid, segW...; copy_back = true), BE;
-                                                      setup = () -> (restore!(work, U); foreach(copyto!, segW, segV))))
+    same_as_engine(b) = all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
+                        Array(b.dst.status) == Array(s.status) && Array(b.seg_start) == Array(ws.seg_start) &&
+                        Array(b.seg_stop) == Array(ws.seg_stop) && alive_count(b.dst) == n1
+    for (name, make, sort!) in (("incremental sort", IncrementalSort, incremental_sort!), ("incremental sort, scatter form", ScatterSort, scatter_sort!))
+        wanted(name) || continue
+        b = make(s, grid)
+        sort!(b, U, grid, segV...)
+        diff[name] = !same_as_engine(b)
+        timed!(() -> sort!(b, U, grid, segV...), "$name, two buffers")
+        work = copy_species(U)
+        segW = map(copy, segV)
+        timed!(() -> sort!(b, work, grid, segW...; copy_back = true), "$name, copied back";
+               setup = () -> (restore!(work, U); foreach(copyto!, segW, segV)))
+    end
 
     row = Dict{String,Any}("size" => size, "T" => label, "cells" => collect(grid.n), "ppc" => collect(SIZES[size].ppc), "steps" => SIZES[size].nsteps,
                            "alive" => alive, "capacity" => capacity(s), "ms" => time_, "difference" => diff)
-    if T <: AbstractFloat                                        # the state a Fast run leaves: its particles were never sorted
+    if T <: AbstractFloat && wanted("state of a Fast run")       # the state a Fast run leaves: its particles were never sorted
         sf = final_state(x, size, Fast())
         push_once!(sf)
         f = sf.species[1]
@@ -214,7 +210,8 @@ function main()
     extra = gpu === nothing ? Dict{String,Any}() : Dict{String,Any}("gpu" => gpu, "cudacore" => string(pkgversion(CUDACore)))
     dir = run_dir("bench2d-$BACKEND_NAME", @__FILE__; prefix = "deposition", work_package = "deposition study",
                   backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
-                  params = Dict{String,Any}("case" => "wake_problem(7, 100)", "sizes" => collect(String, sizes), "elements" => collect(String, elements)),
+                  params = Dict{String,Any}("case" => "wake_problem(7, 100)", "sizes" => collect(String, sizes), "elements" => collect(String, elements),
+                                            "only" => collect(String, ONLY)),
                   extra_inputs = [joinpath(@__DIR__, "..", "optim", "wake2d_case.jl"), joinpath(@__DIR__, "proto.jl"), joinpath(@__DIR__, "common.jl")],
                   extra)
     rows = Dict{String,Any}[]

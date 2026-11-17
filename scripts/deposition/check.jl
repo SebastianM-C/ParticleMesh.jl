@@ -5,7 +5,8 @@
 # N = 2: the incremental sort gives the arrays, segments and count of `sort_by_cell!`; every
 # deposition variant agrees with the engine's Reference `deposit_flux!` to roundoff and holds
 # continuity. N = 3 (no engine deposition to compare with): the incremental sort against
-# `sort_by_cell!`, continuity of every variant, and their mutual agreement. The tile variants
+# `sort_by_cell!`, continuity of every variant, and their mutual agreement. The scatter form of
+# the incremental sort is held to the same result at both N. The tile variants
 # give the same bits for every work-group size. Prints one line per check and throws on a failure.
 include(joinpath(@__DIR__, "common.jl"))
 
@@ -33,6 +34,12 @@ function check_sort(s, grid, ws, label)
     ok = arrays && same(b.dst.status, e.status) && same(b.seg_start, we.seg_start) && same(b.seg_stop, we.seg_stop) &&
          PMC.alive_count(b.dst) == count
     report("$label incremental sort == sort_by_cell! ($count alive)", !ok, false)
+    b2 = ScatterSort(s, grid)
+    scatter_sort!(b2, s, grid, ws.seg_start, ws.seg_stop)
+    arrays = all(((x, y),) -> Array(x)[alive] == Array(y)[alive], zip(species_arrays(b2.dst), species_arrays(e)))
+    ok = arrays && same(b2.dst.status, e.status) && same(b2.seg_start, we.seg_start) && same(b2.seg_stop, we.seg_stop) &&
+         PMC.alive_count(b2.dst) == count
+    report("$label incremental sort, scatter form == sort_by_cell!", !ok, false)
     incremental_sort!(b, s, grid, ws.seg_start, ws.seg_stop; copy_back = true)      # leaves `s` sorted, its segments in `ws`
     return nothing
 end
@@ -84,6 +91,15 @@ function check(::Type{T}, N; n, ppc, tol) where {T}
         report("$label patch with the engine's stencil == engine (bits)", !all(map(same, variants[end - 2][2], ref)), false)
     else
         ref = variants[1][2]
+        push!(variants, "patch in registers, cell binning" => deposit_patch3!(J(), patch3_buffer(BE, T, grid, shape, st), s, shape, st, grid, seg..., sx))
+        stc = ntuple(_ -> PMC.Center(), 3)                       # nearest-node binning: the shifted species at `Center()`
+        sh = half_cell_shifted(s, grid)
+        wsh = PMC.Workspace(sh, grid)
+        PMC.sort_by_cell!(sh, grid, wsh)
+        a = deposit_patch3!(J(), patch3_buffer(BE, T, grid, shape, stc), sh, shape, stc, grid, wsh.seg_start, wsh.seg_stop, sx)
+        report("$label patch in registers, nearest-node binning: continuity", continuity_residual(a, s, shape, st, grid, dt), tol)
+        report("$label patch in registers, nearest-node binning: against $(variants[1][1]), folded",
+               field_difference(folded_host(a, grid), folded_host(ref, grid)), tol)
     end
     for (name, a) in variants
         report("$label $name: continuity", continuity_residual(a, s, shape, st, grid, dt), tol)

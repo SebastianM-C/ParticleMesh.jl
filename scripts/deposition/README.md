@@ -7,9 +7,9 @@ and the engine's tests do not cover it.
 
 | File | What it is |
 |---|---|
-| `proto.jl` | The kernels, generic in the element type: the incremental (neighbour-bounded) sort; the flux of one particle in the engine's 6-wide cell frame or in its own 4-wide frame, in 2D and 3D; atomics per particle; per-tile buffers with a per-node reduction; coloured tiles; and three variants of the engine's per-cell patch |
+| `proto.jl` | The kernels, generic in the element type: the incremental (neighbour-bounded) sort in a gather and a scatter form; the flux of one particle in the engine's 6-wide cell frame or in its own 4-wide frame, in 2D and 3D; atomics per particle; per-tile buffers with a per-node reduction; coloured tiles; three variants of the engine's per-cell patch; and a 3D per-cell patch, one component per launch |
 | `common.jl` | Synthetic states on N axes, host-side references (ρ, fold, continuity residual), the timer |
-| `check.jl` | Every variant against the engine (2D, to roundoff; the incremental sort bitwise) and against discrete continuity (2D and 3D), in Float32, Float64 and `Dual{Float32,3}` on the CPU backend |
+| `check.jl` | Every variant against the engine (2D, to roundoff; the incremental sorts bitwise, at both N) and against discrete continuity (2D and 3D), in Float32, Float64 and `Dual{Float32,3}` on the CPU backend |
 | `bench2d.jl` | The engine and the variants on states of the WP-045 case at three sizes, on the CPU or CUDA |
 | `bench3d.jl` | The sorts and the 3D variants on a synthetic 3D state, on the CPU or CUDA |
 | `phases2d.jl` | The engine's step per phase (push, sort, deposit, window, fields) on the sizes of `bench2d.jl`, on the CPU or CUDA |

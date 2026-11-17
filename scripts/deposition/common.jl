@@ -85,6 +85,34 @@ function restore!(dst, src)
     return dst
 end
 
+"""
+The species moved by half a cell per axis (new and old position), on the host: its cells are
+the nearest nodes of the original, and a deposition at `Center()` on it is the deposition at
+`Node()` of the original, binned by nearest node.
+"""
+function half_cell_shifted(s::PMC.Species{N,T}, grid) where {N,T}
+    c = copy_species(s)
+    h = one(T) / 2
+    kc, ko = old_keys(N)
+    for (cells, offsets) in ((c.cell, c.offset), (map(k -> c.extras[k], kc), map(k -> c.extras[k], ko)))
+        for d in 1:N
+            cell, δ = Array(cells[d]), Array(offsets[d])
+            for i in eachindex(cell)
+                y = δ[i] + h
+                up = y >= one(T)
+                δ[i] = up ? y - one(T) : y
+                cell[i] = mod1(cell[i] + Int32(up), Int32(grid.n[d]))
+            end
+            copyto!(cells[d], cell)
+            copyto!(offsets[d], δ)
+        end
+    end
+    return c
+end
+
+"The fields with their guards folded into the interior, on the host."
+folded_host(J, grid) = map(a -> fold_host!(Array(a), grid), J)
+
 # --- host references -----------------------------------------------------------------------------
 
 "ρ of the alive particles at the current (`old = false`) or the old position, with guards, on the host."

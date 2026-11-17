@@ -11,7 +11,8 @@
 # on a small grid). A tile size whose buffers would take more than 3 GiB is skipped
 # (`PM_BENCH_MAX_GIB` sets another limit), and so are the atomics in the 6-wide frame above
 # 40 million particles, where one call takes tens of seconds. Writes `bench3d.json`, `tables.md`
-# and a manifest into scripts/runs/deposition-bench3d-<backend>-<time>/.
+# and a manifest into scripts/runs/deposition-bench3d-<backend>-<time>/. `PM_BENCH_ONLY` (substrings
+# of the row names, separated by commas) limits a run to the rows that match.
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "common.jl"))
 
@@ -27,6 +28,8 @@ end
 
 const REPS = parse(Int, get(ENV, "PM_BENCH_REPS", "7"))
 const MAX_GIB = parse(Float64, get(ENV, "PM_BENCH_MAX_GIB", "3"))
+const ONLY = filter(!isempty, split(get(ENV, "PM_BENCH_ONLY", ""), ","))
+wanted(name) = isempty(ONLY) || any(o -> occursin(o, name), ONLY)
 const ELEMENTS = Dict("f32" => Float32, "f64" => Float64, "d32" => Dual{Nothing,Float32,3})
 type_label(::Type{T}) where {T} = T <: Dual ? "Dual{$(base_type(T)),3}" : string(T)
 
@@ -55,20 +58,24 @@ function measure(::Type{T}, n, ppc) where {T}
     diff = Dict{String,Any}()
 
     # the sorts, on the moved state
-    b = IncrementalSort(s, grid)
-    time_["engine sort_by_cell!"] = ms(least(() -> PMC.sort_by_cell!(s, grid, ws), BE; reps = REPS, setup = () -> restore!(s, U)))
+    timed!(f, name; kw...) = wanted(name) && (time_[name] = ms(least(f, BE; reps = REPS, kw...)); nothing)
+    timed!(() -> PMC.sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
     restore!(s, U)
     PMC.sort_by_cell!(s, grid, ws)
-    incremental_sort!(b, U, grid, seg0...)
     n1 = PMC.alive_count(s)
-    diff["incremental sort"] = !(all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
-                                 Array(b.seg_start) == Array(ws.seg_start) && Array(b.seg_stop) == Array(ws.seg_stop) && PMC.alive_count(b.dst) == n1)
-    time_["incremental sort, two buffers"] = ms(least(() -> incremental_sort!(b, U, grid, seg0...), BE; reps = REPS))
-    work = copy_species(U)
-    segW = map(copy, seg0)
-    time_["incremental sort, copied back"] = ms(least(() -> incremental_sort!(b, work, grid, segW...; copy_back = true), BE; reps = REPS,
-                                                      setup = () -> (restore!(work, U); foreach(copyto!, segW, seg0))))
-    work = nothing
+    same_as_engine(b) = all(((p, q),) -> Array(p)[1:n1] == Array(q)[1:n1], zip(species_arrays(b.dst), species_arrays(s))) &&
+                        Array(b.seg_start) == Array(ws.seg_start) && Array(b.seg_stop) == Array(ws.seg_stop) && PMC.alive_count(b.dst) == n1
+    for (name, make, sort!) in (("incremental sort", IncrementalSort, incremental_sort!), ("incremental sort, scatter form", ScatterSort, scatter_sort!))
+        wanted(name) || continue
+        b = make(s, grid)
+        sort!(b, U, grid, seg0...)
+        diff[name] = !same_as_engine(b)
+        timed!(() -> sort!(b, U, grid, seg0...), "$name, two buffers")
+        work = copy_species(U)
+        segW = map(copy, seg0)
+        timed!(() -> sort!(b, work, grid, segW...; copy_back = true), "$name, copied back";
+               setup = () -> (restore!(work, U); foreach(copyto!, segW, seg0)))
+    end
 
     # the depositions, on the sorted state (`s`, with its segments in `ws`)
     seg = (ws.seg_start, ws.seg_stop)
@@ -76,16 +83,33 @@ function measure(::Type{T}, n, ppc) where {T}
     ref = zero_fields(BE, T, grid)
     tb4 = TileBuffers(BE, T, grid, shape, stg, 4)
     deposit_tiles!(ref, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing)
-    function variant!(f, name)
-        a = zero_fields(BE, T, grid)
-        diff[name] = field_difference(f(a), ref)
+    function variant!(f, name; fold = false)                     # `fold`: the variant bins its particles in other cells at the seam
+        wanted(name) || return nothing
+        a = f(zero_fields(BE, T, grid))
+        diff[name] = fold ? field_difference(folded_host(a, grid), folded_host(ref, grid)) : field_difference(a, ref)
         time_[name] = ms(least(() -> f(J), BE; reps = REPS))
         return nothing
+    end
+    for (stp, name) in ((stg, "patch in registers, 5 × 6 × 6 per component"),
+                        (ntuple(_ -> PMC.Center(), 3), "patch in registers, nearest-node binning, 4 × 5 × 5 per component"))
+        wanted(name) || continue
+        near = stp !== stg
+        bytes = (near ? 100 : 180) * prod(n) * sizeof(T)
+        if bytes > MAX_GIB * 2^30
+            println("skipping $name: its patches would take $(round(bytes / 2^30; digits = 1)) GiB")
+            continue
+        end
+        sp = near ? half_cell_shifted(s, grid) : s
+        wsp = near ? PMC.Workspace(sp, grid) : ws
+        near && PMC.sort_by_cell!(sp, grid, wsp)
+        patch = patch3_buffer(BE, T, grid, shape, stp)
+        variant!(a -> deposit_patch3!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx), name; fold = near)
     end
     variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing), "tiles S = 4")
     BE isa CPU && variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing; launch = PMC.item_launcher),
                            "tiles S = 4, work-groups of one")
     for S in (1, 2, 8)
+        wanted("tiles S = $S") || continue
         bytes = 3 * (S + 5)^3 * prod(cld.(n, S)) * sizeof(T)
         if bytes > MAX_GIB * 2^30
             println("skipping tiles S = $S: its buffers would take $(round(bytes / 2^30; digits = 1)) GiB")
@@ -100,7 +124,7 @@ function measure(::Type{T}, n, ppc) where {T}
             variant!(a -> deposit_coloured!(a, s, MinFrame(), shape, stg, grid, seg..., sx, nothing, S; launch = PMC.item_launcher),
                      "coloured tiles S = $S, work-groups of one")
     end
-    if T <: AbstractFloat
+    if T <: AbstractFloat && wanted("atomics")
         wide = n1 <= 40_000_000
         wide || println("skipping the atomics in the 6-wide frame: $n1 particles")
         variant!(a -> deposit_atomic!(a, s, MinFrame(), shape, stg, grid, sx, nothing), "atomics 4 × 4 × 4, sorted particles")
@@ -137,7 +161,7 @@ function main()
     dir = run_dir("bench3d-$BACKEND_NAME", @__FILE__; prefix = "deposition", work_package = "deposition study",
                   backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                   params = Dict{String,Any}("cells" => collect(n), "ppc" => ppc, "elements" => collect(String, elements), "reps" => REPS,
-                                            "max_buffer_gib" => MAX_GIB),
+                                            "max_buffer_gib" => MAX_GIB, "only" => collect(String, ONLY)),
                   extra_inputs = [joinpath(@__DIR__, "proto.jl"), joinpath(@__DIR__, "common.jl")], extra)
     rows = Dict{String,Any}[]
     for e in elements
