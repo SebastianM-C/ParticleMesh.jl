@@ -29,6 +29,7 @@ struct Species{N,T,VI<:AbstractVector{Int32},VT<:AbstractVector{T},VS<:AbstractV
     count::VC
     q::T
     m::T
+    owns::Bool
 end
 
 """
@@ -50,15 +51,15 @@ end
 
 Adapt.@adapt_structure SpeciesArrays
 
-# A species holds its arrays in one of two ways (the field `data`): in a `Base.RefValue`, which
-# `sort_by_cell!` may point at another set of arrays of the same types (the species owns its
-# arrays: `Species(backend, T, capacity; ...)`), or as they are, fixed (a species over arrays that
-# belong to someone else, `Species(cell, offset, u, w, status, count, q, m, extras)`, and every
-# species on a device, where `Adapt` resolves the reference before a kernel launches).
-function Species(data::Union{SpeciesArrays{N,VI,VT,VS,X},Base.RefValue{SpeciesArrays{N,VI,VT,VS,X}}}, count::VC, q,
-                 m) where {N,VI,VT,VS,X,VC}
+# A species holds its arrays in a `Base.RefValue` on the host, which `sort_by_cell!` may point
+# at another set of arrays of the same types when the species owns them (`owns`: built by
+# `Species(backend, T, capacity; ...)`; not a species over arrays that belong to someone else,
+# `Species(cell, offset, u, w, status, count, q, m, extras)`), and as they are on a device, where
+# `Adapt` resolves the reference before a kernel launches. Both kinds have one host type.
+function Species(data::Union{SpeciesArrays{N,VI,VT,VS,X},Base.RefValue{SpeciesArrays{N,VI,VT,VS,X}}}, count::VC, q, m,
+                 owns::Bool) where {N,VI,VT,VS,X,VC}
     T = eltype(VT)
-    return Species{N,T,VI,VT,VS,VC,X,typeof(data)}(data, count, T(q), T(m))
+    return Species{N,T,VI,VT,VS,VC,X,typeof(data)}(data, count, T(q), T(m), owns)
 end
 
 """
@@ -69,25 +70,25 @@ these arrays (the copy-back form of [`sort_by_cell!`](@ref)) and never swaps the
 a view of arrays that belong elsewhere (an integrator's state, a saved state).
 """
 Species(cell::NTuple{N}, offset::NTuple{N}, u::NTuple{3}, w, status, count, q, m, extras::NamedTuple) where {N} =
-    Species(SpeciesArrays(cell, offset, u, w, status, extras), count, q, m)
+    Species(Ref(SpeciesArrays(cell, offset, u, w, status, extras)), count, q, m, false)
 
 @inline species_data(s::Species) = _data(getfield(s, :data))
 @inline _data(r::Base.RefValue) = r[]
 @inline _data(a::SpeciesArrays) = a
 
 "Whether `sort_by_cell!` may swap the species' arrays for a workspace's spare set: a species that owns them."
-owns_arrays(s::Species) = getfield(s, :data) isa Base.RefValue
+owns_arrays(s::Species) = getfield(s, :owns)
 
 # `s.cell`, `s.offset`, `s.u`, `s.w`, `s.status`, `s.extras` read the species' current arrays; on a
 # device the symbol is a constant and the lookup folds away.
 @inline function Base.getproperty(s::Species, f::Symbol)
-    (f === :count || f === :q || f === :m || f === :data) && return getfield(s, f)
+    (f === :count || f === :q || f === :m || f === :data || f === :owns) && return getfield(s, f)
     return getfield(species_data(s), f)
 end
 Base.propertynames(::Species) = (:cell, :offset, :u, :w, :status, :count, :q, :m, :extras)
 
 # The device form holds the arrays themselves (isbits for a kernel argument).
-Adapt.adapt_structure(to, s::Species) = Species(Adapt.adapt(to, species_data(s)), Adapt.adapt(to, s.count), s.q, s.m)
+Adapt.adapt_structure(to, s::Species) = Species(Adapt.adapt(to, species_data(s)), Adapt.adapt(to, s.count), s.q, s.m, s.owns)
 
 """
     Species(backend, T, capacity; q, m, N = 1, extras = NamedTuple())
@@ -107,7 +108,7 @@ function Species(backend, ::Type{T}, cap::Integer; q, m, N::Integer = 1, extras:
     status = KernelAbstractions.zeros(backend, UInt8, cap)
     count = KernelAbstractions.zeros(backend, Int32, 1)
     x = map(E -> KernelAbstractions.zeros(backend, E, cap), extras)
-    return Species(Ref(SpeciesArrays(cell, offset, u, zT(), status, x)), count, q, m)
+    return Species(Ref(SpeciesArrays(cell, offset, u, zT(), status, x)), count, q, m, true)
 end
 
 capacity(s::Species) = length(s.w)

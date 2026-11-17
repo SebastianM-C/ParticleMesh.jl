@@ -298,7 +298,7 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     copyto!(ws.seg_start, r.new_start)
     copyto!(ws.seg_stop, r.new_stop)
     permute_species!(s, ws, workgroupsize)
-    copyto!(r.sorted_count, s.count)
+    note_sorted!(r, s)                     # the arrays the species now holds (swapped, with `ws.spare`)
     r.resorts[] += 1
     return s
 end

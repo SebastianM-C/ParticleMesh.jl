@@ -5,12 +5,14 @@
 borrowed(s::Species) = Species(s.cell, s.offset, s.u, s.w, s.status, s.count, s.q, s.m, s.extras)
 
 """
-    swap_run(T, n; swap_full, swap_resort, steps, wgs, bins) -> Vector{Bool}
+    swap_run(T, n; swap_full, swap_resort, steps, wgs, bins) -> (Vector{Bool}, Int)
 
 `resort_run`'s rounds of moves, frees and appends on three copies of one species: `a` sorted by
 `sort_by_cell!` with a workspace without `swap` (the gather array by array with its copy back,
 the form before WP-041's swap), `b` by `sort_by_cell!` with `swap = swap_full` and `c` by
-`resort_by_cell!` with `swap = swap_resort`; per round whether all three hold the same bits.
+`resort_by_cell!` with `swap = swap_resort`; per round whether all three hold the same bits, and
+how many of `c`'s sorts started from the order of the last (all but the first, when the swapped
+arrays are recognised as those of the last sort).
 """
 function swap_run(::Type{T}, n::NTuple{N,Int}; swap_full = true, swap_resort = true, steps = 5, wgs = nothing, bins = CellBins(),
                   append = 23, seed = 2) where {T,N}
@@ -35,19 +37,23 @@ function swap_run(::Type{T}, n::NTuple{N,Int}; swap_full = true, swap_resort = t
         resort_by_cell!(c, grid, wc; workgroupsize = wgs)
         push!(same, same_sort(a, wa, b, wb) && same_sort(a, wa, c, wc))
     end
-    return same
+    return same, wc.resort.resorts[]
 end
 
 @testset "T-920 the gather into swapped spare arrays gives the bits of the gather with its copy back, every array, the permutation, the segments and the count, for sort_by_cell! and resort_by_cell! at N = 1, 2, 3 [A4, WP-041]" begin
     for T in TYPES, n in ((7,), (16, 12), (3, 4, 3)), wgs in WG_SIZES
-        @test all(swap_run(T, n; wgs))
+        same, resorts = swap_run(T, n; wgs)
+        @test all(same) && resorts == 5
     end
     for bins in (NodeBins(Quadratic, (Node(), Node())), NodeBins(Linear, (Center(), Node())))
-        @test all(swap_run(Float64, (16, 12); bins))
+        same, resorts = swap_run(Float64, (16, 12); bins)
+        @test all(same) && resorts == 5
     end
     # each sort form with and without swap against each other
-    @test all(swap_run(Float32, (16, 12); swap_full = false, swap_resort = true))
-    @test all(swap_run(Float32, (16, 12); swap_full = true, swap_resort = false))
+    for (swap_full, swap_resort) in ((false, true), (true, false))
+        same, resorts = swap_run(Float32, (16, 12); swap_full, swap_resort)
+        @test all(same) && resorts == 5
+    end
     # the permutation is Int32, read once per slot
     s = resort_species(Float32, (16, 12), 600, 500)
     @test eltype(Workspace(s, PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)).perm) === Int32
