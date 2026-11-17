@@ -58,7 +58,7 @@ argument's own type when it is a dual (a dual of `float` keeps the run in `float
 
 Float32 is enough for the objective and its ForwardDiff gradient: at λ₀/16, a₀ = 2.175 (WP-065's
 `trapped_energy`), J in Float32 is within 9·10⁻⁷ of Float64 and each of the five partials within
-1.6·10⁻⁵; at λ₀/8 to t = 190 within 1.6·10⁻⁵ (T-894). Float64 stays the default for the central
+1.6·10⁻⁵; at λ₀/8 to t = 190 within 1.6·10⁻⁵ (T-914). Float64 stays the default for the central
 differences that check the gradient: their steps reach 2⁻¹⁸ of a parameter, below Float32's
 resolution of it (2⁻²⁴), where the difference of two Float32 runs is roundoff.
 """
