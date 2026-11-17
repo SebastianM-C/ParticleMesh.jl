@@ -87,8 +87,13 @@ owns_arrays(s::Species) = getfield(s, :owns)
 end
 Base.propertynames(::Species) = (:cell, :offset, :u, :w, :status, :count, :q, :m, :extras)
 
-# The device form holds the arrays themselves (isbits for a kernel argument).
-Adapt.adapt_structure(to, s::Species) = Species(Adapt.adapt(to, species_data(s)), Adapt.adapt(to, s.count), s.q, s.m, s.owns)
+# Adapted for a kernel the arrays are isbits device arrays, and the species holds them as they are
+# (an isbits kernel argument); adapted to other storage (`adapt(CUDABackend(), s)`, `adapt(Array, s)`)
+# they stay in a reference of the new species', which a sort can swap as before. Decided by types.
+function Adapt.adapt_structure(to, s::Species)
+    a = Adapt.adapt(to, species_data(s))
+    return Species(isbitstype(typeof(a)) ? a : Ref(a), Adapt.adapt(to, s.count), s.q, s.m, s.owns)
+end
 
 """
     Species(backend, T, capacity; q, m, N = 1, extras = NamedTuple())

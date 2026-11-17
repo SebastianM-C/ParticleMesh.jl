@@ -80,6 +80,14 @@ end
     t = s
     sort_by_cell!(s, grid, ws)
     @test all(map(===, ParticleMeshCore.species_arrays(t), spare))
+    # adapted to storage (as `adapt(CUDABackend(), s)` moves a species to a device) it keeps a
+    # reference of its own and swaps; adapted for a kernel it holds the arrays themselves
+    c = ParticleMeshCore.Adapt.adapt(Array, s)
+    @test getfield(c, :data) isa Base.RefValue && getfield(c, :data) !== getfield(s, :data) && ParticleMeshCore.owns_arrays(c)
+    wc = Workspace(c, grid)
+    cs = ParticleMeshCore.flat_arrays(wc.spare[])
+    sort_by_cell!(c, grid, wc)
+    @test all(map(===, ParticleMeshCore.species_arrays(c), cs))
     # the scratch counts the spare set
     @test ParticleMeshCore.scratch_bytes(ws) - ParticleMeshCore.scratch_bytes(Workspace(s, grid; swap = false)) ==
           sum(sizeof, ParticleMeshCore.species_arrays(s))
