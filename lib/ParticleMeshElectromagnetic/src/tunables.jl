@@ -3,6 +3,7 @@
 # back. Host code on host objects: nothing here reaches a kernel.
 
 const LASER_TUNABLES = (:a0, :waist, :duration, :delay, :focus, :chirp, :polarization, :phase)
+const SHAPED_TUNABLES = (:a0, :delay, :focus, :polarization, :phase)
 const SPECIES_TUNABLES = (:density, :amplitude, :drift_x, :drift_y, :drift_z, :thermal_x, :thermal_y, :thermal_z)
 const PROFILE_TUNABLES = (:vacuum, :ramp)
 const WITNESS_TUNABLES = (:momentum_x, :momentum_y, :momentum_z, :center_x, :center_y, :length, :width)
@@ -20,6 +21,9 @@ section_values(s::DopantSection) = (s.start, s.stop, s.ramp)
 level_values(levels::Tuple) = foldl((xs, l) -> (xs..., values(level_numbers(l))...), levels; init = ())
 
 part_names(::GaussianLaser) = LASER_TUNABLES
+# A shaped laser's: its own five, then its profile's and its envelope's (PulseShapes.parameter_names).
+part_values(l::ShapedLaser) = (l.a0, l.delay, l.focus, l.polarization, l.phase, parameter_values(l.profile)..., parameter_values(l.envelope)...)
+part_names(l::ShapedLaser) = (SHAPED_TUNABLES..., parameter_names(l.profile)..., parameter_names(l.envelope)...)
 part_names(::Union{SpeciesDescription,SpeciesParams}) = SPECIES_TUNABLES
 part_names(::DensityRamp) = PROFILE_TUNABLES
 part_names(::Union{WitnessBunch,WitnessParams}) = WITNESS_TUNABLES
@@ -43,7 +47,10 @@ end
     tunable_names(p::Union{EMProblem,EMParams}) -> Vector{Symbol}
 
 The names of the entries of [`tunables`](@ref)`(p)`, in its order: for the `i`-th laser
-`laser<i>_a0`, `_waist`, `_duration`, `_delay`, `_focus`, `_chirp`, `_polarization` and `_phase`;
+`laser<i>_a0`, `_waist`, `_duration`, `_delay`, `_focus`, `_chirp`, `_polarization` and `_phase`
+for a [`GaussianLaser`](@ref), and for a [`ShapedLaser`](@ref) `laser<i>_a0`, `_delay`, `_focus`,
+`_polarization`, `_phase`, then its profile's and its envelope's names
+([`PulseShapes.parameter_names`](@ref): `laser<i>_na`, `_aberration1`, …, `_duration`, `_gdd`, …);
 for the `i`-th mobile species `species<i>_density`, `_amplitude`, `_drift_x`, `_drift_y`,
 `_drift_z`, `_thermal_x`, `_thermal_y` and `_thermal_z`; with a density profile `profile_vacuum`
 and `profile_ramp`; with a witness bunch `witness_momentum_x`, `_momentum_y`, `_momentum_z`,
@@ -176,6 +183,13 @@ end
 function with_part(::Type{S}, l::GaussianLaser{<:Any,P,E}, v, i) where {S,P,E}
     x = take_next!(v, i, length(LASER_TUNABLES))
     return GaussianLaser{S,P,E}(x..., l.position, l.center, l.envelope)
+end
+function with_part(::Type{S}, l::ShapedLaser{<:Any,P}, v, i) where {S,P}
+    x = take_next!(v, i, length(part_names(l)))
+    nb = length(parameter_values(l.profile))
+    b = with_parameter_values(l.profile, x[6:(5 + nb)])
+    e = with_parameter_values(l.envelope, x[(6 + nb):end])
+    return shaped_laser(S, P, x[1:5], b, e, l.position, l.center)
 end
 function with_part(::Type{S}, d::SpeciesDescription, v, i) where {S}
     x = take_next!(v, i, length(SPECIES_TUNABLES))

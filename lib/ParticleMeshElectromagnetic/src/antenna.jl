@@ -123,6 +123,11 @@ function laser_energy(l::GaussianLaser{<:Any,<:Any,WavefrontTime})
     return π * l.a0^2 * l.waist * l.duration / 4 * (1 + cos(2 * l.polarization) * ky2 / 2)
 end
 
+# When the pulse is over at its plane, for the checks that it starts in vacuum or that a moving
+# window may pass the plane: six durations after the delay, the envelope below Float64 roundoff.
+pulse_duration(l::GaussianLaser) = l.duration
+pulse_end(l::GaussianLaser) = l.delay + 6 * l.duration
+
 """
     laser_field(laser, ξ, dy, s) -> (e, bp, bs)
 
@@ -245,21 +250,23 @@ end
 
 # A laser of the parameters belongs on the plane the state built for it: within half a cell of the
 # plane's column, up to the rounding of the position's conversion to the element type.
-function check_plane(a::AntennaPlane{T}, l::GaussianLaser) where {T}
+function check_plane(a::AntennaPlane{T}, l) where {T}
     c = l.position / a.dx[1]
     abs(c - (a.ia - 1)) <= one(T) / 2 + 8 * eps(T) * max(one(T), abs(c)) ||
         throw(ArgumentError("laser position $(l.position) is not on the state's antenna plane (column $(a.ia), x = $(a.xa)): the plane's column is fixed when the state is built, so a laser placed elsewhere needs a new state (A3: the position is not a differentiable parameter)"))
+    check_profile(a, l)
     return nothing
 end
+check_profile(::AntennaPlane, ::GaussianLaser) = nothing
 
 """
     Antenna{L,T}
 
-A [`GaussianLaser`](@ref) on an [`AntennaPlane`](@ref), isbits for the device: the laser and the
+A laser ([`GaussianLaser`](@ref) or [`ShapedLaser`](@ref)) on an [`AntennaPlane`](@ref), isbits for the device: the laser and the
 plane's fields (`ia`, `xa`, `dx`, `g`, `n2`, `ly`, `hx`, `ht`). The step makes it from the
 parameters' laser and the state's plane, `Antenna(laser, plane)`.
 
-    Antenna(laser::GaussianLaser, grid::PeriodicGrid{2}, dt)
+    Antenna(laser, grid::PeriodicGrid{2}, dt)
 
 places `laser`, converted to the type of `dt`, on its own plane `AntennaPlane(laser.position, grid, dt)`.
 """
@@ -275,8 +282,8 @@ struct Antenna{L,T}
     ht::T
 end
 
-Antenna(l::GaussianLaser, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht)
-Antenna(l::GaussianLaser, grid::PeriodicGrid{2}, dt::T) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt))
+Antenna(l, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht)
+Antenna(l, grid::PeriodicGrid{2}, dt::T) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt))
 
 convert_laser(::Type{T}, l::GaussianLaser) where {T} =
     GaussianLaser{T,T,typeof(l.envelope)}(T(l.a0), T(l.waist), T(l.duration), T(l.delay), T(l.focus), T(l.chirp), T(l.polarization),
@@ -339,20 +346,24 @@ function antenna_b!(as::Tuple, f, h, t, wgs)
     for a in as
         active(a) || continue
         T = eltype(f.Bz)
-        launcher(antenna_b_kernel!, get_backend(f.Bz), wgs)(f.By, f.Bz, a, T(h) / a.dx[1], T(t); ndrange = size(f.Bz, 2))
+        b_source!(a, f, T(h) / a.dx[1], T(t), wgs)
     end
     return nothing
 end
+b_source!(a::Antenna{<:GaussianLaser}, f, c, t, wgs) =
+    launcher(antenna_b_kernel!, get_backend(f.Bz), wgs)(f.By, f.Bz, a, c, t; ndrange = size(f.Bz, 2))
 
 antenna_e!(::Tuple{}, f, dt, t, wgs) = nothing
 function antenna_e!(as::Tuple, f, dt, t, wgs)
     for a in as
         active(a) || continue
         T = eltype(f.Ey)
-        launcher(antenna_e_kernel!, get_backend(f.Ey), wgs)(f.Ey, f.Ez, a, T(dt) / a.dx[1], T(t); ndrange = size(f.Ey, 2))
+        e_source!(a, f, T(dt) / a.dx[1], T(t), wgs)
     end
     return nothing
 end
+e_source!(a::Antenna{<:GaussianLaser}, f, c, t, wgs) =
+    launcher(antenna_e_kernel!, get_backend(f.Ey), wgs)(f.Ey, f.Ez, a, c, t; ndrange = size(f.Ey, 2))
 
 """
     AntennaPlanes(planes, clock)
