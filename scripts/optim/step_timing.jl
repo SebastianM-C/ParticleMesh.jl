@@ -2,7 +2,7 @@
 # step, per element type, and the 2D Reference flux deposition's two kernels on the run's last
 # state (WP-061, #442).
 #
-#   julia +1.13 -t 4 --project=scripts scripts/optim/step_timing.jl [cpu|cuda] [fast] [resort]
+#   julia +1.13 -t 4 --project=scripts scripts/optim/step_timing.jl [cpu|cuda] [fast] [resort] [cells]
 #
 # The phases are those of the module's `step!`, which `timed_step!` repeats with a timer around
 # each (on a device the timer waits for the phase, `KernelAbstractions.synchronize`); a test of the
@@ -11,7 +11,8 @@
 # second run is timed, so that no compilation is in the numbers (the moving window's kernels first
 # run at the first shift). `fast` adds the Fast mode for the plain element types; `resort` runs
 # the step with the sort from the last order (`EMNumerics(; resort = true)`) instead of the full
-# sort of every step.
+# sort of every step; `cells` sorts and deposits by cells (`EMNumerics(; node_bins = false)`)
+# instead of the default nearest-node bins.
 #
 # To compare trees, run the script in each of them (copy this file into the other tree if it is
 # not there: each run's manifest records its tree's commit and the hashes of its inputs), then
@@ -127,14 +128,19 @@ function deposition_kernels(st)
     wgs = numerics.workgroupsize
     sx = map(h -> h / st.dt, cellsize(grid))
     n = Int32.(ncells(grid))
-    M = PMC.flux_widths(shape, stg)
-    r = map(x -> PMC.flux_reach(shape, x), stg)
-    lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
+    binned = isdefined(PMC, :CellBins)                 # a tree whose workspace sorts by bins (the frame is an argument)
+    widths(ws) = binned ? PMC.flux_widths(shape, stg, ws.bins) : PMC.flux_widths(shape, stg)
+    function reach(ws)
+        r = binned ? (PMC.flux_bin_reach(ws.bins, shape, stg[1], 1), PMC.flux_bin_reach(ws.bins, shape, stg[2], 2)) :
+            map(x -> PMC.flux_reach(shape, x), stg)
+        return (r[1][1], r[2][1]), (r[1][2], r[2][2])
+    end
+    frame(ws) = binned ? (ws.bins isa PMC.CellBins ? (PMC.CellFrame(),) : (PMC.BinFrame(ws.bins),)) : ()
     layouts = isdefined(PMC, :flux_patch_layout)      # the kernels' arguments differ between the trees this script compares
-    patch_args(ws) = layouts ? (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, ws.flux_layout, Val(prod(M))) :
-                     (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, Val(prod(M)))
-    reduce_args(ws) = layouts ? (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), lo, hi, Int32.(M)) :
-                      (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, n, Int32(guards(grid)), lo, hi, Int32.(M))
+    patch_args(ws) = layouts ? (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, frame(ws)..., n, sx, qz, ws.flux_layout, Val(prod(widths(ws)))) :
+                     (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, Val(prod(widths(ws))))
+    reduce_args(ws) = layouts ? (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), reach(ws)..., Int32.(widths(ws))) :
+                      (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, n, Int32(guards(grid)), reach(ws)..., Int32.(widths(ws)))
     patch_launch = isdefined(PMC, :item_launcher) ? PMC.item_launcher : PMC.launcher
     function three(ws)
         whole = least() do
@@ -153,7 +159,8 @@ function deposition_kernels(st)
     if layouts
         out["by_layout"] = Dict{String,Any}()
         for layout in (PMC.StencilMajor(), PMC.CellMajor())
-            ws2 = Workspace(s, grid; flux = (shape, stg), flux_layout = layout)
+            ws2 = binned ? Workspace(s, grid; flux = (shape, stg), flux_layout = layout, bins = ws.bins) :
+                  Workspace(s, grid; flux = (shape, stg), flux_layout = layout)
             sort_by_cell!(s, grid, ws2; workgroupsize = wgs)
             out["by_layout"][string(nameof(typeof(layout)))] = three(ws2)
         end
@@ -167,7 +174,7 @@ const WORKGROUPS = (nothing, 1, 8, 64, 512)
 "One element type and mode: the phases of the second of two runs, the plain `run!` time, the deposition's kernels."
 function measure(label, (duration, focus), mode; resort = false)
     prob = wake_problem(duration, focus)
-    numerics = EMNumerics(; mode, resort)
+    numerics = EMNumerics(; mode, resort, node_bins = !("cells" in ARGS))
     p = params(prob)
     times = Dict{Symbol,Float64}()
     local st, total
@@ -191,7 +198,7 @@ function measure(label, (duration, focus), mode; resort = false)
     plain = (time_ns() - t0) / 1e9
     row = Dict{String,Any}("T" => label, "mode" => string(nameof(typeof(mode))), "steps" => prob.nsteps, "total" => total, "run" => plain,
                            "alive" => alive_count(st.species[1]), "capacity" => capacity(st.species[1]),
-                           "shifts" => PME.window_shifts(st, prob.nsteps),
+                           "shifts" => PME.window_shifts(st, prob.nsteps), "node_bins" => numerics.node_bins,
                            "phases" => Dict{String,Any}(string(ph) => times[ph] for ph in PHASES))
     PME.deposit_mode(st, st.species[1]) isa Reference && (row["kernels"] = deposition_kernels(st))
     return row

@@ -387,8 +387,10 @@ function IonizationFrame(problem::EMProblem{2,T}, grid, backend, numerics, windo
     atoms = Species(backend, T, natoms; q = one(T), m = one(T), N = 2, extras = atom_extras(T, L))
     electrons = Species(backend, T, d.capacity; q = -one(T), m = one(T), N = 2, extras = flux_extras(T, 2))
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
-    # a birth step adds one electron slot per atom slot behind the electrons' count
-    return IonizationFrame(atoms, Workspace(atoms, grid), electrons, Workspace(electrons, grid; flux, append = sort_append(numerics, natoms)), d.every, row0, nrows, ncols, ppc,
+    # a birth step adds one electron slot per atom slot behind the electrons' count; the atoms keep
+    # cells, since the shift refills a column's atoms in the slots of the back column's
+    ews = Workspace(electrons, grid; flux, append = sort_append(numerics, natoms), bins = sort_bins(numerics, Val(2)))
+    return IonizationFrame(atoms, Workspace(atoms, grid), electrons, ews, d.every, row0, nrows, ncols, ppc,
                            KernelAbstractions.zeros(backend, Int32, 1), KernelAbstractions.zeros(backend, Int32, natoms))
 end
 

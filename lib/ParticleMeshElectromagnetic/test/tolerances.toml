@@ -829,3 +829,10 @@ measured_floor_energy = { a0 = 5.48e-10, suppression = 9.42e-11 }
 measured_dual = { charge = 8.54e-7, energy = 9.52e-7 }
 measured_dual_primal = { charge = 2.08e-7, energy = 9.45e-7 }
 status = "proposed; T-778's and T-779's bounds"
+
+["T-865"]
+quantity = "per field array, max |on − off| after ion_window's 150 Reference steps with EMNumerics(; node_bins) on and off (58 window shifts, ionization births), the largest over the arrays"
+scale = "eps(T)·max|off| of the array; the bins change only the order in which a node's contributions are added, and the run carries that roundoff for 150 steps"
+C = 64
+measured = { Float32 = 37.7, Float64 = 30.7, "Dual{Float32,3}" = 37.7 }
+status = "proposed; the largest gap is in Ex, the wake, and grows with the steps (20.9 and 33.3 eps at 80 steps for Float32 and Float64); Dual{Float32,3}'s values are Float32's bit for bit"

@@ -77,11 +77,11 @@ mode needs it or `sort_between` asks for it, ρ at the new positions and the flu
 unfolded fields and the grid, as host arrays; the engine calls run on `be`.
 """
 function continuity_case(::Type{T}, mode, shape, stagger; n = 10, np = 400, seed = 3, dt = basetype(T)(1 // 4),
-                         sort_between = true, workgroupsize = nothing, dead = (40, 41, 300), be = CPU()) where {T}
+                         sort_between = true, workgroupsize = nothing, dead = (40, 41, 300), be = CPU(), bins = CellBins()) where {T}
     grid = PeriodicGrid(n, basetype(T)(1 // 2), flux_guard_width(shape, stagger))
     s = moved_species(T, grid, np; seed, dead)
     ρold = charge(Reference(), at_old_positions(s), shape, stagger, grid; be)
-    ws = Workspace(s, grid)
+    ws = Workspace(s, grid; bins)
     (sort_between || effective_mode(mode, T) isa Reference) && on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     ρnew = on(be, deposit!, mode, field(backend, T, grid), s, shape, stagger, grid, ws)
     Jx, Jy, Jz = field(backend, T, grid), field(backend, T, grid), field(backend, T, grid)

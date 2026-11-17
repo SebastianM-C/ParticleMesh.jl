@@ -1,11 +1,15 @@
 """
-    Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend), append = nothing)
+    Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend), append = nothing,
+              bins = CellBins())
 
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
 arrays (`Int32`, `T`, `UInt8`), the buffers of the species' extras, and the per-cell segment
 bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the `Reference` deposition reads,
-one entry per linear cell (`prod(n)` of them; an empty cell has `seg_start = 1`, `seg_stop = 0`).
+one entry per linear bin (`prod(n)` of them; an empty bin has `seg_start = 1`, `seg_stop = 0`).
+The bins are `bins`: the cells (`CellBins()`, the default) or the first nodes of the particles'
+stencils (`NodeBins(shape, stagger)`, WP-041), which the sort, `resort_by_cell!` and the
+`Reference()` deposits all use.
 
 `tmp_extras` holds one permutation buffer per extra, in the extras' order: the core buffer of
 the same element type where there is one (so `Int32`- and `T`-valued extras cost no scratch),
@@ -18,13 +22,14 @@ particles added behind its count; without it `resort` is `nothing` and costs not
 
 `flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
 deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
-cell, `M_d` the flux stencil width of axis `d` (5 or 6 at order 2), in the array `flux_patch`,
+bin, `M_d` the flux stencil width of axis `d` in the bin's frame (`flux_bin_reach`; 5 or 6 at
+order 2 by cell, 5 at order 2 on nodes by `NodeBins` of that shape and stagger), in the array `flux_patch`,
 stored in the order `flux_layout`: `StencilMajor()`, `3·M₁·M₂ × prod(n)` with one column per
 cell, or `CellMajor()`, `prod(n) × 3·M₁·M₂`; the default is the backend's
 (`flux_patch_layout`). Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no
 flux scratch.
 """
-struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS}
+struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS,B}
     key::VK
     perm::VP
     ak::AW
@@ -38,10 +43,11 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS}
     flux::FS
     flux_layout::FL
     resort::RS
+    bins::B
 end
 
 function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
-                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing) where {N,T}
+                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins()) where {N,T}
     flux === nothing || N == 2 ||
         throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
     backend = get_backend(s)
@@ -56,10 +62,13 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
     n = prod(grid.n)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
-    patch_size = flux === nothing ? (0, 0) : flux_patch_size(flux_layout, flux_patch_values(flux...), n)
+    bins isa CellBins || bins isa NodeBins && length(bins.stagger) == N ||
+        throw(ArgumentError("bins: CellBins() or NodeBins(shape, stagger) with one stagger per axis (N = $N), got $bins"))
+    patch_size = flux === nothing ? (0, 0) : flux_patch_size(flux_layout, flux_patch_values(flux..., bins), n)
     flux_patch = KernelAbstractions.zeros(backend, T, patch_size...)
     resort = append === nothing ? nothing : ResortScratch(s, n, append)
-    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux, flux_layout, resort)
+    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux, flux_layout, resort,
+                     bins)
 end
 
 # One buffer per extra: the first of `pool` with the extra's element type, else a new one,
@@ -98,10 +107,10 @@ end
 
 # Total order: alive particles by (cell, slot), free slots after all of them by slot. Keys are
 # unique, so every correct sort gives the same permutation on every backend and thread count.
-@kernel function sort_key_kernel!(key, cell, status, n::Int64, cap::Int64)
+@kernel function sort_key_kernel!(key, s, bins, n::Int64, cap::Int64)
     i = @index(Global, Linear)
     @inbounds begin
-        c = ifelse(status[i] == ALIVE, Int64(cell[i]) - 1, n)
+        c = ifelse(s.status[i] == ALIVE, Int64(particle_bin(bins, s, i, (Int32(n),))[1]) - 1, n)
         key[i] = c * cap + (i - 1)
     end
 end
@@ -135,15 +144,17 @@ end
     end
 end
 
-@kernel function segments_kernel!(seg_start, seg_stop, count, @Const(cell), @Const(status), cap::Int32)
+@kernel function segments_kernel!(seg_start, seg_stop, count, s, bins, n::Int32, cap::Int32)
     i32 = Int32(@index(Global, Linear))
+    status = s.status
+    bin(i) = particle_bin(bins, s, i, (n,))[1]
     @inbounds if status[i32] == ALIVE
-        c = cell[i32]
+        c = bin(i32)
         last_alive = i32 == cap || status[i32 + Int32(1)] != ALIVE
-        if i32 == Int32(1) || cell[i32 - Int32(1)] != c
+        if i32 == Int32(1) || bin(i32 - Int32(1)) != c
             seg_start[c] = i32
         end
-        if last_alive || cell[i32 + Int32(1)] != c
+        if last_alive || bin(i32 + Int32(1)) != c
             seg_stop[c] = i32
         end
         last_alive && (count[1] = i32)
@@ -223,11 +234,11 @@ function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; work
     backend = get_backend(s)
     cap = capacity(s)
     n = ncells(grid)
-    launcher(sort_key_kernel!, backend, workgroupsize)(ws.key, s.cell[1], s.status, Int64(n), Int64(cap); ndrange = cap)
+    launcher(sort_key_kernel!, backend, workgroupsize)(ws.key, s, ws.bins, Int64(n), Int64(cap); ndrange = cap)
     sort_keys!(ws, cap, backend, workgroupsize)
     permute_species!(s, ws, workgroupsize)
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = n)
-    launcher(segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell[1], s.status,
+    launcher(segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s, ws.bins, Int32(n),
                                                        Int32(cap); ndrange = cap)
     note_sorted!(ws.resort, s)
     return s
@@ -235,24 +246,26 @@ end
 
 # N axes: the key is `(linear cell - 1)·capacity + slot - 1`, free slots `prod(n)·capacity + slot - 1`,
 # with the column-major linear cell of `linear_cell`; unique, so the permutation is fixed (A4).
-@kernel function sort_key_nd_kernel!(key, cell, @Const(status), n, ncell::Int64, cap::Int64)
+@kernel function sort_key_nd_kernel!(key, s, bins, n, ncell::Int64, cap::Int64)
     i = @index(Global, Linear)
     @inbounds begin
-        L = linear_cell(map(c -> Int64(c[i]), cell), n)
-        c = ifelse(status[i] == ALIVE, L - 1, ncell)
+        L = linear_cell(map(Int64, particle_bin(bins, s, i, map(Int32, n))), n)
+        c = ifelse(s.status[i] == ALIVE, L - 1, ncell)
         key[i] = c * cap + (i - 1)
     end
 end
 
-@kernel function segments_nd_kernel!(seg_start, seg_stop, count, cell, @Const(status), n, cap::Int32)
+@kernel function segments_nd_kernel!(seg_start, seg_stop, count, s, bins, n, cap::Int32)
     i32 = Int32(@index(Global, Linear))
+    status = s.status
+    bin(i) = linear_cell(particle_bin(bins, s, i, n), n)
     @inbounds if status[i32] == ALIVE
-        c = linear_cell(map(a -> a[i32], cell), n)
+        c = bin(i32)
         last_alive = i32 == cap || status[i32 + Int32(1)] != ALIVE
-        if i32 == Int32(1) || linear_cell(map(a -> a[i32 - Int32(1)], cell), n) != c
+        if i32 == Int32(1) || bin(i32 - Int32(1)) != c
             seg_start[c] = i32
         end
-        if last_alive || linear_cell(map(a -> a[i32 + Int32(1)], cell), n) != c
+        if last_alive || bin(i32 + Int32(1)) != c
             seg_stop[c] = i32
         end
         last_alive && (count[1] = i32)
@@ -266,12 +279,12 @@ function sort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; work
     ncell = prod(grid.n)
     ncell <= typemax(Int32) || throw(ArgumentError("$ncell cells exceed the Int32 segment index"))
     (Int128(ncell) + 1) * cap <= typemax(Int64) || throw(ArgumentError("sort key overflows Int64: $ncell cells × capacity $cap"))
-    launcher(sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(ncell), Int64(cap);
+    launcher(sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s, ws.bins, Int64.(grid.n), Int64(ncell), Int64(cap);
                                                           ndrange = cap)
     sort_keys!(ws, cap, backend, workgroupsize)
     permute_species!(s, ws, workgroupsize)
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = ncell)
-    launcher(segments_nd_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell, s.status,
+    launcher(segments_nd_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s, ws.bins,
                                                           Int32.(grid.n), Int32(cap); ndrange = cap)
     note_sorted!(ws.resort, s)
     return s

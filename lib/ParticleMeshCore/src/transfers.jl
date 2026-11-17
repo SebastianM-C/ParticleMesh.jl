@@ -93,18 +93,20 @@ end
     return ifelse(inrange, w[clamp(d, Int32(0), Int32(M - 1)) + Int32(1)], zero(T))
 end
 
-# One work item per node (guards included): the cells whose stencil reaches the node, in
-# increasing order, and within a cell its particles in sorted (slot) order. No scratch.
-@kernel function deposit_sorted_kernel!(ρ, s, quantity, @Const(seg_start), @Const(seg_stop), shape, stagger,
+# One work item per node (guards included): the bins whose stencil reaches the node (the cells,
+# for `CellBins()`), in increasing order, and within a bin its particles in sorted (slot) order,
+# each at its cell unwrapped from the bin (`b - h`). No scratch.
+@kernel function deposit_sorted_kernel!(ρ, s, quantity, @Const(seg_start), @Const(seg_stop), shape, stagger, bins,
                                         n::Int32, g::Int32, lo::Int32, hi::Int32)
     a = Int32(@index(Global, Linear))
     T = eltype(ρ)
     j = a - g                                   # node index, 1-g:n+g
     acc = zero(T)
-    @inbounds for c in max(Int32(1), j - hi):min(n, j - lo)
-        for i in seg_start[c]:seg_stop[c]
-            f, w = shape_weights(shape, stagger, s.offset[1][i])
-            acc += quantity(s, i) * pick(w, j - c - f)
+    @inbounds for b in max(Int32(1), j - hi):min(n, j - lo)
+        for i in seg_start[b]:seg_stop[b]
+            δ = s.offset[1][i]
+            f, w = shape_weights(shape, stagger, δ)
+            acc += quantity(s, i) * pick(w, j - (b - bin_shift(bins, 1, δ)) - f)
         end
     end
     @inbounds ρ[a] += acc
@@ -143,12 +145,23 @@ function _deposit!(::Fast, ρ, s, quantity, shape, stagger, grid, ws, workgroups
     return ρ
 end
 
+# A node-centric deposit drops what lands past the guards: the reach of the workspace's bins must
+# fit them (it does for the cells and for bins of the deposit's own shape and stagger, with the
+# shape's `guard_width`).
+function check_deposit_guards(grid, reach)
+    gw = maximum(r -> max(-r[1], r[2]), reach)
+    guards(grid) >= gw ||
+        throw(ArgumentError("the Reference() deposit! with these bins needs $gw guard cells, the grid has $(guards(grid))"))
+    return nothing
+end
+
 function _deposit!(::Reference, ρ, s, quantity, shape, stagger, grid, ws, workgroupsize)
     check_workspace(ws, s, grid)
-    lo, hi = stencil_reach(shape, stagger)
+    lo, hi = deposit_reach(ws.bins, shape, stagger, 1)
+    ws.bins isa CellBins || check_deposit_guards(grid, ((lo, hi),))
     launcher(deposit_sorted_kernel!, get_backend(s), workgroupsize)(ρ, s, quantity, ws.seg_start, ws.seg_stop, shape,
-                                                                   stagger, Int32(ncells(grid)), Int32(guards(grid)),
-                                                                   Int32(lo), Int32(hi); ndrange = length(ρ))
+                                                                   stagger, ws.bins, Int32(ncells(grid)), Int32(guards(grid)),
+                                                                   lo, hi; ndrange = length(ρ))
     return ρ
 end
 
@@ -213,21 +226,23 @@ end
     end
 end
 
-# One work item per node (guards included): the cells of the node's stencil in increasing linear
-# index (the CartesianIndices of their per-axis ranges, axis 1 fastest), within a cell its
-# particles in sorted (slot) order. No scratch.
+# One work item per node (guards included): the bins of the node's stencil (the cells, for
+# `CellBins()`) in increasing linear index (the CartesianIndices of their per-axis ranges, axis 1
+# fastest), within a bin its particles in sorted (slot) order. No scratch.
 @kernel function deposit_sorted_nd_kernel!(ρ, s, quantity, @Const(seg_start), @Const(seg_stop), shape,
-                                           stagger::NTuple{N,Stagger}, n::NTuple{N,Int32}, g::Int32,
+                                           stagger::NTuple{N,Stagger}, bins, n::NTuple{N,Int32}, g::Int32,
                                            lo::NTuple{N,Int32}, hi::NTuple{N,Int32}) where {N}
     I = @index(Global, Cartesian)
     T = eltype(ρ)
     j = ntuple(d -> Int32(I[d]) - g, Val(N))                   # node index per axis, 1-g:n+g
     acc = zero(T)
     @inbounds for C in CartesianIndices(ntuple(d -> max(Int32(1), j[d] - hi[d]):min(n[d], j[d] - lo[d]), Val(N)))
-        c = ntuple(d -> Int32(C[d]), Val(N))
-        L = linear_cell(c, n)
+        b = ntuple(d -> Int32(C[d]), Val(N))
+        L = linear_cell(b, n)
         for i in seg_start[L]:seg_stop[L]
-            fw = shape_weights(shape, stagger, particle_offset(s, i, Val(N)))
+            δ = particle_offset(s, i, Val(N))
+            fw = shape_weights(shape, stagger, δ)
+            c = ntuple(d -> b[d] - bin_shift(bins, d, δ[d]), Val(N))    # the particle's cell, unwrapped from its bin
             acc += quantity(s, i) * tensor_pick(fw, j, c)
         end
     end
@@ -248,10 +263,11 @@ end
 
 function _deposit_nd!(::Reference, ρ, s, quantity, shape, stagger, grid::PeriodicGrid{N}, ws, workgroupsize) where {N}
     check_workspace(ws, s, grid)
-    r = stencil_reach(shape, stagger)
-    lo = ntuple(d -> Int32(r[d][1]), Val(N))
-    hi = ntuple(d -> Int32(r[d][2]), Val(N))
-    launcher(deposit_sorted_nd_kernel!, get_backend(s), workgroupsize)(ρ, s, quantity, ws.seg_start, ws.seg_stop, shape, stagger,
+    r = ntuple(d -> deposit_reach(ws.bins, shape, stagger[d], d), Val(N))
+    lo = ntuple(d -> r[d][1], Val(N))
+    hi = ntuple(d -> r[d][2], Val(N))
+    ws.bins isa CellBins || check_deposit_guards(grid, r)
+    launcher(deposit_sorted_nd_kernel!, get_backend(s), workgroupsize)(ρ, s, quantity, ws.seg_start, ws.seg_stop, shape, stagger, ws.bins,
                                                                       Int32.(grid.n), Int32(guards(grid)), lo, hi; ndrange = size(ρ))
     return ρ
 end

@@ -356,3 +356,13 @@ C = 8
 measured = { Float32 = 0.686, Float64 = 0.722, "Dual{Float32,3}" = 0.827 }
 status = "proposed"
 
+
+# WP-041: the deposits by nearest-node bins (T-860, T-864).
+
+["T-860"]
+quantity = "discrete continuity of the Reference deposits by NodeBins of the deposit's shape and stagger (as T-110, T-300); per node of the folded fields, |by bins − by cells| of ρ, Jx, Jy, Jz"
+scale = "eps·max|ρ|/Δt (T-110, T-300); per node the sum over the particles reaching it of their |contribution| (T-113's flux_abs, T-302's flux_abs_2d, folded), eps·max|ρ| for ρ"
+C = 8
+C_cells = 16
+measured = { Float32 = 1.63, Float64 = 2.16, "Dual{Float32,3}" = 1.92, cells = { Float32 = 1.59, Float64 = 1.59, "Dual{Float32,3}" = 2.00 }, "1d" = { Float32 = 2.96, Float64 = 3.83, "Dual{Float32,3}" = 3.21 }, "1d_cells" = { Float32 = 2.14, Float64 = 2.86, "Dual{Float32,3}" = 2.50 }, "T-864_Float64" = 1.67 }
+status = "proposed"
