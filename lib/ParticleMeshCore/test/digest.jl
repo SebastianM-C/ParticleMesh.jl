@@ -15,3 +15,7 @@ function fnv_digest(arrays::AbstractArray...)
     end
     return h
 end
+
+# The permutation as the digests were recorded, as `Int` (WP-041 made `ws.perm` `Int32`; its
+# values are unchanged, so the recorded digests of the sort hold).
+perm_digest(ws) = Int.(ws.perm)

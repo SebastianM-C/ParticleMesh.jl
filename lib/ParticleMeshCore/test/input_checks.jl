@@ -161,5 +161,5 @@ end
     @test ws.perm == perm
     @test same_bits(deposit!(Fast(), field(backend, D3, grid), s, Quadratic, Center(), grid, ws), ρ)
     @test ws.perm == 1:capacity(s)
-    @test all(same_bits(getfield(s, f)[d], getfield(before, f)[d]) for f in (:cell, :offset, :u) for d in eachindex(getfield(s, f)))
+    @test all(same_bits(getproperty(s, f)[d], getproperty(before, f)[d]) for f in (:cell, :offset, :u) for d in eachindex(getproperty(s, f)))
 end

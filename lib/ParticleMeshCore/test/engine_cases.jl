@@ -259,7 +259,7 @@ function thread_digests(be = CPU(); wgs = WG_SIZES)
             push!(lines, "scan|$(type_label(T))|n=$n|$wg|$(fnv_digest(out))")
         end
         s, ws, _ = sorted_extras(T; workgroupsize = wg, be)
-        push!(lines, "sort|$(type_label(T))|extras|$wg|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
+        push!(lines, "sort|$(type_label(T))|extras|$wg|$(fnv_digest(species_arrays(s)..., perm_digest(ws), ws.seg_start, ws.seg_stop))")
         push!(lines, "sortmatch|$(type_label(T))|extras|$wg|$(extras_match(s, ws))")
         for shape in SHAPES, stagger in STAGGERS, (qlabel, quantity, uy) in (("qw", ChargeWeight(), false), ("qwuy", ChargeUy(), true))
             ρ = deposit_case(T, Reference(), shape, stagger; quantity, uy, workgroupsize = wg, be)
