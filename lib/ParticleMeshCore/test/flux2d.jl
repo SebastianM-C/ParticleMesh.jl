@@ -55,8 +55,9 @@ end
 
 @testset "T-301 the out-of-plane weights; the 1D transverse average [A2, WP-020]" begin
     C = tolC("T-301")
-    # A particle moving only in z deposits Jz = quantity × its tensor-product weights, exactly,
-    # and no Jx, Jy; one particle per run, so both modes add to zero.
+    # A particle moving only in z deposits Jz = quantity × its tensor-product weights, to roundoff
+    # (the stencil scales axis 1's weights by the quantity before the outer product, #454), and
+    # exactly no Jx, Jy; one particle per run, so both modes add to zero.
     for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, mode in MODES, δ in ((0.3, 0.8), (0.0, 0.55), (0.97, 0.5))
         grid = grid2(T, flux_g2(shape, st))
         s = Species(backend, T, 2; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
@@ -72,7 +73,9 @@ end
         for k in eachindex(W)
             expect[5 + f1 + mod1(k, P1) - 1 + guards(grid), 7 + f2 + (k - 1) ÷ P1 + guards(grid)] = QZ2(s, 1) * W[k]
         end
-        @test all(a -> components(Jz[a]) == components(expect[a]), eachindex(Jz))
+        @test all(a -> iszero(expect[a]) == iszero(Jz[a]), eachindex(Jz))
+        worst = maximum(a -> absdiff(Jz[a], expect[a]), eachindex(Jz)) / (base_eps(T) * absmax(QZ2(s, 1)))
+        @test record!("T-301 at rest", T, worst) <= C
         @test all(iszero, Jx) && all(iszero, Jy)
     end
     # Moving in x, y and z: Σ Jz = q·w·u (the quantity), to roundoff, for every particle of a moved species.
@@ -428,5 +431,48 @@ end
         deposit_flux!(Reference(), J2..., s, Quadratic, st, grid, ws; dt, quantity_z = QZ2)
         @test same_bits(ws.flux_patch, patch)
         @test same_bits.(J2, J) == (true, true, true)
+    end
+end
+
+@testset "T-840 Fast's particle-frame stencil is the cell frame's on its nodes, bit for bit; the cell frame's other nodes hold zeros and, along the component's axis, the roundoff sum of all weight changes [A2, A4, WP-041]" begin
+    C = tolC("T-840")
+    for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS
+        P = order(shape)
+        grid = grid2(T, flux_g2(shape, st))
+        s = flux_species_2d(T, grid, 400)
+        n = Int32.(ncells(grid))
+        sx = map(h -> h / T(basetype(T)(1 // 4)), cellsize(grid))
+        shared, zeros_ok, tails, worst = true, true, 0, 0.0
+        for i in 1:capacity(s)
+            s.status[i] == ParticleMeshCore.ALIVE || continue
+            lo, M, JC = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2)
+            f, MP, JP = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2, ParticleMeshCore.ParticleFrame())
+            @test MP == (P + 2, P + 2) && map(length, JP) == ((P + 1) * (P + 2), (P + 2) * (P + 1), (P + 2)^2)
+            @test all(d -> lo[d] <= f[d] && f[d] + P + 1 <= lo[d] + M[d] - 1, 1:2)
+            for c in 1:3
+                R = (P + 2 - (c == 1), P + 2 - (c == 2))      # the particle frame's rows of this component
+                scale = c == 3 ? absmax(QZ2(s, i)) : absmax(s.q * s.w[i] * sx[c])
+                for k2 in 1:M[2], k1 in 1:M[1]
+                    v = JC[c][k1 + (k2 - 1) * M[1]]
+                    m = (k1 + lo[1] - f[1], k2 + lo[2] - f[2])  # the node in the particle's frame
+                    if all(d -> 1 <= m[d] <= R[d], 1:2)
+                        shared &= same_bits([v], [JP[c][m[1] + (m[2] - 1) * R[1]]])
+                    elseif c != 3 && m[c] > R[c] && all(d -> d == c || 1 <= m[d] <= R[d], 1:2)
+                        # past the frame along the component's own axis: the prefix sum of all ΔS
+                        # times the transverse average, the same value on every such node
+                        kk = c == 1 ? (M[1], k2) : (k1, M[2])
+                        shared &= same_bits([v], [JC[c][kk[1] + (kk[2] - 1) * M[1]]])
+                        tails += 1
+                        worst = max(worst, absmax(v) / (base_eps(T) * scale))
+                    else
+                        zeros_ok &= iszero(v)
+                    end
+                end
+            end
+        end
+        @test shared
+        @test zeros_ok
+        @test tails > 0
+        @test record!("T-840", T, worst) <= C
     end
 end

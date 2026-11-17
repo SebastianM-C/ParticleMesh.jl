@@ -128,8 +128,12 @@ end
 """
     flux_abs_2d(s, shape, st, grid, dt) -> (Ax, Ay, Az)
 
-Per node, Σ|contribution| of the 2D flux of `s`, on the host from the engine's per-particle
-stencil (`ParticleMeshCore.flux_stencil`): the scale of T-302's per-node bound.
+Per node and component, the sum over the particles whose cell frame (`flux_reach`) holds the node
+of the particle's largest |contribution| to that component, on the host from the engine's
+per-particle stencil (`ParticleMeshCore.flux_stencil`): the scale of T-302's per-node bound.
+`Fast()` leaves out the cell frame's nodes past the particle's own (zeros, and along a
+component's axis the prefix sum of all weight changes, roundoff of the particle's contribution),
+so the scale is the particle's, not the node's own value.
 """
 function flux_abs_2d(s, shape, st, grid, dt)
     T = eltype(s)
@@ -140,9 +144,12 @@ function flux_abs_2d(s, shape, st, grid, dt)
     for i in 1:capacity(s)
         s.status[i] == ParticleMeshCore.ALIVE || continue
         lo, M, J = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2)
-        for d in 1:3, k in eachindex(J[d])
-            k1, k2 = mod1(k, M[1]), (k - 1) ÷ M[1] + 1
-            A[d][s.cell[1][i] + lo[1] + k1 - 1 + g, s.cell[2][i] + lo[2] + k2 - 1 + g] += absmax(J[d][k])
+        for d in 1:3
+            m = maximum(absmax, J[d])
+            for k in eachindex(J[d])
+                k1, k2 = mod1(k, M[1]), (k - 1) ÷ M[1] + 1
+                A[d][s.cell[1][i] + lo[1] + k1 - 1 + g, s.cell[2][i] + lo[2] + k2 - 1 + g] += m
+            end
         end
     end
     return A

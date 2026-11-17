@@ -3,7 +3,8 @@
 # engine2d_cases.jl and flux2d_cases.jl. The lines are `"kind|type|case|digest"`: the launch shape
 # is dropped, since T-266 and T-303 already require every launch shape to give the same bits.
 # Computed on 86bcf55 (main before WP-037), on the CPU backend with Julia 1.13 at 1 and 4 threads
-# (identical). A change to these bits is a change of a Reference result (A4): rerun
+# (identical); F2D_RECORDED again with WP-041's factored stencil (#454), whose sums associate
+# otherwise. A change to these bits is a change of a Reference result (A4): rerun
 # `recorded_2d_lines` and replace the lines only when the change is intended, and say so in the PR.
 
 "`kind|type|case|digest` of digest lines `kind|type|case|workgroupsize|digest`, one per case."
@@ -55,16 +56,16 @@ const E2D_RECORDED = String[
 ]
 
 const F2D_RECORDED = String[
-    "flux2d|Float32|1,Node,Node|18259945354132649916",
-    "flux2d|Float32|1,Center,Center|5499945992414612418",
-    "flux2d|Float32|2,Node,Node|15991085678762985927",
-    "flux2d|Float32|2,Center,Center|2417744543097394108",
-    "flux2d|Float64|1,Node,Node|1800987136620872041",
-    "flux2d|Float64|1,Center,Center|10095521823029044306",
-    "flux2d|Float64|2,Node,Node|14012135646213642108",
-    "flux2d|Float64|2,Center,Center|5609872212990875902",
-    "flux2d|Dual{Float32,3}|1,Node,Node|4314086691216750655",
-    "flux2d|Dual{Float32,3}|1,Center,Center|4244957048672191451",
-    "flux2d|Dual{Float32,3}|2,Node,Node|12456855201821418007",
-    "flux2d|Dual{Float32,3}|2,Center,Center|2307368713551168192",
+    "flux2d|Float32|1,Node,Node|14627413203901240954",
+    "flux2d|Float32|1,Center,Center|5175208111836563567",
+    "flux2d|Float32|2,Node,Node|11491155705146883591",
+    "flux2d|Float32|2,Center,Center|6995662894006927608",
+    "flux2d|Float64|1,Node,Node|4088792475219380679",
+    "flux2d|Float64|1,Center,Center|13504293266107911611",
+    "flux2d|Float64|2,Node,Node|10484582070891868696",
+    "flux2d|Float64|2,Center,Center|14322527101591282290",
+    "flux2d|Dual{Float32,3}|1,Node,Node|4009679274809658883",
+    "flux2d|Dual{Float32,3}|1,Center,Center|1900087573012215457",
+    "flux2d|Dual{Float32,3}|2,Node,Node|5352781894463629520",
+    "flux2d|Dual{Float32,3}|2,Center,Center|15920965837040485877",
 ]
