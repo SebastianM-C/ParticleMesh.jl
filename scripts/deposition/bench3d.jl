@@ -124,9 +124,15 @@ function measure(::Type{T}, n, ppc) where {T}
         near && PMC.sort_by_cell!(sp, grid, wsp)
         patch = patch3_buffer(BE, T, grid, shape, stp)
         variant!(a -> deposit_patch3!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx), name; fold = near)
-        for layers in (1, 2, 3)                                  # fewer accumulators per launch, for wide element types
-            near && variant!(a -> deposit_patch3_slabs!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers),
-                             "patch in registers, nearest-node binning, $layers planes per launch"; fold = true)
+        if near                                                  # the straight-line stencil, and fewer accumulators per launch for wide element types
+            full = deposit_patch3!(zero_fields(BE, T, grid), patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx)
+            for layers in (5, 3, 2, 1)
+                tag = "patch in registers, nearest-node binning, straight-line stencil, $(layers == 5 ? "all" : layers) planes per launch"
+                wanted(tag) || continue
+                b = deposit_patch3_slabs!(zero_fields(BE, T, grid), patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers)
+                diff[tag * " == the patch above (bits)"] = !all(map((x, y) -> Array(x) == Array(y), full, b))
+                variant!(a -> deposit_patch3_slabs!(a, patch, sp, shape, stp, grid, wsp.seg_start, wsp.seg_stop, sx, layers), tag; fold = true)
+            end
         end
     end
     variant!(a -> deposit_tiles!(a, tb4, s, MinFrame(), shape, stg, grid, seg..., sx, nothing), "tiles S = 4")

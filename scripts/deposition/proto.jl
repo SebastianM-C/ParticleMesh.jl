@@ -863,35 +863,84 @@ function deposit_patch3!(J, patch, s, shape, st::NTuple{3,PMC.Stagger}, grid, se
     return J
 end
 
-# --- the 3D register patch in slabs --------------------------------------------------------------
+# --- the 3D register patch in slabs, with a straight-line stencil ---------------------------------
 #
 # With a wide element type the 100 or 180 accumulators of a component no longer stay in registers
 # (400 numbers for `Dual{Float32,3}` with nearest-node binning). A launch can take `layers`
 # planes of the cell's frame along the third axis instead: the entries `K0 + 1 : K0 + Ks` of the
 # component's tuple, 20 or 25 per plane with nearest-node binning. A cell sums the same particles
-# in the same order whatever the split, so the patch and the result are those of
-# `deposit_patch3!` bit for bit; the price is one evaluation of a particle's weights per launch.
+# in the same order whatever the split, and an entry is the same expression as in
+# `component_stencil`, so the patch is that of `deposit_patch3!`; the price is one evaluation of a
+# particle's weights per launch.
+#
+# The entries are written out by a generated function. `component_stencil` leaves its closures to
+# the compiler's cost model, which keeps them out of line for component 2 and, with a `Dual`, for
+# all three: every entry is then a call with an integer division for its indices (as flux2d.jl
+# notes for `outer`), and a launch that needs a fifth of the entries would still pay for all.
 
-"The entries `K0 + 1 : K0 + Ks` of `component_stencil` (the others are never used, and the compiler drops them)."
-@inline function slab_stencil(comp, s, i, shape, st, n, sx, vK::Val, ::Val{K0}, ::Val{Ks}) where {K0,Ks}
-    full = component_stencil(comp, s, i, shape, st, n, sx, vK)
-    return ntuple(l -> @inbounds(full[l + K0]), Val(Ks))
+"`(p, Aa, Ab, Da, Eb)` of component `C`: its scaled prefix sums along its own axis and, on the two other axes `a < b`, the averages, `ΔS_a` and `ΔS_b / 12`."
+@inline function component_parts(::Val{1}, s, i, shape, st, n, sx)
+    (D1, D2, D3), (_, A2, A3) = axis_parts(s, i, shape, st, n)
+    @inbounds k = -(s.q * s.w[i] * sx[1])
+    return (map(x -> k * x, PMC.prefix_sums(D1)), A2, A3, D2, map(x -> x / 12, D3))
+end
+@inline function component_parts(::Val{2}, s, i, shape, st, n, sx)
+    (D1, D2, D3), (A1, _, A3) = axis_parts(s, i, shape, st, n)
+    @inbounds k = -(s.q * s.w[i] * sx[2])
+    return (map(x -> k * x, PMC.prefix_sums(D2)), A1, A3, D1, map(x -> x / 12, D3))
+end
+@inline function component_parts(::Val{3}, s, i, shape, st, n, sx)
+    (D1, D2, D3), (A1, A2, _) = axis_parts(s, i, shape, st, n)
+    @inbounds k = -(s.q * s.w[i] * sx[3])
+    return (map(x -> k * x, PMC.prefix_sums(D3)), A1, A2, D1, map(x -> x / 12, D2))
 end
 
-@kernel function patch3_slab_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), comp, shape, st, n::NTuple{3,Int32}, sx, layout, vK::Val,
-                                     vK0::Val{K0}, ::Val{Ks}) where {K0,Ks}
+# Where entry `l` of component `C` reads its factors, `(own, a, b)`: the first axis fastest, `W`
+# nodes along the component's own axis, `Ma` and `Mb` on the two others (as `component_stencil`).
+entry_index(::Val{1}, l, W, Ma, Mb) = ((l - 1) % W + 1, ((l - 1) ÷ W) % Ma + 1, (l - 1) ÷ (W * Ma) + 1)
+entry_index(::Val{2}, l, W, Ma, Mb) = (((l - 1) ÷ Ma) % W + 1, (l - 1) % Ma + 1, (l - 1) ÷ (Ma * W) + 1)
+entry_index(::Val{3}, l, W, Ma, Mb) = ((l - 1) ÷ (Ma * Mb) + 1, (l - 1) % Ma + 1, ((l - 1) ÷ Ma) % Mb + 1)
+
+"The entries `K0 + 1 : K0 + Ks` of component `C` from its `component_parts`, each `p[own]·(Aa[a]·Ab[b] + Da[a]·Eb[b])`, as straight-line code."
+@generated function slab_values(vC::Val{C}, parts::Tuple{NTuple{P,Any},NTuple{Ma,Any},NTuple{Mb,Any},NTuple{Ma,Any},NTuple{Mb,Any}}, ::Val{K0},
+                                ::Val{Ks}) where {C,P,Ma,Mb,K0,Ks}
+    W = P - 1                                                    # the last prefix sum is zero to roundoff and has no node of its own
+    transverse = Expr[]
+    seen = Tuple{Int,Int}[]
+    entries = Expr[]
+    for k in 1:Ks
+        o, a, b = entry_index(Val(C), K0 + k, W, Ma, Mb)
+        t = Symbol(:t_, a, :_, b)
+        if !((a, b) in seen)
+            push!(seen, (a, b))
+            push!(transverse, :($t = Aa[$a] * Ab[$b] + Da[$a] * Eb[$b]))
+        end
+        push!(entries, :(p[$o] * $t))
+    end
+    return quote
+        $(Expr(:meta, :inline))
+        p, Aa, Ab, Da, Eb = parts
+        @inbounds begin
+            $(transverse...)
+            ($(entries...),)
+        end
+    end
+end
+
+@kernel function patch3_slab_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), comp, shape, st, n::NTuple{3,Int32}, sx, layout,
+                                     vK0::Val{K0}, vKs::Val{Ks}) where {K0,Ks}
     L = Int32(@index(Global, Linear))
     T = eltype(patch)
     acc = ntuple(_ -> zero(T), Val(Ks))
     @inbounds for i in seg_start[L]:seg_stop[L]
-        acc = PMC.tuple_add(acc, slab_stencil(comp, s, i, shape, st, n, sx, vK, vK0, Val(Ks)))
+        acc = PMC.tuple_add(acc, slab_values(comp, component_parts(comp, s, i, shape, st, n, sx), vK0, vKs))
     end
     @inbounds for k in 1:Ks
         patch[PMC.patch_index(layout, K0 + k, L)...] = acc[k]
     end
 end
 
-"`deposit_patch3!` with `layers` planes of the frame's third axis per launch."
+"`deposit_patch3!` with the straight-line stencil and `layers` planes of the frame's third axis per launch (all of them from `layers = 6`)."
 function deposit_patch3_slabs!(J, patch, s, shape, st::NTuple{3,PMC.Stagger}, grid, seg_start, seg_stop, sx, layers::Integer; workgroupsize = nothing)
     backend = get_backend(s)
     n = Int32.(grid.n)
@@ -903,7 +952,7 @@ function deposit_patch3_slabs!(J, patch, s, shape, st::NTuple{3,PMC.Stagger}, gr
         for a in 1:layers:W[3]
             count = min(layers, W[3] - a + 1)
             PMC.item_launcher(patch3_slab_kernel!, backend, workgroupsize)(patch.buf, s, seg_start, seg_stop, Val(C), shape, st, n, sx, patch.layout,
-                                                                          Val(prod(W)), Val((a - 1) * plane), Val(count * plane); ndrange = prod(n))
+                                                                          Val((a - 1) * plane), Val(count * plane); ndrange = prod(n))
         end
         PMC.launcher(reduce3_kernel!, backend, workgroupsize)(J[C], patch.buf, patch.layout, n, Int32(grid.g), lo, Int32.(W); ndrange = size(J[C]))
     end

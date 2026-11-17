@@ -109,14 +109,14 @@ function check(::Type{T}, N; n, ppc, tol) where {T}
         report("$label patch in registers, nearest-node binning: continuity", continuity_residual(a, s, shape, st, grid, dt), tol)
         report("$label patch in registers, nearest-node binning: against $(variants[1][1]), folded",
                field_difference(folded_host(a, grid), folded_host(ref, grid)), tol)
-        for layers in (1, 2)                                     # the same sums in the same order, fewer of them per launch
+        for layers in (1, 2, 5)                                  # the straight-line stencil: the same sums in the same order, fewer per launch
             b = deposit_patch3_slabs!(J(), patch3_buffer(BE, T, grid, shape, stc), sh, shape, stc, grid, wsh.seg_start, wsh.seg_stop, sx, layers)
-            report("$label patch in registers, nearest-node binning, $layers planes per launch == all planes at once (bits)",
+            report("$label patch in registers, nearest-node binning, straight-line stencil, $(layers == 5 ? "all" : layers) planes per launch: same bits",
                    !all(map(same, a, b)), false)
         end
         let c = variants[end][2]
             b = deposit_patch3_slabs!(J(), patch3_buffer(BE, T, grid, shape, st), s, shape, st, grid, seg..., sx, 2)
-            report("$label patch in registers, cell binning, 2 planes per launch == all planes at once (bits)", !all(map(same, c, b)), false)
+            report("$label patch in registers, cell binning, straight-line stencil, 2 planes per launch: same bits", !all(map(same, c, b)), false)
         end
     end
     for (name, a) in variants
