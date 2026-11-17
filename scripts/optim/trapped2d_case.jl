@@ -52,14 +52,29 @@ inverse of [`pulse_energy`](@ref): the fixed-energy coupling, through which ∂W
 a0_for_energy(duration, waist; energy = budget()) = sqrt(energy / (π * waist * duration / 4 * (1 + 1 / (2 * waist^2))))
 
 """
-    trapped_problem(duration, waist, focus, delay, density; energy, ppl, ny, kw...) -> EMProblem{2}
+    trapped_capacity(ppl, ny) -> slots
+
+The born electrons' slots for a run at `ppl` and `ny`: the dopant's macro-particles grow as
+ppl²·ny (cells in x and y times the window's travel in cells), and the case at a₀ = 2.4 fills
+24,880 slots at λ₀/16 and 204,790 at λ₀/32 with ny = 2 at t = 200, once the pulse has left
+the dopant's section (x ≤ 132), so 40,000·ppl²·ny/256 keeps
+a margin of about 1.5, and never fewer than `BCASE.capacity` (the runs of WP-064 keep their bits).
+"""
+trapped_capacity(ppl, ny) = max(BCASE.capacity, cld(40_000 * ppl^2 * ny, 256))
+
+"""
+    trapped_problem(duration, waist, focus, delay, density; energy, ppl, ny, capacity, kw...) -> EMProblem{2}
 
 The case at the five parameters, with a₀ from [`a0_for_energy`](@ref) and the dopant at
-`TCASE.dopant_fraction` of `density`; the other keywords as [`born_problem`](@ref).
+`TCASE.dopant_fraction` of `density`, and [`trapped_capacity`](@ref) slots by default; the other
+keywords as [`born_problem`](@ref).
 """
-function trapped_problem(duration, waist, focus, delay, density; energy = budget(), kw...)
+function trapped_problem(duration, waist, focus, delay, density; energy = budget(), ppl::Integer = BCASE.ppl, ny::Integer = 1,
+                         capacity::Integer = trapped_capacity(ppl, ny), kw...)
     a0 = a0_for_energy(duration, waist; energy)
-    return born_problem(a0, TCASE.dopant_fraction * density; duration, waist, focus, delay, density, kw...)
+    # the fraction in density's own precision, so that a dual of Float32 stays one
+    fraction = convert(typeof(float(value_of(density))), TCASE.dopant_fraction)
+    return born_problem(a0, fraction * density; duration, waist, focus, delay, density, ppl, ny, capacity, kw...)
 end
 
 "The case's state after its run at the five parameters: the run of [`trapped_problem`](@ref)'s problem (and its keywords) on `backend`; a birth without a free slot is an error."

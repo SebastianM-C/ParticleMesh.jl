@@ -121,7 +121,8 @@ function run_job(job)
     if job["mode"] == "grad"
         D(v, i) = ForwardDiff.Dual{Nothing}(F(v), ntuple(j -> F(i == j), 6))
         args = [D(x[i], i) for i in 1:5]
-        energy = budget(D(a0E, 6))
+        # the budget is a Float64 dual whatever F is; converting it keeps a Float32 run in Float32
+        energy = convert(ForwardDiff.Dual{Nothing,F,6}, budget(D(a0E, 6)))
     else
         args, energy = F.(x), F(budget(a0E))
     end
@@ -194,6 +195,8 @@ end
 
 if length(ARGS) >= 1 && ARGS[1] == "job"
     job = JSON.parse(ARGS[3])
+    # load CUDA at top level, so that run_job sees its methods (world age)
+    get(job, "backend", "cpu") == "cuda" && job_backend("cuda")
     out = run_job(job)
     open(io -> JSON.print(io, out, 2), joinpath(ARGS[2], job["id"] * ".json"), "w")
     println(job["id"], ": J = ", out["J"], " in ", round(out["seconds"]; digits = 1), " s")
