@@ -1,5 +1,5 @@
 # The subprocess runs of `threads_worker.jl` at 1 and 4 threads, which engine.jl, flux.jl, engine2d.jl,
-# flux2d.jl, spectral.jl and momenta.jl compare against their in-process runs, and the helpers that
+# flux2d.jl, spectral.jl, momenta.jl and engine3d.jl compare against their in-process runs, and the helpers that
 # read their lines. Shared by every test group (groups.toml), so a group runs on its own.
 
 "The thread counts the files compare at; the first request starts a worker for each, side by side."

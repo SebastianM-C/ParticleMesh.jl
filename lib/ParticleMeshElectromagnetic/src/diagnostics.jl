@@ -217,6 +217,108 @@ end
     record_modes_2d!(sel_modes(sel), h, P, n1, amp, khat, k, T)
 end
 
+# --- N = 3: the same reductions with one more stage --------------------------------------------
+
+"""
+History keys of a 3D state: the energies, the kinetic energy, the Fourier amplitudes of the six
+field components and that of the longitudinal projection k̂·E.
+"""
+const HISTORY_KEYS_3D = (ENERGY_KEYS..., :K, :Ex_re, :Ex_im, :Ey_re, :Ey_im, :Ez_re, :Ez_im, :Bx_re, :Bx_im, :By_re, :By_im, :Bz_re, :Bz_im,
+                         :El_re, :El_im)
+"Rows of the 3D diagnostics' partial sums: six energies and the real and imaginary sums of Ex, Ey, Ez, Bx, By, Bz."
+const DIAG_ROWS_3D = 18
+
+# One term of a Fourier sum, a·e^{−iθ}, added to (re, im).
+@inline fourier_term(re, im, a, cs, sn) = (re + a * cs, im - a * sn)
+
+# Stage 1: one work item per index (j₁, j₂) sums its line along axis 3 serially, from zero, in
+# increasing j₃: the squares of the six components and their Fourier sums, each with the phases
+# of its own stagger (`field_layout(Val(3))`: E_c at Center() along axis c and Node() along the
+# others, B_c the other way round). The phases of axes 1 and 2 are formed once per line.
+@kernel function diagnostics_lines_3d_kernel!(P, f, @Const(t1), @Const(t2), @Const(t3), n3::Int32, g::Int32, sel)
+    j1, j2 = @index(Global, NTuple)
+    T = eltype(P)
+    energy, modes = on(sel_energy(sel)), on(sel_modes(sel))
+    i1, i2 = g + j1, g + j2
+    @inbounds begin
+        c1N, s1N, c1C, s1C = t1[j1, 1], t1[j1, 2], t1[j1, 3], t1[j1, 4]
+        c2N, s2N, c2C, s2C = t2[j2, 1], t2[j2, 2], t2[j2, 3], t2[j2, 4]
+        cCN, sCN = phase(c1C, s1C, c2N, s2N)
+        cNC, sNC = phase(c1N, s1N, c2C, s2C)
+        cNN, sNN = phase(c1N, s1N, c2N, s2N)
+        cCC, sCC = phase(c1C, s1C, c2C, s2C)
+        wEx = wEy = wEz = wBx = wBy = wBz = zero(T)
+        exr = exi = eyr = eyi = ezr = ezi = bxr = bxi = byr = byi = bzr = bzi = zero(T)
+        for j3 in Int32(1):n3
+            i3 = g + j3
+            ex, ey, ez = f.Ex[i1, i2, i3], f.Ey[i1, i2, i3], f.Ez[i1, i2, i3]
+            bx, by, bz = f.Bx[i1, i2, i3], f.By[i1, i2, i3], f.Bz[i1, i2, i3]
+            if energy
+                wEx += ex * ex
+                wEy += ey * ey
+                wEz += ez * ez
+                wBx += bx * bx
+                wBy += by * by
+                wBz += bz * bz
+            end
+            if modes
+                c3N, s3N, c3C, s3C = t3[j3, 1], t3[j3, 2], t3[j3, 3], t3[j3, 4]
+                exr, exi = fourier_term(exr, exi, ex, phase(cCN, sCN, c3N, s3N)...)
+                eyr, eyi = fourier_term(eyr, eyi, ey, phase(cNC, sNC, c3N, s3N)...)
+                ezr, ezi = fourier_term(ezr, ezi, ez, phase(cNN, sNN, c3C, s3C)...)
+                bxr, bxi = fourier_term(bxr, bxi, bx, phase(cNC, sNC, c3C, s3C)...)
+                byr, byi = fourier_term(byr, byi, by, phase(cCN, sCN, c3C, s3C)...)
+                bzr, bzi = fourier_term(bzr, bzi, bz, phase(cCC, sCC, c3N, s3N)...)
+            end
+        end
+        if energy
+            P[1, j1, j2], P[2, j1, j2], P[3, j1, j2], P[4, j1, j2], P[5, j1, j2], P[6, j1, j2] = wEx, wEy, wEz, wBx, wBy, wBz
+        end
+        if modes
+            P[7, j1, j2], P[8, j1, j2], P[9, j1, j2], P[10, j1, j2], P[11, j1, j2], P[12, j1, j2] = exr, exi, eyr, eyi, ezr, ezi
+            P[13, j1, j2], P[14, j1, j2], P[15, j1, j2], P[16, j1, j2], P[17, j1, j2], P[18, j1, j2] = bxr, bxi, byr, byi, bzr, bzi
+        end
+    end
+end
+
+# Stage 2: one work item per row q and index j₁ adds the lines' sums in increasing j₂, from zero.
+@kernel function diagnostics_rows_3d_kernel!(P, @Const(L), n2::Int32)
+    q, j1 = @index(Global, NTuple)
+    T = eltype(P)
+    acc = zero(T)
+    @inbounds for j2 in Int32(1):n2
+        acc += L[q, j1, j2]
+    end
+    @inbounds P[q, j1] = acc
+end
+
+@inline record_modes_3d!(::Val{false}, h, P, n1, amp, khat, k, ::Type{T}) where {T} = nothing
+@inline function record_modes_3d!(::Val{true}, h, P, n1::Int32, amp, khat, k::Int32, ::Type{T}) where {T}
+    @inbounds begin
+        exr, exi = row_sum(P, 7, n1, T) * amp, row_sum(P, 8, n1, T) * amp
+        eyr, eyi = row_sum(P, 9, n1, T) * amp, row_sum(P, 10, n1, T) * amp
+        ezr, ezi = row_sum(P, 11, n1, T) * amp, row_sum(P, 12, n1, T) * amp
+        h.Ex_re[k], h.Ex_im[k] = exr, exi
+        h.Ey_re[k], h.Ey_im[k] = eyr, eyi
+        h.Ez_re[k], h.Ez_im[k] = ezr, ezi
+        h.Bx_re[k], h.Bx_im[k] = row_sum(P, 13, n1, T) * amp, row_sum(P, 14, n1, T) * amp
+        h.By_re[k], h.By_im[k] = row_sum(P, 15, n1, T) * amp, row_sum(P, 16, n1, T) * amp
+        h.Bz_re[k], h.Bz_im[k] = row_sum(P, 17, n1, T) * amp, row_sum(P, 18, n1, T) * amp
+        h.El_re[k] = khat[1] * exr + khat[2] * eyr + khat[3] * ezr
+        h.El_im[k] = khat[1] * exi + khat[2] * eyi + khat[3] * ezi
+    end
+    return nothing
+end
+
+# Stage 3: one work item adds the rows' sums in increasing j₁ and the kinetic-energy chunks in
+# order, and writes entry k of the histories the selection records.
+@kernel function diagnostics_total_3d_kernel!(h, @Const(P), @Const(K), n1::Int32, nK::Int32, dV, amp, khat, k::Int32, sel)
+    T = eltype(P)
+    record_energies_2d!(sel_energy(sel), h, P, n1, dV, k, T)
+    record_kinetic!(sel_kinetic(sel), h, K, nK, dV, k, T)
+    record_modes_3d!(sel_modes(sel), h, P, n1, amp, khat, k, T)
+end
+
 # Per-axis phase tables of the diagnostic mode m on n nodes: columns cos and sin of 2π·m·x/n at
 # the Node() positions x = j − 1 and at the Center() positions x = j − 1/2. The angle over π,
 # m·(2j − 2)/n and m·(2j − 1)/n, is reduced exactly in integers modulo 2 before the division.
@@ -236,11 +338,12 @@ end
 """
     HistoryRecorder{N}
 
-The module's observer: the diagnostic histories `hist` of a run at N = 1 or 2 (the keys of
-`HISTORY_KEYS`, at N = 2 of `HISTORY_KEYS_2D`, on the state's backend) for the diagnostic mode
-`kmode` (the wavenumber at N = 1; the integer mode per axis at N = 2), and in `aux` what only
-N = 2 needs: the unit vector `khat` along the mode's wave vector, the phase tables of each axis
-(written once) and the per-row partial sums. A state owns one as its default observer
+The module's observer: the diagnostic histories `hist` of a run at N = 1, 2 or 3 (the keys of
+`HISTORY_KEYS`, at N = 2 of `HISTORY_KEYS_2D`, at N = 3 of `HISTORY_KEYS_3D`, on the state's
+backend) for the diagnostic mode `kmode` (the wavenumber at N = 1; the integer mode per axis
+above), and in `aux` what only N ≥ 2 needs: the unit vector `khat` along the mode's wave vector,
+the phase tables of each axis (written once) and the per-row partial sums (at N = 3 also the
+per-line ones). A state owns one as its default observer
 (`state.recorder`, for the problem's `kmode` and `nsteps`); another one, for another mode, length,
 cadence or selection, is passed to `step!` or `run!` as `observer`. Read it with
 [`histories`](@ref).
@@ -300,6 +403,25 @@ function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{2}, box, kmode::
     return HistoryRecorder{2,typeof(hist),NTuple{2,Int},typeof(aux),typeof(sel)}(hist, kmode, aux, Int(nsteps), Int(every), sel)
 end
 
+function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{3}, box, kmode::NTuple{3,Int}, nsteps::Integer; workgroupsize = nothing,
+                         every::Integer = 1, record = RECORD_GROUPS) where {T}
+    kmode == (0, 0, 0) && throw(ArgumentError("the diagnostic mode must not be (0, 0, 0)"))
+    sel = RecordSelection(record)
+    n = ncells(grid)
+    hist = history_arrays(backend, T, HISTORY_KEYS_3D, sel, check_cadence(nsteps, every))
+    tables = ntuple(Val(3)) do d
+        t = KernelAbstractions.allocate(backend, T, n[d], 4)
+        launcher(phase_table_kernel!, backend, workgroupsize)(t, kmode[d], n[d]; ndrange = n[d])
+        t
+    end
+    k = ntuple(d -> 2 * T(π) * kmode[d] / box[d], Val(3))
+    knorm = sqrt(k[1] * k[1] + k[2] * k[2] + k[3] * k[3])
+    aux = (khat = (k[1] / knorm, k[2] / knorm, k[3] / knorm), tables = tables,
+           partials = KernelAbstractions.zeros(backend, T, DIAG_ROWS_3D, n[1]),
+           lines = KernelAbstractions.zeros(backend, T, DIAG_ROWS_3D, n[1], n[2]))
+    return HistoryRecorder{3,typeof(hist),NTuple{3,Int},typeof(aux),typeof(sel)}(hist, kmode, aux, Int(nsteps), Int(every), sel)
+end
+
 HistoryRecorder(problem::EMProblem{N,T}, st::EMState{N,T}; kmode = problem.kmode, nsteps::Integer = problem.nsteps, every::Integer = 1,
                 record = RECORD_GROUPS) where {N,T} =
     HistoryRecorder(get_backend(st.ρ), T, st.grid, problem.length, kmode, nsteps; workgroupsize = st.numerics.workgroupsize, every, record)
@@ -308,12 +430,14 @@ HistoryRecorder(problem::EMProblem{N,T}, st::EMState{N,T}; kmode = problem.kmode
     empty_recorder(recorder::HistoryRecorder) -> HistoryRecorder
 
 A recorder of the same mode, length, cadence and selection with histories of its own, zero, and
-at N = 2 partial sums of its own; the phase tables, written once, are shared.
+at N ≥ 2 partial sums of its own; the phase tables, written once, are shared.
 """
 empty_recorder(r::HistoryRecorder) =
     typeof(r)(map(h -> fill!(similar(h), zero(eltype(h))), r.hist), r.kmode, own_scratch(r.aux), r.nsteps, r.every, r.record)
 own_scratch(aux::NamedTuple{()}) = aux
-own_scratch(aux::NamedTuple) = merge(aux, (; partials = similar(aux.partials)))
+own_scratch(aux::NamedTuple) = merge(aux, map(similar, scratch_of(aux)))
+# The arrays of a recorder's `aux` that a recording writes.
+scratch_of(aux::NamedTuple) = haskey(aux, :lines) ? (; partials = aux.partials, lines = aux.lines) : (; partials = aux.partials)
 
 "The number of steps a recorder covers (its histories hold one entry per recorded step, [`recorded_steps`](@ref))."
 Base.length(r::HistoryRecorder) = r.nsteps
@@ -386,6 +510,13 @@ k̂ₓB̂_y − k̂_yB̂ₓ (the 2D Weibel mode): two launches with a fixed asso
 work items of O(n₂) serial work; stage 2: one work item of O(n₁ + chunks)), so the bits do not
 depend on the thread count or the launch shape; the phases come from the recorder's per-axis
 tables (no trigonometric evaluation per step).
+
+At N = 3 it is the field energies ½Σ(component)²·ΔxΔyΔz, the kinetic energy
+Σ m·w·(γ − 1)·ΔxΔyΔz, and at the recorder's diagnostic mode the Fourier amplitude
+2/(n₁n₂n₃)·Σ a·e^{−ik·x} of each of the six field components over the positions of its own
+stagger, and of the longitudinal projection k̂·Ê: three launches with a fixed association order
+(stage 1: n₁n₂ work items of O(n₃) serial work, the lines along axis 3; stage 2: the lines' sums
+added along axis 2 per index of axis 1; stage 3: one work item of O(n₁ + chunks)).
 """
 observe!(::Nothing, st::EMState, k::Integer) = nothing
 observe!(f, st::EMState, k::Integer) = (reads_kinetic(f, k) && current_kinetic!(st); f(st, k); nothing)
@@ -434,6 +565,48 @@ function observe!(r::HistoryRecorder{2}, st::EMState{2}, k::Integer)
     return nothing
 end
 
+function observe!(r::HistoryRecorder{3}, st::EMState{3}, k::Integer)
+    e = history_entry(r, k)
+    check_tables(r, st.grid)
+    e == 0 && return nothing
+    on(sel_kinetic(r.record)) && current_kinetic!(st)
+    record_entry!(r, st.fields, st.K, st.grid, e; workgroupsize = st.numerics.workgroupsize)
+    return nothing
+end
+
+# The phase tables are static shapes, so the check is on the host (§0.4).
+check_tables(r::HistoryRecorder{3}, grid::PeriodicGrid{3}) = map(t -> size(t, 1), r.aux.tables) == ncells(grid) ||
+    throw(ArgumentError("the recorder's phase tables are for $(map(t -> size(t, 1), r.aux.tables)) cells, the grid has $(ncells(grid))"))
+
+"""
+    record_entry!(recorder::HistoryRecorder{3}, fields, K, grid, entry; workgroupsize = nothing) -> recorder
+
+Write entry `entry` of the histories a 3D recorder records, from the `fields`
+([`field_layout`](@ref)`(Val(3))` on `grid`) and the kinetic-energy chunks `K`: what
+[`observe!`](@ref) does for a state at N = 3, on the arrays themselves. An `ArgumentError` unless
+the recorder's phase tables are for the grid's cells and `entry` is one of its entries.
+"""
+function record_entry!(r::HistoryRecorder{3}, fields::NamedTuple, K, grid::PeriodicGrid{3}, e::Integer; workgroupsize = nothing)
+    n = ncells(grid)
+    check_tables(r, grid)
+    full = n .+ 2guards(grid)
+    all(a -> size(a) == full, fields) || throw(ArgumentError("every field must have the grid's field size $full"))
+    isempty(r.hist) && return r
+    1 <= e <= length(first(r.hist)) || throw(ArgumentError("entry $e outside the $(length(first(r.hist))) entries of the recorder's histories"))
+    T = eltype(K)
+    dx = cellsize(grid)
+    be = get_backend(K)
+    # the partial sums serve the energies and the modes; the kinetic energy needs none
+    if on(sel_energy(r.record)) || on(sel_modes(r.record))
+        launcher(diagnostics_lines_3d_kernel!, be, workgroupsize)(r.aux.lines, fields, r.aux.tables..., Int32(n[3]), Int32(guards(grid)), r.record;
+                                                                 ndrange = (n[1], n[2]))
+        launcher(diagnostics_rows_3d_kernel!, be, workgroupsize)(r.aux.partials, r.aux.lines, Int32(n[2]); ndrange = (DIAG_ROWS_3D, n[1]))
+    end
+    diagnostics_total_3d_kernel!(be)(r.hist, r.aux.partials, K, Int32(n[1]), Int32(length(K)), dx[1] * dx[2] * dx[3],
+                                     2 / T(prod(n)), r.aux.khat, Int32(e), r.record; ndrange = 1)
+    return r
+end
+
 """
     histories(recorder::HistoryRecorder) -> NamedTuple
     histories(state) -> NamedTuple
@@ -446,7 +619,8 @@ A1), the kinetic energy `K` = Σ m·w·(γ − 1)·Δx at t − Δt/2, and the r
 Fourier amplitude at `kmode` of Ex, Ey and Bz (each at its own stagger). At N = 2 it also holds
 `El_re`, `El_im`, the amplitude of the longitudinal projection k̂·E, `Bx_*`, `By_*` and
 `Bt_re`, `Bt_im`, the amplitude of ê·B with ê = ẑ × k̂, and its energies are sums over ΔxΔy
-([`observe!`](@ref)). The histories of a recorder that does not record every step (`every` > 1)
+([`observe!`](@ref)). At N = 3 the amplitudes are those of the six field components and `El_*`,
+and the energies are sums over ΔxΔyΔz. The histories of a recorder that does not record every step (`every` > 1)
 also hold `steps`, the step of each entry: they are not a history per step, and the functions
 that need one ([`kinetic_energy_history`](@ref), [`total_energy_history`](@ref)) refuse them.
 """
@@ -478,5 +652,5 @@ total_energy_history(x::Union{HistoryRecorder,EMState}) = total_energy_history(h
 every_step(h::NamedTuple) = haskey(h, :steps) ?
     throw(ArgumentError("the energy at integer times is the mean of two consecutive steps' entries, and these histories are of the steps $(h.steps)")) : h
 
-"Amplitude history |â| of the mode at `kmode` of `:Ex`, `:Ey` or `:Bz` (at N = 2 also `:El`, `:Bx`, `:By`, `:Bt`)."
+"Amplitude history |â| of the mode at `kmode` of `:Ex`, `:Ey` or `:Bz` (at N = 2 also `:El`, `:Bx`, `:By`, `:Bt`; at N = 3 the six components and `:El`)."
 mode_amplitude_history(h::NamedTuple, c::Symbol) = hypot.(getfield(h, Symbol(c, :_re)), getfield(h, Symbol(c, :_im)))

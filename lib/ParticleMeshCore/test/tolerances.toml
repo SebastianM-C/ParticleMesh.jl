@@ -347,6 +347,42 @@ ks = 1.95
 measured = {}
 status = "proposed"
 
+# WP-042, the engine at N = 3 outside the flux deposition (8 × 6 × 5 cells of 1/4 × 3/8 × 1/2).
+
+["T-871"]
+quantity = "3D adjointness of fill and fold, ⟨fill x, y⟩ - ⟨x, fold y⟩ over the full arrays"
+scale = "Σ|x|·max|y| (6 × 7 × 9 and 9 × 6 × 7 cells, g = 1, 2 and 3)"
+C = 2
+measured = { Float32 = 0.0289, Float64 = 0.032, "Dual{Float32,3}" = 0.179 }
+status = "proposed"
+
+["T-872"]
+quantity = "3D load: Σw against the lattice sum n₀·cells of an oblique cosine density, mode (1, 2, -1); each weight against the density in Float64"
+scale = "count·max|w|; |w| per weight"
+C = 16
+C_weights = 8
+measured = { Float32 = 0.485, Float64 = 0.0, "Dual{Float32,3}" = 1.45, weights_Float32 = 1.26, weights_Float64 = 0.0, "weights_Dual{Float32,3}" = 1.26 }
+status = "proposed"
+
+["T-873"]
+quantity = "3D deposited total minus Σ quantity (q·w and q·w·u₂); gather of a + b·x + c·y + d·z + e·x·y·z against the exact value; adjointness with gather; per-node Reference against Fast"
+scale = "count·max|quantity| (counts 200 and 2000); |a| + |b|·L₁ + |c|·L₂ + |d|·L₃ + |e|·L₁L₂L₃; Σ|quantity|·max|f|; Σ|contributions| per node (20 particles per cell)"
+C = 8
+C_gather = 4
+C_adjoint = 2
+C_nodes = 8
+measured = { Float32 = 0.0376, Float64 = 0.428, "Dual{Float32,3}" = 2.57, gather_Float32 = 0.874, gather_Float64 = 0.699, "gather_Dual{Float32,3}" = 0.874, adjoint_Float32 = 0.12, adjoint_Float64 = 0.128, "adjoint_Dual{Float32,3}" = 1.1, nodes_Float32 = 3.66, nodes_Float64 = 3.18 }
+status = "proposed"
+
+["T-874"]
+quantity = "3D: backward-difference divergence of the gradient of the solve minus (s - mean s), per interior node; |mean φ|; five modes against the closed form with the Yee-consistent symbol, per value and partial"
+scale = "(Σ_d n_d)·(max|s| + ‖L‖·max|φ|); (Σ_d n_d)·max|φ| for the mean (8 × 6 × 5, 16 × 12 × 10, 32 × 24 × 20); (Σ_d n_d)·max|reference| per output (φ; the largest gradient component for G)"
+C = 0.25
+C_mean = 0.05
+C_mode = 0.5
+measured = { Float32 = 0.0338, Float64 = 0.0425, "Dual{Float32,3}" = 0.0275, mean_Float32 = 0.00589, mean_Float64 = 0.0026, "mean_Dual{Float32,3}" = 0.00993, mode_Float32 = 0.21, mode_Float64 = 0.209, "mode_Dual{Float32,3}" = 0.21 }
+status = "proposed"
+
 # WP-041: the particle-frame stencil of Fast() (T-840).
 
 ["T-840"]

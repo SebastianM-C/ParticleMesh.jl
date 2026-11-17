@@ -197,31 +197,19 @@ end
     end
 end
 
-@kernel function load_dist_2d_kernel!(s, density, p, dx, n1::Int32, ppc::NTuple{2,Int32}, first::Int32, dist, key, at, exhausted)
+@kernel function load_dist_nd_kernel!(s, density, p, dx, n::NTuple{N,Int32}, ppc::NTuple{N,Int32}, first::Int32, dist, key, at,
+                                      exhausted) where {N}
     i = @index(Global, Linear)
     T = eltype(s.w)
-    K = ppc[1] * ppc[2]
-    L = Int32((i - 1) ÷ K + 1)
-    k = Int32((i - 1) % K + 1)
-    c1 = (L - Int32(1)) % n1 + Int32(1)
-    c2 = (L - Int32(1)) ÷ n1 + Int32(1)
-    k1 = (k - Int32(1)) % ppc[1] + Int32(1)
-    k2 = (k - Int32(1)) ÷ ppc[1] + Int32(1)
-    slot = first - Int32(1) + Int32(i)
-    δ1 = (T(k1) - one(T) / 2) / T(ppc[1])
-    δ2 = (T(k2) - one(T) / 2) / T(ppc[2])
-    x = ((T(c1 - Int32(1)) + density_offset(at, δ1)) * dx[1], (T(c2 - Int32(1)) + density_offset(at, δ2)) * dx[2])
-    u, ok = draw(dist, T, (UInt32(c1), UInt32(c2), UInt32(0), UInt32(k) << 16), key)
+    c, k, slot = quiet_item(i, n, ppc, first)
+    δ, x, ctr = quiet_lattice(T, c, k, ppc, dx, at)
+    u, ok = draw(dist, T, ctr, key)
     count_exhausted!(exhausted, ok)
+    store_axes!(s.cell, slot, c)
+    store_axes!(s.offset, slot, δ)
+    store_axes!(s.u, slot, u)
     @inbounds begin
-        s.cell[1][slot] = c1
-        s.cell[2][slot] = c2
-        s.offset[1][slot] = δ1
-        s.offset[2][slot] = δ2
-        s.u[1][slot] = u[1]
-        s.u[2][slot] = u[2]
-        s.u[3][slot] = u[3]
-        s.w[slot] = density(x, p) / T(K)
+        s.w[slot] = density(x, p) / T(prod(ppc))
         s.status[slot] = ALIVE
     end
 end
@@ -231,7 +219,7 @@ end
                 exhausted = nothing, workgroupsize = nothing)
 
 The quiet start of the keyword form (`load_quiet!(…; vdrift, vth)`, the same lattice, slots,
-weights, `density_at` and Philox key and counter, at N = 1 and N = 2) with the components drawn
+weights, `density_at` and Philox key and counter, at N = 1, 2 and 3) with the components drawn
 from the distribution `dist`: [`GaussianVelocity`](@ref) (that form bit for bit, velocities),
 [`GaussianMomentum`](@ref) or [`MaxwellJuttner`](@ref) (momenta `u = γv`); [`draws_momentum`](@ref)
 says which. Each particle's draws depend only on `(seed, stream)`, its cell and its in-cell index,
@@ -254,19 +242,15 @@ function load_quiet!(s::Species{1,T}, grid::PeriodicGrid{1}, density, p, ppc::In
     return s
 end
 
-function load_quiet!(s::Species{2,T}, grid::PeriodicGrid{2}, density, p, ppc::NTuple{2,Integer}, dist;
+function load_quiet!(s::Species{N,T}, grid::PeriodicGrid{N}, density, p, ppc::NTuple{N,Integer}, dist;
                      seed::Integer, stream::Integer, first::Integer = 1, density_at::Symbol = :particle,
-                     exhausted = nothing, workgroupsize = nothing) where {T}
+                     exhausted = nothing, workgroupsize = nothing) where {N,T}
     check_density_at(density_at)
-    n = ncells(grid)
-    all(>(0), ppc) && prod(ppc) < 2^16 || throw(ArgumentError("ppc = $ppc: each ≥ 1 and prod(ppc) < 2^16 for the counter layout"))
-    total = prod(n) * prod(ppc)
-    last = first - 1 + total
-    last <= capacity(s) || throw(ArgumentError("capacity $(capacity(s)) < $last particles"))
+    total, last = check_quiet_load(s, grid, ppc, first)
     key = (UInt32(seed), UInt32(stream))
-    launcher(load_dist_2d_kernel!, get_backend(s), workgroupsize)(s, density, p, cellsize(grid), Int32(n[1]), Int32.(ppc),
-                                                                   Int32(first), dist, key, density_val(density_at), exhausted;
-                                                                   ndrange = total)
+    launcher(load_dist_nd_kernel!, get_backend(s), workgroupsize)(s, density, p, cellsize(grid), Int32.(ncells(grid)), Int32.(ppc),
+                                                                  Int32(first), dist, key, density_val(density_at), exhausted;
+                                                                  ndrange = total)
     fill!(s.count, Int32(last))
     return s
 end

@@ -83,6 +83,8 @@ end
     for nt in (1, 4)
         @test spectral_worker(nt) == INPROCESS_SPECTRAL                 # 1 and 4 threads
     end
+    # and the bits recorded on a commit (recorded_3d.jl, WP-042), so a change to them fails here
+    backend isa CPU && @test_recorded recorded_2d_lines(INPROCESS_SPECTRAL) == SPECTRAL_RECORDED
     # A reused workspace and an in-place solve (φ === s) give the same bits as a fresh one.
     for T in TYPES, grid in (grid2(T, 2), PeriodicGrid(64, basetype(T)(3 // 8), 2))
         s = solve_input(T, grid)
@@ -204,5 +206,5 @@ end
     @test_throws ArgumentError gradient_periodic!(G, φ[:, 1:(end - 1)], grid)
     @test_throws ArgumentError gradient_periodic!((G[1][1:(end - 1), :], G[2]), φ, grid)
     @test_throws ArgumentError gradient_periodic!((G[1], G[2][:, 1:(end - 1)]), φ, grid)
-    @test_throws ArgumentError SpectralWorkspace(backend, Float64, PeriodicGrid((4, 4, 4), (1.0, 1.0, 1.0), 1))
+    @test_throws ArgumentError SpectralWorkspace(backend, Float64, PeriodicGrid((4, 4, 4, 4), (1.0, 1.0, 1.0, 1.0), 1))
 end
