@@ -5,9 +5,9 @@ Reference numbers from other codes on the cases of the A5 benchmark set, matched
 ```
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau [tag] [--budget <s>]   # writes scripts/runs/smilei-landau-<hash>/
 scripts/crosscode/run-smilei.sh scripts/runs/smilei-landau-<hash>              # outside the factory (podman)
-julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-landau-<hash> [runner log]
+julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/smilei-landau-<hash> [job log]
 julia +1.13 --project=scripts scripts/crosscode/picongpu.jl prepare landau [tag] [--precision Float32] [--budget <s>]   # writes scripts/runs/picongpu-landau-fp64-<hash>/
-julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/picongpu-landau-fp64-<hash> [runner log]
+julia +1.13 --project=scripts scripts/crosscode/analyze.jl scripts/runs/picongpu-landau-fp64-<hash> [job log]
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --gpu [--no-fastmath] [--patches 4x4]   # smilei-gpu-landau-oblique-2d-p1x1-<hash>/
 julia +1.13 --project=scripts scripts/crosscode/smilei.jl prepare landau-oblique-2d --load-check [--gpu] [--patches 4x4]     # one step, the t = 0 load
 julia +1.13 --project=scripts scripts/crosscode/loadcheck.jl <load-check run a> <load-check run b> <out dir>                 # same particles?
@@ -30,7 +30,7 @@ The ParticleMesh column (`em1d/crosscode.jl`, `em2d/crosscode.jl` and the script
 
 A seeded case (a `seeds` list) prepares one `seed-<seed>/` subdirectory per seed, each with its namelist and a copy of the case, and one `run.sh` that runs them in turn; `analyze.jl` then analyzes every seed directory as a single run and writes the ensemble observable, its plots and sidecars into the top directory, with every seed's complex mode coefficient in `seed-coefficients.json` (the dumps are not committed). The `run.sh` of a seeded run skips the seeds that finished in an earlier job (Smilei: the seed's `container.txt` has its `# end:` line; PIConGPU: the top `container.txt`, appended to by every job, has the seed's end line), so a long ensemble runs as several jobs on one directory. With `--budget <s>` it starts no new seed once the job has run that long and prints the seeds that remain (T-391); a job then lasts the budget plus one seed.
 
-Inside the factory the run goes through the machine's runner (`command: smilei scripts/runs/<tag>`, `gpu: no`; `command: smilei-gpu scripts/runs/<tag>` for a `--gpu` run, which always gets the GPU; `command: picongpu scripts/runs/<tag>`, which always gets the GPU), which executes the same `run.sh` in the same container with the same mounts. A PIConGPU `run.sh` compiles the setup once (`pic-create` of the `Empty` example, the generated `params/*.param` copied over its defaults, `pic-build`), then runs each seed with `PIC_SEED`; `container.txt` times the compile and every run separately.
+Inside the factory the session starts the run with the machine's GPU command (the job is `smilei scripts/runs/<tag>`, without the GPU; `smilei-gpu scripts/runs/<tag>` for a `--gpu` run, which always gets the GPU; `picongpu scripts/runs/<tag>`, which always gets the GPU), which executes the same `run.sh` in the same container with the same mounts. A PIConGPU `run.sh` compiles the setup once (`pic-create` of the `Empty` example, the generated `params/*.param` copied over its defaults, `pic-build`), then runs each seed with `PIC_SEED`; `container.txt` times the compile and every run separately.
 
 ## Files
 
@@ -59,7 +59,7 @@ Inside the factory the run goes through the machine's runner (`command: smilei s
 | `subensembles.jl` | Post hoc: the ensemble rule on disjoint consecutive groups of 4, 8, 16 and all seeds of two runs, from their `seed-coefficients.json`: the measured spread of a g-seed ensemble against its jackknife estimate, and the group-by-group two-run difference (T-392) |
 | `seed_count.jl` | Design: the spread of the ensemble γ and of a two-code difference against the seed count, from synthetic ensembles at two runs' measured noise and from their jackknife errors scaled as 1/√M |
 | `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases; Smilei's own time-loop time and the GPU of a GPU run (T-432) |
-| `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the runner's log (T-184) |
+| `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the job's log (T-184) |
 
 ## Case schema, version 1
 

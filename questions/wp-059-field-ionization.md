@@ -39,10 +39,6 @@ The package asks for field ionization without random numbers, released by weight
 
 **Range checks on duals.** The constructors compare with `>`, `>=` and `<` as the module's other descriptions do, and ForwardDiff 1.4 orders two duals of equal value by their partials: a dual whose value sits exactly on a bound (a density of value 0, `stop == start`) is accepted or refused by its tangent. The module has no ForwardDiff dependency to take the value with, and the same holds for every range check of the module, so it is left as it is and listed as a follow-up.
 
-## 7. Atomic data
-
-**Assumption:** a table of ionization energies in `scripts/ionization/ionization_energies.toml` for H, He, Li, N, O, Ne and Ar, copied by program from Mendeleev.jl 1.0.3 in a temporary environment and compared with the table FBPIC ships (NIST ASD 5.2). Carbon and krypton are left out because the two sources differ in a late digit. Mendeleev.jl is not a dependency: the table is 7 lines, and `scripts/Manifest.toml` is being changed by another open pull request.
-
-## 8. Cross-code runs
+## 7. Cross-code runs
 
 Not done: a run of the same doped target in Smilei or PIConGPU. Their ionization is a Monte Carlo draw per macro-particle, so a comparison is statistical (ensemble means of the trapped charge), which is a campaign of its own; a follow-up issue holds it.

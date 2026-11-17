@@ -973,7 +973,7 @@ end
 const ION_ATOMS = Module(:IonAtoms)
 Base.include(ION_ATOMS, joinpath(REPO, "scripts", "ionization", "atomic.jl"))
 
-@testset "T-783 the ADK level from an ionization energy and a wavelength: FBPIC's coefficients, hydrogen's closed form, the table [A1, A7, WP-059]" begin
+@testset "T-783 the ADK level from an ionization energy and a wavelength: FBPIC's coefficients, hydrogen's closed form, the atomic data [A1, A7, WP-059]" begin
     A = ION_ATOMS
     ref = TOML.parsefile(joinpath(REPO, "scripts", "ionization", "fbpic_reference.toml"))
     λ, a0s = ref["wavelength_m"], ref["a0"]
@@ -1022,12 +1022,21 @@ Base.include(ION_ATOMS, joinpath(REPO, "scripts", "ionization", "atomic.jl"))
     @test p1.prefactor ≈ 3 * A.adk_numbers(20.0, 1; wavelength = λ).prefactor rtol = 1.0e-14      # (2l+1)(l+|m|)!/(2^|m|·|m|!·(l−|m|)!) = 3·2/2
     @test p1.power ≈ A.adk_numbers(20.0, 1; wavelength = λ).power - 1 rtol = 1.0e-14
     @test A.adk_numbers(20.0, 1; wavelength = λ, l = 2, m = 1).prefactor ≈ 15 * A.adk_numbers(20.0, 1; wavelength = λ).prefactor rtol = 1.0e-14   # 5·3!/(2·1·1)
-    # the table: nitrogen's seven energies rise, the K shell far above the L shell, and what it does not hold is refused
+    # the atomic data (Mendeleev.jl): nitrogen's seven energies rise, the K shell far above the L shell; an element the
+    # FBPIC comparison above does not cover has one energy per charge; and what the package does not hold is refused
     N = [A.ionization_energy(:N, Z) for Z in 1:7]
+    @test N == A.ionization_energies(:N) && N isa Vector{Float64}
     @test issorted(N) && N[5] == 97.89013 && N[6] == 552.06731 && N[6] / N[5] > 5
+    @test A.nuclear_charge(:Kr) == 36 == length(A.ionization_energies(:Kr)) && issorted(A.ionization_energies(:Kr))
+    @test A.ionization_energy("N", 6) == N[6]
     @test_throws ArgumentError A.ionization_energy(:N, 8)
     @test_throws ArgumentError A.ionization_energy(:N, 0)
     @test_throws ArgumentError A.ionization_energy(:Xx, 1)
+    @test_throws ArgumentError A.ionization_energies(:Og)          # an element without measured energies
+    # what a run's manifest keeps: the package's version and the energies of the elements it used
+    rec = A.atomic_record(("N", :He))
+    @test rec["source"] == "Mendeleev.jl $(pkgversion(A.Mendeleev))" && startswith(rec["source"], "Mendeleev.jl 1.")
+    @test rec["ionization_energies_eV"] == Dict("N" => N, "He" => [A.ionization_energy(:He, 1), A.ionization_energy(:He, 2)])
     @test_throws ArgumentError A.adk_numbers(20.0, 0; wavelength = λ)
     @test_throws ArgumentError A.adk_numbers(20.0, 1; wavelength = λ, l = 0, m = 1)
     @test_throws ArgumentError A.adk_numbers(20.0, 1; wavelength = λ, lstar = :other)
