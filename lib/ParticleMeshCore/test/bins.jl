@@ -72,7 +72,7 @@ end
     @test size(Workspace(s, grid; flux = (Quadratic, (Node(), Node())), bins = NodeBins(Quadratic, (Node(), Node()))).flux_patch, 1) == 75
 end
 
-@testset "T-862 the sort and the sort from the last order by nearest-node bins give the same bits, N = 1, 2, 3, and every particle lies in its bin's segment [A4, WP-041]" begin
+@testset "T-862 the sort and the sort from the last order by nearest-node bins give the same bits, N = 1, 2, 3, every particle lies in its bin's segment, and junk in free slots changes nothing [A4, WP-041]" begin
     for T in TYPES, n in ((7,), (16, 12), (3, 4, 3)), (shape, st) in ((Quadratic, Node()), (Linear, Center()))
         same = resort_run(T, n; bins = NodeBins(shape, ntuple(_ -> st, length(n))))
         @test length(same) == 7 && all(same)
@@ -91,6 +91,27 @@ end
     alive = Int(s.count[1])
     @test all(i -> ws.seg_start[bin(i)] <= i <= ws.seg_stop[bin(i)], 1:alive)
     @test count(i -> bin(i) != cell(i), 1:alive) > alive ÷ 4                 # the bins are not the cells
+    # a free slot's offset is not state: NaN and Inf there leave the sort's bits alone (the bin is read
+    # for alive slots only), at N = 1 (its own key kernel) and N = 2
+    for n in ((16,), (16, 12))
+        N = length(n)
+        g = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
+        bn = NodeBins(Quadratic, ntuple(_ -> Node(), N))
+        x = resort_species(Float64, n, 12 * prod(n), 8 * prod(n))
+        resort_move!(x, n, ResortLCG(7))
+        y = deepcopy(x)
+        free = findall(!=(ParticleMeshCore.ALIVE), y.status)
+        @test length(free) > 4 * prod(n)
+        for d in 1:N
+            y.offset[d][free] .= ifelse.(isodd.(free), NaN, Inf)
+        end
+        wx, wy = Workspace(x, g; bins = bn), Workspace(y, g; bins = bn)
+        sort_by_cell!(x, g, wx)
+        sort_by_cell!(y, g, wy)
+        m = Int(x.count[1])
+        @test y.count[1] == m && wx.perm[1:m] == wy.perm[1:m] && wx.seg_start == wy.seg_start && wx.seg_stop == wy.seg_stop
+        @test all(d -> same_bits(x.offset[d][1:m], y.offset[d][1:m]) && x.cell[d][1:m] == y.cell[d][1:m], 1:N)
+    end
 end
 
 @testset "T-863 the Reference deposits by nearest-node bins are bitwise across reruns and launch shapes [A4, WP-041]" begin
