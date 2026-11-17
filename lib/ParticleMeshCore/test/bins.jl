@@ -146,7 +146,7 @@ function bins_vs_cells_1d(bshape, bst, shape, st; g = 3)
     return maximum(k -> maximum(abs.(out[1][k] .- out[2][k])) / (eps(Float64) * maximum(abs, out[1][k])), 1:4)
 end
 
-@testset "T-864 bins of another stagger than the deposit's still conserve charge and agree with the cells', N = 1 and 2, and need one more guard cell, which is checked [A2, WP-041]" begin
+@testset "T-864 bins of another stagger than the deposit's still conserve charge at N = 2, agree with the cells' at N = 1, and need one more guard cell, which is checked [A2, WP-041]" begin
     # bins of order 2 on nodes under a flux at centres: a bin holds the particles of two cells
     b = NodeBins(Quadratic, (Node(), Node()))
     st = (Center(), Center())
