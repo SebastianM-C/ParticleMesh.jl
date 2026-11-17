@@ -54,7 +54,8 @@ function measure(::Type{T}, n, ppc) where {T}
     PMC.sort_by_cell!(s, grid, ws)
     seg0 = (copy(ws.seg_start), copy(ws.seg_stop))
     # the sort from the last order, where the engine has it: a workspace whose tail is one plane of cells, as a window's refill would be
-    wr = has_resort() && wanted("engine resort_by_cell!") ? PMC.Workspace(s, grid; append = n[2] * n[3] * ppc) : nothing
+    wr = has_resort() && (wanted("engine resort_by_cell!") || wanted("engine sort_by_cell!, workspace with append")) ?
+         PMC.Workspace(s, grid; append = n[2] * n[3] * ppc) : nothing
     wr === nothing || PMC.sort_by_cell!(s, grid, wr)             # the identity on the sorted species: the workspace then knows the order
     count0 = copy(s.count)
     move!(s, grid; dmax = 0.5)
@@ -62,10 +63,11 @@ function measure(::Type{T}, n, ppc) where {T}
     wsp = sortperm_workspace(ws)
     time_ = Dict{String,Any}()
     diff = Dict{String,Any}()
-    wr === nothing || resort_row!(time_, diff, s, grid, wr, U, seg0, count0; reps = REPS)
+    wr === nothing || !wanted("engine resort_by_cell!") || resort_row!(time_, diff, s, grid, wr, U, seg0, count0; reps = REPS)
 
     # the sorts, on the moved state
     timed!(f, name; kw...) = wanted(name) && (time_[name] = ms(least(f, BE; reps = REPS, kw...)); nothing)
+    wr === nothing || timed!(() -> PMC.sort_by_cell!(s, grid, wr), "engine sort_by_cell!, workspace with append"; setup = () -> restore!(s, U))
     timed!(() -> PMC.sort_by_cell!(s, grid, ws), "engine sort_by_cell!"; setup = () -> restore!(s, U))
     timed!("engine sort: keys and sortperm! alone"; setup = () -> restore!(s, U)) do
         PMC.launcher(PMC.sort_key_nd_kernel!, BE, nothing)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(prod(grid.n)), Int64(PMC.capacity(s));
