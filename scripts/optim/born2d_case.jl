@@ -20,15 +20,16 @@ Fixed parameters of the case (A1 units).
   window with PMLs at the open y edges and at the back, as the run of the ionization explainer
   page: the laser (waist 10, duration 6, focus at x = 80) enters a plasma of density 0.072 n_c
   behind a ramp from x = 64 to 104. The ramp is that long on purpose: behind one of 8 c/ω₀ the wake
-  traps the plasma's own electrons at every a₀ from 1.5 up, behind this one only above a₀ ≈ 2
-  (#465; `born2d.jl` reports the guard at every point).
+  traps the plasma's own electrons at every a₀ from 1.5 up, behind this one at λ₀/16 only from
+  a₀ = 2.25, and then behind window x = 12 (#465; `born2d.jl` reports the guard at every point).
 - The dopant is nitrogen at 1 % of the plasma density on the 36 rows around the axis, in the
-  section x = 108 to 132 (ramps of 4), which starts 4 c/ω₀ behind the ramp's end, with the two K-shell levels N⁵⁺ → N⁶⁺ → N⁷⁺ at 0.8 µm. The
+  section x = 108 to 132 (ramps of 4), which starts 4 c/ω₀ behind the ramp's end, with the two
+  K-shell levels N⁵⁺ → N⁶⁺ → N⁷⁺ at 0.8 µm. The
   L shell is left out: the pulse's foot ionizes it completely, far ahead of the wake, and its
   electrons are part of the plasma's density. ADK rates with no barrier-suppression correction
   and no ionization current (WP-059), so the charge injected is not a physical prediction.
 - `fade = (lo, hi)` is the objective's position weight in window x (c/ω₀): 0 behind `lo`, 1 ahead
-  of `hi`. At the read-out of the λ₀/16 run at a₀ = 1.65 the pulse's peak is at window x ≈ 47 and the
+  of `hi`. At the read-out of the λ₀/16 run at a₀ = 1.9 the pulse's peak is at window x ≈ 49 and the
   first bucket lies between the zero crossings of E_x at x ≈ 27 and 40 (`born2d.jl` measures both),
   so the weight is 1 over the bucket; the back band ends at x ≈ 3.5 at λ₀/16.
 - `u_fast` is the momentum above which a born electron is listed as trapped in the run's tables;
