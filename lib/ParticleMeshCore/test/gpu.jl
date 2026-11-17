@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876; WP-041, T-891. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -219,6 +219,29 @@ else
             record!("T-198 sort host bytes", T, maximum(r -> r[3].sort_host, rows), GPU)
             record!("T-198 device bytes", T, maximum(r -> r[3].dev, rows), GPU)
             record!("T-198 host bytes", T, maximum(r -> r[3].host, rows), GPU)
+        end
+    end
+
+    @testset "T-891 on CUDA from 2^20 slots the workspace sorts its keys by radix sort, with the merge sort's bits [A4, WP-041]" begin
+        # The keys are unique, so the radix sort (key_sort_alg's choice here) and the merge sort
+        # (AcceleratedKernels' Auto below 2^23 keys) must give the same permutation; one sort of
+        # a species whose slots are not in cell order, every array compared.
+        AK = ParticleMeshCore.AK
+        n = (128, 96)
+        cap = 1 << 20
+        for T in (Float32, Float64)
+            grid = PeriodicGrid(n, (basetype(T)(1 // 2), basetype(T)(1 // 2)), 1)
+            host = resort_species(T, n, cap, 3 * cap ÷ 4; seed = 7)
+            a, b = todev(GPU, host), todev(GPU, host)
+            wa = Workspace(a, grid)
+            wb = Workspace(b, grid; key_sort = AK.MergeSort())
+            @test wa.ak.plan.alg isa AK.RadixSort && wb.ak.plan.alg isa AK.MergeSort
+            sort_by_cell!(a, grid, wa); sort_by_cell!(b, grid, wb)
+            KernelAbstractions.synchronize(GPU)
+            @test all(same_bits(Array(x), Array(y)) for (x, y) in zip(species_arrays(a), species_arrays(b)))
+            @test Array(a.count) == Array(b.count)
+            @test Array(wa.perm) == Array(wb.perm) && Array(wa.seg_start) == Array(wb.seg_start) && Array(wa.seg_stop) == Array(wb.seg_stop)
+            @test Array(wa.perm) != collect(1:cap)
         end
     end
 

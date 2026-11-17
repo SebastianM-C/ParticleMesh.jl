@@ -1,4 +1,5 @@
-# WP-041, the sort from the order of the last sort (`resort_by_cell!`): T-850 to T-853.
+# WP-041, the sort from the order of the last sort (`resort_by_cell!`): T-850 to T-853; the key sort's
+# algorithm: T-890 (its CUDA rerun T-891 is in gpu.jl).
 
 "A fixed LCG on [0, 1) (the tests' own, as `test_species_2d`'s), as a callable."
 mutable struct ResortLCG
@@ -208,5 +209,27 @@ end
         end
         sort_by_cell!(c, g2, wc); resort_by_cell!(d, g2, wd)
         @test same_sort(c, wc, d, wd)
+    end
+end
+
+"A non-CPU backend type for T-890: `key_sort_alg` reads only the backend's type."
+struct KeySortFakeGPU <: KernelAbstractions.Backend end
+
+@testset "T-890 the key sort's algorithm is radix sort on a GPU backend from 2^20 slots and AcceleratedKernels' Auto otherwise, and an explicit one gives the default's bits [A4, WP-041]" begin
+    AK = ParticleMeshCore.AK
+    @test ParticleMeshCore.key_sort_alg(CPU(), 1 << 24) isa AK.Auto
+    @test ParticleMeshCore.key_sort_alg(KeySortFakeGPU(), 1 << 20) isa AK.RadixSort
+    @test ParticleMeshCore.key_sort_alg(KeySortFakeGPU(), (1 << 20) - 1) isa AK.Auto
+    n = (16, 12)
+    grid = PeriodicGrid(n, (1 / 2, 1 / 2), 1)
+    for T in TYPES
+        a = resort_species(T, n, 2000, 1500; seed = 5)
+        b = resort_species(T, n, 2000, 1500; seed = 5)
+        wa = Workspace(a, grid)
+        wb = Workspace(b, grid; key_sort = AK.MergeSort())
+        @test !(wa.ak.plan.alg isa AK.MergeSort) && wb.ak.plan.alg isa AK.MergeSort
+        sort_by_cell!(a, grid, wa); sort_by_cell!(b, grid, wb)
+        @test same_sort(a, wa, b, wb)
+        @test issorted(wa.key) && wa.perm != collect(1:2000)
     end
 end
