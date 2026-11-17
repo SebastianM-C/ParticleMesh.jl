@@ -2,6 +2,18 @@
 # host writes are direct; no kernel code is involved in setting up a test).
 
 """
+    SORT_COUNTS_BYTES
+
+The most a one-task CPU sort may allocate beyond the smallest case's bytes: `Base.sort!` sorts
+the `Int64` keys (`sort_by_cell!`, through AcceleratedKernels' one-task path) with its radix sort,
+which allocates its count buffer of `2^c + 1` `Int`s outside the scratch, `c` growing with the
+length up to 10 bits (`Base.Sort.radix_chunk_size_heuristic`): at most 8200 bytes and a header,
+whatever the particle count. Allocation that grows with the particle count passes it at the
+measured sizes' 8 bytes per particle (T-144's 8192 particles, T-268's 4608).
+"""
+const SORT_COUNTS_BYTES = 8 * (2^10 + 1) + 64
+
+"""
     @test_alloc ex [broken = cond]
 
 `@test ex` for an allocation-growth check, except on Julia 1.14 or later, where it is

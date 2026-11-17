@@ -411,18 +411,21 @@ function step_bytes_pml(mode; ppc, cells)
     p = params(prob)
     step!(st, p, 1)
     step!(st, p, 2)
-    return @allocated step!(st, p, 3)
+    bytes = @allocated step!(st, p, 3)
+    return bytes, count(s -> ParticleMeshElectromagnetic.sorts(st, s), st.species)   # and the step's sorts
 end
 
 @testset "T-548 allocation per PML step does not grow with particle count or grid size [A7, WP-034]" begin
     for mode in (Reference(), Fast())
-        small = step_bytes_pml(mode; ppc = (2, 2), cells = (16, 16))
-        more_particles = step_bytes_pml(mode; ppc = (8, 8), cells = (16, 16))
-        larger_grid = step_bytes_pml(mode; ppc = (2, 2), cells = (64, 48))
-        @info "T-548 bytes per PML step" mode small more_particles larger_grid threads = Threads.nthreads()
+        small, sorts = step_bytes_pml(mode; ppc = (2, 2), cells = (16, 16))
+        more_particles, _ = step_bytes_pml(mode; ppc = (8, 8), cells = (16, 16))
+        larger_grid, _ = step_bytes_pml(mode; ppc = (2, 2), cells = (64, 48))
+        @info "T-548 bytes per PML step" mode small more_particles larger_grid sorts threads = Threads.nthreads()
+        # each sort may add Base's radix count buffer, bounded whatever the size (`SORT_COUNTS_BYTES`, as T-220)
+        bound = small + sorts * SORT_COUNTS_BYTES
         if Threads.nthreads() == 1 || mode isa Fast
-            @test_alloc more_particles <= small
-            @test_alloc larger_grid <= small
+            @test_alloc more_particles <= bound
+            @test_alloc larger_grid <= bound
         end
     end
 end

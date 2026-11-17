@@ -418,7 +418,10 @@ function step_bytes_window(; ppc, cells)
     st = window_state(prob)
     p = params(prob)
     run!(st, p, 3)
-    return @allocated run!(st, p, 3; first = 4)      # steps 4 to 6, at least one shift
+    bytes = @allocated run!(st, p, 3; first = 4)     # steps 4 to 6, at least one shift
+    # the sorts in them: every sorted species each step and again at each shift
+    sorts = length(st.ws) * (3 + window_shifts(st, 6) - window_shifts(st, 3))
+    return bytes, sorts
 end
 
 function device_step_bytes_window(be; ppc, cells)
@@ -448,13 +451,14 @@ end
 
 @testset "T-478 the filter does not wrap along the window's axis, and allocation per window step does not grow [A2, A7, WP-028]" begin
     body_T478(CPU())
-    small = step_bytes_window(; ppc = (2, 2), cells = (24, 6))
-    more_particles = step_bytes_window(; ppc = (6, 6), cells = (24, 6))
-    larger_grid = step_bytes_window(; ppc = (2, 2), cells = (72, 18))
-    @info "T-478 bytes per three window steps" small more_particles larger_grid threads = Threads.nthreads()
+    small, _ = step_bytes_window(; ppc = (2, 2), cells = (24, 6))
+    more_particles, sorts1 = step_bytes_window(; ppc = (6, 6), cells = (24, 6))
+    larger_grid, sorts2 = step_bytes_window(; ppc = (2, 2), cells = (72, 18))
+    @info "T-478 bytes per three window steps" small more_particles larger_grid sorts1 sorts2 threads = Threads.nthreads()
     if Threads.nthreads() == 1
-        @test_alloc more_particles <= small
-        @test_alloc larger_grid <= small
+        # each sort may add Base's radix count buffer, bounded whatever the size (`SORT_COUNTS_BYTES`)
+        @test_alloc more_particles <= small + sorts1 * SORT_COUNTS_BYTES
+        @test_alloc larger_grid <= small + sorts2 * SORT_COUNTS_BYTES
     end
 end
 

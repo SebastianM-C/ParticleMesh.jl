@@ -27,6 +27,7 @@ const TEST_FILES = [
     "flux.jl",
     "engine2d.jl",
     "flux2d.jl",        # WP-020: T-300 to T-309, the flux deposition at N = 2
+    "resort.jl",        # WP-041: T-850, T-851, the sort from the order of the last sort
     "spectral.jl",      # WP-021: T-310 to T-316, the periodic solve
     "momenta.jl",       # WP-033: T-530 to T-536, T-538, the momentum distributions (after engine.jl, whose worker it reads)
     "engine3d.jl",      # WP-042: T-870 to T-875, the engine at N = 3 outside the flux deposition

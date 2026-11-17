@@ -385,22 +385,25 @@ function step_bytes_filter(N, mode; ppc, cells, passes = 2)
     p = params(prob)
     step!(st, p, 1)
     step!(st, p, 2)
-    return @allocated step!(st, p, 3)
+    bytes = @allocated step!(st, p, 3)
+    return bytes, count(s -> ParticleMeshElectromagnetic.sorts(st, s), st.species)   # and the step's sorts
 end
 
 @testset "T-445 allocation per step with the filter does not grow with particle count, grid size or passes [A7, WP-029]" begin
     for N in (1, 2), mode in (Reference(), Fast())
-        small = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12))
-        more_particles = step_bytes_filter(N, mode; ppc = (8, 8), cells = (16, 12))
-        larger_grid = step_bytes_filter(N, mode; ppc = (2, 2), cells = (64, 48))
-        unfiltered = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12), passes = 0)
-        more_passes = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12), passes = 8)
-        @info "T-445 bytes per step with two filter passes" N mode small more_particles larger_grid unfiltered more_passes threads = Threads.nthreads()
+        small, sorts = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12))
+        more_particles, _ = step_bytes_filter(N, mode; ppc = (8, 8), cells = (16, 12))
+        larger_grid, _ = step_bytes_filter(N, mode; ppc = (2, 2), cells = (64, 48))
+        unfiltered, _ = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12), passes = 0)
+        more_passes, _ = step_bytes_filter(N, mode; ppc = (2, 2), cells = (16, 12), passes = 8)
+        @info "T-445 bytes per step with two filter passes" N mode small more_particles larger_grid unfiltered more_passes sorts threads = Threads.nthreads()
         # at more than one thread the Reference sort allocates per particle (#82, as T-367); CI runs one thread
+        # each sort may add Base's radix count buffer, bounded whatever the size (`SORT_COUNTS_BYTES`, as T-220)
+        bound = small + sorts * SORT_COUNTS_BYTES
         if Threads.nthreads() == 1 || mode isa Fast
-            @test_alloc more_particles <= small
-            @test_alloc larger_grid <= small
-            @test_alloc more_passes <= small       # the passes reuse the scratch and launch with fixed arguments
+            @test_alloc more_particles <= bound
+            @test_alloc larger_grid <= bound
+            @test_alloc more_passes <= bound       # the passes reuse the scratch and launch with fixed arguments
         end
     end
 end

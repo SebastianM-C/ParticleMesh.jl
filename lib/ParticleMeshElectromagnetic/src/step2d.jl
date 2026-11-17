@@ -85,7 +85,9 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
         Species(backend, T, cap; q = d.charge, m = d.mass, N = 2, extras = flux_extras(T, 2))
     end
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
-    ws = map(s -> Workspace(s, grid; flux), species)
+    # a window refills one column of a species behind its count after each shift's sort
+    ws = map((s, d) -> Workspace(s, grid; flux, append = sort_append(numerics, window === nothing ? 0 : n[2] * prod(d.ppc))), species,
+             problem.species)
     nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), (species..., born_species(ionization)...); init = 0)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs, every, record)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),

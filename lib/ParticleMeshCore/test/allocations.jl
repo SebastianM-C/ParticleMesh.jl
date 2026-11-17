@@ -47,6 +47,8 @@
             # upstream fix fails the test, which is the signal to drop this.
             sort_allocates = Threads.nthreads() > 1 && name == "sort"
             # Skipped on Julia 1.14 (#58, `@test_alloc`); the @info above still logs the bytes.
+            # One task: Base's radix count buffer, bounded whatever the size (`SORT_COUNTS_BYTES`).
+            small += name == "sort" && !sort_allocates ? SORT_COUNTS_BYTES : 0
             @test_alloc bytes[(name, 32, 256)] <= small broken = sort_allocates
             @test_alloc bytes[(name, 128, 16)] <= small broken = sort_allocates
         end

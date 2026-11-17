@@ -506,7 +506,7 @@ function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
     shift_absorbers!(st.modifiers, wgs)
     for (s, ws, setup, ps, lost, fast, flags) in zip(st.species, st.ws, st.setup, p.species, w.lost, w.fast, w.flags)
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
-        sort_by_cell!(s, grid, ws; workgroupsize = wgs)
+        sort_after_shift!(st, s, ws)
         load_window_columns!(s, grid, window_load(setup, ps, p), lost, injection_column(w), 1, s_new; fast, flags, workgroupsize = wgs)
     end
     for s in witness_species(st)                 # the bunch moves back with the window, unsorted and not refilled

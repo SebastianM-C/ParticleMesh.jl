@@ -1,5 +1,5 @@
 """
-    Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend))
+    Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend), append = nothing)
 
 Scratch for one species on one grid, allocated once: the sort keys and permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
@@ -12,6 +12,10 @@ the same element type where there is one (so `Int32`- and `T`-valued extras cost
 otherwise one new buffer per further element type, shared by the extras of that type. An empty
 extras tuple costs nothing.
 
+`append = k` (an integer ≥ 0) adds the scratch of [`resort_by_cell!`](@ref) (`resort`, a
+[`ResortScratch`](@ref)), which sorts from the order of the last sort with a tail of up to `k`
+particles added behind its count; without it `resort` is `nothing` and costs nothing.
+
 `flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
 deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
 cell, `M_d` the flux stencil width of axis `d` (5 or 6 at order 2), in the array `flux_patch`,
@@ -20,7 +24,7 @@ cell, or `CellMajor()`, `prod(n) × 3·M₁·M₂`; the default is the backend's
 (`flux_patch_layout`). Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no
 flux scratch.
 """
-struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL}
+struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS}
     key::VK
     perm::VP
     ak::AW
@@ -33,17 +37,18 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL}
     flux_patch::FP
     flux::FS
     flux_layout::FL
+    resort::RS
 end
 
 function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
-                   flux_layout = flux_patch_layout(get_backend(s))) where {N,T}
+                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing) where {N,T}
     flux === nothing || N == 2 ||
         throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
     backend = get_backend(s)
     cap = capacity(s)
     key = KernelAbstractions.zeros(backend, Int64, cap)
     perm = KernelAbstractions.zeros(backend, Int, cap)
-    ak = AK.workspace(AK.sortperm!, perm, key)
+    ak = AK.workspace(AK.sort!, key)
     tmp_i32 = KernelAbstractions.zeros(backend, Int32, cap)
     tmp_T = KernelAbstractions.zeros(backend, T, cap)
     tmp_u8 = KernelAbstractions.zeros(backend, UInt8, cap)
@@ -53,7 +58,8 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
     patch_size = flux === nothing ? (0, 0) : flux_patch_size(flux_layout, flux_patch_values(flux...), n)
     flux_patch = KernelAbstractions.zeros(backend, T, patch_size...)
-    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux, flux_layout)
+    resort = append === nothing ? nothing : ResortScratch(s, n, append)
+    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux, flux_layout, resort)
 end
 
 # One buffer per extra: the first of `pool` with the extra's element type, else a new one,
@@ -86,7 +92,8 @@ function scratch_bytes(ws::Workspace)
     core = (ws.tmp_i32, ws.tmp_T, ws.tmp_u8)
     own = unique(objectid, Iterators.filter(b -> !any(c -> c === b, core), ws.tmp_extras))
     return sizeof(ws.key) + sizeof(ws.perm) + sizeof(ws.tmp_i32) + sizeof(ws.tmp_T) + sizeof(ws.tmp_u8) +
-           sum(sizeof, own; init = 0) + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + sizeof(ws.flux_patch) + AK.nbytes(ws.ak.plan)
+           sum(sizeof, own; init = 0) + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + sizeof(ws.flux_patch) + AK.nbytes(ws.ak.plan) +
+           resort_bytes(ws.resort)
 end
 
 # Total order: alive particles by (cell, slot), free slots after all of them by slot. Keys are
@@ -97,6 +104,21 @@ end
         c = ifelse(status[i] == ALIVE, Int64(cell[i]) - 1, n)
         key[i] = c * cap + (i - 1)
     end
+end
+
+# The permutation from the sorted keys: each key ends in its slot (`key % cap` is `slot - 1`), so
+# sorting the keys alone gives `sortperm`'s permutation, the keys being unique.
+@kernel function perm_from_keys_kernel!(perm, @Const(key), cap::Int64)
+    j = @index(Global, Linear)
+    @inbounds perm[j] = Int(key[j] % cap) + 1
+end
+
+# Sort the keys in place with AcceleratedKernels' `sort!` (the algorithm its `Auto()` picks for the
+# backend and length) and decode the permutation; `ws.key` is left sorted.
+function sort_keys!(ws, cap, backend, workgroupsize)
+    AK.sort!(ws.key; workspace = ws.ak)
+    launcher(perm_from_keys_kernel!, backend, workgroupsize)(ws.perm, ws.key, Int64(cap); ndrange = cap)
+    return nothing
 end
 
 @kernel function gather_perm_kernel!(dst, @Const(src), @Const(perm))
@@ -140,6 +162,50 @@ function permute_all!(as::Tuple, tmps::Tuple, perm, workgroupsize)
     return permute_all!(Base.tail(as), Base.tail(tmps), perm, workgroupsize)
 end
 
+"Every SoA array of a species, the extras last, in the order `Species` lists them."
+species_arrays(s::Species) = (s.cell..., s.offset..., s.u..., s.w, s.status, values(s.extras)...)
+
+@inline copy_each!(::Tuple{}, ::Tuple{}, j, i) = nothing
+@inline function copy_each!(d::Tuple, a::Tuple, j, i)
+    @inbounds first(d)[j] = first(a)[i]
+    return copy_each!(Base.tail(d), Base.tail(a), j, i)
+end
+
+# One work item per slot: slot `i` of every array of `dst` takes slot `perm[i]` of `src`.
+@kernel function gather_all_kernel!(dst, @Const(src), @Const(perm))
+    i = @index(Global, Linear)
+    @inbounds copy_each!(dst, src, i, perm[i])
+end
+
+@kernel function copy_all_kernel!(dst, @Const(src))
+    i = @index(Global, Linear)
+    copy_each!(dst, src, i, i)
+end
+
+# Every SoA array of the species, the extras included, gathered by `ws.perm` (slot `i` takes what
+# slot `ws.perm[i]` held) and copied back: in one launch each through the spare arrays of a
+# workspace built with `append`, otherwise array by array through the shared buffers.
+permute_species!(s::Species, ws::Workspace, workgroupsize) = permute_species!(s, ws, ws.resort, workgroupsize)
+function permute_species!(s::Species, ws::Workspace, r, workgroupsize)
+    a = species_arrays(s)
+    launcher(gather_all_kernel!, get_backend(s), workgroupsize)(r.spare, a, ws.perm; ndrange = capacity(s))
+    launcher(copy_all_kernel!, get_backend(s), workgroupsize)(a, r.spare; ndrange = capacity(s))
+    return s
+end
+function permute_species!(s::Species{N}, ws::Workspace, ::Nothing, workgroupsize) where {N}
+    for d in 1:N
+        permute!(s.cell[d], ws.tmp_i32, ws.perm, workgroupsize)
+        permute!(s.offset[d], ws.tmp_T, ws.perm, workgroupsize)
+    end
+    for d in 1:3
+        permute!(s.u[d], ws.tmp_T, ws.perm, workgroupsize)
+    end
+    permute!(s.w, ws.tmp_T, ws.perm, workgroupsize)
+    permute!(s.status, ws.tmp_u8, ws.perm, workgroupsize)
+    permute_all!(Tuple(values(s.extras)), ws.tmp_extras, ws.perm, workgroupsize)
+    return s
+end
+
 """
     sort_by_cell!(species, grid, ws; workgroupsize = nothing)
 
@@ -158,18 +224,12 @@ function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; work
     cap = capacity(s)
     n = ncells(grid)
     launcher(sort_key_kernel!, backend, workgroupsize)(ws.key, s.cell[1], s.status, Int64(n), Int64(cap); ndrange = cap)
-    AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
-    permute!(s.cell[1], ws.tmp_i32, ws.perm, workgroupsize)
-    permute!(s.offset[1], ws.tmp_T, ws.perm, workgroupsize)
-    for d in 1:3
-        permute!(s.u[d], ws.tmp_T, ws.perm, workgroupsize)
-    end
-    permute!(s.w, ws.tmp_T, ws.perm, workgroupsize)
-    permute!(s.status, ws.tmp_u8, ws.perm, workgroupsize)
-    permute_all!(Tuple(values(s.extras)), ws.tmp_extras, ws.perm, workgroupsize)
+    sort_keys!(ws, cap, backend, workgroupsize)
+    permute_species!(s, ws, workgroupsize)
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = n)
     launcher(segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell[1], s.status,
                                                        Int32(cap); ndrange = cap)
+    note_sorted!(ws.resort, s)
     return s
 end
 
@@ -208,19 +268,11 @@ function sort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; work
     (Int128(ncell) + 1) * cap <= typemax(Int64) || throw(ArgumentError("sort key overflows Int64: $ncell cells × capacity $cap"))
     launcher(sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s.cell, s.status, Int64.(grid.n), Int64(ncell), Int64(cap);
                                                           ndrange = cap)
-    AK.sortperm!(ws.perm, ws.key; workspace = ws.ak)
-    for d in 1:N
-        permute!(s.cell[d], ws.tmp_i32, ws.perm, workgroupsize)
-        permute!(s.offset[d], ws.tmp_T, ws.perm, workgroupsize)
-    end
-    for d in 1:3
-        permute!(s.u[d], ws.tmp_T, ws.perm, workgroupsize)
-    end
-    permute!(s.w, ws.tmp_T, ws.perm, workgroupsize)
-    permute!(s.status, ws.tmp_u8, ws.perm, workgroupsize)
-    permute_all!(Tuple(values(s.extras)), ws.tmp_extras, ws.perm, workgroupsize)
+    sort_keys!(ws, cap, backend, workgroupsize)
+    permute_species!(s, ws, workgroupsize)
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = ncell)
     launcher(segments_nd_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s.cell, s.status,
                                                           Int32.(grid.n), Int32(cap); ndrange = cap)
+    note_sorted!(ws.resort, s)
     return s
 end
