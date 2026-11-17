@@ -1,5 +1,6 @@
 # T-320 to T-329: the Yee solver in N dimensions held to the exact discrete theory of its own
-# scheme (WP-022), at N = 1 and N = 2, on the non-square grids of `nd_grid` (Δx ≠ Δy).
+# scheme (WP-022), at N = 1 and N = 2 and (WP-042) at N = 3, on the grids of `nd_grid`, whose cell
+# sizes differ per axis.
 #
 # The one-step map. With C⁺ the discrete curl built from forward differences (E's staggers to
 # B's) and C⁻ the one built from backward differences (B's staggers to E's), solve_fields! is
@@ -86,22 +87,28 @@ The discrete eigenmode of integer wave numbers `m` (per axis) on `grid`: k_d = 2
 κ_d = 2 sin(k_dΔ_d/2)/Δ_d. Substituting Eⁿ = Ê e^{i(k·x − ωnΔt)}, Bⁿ⁺¹ᐟ² = B̂½ e^{i(k·x − ω(n+½)Δt)}
 into the leapfrog of the header gives Ω·B̂½ = κ×Ê and −Ω·Ê = κ×B̂½ with Ω = 2 sin(ωΔt/2)/Δt, so
 Ω² = |κ|² for κ·Ê = 0: the exact discrete relation sin(ωΔt/2)/Δt = √(Σ_d sin²(k_dΔ_d/2)/Δ_d²).
-The integer-time B is the mean of its half steps, B̂ = cos(ωΔt/2)·B̂½. Polarization 1 (Ex, Ey, Bz
-at N = 2; Ey, Bz at N = 1): Ê = (−κ_y, κ_x, 0)/|κ|, B̂½ = κ×Ê/|κ| = (0, 0, 1). Polarization 2
-(Bx, By, Ez; By, Ez at N = 1): Ê = (0, 0, 1), B̂½ = (κ_y, −κ_x, 0)/|κ|. The real fields are
-F_c = A·F̂_c·cos(k·x_c − ωt) with x_c the position of each component's stagger.
+The integer-time B is the mean of its half steps, B̂ = cos(ωΔt/2)·B̂½. With κ⊥ = √(κ_x² + κ_y²)
+(nonzero for the modes used): polarization 1 has Ê = (−κ_y, κ_x, 0)/κ⊥, in the x–y plane, and
+B̂½ = κ×Ê/|κ| = (−κ_xκ_z, −κ_yκ_z, κ⊥²)/(κ⊥|κ|); polarization 2 has that vector as Ê and
+B̂½ = κ×Ê/|κ| = (κ_y, −κ_x, 0)/κ⊥. With κ_z = 0 (N ≤ 2) these are Ê = (−κ_y, κ_x, 0)/|κ|,
+B̂½ = (0, 0, 1) (Ex, Ey, Bz at N = 2; Ey, Bz at N = 1) and Ê = (0, 0, 1), B̂½ = (κ_y, −κ_x, 0)/|κ|
+(Bx, By, Ez; By, Ez at N = 1). The real fields are F_c = A·F̂_c·cos(k·x_c − ωt) with x_c the
+position of each component's stagger.
 """
 function yee_mode(grid, m, pol, dt)
     N = length(grid.n)
     Δ = bigΔ(grid)
     κ = ntuple(d -> 2 * sin(big(π) * m[d] / grid.n[d]) / Δ[d], N)      # k_dΔ_d/2 = π m_d/n_d
-    κx, κy = κ[1], N >= 2 ? κ[2] : big(0)
+    κx, κy, κz = κ[1], N >= 2 ? κ[2] : big(0), N >= 3 ? κ[3] : big(0)
     nκ = sqrt(sum(abs2, κ))
+    κp = sqrt(κx^2 + κy^2)
     bdt = big(Float64(value_of(dt)))
     ω = 2 / bdt * asin(bdt * nκ / 2)
     c½ = cos(ω * bdt / 2)
     o = big(0)
-    Ê, B̂ = pol == 1 ? ((-κy / nκ, κx / nκ, o), (o, o, c½)) : ((o, o, big(1)), (c½ * κy / nκ, -c½ * κx / nκ, o))
+    inplane = (-κy / κp, κx / κp, o)
+    other = ((o - κx * κz) / (κp * nκ), (o - κy * κz) / (κp * nκ), κp / nκ)     # written so that κ_z = 0 gives +0
+    Ê, B̂ = pol == 1 ? (inplane, c½ .* other) : (other, (c½ * κy / κp, -c½ * κx / κp, o))
     return (; m, Ê, B̂, ω, κ)
 end
 
@@ -136,15 +143,15 @@ part_err(x, A, exact) = maximum(k -> Float64(abs(big(Float64(part(x, k))) - big(
 
 # ---------------------------------------------------------------------------------------------
 
-@testset "T-320 discrete dispersion: an oblique eigenmode in each polarization follows the exact Yee relation [A2, A7, WP-022]" begin
+@testset "T-320 discrete dispersion: an oblique eigenmode in each polarization follows the exact Yee relation [A2, A7, WP-022, WP-042]" begin
     C = emC("T-320")
     Cp = emC("T-320", "C_phase")
     nsteps = 400
-    for N in (1, 2), T in TYPES, pol in (1, 2), cfl in (1 // 2, 95 // 100)
+    for N in (1, 2, 3), T in TYPES, pol in (1, 2), cfl in (1 // 2, 95 // 100)
         B = basetype(T)
         grid = nd_grid(Val(N), B)
         dt = B(cfl) * courant_limit(Yee(), grid)
-        m = N == 1 ? (3,) : (3, -2)
+        m = (3, -2, 1)[1:N]
         mode = yee_mode(grid, m, pol, dt)
         layout = field_layout(Val(N))
         A = seeded(T, 1)                                   # partials exercised for duals
@@ -227,10 +234,10 @@ end
     @info "T-321 anisotropy (diagonal error / axis error)" ratio = dg ./ ax
 end
 
-@testset "T-322 divergence identities: ∇·B is kept, and ∇·E changes by −Δt·∇·J [A2, A7, WP-022]" begin
+@testset "T-322 divergence identities: ∇·B is kept, and ∇·E changes by −Δt·∇·J [A2, A7, WP-022, WP-042]" begin
     C = emC("T-322")
     Cj = emC("T-322", "C_current")
-    for N in (1, 2), T in TYPES
+    for N in (1, 2, 3), T in TYPES
         grid = nd_grid(Val(N), basetype(T))
         Δ = bigΔ(grid)
         L = sum(d -> 2 / d, Δ)                             # the size of a divergence's terms per unit field
@@ -249,8 +256,8 @@ end
                 worst = max(worst, Float64(maximum(abs, div_plus(Bvec(u), Δ) .- div0[k + 1]) / (M * L)) / (base_eps(T) * s))
             end
         end
-        record!("T-322 div B", T, worst)
-        @test worst <= C
+        record!(N == 3 ? "T-322 div B at N = 3" : "T-322 div B", T, worst)
+        @test worst <= (N == 3 ? emC("T-322", "C_3d") : C)
         # ∇·E on ρ's nodes with a prescribed J: Eⁿ⁺¹ − Eⁿ = Δt(C⁻B − J) and div⁻·C⁻ = 0, so
         # div⁻Eⁿ⁺¹ − div⁻Eⁿ = −Δt·div⁻J over every step.
         f = random_fields(T, grid; seed = 3225 + N)
@@ -272,10 +279,10 @@ end
     end
 end
 
-@testset "T-323 discrete energy: conserved in vacuum, changed by the discrete Poynting work term with J [A7, WP-022]" begin
+@testset "T-323 discrete energy: conserved in vacuum, changed by the discrete Poynting work term with J [A7, WP-022, WP-042]" begin
     C = emC("T-323")
     Cj = emC("T-323", "C_current")
-    for N in (1, 2), T in TYPES
+    for N in (1, 2, 3), T in TYPES
         grid = nd_grid(Val(N), basetype(T))
         Δ = bigΔ(grid)
         dt = basetype(T)(95 // 100) * courant_limit(Yee(), grid)
@@ -542,7 +549,7 @@ end
     end
 end
 
-@testset "T-327 the solver is bitwise across reruns, 1 and 4 threads and launch shapes, at N = 1 and N = 2 [A4, WP-022]" begin
+@testset "T-327 the solver is bitwise across reruns, 1 and 4 threads and launch shapes, at N = 1, 2 and 3 [A4, WP-022, WP-042]" begin
     first = yee_nd_digests()
     @test yee_nd_digests() == first
     for wgs in (16, 64)
@@ -562,10 +569,10 @@ end
     end
 end
 
-@testset "T-328 Dual: the partials evolve as the solver applied to the partials; the primal as the Float32 run [A8, WP-022]" begin
+@testset "T-328 Dual: the partials evolve as the solver applied to the partials; the primal as the Float32 run [A8, WP-022, WP-042]" begin
     C = emC("T-328")
     nsteps = 100
-    for N in (1, 2)
+    for N in (1, 2, 3)
         grid = nd_grid(Val(N), Float32)
         dt = Float32(95 // 100) * courant_limit(Yee(), grid)
         fd = random_fields(D3, grid; seed = 3280 + N)
@@ -585,8 +592,8 @@ end
     end
 end
 
-@testset "T-329 guards are periodic images after solve_fields!, and its allocation does not grow with the grid [A7, WP-022]" begin
-    for N in (1, 2), T in TYPES
+@testset "T-329 guards are periodic images after solve_fields!, and its allocation does not grow with the grid [A7, WP-022, WP-042]" begin
+    for N in (1, 2, 3), T in TYPES
         grid = nd_grid(Val(N), basetype(T))
         f = random_fields(T, grid; seed = 3290 + N)
         dt = basetype(T)(95 // 100) * courant_limit(Yee(), grid)
@@ -598,7 +605,7 @@ end
             a = getfield(f, key)
             @test same_bits(a, fill_guards!(copy(a), grid))
         end
-        # every component the solve changes is dynamic: all of E and B at N = 2 (Bx included),
+        # every component the solve changes is dynamic: all of E and B at N ≥ 2 (Bx included),
         # all but Bx at N = 1
         changed = filter(key -> !same_bits(getfield(f, key), getfield(before, key)), EB_KEYS)
         @test changed == (N == 1 ? (:Ex, :Ey, :Ez, :By, :Bz) : EB_KEYS)
@@ -610,9 +617,9 @@ end
         solve_fields!(Yee(), f, grid, dt)
         return @allocated solve_fields!(Yee(), f, grid, dt)
     end
-    for N in (1, 2)
+    for N in (1, 2, 3)
         small = solve_bytes(nd_grid(Val(N), Float64))
-        large = solve_bytes(nd_grid(Val(N), Float64; scale = 8))
+        large = solve_bytes(nd_grid(Val(N), Float64; scale = N == 3 ? 3 : 8))
         @info "T-329 bytes per solve_fields!" N small large
         @test_alloc large <= small
     end

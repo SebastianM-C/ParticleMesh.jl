@@ -27,8 +27,8 @@ end
 """
     fill_guards!(a, grid; workgroupsize = nothing)
 
-Copy the periodic images of the interior into the guard cells of `a`. For N = 2 axis by axis,
-the corners included.
+Copy the periodic images of the interior into the guard cells of `a`. For N ≥ 2 axis by axis,
+the edges and corners included.
 """
 function fill_guards!(a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = nothing)
     n, g = ncells(grid), guards(grid)
@@ -40,7 +40,8 @@ end
     fold_guards!(a, grid; workgroupsize = nothing)
 
 Add the guard cells of `a` into the interior cells they alias periodically, then zero them.
-For N = 2 axis by axis in the reverse order of `fill_guards!`, so the two stay adjoint (T-263).
+For N ≥ 2 axis by axis in the reverse order of `fill_guards!`, so the two stay adjoint (T-263,
+T-871).
 """
 function fold_guards!(a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = nothing)
     n, g = ncells(grid), guards(grid)
@@ -48,72 +49,75 @@ function fold_guards!(a::AbstractVector, grid::PeriodicGrid{1}; workgroupsize = 
     return a
 end
 
-# N = 2: axis by axis. `fill_guards!` fills axis 1 on the interior rows of axis 2, then axis 2 on
-# every column, axis-1 guards included, so the corners receive the images of the interior
-# corners. `fold_guards!` is its transpose: axis 2 on every column first (the corners move into
-# the axis-1 guards of interior rows), then axis 1 on the interior rows. Each work item writes
-# its own entries, so the result does not depend on the launch shape.
+# N ≥ 2: axis by axis, one kernel for every axis and every N. The pass of axis d runs over the
+# 2g guard layers of that axis, over the whole extent (guards included) of the axes before d and
+# over the interior of the axes after d (`guard_pass`). `fill_guards!` takes the axes in
+# increasing order, so the pass of axis d also copies the guards the earlier passes filled, and
+# the edges and corners receive the images of the interior's; at N = 2 that is axis 1 on the
+# interior rows of axis 2, then axis 2 on every column. `fold_guards!` is its transpose: the same
+# passes in decreasing order of the axis (a corner moves into the guards of the axes before, and
+# from there into the interior). Each work item writes its own entries, so the result does not
+# depend on the launch shape.
 
-@kernel function fill_guards_axis1_kernel!(a, n1, g)    # ndrange (2g, n2)
-    k, j = @index(Global, NTuple)
-    r = j + g
+# The launch range of the pass of axis d and the offset that turns a work item's index into an
+# array index (zero along d and before it, g after it).
+@inline guard_pass(n::NTuple{N,Int}, g::Int, d::Int) where {N} =
+    (ntuple(e -> e == d ? 2g : e < d ? n[e] + 2g : n[e], Val(N)), ntuple(e -> e > d ? g : 0, Val(N)))
+
+# The array index of a work item with its index along axis d replaced by `i`.
+@inline along(I::CartesianIndex{N}, off::NTuple{N,Int}, ::Val{d}, i::Int) where {N,d} =
+    CartesianIndex(ntuple(e -> e == d ? i : I[e] + off[e], Val(N)))
+
+@kernel function fill_guards_axis_kernel!(a, vd::Val{d}, nd::Int, g::Int, off) where {d}
+    I = @index(Global, Cartesian)
+    k = I[d]
     @inbounds if k <= g
-        a[k, r] = a[k + n1, r]
+        a[along(I, off, vd, k)] = a[along(I, off, vd, k + nd)]
     else
         m = k - g
-        a[n1 + g + m, r] = a[g + m, r]
+        a[along(I, off, vd, nd + g + m)] = a[along(I, off, vd, g + m)]
     end
 end
 
-@kernel function fill_guards_axis2_kernel!(a, n2, g)    # ndrange (n1 + 2g, 2g)
-    i, k = @index(Global, NTuple)
+@kernel function fold_guards_axis_kernel!(a, vd::Val{d}, nd::Int, g::Int, off) where {d}
+    I = @index(Global, Cartesian)
+    k = I[d]
     @inbounds if k <= g
-        a[i, k] = a[i, k + n2]
+        a[along(I, off, vd, k + nd)] += a[along(I, off, vd, k)]
+        a[along(I, off, vd, k)] = zero(eltype(a))
     else
         m = k - g
-        a[i, n2 + g + m] = a[i, g + m]
+        a[along(I, off, vd, g + m)] += a[along(I, off, vd, nd + g + m)]
+        a[along(I, off, vd, nd + g + m)] = zero(eltype(a))
     end
 end
 
-@kernel function fold_guards_axis1_kernel!(a, n1, g)    # ndrange (2g, n2)
-    k, j = @index(Global, NTuple)
-    r = j + g
-    @inbounds if k <= g
-        a[k + n1, r] += a[k, r]
-        a[k, r] = zero(eltype(a))
-    else
-        m = k - g
-        a[g + m, r] += a[n1 + g + m, r]
-        a[n1 + g + m, r] = zero(eltype(a))
-    end
-end
+"The axes 1…N as a tuple of `Val`s: a loop over them (`foreach_axis`) has a static axis in every iteration."
+@inline axis_vals(::Val{N}) where {N} = ntuple(Val, Val(N))
+@inline axis_of(::Val{d}) where {d} = d
+@inline foreach_axis(f::F, ::Tuple{}) where {F} = nothing
+@inline foreach_axis(f::F, vals::Tuple) where {F} = (f(first(vals)); foreach_axis(f, Base.tail(vals)))
 
-@kernel function fold_guards_axis2_kernel!(a, n2, g)    # ndrange (n1 + 2g, 2g)
-    i, k = @index(Global, NTuple)
-    @inbounds if k <= g
-        a[i, k + n2] += a[i, k]
-        a[i, k] = zero(eltype(a))
-    else
-        m = k - g
-        a[i, g + m] += a[i, n2 + g + m]
-        a[i, n2 + g + m] = zero(eltype(a))
-    end
-end
+check_guarded(a, grid::PeriodicGrid) = size(a) == ncells(grid) .+ 2guards(grid) ||
+    throw(ArgumentError("the array has size $(size(a)), the grid's fields have $(ncells(grid) .+ 2guards(grid))"))
 
-function fill_guards!(a::AbstractMatrix, grid::PeriodicGrid{2}; workgroupsize = nothing)
-    (n1, n2), g = ncells(grid), guards(grid)
-    g == 0 && return a
-    backend = get_backend(a)
-    launcher(fill_guards_axis1_kernel!, backend, workgroupsize)(a, n1, g; ndrange = (2g, n2))
-    launcher(fill_guards_axis2_kernel!, backend, workgroupsize)(a, n2, g; ndrange = (n1 + 2g, 2g))
+function guard_pass!(kernel, a, grid::PeriodicGrid{N}, vd::Val{d}, workgroupsize) where {N,d}
+    n, g = ncells(grid), guards(grid)
+    range, off = guard_pass(n, g, d)
+    launcher(kernel, get_backend(a), workgroupsize)(a, vd, n[d], g, off; ndrange = range)
     return a
 end
 
-function fold_guards!(a::AbstractMatrix, grid::PeriodicGrid{2}; workgroupsize = nothing)
-    (n1, n2), g = ncells(grid), guards(grid)
-    g == 0 && return a
-    backend = get_backend(a)
-    launcher(fold_guards_axis2_kernel!, backend, workgroupsize)(a, n2, g; ndrange = (n1 + 2g, 2g))
-    launcher(fold_guards_axis1_kernel!, backend, workgroupsize)(a, n1, g; ndrange = (2g, n2))
+function fill_guards!(a::AbstractArray{<:Any,N}, grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
+    check_guarded(a, grid)
+    guards(grid) == 0 && return a
+    foreach_axis(vd -> guard_pass!(fill_guards_axis_kernel!, a, grid, vd, workgroupsize), axis_vals(Val(N)))
+    return a
+end
+
+function fold_guards!(a::AbstractArray{<:Any,N}, grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
+    check_guarded(a, grid)
+    guards(grid) == 0 && return a
+    foreach_axis(vd -> guard_pass!(fold_guards_axis_kernel!, a, grid, vd, workgroupsize), reverse(axis_vals(Val(N))))
     return a
 end

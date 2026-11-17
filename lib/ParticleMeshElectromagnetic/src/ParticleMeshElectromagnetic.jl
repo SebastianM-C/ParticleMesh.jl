@@ -9,7 +9,9 @@ optimization objective, WP-047, and a dopant that the fields ionize by an ADK ra
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
 their Courant limit, the relativistic Boris pusher behind a pusher type, the step composition
-and the diagnostics. The current comes from the engine's charge-conserving `deposit_flux!`, so
+and the diagnostics. At `N = 3` the layout, the Yee solver, the initial field of a charge
+(`initial_field!`) and the recorder exist and are tested; the problem description, the push and the
+current do not yet (WP-042). The current comes from the engine's charge-conserving `deposit_flux!`, so
 Gauss's law holds to roundoff from the initial `cumsum_periodic!` field onwards. The
 electrostatic cases (Landau damping, two-stream) run as edge cases with no transverse momenta
 or fields, as Smilei runs them.

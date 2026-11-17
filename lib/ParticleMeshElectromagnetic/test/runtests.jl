@@ -22,6 +22,7 @@ include("ionization_cases.jl") # WP-059: the field ionization's problems, after 
 const TEST_FILES = [
     "yee.jl",
     "yee_nd.jl",              # WP-022: T-320 to T-329, the solver in N dimensions
+    "em3d.jl",                # WP-042: T-880 to T-883, the layout, the initial field and the recorder at N = 3, after yee_nd.jl (its helpers)
     "boris.jl",
     "pushers.jl",
     "pushers_sciml.jl",

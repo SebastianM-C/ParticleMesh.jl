@@ -125,8 +125,8 @@ antenna_modifier(::Tuple{}, window) = ()
 antenna_modifier(planes::Tuple, window) = (AntennaPlanes(planes, WindowClock(window)),)
 edges_of(::Nothing) = nothing
 
-"The kinetic energy of every chunk of particle slots at the current momenta, into `st.K` (deterministic, no deposition)."
-function kinetic!(st::EMState{2})
+"The kinetic energy of every chunk of particle slots at the current momenta, into `st.K` (deterministic, no deposition); N ≥ 2."
+function kinetic!(st::EMState)
     wgs = st.numerics.workgroupsize
     first = 1
     for s in deposited_species(st)
@@ -151,14 +151,31 @@ function check_window_params(w, p::EMParams)
     return nothing
 end
 
-# The initial field of a 2D state from the deposited, folded charge in `st.ρ`: the engine's periodic
-# solve, `φ` from `inverse_laplacian_periodic!` and `E = G` from `gradient_periodic!`. A moving
-# window's plasma starts neutral against its immobile background, so its E⁰ is zero and no solve
-# is made.
-function initial_field!(st::EMState{2})
+# The initial field of a state of N ≥ 2 from the deposited, folded charge in `st.ρ`: the engine's
+# periodic solve, `φ` from `inverse_laplacian_periodic!` and `E = G` from `gradient_periodic!` (the
+# components of the resolved axes). A moving window's plasma starts neutral against its immobile
+# background, so its E⁰ is zero and no solve is made.
+function initial_field!(st::EMState{N}) where {N}
     window_frame(st) === nothing || return st
-    wgs = st.numerics.workgroupsize
-    inverse_laplacian_periodic!(st.aux.φ, st.ρ, st.grid, st.aux.spectral; workgroupsize = wgs)
-    gradient_periodic!((st.fields.Ex, st.fields.Ey), st.aux.φ, st.grid; workgroupsize = wgs)
+    initial_field!(st.fields, st.aux.φ, st.ρ, st.grid, st.aux.spectral; workgroupsize = st.numerics.workgroupsize)
     return st
 end
+
+"""
+    initial_field!(fields, φ, ρ, grid::PeriodicGrid{N}, spectral; workgroupsize = nothing) -> fields
+
+The electric field of the folded charge `ρ` on a periodic grid of N ≥ 2 axes, into the components
+of the resolved axes of `fields` ([`field_layout`](@ref)`(Val(N))`; Ex and Ey at N = 2, Ex, Ey and
+Ez at N = 3) with their guards filled: `φ` (scratch) by the engine's `inverse_laplacian_periodic!`
+with the `SpectralWorkspace` `spectral`, then `E = G` by `gradient_periodic!`, so that the
+backward-difference divergence of E is ρ − mean(ρ) at every node to roundoff, the mean being the
+immobile neutralizing background.
+"""
+function initial_field!(fields::NamedTuple, φ, ρ, grid::PeriodicGrid{N}, spectral; workgroupsize = nothing) where {N}
+    inverse_laplacian_periodic!(φ, ρ, grid, spectral; workgroupsize)
+    gradient_periodic!(resolved_components((fields.Ex, fields.Ey, fields.Ez), Val(N)), φ, grid; workgroupsize)
+    return fields
+end
+
+"The components of the resolved axes of a three-component field, as an `NTuple{N}`."
+@inline resolved_components(F::NTuple{3,Any}, ::Val{N}) where {N} = ntuple(d -> F[d], Val(N))

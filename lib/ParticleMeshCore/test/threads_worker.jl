@@ -1,7 +1,7 @@
-# Run by T-172, T-173, T-174, T-177, T-113, T-260, T-266, T-303, T-312 and T-536 in a subprocess with a given
+# Run by T-172, T-173, T-174, T-177, T-113, T-260, T-266, T-303, T-312, T-536 and T-875 in a subprocess with a given
 # thread count: prints the digests of `thread_digests()`, the one-thread Fast-mode check of T-174,
 # the flux digests of `flux_digests()`, the N = 1 engine digests of `n1_lines()`, the 2D digests of
-# `engine2d_digests()`, the 2D flux digests of `flux2d_digests()` and the periodic-solve digests of `spectral_digests()` and the momentum-load digests of `momenta_digests()` (T-536).
+# `engine2d_digests()`, the 2D flux digests of `flux2d_digests()` and the periodic-solve digests of `spectral_digests()` and the momentum-load digests of `momenta_digests()` (T-536) and the 3D digests of `engine3d_digests()` (T-875).
 include(joinpath(@__DIR__, "setup.jl"))
 include(joinpath(@__DIR__, "helpers.jl"))
 include(joinpath(@__DIR__, "digest.jl"))
@@ -12,6 +12,7 @@ include(joinpath(@__DIR__, "engine2d_cases.jl"))
 include(joinpath(@__DIR__, "flux2d_cases.jl"))
 include(joinpath(@__DIR__, "spectral_cases.jl"))
 include(joinpath(@__DIR__, "momenta_cases.jl"))
+include(joinpath(@__DIR__, "engine3d_cases.jl"))
 
 println("THREADS ", Threads.nthreads())
 foreach(l -> println("DIGEST ", l), thread_digests())
@@ -22,3 +23,4 @@ foreach(l -> println("E2D ", l), engine2d_digests())
 foreach(l -> println("F2D ", l), flux2d_digests())
 foreach(l -> println("SPECTRAL ", l), spectral_digests())
 foreach(l -> println("MOM ", l), momenta_digests())
+foreach(l -> println("E3D ", l), engine3d_digests())

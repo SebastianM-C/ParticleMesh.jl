@@ -1,7 +1,7 @@
 """
     PeriodicGrid{N,T}(n, dx, g)
     PeriodicGrid(n::Integer, dx, g)              # N = 1
-    PeriodicGrid(n::NTuple{N}, dx::NTuple{N}, g)  # N = 1 or 2
+    PeriodicGrid(n::NTuple{N}, dx::NTuple{N}, g)  # N = 1, 2 or 3
 
 A periodic structured grid of `n` interior cells per axis with cell size `dx` (normalized units,
 c/ω₀) and `g` guard cells on each side of every axis. Cell `i ∈ 1:n_d` of axis `d` covers
@@ -10,7 +10,7 @@ index `i` of axis `d` is array index `i + g`. The tuple constructor checks `n_d 
 (the condition under which fill and fold touch disjoint cells).
 
 Cells linearize column-major, axis 1 fastest: [`linear_cell`](@ref) and its inverse
-[`cartesian_cell`](@ref). N = 1 and N = 2 are implemented and tested.
+[`cartesian_cell`](@ref). N = 1, 2 and 3 are tested.
 """
 struct PeriodicGrid{N,T}
     n::NTuple{N,Int}

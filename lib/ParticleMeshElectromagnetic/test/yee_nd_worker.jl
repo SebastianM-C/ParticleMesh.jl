@@ -1,4 +1,4 @@
-# Subprocess worker of T-327: the WP-022 solver runs at N = 1 and N = 2 for every element type,
+# Subprocess worker of T-327: the WP-022 solver runs at N = 1, 2 and 3 for every element type,
 # printing one bitwise digest per run. Run by yee_nd.jl at 1 and 4 threads.
 
 using Test

@@ -1,5 +1,5 @@
 # Shared by runtests.jl and the T-327 worker: the grids, the random fields and the bitwise digests
-# of the WP-022 solver tests (yee_nd.jl), at N = 1 and N = 2.
+# of the WP-022 solver tests (yee_nd.jl), at N = 1, N = 2 and (WP-042) N = 3.
 
 const E_KEYS = (:Ex, :Ey, :Ez)
 const B_KEYS = (:Bx, :By, :Bz)
@@ -10,11 +10,14 @@ const EB_KEYS = (E_KEYS..., B_KEYS...)
     nd_grid(Val(N), B; scale = 1, g = 2) -> PeriodicGrid{N,B}
 
 The grids of the WP-022 tests, cell sizes in `B`: at N = 1 `48·scale` cells on 2π; at N = 2
-`(24, 16)·scale` cells on (2π, 3π/2), so Δx = π/12 and Δy = 3π/32 differ (a non-square grid).
+`(24, 16)·scale` cells on (2π, 3π/2), so Δx = π/12 and Δy = 3π/32 differ (a non-square grid);
+at N = 3 `(12, 8, 10)·scale` cells on (2π, 3π/2, 5π/4), so Δx = π/6, Δy = 3π/16 and Δz = π/8 differ.
 """
 nd_grid(::Val{1}, ::Type{B}; scale = 1, g = 2) where {B} = PeriodicGrid(48scale, 2 * B(π) / (48scale), g)
 nd_grid(::Val{2}, ::Type{B}; scale = 1, g = 2) where {B} =
     PeriodicGrid((24scale, 16scale), (2 * B(π) / (24scale), 3 * B(π) / 2 / (16scale)), g)
+nd_grid(::Val{3}, ::Type{B}; scale = 1, g = 2) where {B} =
+    PeriodicGrid((12scale, 8scale, 10scale), (2 * B(π) / (12scale), 3 * B(π) / 2 / (8scale), 5 * B(π) / 4 / (10scale)), g)
 
 "A random value of `T` in [−1/2, 1/2), with independent random partials for duals."
 rand_T(rng, ::Type{T}) where {T<:AbstractFloat} = T(rand(rng) - 1 / 2)
@@ -54,11 +57,11 @@ end
     yee_nd_digests(; workgroupsize = nothing) -> [(N, T, digest)]
 
 T-327: 50 steps of `solve_fields!` at 0.95 of the Courant limit from random fields with a random
-current, at N = 1 and N = 2 for every element type, one digest per run.
+current, at N = 1, 2 and 3 for every element type, one digest per run.
 """
 function yee_nd_digests(; workgroupsize = nothing)
     out = Tuple{Int,DataType,UInt64}[]
-    for N in (1, 2), T in TYPES
+    for N in (1, 2, 3), T in TYPES
         grid = nd_grid(Val(N), basetype(T))
         f = random_fields(T, grid; seed = 3270 + N)
         dt = basetype(T)(95 // 100) * courant_limit(Yee(), grid)

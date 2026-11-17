@@ -25,14 +25,14 @@ resolved axis, component c of B at `Node()` along axis c and at `Center()` along
 component of a collapsed axis (c > N) has no axis of its own, so E_c and J_c sit at `Node()` and
 B_c at `Center()` on every axis. A stagger is a bare `Stagger` at N = 1 and an `NTuple{N}` above.
 
-| component | N = 1 | N = 2 |
-|---|---|---|
-| Ex, Jx | `Center()` | `(Center(), Node())` |
-| Ey, Jy | `Node()` | `(Node(), Center())` |
-| Ez, Jz | `Node()` | `(Node(), Node())` |
-| Bx | `Node()` | `(Node(), Center())` |
-| By | `Center()` | `(Center(), Node())` |
-| Bz | `Center()` | `(Center(), Center())` |
+| component | N = 1 | N = 2 | N = 3 |
+|---|---|---|---|
+| Ex, Jx | `Center()` | `(Center(), Node())` | `(Center(), Node(), Node())` |
+| Ey, Jy | `Node()` | `(Node(), Center())` | `(Node(), Center(), Node())` |
+| Ez, Jz | `Node()` | `(Node(), Node())` | `(Node(), Node(), Center())` |
+| Bx | `Node()` | `(Node(), Center())` | `(Node(), Center(), Center())` |
+| By | `Center()` | `(Center(), Node())` | `(Center(), Node(), Center())` |
+| Bz | `Center()` | `(Center(), Center())` | `(Center(), Center(), Node())` |
 
 At N = 3 it is the standard Yee cell. A stagger's index `j` along an axis of cell size Δ sits at
 (j − 1)·Δ for `Node()` and at (j − 1/2)·Δ for `Center()`, so the forward difference maps `Node()`
@@ -72,15 +72,16 @@ const RHO_STAGGER_2D = (RHO_STAGGER, RHO_STAGGER)
 # once over N, so it asks for the layout here.
 "The field layout with one stagger per resolved axis for every component, as the engine's N-axis `gather_at` takes it."
 @inline gather_layout(::Val{2}) = FIELD_LAYOUT_2D
-"The stagger of ρ as the engine's depositions take it at N: bare at N = 1, one per axis above."
+"The stagger of ρ as the engine's depositions take it at N: bare at N = 1, one per axis above (the primal nodes on every axis)."
 @inline rho_stagger(::Val{1}) = RHO_STAGGER
 @inline rho_stagger(::Val{2}) = RHO_STAGGER_2D
+@inline rho_stagger(::Val{3}) = (RHO_STAGGER, RHO_STAGGER, RHO_STAGGER)
 
 """
     em_fields(backend, T, grid::PeriodicGrid{N})
 
 The zeroed fields of [`field_layout`](@ref)`(Val(N))`, one engine field (with guards) per
-component, as a `NamedTuple` with the same keys; N = 1 and N = 2.
+component, as a `NamedTuple` with the same keys; N = 1, 2 and 3.
 """
 em_fields(backend, ::Type{T}, grid::PeriodicGrid{N}) where {T,N} = map(_ -> field(backend, T, grid), field_layout(Val(N)))
 
