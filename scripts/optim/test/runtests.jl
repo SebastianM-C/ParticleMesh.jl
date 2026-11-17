@@ -314,3 +314,145 @@ end
     @test !is_interior_max(xs, [1.0, 2.0, 2.9, 2.5, 1.0], 1.0, 3.0)                 # the slice's centre is not the optimum's value
 end
 include(joinpath(@__DIR__, "bayes.jl"))
+
+# Tests of the WP-064 case (born2d_case.jl): the objective on ionization-born electrons. T-833 and
+# T-834 run the case at λ₀/8 to t = 150, about a minute in all.
+include(joinpath(@__DIR__, "..", "born2d_case.jl"))
+
+"The case's state at λ₀/8 before its first step, with `n` hand-made born electrons written into the first slots."
+function born_test_state(xs, us, ws)
+    st, p, prob = born_start(; ppl = 8, t_end = 1.0)
+    e = ionization_electrons(st)
+    h = cellsize(st.grid)[1]
+    for (i, (x, u, w)) in enumerate(zip(xs, us, ws))
+        c = floor(Int, x / h)
+        e.cell[1][i] = c + 1; e.offset[1][i] = x / h - c
+        e.cell[2][i] = 60 + i; e.offset[2][i] = 0.5
+        e.u[1][i], e.u[2][i], e.u[3][i] = u
+        e.w[i] = w; e.status[i] = ALIVE
+    end
+    return st
+end
+
+@testset "T-830 the position weight is a C² step: 0 and 1 outside, antisymmetric about the middle, flat to second order at both ends [A2, WP-064]" begin
+    lo, hi = 12.0, 24.0
+    @test smooth_rise(lo, lo, hi) == 0 && smooth_rise(-3.0, lo, hi) == 0 && smooth_rise(hi, lo, hi) == 1 && smooth_rise(99.0, lo, hi) == 1
+    @test smooth_rise(18.0, lo, hi) == 0.5
+    xs = range(lo, hi; length = 97)
+    @test all(x -> isapprox(smooth_rise(x, lo, hi) + smooth_rise(lo + hi - x, lo, hi), 1; atol = 4eps()), xs)
+    @test issorted(smooth_rise.(xs, lo, hi))
+    d1(x) = ForwardDiff.derivative(y -> smooth_rise(y, lo, hi), x)
+    d2(x) = ForwardDiff.derivative(d1, x)
+    @test d1(lo) == 0 && d1(hi) == 0 && d2(lo) == 0 && d2(hi) == 0
+    # just inside the ends the second derivative is O(distance): 60·s/(hi − lo)² to first order
+    @test d2(lo + 1e-6) ≈ 60 * (1e-6 / 12) / 144 rtol = 1e-4
+    @test d2(hi - 1e-6) ≈ -60 * (1e-6 / 12) / 144 rtol = 1e-4
+    @test d1(18.0) ≈ 15 / 8 / 12 rtol = 4eps()                       # the steepest slope, 15/8 per width
+    @test smooth_rise(15.0f0, 12.0f0, 24.0f0) isa Float32
+    @test smooth_rise(15.0f0, 12.0f0, 24.0f0) ≈ 0.25^3 * (10 - 15 * 0.25 + 6 * 0.25^2) rtol = 4eps(Float32)
+end
+
+@testset "T-831 the objective is Δx·Δy·Σ w(γ − 1)S(x) over the born electrons alone [A3, WP-064]" begin
+    xs = [5.0, 12.0, 15.0, 18.0, 30.0, 60.0]
+    us = [(3.0, 0.0, 0.0), (2.0, 1.0, 0.0), (1.0, -2.0, 0.5), (0.0, 0.0, 0.0), (10.0, 0.3, -0.2), (0.4, 0.0, 0.0)]
+    ws = [1.0e-3, 2.0e-3, 5.0e-4, 7.0e-4, 3.0e-4, 1.1e-3]
+    st = born_test_state(xs, us, ws)
+    h = cellsize(st.grid)
+    @test h[1] ≈ 2π / 8 && h[2] ≈ π / 4
+    S(x) = (s = clamp((x - 12) / 12, 0, 1); s^3 * (10 - 15s + 6s^2))
+    expected = h[1] * h[2] * sum(w * (sqrt(1 + sum(abs2, u)) - 1) * S(x) for (x, u, w) in zip(xs, us, ws))
+    J = born_energy(st)
+    @test J ≈ expected rtol = 8eps()
+    @test J > 0
+    # the electrons behind fade[1] (x = 5 and 12) count for nothing: without them the same bits
+    e = ionization_electrons(st)
+    e.status[1] = 0x00; e.status[2] = 0x00
+    @test born_energy(st) === J
+    e.status[1] = ALIVE; e.status[2] = ALIVE
+    # a free slot's leftover numbers do not enter
+    e.u[1][7] = 1.0e6; e.w[7] = 1.0; e.cell[1][7] = 40
+    @test born_energy(st) === J
+    # the plasma's electrons do not enter, whatever their energy (a label, not an energy cut)
+    s = st.species[1]
+    s.u[1] .= 50.0
+    @test born_energy(st) === J
+    # another weight: with fade = (0.9·x, x) of the electron at 30 only it and the one at 60 count, in full
+    @test born_energy(st; fade = (27.0, 30.0)) ≈ h[1] * h[2] * (ws[5] * (sqrt(1 + sum(abs2, us[5])) - 1) + ws[6] * (sqrt(1 + 0.16) - 1)) rtol = 8eps()
+    # a weight that reaches into the window's back band, or runs backwards, is refused
+    band = window_back_band(st) * h[1]
+    @test band ≈ 9 * 2π / 8
+    @test_throws ArgumentError born_energy(st; fade = (band - 0.01, 24.0))
+    @test_throws ArgumentError born_energy(st; fade = (24.0, 12.0))
+    @test born_energy(st; fade = (band, 24.0)) > J
+    # duals in the momenta and positions pass through: ∂J/∂u_x of one electron is Δx·Δy·w·S·u_x/γ
+    g5 = sqrt(1 + sum(abs2, us[5]))
+    dJ = ForwardDiff.derivative(0.0) do t
+        slot_energy(ALIVE, Int32(1), t + 30.0, 10.0 + t, 0.3, -0.2, ws[5], 1.0, 12.0, 24.0)
+    end
+    @test dJ ≈ ws[5] * 10.0 / g5 rtol = 8eps()                                    # S = 1 there: only the momentum's part
+    dS = ForwardDiff.derivative(t -> slot_energy(ALIVE, Int32(1), 18.0 + t, 10.0, 0.3, -0.2, ws[5], 1.0, 12.0, 24.0), 0.0)
+    @test dS ≈ ws[5] * (g5 - 1) * 15 / 8 / 12 rtol = 8eps()                       # mid-fade: only the weight's slope
+end
+
+@testset "T-832 the guard reads the plasma's weighted electrons ahead of the fade, not the born ones [WP-064]" begin
+    st = born_test_state([30.0], [(40.0, 0.0, 0.0)], [1.0e-3])
+    h = cellsize(st.grid)
+    @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st) == 0            # a cold plasma; the born electron at γ ≈ 40 is not read
+    s = st.species[1]
+    col(i) = (s.cell[1][i] - 1 + s.offset[1][i]) * h[1]
+    weighted = findall(i -> s.status[i] == ALIVE && s.w[i] > 0 && col(i) >= 12.0, eachindex(s.w))
+    empty = findall(i -> s.status[i] == ALIVE && s.w[i] == 0 && col(i) >= 12.0, eachindex(s.w))
+    behind = findall(i -> s.status[i] == ALIVE && s.w[i] > 0 && col(i) < 12.0, eachindex(s.w))
+    @test !isempty(empty)                                                       # the vacuum's particles have the weight zero
+    if isempty(weighted) || isempty(behind)                                     # at the start the plasma is ahead of the window: place two
+        i, j = empty[1], empty[2]
+        s.w[i] = 2.0e-3; s.w[j] = 4.0e-3
+        s.cell[1][j] = 3; s.offset[1][j] = 0.5                                  # x ≈ 1.96, behind the fade
+        weighted, behind = [i], [j]
+        empty = empty[3:end]
+    end
+    i, j, k = weighted[1], behind[1], empty[1]
+    s.u[1][k] = 30.0                                                            # a fast particle of weight zero
+    s.u[1][j] = 20.0                                                            # a fast one behind the fade
+    @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st) == 0
+    s.u[1][i] = 3.0; s.u[2][i] = 4.0                                            # γ − 1 = √26 − 1
+    @test plasma_peak_energy(st) ≈ sqrt(26) - 1 rtol = 4eps()
+    @test plasma_fast_weight(st) == 0                                           # below the 5 mₑc² of the tables
+    @test plasma_fast_weight(st; energy = 4.0) ≈ h[1] * h[2] * s.w[i] rtol = 4eps()
+    @test plasma_peak_energy(st; fade = (8.0, 24.0)) == plasma_peak_energy(st)  # x ≈ 1.96 is still behind
+    @test_throws ArgumentError plasma_peak_energy(st; fade = (1.0, 24.0))       # inside the back band
+end
+
+"The objective of the case at λ₀/8 read at t = 150, and its summary."
+born_small(a0, dopant = BCASE.dopant; kw...) = born_objective(a0, dopant; ppl = 8, t_end = 150.0, capacity = 60_000, kw...)
+
+@testset "T-833 ForwardDiff through the run gives the objective's slope in a₀ and in the dopant density [A3, A7, WP-064]" begin
+    a0 = 2.2
+    Jd = born_small(ForwardDiff.Dual{Nothing}(a0, 1.0, 0.0), ForwardDiff.Dual{Nothing}(BCASE.dopant, 0.0, 1.0))
+    J = born_small(a0)
+    @test J > 1.0e-3                                                            # the K shell ionizes and the electrons gain energy
+    @test ForwardDiff.value(Jd) == J                                            # the duals do not change the run
+    ad = ForwardDiff.partials(Jd)
+    ha = a0 * 2.0^-12
+    fd_a = (born_small(a0 + ha) - born_small(a0 - ha)) / 2ha
+    @test ad[1] ≈ fd_a rtol = 1.0e-5
+    hd = BCASE.dopant * 2.0^-8
+    fd_d = (born_small(a0, BCASE.dopant + hd) - born_small(a0, BCASE.dopant - hd)) / 2hd
+    @test ad[2] ≈ fd_d rtol = 1.0e-5
+    @test ad[1] > 0 && ad[2] > 0
+    # the dopant is 1 % of the plasma: the born electrons barely load the wake, so J is close to
+    # proportional to their density, and not exactly
+    @test 0.9 < ad[2] * BCASE.dopant / J < 1.1
+    @test ad[2] * BCASE.dopant != J
+end
+
+@testset "T-834 the run's summary is the objective and ordered weights, and the run repeats bit for bit [A4, WP-064]" begin
+    st = born_state(2.2; ppl = 8, t_end = 150.0, capacity = 60_000)
+    s = born_summary(st)
+    @test s.energy === born_energy(st) === born_small(2.2)
+    @test s.born > 0 && s.alive >= s.counted >= s.fast_counted >= 0 && s.alive >= s.fast >= s.fast_counted
+    @test s.born ≈ s.alive rtol = 1.0e-12                                       # at t = 150 no born electron has left the window
+    @test s.mean_energy ≈ s.energy / s.counted rtol = 4eps()
+    @test s.particles == count(==(ALIVE), ionization_electrons(st).status)
+    @test s.plasma_peak == plasma_peak_energy(st) > 0
+end
