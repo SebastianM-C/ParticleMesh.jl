@@ -176,7 +176,7 @@ em3_box(grid) = ncells(grid) .* cellsize(grid)
                                   :Bx_re, :Bx_im, :By_re, :By_im, :Bz_re, :Bz_im, :El_re, :El_im)
     for T in TYPES
         ε = base_eps(T)
-        grid = em3_grid(T)
+        grid = em3_grid(T; n = (12, 10, 8))                        # a box of three different lengths, (3, 15/4, 4)
         n, box = ncells(grid), em3_box(grid)
         f = random_fields(T, grid; seed = 8820)
         K = [seeded(T, 0.3 + 0.1i) for i in 1:7]

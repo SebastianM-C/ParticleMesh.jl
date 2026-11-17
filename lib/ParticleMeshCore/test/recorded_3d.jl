@@ -1,0 +1,70 @@
+# Reference digests recorded on a commit (WP-042), as recorded_2d.jl does for the 2D engine: the
+# periodic solve at N = 1 and 2 (`spectral_digests`, checked by T-312) and the engine at N = 3
+# (`engine3d_digests`, checked by T-875). Needs recorded_2d.jl (`recorded_2d_lines`), which drops
+# the launch shape from each line. SPECTRAL_RECORDED was computed on 2cfcf7a (main before the solve
+# was written over N) and E3D_RECORDED on 67db321, both on the CPU backend with Julia 1.13 at 1 and
+# 4 threads (identical). A change to these bits is a change of a Reference result (A4): replace
+# the lines only when the change is intended, and say so in the PR.
+
+const SPECTRAL_RECORDED = String[
+    "psolve|Float32|n=64|15989489460706605151",
+    "psolve|Float32|n=37|14655268538146931380",
+    "psolve|Float32|n=16x12|3260098323264257435",
+    "psolve|Float32|n=13x7|14835322963947162698",
+    "psolve|Float64|n=64|9596312669317177417",
+    "psolve|Float64|n=37|7345340208687254874",
+    "psolve|Float64|n=16x12|17230274763175838616",
+    "psolve|Float64|n=13x7|14864212835172890851",
+    "psolve|Dual{Float32,3}|n=64|10599476901158819959",
+    "psolve|Dual{Float32,3}|n=37|9284715587309070885",
+    "psolve|Dual{Float32,3}|n=16x12|16039890807310274770",
+    "psolve|Dual{Float32,3}|n=13x7|7984637322667815226",
+]
+
+const E3D_RECORDED = String[
+    "sort3d|Float32|extras|9154943829664418911",
+    "deposit3d|Float32|1,Node,Node,Node|17692279121060832377",
+    "gather3d|Float32|1,Node,Node,Node|5031122641966446484",
+    "deposit3d|Float32|1,Center,Node,Node|15513734885588352013",
+    "gather3d|Float32|1,Center,Node,Node|5785409443660514277",
+    "deposit3d|Float32|2,Node,Node,Node|1007225971199532416",
+    "gather3d|Float32|2,Node,Node,Node|4890828560472219301",
+    "deposit3d|Float32|2,Center,Node,Node|17260641613893443213",
+    "gather3d|Float32|2,Center,Node,Node|12997139994960878615",
+    "fill3d|Float32|9x4x5|4283539803141469205",
+    "fold3d|Float32|9x4x5|2335167567549140956",
+    "load3d|Float32|ppc=2x1x3|12956367016357345857",
+    "load3d|Float32|juttner|6843120863903443674",
+    "psolve3d|Float32|n=8x6x5|10002232549544533799",
+    "psolve3d|Float32|n=5x7x4|3346632857450206989",
+    "sort3d|Float64|extras|8975370192918249787",
+    "deposit3d|Float64|1,Node,Node,Node|16365539351784255318",
+    "gather3d|Float64|1,Node,Node,Node|869837866666941908",
+    "deposit3d|Float64|1,Center,Node,Node|6074709075110948435",
+    "gather3d|Float64|1,Center,Node,Node|12767486603400997465",
+    "deposit3d|Float64|2,Node,Node,Node|14236548370331148625",
+    "gather3d|Float64|2,Node,Node,Node|5859261127727766632",
+    "deposit3d|Float64|2,Center,Node,Node|991056312743835627",
+    "gather3d|Float64|2,Center,Node,Node|11499830778552561581",
+    "fill3d|Float64|9x4x5|12168854357664917973",
+    "fold3d|Float64|9x4x5|2282974716356012998",
+    "load3d|Float64|ppc=2x1x3|5744449131121402333",
+    "load3d|Float64|juttner|11630773828338041590",
+    "psolve3d|Float64|n=8x6x5|14436748299744139850",
+    "psolve3d|Float64|n=5x7x4|7157723751675553277",
+    "sort3d|Dual{Float32,3}|extras|8532657984681010351",
+    "deposit3d|Dual{Float32,3}|1,Node,Node,Node|18081136578803115232",
+    "gather3d|Dual{Float32,3}|1,Node,Node,Node|17667701379449261344",
+    "deposit3d|Dual{Float32,3}|1,Center,Node,Node|14497373129847720742",
+    "gather3d|Dual{Float32,3}|1,Center,Node,Node|18208052862535528341",
+    "deposit3d|Dual{Float32,3}|2,Node,Node,Node|8427611095033277498",
+    "gather3d|Dual{Float32,3}|2,Node,Node,Node|194733757639098543",
+    "deposit3d|Dual{Float32,3}|2,Center,Node,Node|562215819691948550",
+    "gather3d|Dual{Float32,3}|2,Center,Node,Node|8545230602931843621",
+    "fill3d|Dual{Float32,3}|9x4x5|961921931305847525",
+    "fold3d|Dual{Float32,3}|9x4x5|18314611366232433080",
+    "load3d|Dual{Float32,3}|ppc=2x1x3|14738028273473616234",
+    "load3d|Dual{Float32,3}|juttner|14524831049793452411",
+    "psolve3d|Dual{Float32,3}|n=8x6x5|9261642814480451789",
+    "psolve3d|Dual{Float32,3}|n=5x7x4|14461490147572535481",
+]

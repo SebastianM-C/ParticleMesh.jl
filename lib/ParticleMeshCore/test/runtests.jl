@@ -12,6 +12,7 @@ include("recorded_2d.jl")     # WP-037: the 2D Reference digests recorded on a c
 include("spectral_cases.jl")
 include("momenta_cases.jl")
 include("engine3d_cases.jl")  # WP-042: the 3D grids, species, loads and digests of engine3d.jl and the thread-count workers
+include("recorded_3d.jl")     # WP-042: the solve digests at N = 1 and 2 and the 3D engine digests recorded on a commit (T-312, T-875)
 include("workers.jl")         # the thread-count worker runs and the helpers that read them
 include("groups.jl")          # the CI test groups (PM_TEST_GROUP)
 

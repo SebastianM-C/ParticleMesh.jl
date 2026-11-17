@@ -201,6 +201,14 @@ end
         # the distribution form: GaussianVelocity is the keyword form bit for bit
         gv = load_3d(T, grid, PPC3; dist = GaussianVelocity(T.(LOAD_VDRIFT_3D), T.(LOAD_VTH_3D)))
         @test all(same_bits.(species_arrays(gv), before))
+        # and with the density at either point, written from slot 3: the same slots and the same count
+        for at in (:particle, :cell_centre)
+            kw = load_3d(T, grid, PPC3; density_at = at, first = 3)
+            gv = load_3d(T, grid, PPC3; density_at = at, first = 3, dist = GaussianVelocity(T.(LOAD_VDRIFT_3D), T.(LOAD_VTH_3D)))
+            @test all(same_bits.(species_arrays(gv), species_arrays(kw)))
+            @test Array(gv.count) == Array(kw.count) == [Int32(2 + prod(ncells(grid)) * prod(PPC3))]
+            at === :cell_centre && @test !same_bits(gv.w, load_3d(T, grid, PPC3; first = 3).w)   # the point matters
+        end
         # the other distributions: the same lattice and weights, the draws of the counter (c₁, c₂, c₃, k << 16)
         for dist in (GaussianMomentum(T.(LOAD_VDRIFT_3D), T.(LOAD_VTH_3D)), MaxwellJuttner(B(1 // 20), B.((1 // 10, 0, -1 // 5))))
             exhausted = zeros(Int32, 1)
@@ -448,4 +456,6 @@ end
     for nt in (1, 4)
         @test e3d_worker(nt) == INPROCESS_3D                             # 1 and 4 threads
     end
+    # and the bits recorded on a commit (recorded_3d.jl), so a change to them fails here
+    backend isa CPU && @test recorded_2d_lines(INPROCESS_3D) == E3D_RECORDED
 end

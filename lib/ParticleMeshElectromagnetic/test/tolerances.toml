@@ -844,12 +844,12 @@ measured = { Float32 = 0.111, Float64 = 0.125, "Dual{Float32,3}" = 0.123, charge
 status = "proposed"
 
 ["T-882"]
-quantity = "3D recorder on random fields: the six field energies and the kinetic energy, relative (C); the Fourier amplitudes of the six components and of k̂·E at the mode (1, -2, 3) against BigFloat sums over each component's Yee positions (C_modes); the amplitudes of a pure mode A_c·cos(k·x − φ_c) (C_pure)"
+quantity = "3D recorder on random fields (12 × 10 × 8 cells, a box of three different lengths): the six field energies and the kinetic energy, relative (C); the Fourier amplitudes of the six components and of k̂·E at the mode (1, -2, 3) against BigFloat sums over each component's Yee positions (C_modes); the amplitudes of a pure mode A_c·cos(k·x − φ_c) (C_pure)"
 scale = "the value (C); 2·mean|field| (C_modes); 1 (amplitudes up to 1.25, C_pure)"
 C = 8
 C_modes = 1
 C_pure = 8
-measured = { Float32 = 0.943, Float64 = 0.984, "Dual{Float32,3}" = 0.77, modes_Float32 = 0.0566, modes_Float64 = 0.0854, "modes_Dual{Float32,3}" = 0.08, pure_Float32 = 0.839, pure_Float64 = 1.5, "pure_Dual{Float32,3}" = 0.839 }
+measured = { Float32 = 1.18, Float64 = 0.984, "Dual{Float32,3}" = 0.907, modes_Float32 = 0.0468, modes_Float64 = 0.0686, "modes_Dual{Float32,3}" = 0.116, pure_Float32 = 1.18, pure_Float64 = 0.5, "pure_Dual{Float32,3}" = 1.18 }
 status = "proposed"
 
 ["T-883"]
