@@ -1,0 +1,9 @@
+timeout = 5400
+category = "benchmark"
+outputs = ["scripts/runs/wp041-steptiming-main3"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/step_timing.jl", "cpu"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "d = sort(filter(startswith(\"optim-step-timing-cpu\"), readdir(\"scripts/runs\"))); for f in readdir(joinpath(\"scripts/runs\", last(d))); cp(joinpath(\"scripts/runs\", last(d), f), joinpath(\"scripts/runs/wp041-steptiming-main3\", f); force = true); end"]
