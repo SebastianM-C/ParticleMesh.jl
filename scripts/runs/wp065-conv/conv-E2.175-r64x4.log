@@ -1,0 +1,23 @@
+ERROR: LoadError: 14537574 births found no free slot: raise `capacity`
+Stacktrace:
+  [1] error(s::String)
+    @ Base ./error.jl:44
+  [2] born_state(a0::ForwardDiff.Dual{Nothing, Float64, 6}, dopant::ForwardDiff.Dual{Nothing, Float64, 6}; kw::@Kwargs{duration::ForwardDiff.Dual{Nothing, Float64, 6}, waist::ForwardDiff.Dual{Nothing, Float64, 6}, focus::ForwardDiff.Dual{Nothing, Float64, 6}, delay::ForwardDiff.Dual{Nothing, Float64, 6}, density::ForwardDiff.Dual{Nothing, Float64, 6}, ppl::Int64, ny::Int64})
+    @ Main ~/jobs/wp065-conv/scripts/optim/born2d_case.jl:98
+  [3] born_state
+    @ ~/jobs/wp065-conv/scripts/optim/born2d_case.jl:95 [inlined]
+  [4] #trapped_state#38
+    @ ~/jobs/wp065-conv/scripts/optim/trapped2d_case.jl:67 [inlined]
+  [5] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [6] run_job(job::JSON.Object{String, Any})
+    @ Main ~/jobs/wp065-conv/scripts/optim/trapped2d.jl:106
+  [7] top-level scope
+    @ ~/jobs/wp065-conv/scripts/optim/trapped2d.jl:164
+  [8] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+  [9] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [10] _start()
+    @ Base ./client.jl:577
+in expression starting at /home/pm/jobs/wp065-conv/scripts/optim/trapped2d.jl:162

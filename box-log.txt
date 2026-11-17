@@ -1,0 +1,36 @@
+## step 0 (julia): exit 1 after 15111s
+15 of 15 jobs to run, 4 at a time with 4 threads each, into /home/pm/jobs/wp065-conv/scripts/runs/wp065-conv
+FAILED conv-E1.9-r64x4 in 7694.7 s
+FAILED conv-n0.06-r64x4 in 7701.2 s
+FAILED conv-E2.4-r64x4 in 7714.6 s
+FAILED conv-E2.175-r64x4 in 7715.9 s
+FAILED conv-E1.9-r48x3 in 3195.7 s
+FAILED conv-E2.175-r48x3 in 3207.9 s
+FAILED conv-E2.4-r48x3 in 3211.1 s
+done conv-E1.9-r32x2 in 1164.4 s
+done conv-E2.175-r32x2 in 1145.4 s
+FAILED conv-n0.06-r48x3 in 3373.6 s
+FAILED conv-n0.085-r48x3 in 3379.3 s
+done conv-E2.4-r32x2 in 1106.0 s
+FAILED conv-n0.085-r64x4 in 7327.5 s
+done conv-n0.06-r32x2 in 817.5 s
+done conv-n0.085-r32x2 in 786.4 s
+ERROR: LoadError: 10 jobs failed: conv-E1.9-r64x4, conv-n0.06-r64x4, conv-E2.4-r64x4, conv-E2.175-r64x4, conv-E1.9-r48x3, conv-E2.175-r48x3, conv-E2.4-r48x3, conv-n0.06-r48x3, conv-n0.085-r48x3, conv-n0.085-r64x4; their logs are in /home/pm/jobs/wp065-conv/scripts/runs/wp065-conv
+Stacktrace:
+ [1] error(s::String)
+   @ Base ./error.jl:44
+ [2] run_campaign(jobs::Vector{Dict{String, Any}}, dir::String)
+   @ Main ~/jobs/wp065-conv/scripts/optim/trapped2d.jl:143
+ [3] macro expansion
+   @ ./timing.jl:463 [inlined]
+ [4] main_campaign(kind::String, resarg::String, dir::String)
+   @ Main ~/jobs/wp065-conv/scripts/optim/trapped2d.jl:158
+ [5] top-level scope
+   @ ~/jobs/wp065-conv/scripts/optim/trapped2d.jl:174
+ [6] include(mod::Module, _path::String)
+   @ Base ./Base.jl:309
+ [7] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:344
+ [8] _start()
+   @ Base ./client.jl:577
+in expression starting at /home/pm/jobs/wp065-conv/scripts/optim/trapped2d.jl:162

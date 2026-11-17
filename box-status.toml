@@ -1,0 +1,20 @@
+branch = "runs/wp065-conv"
+request_commit = "0730d43aa3d8dd683ec8a35a7558fd9b0e0bac98"
+started = "2026-11-17T19:19:11Z"
+category = "validation"
+outputs = ["scripts/runs/wp065-conv"]
+finished = "2026-11-17T23:31:02Z"
+ok = false
+files_returned = 23
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T19:19:11Z"
+exit = 1
+seconds = 15111
