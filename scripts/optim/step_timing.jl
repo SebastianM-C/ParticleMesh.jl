@@ -74,7 +74,7 @@ function timed_step!(st, p, k, times)
     timed!(() -> PME.retire_x!(window, st), times, :other)
     timed!(times, :sort) do
         for (s, ws) in zip(st.species, st.ws)
-            PME.sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
+            PME.sorts(st, s) && PMC.resort_by_cell!(s, grid, ws; workgroupsize = wgs)   # as current! does
         end
     end
     timed!(times, :other) do

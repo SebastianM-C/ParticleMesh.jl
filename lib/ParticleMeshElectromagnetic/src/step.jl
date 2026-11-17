@@ -298,7 +298,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
     species = map(problem.species) do d
         Species(backend, T, n * d.ppc; q = d.charge, m = d.mass, extras = (old_cell = Int32, old_offset = T))
     end
-    ws = map(s -> Workspace(s, grid), species)
+    ws = map(s -> Workspace(s, grid; append = sort_append(numerics, 0)), species)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = numerics.workgroupsize, every,
                                record)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
@@ -308,6 +308,10 @@ end
 # The mode the depositions of `s` run in: the step sorts when it is `Reference()` and passes it,
 # so `Fast()` on a type without atomics does not sort a second time inside the deposition.
 deposit_mode(st::EMState, s) = effective_mode(st.numerics.mode, eltype(s))
+
+# The `append` of a species' workspace: the most particles added behind its count between two
+# sorts (`resort_by_cell!`'s tail), or `nothing` for the full sort of every step.
+sort_append(numerics::EMNumerics, k::Integer) = numerics.resort ? Int(k) : nothing
 sorts(st::EMState, s) = deposit_mode(st, s) isa Reference
 
 "Deposit the kinetic energy density at the current momenta into `st.K` (positions sorted if the mode needs it)."
@@ -554,7 +558,7 @@ function current!(::Esirkepov, st::EMState{N}) where {N}
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
     for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
-        sorts(st, s) && sort_by_cell!(s, grid, ws; workgroupsize = wgs)
+        sorts(st, s) && resort_by_cell!(s, grid, ws; workgroupsize = wgs)
     end
     fill!(fields.Jx, zero(T))
     fill!(fields.Jy, zero(T))

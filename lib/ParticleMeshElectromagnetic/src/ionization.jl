@@ -387,7 +387,8 @@ function IonizationFrame(problem::EMProblem{2,T}, grid, backend, numerics, windo
     atoms = Species(backend, T, natoms; q = one(T), m = one(T), N = 2, extras = atom_extras(T, L))
     electrons = Species(backend, T, d.capacity; q = -one(T), m = one(T), N = 2, extras = flux_extras(T, 2))
     flux = numerics.current isa Esirkepov ? (numerics.shape, RHO_STAGGER_2D) : nothing
-    return IonizationFrame(atoms, Workspace(atoms, grid), electrons, Workspace(electrons, grid; flux), d.every, row0, nrows, ncols, ppc,
+    # a birth step adds one electron slot per atom slot behind the electrons' count
+    return IonizationFrame(atoms, Workspace(atoms, grid), electrons, Workspace(electrons, grid; flux, append = sort_append(numerics, natoms)), d.every, row0, nrows, ncols, ppc,
                            KernelAbstractions.zeros(backend, Int32, 1), KernelAbstractions.zeros(backend, Int32, natoms))
 end
 
@@ -525,6 +526,15 @@ end
 "Whether `step!` sorts the species `s` in every step (the charge-conserving current in a mode that sorts), so that its count is the alive count at the start of a step."
 sorted_every_step(st::EMState, s) = st.numerics.current isa Esirkepov && sorts(st, s)
 
+# The sort after a window shift moved every particle by one cell: from the order of the step's
+# sort where the step sorts the species (`resort_by_cell!`, whose precondition that is), anew where
+# it does not, since the particles may then have moved any distance since their last sort.
+function sort_after_shift!(st::EMState, s, ws)
+    wgs = st.numerics.workgroupsize
+    sorted_every_step(st, s) ? resort_by_cell!(s, st.grid, ws; workgroupsize = wgs) : sort_by_cell!(s, st.grid, ws; workgroupsize = wgs)
+    return nothing
+end
+
 """
     ionize!(frame, state, params, k)
 
@@ -561,7 +571,7 @@ function shift_ionization!(fr::IonizationFrame, st::EMState, p::EMParams, s_new:
     wgs = st.numerics.workgroupsize
     (; electrons, atoms) = fr
     launcher(shift_particles_kernel!, get_backend(electrons), wgs)(electrons; ndrange = capacity(electrons))
-    sort_by_cell!(electrons, st.grid, fr.electrons_ws; workgroupsize = wgs)
+    sort_after_shift!(st, electrons, fr.electrons_ws)
     launcher(shift_particles_kernel!, get_backend(atoms), wgs)(atoms; ndrange = capacity(atoms))
     load_atoms!(fr, st.grid, p.ionization, fr.ncols, 1, s_new, fr.ncols, wgs)
     sort_by_cell!(atoms, st.grid, fr.atoms_ws; workgroupsize = wgs)
