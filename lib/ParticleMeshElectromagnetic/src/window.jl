@@ -350,8 +350,8 @@ function check_window_antennas(w::WindowFrame, back, antennas::Tuple)
             throw(ArgumentError("the antenna's columns $(a.ia - 1) and $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + 1)"))
         t_off = w.window.start + s_off * w.dx1
         l = a.laser
-        l.delay + 6 * l.duration <= t_off ||
-            throw(ArgumentError("laser of delay $(l.delay) and duration $(l.duration): the window passes its antenna (column $(a.ia))$(cb > 0 ? " into the back-edge PML of $cb cells" : "") at t ≈ $t_off, before six durations after the delay; place the plane further forward or start the window later"))
+        pulse_end(l) <= t_off ||
+            throw(ArgumentError("laser of delay $(l.delay) and duration $(pulse_duration(l)): the window passes its antenna (column $(a.ia))$(cb > 0 ? " into the back-edge PML of $cb cells" : "") at t ≈ $t_off, before six durations after its centroid; place the plane further forward or start the window later"))
     end
     return nothing
 end
