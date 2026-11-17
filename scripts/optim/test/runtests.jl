@@ -534,3 +534,131 @@ end
     @test s2.plasma_fast_window ≈ area * 7.0e-3 rtol = 4eps()
     @test s2.plasma_fast_energy_window ≈ area * (2.0e-3 * (sqrt(65) - 1) + 5.0e-3 * (sqrt(145) - 1)) rtol = 4eps()
 end
+
+# Tests of the WP-065 case (trapped2d_case.jl): every trapped electron at a fixed laser energy.
+# T-892 runs the case at λ₀/8 to t = 190 eleven times, a few minutes in all.
+include(joinpath(@__DIR__, "..", "trapped2d_case.jl"))
+
+@testset "T-890 a₀ from the fixed energy inverts laser_energy in duration and waist, with no energy derivative along either [A3, WP-065]" begin
+    E = budget(2.175)
+    @test a0_for_energy(TCASE.x0[1], TCASE.x0[2]; energy = E) ≈ 2.175 rtol = 4eps()
+    @test budget() == pulse_energy(1.9, 6.0, 10.0)
+    for (τ, w) in ((6.0, 10.0), (4.5, 7.0), (8.0, 14.0))
+        prob = trapped_problem(τ, w, 80.0, 54.0, 0.072; energy = E, ppl = 8, t_end = 1.0)
+        l = prob.lasers[1]
+        @test l.duration == τ && l.waist == w && l.focus == 80.0 && l.delay == 54.0
+        @test laser_energy(l) ≈ E rtol = 8eps()                               # the engine's energy of the pulse it launches
+        # the energy does not move with τ or w: its derivative through the problem's laser is zero to roundoff
+        g = ForwardDiff.gradient(v -> laser_energy(trapped_problem(v[1], v[2], 80.0, 54.0, 0.072; energy = E, ppl = 8, t_end = 1.0).lasers[1]), [τ, w])
+        @test maximum(abs, g) < 1.0e-12 * E
+        # and a₀ does: −a₀/(2τ) along τ
+        @test ForwardDiff.derivative(t -> a0_for_energy(t, w; energy = E), τ) ≈ -a0_for_energy(τ, w; energy = E) / (2τ) rtol = 8eps()
+    end
+    # the dopant follows the plasma's density, and the other parameters reach the problem
+    prob = trapped_problem(6.0, 10.0, 70.0, 50.0, 0.05; ppl = 8, t_end = 1.0)
+    @test prob.ionization.density ≈ TCASE.dopant_fraction * 0.05 rtol = 4eps()
+    @test prob.species[1].density == 0.05 && prob.lasers[1].focus == 70.0 && prob.lasers[1].delay == 50.0
+    @test prob.lasers[1].a0 ≈ 1.9 rtol = 4eps()
+end
+
+@testset "T-891 the objective is Δx·Δy·Σ w(γ − 1)S(x)R(u_x) over the born and the plasma's electrons alike [A3, WP-065]" begin
+    xs = [5.0, 15.0, 18.0, 30.0, 30.0, 60.0]
+    us = [(8.0, 0.0, 0.0), (6.0, 1.0, 0.0), (4.0, -2.0, 0.5), (2.0, 3.0, 0.0), (10.0, 0.3, -0.2), (3.5, 0.0, 0.0)]
+    ws = [1.0e-3, 2.0e-3, 5.0e-4, 7.0e-4, 3.0e-4, 1.1e-3]
+    st = born_test_state(xs, us, ws)
+    h = cellsize(st.grid)
+    # λ₀/8's back band ends at x ≈ 7.1, behind the case's weight from 4: these read with WP-064's (12, 24)
+    @test_throws ArgumentError trapped_energy(st)
+    tparts(st; kw...) = trapped_parts(st; fade = BCASE.fade, kw...)
+    tenergy(st; kw...) = trapped_energy(st; fade = BCASE.fade, kw...)
+    S(x) = (q = clamp((x - 12) / 12, 0, 1); q^3 * (10 - 15q + 6q^2))
+    R(u) = (q = clamp((u - 3) / 2, 0, 1); q^3 * (10 - 15q + 6q^2))
+    γm(u) = sqrt(1 + sum(abs2, u)) - 1
+    born = h[1] * h[2] * sum(w * γm(u) * S(x) * R(u[1]) for (x, u, w) in zip(xs, us, ws))
+    parts = tparts(st)
+    @test parts.born ≈ born rtol = 8eps()
+    @test parts.plasma == 0                                                    # a cold plasma: no electron above u_x = 3
+    @test tenergy(st) == parts.born + parts.plasma
+    # the electron at x = 30 with u_y = 3 and u_x = 2 has γ − 1 = 2.74 and counts for nothing: it is the forward momentum that decides
+    us2 = copy(us); us2[4] = (2.0, 0.0, 0.0)
+    @test tparts(born_test_state(xs, us2, ws)).born === parts.born
+    # a fast plasma electron counts as a born one would: the label does not matter
+    p = st.species[1]
+    i = findfirst(j -> p.status[j] == ALIVE && (p.cell[1][j] - 1 + p.offset[1][j]) * h[1] >= 30.0, eachindex(p.w))
+    xi = (p.cell[1][i] - 1 + p.offset[1][i]) * h[1]
+    p.w[i] = 2.0e-3; p.u[1][i] = 4.5; p.u[2][i] = 1.0
+    @test tparts(st).plasma ≈ h[1] * h[2] * 2.0e-3 * (sqrt(1 + 4.5^2 + 1) - 1) * S(xi) * R(4.5) rtol = 8eps()
+    @test tparts(st).born === parts.born
+    @test tenergy(st) ≈ parts.born + h[1] * h[2] * 2.0e-3 * (sqrt(1 + 4.5^2 + 1) - 1) * S(xi) * R(4.5) rtol = 8eps()
+    # a retired one is not read, nor a free slot's leftovers
+    p.status[i] = 0x00
+    @test tparts(st).plasma == 0
+    e = ionization_electrons(st)
+    e.u[1][7] = 1.0e6; e.w[7] = 1.0; e.cell[1][7] = 40
+    @test tparts(st).born === parts.born
+    # another trapping weight: (1, 2) counts the electron at u_x = 2 in full and every other in full
+    @test tparts(st; rise = (1.0, 2.0)).born ≈ h[1] * h[2] * sum(w * γm(u) * S(x) for (x, u, w) in zip(xs, us, ws)) rtol = 8eps()
+    @test_throws ArgumentError tenergy(st; rise = (5.0, 3.0))
+    @test_throws ArgumentError tenergy(st; rise = (3.0, 3.0))
+    @test_throws ArgumentError trapped_energy(st; fade = (1.0, 24.0))     # inside the back band
+    # ∂J/∂u_x of one electron mid-rise is the energy's part and the rise's: w·S·(u_x/γ·R + (γ − 1)·R′)
+    d = ForwardDiff.derivative(t -> slot_trapped(ALIVE, Int32(1), 30.0, 4.0 + t, 0.0, 0.0, 1.0, 1.0, 12.0, 24.0, 3.0, 5.0), 0.0)
+    g = sqrt(17.0)
+    @test d ≈ 4 / g * R(4.0) + (g - 1) * 15 / 8 / 2 rtol = 8eps()
+    # the summary's numbers on the same electrons
+    s = trapped_summary(st; fade = BCASE.fade)
+    @test s.J === tenergy(st) && s.J_born === parts.born && s.J_plasma == 0
+    @test s.weight_born ≈ h[1] * h[2] * sum(w * S(x) * R(u[1]) for (x, u, w) in zip(xs, us, ws)) rtol = 8eps()
+    @test s.mean_energy_born ≈ s.J_born / s.weight_born rtol = 4eps()
+    @test s.fast_born_window ≈ h[1] * h[2] * (ws[2] + ws[5]) rtol = 8eps()   # u_x > 5 ahead of the back band (x = 5 is inside it at λ₀/8)
+    @test s.ux_max_born == 10.0 && s.particles == 6 + count(==(ALIVE), p.status)
+end
+
+"The WP-065 objective at λ₀/8 read at t = 190, with a trapping weight from u_x = 0.5 to 3 that cuts through the electrons of that early time (the born ones reach u_x = 2.7, the plasma's 1.0)."
+trapped_small(x...; kw...) = trapped_objective(x...; ppl = 8, t_end = 190.0, capacity = 60_000, rise = (0.5, 3.0), fade = BCASE.fade, energy = budget(2.2), kw...)
+
+@testset "T-892 ForwardDiff through the run gives the objective's gradient in all five parameters [A3, A7, WP-065]" begin
+    x0 = collect(TCASE.x0)
+    xd = [ForwardDiff.Dual{Nothing}(x0[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5]
+    Jd = trapped_small(xd...)
+    J = trapped_small(x0...)
+    @test ForwardDiff.value(Jd) === J                                           # the duals do not change the run
+    @test J > 1.0e-4
+    st = trapped_state(x0...; ppl = 8, t_end = 190.0, capacity = 60_000, energy = budget(2.2))
+    parts = trapped_parts(st; rise = (0.5, 3.0), fade = BCASE.fade)
+    @test parts.born > 0 && parts.plasma > 0                                    # both species are read
+    ad = ForwardDiff.partials(Jd)
+    # the delay moves the carrier's phase: J oscillates in it on a scale of 1/ω₀, and its central
+    # differences reach ForwardDiff only below steps of about 10⁻³ (8 % off at x·2⁻⁸, 5·10⁻⁵ at x·2⁻¹⁶)
+    for i in 1:5
+        hi = x0[i] * 2.0^-18
+        xp, xm = copy(x0), copy(x0)
+        xp[i] += hi; xm[i] -= hi
+        fd = (trapped_small(xp...) - trapped_small(xm...)) / 2hi
+        @test ad[i] ≈ fd rtol = 1.0e-5
+    end
+end
+
+@testset "T-893 a finer y keeps the box, the absorbers' and the dopant's widths, and ny = 1 is WP-064's case [WP-065]" begin
+    p1 = born_problem(; ppl = 16, t_end = 1.0)
+    p2 = born_problem(; ppl = 16, t_end = 1.0, ny = 2)
+    @test p2.cells == (p1.cells[1], 2 * p1.cells[2])
+    @test p2.length[2] ≈ p1.length[2] rtol = 4eps()
+    @test p2.length[1] == p1.length[1]
+    @test p2.dt < p1.dt
+    @test p2.lasers[1].center ≈ p1.lasers[1].center rtol = 4eps()
+    r1, r2 = p1.ionization.rows, p2.ionization.rows
+    @test r2[1] ≈ r1[1] rtol = 8eps()
+    @test r2[2] ≈ r1[2] rtol = 8eps()
+    @test born_numerics(16, 2).absorber.cells == 2 * born_numerics(16).absorber.cells
+    @test born_numerics(16, 2).back_absorber.cells == born_numerics(16).back_absorber.cells
+    @test_throws ArgumentError born_problem(; ppl = 16, ny = 0)
+    # the case's position weight starts ahead of the back band at λ₀/16 and finer
+    for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
+        st, _, _ = born_start(; ppl, ny, t_end = 1.0, capacity = 10)
+        @test back_band_end(st) < TCASE.fade[1]
+    end
+    # the WP-064 case is unchanged by the new keywords' defaults
+    q = born_problem(BCASE.a0, BCASE.dopant; ppl = 16, t_end = 1.0, ny = 1, waist = BCASE.waist, delay = BCASE.delay, focus = BCASE.focus)
+    @test q.cells == p1.cells && q.dt === p1.dt && q.lasers[1].waist == p1.lasers[1].waist && q.lasers[1].delay == p1.lasers[1].delay
+end

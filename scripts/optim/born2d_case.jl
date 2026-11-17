@@ -42,46 +42,50 @@ const BCASE = (waist = 10.0, delay = 54.0, focus = 80.0, vacuum = 64.0, ramp = 4
                every = 1, capacity = 400_000, wavelength = 0.8e-6, fade = (12.0, 24.0), u_fast = 5.0)
 
 """
-    born_problem(a0, dopant; t_end, ppl, every, capacity, section, duration, density, ramp) -> EMProblem{2}
+    born_problem(a0, dopant; t_end, ppl, ny, every, capacity, section, duration, density, ramp, waist, delay, focus) -> EMProblem{2}
 
 The case at a normalized vector potential `a0` and a dopant density `dopant` (n_c); the element
-type follows the arguments. `ppl` cells per λ₀ along x at the same box and the same Δy (it must be
-a multiple of 8), `t_end` the read-out time, `ramp` the length of the plasma's density ramp (the
-dopant's `section` does not move with it: pass both).
+type follows the arguments. `ppl` cells per λ₀ along x at the same box (it must be a multiple of
+8), and `ny` times as many cells along y as the case's 128 of Δy = π/4 (Δy = π/(4·ny), with the
+PMLs and the dopant's rows the same width); `t_end` the read-out time, `ramp` the length of the
+plasma's density ramp (the dopant's `section` does not move with it: pass both); `waist`,
+`delay` and `focus` the pulse's ([`GaussianLaser`](@ref)).
 """
-function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, every::Integer = BCASE.every,
-                      capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp)
+function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, ny::Integer = 1, every::Integer = BCASE.every,
+                      capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp,
+                      waist = BCASE.waist, delay = BCASE.delay, focus = BCASE.focus)
     ppl % 8 == 0 || throw(ArgumentError("ppl must be a multiple of 8 to keep Δy = π/4, got $ppl"))
-    T = promote_type(typeof(a0), typeof(dopant), typeof(duration), typeof(density), Float64)
+    ny >= 1 || throw(ArgumentError("ny must be at least 1, got $ny"))
+    T = promote_type(typeof(a0), typeof(dopant), typeof(duration), typeof(density), typeof(waist), typeof(delay), typeof(focus), Float64)
     z3 = (zero(T), zero(T), zero(T))
     h = 2 * T(π) / ppl
-    hy = (ppl ÷ 8) * h
-    cells = (BCASE.length_wavelengths * ppl, BCASE.rows)
+    hy = (ppl ÷ 8) * h / ny
+    cells = (BCASE.length_wavelengths * ppl, BCASE.rows * ny)
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
     nsteps = ceil(Int, t_end / Float64(value_of(dt)))
     hy64 = Float64(value_of(hy))
     yc = cells[2] * hy64 / 2
-    pulse = GaussianLaser(; a0 = T(a0), waist = T(BCASE.waist), duration = T(duration), delay = T(BCASE.delay), focus = T(BCASE.focus),
+    pulse = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = T(delay), focus = T(focus),
                           position = max(12, 192 ÷ ppl) * (2 * T(π) / 32), center = cells[2] * hy / 2)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(density), zero(T), (1, 0), BCASE.ppc, z3, z3, 1)
     levels = (adk_level(T, :N, 6; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff),
               adk_level(T, :N, 7; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff))
     ion = FieldIonization(; density = T(dopant), levels, capacity, every, ppc = (1, 1),
-                          rows = (yc - BCASE.half_rows * hy64, yc + BCASE.half_rows * hy64),
+                          rows = (yc - BCASE.half_rows * ny * hy64, yc + BCASE.half_rows * ny * hy64),
                           section = DopantSection(; start = T(section.start), stop = T(section.stop), ramp = T(section.ramp)))
     return EMProblem("born2d", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
                      lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = T(BCASE.start)),
                      profile = DensityRamp(; vacuum = T(BCASE.vacuum), ramp = T(ramp)), ionization = ion)
 end
 
-"The case's numerics: Reference mode, PMLs at the open y edges and at the window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the back edge, at least 6 cells)."
-born_numerics(ppl::Integer = BCASE.ppl) =
-    EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
+"The case's numerics: Reference mode, PMLs at the open y edges (`ny` times 12 cells) and at the window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the back edge, at least 6 cells)."
+born_numerics(ppl::Integer = BCASE.ppl, ny::Integer = 1) =
+    EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
 
-"The case's state at its start and its parameters; `ppl` and the rest as [`born_problem`](@ref)."
-function born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, kw...)
-    prob = born_problem(a0, dopant; ppl, kw...)
-    st = EMState(prob, born_numerics(ppl); record = ())
+"The case's state at its start and its parameters; `ppl`, `ny` and the rest as [`born_problem`](@ref)."
+function born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, ny::Integer = 1, kw...)
+    prob = born_problem(a0, dopant; ppl, ny, kw...)
+    st = EMState(prob, born_numerics(ppl, ny); record = ())
     p = params(prob)
     initialize!(st, p)
     return st, p, prob
