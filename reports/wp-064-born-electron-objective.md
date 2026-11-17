@@ -60,7 +60,7 @@ The tables are the output of `julia +1.13 --project=scripts scripts/optim/born2d
 
 ## Verification status
 
-- T-830 to T-834 (`scripts/optim/test/runtests.jl`): the position weight's closed form and derivatives; J against the closed form on hand-placed electrons, with the plasma's species, free slots and electrons behind the weight leaving its bits unchanged; the guard; ForwardDiff against central differences in a₀ and in the dopant's density through a λ₀/8 run to t = 150 (within 10⁻⁵); the summary.
+- T-830 to T-835 (`scripts/optim/test/runtests.jl`): the position weight's closed form and derivatives; J against the closed form on hand-placed electrons, with the plasma's species, free slots and electrons behind the weight leaving its bits unchanged; the guard; ForwardDiff against central differences in a₀ and in the dopant's density through a λ₀/8 run to t = 150 (within 10⁻⁵); the summary.
 - The run asserts that born electrons are trapped, that the trapped ones lie where S = 1, that a run with duals returns the plain run's J, and that the best central difference is within 10⁻⁴ of ForwardDiff.
 - The finite-difference check follows A7's scan over the step, but its quotients do not form a plateau: the spread of the three around the best step is 0.5 % of the derivative, set by the structure of J named in the summary, not by rounding.
 

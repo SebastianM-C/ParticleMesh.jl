@@ -383,6 +383,7 @@ end
     @test band ≈ 9 * 2π / 8
     @test_throws ArgumentError born_energy(st; fade = (band - 0.01, 24.0))
     @test_throws ArgumentError born_energy(st; fade = (24.0, 12.0))
+    @test_throws ArgumentError born_energy(st; fade = (24.0, 24.0))
     @test born_energy(st; fade = (band, 24.0)) > J
     # duals in the momenta and positions pass through: ∂J/∂u_x of one electron is Δx·Δy·w·S·u_x/γ
     g5 = sqrt(1 + sum(abs2, us[5]))
@@ -415,44 +416,101 @@ end
     s.u[1][k] = 30.0                                                            # a fast particle of weight zero
     s.u[1][j] = 20.0                                                            # a fast one behind the fade
     @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st) == 0
-    s.u[1][i] = 3.0; s.u[2][i] = 4.0                                            # γ − 1 = √26 − 1
-    @test plasma_peak_energy(st) ≈ sqrt(26) - 1 rtol = 4eps()
+    s.u[1][i] = 3.0; s.u[2][i] = 4.0; s.u[3][i] = 1.0                           # γ − 1 = √27 − 1
+    @test plasma_peak_energy(st) ≈ sqrt(27) - 1 rtol = 4eps()
     @test plasma_fast_weight(st) == 0                                           # below the 5 mₑc² of the tables
     @test plasma_fast_weight(st; energy = 4.0) ≈ h[1] * h[2] * s.w[i] rtol = 4eps()
+    @test plasma_fast_weight(st; energy = 4.19) > 0 && plasma_fast_weight(st; energy = 4.2) == 0   # √27 − 1 = 4.196: all three momenta count
+    # the fade's edge to within a cell: the same particle 0.3 cells behind fade[1] is not read, 0.3 cells ahead it is
+    c0, o0 = s.cell[1][i], s.offset[1][i]
+    s.cell[1][i] = floor(Int, 12.0 / h[1]) + 1; s.offset[1][i] = 12.0 / h[1] - floor(12.0 / h[1]) - 0.3
+    @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st; energy = 4.0) == 0
+    s.offset[1][i] += 0.6
+    @test plasma_peak_energy(st) ≈ sqrt(27) - 1 rtol = 4eps()
+    @test plasma_fast_weight(st; energy = 4.0) ≈ h[1] * h[2] * s.w[i] rtol = 4eps()
+    s.cell[1][i] = c0; s.offset[1][i] = o0
+    # a retired particle is not read
+    s.status[i] = 0x00
+    @test plasma_peak_energy(st) == 0 && plasma_fast_weight(st; energy = 4.0) == 0
+    s.status[i] = ALIVE
+    @test_throws ArgumentError plasma_fast_weight(st; fade = (1.0, 24.0))
     @test plasma_peak_energy(st; fade = (8.0, 24.0)) == plasma_peak_energy(st)  # x ≈ 1.96 is still behind
     @test_throws ArgumentError plasma_peak_energy(st; fade = (1.0, 24.0))       # inside the back band
 end
 
-"The objective of the case at λ₀/8 read at t = 150, and its summary."
+"The state of the case at λ₀/8 at t = 150."
+born_small_state(a0, dopant = BCASE.dopant; kw...) = born_state(a0, dopant; ppl = 8, t_end = 150.0, capacity = 60_000, kw...)
+"The objective of the case at λ₀/8 read at t = 150."
 born_small(a0, dopant = BCASE.dopant; kw...) = born_objective(a0, dopant; ppl = 8, t_end = 150.0, capacity = 60_000, kw...)
+# At t = 150 the born electrons of this run lie at window x = 33 to 56: the case's weight is 1 on
+# all of them, and this one cuts through them.
+const ACROSS = (30.0, 50.0)
 
-@testset "T-833 ForwardDiff through the run gives the objective's slope in a₀ and in the dopant density [A3, A7, WP-064]" begin
+@testset "T-833 ForwardDiff through the run gives the objective's slope in a₀ and in the dopant density, with the position weight across the electrons too [A3, A7, WP-064]" begin
     a0 = 2.2
-    Jd = born_small(ForwardDiff.Dual{Nothing}(a0, 1.0, 0.0), ForwardDiff.Dual{Nothing}(BCASE.dopant, 0.0, 1.0))
-    J = born_small(a0)
-    @test J > 1.0e-3                                                            # the K shell ionizes and the electrons gain energy
-    @test ForwardDiff.value(Jd) == J                                            # the duals do not change the run
-    ad = ForwardDiff.partials(Jd)
+    std = born_small_state(ForwardDiff.Dual{Nothing}(a0, 1.0, 0.0), ForwardDiff.Dual{Nothing}(BCASE.dopant, 0.0, 1.0))
+    st = born_small_state(a0)
     ha = a0 * 2.0^-12
-    fd_a = (born_small(a0 + ha) - born_small(a0 - ha)) / 2ha
-    @test ad[1] ≈ fd_a rtol = 1.0e-5
+    sta = (born_small_state(a0 + ha), born_small_state(a0 - ha))
+    for fade in (BCASE.fade, ACROSS)
+        Jd, J = born_energy(std; fade), born_energy(st; fade)
+        @test J > 1.0e-3                                                        # the K shell ionizes and the electrons gain energy
+        @test ForwardDiff.value(Jd) == J                                        # the duals do not change the run
+        fd_a = (born_energy(sta[1]; fade) - born_energy(sta[2]; fade)) / 2ha
+        @test ForwardDiff.partials(Jd)[1] ≈ fd_a rtol = 1.0e-5
+        @test ForwardDiff.partials(Jd)[1] > 0
+    end
+    @test 0.5 * born_energy(st) < born_energy(st; fade = ACROSS) < 0.9 * born_energy(st)   # the second weight does cut (0.84 measured)
+    Jd, J = born_energy(std), born_energy(st)
+    ad = ForwardDiff.partials(Jd)
     hd = BCASE.dopant * 2.0^-8
     fd_d = (born_small(a0, BCASE.dopant + hd) - born_small(a0, BCASE.dopant - hd)) / 2hd
     @test ad[2] ≈ fd_d rtol = 1.0e-5
-    @test ad[1] > 0 && ad[2] > 0
     # the dopant is 1 % of the plasma: the born electrons barely load the wake, so J is close to
     # proportional to their density, and not exactly
     @test 0.9 < ad[2] * BCASE.dopant / J < 1.1
     @test ad[2] * BCASE.dopant != J
 end
 
-@testset "T-834 the run's summary is the objective and ordered weights, and the run repeats bit for bit [A4, WP-064]" begin
-    st = born_state(2.2; ppl = 8, t_end = 150.0, capacity = 60_000)
+@testset "T-834 the run's objective repeats bit for bit, its keywords reach it, and a full buffer is an error [A4, WP-064]" begin
+    st = born_small_state(2.2)
     s = born_summary(st)
-    @test s.energy === born_energy(st) === born_small(2.2)
-    @test s.born > 0 && s.alive >= s.counted >= s.fast_counted >= 0 && s.alive >= s.fast >= s.fast_counted
+    @test s.energy === born_energy(st) === born_small(2.2)                      # a second run: the same bits in J
+    @test born_small(2.2; fade = ACROSS) === born_energy(st; fade = ACROSS) < s.energy
     @test s.born ≈ s.alive rtol = 1.0e-12                                       # at t = 150 no born electron has left the window
-    @test s.mean_energy ≈ s.energy / s.counted rtol = 4eps()
-    @test s.particles == count(==(ALIVE), ionization_electrons(st).status)
+    @test s.particles == count(==(ALIVE), ionization_electrons(st).status) > 4000
     @test s.plasma_peak == plasma_peak_energy(st) > 0
+    @test_throws ErrorException born_state(2.2; ppl = 8, t_end = 150.0, capacity = 1000)   # the run needs more than 4000 slots
+end
+
+@testset "T-835 the summary's weights on hand-placed electrons: alive, counted, fast, and the plasma's [WP-064]" begin
+    # T-831's electrons, and one fast electron in the middle of the fade (S = 1/2)
+    xs = [5.0, 12.0, 15.0, 18.0, 30.0, 60.0, 18.0]
+    us = [(3.0, 0.0, 0.0), (2.0, 1.0, 0.0), (1.0, -2.0, 0.5), (0.0, 0.0, 0.0), (10.0, 0.3, -0.2), (0.4, 9.0, 0.0), (7.0, 0.0, 0.0)]
+    ws = [1.0e-3, 2.0e-3, 5.0e-4, 7.0e-4, 3.0e-4, 1.1e-3, 4.0e-4]
+    st = born_test_state(xs, us, ws)
+    h = cellsize(st.grid)
+    area = h[1] * h[2]
+    S(x) = (q = clamp((x - 12) / 12, 0, 1); q^3 * (10 - 15q + 6q^2))
+    s = born_summary(st)
+    @test s.particles == 7
+    @test s.born == 0                                                           # the atoms have released nothing: these were placed by hand
+    @test s.alive ≈ area * sum(ws) rtol = 8eps()
+    @test s.counted ≈ area * sum(ws .* S.(xs)) rtol = 8eps()
+    @test s.fast ≈ area * (ws[5] + ws[7]) rtol = 8eps()                         # u_x > 5: not the one with u_y = 9
+    @test s.fast_counted ≈ area * (ws[5] + ws[7] / 2) rtol = 8eps()
+    @test s.alive > s.counted > s.fast > s.fast_counted > 0
+    @test s.u_max == 10.0
+    @test s.energy === born_energy(st)
+    @test s.mean_energy ≈ s.energy / s.counted rtol = 4eps()
+    @test born_summary(st; u_fast = 0.5).fast ≈ area * (sum(ws) - ws[4] - ws[6]) rtol = 8eps()
+    @test born_summary(st; fade = (27.0, 30.0)).counted ≈ area * (ws[5] + ws[6]) rtol = 8eps()
+    # the plasma's part: one weighted fast particle ahead of the fade
+    p = st.species[1]
+    i = findfirst(j -> p.status[j] == ALIVE && (p.cell[1][j] - 1 + p.offset[1][j]) * h[1] >= 12.0, eachindex(p.w))
+    p.w[i] = 2.0e-3; p.u[1][i] = 8.0
+    s = born_summary(st)
+    @test s.plasma_peak ≈ sqrt(65) - 1 rtol = 4eps()
+    @test s.plasma_fast ≈ area * 2.0e-3 rtol = 4eps()
+    @test born_summary(st; u_fast = 8.0).plasma_fast == 0
 end

@@ -185,6 +185,7 @@ The weight (times Δx·Δy) of the plasma's electrons ahead of `fade[1]` whose k
 `energy` (mₑc²): the charge the wake has injected from the plasma itself.
 """
 function plasma_fast_weight(st; fade = BCASE.fade, energy = BCASE.u_fast)
+    check_fade(st, fade)
     h = Float64.(value_of.(cellsize(st.grid)))
     return h[1] * h[2] * sum(st.species; init = 0.0) do s
         x, g, w = plasma_arrays(s, h[1])
