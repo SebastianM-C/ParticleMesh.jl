@@ -49,9 +49,12 @@ job_id(parts...) = join(string.(parts), "-")
 function job_backend(name)
     name == "cpu" && return CPU()
     name == "cuda" || error("a job's backend is cpu or cuda, got $name")
-    @eval Main using CUDACore: CUDABackend
+    @eval Main using CUDACore: CUDACore, CUDABackend
     return Base.invokelatest(() -> Main.CUDABackend())
 end
+
+"The GPU's model, for a CUDA campaign's manifest."
+gpu_name() = (job_backend("cuda"); Base.invokelatest(() -> Main.CUDACore.name(Main.CUDACore.device())))
 
 function campaign_jobs(kind, res)
     jobs = Dict{String,Any}[]
@@ -181,6 +184,7 @@ function main_campaign(kind, resarg, dir = nothing)
                               "pm_jobs" => get(ENV, "PM_JOBS", "1"), "float" => get(ENV, "PM_FLOAT", "64"), "job_backend" => get(ENV, "PM_BACKEND", "cpu"), "pm_job_threads" => get(ENV, "PM_JOB_THREADS", string(Threads.nthreads())))
     d = run_dir("trapped2d-$kind", @__FILE__; prefix = "optim", work_package = "WP-065", dir,
                 backend = be == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
+                extra = be == "cuda" ? Dict{String,Any}("gpu" => gpu_name()) : Dict{String,Any}(),
                 extra_inputs = [joinpath(@__DIR__, "trapped2d_case.jl"), joinpath(@__DIR__, "born2d_case.jl"),
                                 joinpath(@__DIR__, "..", "ionization", "atomic.jl")], params)
     open(io -> JSON.print(io, jobs, 2), joinpath(d, "jobs.json"), "w")
