@@ -50,8 +50,9 @@ The integral is the midpoint rule on `samples` points over |Δω| ≤ span/durat
 there is below exp(−span²/4)), which makes the envelope periodic in s with the period
 `π·samples·duration/span` ([`aliasing_period`](@ref)). The envelope is set to zero beyond half a
 period from its centroid, so the replicas never reach an antenna, and the constructor refuses
-a pulse whose centroid plus twelve of its durations (2·rms) does not fit in half a period: raise
-`samples` for a strongly stretched pulse.
+a pulse whose centroid plus twelve of its durations ([`envelope_extent`](@ref), at least 2·rms)
+does not fit in half a period: raise `samples` for a strongly stretched pulse. `span` is at
+least 8 (the spectrum cut at exp(−16)).
 """
 struct SpectralEnvelope{T} <: TemporalEnvelope
     duration::T
@@ -69,6 +70,7 @@ end
 
 function check_envelope(e::SpectralEnvelope)
     e.samples >= 2 || throw(ArgumentError("SpectralEnvelope: $(e.samples) samples; at least 2"))
+    e.span >= 8 || throw(ArgumentError("SpectralEnvelope: span $(e.span) cuts the spectrum above exp(−16); at least 8"))
     c, h = envelope_extent(e)
     abs(c) + 12 * h <= aliasing_period(e) / 2 ||
         throw(ArgumentError("SpectralEnvelope: the pulse (centroid $c, duration $h) does not fit in half the period $(aliasing_period(e)) of its $(e.samples) spectral samples; raise `samples`"))
@@ -121,16 +123,44 @@ function envelope_moments(e::SpectralEnvelope)
 end
 
 """
-    envelope_extent(e) -> (center, duration)
+    envelope_extent(e) -> (center, h)
 
 Where the pulse is in time, for the checks of a code that must start it in vacuum or let it pass:
-its centroid and its duration `2·√variance` ([`envelope_moments`](@ref)), which is `duration`
-for a transform-limited Gaussian. A [`GaussianEnvelope`](@ref) gives `(0, duration)` exactly.
+the field is negligible more than `6h` from `center`. `center` is the centroid and `h` at least
+the duration `2·√variance` ([`envelope_moments`](@ref)), which is `duration` for a
+transform-limited Gaussian; a [`GaussianEnvelope`](@ref) gives `(0, duration)` exactly. The rms
+does not bound a pulse whose group delay φ′(Δω) grows faster than Δω: the slow tails of a TOD or
+an FOD reach much further (half a percent of the peak at 6 rms durations for `fod = 3000`,
+`duration = 5`). So for a [`SpectralEnvelope`](@ref) `6h` is also at least the largest
+|φ′(Δω) − center| over the band |Δω| ≤ 7/duration (where the spectrum falls to exp(−12.25)) plus
+three durations; what arrives outside is then the spectrum beyond the band, about erfc(3.5) ≈ 1e-6
+of the peak, and the non-stationary edges of the band, of order exp(−12.25)/(6√π) ≈ 5e-7. For a
+GDD alone and for a moderate TOD the rms is the larger.
 """
 envelope_extent(e::GaussianEnvelope) = (zero(e.duration), e.duration)
-function envelope_extent(e::TemporalEnvelope)
+function envelope_extent(e::SpectralEnvelope)
     m, v = envelope_moments(e)
-    return (m, 2 * sqrt(v))
+    return (m, max(2 * sqrt(v), (group_delay_range(e, m) + 3 * e.duration) / 6))
+end
+
+# max |φ′(Δω) − c| over |Δω| ≤ 7/duration: φ′ = gdd·Δω + tod·Δω²/2 + fod·Δω³/6 at the band's edges
+# and at its turning points inside, the roots of φ″ = gdd + tod·Δω + fod·Δω²/2.
+function group_delay_range(e::SpectralEnvelope, c)
+    Ω = 7 / e.duration
+    φ1(w) = e.gdd * w + e.tod * w^2 / 2 + e.fod * w^3 / 6 - c
+    r = max(abs(φ1(Ω)), abs(φ1(-Ω)))
+    if !iszero(e.fod)
+        d = e.tod^2 - 2 * e.fod * e.gdd
+        if d >= 0
+            for w in ((-e.tod + sqrt(d)) / e.fod, (-e.tod - sqrt(d)) / e.fod)
+                abs(w) <= Ω && (r = max(r, abs(φ1(w))))
+            end
+        end
+    elseif !iszero(e.tod)
+        w = -e.gdd / e.tod
+        abs(w) <= Ω && (r = max(r, abs(φ1(w))))
+    end
+    return r
 end
 
 """

@@ -7,7 +7,7 @@ using ForwardDiff: ForwardDiff
 using SpecialFunctions: airyai
 using ParticleMeshElectromagnetic: PulseShapes, laser_field, check_params
 using .PulseShapes: envelope, envelope_moments, envelope_extent, envelope_energy, profile, profile_moments, aliasing_period,
-                    pupil_amplitude, parameter_names, parameter_values, with_parameter_values, convert_eltype
+                    pupil_amplitude, parameter_names, parameter_values, with_parameter_values, convert_eltype, legendre, wavefront
 
 const PULSE_SHAPES_FILE = joinpath(pkgdir(ParticleMeshElectromagnetic), "src", "PulseShapes", "PulseShapes.jl")
 
@@ -113,7 +113,8 @@ end
 # gdd·fod/τ⁴), measured by the trapezoid rule over the envelope's period (spectrally accurate).
 # A positive GDD is an up-chirp: the instantaneous frequency 1 − d(arg A)/ds rises through the
 # pulse, as 1 + s/gdd far out. Past half its period from the centroid the envelope is zero (no
-# replica reaches an antenna), and a pulse that does not fit is refused.
+# replica reaches an antenna), and a pulse that does not fit is refused, at its margin of twelve
+# durations of envelope_extent; that extent bounds an FOD's slow tails, which the rms does not.
 @testset "T-902 a spectral phase keeps the energy and moves the centroid and the variance by the closed forms; positive GDD is an up-chirp; replicas are cut [WP-066]" begin
     C = emC("T-902")
     for e in (SpectralEnvelope(; duration = 6.0, gdd = 20.0), SpectralEnvelope(; duration = 4.0, tod = 30.0),
@@ -136,6 +137,25 @@ end
     @test ω(-10.0) < ω(0.0) < ω(10.0)
     @test ω(60.0) - 1 ≈ 4 * 60 * 60 / (6.0^4 + 4 * 60^2) rtol = 1e-10   # arg A = −2φ₂s²/(τ⁴ + 4φ₂²) of the closed form
     @test_throws ArgumentError SpectralEnvelope(; duration = 5.0, gdd = 400.0, samples = 64)
+    # the margin is twelve durations h = 2√var from the centroid: with τ = 6 and 128 samples over
+    # 12/τ the period is P = π·128·6/12, and h = P/24 at the GDD g* = τ·√((P/48)² − τ²/4)
+    P = π * 128 * 6 / 12
+    g = 6 * sqrt((P / 48)^2 - 9)
+    @test_throws ArgumentError SpectralEnvelope(; duration = 6.0, gdd = 1.02 * g, samples = 128)
+    SpectralEnvelope(; duration = 6.0, gdd = 0.98 * g, samples = 128)
+    # an FOD's slow tails: half a percent of the peak at twelve rms (the rms alone is no bound), and
+    # below 1e-6 beyond six of envelope_extent's durations (its group-delay range); the samples that
+    # fit the rms alone are refused
+    e = SpectralEnvelope(; duration = 5.0, fod = 3000.0, samples = 4500)
+    c, h = envelope_extent(e)
+    m, v = envelope_moments(e)
+    P = aliasing_period(e)
+    @test min(abs(envelope(e, c - 12 * sqrt(v))), abs(envelope(e, c + 12 * sqrt(v)))) > 1e-3
+    out = maximum(s -> abs(s - c) >= 6h ? abs(envelope(e, s)) : 0.0, range(c - P / 2 + 0.1, c + P / 2 - 0.1; step = 0.5))
+    record!("T-902 fod tail", Float64, out / 1e-6)
+    @test out <= C * 1e-6
+    @test_throws ArgumentError SpectralEnvelope(; duration = 5.0, fod = 3000.0, samples = 576)
+    @test_throws ArgumentError SpectralEnvelope(; duration = 5.0, span = 6)
 end
 
 # --- T-903 ----------------------------------------------------------------------------------
@@ -209,6 +229,12 @@ end
         record!("T-904", Float64, abs(S - (1 - x)) / x^2)
         @test abs(S - (1 - x)) <= C * x^2
         @test profile_moments(b)[1] == profile_moments(PupilBeam(; na = 0.2, samples = 512))[1]
+        # the modes are the Legendre polynomials: P₂ = (3ρ² − 1)/2, P₃ = (5ρ³ − 3ρ)/2, P₄ = (35ρ⁴ − 30ρ² + 3)/8
+        for ρ in (-0.9, -0.3, 0.45, 1.0)
+            @test legendre(0, ρ) == 1 && legendre(1, ρ) == ρ
+            @test legendre(2, ρ) ≈ (3ρ^2 - 1) / 2 && legendre(3, ρ) ≈ (5ρ^3 - 3ρ) / 2 && legendre(4, ρ) ≈ (35ρ^4 - 30ρ^2 + 3) / 8
+            @test wavefront(b, ρ) ≈ sum(c[n] * legendre(n, ρ) for n in eachindex(c)) atol = 1e-15
+        end
     end
 end
 
@@ -304,17 +330,21 @@ function body_T906(be)
     C, Cl = emC("T-906"), emC("T-906", "C_leak")
     for T in TYPES
         prob = shaped_problem(T)
-        r = antenna_run(prob; probes = (10, 25, 40, 60, 80), be)
+        # a snapshot d = 50 after the centroid crossed the plane, before the backward wave wraps round
+        _, w = envelope_extent(prob.lasers[1].envelope)
+        d = 50
+        k = round(Int, (value_of(prob.lasers[1].delay) + d) / value_of(prob.dt))
+        r = antenna_run(prob; probes = (10, 25, 40, 60, 80), snaps = (k,), be)
         sc = pupil_angular_scale(prob.lasers[1].profile)
         for comp in (:Ey, :Ez)
             err = maximum(x -> x.err, angular_error(r; component = comp))
             record!("T-906 $comp", T, err / sc, be)
             @test err <= C * sc
         end
-        # one way: the pulse lies within x ≤ 10 + 150 − 6·w at the end, the wrapped leak beyond
-        _, w = envelope_extent(prob.lasers[1].envelope)
-        fwd, back = forward_window(r, value_of(150 - 2 * w))
-        f = map(Array, r.st.fields)
+        # one way: in the snapshot the forward pulse lies within x ≤ 10 + d + 6w ≈ 109 and a backward
+        # one, wrapped round the periodic box 200 long, beyond 210 − d − 6w ≈ 111
+        fwd, back = forward_window(r, value_of(10 + d + 6 * w))
+        f = only(r.shots).f
         frac = Float64(value_of(plain_energy(f, r.st.grid; cols = back) / conserved_energy(f, r.st.grid, prob.dt; cols = fwd)))
         record!("T-906 leak", T, frac, be)
         @test frac <= Cl
@@ -377,22 +407,42 @@ pulse_end_of(l) = ParticleMeshElectromagnetic.pulse_end(l)
     vd = ForwardDiff.Dual{Nothing}.(v, 1.0)
     pd = with_tunables(params(prob), vd)
     @test eltype(pd.lasers[1].profile.aberrations) == eltype(vd) && pd.lasers[1].envelope.samples == l.envelope.samples
+    # the configuration (span, samples, order) goes through the parameter layer and convert_eltype unchanged
+    for x in (SpectralEnvelope(; duration = 6.0, gdd = 5.0, span = 10, samples = 300),
+              PupilBeam(; na = 0.3, amplitude = SuperGaussianPupil(; radius = 0.7, order = 4), aberrations = (0.01, 0.02), samples = 64))
+        @test with_parameter_values(x, parameter_values(x)) === x
+        @test convert_eltype(Float64, x) === x
+        y, z = convert_eltype(Float32, x), with_parameter_values(x, ForwardDiff.Dual{Nothing}.(parameter_values(x), 1.0))
+        for u in (y, z)
+            @test u.samples == x.samples
+            x isa SpectralEnvelope ? (@test u.span == x.span) : (@test u.amplitude.order == x.amplitude.order)
+        end
+    end
     # a profile of period π·8/0.3 ≈ 84 < 2·200
     bad = ShapedLaser(; a0 = 1.0, delay = l.delay, focus = l.focus, position = l.position, center = l.center, envelope = l.envelope,
                       profile = test_pupil(; samples = 8))
     st = EMState(prob, EMNumerics())
     @test_throws ArgumentError check_params(st, EMParams(params(prob); lasers = (bad,)))
     check_params(st, params(prob))
+    # at the threshold: the box is 2π/8·255 ≈ 200.3 high, so π·38/0.3 ≈ 397.9 is refused and π·39/0.3 ≈ 408.4 is not
+    near(n) = EMParams(params(prob); lasers = (ShapedLaser(; a0 = 1.0, delay = l.delay, focus = l.focus, position = l.position, center = l.center,
+                                                           envelope = l.envelope, profile = test_pupil(; samples = n)),))
+    @test_throws ArgumentError check_params(st, near(38))
+    check_params(st, near(39))
     # a window that starts while the stretched pulse still crosses its plane
     p = shaped_problem(Float64; tend = 2)
     lw = p.lasers[1]
     # the plane stops acting s_off = ia − g − 1 shifts after the start (window.jl), a time below its
     # position: a start 5 before pulse_end − position is refused, one 5 after pulse_end is not
-    early = pulse_end_of(lw) - lw.position - 5
+    # six stretched durations h = 2√var after the centroid, from the closed-form moments
+    m, v = envelope_moments(lw.envelope)
+    tend = lw.delay + m + 12 * sqrt(v)
+    @test pulse_end_of(lw) ≈ tend rtol = 1e-14
+    early = tend - lw.position - 5
     mkwin(start) = EMProblem("shaped-window", p.length, p.cells, p.dt, 2, (), 1, (1, 0); lasers = (lw,), boundaries = (:window, :periodic),
                              window = MovingWindow(; start), profile = DensityRamp(; vacuum = 50.0, ramp = 8.0))
     @test_throws ArgumentError EMState(mkwin(early), EMNumerics())
-    EMState(mkwin(pulse_end_of(lw) + 5), EMNumerics())
+    EMState(mkwin(tend + 5), EMNumerics())
     if isempty(VERSION.prerelease)
         @eval using JET
         targets = (ParticleMeshCore, ParticleMeshElectromagnetic, PulseShapes)
