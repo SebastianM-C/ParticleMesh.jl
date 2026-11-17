@@ -236,17 +236,22 @@ end
 end
 
 # Every SoA array of the species, the extras included, gathered by `ws.perm` (slot `i` takes what
-# slot `ws.perm[i]` held). With the workspace's spare set (`swap`), in one launch into it: a species
-# that owns its arrays takes the spare set and leaves its old one as the workspace's spare (no copy),
-# one over arrays it does not own gets them back by one copy launch. Without it, or for a species of
-# other array types than the workspace's (a workspace lent to another species), array by array
-# through the shared buffers, each copied back. The choice reads types and host references only.
+# slot `ws.perm[i]` held). With the workspace's spare set (`swap`), a species that owns its arrays
+# is gathered in one launch into it, takes the spare set and leaves its old one as the workspace's
+# spare (no copy). A species over arrays it does not own keeps them: on the CPU one launch gathers
+# into the spare set and one copies back; on a GPU the arrays go one by one through the shared
+# buffers, which can stay in its L2 cache between the gather and the copy back (WP-041,
+# scripts/sort/gather_bench.jl: on an RTX 5090 the two-launch form took 1.2 to 2 times as long at
+# 3.8 million particles and in Float64 and duals at 0.9 million, and less below; on a 4-thread CPU
+# a third as long). Without the spare set, or for a species of other array types than the
+# workspace's (a workspace lent to another species), array by array as well. The choice reads types,
+# the backend and host references only.
 permute_species!(s::Species, ws::Workspace, workgroupsize) = permute_species!(s, ws, ws.spare, workgroupsize)
 function permute_species!(s::Species, ws::Workspace, spare::Base.RefValue{A}, workgroupsize) where {A<:SpeciesArrays}
     a = species_data(s)
-    a isa A || return permute_species!(s, ws, nothing, workgroupsize)
-    b = spare[]
     backend = get_backend(s)
+    (a isa A && (owns_arrays(s) || backend isa KernelAbstractions.CPU)) || return permute_species!(s, ws, nothing, workgroupsize)
+    b = spare[]
     launcher(gather_all_kernel!, backend, workgroupsize)(flat_arrays(b), flat_arrays(a), ws.perm; ndrange = capacity(s))
     if owns_arrays(s)
         getfield(s, :data)[] = b
