@@ -210,9 +210,10 @@ the contributions that cross the seam land in the guards, and `fold_guards!` on 
 three fields moves them into the interior.
 
 `Reference()` needs `sort_by_cell!(species, grid, ws)` after the move (the segments are by the
-current cell; the extras follow the sort) and is bitwise deterministic: one work item per node
-adds the contributions of the cells whose stencil reaches it, in increasing cell order and
-within a cell in slot order, across reruns, thread counts and `workgroupsize` (T-113). `Fast()`
+current bin, `ws.bins`: the cell for `CellBins()`, or `NodeBins`, which may take one more guard
+cell, checked; the extras follow the sort) and is bitwise deterministic: one work item per node
+adds the contributions of the bins whose stencil reaches it, in increasing bin order and
+within a bin in slot order, across reruns, thread counts and `workgroupsize` (T-113). `Fast()`
 needs no sort: it adds with atomics, and for element types without them sorts the species by
 cell itself and runs `Reference()` (`effective_mode`, #196); a caller that sorts anyway passes
 `effective_mode(mode, T)`.

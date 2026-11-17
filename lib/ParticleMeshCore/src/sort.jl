@@ -145,20 +145,27 @@ end
     end
 end
 
-@kernel function segments_kernel!(seg_start, seg_stop, count, s, bins, n::Int32, cap::Int32)
-    i32 = Int32(@index(Global, Linear))
-    status = s.status
-    bin(i) = particle_bin(bins, s, i, (n,))[1]
-    @inbounds if status[i32] == ALIVE
-        c = bin(i32)
-        last_alive = i32 == cap || status[i32 + Int32(1)] != ALIVE
-        if i32 == Int32(1) || bin(i32 - Int32(1)) != c
-            seg_start[c] = i32
+# The segment bounds from the sorted keys: after `sort_keys!`, `ws.key[i] ÷ cap` is the bin of the
+# particle now in slot `i` less one (its linear bin at N > 1), and `ncell` for a free slot, so the
+# bins need not be evaluated again. The keys are unique and sorted, so slot `i` holds the `i`-th
+# key and a neighbour is in the same bin when its key lies in `[c·cap, (c + 1)·cap)`: one division
+# per slot.
+@kernel function segments_from_keys_kernel!(seg_start, seg_stop, count, @Const(key), ncell::Int64, cap::Int64)
+    i = @index(Global, Linear)
+    @inbounds begin
+        c = key[i] ÷ cap
+        if c < ncell
+            lo = c * cap
+            hi = lo + cap
+            last_alive = i == cap || key[i + 1] >= ncell * cap
+            if i == 1 || key[i - 1] < lo
+                seg_start[c + 1] = Int32(i)
+            end
+            if last_alive || key[i + 1] >= hi
+                seg_stop[c + 1] = Int32(i)
+            end
+            last_alive && (count[1] = Int32(i))
         end
-        if last_alive || bin(i32 + Int32(1)) != c
-            seg_stop[c] = i32
-        end
-        last_alive && (count[1] = i32)
     end
 end
 
@@ -221,10 +228,12 @@ end
 """
     sort_by_cell!(species, grid, ws; workgroupsize = nothing)
 
-Sort the particles in place by (cell, slot), with free slots last (for N > 1 by the column-major
-linear cell of `linear_cell`, then slot); apply the one permutation to
-every SoA array, the module's extras included (`ws.perm[i]` is the slot that slot `i` held
-before); write the per-cell segment bounds into `ws` and the alive count into `species.count`.
+Sort the particles in place by (bin, slot), with free slots last, the bin being the workspace's
+(`ws.bins`: the cell for `CellBins()`, the default, the first node of the stencil for
+`NodeBins`; `particle_bin`), and for N > 1 its column-major linear index of `linear_cell`; apply
+the one permutation to every SoA array, the module's extras included (`ws.perm[i]` is the slot
+that slot `i` held before); write the per-bin segment bounds into `ws` and the alive count into
+`species.count`.
 Deterministic: the keys are unique, so the result does not depend on the sort algorithm, the
 backend, the thread count or `workgroupsize` (A4; T-136, T-173, T-177). `workgroupsize`
 applies to the engine's own kernels; AcceleratedKernels' sort launches as its workspace plan
@@ -239,8 +248,8 @@ function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; work
     sort_keys!(ws, cap, backend, workgroupsize)
     permute_species!(s, ws, workgroupsize)
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = n)
-    launcher(segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s, ws.bins, Int32(n),
-                                                       Int32(cap); ndrange = cap)
+    launcher(segments_from_keys_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, ws.key, Int64(n),
+                                                                 Int64(cap); ndrange = cap)
     note_sorted!(ws.resort, s)
     return s
 end
@@ -252,23 +261,6 @@ end
     @inbounds begin
         c = s.status[i] == ALIVE ? linear_cell(map(Int64, particle_bin(bins, s, i, map(Int32, n))), n) - 1 : ncell
         key[i] = c * cap + (i - 1)
-    end
-end
-
-@kernel function segments_nd_kernel!(seg_start, seg_stop, count, s, bins, n, cap::Int32)
-    i32 = Int32(@index(Global, Linear))
-    status = s.status
-    bin(i) = linear_cell(particle_bin(bins, s, i, n), n)
-    @inbounds if status[i32] == ALIVE
-        c = bin(i32)
-        last_alive = i32 == cap || status[i32 + Int32(1)] != ALIVE
-        if i32 == Int32(1) || bin(i32 - Int32(1)) != c
-            seg_start[c] = i32
-        end
-        if last_alive || bin(i32 + Int32(1)) != c
-            seg_stop[c] = i32
-        end
-        last_alive && (count[1] = i32)
     end
 end
 
@@ -284,8 +276,8 @@ function sort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; work
     sort_keys!(ws, cap, backend, workgroupsize)
     permute_species!(s, ws, workgroupsize)
     launcher(reset_segments_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count; ndrange = ncell)
-    launcher(segments_nd_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, s, ws.bins,
-                                                          Int32.(grid.n), Int32(cap); ndrange = cap)
+    launcher(segments_from_keys_kernel!, backend, workgroupsize)(ws.seg_start, ws.seg_stop, s.count, ws.key,
+                                                                 Int64(ncell), Int64(cap); ndrange = cap)
     note_sorted!(ws.resort, s)
     return s
 end

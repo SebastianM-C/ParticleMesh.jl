@@ -120,8 +120,10 @@ guards) with the given shape and stagger. Guards receive the contributions that 
 periodic seam; `fold_guards!` moves them into the interior ("deposit into guards, then fold").
 `Reference()` needs `sort_by_cell!(species, grid, ws)` since the last particle move (without
 it, it reads the segment bounds of the last sort) and is bitwise deterministic: one work item
-per node adds, in increasing cell order and within a cell in slot order, the contributions of
-the cells in its stencil. `Fast()` needs no sort: it uses atomics where `accumulation` allows
+per node adds, in increasing bin order and within a bin in slot order, the contributions of
+the bins whose stencil reaches it (`deposit_reach`). The bins are the workspace's (`ws.bins`):
+the cells for `CellBins()`, the default, or `NodeBins`, whose shape and stagger may differ from
+the deposit's at the cost of one more guard cell (checked). `Fast()` needs no sort: it uses atomics where `accumulation` allows
 them, and otherwise (`Dual`) sorts the species by cell itself and runs `Reference()`
 (`effective_mode`), which permutes the particles' slots (#196). A caller that sorts anyway
 passes `effective_mode(mode, T)` so that the species is not sorted twice. In both modes
@@ -130,8 +132,8 @@ passes `effective_mode(mode, T)` so that the species is not sorted twice. In bot
 
 For N = 2, `ρ` is a matrix with guards, `stagger` an `NTuple{2,Stagger}` and the weights the
 tensor product of the per-axis weights; `Reference()` needs the 2D `sort_by_cell!`, and a node
-adds the contributions of its stencil's cells in increasing column-major linear index, within a
-cell in slot order (the A4 bitwise contract for N = 2; T-265, T-266).
+adds the contributions of the bins that reach it in increasing column-major linear index, within a
+bin in slot order (the A4 bitwise contract for N = 2; T-265, T-266).
 """
 function deposit!(mode, ρ::AbstractVector{T}, s::Species{1}, shape::Shape, stagger::Stagger,
                   grid::PeriodicGrid{1}, ws::Workspace; quantity = ChargeWeight(), workgroupsize = nothing) where {T}
