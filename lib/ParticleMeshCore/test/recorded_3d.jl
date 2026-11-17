@@ -2,9 +2,11 @@
 # periodic solve at N = 1 and 2 (`spectral_digests`, checked by T-312) and the engine at N = 3
 # (`engine3d_digests`, checked by T-875). Needs recorded_2d.jl (`recorded_2d_lines`), which drops
 # the launch shape from each line. SPECTRAL_RECORDED was computed on 2cfcf7a (main before the solve
-# was written over N) and E3D_RECORDED on 67db321, both on the CPU backend with Julia 1.13 at 1 and
-# 4 threads (identical). A change to these bits is a change of a Reference result (A4): replace
-# the lines only when the change is intended, and say so in the PR.
+# was written over N) and E3D_RECORDED on 67db321, both in this package's test environment (the
+# committed manifest) on the CPU backend with Julia 1.13 at 1 and 4 threads (identical). The Dual
+# lines also depend on the ForwardDiff version: another one gave other bits for them, and the same
+# bits for Float32 and Float64. A change to these bits is a change of a Reference result (A4):
+# replace the lines only when the change is intended, and say so in the PR.
 
 const SPECTRAL_RECORDED = String[
     "psolve|Float32|n=64|15989489460706605151",
@@ -15,10 +17,10 @@ const SPECTRAL_RECORDED = String[
     "psolve|Float64|n=37|7345340208687254874",
     "psolve|Float64|n=16x12|17230274763175838616",
     "psolve|Float64|n=13x7|14864212835172890851",
-    "psolve|Dual{Float32,3}|n=64|10599476901158819959",
-    "psolve|Dual{Float32,3}|n=37|9284715587309070885",
-    "psolve|Dual{Float32,3}|n=16x12|16039890807310274770",
-    "psolve|Dual{Float32,3}|n=13x7|7984637322667815226",
+    "psolve|Dual{Float32,3}|n=64|1549872158457539797",
+    "psolve|Dual{Float32,3}|n=37|8921437862240547629",
+    "psolve|Dual{Float32,3}|n=16x12|12629066738373965354",
+    "psolve|Dual{Float32,3}|n=13x7|10629577619240822537",
 ]
 
 const E3D_RECORDED = String[
@@ -63,8 +65,8 @@ const E3D_RECORDED = String[
     "gather3d|Dual{Float32,3}|2,Center,Node,Node|8545230602931843621",
     "fill3d|Dual{Float32,3}|9x4x5|961921931305847525",
     "fold3d|Dual{Float32,3}|9x4x5|18314611366232433080",
-    "load3d|Dual{Float32,3}|ppc=2x1x3|14738028273473616234",
-    "load3d|Dual{Float32,3}|juttner|14524831049793452411",
-    "psolve3d|Dual{Float32,3}|n=8x6x5|9261642814480451789",
-    "psolve3d|Dual{Float32,3}|n=5x7x4|14461490147572535481",
+    "load3d|Dual{Float32,3}|ppc=2x1x3|11666521483459799670",
+    "load3d|Dual{Float32,3}|juttner|17696970653906030783",
+    "psolve3d|Dual{Float32,3}|n=8x6x5|6158026272795281876",
+    "psolve3d|Dual{Float32,3}|n=5x7x4|4155450022843091785",
 ]
