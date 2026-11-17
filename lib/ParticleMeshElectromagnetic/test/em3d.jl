@@ -182,6 +182,8 @@ em3_box(grid) = ncells(grid) .* cellsize(grid)
         K = [seeded(T, 0.3 + 0.1i) for i in 1:7]
         r = HistoryRecorder(backend, T, grid, box, EM3_KMODE, 5)
         @test r isa HistoryRecorder{3} && length(r) == 5
+        @test_throws ArgumentError HistoryRecorder(backend, T, grid, (zero(T), box[2], box[3]), EM3_KMODE, 5)   # a zero box length
+        @test_throws ArgumentError HistoryRecorder(backend, T, grid, (box[1], T(NaN), box[3]), EM3_KMODE, 5)    # a NaN one
         PME.record_entry!(r, f, K, grid, 2)
         h = histories(r)
         @test keys(h) == PME.HISTORY_KEYS_3D && all(a -> length(a) == 5, h)

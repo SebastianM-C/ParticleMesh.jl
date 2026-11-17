@@ -374,6 +374,11 @@ function check_cadence(nsteps::Integer, every::Integer)
     return cld(nsteps, every)
 end
 
+function check_box(box)
+    all(L -> L > 0 && isfinite(L), box) || throw(ArgumentError("the box lengths must be positive and finite, got $box"))
+    return nothing
+end
+
 function history_arrays(backend, ::Type{T}, keys, sel::RecordSelection, entries::Integer) where {T}
     ks = recorded_keys(keys, sel)
     return NamedTuple{ks}(ntuple(_ -> KernelAbstractions.zeros(backend, T, entries), length(ks)))
@@ -389,6 +394,7 @@ end
 function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{2}, box, kmode::NTuple{2,Int}, nsteps::Integer; workgroupsize = nothing,
                          every::Integer = 1, record = RECORD_GROUPS) where {T}
     kmode == (0, 0) && throw(ArgumentError("the diagnostic mode must not be (0, 0)"))
+    check_box(box)
     sel = RecordSelection(record)
     n = ncells(grid)
     hist = history_arrays(backend, T, HISTORY_KEYS_2D, sel, check_cadence(nsteps, every))
@@ -406,6 +412,7 @@ end
 function HistoryRecorder(backend, ::Type{T}, grid::PeriodicGrid{3}, box, kmode::NTuple{3,Int}, nsteps::Integer; workgroupsize = nothing,
                          every::Integer = 1, record = RECORD_GROUPS) where {T}
     kmode == (0, 0, 0) && throw(ArgumentError("the diagnostic mode must not be (0, 0, 0)"))
+    check_box(box)
     sel = RecordSelection(record)
     n = ncells(grid)
     hist = history_arrays(backend, T, HISTORY_KEYS_3D, sel, check_cadence(nsteps, every))
