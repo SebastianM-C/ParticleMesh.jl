@@ -1,0 +1,35 @@
+Seconds per run of 512 steps (16 threads, AMD EPYC 9655 96-Core Processor):
+
+| element type | mode | `run!` | push | sort | deposit | window | fields | other |
+|---|---|---|---|---|---|---|---|---|
+| `Float32` | Reference | 0.85 | 0.18 | 0.24 | 0.19 | 0.12 | 0.02 | 0.04 |
+| `Float64` | Reference | 1.01 | 0.19 | 0.27 | 0.22 | 0.11 | 0.03 | 0.05 |
+| `Dual{Float32,2}` | Reference | 2.4 | 0.69 | 0.36 | 0.88 | 0.16 | 0.05 | 0.14 |
+| `Dual{Float64,2}` | Reference | 3.07 | 0.7 | 0.6 | 1.22 | 0.28 | 0.07 | 0.17 |
+
+Milliseconds per call on the last state:
+
+| element type | `deposit_flux!` | patch kernel | reduce kernel | `sort_by_cell!` (sorted input) |
+|---|---|---|---|---|
+| `Float32` | 0.43 | 0.26 | 0.1 | 0.26 |
+| `Float64` | 0.45 | 0.29 | 0.1 | 0.28 |
+| `Dual{Float32,2}` | 1.59 | 1.41 | 0.16 | 0.34 |
+| `Dual{Float64,2}` | 1.97 | 1.6 | 0.33 | 0.38 |
+
+Milliseconds per call of the patch kernel per work-group:
+
+| element type | `nothing` | `1` | `8` | `64` | `512` |
+|---|---|---|---|---|---|
+| `Float32` | 0.53 | 0.32 | 0.52 | 0.38 | 0.46 |
+| `Float64` | 0.53 | 0.36 | 0.56 | 0.64 | 0.63 |
+| `Dual{Float32,2}` | 9.24 | 1.39 | 4.29 | 4.58 | 36.5 |
+| `Dual{Float64,2}` | 18.7 | 1.65 | 4.53 | 9.02 | 58.2 |
+
+Milliseconds per call of the deposition per patch layout:
+
+| element type | `deposit_flux!` StencilMajor | patch StencilMajor | reduce StencilMajor | `deposit_flux!` CellMajor | patch CellMajor | reduce CellMajor |
+|---|---|---|---|---|---|---|
+| `Float32` | 0.39 | 0.25 | 0.09 | 1.27 | 1.13 | 0.17 |
+| `Float64` | 0.67 | 0.48 | 0.18 | 1.58 | 1.2 | 0.18 |
+| `Dual{Float32,2}` | 1.61 | 1.43 | 0.16 | 2.55 | 2.27 | 0.2 |
+| `Dual{Float64,2}` | 2.01 | 1.61 | 0.32 | 2.99 | 2.58 | 0.3 |
