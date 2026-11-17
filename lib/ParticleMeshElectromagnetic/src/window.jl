@@ -315,7 +315,7 @@ end
 retire_x!(::Nothing, st) = nothing
 function retire_x!(::WindowFrame, st)
     wgs = st.numerics.workgroupsize
-    for s in (st.species..., witness_species(st)...)
+    for s in (deposited_species(st)..., witness_species(st)...)
         launcher(retire_x_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
     return nothing
@@ -488,14 +488,17 @@ x-guards and the front column zero but for Ex on the front face, which is carrie
 convolution fields with them (front column zero), every particle one cell back with the back column's retired, the
 slots compacted by the sort, the fresh plasma of the [`injection_column`](@ref) loaded behind the
 alive count from the parameters ([`window_load`](@ref): the weights of the densities and the
-profile at the global column, A3), and the kinetic-energy chunks recomputed. Called by `step!` at
-the end of a step; the window position it moves to is the caller's (the count of shifts).
+profile at the global column, A3). The kinetic-energy cache `K` is then stale and marked so:
+`step!`, which calls this at the end of a step, computes it after the shift where its observer
+reads it, and another caller uses [`refresh_caches!`](@ref). The window position it moves to is the caller's
+(the count of shifts).
 """
 function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
     (; numerics, grid, fields, aux) = st
     w = aux.window
     wgs = numerics.workgroupsize
     g, n = guards(grid), ncells(grid)
+    st.fresh[] = false
     for a in (fields.Ex, fields.Ey, fields.Ez, fields.Bx, fields.By, fields.Bz)
         copyto!(st.ρ, a)
         launcher(shift_columns_kernel!, get_backend(a), wgs)(a, st.ρ, Int32(g + 1), Int32(g + n[1]), a === fields.Ex; ndrange = size(a))
@@ -509,7 +512,7 @@ function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
     for s in witness_species(st)                 # the bunch moves back with the window, unsorted and not refilled
         launcher(shift_particles_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
     end
-    kinetic!(st)
+    shift_ionization!(ionization_frame(st), st, p, s_new)
     return st
 end
 
@@ -535,14 +538,15 @@ end
 """
     window_charge!(ρ, state::EMState{2}) -> ρ
 
-The charge density of the state's particles on the primal nodes, deposited in the state's mode
+The charge density of the state's particles (the species' and a dopant's electrons; the dopant's
+ions are [`ionization_charge!`](@ref)) on the primal nodes, deposited in the state's mode
 (the species sorted first where the mode needs it), with the window's convention: the x-guards
 dropped (zero outside), the y-guards folded. A diagnostic, outside `step!`.
 """
 function window_charge!(ρ, st::EMState{2})
     (; numerics, grid) = st
     fill!(ρ, zero(eltype(ρ)))
-    for (s, ws) in zip(st.species, st.ws)
+    for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
         sorts(st, s) && sort_by_cell!(s, grid, ws)
         deposit!(deposit_mode(st, s), ρ, s, numerics.shape, RHO_STAGGER_2D, grid, ws)
     end

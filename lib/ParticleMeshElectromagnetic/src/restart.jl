@@ -6,9 +6,9 @@
 # continues from the next step with the bits of the uninterrupted run (Reference mode, A4).
 #
 # Everything else in an `EMState` is configuration (fixed when the state is built), scratch (written
-# before it is read, within one call) or the one cache a step leaves for the next: the kinetic
-# energy `K` at n − 1/2, a function of the evolved momenta, weights and status that the next
-# step's observer reads, with at N = 1 the sort's segment bounds its deposition reads
+# before it is read, within one call) or the one cache a step leaves for the next where the next
+# step's observer reads it (WP-062; the host flag `fresh` says whether it did): the kinetic
+# energy `K` at n − 1/2, a function of the evolved momenta, weights and status, with at N = 1 the sort's segment bounds its deposition reads
 # (`refresh_caches!`). The step's inputs besides the state are the parameters and the step index:
 # the window's position, the antennas' switch-off and the witness bunch's injection are functions
 # of `k`.
@@ -31,6 +31,11 @@ window_arrays(w::WindowFrame) = (w.lost..., w.fast...)
 witness_arrays(::Nothing) = ()
 witness_arrays(w::WitnessFrame) = species_arrays(w.species)
 
+# The atoms with their populations (extras that a run evolves, unlike the push's), the electrons
+# and the counter of the births that found no slot.
+ionization_arrays(::Nothing) = ()
+ionization_arrays(fr::IonizationFrame) = (species_arrays(fr.atoms)..., values(fr.atoms.extras)..., species_arrays(fr.electrons)..., fr.lost)
+
 # The evolved arrays of every modifier but the open axis' absorber, in the tuple's order, written
 # out for the tuple's length (static at every length, as the solve's walk).
 @generated function other_evolved(ms::NTuple{M,FieldModifier}) where {M}
@@ -41,10 +46,11 @@ end
 # What a run evolves besides the particles and the fields, in `evolved`'s order: the open axis'
 # absorber's arrays, the window's counters, the arrays of every other modifier in the tuple's
 # order (`evolved_arrays`: the back edge's PML, and any modifier a state was given), the witness
-# bunch. The open axis' absorber comes before the counters whatever its place in the tuple: that
+# bunch, the ionization. The open axis' absorber comes before the counters whatever its place in the tuple: that
 # is the order the list has had since it exists, and no configuration's list moves.
 evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(window_frame(st))...,
-                            other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...)
+                            other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...,
+                            ionization_arrays(ionization_frame(st))...)
 
 """
     evolved(state::EMState) -> Tuple
@@ -60,7 +66,9 @@ What a run evolves, as a flat tuple of the state's own arrays (no copy), in this
    species `fast`; the evolved arrays of every other field modifier in the order of the state's
    tuple ([`evolved_arrays`](@ref): the four convolution fields of the window's back-edge PML,
    `ψBy`, `ψBz`, `ψEy`, `ψEz`, and those of a modifier the state was given with
-   [`with_modifiers`](@ref)); the witness bunch's particles, as a species.
+   [`with_modifiers`](@ref)); the witness bunch's particles, as a species; of a
+   [`FieldIonization`](@ref) the atoms as a species, their extras (`pending`, `emitted` and the
+   bound population of each level), the electrons as a species and the counter `lost`.
 
 The element types stay mixed (`Int32`, `UInt8` and `T`). With the step index `k`, the parameters
 and the configuration the state was built for, these arrays are the whole run: [`snapshot`](@ref)
@@ -125,6 +133,19 @@ function witness_on(w::WitnessFrame, a::Tuple)
     return WitnessFrame(species_on(w.species, take(a, n)), w.kinj, w.c0, w.nc, w.ppc), drop(a, n)
 end
 
+ionization_on(::Nothing, a::Tuple) = (nothing, a)
+function ionization_on(fr::IonizationFrame, a::Tuple)
+    na = Val(species_length(fr.atoms))
+    core, a = species_on(fr.atoms, take(a, na)), drop(a, na)
+    nx = Val(length(fr.atoms.extras))
+    extras, a = NamedTuple{keys(fr.atoms.extras)}(take(a, nx)), drop(a, nx)
+    atoms = typeof(fr.atoms)(core.cell, core.offset, core.u, core.w, core.status, core.count, core.q, core.m, extras)
+    ne = Val(species_length(fr.electrons))
+    electrons, a = species_on(fr.electrons, take(a, ne)), drop(a, ne)
+    return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.row0, fr.nrows, fr.ncols, fr.ppc, a[1], fr.flags),
+           drop(a, Val(1))
+end
+
 # The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order:
 # every modifier is the same modifier over its part of `a` (`on_arrays`).
 function aux_on(st::EMState, a::Tuple)
@@ -132,11 +153,12 @@ function aux_on(st::EMState, a::Tuple)
     window, a = window_on(window_frame(st), a)
     modifiers, a = others_on(st.modifiers, open, a)
     witness, a = witness_on(witness_frame(st), a)
-    return modifiers, aux_with(st.aux, window, witness), a
+    ionization, a = ionization_on(ionization_frame(st), a)
+    return modifiers, aux_with(st.aux, window, witness, ionization), a
 end
 
-aux_with(aux::NamedTuple{()}, window, witness) = aux
-aux_with(aux::NamedTuple, window, witness) = merge(aux, (; window, witness))
+aux_with(aux::NamedTuple{()}, window, witness, ionization) = aux
+aux_with(aux::NamedTuple, window, witness, ionization) = merge(aux, (; window, witness, ionization))
 
 """
     on_evolved(state, arrays::Tuple, K, recorder) -> EMState
@@ -144,13 +166,14 @@ aux_with(aux::NamedTuple, window, witness) = merge(aux, (; window, witness))
 An `EMState` with the configuration and the scratch of `state`, whose evolved arrays are `arrays`:
 as many arrays as [`evolved`](@ref)`(state)`, each of the type of its place there (an
 `ArgumentError` otherwise; a comparison of types, so nothing is converted and nothing copied),
-with the kinetic-energy cache `K` and the `recorder` given. The cache belongs to the arrays: `K`
+with the kinetic-energy cache `K`, the `recorder` and the cache's flag `fresh` given (a new
+one, stale, by default). The cache belongs to the arrays: `K`
 is valid for them once [`refresh_caches!`](@ref) or a step has written it through this state, so
 a caller hands every set of arrays a buffer of its own (the harness: one for the integrator's
 state, apart from its cache state's; [`state_view`](@ref) allocates one). The sizes are the
 caller's to check where the arrays come from outside (`check_evolved`).
 """
-function on_evolved(st::EMState, a::Tuple, K, recorder)
+function on_evolved(st::EMState, a::Tuple, K, recorder, fresh::Base.RefValue{Bool} = Ref(false))
     a isa typeof(evolved(st)) ||
         throw(ArgumentError("the arrays are not of the types of the state's evolved arrays (`evolved`): $(length(a)) arrays " *
                             "against $(length(evolved(st))), or another array or element type"))
@@ -158,7 +181,7 @@ function on_evolved(st::EMState, a::Tuple, K, recorder)
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     modifiers, aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux)
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux, fresh)
 end
 
 """
@@ -184,9 +207,12 @@ end
     refresh_caches!(state) -> state
 
 Rebuild what the state caches of its evolved arrays: the kinetic energy `K` at the current
-momenta, which the next step's observer reads ([`observe!`](@ref)). `initialize!` and every step
-leave it valid; whoever writes the evolved arrays otherwise calls this ([`restore!`](@ref) does,
-and the harness at the first step of a solve, whose `u0` its cache has not seen). At N = 2 `K` is
+momenta, which the next step's observer reads ([`observe!`](@ref)), and mark it current
+(`state.fresh`). `initialize!` leaves it current, and a step does where its observer reads it at
+the next step ([`reads_kinetic`](@ref): the default recorder, a function or `nothing` at every
+step); whoever writes the evolved arrays otherwise calls this ([`restore!`](@ref) does, and the
+harness at the first step of a solve, whose `u0` its cache has not seen), and `observe!` calls
+it for an observer that reads a cache a step left stale. At N = 2 `K` is
 the fixed chunks' sums over the slots as they are. At N = 1 it is a deposition, which in a mode
 that sorts reads the sort's segment bounds, so the species are sorted first: the identity
 permutation on the particles of a step's end or of `initialize!`, which are sorted, so the bits of

@@ -26,7 +26,7 @@ B11. **Unverified platform fact.** Whether workflow agents fire Claude Code hook
 
 ## C. Can wait (phase 4 and later)
 
-Reactant as a production backend (2D on Reactant-CUDA, sharding, multi-host, TPU), reverse mode and checkpointing, 3D block decomposition and load balancing, PSATD or Lehe solver, ionization injection, quantum-corrected radiation reaction, MOL staggered backend beyond the spike, P³M and Molly interoperability (AtomsCalculators/AtomsBase), EDM symbolic forces inside raised kernels, FEM (MOL Ferrite backend) and DG (Trixi) Maxwell backends, PointNeighbors for the pairwise slot.
+Reactant as a production backend (2D on Reactant-CUDA, sharding, multi-host, TPU), reverse mode and checkpointing, 3D block decomposition and load balancing, PSATD or Lehe solver, the ionization current and a barrier-suppression rate for the field ionization of WP-059, quantum-corrected radiation reaction, MOL staggered backend beyond the spike, P³M and Molly interoperability (AtomsCalculators/AtomsBase), EDM symbolic forces inside raised kernels, FEM (MOL Ferrite backend) and DG (Trixi) Maxwell backends, PointNeighbors for the pairwise slot.
 
 ## D. Dependencies and risks to keep visible
 

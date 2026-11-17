@@ -1,27 +1,6 @@
 # The engine contracts of WP-011: T-171 to T-177.
 
-"The output lines of `threads_worker.jl` run with `nt` threads (cached: one subprocess per thread count)."
-const WORKER_OUTPUT = Dict{Int,Vector{String}}()
-function worker_lines(nt)
-    get!(WORKER_OUTPUT, nt) do
-        worker = joinpath(@__DIR__, "threads_worker.jl")
-        project = dirname(Base.active_project())
-        out = read(`$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$project $worker`, String)
-        split(out, '\n'; keepempty = false)
-    end
-end
-worker_digests(nt) = [chopprefix(l, "DIGEST ") for l in worker_lines(nt) if startswith(l, "DIGEST ")]
-"The digest lines of one kind (`scan`, `sort`, `sortmatch`, `deposit`)."
-of_kind(lines, kind) = filter(l -> startswith(l, kind * "|"), lines)
-"Lines grouped by everything except the launch shape (the fourth field)."
-function by_case(lines)
-    groups = Dict{String,Vector{String}}()
-    for l in lines
-        f = split(l, '|')
-        push!(get!(groups, join(f[[1, 2, 3]], '|'), String[]), f[5])
-    end
-    return groups
-end
+foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) run beside this file's in-process runs
 
 const INPROCESS_DIGESTS = thread_digests()
 

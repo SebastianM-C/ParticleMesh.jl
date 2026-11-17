@@ -5,6 +5,12 @@ using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: window_back_band
 using ForwardDiff: ForwardDiff
 
+"""
+WP-045's box: the pulse duration τ ∈ [4, 9] (1/ω₀) and the focus x_f ∈ [60, 130] (c/ω₀), and the
+scale of each: the optimizers work in z = (τ/6, x_f/90).
+"""
+const WAKE_BOX = (lo = [4.0, 60.0], hi = [9.0, 130.0], scale = [6.0, 90.0])
+
 value_of(x::Real) = x
 value_of(d::ForwardDiff.Dual) = ForwardDiff.value(d)
 
@@ -49,7 +55,7 @@ end
 
 function wake_state(duration, focus; kw...)
     prob = wake_problem(duration, focus; kw...)
-    st = EMState(prob, EMNumerics(; mode = Reference()))
+    st = EMState(prob, EMNumerics(; mode = Reference()); record = ())     # the objective reads the fields of the end; no history
     initialize!(st, prob)
     run!(st, params(prob), prob.nsteps)
     return st

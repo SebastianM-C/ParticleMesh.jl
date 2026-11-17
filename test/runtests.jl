@@ -5,7 +5,7 @@ using Test
     @test isdefined(ParticleMesh, :ParticleMesh)
 end
 
-# The lib/ subpackages' own suites run in CI's per-package step, not from here.
+# The lib/ subpackages' own suites run in CI's test-group jobs, not from here.
 @testset "T-145 umbrella re-exports ParticleMeshCore [A6, WP-010]" begin
     @test ParticleMesh.ParticleMeshCore === ParticleMesh.ParticleMeshCore.ParticleMeshCore
     @test isdefined(ParticleMesh, :PeriodicGrid) && ParticleMesh.PeriodicGrid === ParticleMesh.ParticleMeshCore.PeriodicGrid

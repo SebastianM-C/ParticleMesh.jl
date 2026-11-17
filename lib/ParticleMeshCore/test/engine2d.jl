@@ -1,5 +1,7 @@
 # WP-018, the engine at N = 2 on the CPU backend: T-260 to T-269.
 
+foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) run beside this file's in-process runs
+
 @testset "T-260 the port keeps N = 1 bit for bit [A0, A4, WP-018]" begin
     # The N = 1 engine digests recorded before the port (n1_digests.jl), in process and in the
     # subprocesses at 1 and 4 threads. Atomic Fast() bits are an A4 claim on one thread only.

@@ -1,0 +1,89 @@
+# The numbers of the barrier-suppression factor of Tong and Lin (J. Phys. B 38 (2005) 2593) and the rates
+# they are held against. `scripts/ionization/atomic.jl` reads this file.
+#
+# The factor multiplies the tunnelling rate: exp(−α·(Z_c²/I)·F/(2I)^{3/2}) in atomic units, I the ionization
+# energy, Z_c the charge of the ion left behind, F the field, α a fitted number per species. Read in two
+# papers that state it in this form, not in Tong and Lin's own (which the session that wrote this could not
+# reach): E. Lötstedt, M. F. Ciappina and K. Yamanouchi, Phys. Rev. A 102, 013112 (2020), arXiv:2201.03840
+# (its "PPT-based fitting formula" and correction factor Λ_α), and S. Remme, A. B. Voitkiv, G. Pretzler and
+# C. Müller, arXiv:2502.02697 (its empirical rate formula of Tong and Lin). Both were read in their arXiv
+# sources.
+
+[alpha]
+# Hydrogen: α = 6, Tong and Lin's value as both papers quote it. A hydrogen-like ion of nuclear charge Z has
+# hydrogen's rate at the field F/Z³ times Z² (non-relativistic), and the factor is a function of F/Z³ alone,
+# so the same α holds for every hydrogen-like ion.
+hydrogen_like = 6.0
+
+# Helium-like ions by nuclear charge Z: Table I of Lötstedt et al., α fitted by them to their MCTDHF rates
+# over the scaled fields 0.2 to 0.4, with two equivalent electrons (a factor 2 on the rate) and l* = 0 in
+# the tunnelling rate's coefficient. Tong and Lin's own value for helium is 7 (as both papers quote it).
+[alpha.helium_like]
+2 = 7.12
+3 = 7.52
+4 = 7.14
+5 = 6.84
+6 = 6.58
+7 = 6.38
+8 = 6.23
+10 = 6.00
+12 = 5.88
+14 = 5.77
+16 = 5.68
+18 = 5.62
+20 = 5.57
+22 = 5.53
+24 = 5.49
+26 = 5.47
+28 = 5.45
+30 = 5.43
+32 = 5.41
+34 = 5.40
+36 = 5.39
+
+# Static-field ionization rates of helium-like ions computed with the multiconfiguration time-dependent
+# Hartree–Fock method: the supplementary text file of Lötstedt et al. as the arXiv source of
+# arXiv:2201.03840 holds it (`IonizationRates.txt`), the rows of the ions `ionization_energies.toml` has.
+# `scaled_field` is F' = 8F/Z³ in atomic units and `rate` the rate in atomic units at that field. That the
+# rates are the unscaled ones is this file's reading: the text file does not say, and with the paper's
+# scaled rate W' = 4W/Z² instead the formula above would miss every row with Z > 2 by the factor Z²/4. The
+# rows with five entries leave columns of the file empty; its tabs do not line up, and the entries are taken
+# to be those of F' = 0.2, 0.3, 0.4, 0.5 and 0.6, where they continue the full rows of the neighbouring Z.
+[mctdhf]
+source = "E. Lötstedt, M. F. Ciappina, K. Yamanouchi, Phys. Rev. A 102, 013112 (2020), supplementary data (arXiv:2201.03840, IonizationRates.txt)"
+
+[[mctdhf.ions]]
+element = "He"
+Z = 2
+scaled_field = [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+rate = [4.49e-03, 1.62e-02, 3.66e-02, 6.48e-02, 1.00e-01, 1.42e-01, 1.90e-01, 2.48e-01, 3.08e-01]
+
+[[mctdhf.ions]]
+element = "Li"
+Z = 3
+scaled_field = [0.20, 0.30, 0.40, 0.50, 0.60]
+rate = [3.98e-04, 1.58e-02, 8.05e-02, 2.10e-01, 3.86e-01]
+
+[[mctdhf.ions]]
+element = "N"
+Z = 7
+scaled_field = [0.20, 0.30, 0.40, 0.50, 0.60]
+rate = [9.56e-06, 3.76e-03, 6.53e-02, 3.11e-01, 8.23e-01]
+
+[[mctdhf.ions]]
+element = "O"
+Z = 8
+scaled_field = [0.20, 0.30, 0.40, 0.50, 0.60]
+rate = [7.71e-06, 3.44e-03, 6.76e-02, 3.42e-01, 9.60e-01]
+
+[[mctdhf.ions]]
+element = "Ne"
+Z = 10
+scaled_field = [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+rate = [3.68e-06, 2.16e-04, 3.11e-03, 1.96e-02, 7.50e-02, 2.01e-01, 4.27e-01, 7.83e-01, 1.27e+00]
+
+[[mctdhf.ions]]
+element = "Ar"
+Z = 18
+scaled_field = [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+rate = [2.56e-06, 1.94e-04, 3.67e-03, 2.81e-02, 1.26e-01, 3.81e-01, 8.93e-01, 1.76e+00, 3.00e+00]

@@ -42,7 +42,7 @@ map's cache state, the arrays of the partition `u` as its evolved arrays (`on_ev
 map's own kinetic-energy buffer, which the steps of a solve write and read in order. Zero-copy;
 the array types of `u` must be those of the cache.
 """
-state_on(m, u::ArrayPartition) = on_evolved(m.state, u.x, m.K, m.state.recorder)
+state_on(m, u::ArrayPartition) = on_evolved(m.state, u.x, m.K, m.state.recorder, m.fresh)
 
 Base.copyto!(st::EMState, u::ArrayPartition) = restore!(st, u.x)
 
@@ -60,7 +60,7 @@ a solve must start at step 1 and take every step in order (`t0 = 0`, `dt = 1`), 
 integrator's state may continue, so that the histories and the state are those of `run!`. Step 1
 starts from `u0` without `initialize!`: `u0` holds everything a run evolves, so a solve is the run
 of its `u0`, a second solve the same run. `K` is the kinetic energy of the integrator's state, a
-buffer of the map's that the last solve left, so step 1 first checks that `u0` has the layout of the cache's evolved arrays (their
+buffer of the map's that the last solve left (`fresh` says whether the last step left it current), so step 1 first checks that `u0` has the layout of the cache's evolved arrays (their
 number, element types and sizes: a `u0` of another problem is an `ArgumentError`, not a silent
 conversion), computes `K` from it (`refresh_caches!`, as `restore!` does) and checks that a
 problem given as `p` has the cache's configuration ([`check_setup`](@ref)). The cache state's own
@@ -70,12 +70,13 @@ struct EMMap{S<:EMState,B,KB,F}
     state::S
     backend::B
     K::KB
+    fresh::Base.RefValue{Bool}
     done::Base.RefValue{Int}
     owner::Base.RefValue{Any}
     modifiers::F
 end
 
-EMMap(state::EMState, backend, modifiers = identity) = EMMap(state, backend, similar(state.K), Ref(0), Ref{Any}(nothing), modifiers)
+EMMap(state::EMState, backend, modifiers = identity) = EMMap(state, backend, similar(state.K), Ref(false), Ref(0), Ref{Any}(nothing), modifiers)
 
 function (m::EMMap)(u, uprev, p, t)
     # The module's step sorts the particle buffers in place, so the next state starts as a

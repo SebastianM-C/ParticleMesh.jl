@@ -1,48 +1,120 @@
-# Tests of the WP-045 maximizer and the WP-052 case: julia +1.13 --project=scripts scripts/optim/test/runtests.jl
+# Tests of the optimization layer (WP-058) and the cases (WP-051, WP-052):
+#   julia +1.13 --project=scripts scripts/optim/test/runtests.jl
 using Test
-include(joinpath(@__DIR__, "..", "maximize.jl"))
+using ForwardDiff: ForwardDiff
+using OptimizationMadNLP: MadNLPOptimizer
+using MadNLP: MadNLP
+include(joinpath(@__DIR__, "..", "problem.jl"))
 
-@testset "T-600 the box-constrained maximizer finds interior and bound maxima of analytic objectives, with a capped step [WP-045, WP-052]" begin
-    # An anisotropic concave quadratic with its maximum inside the box.
-    A = [3.0 1.0; 1.0 0.5]
-    c = [0.3, 0.7]
-    fq(z) = (r = z .- c; (-r' * A * r / 2, -A * r))
-    r = maximize_box(fq, [0.9, 0.1], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 1e-12)
-    @test r.z ≈ c atol = 1e-8
-    @test r.reason in ("gtol", "xtol")
-    @test all(i -> r.path[i + 1][2] >= r.path[i][2], 1:(length(r.path) - 1))   # monotone ascent
-    # The same quadratic with its maximum outside the box: the maximizer is on the bound z₁ = 0.5,
-    # where the constrained optimum of z₂ is c₂ − A₂₁(0.5 − c₁)/A₂₂.
-    r = maximize_box(fq, [0.9, 0.1], [0.5, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 1e-12)
-    @test r.z[1] == 0.5
-    @test r.z[2] ≈ c[2] - A[2, 1] * (0.5 - c[1]) / A[2, 2] atol = 1e-8
-    @test r.g[1] < 0                                                              # pointing out of the box
-    # The maximum outside the box's upper corner on z₁: held at the upper bound z₁ = 0.2, with the
-    # same constrained optimum formula for z₂, and the stop on the projected gradient.
-    c2 = [0.3, 0.7]
-    r = maximize_box(fq, [0.05, 0.1], [0.0, 0.0], [0.2, 1.0]; gtol = 1e-9, xtol = 0.0, maxiter = 200)
-    @test r.z[1] == 0.2
-    @test r.z[2] ≈ c2[2] - A[2, 1] * (0.2 - c2[1]) / A[2, 2] atol = 1e-8
-    @test r.g[1] > 0
-    @test r.reason == "gtol"
-    # The bound case above also stops on the projected gradient, not on a small step.
-    r = maximize_box(fq, [0.9, 0.1], [0.5, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 0.0, maxiter = 200)
-    @test r.reason == "gtol" && r.z[1] == 0.5
-    # A start outside the box is projected into it first.
-    r = maximize_box(fq, [3.0, -2.0], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-10, xtol = 0.0, maxiter = 200)
-    @test all(p -> all(0 .<= p[1] .<= 1), r.path)
-    @test r.z ≈ c atol = 1e-8
-    # A smooth non-quadratic objective (a Gaussian bump on a slope), maximum inside.
-    fb(z) = (e = exp(-sum(abs2, z .- [0.4, 0.6]) / 0.1); (e + 0.01z[1], e .* (-2 .* (z .- [0.4, 0.6]) ./ 0.1) .+ [0.01, 0.0]))
-    r = maximize_box(fb, [0.2, 0.3], [0.0, 0.0], [1.0, 1.0]; gtol = 1e-9, xtol = 1e-12, maxiter = 100)
-    @test maximum(abs, r.g) < 1e-8
-    # A capped step (WP-052): no accepted step is longer than maxstep in any coordinate, and the
-    # interior maximum is still reached; uncapped, the first step from this start is 0.6 long.
-    r = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; gtol = 1e-10, xtol = 1e-12, maxiter = 200, maxstep = 0.05)
-    @test all(i -> maximum(abs, r.path[i + 1][1] .- r.path[i][1]) <= 0.05 + 1e-15, 1:(length(r.path) - 1))
-    @test r.z ≈ c atol = 1e-8
-    r1 = maximize_box(fq, [0.9, 0.1], [-5.0, -5.0], [5.0, 5.0]; maxiter = 1)
-    @test maximum(abs, r1.path[2][1] .- r1.path[1][1]) ≈ 0.6 rtol = 1e-12   # the default is no cap (WP-045 relies on it)
+@testset "T-760 a case problem is maximized by L-BFGS-B in scaled coordinates, inside the box and on its bounds [WP-058]" begin
+    # A concave quadratic in physical units with its maximum at (7.7, 113), inside WP-045's box.
+    box = (lo = [4.0, 60.0], hi = [9.0, 130.0], scale = [6.0, 90.0])
+    Jq(τ, f) = -(τ - 7.7)^2 - ((f - 113) / 10)^2 - (τ - 7.7) * (f - 113) / 20
+    prob = case_problem(Jq, box, (4.5, 70.0))
+    @test prob.u0 == [4.5 / 6.0, 70.0 / 90.0] && prob.lb == box.lo ./ box.scale && prob.ub == box.hi ./ box.scale
+    @test prob.sense === MaxSense
+    @test prob.f(prob.u0, prob.p) == Jq(4.5, 70.0)                       # the problem's objective is J, not −J
+    rec = Record(prob, LBFGSB())
+    sol = solve(prob, LBFGSB(); callback = rec, maxiters = 50, reltol = 1e-9)
+    @test sol.retcode == ReturnCode.Success
+    @test sol.u .* box.scale ≈ [7.7, 113.0] atol = 1e-6
+    @test sol.objective ≈ 0 atol = 1e-12
+    @test sol.objective == maximum(rec.objective) == Jq((sol.u .* box.scale)...)
+    # The record holds every point L-BFGS-B evaluated, the start first, with J there (not the −J the
+    # solver minimizes), and times that do not decrease.
+    @test rec.u[1] == prob.u0 && rec.u[end] == sol.u
+    @test rec.objective == [Jq((u .* box.scale)...) for u in rec.u]
+    @test issorted(rec.seconds) && length(rec.seconds) == length(rec.u) == sol.stats.fevals
+    @test path(rec, box.scale)[end] == Dict("z" => sol.u, "phys" => sol.u .* box.scale, "J" => sol.objective)
+    # A point costs L-BFGS-B a plain run for the value and a run with duals for the gradient. The 1
+    # is prob.f above.
+    @test runs(prob.p.timer, "plain run").n == length(rec.u) + 1
+    @test runs(prob.p.timer, "run with duals").n == length(rec.u)
+    @test runs(TimerOutput(), "plain run") == (; n = 0, seconds = nothing)
+    # `runs` gives the mean seconds of a section, and the record's seconds count from its making.
+    slept = TimerOutput()
+    total = @elapsed for _ in 1:4
+        @timeit slept "plain run" sleep(0.05)
+    end
+    @test runs(slept, "plain run").n == 4 && 0.045 <= runs(slept, "plain run").seconds <= total / 4
+    t0 = time()
+    timed = Record(prob, LBFGSB())
+    solve(prob, LBFGSB(); callback = timed, maxiters = 50, reltol = 1e-9)
+    @test 0 <= timed.seconds[1] <= timed.seconds[end] <= time() - t0
+    # A verbose record prints each call, a quiet one nothing.
+    printed = mktemp() do file, io
+        redirect_stdout(io) do
+            Record(prob, LBFGSB(); verbose = true)((; u = [1.0, 2.0], objective = -3.0))
+            Record(prob, LBFGSB())((; u = [7.0, 8.0], objective = -9.0))
+        end
+        close(io)
+        read(file, String)
+    end
+    @test occursin("point 1: u = [1.0, 2.0]  objective = 3.0", printed) && !occursin("7.0", printed)
+    # The tolerance reaches the solver: a loose one stops earlier.
+    loose = Record(prob, LBFGSB())
+    solve(prob, LBFGSB(); callback = loose, maxiters = 50, reltol = 1e-1)
+    @test length(loose.u) < length(rec.u)
+    @test solve(prob, LBFGSB(); maxiters = 1, reltol = 1e-12).retcode == ReturnCode.MaxIters
+    # The maximum outside the box: the solution sits on the bound τ = 6 (then 9 from the other side
+    # for a maximum beyond it), with the other parameter at its constrained optimum
+    # f = 113 − 2.5(τ − 7.7) and the gradient pointing out of the box.
+    for (b, τb, sgn) in (((lo = [4.0, 60.0], hi = [6.0, 130.0], scale = box.scale), 6.0, 1), ((lo = [8.5, 60.0], hi = [9.0, 130.0], scale = box.scale), 8.5, -1))
+        pb = case_problem(Jq, b, (b.lo[1] + 0.1, 70.0))
+        sb = solve(pb, LBFGSB(); maxiters = 100, reltol = 1e-9)
+        @test sb.u[1] * 6.0 == τb
+        @test sb.u[2] * 90.0 ≈ 113 - 2.5 * (τb - 7.7) atol = 1e-6
+        @test sign(value_gradient(pb, sb.u)[2][1]) == sgn
+    end
+    # A start outside the box is projected into it first, and no point leaves the box.
+    out = case_problem(Jq, box, (12.0, 20.0))
+    rec = Record(out, LBFGSB())
+    sol = solve(out, LBFGSB(); callback = rec, maxiters = 100, reltol = 1e-9)
+    @test rec.u[1] == [9.0 / 6.0, 60.0 / 90.0]
+    @test all(u -> all(out.lb .<= u .<= out.ub), rec.u)
+    @test sol.u .* box.scale ≈ [7.7, 113.0] atol = 1e-6
+end
+
+@testset "T-761 the gradient of a case problem is the chain rule in z, from one run with duals [WP-058]" begin
+    box = (lo = [4.0, 60.0], hi = [9.0, 130.0], scale = [6.0, 90.0])
+    Jx(τ, f) = τ^2 * sin(f / 30) + τ * f / 100
+    prob = case_problem(Jx, box, (6.5, 95.0))
+    z = prob.u0
+    v, g = value_gradient(prob, z)
+    τ, f = z .* box.scale
+    @test v == Jx(τ, f)
+    @test g ≈ [(2τ * sin(f / 30) + f / 100) * 6.0, (τ^2 * cos(f / 30) / 30 + τ / 100) * 90.0] rtol = 1e-13
+    @test g ≈ ForwardDiff.gradient(w -> Jx((w .* box.scale)...), z) rtol = 1e-14
+    @test runs(prob.p.timer, "run with duals").n == 1 && runs(prob.p.timer, "plain run").n == 0
+    @test run_kind(z) == "plain run" && run_kind(ForwardDiff.Dual.(z, 1.0)) == "run with duals"
+    # The scale is the problem's parameter: the objective reads it from `p`.
+    @test prob.f(z, (; scale = 2 .* box.scale, timer = TimerOutput())) == Jx(13.0, 190.0)
+    # A timer passed in is the one the runs go to.
+    timer = TimerOutput()
+    shared = case_problem(Jx, box, (6.5, 95.0); timer)
+    shared.f(z, shared.p)
+    @test runs(timer, "plain run").n == 1
+end
+
+@testset "T-762 the record turns the −J that L-BFGS-B reports back into J, and MadNLP solves the same problem [WP-058]" begin
+    box = (lo = [4.0, 60.0], hi = [9.0, 130.0], scale = [6.0, 90.0])
+    Jq(τ, f) = 3 - (τ - 7.7)^2 - ((f - 113) / 10)^2
+    prob = case_problem(Jq, box, (4.5, 70.0))
+    # L-BFGS-B has no sense of its own: Optimization.jl gives it −J, and its callback too (#441).
+    raw = Float64[]
+    solve(prob, LBFGSB(); callback = (state, args...) -> (push!(raw, state.objective); false), maxiters = 50)
+    @test !OptimizationBase.supports_sense(LBFGSB()) && Record(prob, LBFGSB()).negated
+    @test raw[1] == -Jq(4.5, 70.0)
+    # A record of a minimization is left as it is.
+    pmin = OptimizationProblem(OptimizationFunction((z, p) -> sum(abs2, z .- 0.3), AutoForwardDiff()), [0.9, 0.1]; lb = [0.0, 0.0], ub = [1.0, 1.0])
+    rmin = Record(pmin, LBFGSB())
+    smin = solve(pmin, LBFGSB(); callback = rmin, maxiters = 50)
+    @test !rmin.negated && rmin.objective[1] == sum(abs2, [0.9, 0.1] .- 0.3) && rmin.objective[end] == smin.objective
+    # MadNLP with a limited-memory Hessian (an interior-point method) reaches the same maximum.
+    sol = solve(prob, MadNLPOptimizer(; hessian_approximation = MadNLP.CompactLBFGS); maxiters = 100, verbose = false)
+    @test sol.retcode == ReturnCode.Success
+    @test sol.u .* box.scale ≈ [7.7, 113.0] atol = 1e-5
+    @test sol.objective ≈ 3 atol = 1e-9
 end
 
 include(joinpath(@__DIR__, "..", "wake2d_case.jl"))
@@ -182,6 +254,13 @@ end
 end
 # Tests of the WP-052 fixed-energy case (witness2d_case.jl): two full runs of the case, about a minute.
 include(joinpath(@__DIR__, "..", "witness2d_case.jl"))
+
+@testset "T-763 the cases' boxes are the reports' boxes [WP-045, WP-052, WP-058]" begin
+    # reports/wp-045-wake-optimization.md: τ ∈ [4, 9], x_f ∈ [60, 130], z = (τ/6, x_f/90).
+    @test (WAKE_BOX.lo, WAKE_BOX.hi, WAKE_BOX.scale) == ([4.0, 60.0], [9.0, 130.0], [6.0, 90.0])
+    # reports/wp-052-fixed-energy-optimization.md: τ ∈ [4, 9], n₀ ∈ [0.04, 0.10], x_c ∈ [30, 50], z = (τ/6, n₀/0.07, x_c/40).
+    @test (WITNESS_BOX.lo, WITNESS_BOX.hi, WITNESS_BOX.scale) == ([4.0, 0.04, 30.0], [9.0, 0.10, 50.0], [6.0, 0.07, 40.0])
+end
 
 @testset "T-680 a₀ from the fixed energy inverts laser_energy, with no energy derivative along τ [A3, WP-052]" begin
     for τ in (4.0, 5.5, 9.0), E in (WCASE.energy, WCASE.energy / 2.25)

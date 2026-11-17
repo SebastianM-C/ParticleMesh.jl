@@ -2,6 +2,8 @@
 # (T-350 to T-358). The 2D step here deposits no current (`NoCurrent()`); test particles are a
 # species of zero density, so their weights, charge and current are zero.
 
+foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
+
 using ParticleMeshElectromagnetic: fields_at, FIELD_LAYOUT_2D
 using ParticleMeshCore: stagger_offset
 using ForwardDiff: partials

@@ -14,9 +14,6 @@ const LANDAU_OVERRIDES = (; ppc = 8192, amplitude = 1 // 20, seed = 20261031)   
 const TWO_STREAM_OVERRIDES = (; ppc = 256)
 const WEIBEL_OVERRIDES = (;)
 
-"The key of a case's results in `PHYSICS`: the name on the CPU, the name and the backend elsewhere."
-physics_key(name, be) = be isa CPU ? name : "$name on $(backend_label(be))"
-
 "Run a case to its end on `be`; returns the histories, the times, the final state and the run time."
 function run_case(name; be = CPU(), overrides...)
     st, p, prob, case = case_state(name, Float64; be, overrides...)

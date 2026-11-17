@@ -244,6 +244,8 @@ layer_of(st) = hasfield(typeof(st), :modifiers) ? PME.open_absorber(st) : auxget
 back_of(st, win) = hasfield(typeof(st), :modifiers) ? PME.back_absorber(st) : win.back
 
 function groups(st)
+    # a state whose recorder does not read the kinetic-energy cache at every step leaves it stale (WP-062)
+    hasfield(typeof(st), :fresh) && !st.fresh[] && PME.refresh_caches!(st)
     state = AbstractArray[]
     foreach(s -> append!(state, species_arrays(s)), st.species)
     w = auxget(st, :witness)

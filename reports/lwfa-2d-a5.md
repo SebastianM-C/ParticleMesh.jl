@@ -12,9 +12,9 @@
 |---|---|
 | Work package | WP-053 (`trace/wp/WP-053-lwfa-three-codes.md`); goals A5, A7 |
 | Case | `scripts/lwfa/cases/lwfa-2d.toml`, and `lwfa-2d-focus0.toml` (focus on the injection plane) in vacuum only |
-| Code and runs | ParticleMesh (CPU box request `runs/lwfa-a5-2`, `5b729a7`: `6ead5bd` plus the run directories) and PIConGPU at `6ead5bd`, Smilei (`runs/lwfa-a5-4-smilei`) with inputs from `2a8d467`; both are commits of PR #413's branch. Each run's manifest is `lwfa-2d-a5/lwfa-a5-4-compare/manifest-<run>.toml`, and `manifest.toml` there has the hashes of the summaries compared |
+| Code and runs | ParticleMesh (CPU box request `runs/lwfa-a5-2`, `5b729a7`: `6ead5bd` plus the run directories) and PIConGPU at `6ead5bd`, Smilei (`runs/lwfa-a5-4-smilei`) with inputs from `2a8d467`; both are commits of PR #413's branch. PIConGPU's plasma run is a rerun at `9c21649` that dumps its electrons (#412), and the comparison ran at that commit. Each run's manifest is `lwfa-2d-a5/lwfa-a5-5-compare/manifest-<run>.toml`, and `manifest.toml` there has the hashes of the summaries compared |
 | Environment | ParticleMesh: Julia 1.13.3, Float64, Reference mode, 16 threads on an AMD EPYC 9655, and CUDA on an RTX 4080 SUPER. Smilei v5.1, 16 OpenMP threads on the same CPU. PIConGPU 0.8.0, CUDA, Float64, on the RTX 4080 SUPER |
-| Data | `lwfa-2d-a5/lwfa-a5-4-compare/`: `comparison.json` with every output, and five figures with sidecars. `lwfa-a5-4-focus0-compare/` for the second case, `lwfa-a5-2-cuda-pair/pair.json` for the two backends, `runs/` for the summaries that are on no run branch. The other directories are the three earlier run sets |
+| Data | `lwfa-2d-a5/lwfa-a5-5-compare/`: `comparison.json` with every output, and five figures with sidecars. `lwfa-a5-4-focus0-compare/` for the second case, `lwfa-a5-2-cuda-pair/pair.json` for the two backends, `runs/` for the summaries that are on no run branch. The other directories are the four earlier run sets |
 | Review | Four independent passes by fresh numerics-reviewer subagents (claude-fable-5-2, 2026-11-12) on the long version of this report in PR #413, findings in `lwfa-2d-a5/review.md`. This short version had one more pass of the same kind, which recomputed the table and every number from the committed data; its findings are applied |
 
 ## Results
@@ -35,10 +35,10 @@ The largest distance of each pair over the run:
 | maps of E_y, all rows, relative rms (%) | 0.058 | 0.07 | 0.077 |
 | maps of E_y, flank, relative rms (%) | 0.07 | 0.13 | 0.14 |
 | maps of E_y, far wing, relative rms (%) | 0.29 | 0.68 | 0.66 |
-| bunch weight, relative difference (%) | 1.4 | 0.14 | 1.2 |
+| bunch weight, relative difference (%) | 1.4 | 0.51 | 1.2 |
 | highest occupied bin, difference (mₑc²) | 0 | 0.2 | 0.2 |
 
-The table is the output of `julia +1.13 --project=scripts scripts/lwfa/lwfa.jl table reports/lwfa-2d-a5/lwfa-a5-4-compare/comparison.json`, and T-720 holds this text to it. It counts the vacuum outputs from t = 200, the plasma outputs from t = 400, the maps at t = 300, 700 and 1200 and the bunch from t = 800. A distance is a relative rms difference on shared nodes, or the difference of two codes' values; `compare`'s docstrings in `scripts/lwfa/lwfa.jl` define each. The maps leave out the 48 cells at the back of the shared columns: in a few columns there Smilei's E_y differs from both other codes' by 20 % to 40 % (ParticleMesh–Smilei over all rows is 0.15 % with them and 0.06 % without).
+The table is the output of `julia +1.13 --project=scripts scripts/lwfa/lwfa.jl table reports/lwfa-2d-a5/lwfa-a5-5-compare/comparison.json`, and T-720 holds this text to it. It counts the vacuum outputs from t = 200, the plasma outputs from t = 400, the maps at t = 300, 700 and 1200 and the bunch from t = 800. A distance is a relative rms difference on shared nodes, or the difference of two codes' values; `compare`'s docstrings in `scripts/lwfa/lwfa.jl` define each. The maps leave out the 48 cells at the back of the shared columns: in a few columns there Smilei's E_y differs from both other codes' by 20 % to 40 % (ParticleMesh–Smilei over all rows is 0.15 % with them and 0.06 % without).
 
 With the focus on the injection plane, in vacuum, ParticleMesh and Smilei are 0.05 mrad, 0.0004 c/ω₀ and 0.003 % apart, and either against PIConGPU at most 0.7 mrad, 0.0025 c/ω₀ and 0.04 %.
 
@@ -49,9 +49,9 @@ The header of `scripts/lwfa/lwfa.jl` derives each term from the codes' sources, 
 ## Not shown, and open
 
 - Correctness and convergence: one run per code at one resolution.
-- Injection: the bunch is an estimated 260 light macro-particles, and no run kept particles. PIConGPU's spectrum is over its whole domain (#412).
+- Injection: the bunch is an estimated 260 light macro-particles, and only PIConGPU's plasma run kept particles, for its spectrum over the region the three codes share. That spectrum gives the bunch weight of PIConGPU's histogram over its whole domain at every output but t = 800. There the bunch's group starts one bin lower (at 16.8 instead of 18.6 mₑc²) and takes in a bin holding 0.027 of a macro-particle's weight, which makes it 0.37 % heavier and gives the table's 0.51 % against ParticleMesh; from t = 900 on that distance is 0.14 %. The measure depends on where the group is cut.
 - ParticleMesh in Float32, in its Fast mode, or as the engine stands after `6ead5bd`.
 - Any PIConGPU run that tests the model of its launch, and a repeat of any Smilei or PIConGPU run.
 - Unexplained: Smilei's wake difference from t = 700 and its heavier bunch, Smilei's E_y at the back of its window, the far wing of the maps, and the centroid distances to PIConGPU.
 
-Stepping-loop wall times of the plasma run, single runs: ParticleMesh 2589 s on the 16 CPU threads and 394 s on CUDA, Smilei 389 s, PIConGPU 142 s after 75 s of compilation. They ran on different hardware with different diagnostics, ParticleMesh in Reference mode before any optimization round, so no performance conclusion is drawn.
+Stepping-loop wall times of the plasma run, single runs: ParticleMesh 2589 s on the 16 CPU threads and 394 s on CUDA, Smilei 389 s, PIConGPU 139 s after 70 s of compilation. They ran on different hardware with different diagnostics, ParticleMesh in Reference mode before any optimization round, so no performance conclusion is drawn.

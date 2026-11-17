@@ -37,6 +37,12 @@ struct Spy <: FieldModifier
     log::Vector{Any}
 end
 field_bits(f) = map(bits, values(f))
+
+"A modifier that changes nothing and writes down the type of the τ of every sub-step it is called before."
+struct TauTypes <: FieldModifier
+    types::Vector{Type}
+end
+PME.before_substep!(m::TauTypes, mp, f, grid, s, wgs) = (push!(m.types, typeof(s.τ)); nothing)
 PME.modifier_params(m::Spy, p, k) = (push!(m.log, (m.id, :params, p, k)); (m.id, p, k))
 PME.before_substep!(m::Spy, mp, f, grid, s, wgs) = (push!(m.log, (m.id, :before, s, mp, field_bits(f))); nothing)
 PME.after_substep!(m::Spy, mp, f, grid, s, wgs) = (push!(m.log, (m.id, :after, s, mp, field_bits(f))); nothing)
@@ -211,6 +217,12 @@ end
 
 @testset "T-750 the solve walks its tuple of modifiers around each sub-step, and a test's own modifier acts at its place among the package's [A2, A9, WP-057]" begin
     body_T750(CPU())
+    # a Float64 Δt on Float32 fields: the τ of every sub-step has the fields' element type
+    g = test_grid(Float32, 1)
+    f = random_fields(CPU(), Float32, g, 7)
+    tau = TauTypes(Type[])
+    solve_fields!(Yee(), f, g, 3 / 10, (tau,), nothing, 1)
+    @test tau.types == fill(Float32, 3)
 end
 
 # --- T-751: no modifiers ---------------------------------------------------------------------------
@@ -399,6 +411,7 @@ reach(x) = reach!(AbstractArray[], x)
     extra_open = PMLFields(PML(; cells = 4), st.grid, st.dt; backend = CPU())
     extra_layer = LayerFactors(AbsorbingLayer(; cells = 4, strength = 1), st.grid, st.dt; backend = CPU())
     extra_back = BackPMLFields(PML(; cells = 6), st.grid, st.dt; backend = CPU())
+    @test st.modifiers[3] isa AntennaPlanes
     for extra in (extra_open, extra_layer, extra_back, st.modifiers[3])
         @test_throws ArgumentError with_modifiers(st, (st.modifiers..., extra))
         @test_throws ArgumentError with_modifiers(st, (extra, st.modifiers...))

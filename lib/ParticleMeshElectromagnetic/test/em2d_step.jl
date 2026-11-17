@@ -2,6 +2,8 @@
 # T-369. The plasma of T-360, T-362, T-363 and T-366 (`plasma_step_2d`, em2d_cases.jl) has two
 # mobile species of opposite charge whose particles cross cells and both periodic seams.
 
+foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
+
 using ParticleMeshElectromagnetic: RHO_STAGGER_2D, case_seed
 using .Theory: weibel_cold_growth_2d
 
@@ -110,32 +112,7 @@ end
 # scale k·n·√ppc·(largest 1D value of the kind), k ≥ 1 (measured by the WP-023 breakers at 16 to
 # 64 cells and 8 to 64 particles per cell).
 
-const INV_DRIFT = (1 // 5, 3 // 20, -1 // 10)
-
-function beams_1d(::Type{T}; n = 16, ppc = 8, nsteps = 30, amplitude = one(T) / 20) where {T}
-    L = 2 * T(π)
-    dx = L / n
-    v = T.(INV_DRIFT)
-    sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), 1, ppc, v, zero3(T), 1),
-          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), 1, ppc, .-v, zero3(T), 2))
-    return EMProblem("beams-1d", L, n, 4dx / 5, nsteps, sp, 1, 2 * T(π) / L)
-end
-
-# axis = 1: varies along x (y-invariant); axis = 2: varies along y. The invariant axis has 6 cells
-# (the fewest the guards allow) of twice the 1D cell size, 2 particles per cell.
-function beams_2d(::Type{T}, axis; n = 16, ppc = 8, nsteps = 30, amplitude = one(T) / 20) where {T}
-    L = 2 * T(π)
-    dx = L / n
-    v = T.(INV_DRIFT)
-    v2 = axis == 1 ? v : (-v[2], v[1], v[3])
-    box = axis == 1 ? (L, 12dx) : (12dx, L)
-    cells = axis == 1 ? (n, 6) : (6, n)
-    p2 = axis == 1 ? (ppc, 2) : (2, ppc)
-    m = axis == 1 ? (1, 0) : (0, 1)
-    sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), m, p2, v2, zero3(T), 1),
-          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), m, p2, .-v2, zero3(T), 2))
-    return EMProblem("beams-2d", box, cells, 4dx / 5, nsteps, sp, 1, m)
-end
+# The two problems, `beams_1d` and `beams_2d`, are in em2d_cases.jl (other files use `beams_1d`).
 
 "The 2D fields of an invariant run mapped to the 1D components: (2D array, sign) per 1D key."
 function invariant_map(f, axis)

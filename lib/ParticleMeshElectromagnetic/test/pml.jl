@@ -4,6 +4,8 @@
 # reflection runs are WP-027's vacuum slab packets with a PML, compared with the discrete theory of
 # the same scheme (`pml_rt`, pml_cases.jl); the plasma runs are `open_plasma_2d` with a PML.
 
+foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
+
 using ForwardDiff: ForwardDiff, Partials
 using ParticleMeshElectromagnetic: PMLFields, pml_b!, pml_e!
 

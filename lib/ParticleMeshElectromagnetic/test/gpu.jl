@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -162,6 +162,10 @@ else
         rerun_module_on(GPU, (("T-730", body_T730), ("T-731", body_T731), ("T-734", body_T734)))
     end
 
+    @testset "T-813 the recorder's cadence and selection on CUDA: T-810, T-811 and T-814 with the CPU's assertions [A4, A8, WP-062]" begin
+        rerun_module_on(GPU, (("T-810", body_T810), ("T-811", body_T811), ("T-814", body_T814)))
+    end
+
     @testset "T-747 the restart on CUDA: T-740, T-741, T-742 and T-744 with the CPU's assertions [A4, A8, WP-056]" begin
         rerun_module_on(GPU, (("T-740", body_T740), ("T-741", body_T741), ("T-742", body_T742), ("T-744", body_T744)))
     end
@@ -171,6 +175,25 @@ else
     @testset "T-758 the field modifiers and the one step on CUDA: T-750, T-751, T-753, T-756's kernels, T-757 and T-759 with the CPU's assertions [A4, A8, WP-057]" begin
         rerun_module_on(GPU, (("T-750", body_T750), ("T-751", body_T751), ("T-753", body_T753), ("T-756 kernels", body_T756_kernels), ("T-757", body_T757),
                               ("T-757 window", body_T757_window), ("T-759", body_T759)))
+    end
+
+    # T-771's host momenta (`push_momentum` on the host against the device's) and T-775's digests across
+    # reruns and launch shapes are among the bodies; T-779's dual objectives are compared with the CPU's
+    @testset "T-780 the field ionization on CUDA: T-771 to T-777, T-784 and T-785 with the CPU's assertions, and the dual objectives of T-779 against the CPU's [A2, A4, A7, A8, WP-059]" begin
+        rerun_module_on(GPU, (("T-771", body_T771), ("T-772", body_T772), ("T-773", body_T773), ("T-774", body_T774), ("T-775", body_T775),
+                              ("T-776", body_T776), ("T-777", body_T777), ("T-784", body_T784), ("T-785", body_T785)))
+        xd = (mkdual(ION_X0[1], 1, 0, 0), mkdual(ION_X0[2], 0, 1, 0), mkdual(ION_X0[3], 0, 0, 1), mkdual(ION_X0[4], 0, 0, 0))
+        c, g = ion_objectives(xd), ion_objectives(xd; be = GPU)
+        rel = maximum(o -> maximum(abs.(components(g[o]) .- components(c[o])) ./ abs.(components(c[o]))), 1:2)
+        @info "T-780 the dual objectives, CUDA against the CPU" cpu = c cuda = g rel
+        get!(MEASURED, "T-780 CPU-CUDA rel", Dict{String,Float64}())["Dual{Float32,3}"] = rel
+        @test all(o -> all(isfinite, components(g[o])) && all(!iszero, components(g[o])), 1:2)
+        @test rel <= emC("T-780")
+    end
+
+    # a tuple of levels of three types in one kernel, one of them defined in the tests; the suppressed rate's partials; the zero-suppression bits
+    @testset "T-827 the levels' rate laws on CUDA: T-822, T-823 and T-824 with the CPU's assertions [A2, A4, A8, WP-063]" begin
+        rerun_module_on(GPU, (("T-822", body_T822), ("T-823", body_T823), ("T-824", body_T824)))
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin
