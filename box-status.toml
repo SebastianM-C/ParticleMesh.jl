@@ -1,0 +1,20 @@
+branch = "runs/wp041-bin-ParticleMeshCore"
+request_commit = "f8cf2861acee00834a47f3853a8a0b7b46b3cd1a"
+started = "2026-11-17T07:05:08Z"
+category = "test"
+outputs = []
+finished = "2026-11-17T07:20:23Z"
+ok = true
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T07:05:08Z"
+exit = 0
+seconds = 915
