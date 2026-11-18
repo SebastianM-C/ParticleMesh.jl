@@ -21,6 +21,10 @@ The `gather` of an [`EMNumerics`](@ref) (WP-067): the particles read a copy of E
 along axis 1, `E + β(2E_i − E_{i−1} − E_{i+1})`, whose transfer `1 + 4β sin²(k_xΔx/2)` undoes the
 shape's mean transfer `sinc(k_xΔx/2)^(p+1)` exactly at the wavenumber `k` (ω₀/c; the laser's is 1,
 the default) and to within O((kΔx)⁴) below it ([`sharpening_beta`](@ref), [`gather_transfer`](@ref)).
+That is the mean over the particle's offset in the cell: at a given offset the amplitude read
+still ripples about it, and more so for the linear shape (at k and 8 cells per wavelength, 0.973
+to 1.053 compensated against 0.924 to 1 without; for the quadratic shape 0.998 to 1.0015).
+The grid's own dispersion of the laser is not compensated, only the shape's averaging.
 The push, the ionization rates and the births' kick read the copy; the mesh solve, the current
 and the diagnostics read the grid's fields. `k` is a host number of the configuration; it must be
 positive and resolved (`kΔx < π`, which the state checks). With `gather = nothing` (the default)
@@ -45,8 +49,26 @@ by the grid).
 function sharpening_beta(c::CompensatedGather, shape::Shape, dx)
     x = convert(typeof(dx), c.k) * dx / 2
     0 < x < π / 2 || throw(ArgumentError("CompensatedGather(k = $(c.k)) is not resolved by Δx = $dx: k·Δx = $(2x) must be < π"))
-    s = sin(x)
-    return (inv((s / x)^(order(shape) + 1)) - 1) / (4 * s * s)
+    # 1/sinc^n − 1 = (1 − sⁿ)/sⁿ = d·Σ_{j<n} sʲ/sⁿ with s = sinc x = 1 − d: no difference of two
+    # numbers near one, so β keeps the precision of its type down to the finest cells (in
+    # Float32 the direct form loses 0.7 % of β at 512 cells per wavelength)
+    n = order(shape) + 1
+    d = one_minus_sinc(x)
+    s = 1 - d
+    return d * sum(j -> s^j, 0:(n - 1)) / (s^n * 4 * sin(x)^2)
+end
+
+# 1 − sin(x)/x = x²/3! − x⁴/5! + x⁶/7! − …, summed from its first term (alternating, decreasing
+# for x < π/2, so without cancellation); 14 terms reach Float64's roundoff at x = π/2.
+function one_minus_sinc(x)
+    x2 = x * x
+    t = x2 / 6
+    acc = t
+    for k in 2:14
+        t = -t * x2 / ((2k) * (2k + 1))
+        acc += t
+    end
+    return acc
 end
 
 """

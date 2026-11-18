@@ -147,6 +147,13 @@ end
         @test abs(β - (order(shape) + 1) / 24) <= x^2 / 10              # the small-cell limit, O(x²)
         @test -4 * eps(T) < gather_transfer(c, shape, h, T(1) / 2) - 1 <= x^4     # below k: 1 + O((kΔx)⁴), a slight overshoot
     end
+    # β to the precision of its type down to the finest cells (no cancellation), against BigFloat
+    for T in (Float32, Float64), shape in (Linear, Quadratic), ppl in (4, 6, 64, 256, 1024, 4096, 2^16)
+        h = 2 * T(π) / ppl
+        x = big(h) / 2
+        βbig = (inv((sin(x) / x)^(order(shape) + 1)) - 1) / (4 * sin(x)^2)
+        @test abs(sharpening_beta(CompensatedGather(), shape, h) / βbig - 1) <= 16 * eps(T)
+    end
     @test sharpening_beta(CompensatedGather(), Quadratic, mkdual(0.5, 1, 0, 0)) isa D3
     @test CompensatedGather(; k = 2).k === 2.0
     @test_throws ArgumentError CompensatedGather(; k = 0)
@@ -285,8 +292,9 @@ end
 # ionization-injection run (8 cells per laser wavelength, where the quadratic shape reads 7.5 %
 # less of the laser's field) with the compensated gather, ForwardDiff of the born charge and the
 # born electrons' energy in the laser's a₀ and the dopant's density against the finite-difference
-# floor with T-778's bounds. The particles feel the laser's full field, so more charge is born
-# than without compensation (8.7 % more charge, 18 % more energy, measured).
+# floor with T-778's bounds. The particles no longer lose the shape's share of the laser's field
+# (the grid's own dispersion of the pulse stays), so more charge is born than without
+# compensation (8.7 % more charge, 18 % more energy, measured).
 @testset "T-963 ForwardDiff through the compensated gather against the finite-difference floor in a small ionization-injection run, which then births more charge [A0, A3, A7, WP-067]" begin
     x0 = collect(ION_X0)
     cg = CompensatedGather()
