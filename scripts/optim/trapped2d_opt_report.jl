@@ -213,7 +213,9 @@ function scan_figure(out, dir, sdir, results, paths, io)
         sidecar[key] = merge(Dict{String,Any}("u" => g["u"], "v" => g["v"], "J" => nonan(g["J"]), "dark_weight" => nonan(g["dark_weight"]), "xlabel" => xl, "ylabel" => yl,
                                               "paths" => [Dict("start" => c[1], "u" => c[2], "v" => c[3], "J" => c[4]) for c in curves]), extra)
     end
-    save_plot(out, "trapped2d_opt_scan", fig, sidecar)
+    # ten 3D panels at save_plot's 2 px per unit make a PNG over the 1 MB a report file may hold (F3)
+    save(joinpath(out, "trapped2d_opt_scan.png"), fig; px_per_unit = 1)
+    open(io -> JSON.print(io, sidecar, 2), joinpath(out, "trapped2d_opt_scan.json"), "w")
     println(io, "\nScan: ", length(jobs), " plain runs on ", length(grids), " grids of ", n, "×", n, " (", fmt(sum(j -> j["seconds"], jobs)), " s of runs); ",
             "J on them from ", fmt(minimum(j -> j["J"], jobs)), " to ", fmt(maximum(j -> j["J"], jobs)), ", largest dark current weight ", fmt(maximum(j -> j["dark_weight"], jobs)), ".")
 end

@@ -11,7 +11,7 @@
 | | |
 |---|---|
 | Work package | WP-068 (`trace/wp/WP-068-first-gpu-optimizations.md`); goals A0, A3, A7, A8 |
-| Commits | optimizers and check `5d502f1` (`dirty = false` in the manifest); scan `db1309a`; report `eee5099` (the scan and report commits change only the scan, the report and tests, not the case or the runs) |
+| Commits | optimizers and check `5d502f1` (`dirty = false` in the manifest); scan `db1309a`; report `eee5099` (the scan and report commits change only the scan, the report and tests, not the case or the runs; the scan figure is saved at 1 px per unit by the report script at the pull request's head, to stay within F3's 1 MB per file) |
 | Run | `wp068-opt` on branch `runs/wp068-opt-5090`; `scripts/optim/trapped2d_opt.jl opt`, `check`, `scan` (n = 11, two shards) and `report` |
 | Input hashes | SHA-256 of every input in `wp-068-first-gpu-optimizations/wp068-opt/manifest.toml` |
 | Environment | Julia 1.13.4; NVIDIA GeForce RTX 5090, KernelAbstractions CUDA, Float32 (Float64 for the check's gradient and differences), Reference mode; AMD Ryzen 9 9950X host |
