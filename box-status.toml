@@ -1,0 +1,27 @@
+branch = "runs/wp065-fd32"
+request_commit = "c438df854701005a49229933d0523bf9ef72e5fa"
+started = "2026-11-17T23:31:05Z"
+category = "validation"
+outputs = ["scripts/runs/wp065-fd32", "scripts/runs/wp065-xonly"]
+finished = "2026-11-18T01:12:56Z"
+ok = true
+files_returned = 252
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T23:31:05Z"
+exit = 0
+seconds = 920
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-17T23:46:25Z"
+exit = 0
+seconds = 5191
