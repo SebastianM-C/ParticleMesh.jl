@@ -373,7 +373,9 @@ end
 
 # Dual{Float32,3} through the full 3D step (T-950 checks Gauss's law on its partials): the primal
 # against the Float32 run, and the partials ∂/∂(amplitude) of the fields finite and nonzero, the
-# unseeded directions zero.
+# unseeded directions zero, and the seeded one against the central difference of Float64 runs at
+# amplitude 1/10 ± 10⁻⁴ (its truncation error is 10⁻⁷ of the largest component, below the
+# Float32 partials' roundoff).
 @testset "T-955 Dual through the 3D step with current [A3, A8, WP-042]" begin
     C = emC("T-955")
     a = mkdual(1 / 10, 1, 0, 0)
@@ -381,16 +383,27 @@ end
     sd, sf = state_3d(pd), state_3d(pf)
     run!(sd, params(pd), pd.nsteps)
     run!(sf, params(pf), pf.nsteps)
-    worst = 0.0
+    δ = 1e-4
+    fd = map((1 / 10 + δ, 1 / 10 - δ)) do amp
+        p = plasma_step_3d(Float64; amplitude = amp, nsteps = 10)
+        s = state_3d(p)
+        run!(s, params(p), p.nsteps)
+        s
+    end
+    worst, worst_partial = 0.0, 0.0
     for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
         A, B = Array(getfield(sd.fields, c)), Array(getfield(sf.fields, c))
         worst = max(worst, maximum(abs, value_of.(A) .- B) / (eps(Float32) * maximum(abs, B) * pd.nsteps))
         @test all(x -> all(isfinite, partials(x)), A)
         @test any(x -> !iszero(partials(x)[1]), A)
         @test all(x -> iszero(partials(x)[2]) && iszero(partials(x)[3]), A)     # unseeded directions stay zero
+        slope = (Array(getfield(fd[1].fields, c)) .- Array(getfield(fd[2].fields, c))) ./ (2δ)
+        worst_partial = max(worst_partial, maximum(abs, map(x -> Float64(partials(x)[1]), A) .- slope) /
+                                           (eps(Float32) * maximum(abs, slope) * pd.nsteps))
     end
     record!("T-955", D3, worst)
     @test worst <= C
+    @test worst_partial <= emC("T-955", "C_partial")
 end
 
 # --- T-956 ----------------------------------------------------------------------------------
