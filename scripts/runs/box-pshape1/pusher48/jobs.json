@@ -1,0 +1,327 @@
+[
+ {
+  "id": "pusher-r16x1-boris",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "boris"
+ },
+ {
+  "id": "pusher-r16x1-hc",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "hc"
+ },
+ {
+  "id": "pusher-r16x1-vay",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "vay"
+ },
+ {
+  "id": "pusher-r16x1-exact",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "exact"
+ },
+ {
+  "id": "pusher-r16x1-qu",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "qu"
+ },
+ {
+  "id": "pusher-r24x1-boris",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "boris"
+ },
+ {
+  "id": "pusher-r24x1-hc",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "hc"
+ },
+ {
+  "id": "pusher-r24x1-vay",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "vay"
+ },
+ {
+  "id": "pusher-r24x1-exact",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "exact"
+ },
+ {
+  "id": "pusher-r24x1-qu",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "qu"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r16x1-boris-grad",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "boris"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r16x1-hc-grad",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "hc"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r16x1-vay-grad",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "vay"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r16x1-exact-grad",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "exact"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r16x1-qu-grad",
+  "ny": 1,
+  "ppl": 16,
+  "pusher": "qu"
+ },
+ {
+  "id": "pusher-r32x2-boris",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "boris"
+ },
+ {
+  "id": "pusher-r32x2-hc",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "hc"
+ },
+ {
+  "id": "pusher-r32x2-vay",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "vay"
+ },
+ {
+  "id": "pusher-r32x2-exact",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "exact"
+ },
+ {
+  "id": "pusher-r32x2-qu",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "qu"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r24x1-boris-grad",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "boris"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r24x1-hc-grad",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "hc"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r24x1-vay-grad",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "vay"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r24x1-exact-grad",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "exact"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r24x1-qu-grad",
+  "ny": 1,
+  "ppl": 24,
+  "pusher": "qu"
+ },
+ {
+  "id": "pusher-r48x3-boris",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "boris"
+ },
+ {
+  "id": "pusher-r48x3-hc",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "hc"
+ },
+ {
+  "id": "pusher-r48x3-vay",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "vay"
+ },
+ {
+  "id": "pusher-r48x3-exact",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "exact"
+ },
+ {
+  "id": "pusher-r48x3-qu",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "qu"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r32x2-boris-grad",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "boris"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r32x2-hc-grad",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "hc"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r32x2-vay-grad",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "vay"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r32x2-exact-grad",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "exact"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r32x2-qu-grad",
+  "ny": 2,
+  "ppl": 32,
+  "pusher": "qu"
+ },
+ {
+  "id": "pusher-r64x4-boris",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "boris"
+ },
+ {
+  "id": "pusher-r64x4-hc",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "hc"
+ },
+ {
+  "id": "pusher-r64x4-vay",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "vay"
+ },
+ {
+  "id": "pusher-r64x4-exact",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "exact"
+ },
+ {
+  "id": "pusher-r64x4-qu",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "qu"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r48x3-boris-grad",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "boris"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r48x3-hc-grad",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "hc"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r48x3-vay-grad",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "vay"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r48x3-exact-grad",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "exact"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r48x3-qu-grad",
+  "ny": 3,
+  "ppl": 48,
+  "pusher": "qu"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r64x4-boris-grad",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "boris"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r64x4-hc-grad",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "hc"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r64x4-vay-grad",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "vay"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r64x4-exact-grad",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "exact"
+ },
+ {
+  "grad": true,
+  "id": "pusher-r64x4-qu-grad",
+  "ny": 4,
+  "ppl": 64,
+  "pusher": "qu"
+ }
+]

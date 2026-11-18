@@ -1,0 +1,34 @@
+branch = "runs/pshape1"
+request_commit = "db5802464a8ac9e455dc8b0022d69b58b5eddad1"
+started = "2026-11-18T06:29:01Z"
+category = "validation"
+outputs = ["scripts/runs/box-pshape1"]
+finished = "2026-11-18T08:13:50Z"
+ok = true
+files_returned = 40
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T06:29:01Z"
+exit = 0
+seconds = 617
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T06:39:18Z"
+exit = 0
+seconds = 581
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T06:48:59Z"
+exit = 0
+seconds = 5091

@@ -1,0 +1,102 @@
+[
+ {
+  "id": "shape-r16x1-cubic",
+  "ny": 1,
+  "ppl": 16,
+  "shape": 3
+ },
+ {
+  "comp": 1.0,
+  "id": "shape-r16x1-cubic-comp",
+  "ny": 1,
+  "ppl": 16,
+  "shape": 3
+ },
+ {
+  "id": "shape-r24x1-cubic",
+  "ny": 1,
+  "ppl": 24,
+  "shape": 3
+ },
+ {
+  "comp": 1.0,
+  "id": "shape-r24x1-cubic-comp",
+  "ny": 1,
+  "ppl": 24,
+  "shape": 3
+ },
+ {
+  "grad": true,
+  "id": "shape-r16x1-cubic-grad",
+  "ny": 1,
+  "ppl": 16,
+  "shape": 3
+ },
+ {
+  "id": "shape-r32x2-cubic",
+  "ny": 2,
+  "ppl": 32,
+  "shape": 3
+ },
+ {
+  "comp": 1.0,
+  "id": "shape-r32x2-cubic-comp",
+  "ny": 2,
+  "ppl": 32,
+  "shape": 3
+ },
+ {
+  "grad": true,
+  "id": "shape-r24x1-cubic-grad",
+  "ny": 1,
+  "ppl": 24,
+  "shape": 3
+ },
+ {
+  "id": "shape-r48x3-cubic",
+  "ny": 3,
+  "ppl": 48,
+  "shape": 3
+ },
+ {
+  "comp": 1.0,
+  "id": "shape-r48x3-cubic-comp",
+  "ny": 3,
+  "ppl": 48,
+  "shape": 3
+ },
+ {
+  "grad": true,
+  "id": "shape-r32x2-cubic-grad",
+  "ny": 2,
+  "ppl": 32,
+  "shape": 3
+ },
+ {
+  "id": "shape-r64x4-cubic",
+  "ny": 4,
+  "ppl": 64,
+  "shape": 3
+ },
+ {
+  "comp": 1.0,
+  "id": "shape-r64x4-cubic-comp",
+  "ny": 4,
+  "ppl": 64,
+  "shape": 3
+ },
+ {
+  "grad": true,
+  "id": "shape-r48x3-cubic-grad",
+  "ny": 3,
+  "ppl": 48,
+  "shape": 3
+ },
+ {
+  "grad": true,
+  "id": "shape-r64x4-cubic-grad",
+  "ny": 4,
+  "ppl": 64,
+  "shape": 3
+ }
+]
