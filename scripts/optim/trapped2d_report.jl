@@ -42,7 +42,9 @@ function fd_rows(jobs)
         fd = (jval(j) - jval(m)) / (2 * j["h"])
         ad = jgrad(c)[j["direction"]]
         push!(rows, Dict{String,Any}("point" => j["point"], "ppl" => j["ppl"], "ny" => j["ny"], "source" => source(j), "direction" => DIRECTIONS[j["direction"]],
-                                     "power" => j["power"], "h" => j["h"], "fd" => fd, "ad" => ad, "relative_difference" => abs(fd - ad) / abs(ad)))
+                                     "power" => j["power"], "h" => j["h"], "fd" => fd, "ad" => ad, "relative_difference" => abs(fd - ad) / abs(ad),
+                                     "log_difference" => abs(fd - ad) * [collect(TCASE.scale); 1.0][j["direction"]] / jval(c),
+                                     "ad_log" => ad * [collect(TCASE.scale); 1.0][j["direction"]] / jval(c)))
     end
     return sort(rows; by = r -> (r["point"], r["ppl"], r["direction"], r["power"]))
 end
@@ -91,7 +93,10 @@ function line_rows(jobs, kind)
         J = [jval(j) for j in js]
         g = [jgrad(j)[k] for j in js]
         mismatch = [abs((J[i + 1] - J[i - 1]) / (x[i + 1] - x[i - 1]) - g[i]) / abs(g[i]) for i in 2:(length(js) - 1)]
+        # the plasma's part of J where the run's J is the first bucket's (older runs' J read from x = 4)
+        share = [abs(j["J"] - jval(j)) <= 1e-3 * jval(j) ? j["J_plasma"] / jval(j) : nothing for j in js]
         out[r] = Dict{String,Any}("x" => x, "J" => J, "dJ" => g, "dark" => [j["fast_plasma_window"] for j in js], "born_trapped" => [j["weight_born"] for j in js],
+                                  "plasma_share" => share,
                                   "mismatch_x" => x[2:(end - 1)], "mismatch" => mismatch, "label" => res_label(js[1]))
     end
     return out
@@ -145,16 +150,18 @@ function report(outdir, dirs)
     end
     axislegend(ax; position = :lb, labelsize = 11)
 
-    ax = Axis(fig[2, 1]; xlabel = "relative step h/x", ylabel = "|FD − AD| / |AD|", xscale = log2, yscale = log10,
-              title = "Central differences against ForwardDiff (marker: resolution)")
+    ax = Axis(fig[2, 1]; xlabel = "relative step h/x", ylabel = "|FD − AD| in ∂ln J/∂z", xscale = log2, yscale = log10,
+              title = "Central differences against ForwardDiff (marker: grid)")
     markers = Dict(16 => :circle, 32 => :rect, 48 => :diamond, 64 => :utriangle)
-    for (c, name) in enumerate(DIRECTIONS), r in unique(res_key.(conv))
+    labelled = Set{String}()
+    for (c, name) in enumerate(DIRECTIONS), r in unique((x["ppl"], x["ny"]) for x in fd)
         q = filter(x -> x["direction"] == name && (x["ppl"], x["ny"]) == r, fd)
         isempty(q) && continue
-        scatter!(ax, [2.0^-x["power"] for x in q], [max(x["relative_difference"], 1e-16) for x in q]; color = colors[c], marker = markers[r[1]],
-                 label = r == res_key(conv[1]) ? name : nothing)
+        scatter!(ax, [2.0^-x["power"] * (1 + 0.04 * (c - 3.5)) for x in q], [max(x["log_difference"], 1e-6) for x in q]; color = colors[c],
+                 marker = markers[r[1]], markersize = 10, label = name in labelled ? nothing : name)
+        push!(labelled, name)
     end
-    isempty(fd) || axislegend(ax; position = :rb, labelsize = 11, unique = true)
+    isempty(fd) || axislegend(ax; position = :cb, orientation = :horizontal, nbanks = 2, labelsize = 11, unique = true)
 
     for (col, kind, xl) in ((2, "energy", "a₀ of the energy budget (at τ = 6, w = 10)"), (3, "density", "plasma density (n_c), budget of a₀ = 2.175"))
         l = lines[kind]
@@ -175,13 +182,15 @@ function report(outdir, dirs)
         end
         isempty(l) || axislegend(ax; position = :rb, labelsize = 10)
     end
-    ax = Axis(fig[3, 1]; xlabel = "relative step from the point (units of 2⁻¹⁰)", ylabel = "J / J(point) − 1",
-              title = "Roughness: plain runs 2⁻¹⁰ apart (black: ForwardDiff tangent)")
-    for (c, (key, v)) in enumerate(sort(collect(fine); by = first))
-        scatterlines!(ax, v["k"], v["dJ"]; color = colors[mod1(c, length(colors))], label = key, markersize = 5)
-        v["tangent"] === nothing || lines!(ax, [-8.0, 8.0], v["tangent"] .* [-8.0, 8.0] .* 2.0^-10; color = colors[mod1(c, length(colors))], linestyle = :dash)
+    ax = Axis(fig[3, 1]; xlabel = "relative change of the delay (units of 2⁻¹⁰)", ylabel = "J / J(E2.175) − 1",
+              title = "The delay: plain runs 2⁻¹⁰ apart (dashed: ForwardDiff's tangent)")
+    delay = sort([(k, v) for (k, v) in fine if occursin(" delay,", k)]; by = first)
+    for (c, (key, v)) in enumerate(delay)
+        scatterlines!(ax, v["k"], v["dJ"]; color = colors[c], label = key, markersize = 5)
+        v["tangent"] === nothing || lines!(ax, [-8.0, 8.0], v["tangent"] .* [-8.0, 8.0] .* 2.0^-10; color = colors[c], linestyle = :dash)
     end
-    isempty(fine) || axislegend(ax; position = :lt, labelsize = 9)
+    ylims!(ax, -0.012, 0.012)
+    isempty(delay) || axislegend(ax; position = :lb, labelsize = 10)
     save_plot(outdir, "trapped2d", fig, side)
     t = tables(conv, xonly, fd, lines, check, fine)
     open(io -> print(io, t), joinpath(outdir, "tables.md"), "w")
@@ -225,12 +234,12 @@ function tables(conv, xonly, fd, lines, check = [], fine = Dict{String,Any}())
         println(io, "| ", j["point"], " | ", res_label(j), " | ", join(sig.(log_gradient(j)), " | "), " |")
     end
     if !isempty(fd)
-        println(io, "\n| point | grid | direction | |FD − AD|/|AD| at h/x = ", join(["2^-$k" for k in sort(unique(r["power"] for r in fd))], ", "), " |")
-        println(io, "|---|---|---|---|")
+        println(io, "\n| point | grid | direction | ForwardDiff's ∂ln J/∂z | |FD − AD| in ∂ln J/∂z at h/x = ", join(["2^-$k" for k in sort(unique(r["power"] for r in fd))], ", "), " |")
+        println(io, "|---|---|---|---|---|")
         for p in unique(r["point"] for r in fd), r in unique((x["ppl"], x["ny"]) for x in fd), d in DIRECTIONS
             q = sort(filter(x -> x["point"] == p && (x["ppl"], x["ny"]) == r && x["direction"] == d, fd); by = x -> x["power"])
             isempty(q) && continue
-            println(io, "| ", p, " | λ₀/", r[1], ", Δy = π/", 4r[2], " | ", d, " | ", join(sig.([x["relative_difference"] for x in q]), ", "), " |")
+            println(io, "| ", p, " | λ₀/", r[1], ", Δy = π/", 4r[2], " | ", d, " | ", sig(q[1]["ad_log"]), " | ", join(sig.([x["log_difference"] for x in q]), ", "), " |")
         end
     end
     if !isempty(fine)
@@ -243,13 +252,14 @@ function tables(conv, xonly, fd, lines, check = [], fine = Dict{String,Any}())
     end
     for (kind, l) in lines
         isempty(l) && continue
-        println(io, "\n| $kind line, grid | points | J from … to | largest |secant − tangent|/|tangent| | where the dark current first exceeds the trapped weight's 1 % |")
-        println(io, "|---|---|---|---|---|")
+        println(io, "\n| $kind line, grid | points | J from … to | largest |secant − tangent|/|tangent| | where the dark current first exceeds the trapped weight's 1 % | where the plasma's own electrons first make 1 % of J |")
+        println(io, "|---|---|---|---|---|---|")
         for r in sort(collect(keys(l)))
             v = l[r]
             k = findfirst(i -> v["dark"][i] > 0.01 * v["born_trapped"][i], eachindex(v["J"]))
             println(io, "| ", v["label"], " | ", length(v["x"]), " | ", sig(v["J"][1]), " … ", sig(v["J"][end]), " | ",
-                    isempty(v["mismatch"]) ? "" : sig(maximum(v["mismatch"])), " | ", k === nothing ? "nowhere" : sig(v["x"][k]), " |")
+                    isempty(v["mismatch"]) ? "" : sig(maximum(v["mismatch"])), " | ", k === nothing ? "nowhere" : sig(v["x"][k]), " | ",
+                    any(isnothing, v["plasma_share"]) ? "not recorded" : (q = findfirst(>(0.01), v["plasma_share"]); q === nothing ? "nowhere" : sig(v["x"][q])), " |")
         end
     end
     return String(take!(io))

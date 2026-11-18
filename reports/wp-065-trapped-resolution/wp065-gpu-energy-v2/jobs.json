@@ -1,0 +1,546 @@
+[
+  {
+    "a0E": 1.8,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.8-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.85,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.85-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.9-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.95,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.95-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.0,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.0-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.05,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.05-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.1,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.1-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.15,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.15-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.2,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.2-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.25,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.25-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.3,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.3-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.35,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.35-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.4,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.4-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.45,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.45-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.5,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.5-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.55,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.55-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.6,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.6-r64x4-f32-cuda",
+    "mode": "grad",
+    "ny": 4,
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.8,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.8-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.85,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.85-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.9-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.95,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-1.95-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.0,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.0-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.05,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.05-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.1,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.1-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.15,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.15-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.2,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.2-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.25,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.25-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.3,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.3-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.35,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.35-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.4,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.4-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.45,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.45-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.5,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.5-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.55,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.55-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.6,
+    "backend": "cuda",
+    "float": 32,
+    "id": "energy-2.6-r48x3-f32-cuda",
+    "mode": "grad",
+    "ny": 3,
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  }
+]
