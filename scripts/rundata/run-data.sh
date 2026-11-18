@@ -58,19 +58,21 @@ case "$cmd" in
     git push -q "$REMOTE" "$commit:refs/heads/runs/$tag"
     for d in "$@"; do
       d="${d%/}"
-      git ls-tree -r -l "$commit" -- "$d" | python3 -c '
-import hashlib, sys
+      git ls-tree -r -l -z "$commit" -- "$d" | python3 -c '
+import hashlib, json, subprocess, sys
 branch, commit, out = sys.argv[1], sys.argv[2], sys.argv[3]
 rows = []
-for line in sys.stdin:
-    meta, path = line.rstrip("\n").split("\t", 1)
-    size = int(meta.split()[3])
-    with open(path, "rb") as f:
-        rows.append((path, size, hashlib.sha256(f.read()).hexdigest()))
-with open(out, "w") as f:
+for entry in sys.stdin.buffer.read().split(b"\0"):
+    if not entry:
+        continue
+    meta, path = entry.split(b"\t", 1)
+    oid, size = meta.split()[2].decode(), int(meta.split()[3])
+    blob = subprocess.run(["git", "cat-file", "blob", oid], check=True, capture_output=True).stdout
+    rows.append((path.decode(), size, hashlib.sha256(blob).hexdigest()))
+with open(out, "w", encoding="utf-8") as f:
     f.write(f"branch = \"{branch}\"\ncommit = \"{commit}\"\n")
     for p, s, h in rows:
-        f.write(f"\n[[files]]\npath = \"{p}\"\nbytes = {s}\nsha256 = \"{h}\"\n")
+        f.write(f"\n[[files]]\npath = {json.dumps(p, ensure_ascii=False)}\nbytes = {s}\nsha256 = \"{h}\"\n")
 ' "runs/$tag" "$commit" "$d/published.toml"
       echo "$d/published.toml"
     done
