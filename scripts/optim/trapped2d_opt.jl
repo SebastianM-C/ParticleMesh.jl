@@ -9,7 +9,10 @@
 #       <dir>/points/; keys: ppl=32 ny=2 (Δx = λ₀/ppl, Δy = π/(4·ny)), float=32, backend=cuda
 #       (or cpu), gather=compensated (or plain), maxiters=25, pgtol=<rel> (the stopping
 #       tolerance on the projected gradient in z, relative to the largest component of the
-#       base point's gradient; default 2⁻⁶), a0E=1.9 (the budget's a₀ at the base pulse)
+#       base point's gradient; default 2⁻⁶), a0E=1.9 (the budget's a₀ at the base pulse),
+#       cap=none (or cetal25, cetal35: a peak power cap, which at the fixed energy is a floor on
+#       the duration that rises with the density, `cetal_cap`; the solver then works in
+#       τ/τ_floor(n) between 1 and ratio_hi=1.55, `Coords`)
 #   julia +1.13 --project=scripts -t 2 scripts/optim/trapped2d_opt.jl check <dir> [ppl=48 ny=3 fdppl=32 fdny=2 power=13]
 #       at the best optimum of <dir>'s starts: a plain run and one with duals at ppl×ny in the
 #       optimization's element type, and a Float64 run with duals and Float64 central differences
@@ -42,6 +45,103 @@ below the plasma's own injection at a₀ ≈ 2.45 to 2.55 of WP-065) and 2.10 (n
 pulse focused deep into a medium density).
 """
 const STARTS = (base = [6.0, 10.0, 80.0, 0.072], long = [8.0, 12.0, 100.0, 0.06], short = [5.0, 8.0, 70.0, 0.09], narrow = [7.0, 7.0, 104.0, 0.08])
+
+"""
+    PowerCap(c, p)
+
+A cap on the pulse's peak power. At a fixed energy the peak power is W/τ_FWHM whatever the waist
+(`pulse_energy` is linear in the duration), so the cap is a floor on the duration, here
+τ ≥ c·n^(−p) for the density n (in n_c): [`duration_floor`](@ref).
+"""
+struct PowerCap
+    c::Float64
+    p::Float64
+end
+
+"The shortest duration (the field's 1/e half width) that `cap` allows at the density `n`."
+duration_floor(cap::PowerCap, n) = cap.c * n^(-cap.p)
+
+"""
+    cetal_cap(; fwhm_fs = 25, density_cm3 = 4.2e18) -> PowerCap
+
+CETAL-PW's peak power at its energy (1 PW at 25 J, a 25 fs transform limit), carried to this case
+by τ/λ_p as the CETAL-scaled proposal of the optimization setup does: τ_FWHM ≥ (fwhm_fs/T_p)·λ_p,
+T_p = 2π/ω_p at `density_cm3` (the middle of CETAL's jet, 3.2 to 5.2·10¹⁸ cm⁻³, Diplasu et al.
+2021), ω_p = 5.641·10⁴ rad/s·√(n/cm⁻³). In the case's units (ω₀ = 1, λ_p = 2π/√n, intensity FWHM
+= τ·√(2 ln 2)) that is τ ≥ c/√n with c = (fwhm_fs/T_p)·2π/√(2 ln 2), about 2.45 at 25 fs.
+"""
+function cetal_cap(; fwhm_fs = 25.0, density_cm3 = 4.2e18)
+    Tp_fs = 2π / (5.641e4 * sqrt(density_cm3)) * 1.0e15
+    return PowerCap(fwhm_fs / Tp_fs * 2π / sqrt(2 * log(2)), 0.5)
+end
+
+"""
+    Coords(cap; ratio_hi)
+
+The solver's coordinates z over the free parameters and their bounds. Without a cap (`nothing`),
+z = x ./ scale over `TRAPPED_BOX`. With a [`PowerCap`](@ref), the first coordinate is the
+duration over its floor at the point's density, τ/τ_floor(n), between 1 and `ratio_hi`, and the
+others are as without; the floor makes the box in (τ, n) curved, which L-BFGS-B's bounds cannot
+hold in τ itself. [`free_of`](@ref) maps z to the free parameters and carries duals through.
+"""
+struct Coords{C}
+    cap::C
+    lo::Vector{Float64}
+    hi::Vector{Float64}
+end
+function Coords(cap = nothing; ratio_hi = 1.55)
+    lo, hi = TRAPPED_BOX.lo ./ TRAPPED_BOX.scale, TRAPPED_BOX.hi ./ TRAPPED_BOX.scale
+    cap === nothing && return Coords{Nothing}(nothing, lo, hi)
+    return Coords{PowerCap}(cap, [1.0; lo[2:end]], [Float64(ratio_hi); hi[2:end]])
+end
+
+"The free parameters (duration, waist, focus, density) at the solver's coordinates `z`."
+free_of(c::Coords{Nothing}, z) = collect(z) .* TRAPPED_BOX.scale
+function free_of(c::Coords{PowerCap}, z)
+    s = TRAPPED_BOX.scale
+    n = z[4] * s[4]
+    return [z[1] * duration_floor(c.cap, n), z[2] * s[2], z[3] * s[3], n]
+end
+
+"The solver's coordinates of the free parameters `free`, the inverse of [`free_of`](@ref)."
+z_of(c::Coords{Nothing}, free) = collect(Float64, free) ./ TRAPPED_BOX.scale
+z_of(c::Coords{PowerCap}, free) = [free[1] / duration_floor(c.cap, free[4]); collect(Float64, free[2:end]) ./ TRAPPED_BOX.scale[2:end]]
+
+"The parameters as the figures show them: the free parameters, with τ/τ_floor(n) in place of the duration under a cap."
+shown(c::Coords{Nothing}, free) = collect(Float64, free)
+shown(c::Coords{PowerCap}, free) = [free[1] / duration_floor(c.cap, free[4]); collect(Float64, free[2:end])]
+shown_bounds(c::Coords{Nothing}) = (lo = collect(TRAPPED_BOX.lo), hi = collect(TRAPPED_BOX.hi))
+shown_bounds(c::Coords{PowerCap}) = (lo = [c.lo[1]; TRAPPED_BOX.lo[2:end]], hi = [c.hi[1]; TRAPPED_BOX.hi[2:end]])
+shown_name(c::Coords, i) = i == 1 && c isa Coords{PowerCap} ? "τ/τ_floor" : TCASE.names[TCASE.free[i]]
+
+"The gradient in the solver's coordinates at `z` from `g`, the gradient in the free parameters (the chain rule through [`free_of`](@ref))."
+grad_z(c::Coords, z, g) = ForwardDiff.jacobian(u -> free_of(c, u), collect(Float64, z))' * collect(Float64, g)
+
+"The coordinates of a run's options (or manifest parameters): `cap = none`, `cetal25` or `cetal35` (CETAL's 25 fs limit or its measured 35 fs), with `ratio_hi`."
+function coords_of(o)
+    cap = get(o, "cap", "none")
+    cap == "none" && return Coords()
+    cap in ("cetal25", "cetal35") || error("the cap is none, cetal25 or cetal35, got $cap")
+    return Coords(cetal_cap(; fwhm_fs = cap == "cetal25" ? 25.0 : 35.0); ratio_hi = get(o, "ratio_hi", 1.55))
+end
+
+"The coordinates a run directory's optimization used, from its manifest."
+run_coords(dir) = coords_of(TOML.parsefile(joinpath(dir, "manifest.toml"))["parameters"])
+
+"""
+    starts_of(c) -> NamedTuple of starts (free parameters)
+
+[`STARTS`](@ref) without a cap; under one, each start's waist, focus and density with its duration
+moved to the same place between the floor and `ratio_hi`·floor as it had between the box's 4 and 9.
+"""
+starts_of(c::Coords{Nothing}) = STARTS
+function starts_of(c::Coords{PowerCap})
+    lo, hi = TRAPPED_BOX.lo[1], TRAPPED_BOX.hi[1]
+    return map(STARTS) do x
+        r = c.lo[1] + (c.hi[1] - c.lo[1]) * (x[1] - lo) / (hi - lo)
+        [r * duration_floor(c.cap, x[4]); x[2:end]]
+    end
+end
 
 "The backend named `cpu` or `cuda` (loaded on first use; the scripts environment has CUDACore)."
 function opt_backend(name)
@@ -155,26 +255,28 @@ function projected_gradient(gz, z, lb, ub)
 end
 
 """
-    optimize_start(store, start, dir; maxiters, pgtol) -> Dict
+    optimize_start(store, start, dir; maxiters, pgtol, coords = Coords()) -> Dict
 
-L-BFGS-B over `TRAPPED_BOX` from `start` (physical units) with the store's objective; writes
+L-BFGS-B over the bounds of `coords` (`TRAPPED_BOX` without a cap) in its coordinates z, from
+`start` (the free parameters), with the store's objective; writes
 `dir/result.json` (the solution, the record of every point the solver reported, the calls) and
 returns it.
 """
-function optimize_start(store::PointStore, start, dir; maxiters::Integer, pgtol::Real)
+function optimize_start(store::PointStore, start, dir; maxiters::Integer, pgtol::Real, coords::Coords = Coords())
     mkpath(dir)
     calls = Dict{String,Any}[]
-    prob = case_problem(stored_objective(store, calls), TRAPPED_BOX, Tuple(start))
+    J = stored_objective(store, calls)
+    prob = case_problem((z...) -> J(free_of(coords, collect(z))...), (lo = coords.lo, hi = coords.hi, scale = ones(length(coords.lo))), Tuple(z_of(coords, start)))
     rec = Record(prob, LBFGSB(); verbose = true)
     made = store.made
     t = @elapsed sol = solve(prob, LBFGSB(); callback = rec, maxiters, reltol = pgtol)
-    J = Float64(sol.objective)
-    r = record!(store, sol.u .* TRAPPED_BOX.scale)
-    out = Dict{String,Any}("start" => collect(Float64, start), "u" => collect(sol.u), "free" => collect(sol.u .* TRAPPED_BOX.scale), "J" => J,
+    Jopt = Float64(sol.objective)
+    r = record!(store, free_of(coords, sol.u))
+    out = Dict{String,Any}("start" => collect(Float64, start), "u" => collect(sol.u), "free" => free_of(coords, sol.u), "J" => Jopt,
                            "retcode" => string(sol.retcode), "iterations" => sol.stats.iterations, "fevals" => sol.stats.fevals,
                            "maxiters" => maxiters, "pgtol" => pgtol, "seconds" => t, "points_run" => store.made - made,
-                           "key" => r["key"], "a0" => r["a0"], "projected_gradient" => projected_gradient(r["gradient"] .* TRAPPED_BOX.scale, sol.u, prob.lb, prob.ub),
-                           "path" => [Dict{String,Any}("z" => u, "J" => j, "seconds" => s, "key" => point_key(u .* TRAPPED_BOX.scale)) for (u, j, s) in zip(rec.u, rec.objective, rec.seconds)],
+                           "key" => r["key"], "a0" => r["a0"], "projected_gradient" => projected_gradient(grad_z(coords, sol.u, r["gradient"]), sol.u, prob.lb, prob.ub),
+                           "path" => [Dict{String,Any}("z" => u, "J" => j, "seconds" => s, "key" => point_key(free_of(coords, u))) for (u, j, s) in zip(rec.u, rec.objective, rec.seconds)],
                            "calls" => calls)
     open(io -> JSON.print(io, out, 2), joinpath(dir, "result.json"), "w")
     return out
@@ -195,7 +297,8 @@ function parse_options(args, defaults)
     return opts, rest
 end
 
-const OPT_DEFAULTS = (ppl = 32, ny = 2, float = 32, backend = "cuda", gather = "compensated", maxiters = 25, pgtol = 2.0^-6, a0E = 1.9, starts = join(keys(STARTS), ","))
+const OPT_DEFAULTS = (ppl = 32, ny = 2, float = 32, backend = "cuda", gather = "compensated", maxiters = 25, pgtol = 2.0^-6, a0E = 1.9, starts = join(keys(STARTS), ","),
+                      cap = "none", ratio_hi = 1.55)
 
 element_type(bits) = bits == 32 ? Float32 : bits == 64 ? Float64 : error("float is 32 or 64, got $bits")
 
@@ -206,7 +309,9 @@ point_config(o) = (; ppl = o["ppl"], ny = o["ny"], float = element_type(o["float
 function run_manifest(name, dir, o; extra_params = Dict{String,Any}())
     params = merge(Dict{String,Any}(o), Dict{String,Any}("box" => Dict("lo" => TRAPPED_BOX.lo, "hi" => TRAPPED_BOX.hi, "scale" => TRAPPED_BOX.scale),
                                                          "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
-                                                         "start_points" => Dict(string(k) => v for (k, v) in pairs(STARTS))), extra_params)
+                                                         "start_points" => Dict(string(k) => v for (k, v) in pairs(starts_of(coords_of(o)))),
+                                                         "duration_floor" => coords_of(o).cap === nothing ? "none" :
+                                                                             Dict("c" => coords_of(o).cap.c, "p" => coords_of(o).cap.p, "ratio_hi" => o["ratio_hi"])), extra_params)
     cuda = o["backend"] == "cuda"
     return run_dir(name, @__FILE__; prefix = "optim", work_package = "WP-068", dir, params,
                    backend = cuda ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
@@ -225,14 +330,18 @@ function main_opt(dir, o)
     cfg = point_config(o)
     d = run_manifest("trapped2d-opt", dir, o)
     store = PointStore(joinpath(d, "points"); run = free -> run_point(free; cfg..., grad = true))
-    base = record!(store, collect(STARTS.base ./ TRAPPED_BOX.scale) .* TRAPPED_BOX.scale)
-    pgtol = o["pgtol"] * maximum(abs, base["gradient"] .* TRAPPED_BOX.scale)
-    println("base point: J = $(base["J"]), gradient in z $(base["gradient"] .* TRAPPED_BOX.scale), pgtol $pgtol"); flush(stdout)
+    coords = coords_of(o)
+    starts = starts_of(coords)
+    zb = z_of(coords, starts.base)
+    base = record!(store, free_of(coords, zb))
+    gb = grad_z(coords, zb, base["gradient"])
+    pgtol = o["pgtol"] * maximum(abs, gb)
+    println("base point: J = $(base["J"]) at $(base["free"]), gradient in z $gb, pgtol $pgtol"); flush(stdout)
     for name in split(o["starts"], ",")
         sdir = joinpath(d, name)
         isfile(joinpath(sdir, "result.json")) && (println("start $name: done"); continue)
-        println("start $name from $(STARTS[Symbol(name)])"); flush(stdout)
-        r = optimize_start(store, STARTS[Symbol(name)], sdir; maxiters = o["maxiters"], pgtol)
+        println("start $name from $(starts[Symbol(name)])"); flush(stdout)
+        r = optimize_start(store, starts[Symbol(name)], sdir; maxiters = o["maxiters"], pgtol, coords)
         println("start $name: J = $(r["J"]) at $(r["free"]) (a₀ $(r["a0"])), $(r["retcode"]) after $(r["iterations"]) iterations, ",
                 "$(r["points_run"]) points run in $(round(r["seconds"]; digits = 1)) s"); flush(stdout)
     end
@@ -342,18 +451,19 @@ function path_plane(zs, zopt)
 end
 
 """
-    scan_jobs(dir, o) -> Vector of (id, free, spec)
+    scan_jobs(dir, o; coords = run_coords(dir)) -> Vector of (id, free, spec)
 
 Plain runs for the figures of J around the paths: for every start, an `o["n"]`×`o["n"]` grid on
 the plane of its path ([`path_plane`](@ref)) over the path's extent and a quarter more on each
 side (points outside the box left out); and for every pair of free parameters, a grid over the
-whole box in the two with the other two at the best start's optimum.
+whole box (the bounds of the run's [`Coords`](@ref)) in the two with the other two at the best
+start's optimum.
 """
-function scan_jobs(dir, o)
+function scan_jobs(dir, o; coords::Coords = run_coords(dir))
     results = load_results(dir)
     isempty(results) && error("no start in $dir has a result")
     n = o["n"]
-    lb, ub = TRAPPED_BOX.lo ./ TRAPPED_BOX.scale, TRAPPED_BOX.hi ./ TRAPPED_BOX.scale
+    lb, ub = coords.lo, coords.hi
     jobs = Tuple{String,Vector{Float64},Dict{String,Any}}[]
     for name in sort(collect(keys(results)))
         r = results[name]
@@ -368,16 +478,16 @@ function scan_jobs(dir, o)
         for (i, a) in enumerate(S), (j, b) in enumerate(Tt)
             z = pl.origin .+ a .* pl.e1 .+ b .* pl.e2
             all(lb .<= z .<= ub) || continue
-            push!(jobs, ("plane-$name-$i-$j", z .* TRAPPED_BOX.scale, Dict{String,Any}("kind" => "plane", "start" => name, "i" => i, "j" => j, "s" => a, "t" => b, "s_grid" => collect(S), "t_grid" => collect(Tt),
+            push!(jobs, ("plane-$name-$i-$j", free_of(coords, z), Dict{String,Any}("kind" => "plane", "start" => name, "i" => i, "j" => j, "s" => a, "t" => b, "s_grid" => collect(S), "t_grid" => collect(Tt),
                                                                                   "origin" => pl.origin, "e1" => pl.e1, "e2" => pl.e2)))
         end
     end
     best = argmax(k -> results[k]["J"], collect(keys(results)))
-    opt = Float64.(results[best]["free"])
-    for a in 1:4, b in (a + 1):4, (i, va) in enumerate(range(TRAPPED_BOX.lo[a], TRAPPED_BOX.hi[a]; length = n)), (j, vb) in enumerate(range(TRAPPED_BOX.lo[b], TRAPPED_BOX.hi[b]; length = n))
-        x = copy(opt)
-        x[a], x[b] = va, vb
-        push!(jobs, ("pair-$a$b-$i-$j", x, Dict{String,Any}("kind" => "pair", "start" => best, "a" => a, "b" => b, "i" => i, "j" => j)))
+    opt = Float64.(results[best]["u"])
+    for a in 1:4, b in (a + 1):4, (i, va) in enumerate(range(lb[a], ub[a]; length = n)), (j, vb) in enumerate(range(lb[b], ub[b]; length = n))
+        z = copy(opt)
+        z[a], z[b] = va, vb
+        push!(jobs, ("pair-$a$b-$i-$j", free_of(coords, z), Dict{String,Any}("kind" => "pair", "start" => best, "a" => a, "b" => b, "i" => i, "j" => j)))
     end
     return jobs
 end

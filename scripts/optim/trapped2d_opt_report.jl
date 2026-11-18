@@ -10,13 +10,13 @@ start_path(res, points) = [merge(points[p["key"]], Dict{String,Any}("seconds_sin
 "The log-gradient d ln J/dz of a record (z = x ./ scale)."
 log_gradient(r) = r["gradient"] .* TRAPPED_BOX.scale ./ r["J"]
 
-"Which of a record's free parameters sit on a bound of the box, as `name=lo` or `name=hi`."
-function on_bounds(free)
+"Which of the solver's coordinates `z` sit on a bound of `coords`, as `name=lo` or `name=hi`."
+function on_bounds(coords, z)
     out = String[]
-    for i in eachindex(free)
-        n = TCASE.names[TCASE.free[i]]
-        free[i] <= TRAPPED_BOX.lo[i] && push!(out, "$n=lo")
-        free[i] >= TRAPPED_BOX.hi[i] && push!(out, "$n=hi")
+    for i in eachindex(z)
+        n = shown_name(coords, i)
+        z[i] <= coords.lo[i] && push!(out, "$n=lo")
+        z[i] >= coords.hi[i] && push!(out, "$n=hi")
     end
     return isempty(out) ? "none" : join(out, ", ")
 end
@@ -49,6 +49,8 @@ function opt_report(out, dir)
     paths = Dict(n => start_path(results[n], points) for n in names)
     m = TOML.parsefile(joinpath(dir, "manifest.toml"))
     params = m["parameters"]
+    coords = coords_of(params)
+    sb = shown_bounds(coords)
 
     fig = Figure(; size = (1500, 720))
     colors = Makie.wong_colors()
@@ -56,9 +58,9 @@ function opt_report(out, dir)
            Axis(fig[1, 2]; xlabel = "point of the solver", ylabel = "a₀", title = "a₀ (band: own injection at 0.072 n_c)"),
            Axis(fig[1, 3]; xlabel = "point of the solver", ylabel = "dark current weight", title = "dark current (u_x > 5, behind bucket 1)"),
            Axis(fig[1, 4]; xlabel = "point of the solver", ylabel = "J_plasma / J", title = "the plasma's own share of J")]
-    paxs = [Axis(fig[2, i]; xlabel = "point of the solver", ylabel = TCASE.names[TCASE.free[i]], title = "$(TCASE.names[TCASE.free[i]]) (dashed: the box)") for i in 1:4]
+    paxs = [Axis(fig[2, i]; xlabel = "point of the solver", ylabel = shown_name(coords, i), title = "$(shown_name(coords, i)) (dashed: the box)") for i in 1:4]
     hspan!(axs[2], 2.45, 2.55; color = (:gray, 0.3))
-    sidecar = Dict{String,Any}("run" => basename(dir), "box" => Dict("lo" => TRAPPED_BOX.lo, "hi" => TRAPPED_BOX.hi), "starts" => Dict{String,Any}())
+    sidecar = Dict{String,Any}("run" => basename(dir), "box" => Dict("lo" => sb.lo, "hi" => sb.hi, "names" => [shown_name(coords, i) for i in 1:4]), "starts" => Dict{String,Any}())
     for (k, n) in enumerate(names)
         P = paths[n]
         it = collect(1:length(P))
@@ -69,21 +71,22 @@ function opt_report(out, dir)
         lines!(axs[3], it, [p["dark_weight"] for p in P]; color = c)
         lines!(axs[4], it, [p["J"] > 0 ? p["J_plasma"] / p["J"] : 0.0 for p in P]; color = c)
         for i in 1:4
-            lines!(paxs[i], it, [p["free"][i] for p in P]; color = c)
+            lines!(paxs[i], it, [shown(coords, p["free"])[i] for p in P]; color = c)
         end
         sidecar["starts"][n] = Dict{String,Any}("J" => J, "a0" => [p["a0"] for p in P], "dark_weight" => [p["dark_weight"] for p in P],
                                                 "J_plasma" => [p["J_plasma"] for p in P], "free" => [p["free"] for p in P],
                                                 "log_gradient" => [log_gradient(p) for p in P])
     end
     for i in 1:4
-        hlines!(paxs[i], [TRAPPED_BOX.lo[i], TRAPPED_BOX.hi[i]]; color = :black, linestyle = :dash)
+        hlines!(paxs[i], [sb.lo[i], sb.hi[i]]; color = :black, linestyle = :dash)
     end
     axislegend(axs[1]; position = :rb)
     path_png = save_plot(out, "trapped2d_opt", fig, sidecar)
 
     io = IOBuffer()
     println(io, "Run `", basename(dir), "`: λ₀/", params["ppl"], ", Δy = π/", 4 * params["ny"], ", Float", params["float"], ", ", params["backend"],
-            ", gather ", params["gather"], ", budget of a₀ = ", params["a0E"], " at the base pulse; L-BFGS-B with maxiters = ", params["maxiters"], ".\n")
+            ", gather ", params["gather"], ", budget of a₀ = ", params["a0E"], " at the base pulse; L-BFGS-B with maxiters = ", params["maxiters"],
+            coords.cap === nothing ? "" : "; peak power cap $(params["cap"]): τ ≥ $(fmt(coords.cap.c))·n^-$(coords.cap.p), τ/τ_floor up to $(coords.hi[1])", ".\n")
     println(io, "| start | from (τ, w, focus, n) | a₀ | J there | to (τ, w, focus, n) | a₀ | J there | J ratio | on the box's bounds | stop | iterations | points run | largest dark current weight on the path | largest J_plasma/J on the path |")
     println(io, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for n in names
@@ -91,7 +94,7 @@ function opt_report(out, dir)
         s = P[1]
         e = points[r["key"]]
         println(io, "| ", n, " | ", join(fmt.(s["free"]), ", "), " | ", fmt(s["a0"]), " | ", fmt(s["J"]), " | ", join(fmt.(e["free"]), ", "), " | ", fmt(e["a0"]), " | ",
-                fmt(e["J"]), " | ", fmt(e["J"] / s["J"]), " | ", on_bounds(e["free"]), " | ", r["retcode"], " | ", r["iterations"], " | ", r["points_run"], " | ",
+                fmt(e["J"]), " | ", fmt(e["J"] / s["J"]), " | ", on_bounds(coords, r["u"]), " | ", r["retcode"], " | ", r["iterations"], " | ", r["points_run"], " | ",
                 fmt(maximum(p -> p["dark_weight"], P)), " | ", fmt(maximum(p -> p["J"] > 0 ? p["J_plasma"] / p["J"] : 0.0, P)), " |")
     end
     for n in names
@@ -160,6 +163,7 @@ end
 function scan_figure(out, dir, sdir, results, paths, io)
     jobs = [JSON.parsefile(joinpath(sdir, f)) for f in readdir(sdir) if endswith(f, ".json")]
     isempty(jobs) && return
+    coords = run_coords(dir)
     n = maximum(j -> max(j["i"], j["j"]), jobs)
     grids = Dict{String,Any}()
     for j in jobs
@@ -172,7 +176,8 @@ function scan_figure(out, dir, sdir, results, paths, io)
         if j["kind"] == "plane"
             g["u"] .= j["s_grid"]; g["v"] .= j["t_grid"]
         else
-            g["u"][j["i"]], g["v"][j["j"]] = j["free"][j["a"]], j["free"][j["b"]]
+            q = shown(coords, j["free"])
+            g["u"][j["i"]], g["v"][j["j"]] = q[j["a"]], q[j["b"]]
         end
     end
     keys_sorted = sort(collect(keys(grids)))
@@ -195,9 +200,9 @@ function scan_figure(out, dir, sdir, results, paths, io)
             extra = Dict{String,Any}("origin" => pl.origin, "e1" => pl.e1, "e2" => pl.e2, "residual" => residual)
         else
             a, b = spec["a"], spec["b"]
-            xl, yl = TCASE.names[TCASE.free[a]], TCASE.names[TCASE.free[b]]
+            xl, yl = shown_name(coords, a), shown_name(coords, b)
             title = "$xl × $yl, the others at start $(spec["start"])'s optimum"
-            curves = [(nm, [p["free"][a] for p in paths[nm]], [p["free"][b] for p in paths[nm]], [p["J"] for p in paths[nm]]) for nm in names]
+            curves = [(nm, [shown(coords, p["free"])[a] for p in paths[nm]], [shown(coords, p["free"])[b] for p in paths[nm]], [p["J"] for p in paths[nm]]) for nm in names]
             extra = Dict{String,Any}("a" => a, "b" => b, "at" => results[spec["start"]]["free"])
         end
         # J spans orders of magnitude across the box (the plasma's own injection), so the height is log₁₀ J

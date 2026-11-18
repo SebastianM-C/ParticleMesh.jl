@@ -918,7 +918,7 @@ end
     rs = Dict(nm => optimize_start(store, STARTS[nm], joinpath(dir, string(nm)); maxiters = 50, pgtol = 1e-10) for nm in (:long, :short))
     @test rs[:short]["J"] > rs[:long]["J"]
     @test rs[:short]["free"] ≈ c2 rtol = 1e-4
-    jobs = scan_jobs(dir, Dict{String,Any}("n" => 5))
+    jobs = scan_jobs(dir, Dict{String,Any}("n" => 5); coords = Coords())
     pairs = filter(j -> j[3]["kind"] == "pair", jobs)
     planes = filter(j -> j[3]["kind"] == "plane", jobs)
     @test length(pairs) == 6 * 25 && length(unique(j[1] for j in jobs)) == length(jobs)
@@ -929,8 +929,8 @@ end
     for (id, x, spec) in pairs
         others = setdiff(1:4, (spec["a"], spec["b"]))
         @test x[others] == best[others]
-        @test x[spec["a"]] == range(TRAPPED_BOX.lo[spec["a"]], TRAPPED_BOX.hi[spec["a"]]; length = 5)[spec["i"]]
-        @test x[spec["b"]] == range(TRAPPED_BOX.lo[spec["b"]], TRAPPED_BOX.hi[spec["b"]]; length = 5)[spec["j"]]
+        @test x[spec["a"]] == range(TRAPPED_BOX.lo[spec["a"]] / scale[spec["a"]], TRAPPED_BOX.hi[spec["a"]] / scale[spec["a"]]; length = 5)[spec["i"]] * scale[spec["a"]]
+        @test x[spec["b"]] == range(TRAPPED_BOX.lo[spec["b"]] / scale[spec["b"]], TRAPPED_BOX.hi[spec["b"]] / scale[spec["b"]]; length = 5)[spec["j"]] * scale[spec["b"]]
     end
     @test sort(unique((j[3]["a"], j[3]["b"]) for j in pairs)) == [(a, b) for a in 1:4 for b in (a + 1):4]
     # every plane point is on its start's plane, and the grid reaches past the path on both sides
@@ -974,4 +974,63 @@ include(joinpath(@__DIR__, "..", "trapped2d_opt_report.jl"))
     @test isapprox(pl.origin, o; atol = 1e-14) && isapprox(pl.e1, e1; atol = 1e-12) && isapprox(pl.e2, e2; atol = 1e-12)
     rec = [merge(j, Dict{String,Any}("origin" => o, "e1" => e1, "e2" => e2)) for j in jobs]
     @test scan_plane(rec) == (; origin = o, e1, e2)
+end
+
+@testset "T-976 a peak power cap as a floor on the duration, in the solver's coordinates [WP-068]" begin
+    # CETAL's 25 fs at 4.2e18 cm^-3: T_p = 2π/ω_p = 54.4 fs, so τ_FWHM ≥ 0.460 λ_p, τ ≥ 2.454/√n
+    cap = cetal_cap()
+    Tp = 2π / (5.641e4 * sqrt(4.2e18)) * 1e15
+    @test 54.0 < Tp < 54.8 && cap.p == 0.5
+    @test cap.c ≈ 25 / Tp * 2π / sqrt(2 * log(2)) rtol = 1e-14
+    @test round(cap.c; digits = 2) == 2.45 && round(duration_floor(cap, 0.10); digits = 1) == 7.8 && round(duration_floor(cap, 0.05); digits = 1) == 11.0
+    @test cetal_cap(; fwhm_fs = 35.0).c ≈ 1.4 * cap.c rtol = 1e-14
+    # the floor in the shortest duration is the power cap: P ∝ W/τ at the fixed energy, so at the
+    # floor every waist has the same peak power a₀²·w·(1 + 1/(2w²)) ∝ W/τ_floor
+    W = budget()
+    power(τ, w) = a0_for_energy(τ, w; energy = W)^2 * w * (1 + 1 / (2 * w^2))
+    @test power(duration_floor(cap, 0.08), 6.0) ≈ power(duration_floor(cap, 0.08), 14.0) rtol = 1e-12
+    @test power(duration_floor(cap, 0.08), 6.0) ≈ 4W / (π * duration_floor(cap, 0.08)) rtol = 1e-12
+    # the coordinates: ratio τ/τ_floor(n) in [1, ratio_hi], the others as in the box
+    c = Coords(cap; ratio_hi = 1.55)
+    b = Coords()
+    @test c.lo == [1.0; b.lo[2:end]] && c.hi == [1.55; b.hi[2:end]]
+    @test b.lo == TRAPPED_BOX.lo ./ TRAPPED_BOX.scale && free_of(b, [1.0, 1.0, 1.0, 1.0]) == TRAPPED_BOX.scale
+    x = [9.0, 8.0, 100.0, 0.09]
+    @test isapprox(free_of(c, z_of(c, x)), x; rtol = 1e-14) && isapprox(z_of(c, x)[1], 9.0 * sqrt(0.09) / cap.c; rtol = 1e-14)
+    @test isapprox(shown(c, x)[1], z_of(c, x)[1]; rtol = 1e-14) && shown(c, x)[2:end] == x[2:end] && shown(b, x) == x
+    @test shown_name(c, 1) == "τ/τ_floor" && shown_name(b, 1) == "duration" && shown_bounds(c).lo == [1.0; TRAPPED_BOX.lo[2:end]]
+    @test coords_of(Dict{String,Any}()) isa Coords{Nothing} && coords_of(Dict{String,Any}("cap" => "none")) isa Coords{Nothing}
+    @test coords_of(Dict{String,Any}("cap" => "cetal35", "ratio_hi" => 1.3)).hi[1] == 1.3
+    @test_throws ErrorException coords_of(Dict{String,Any}("cap" => "1PW"))
+    @test OPT_DEFAULTS.cap == "none" && OPT_DEFAULTS.ratio_hi == 1.55
+    # the gradient in z is the chain rule through the floor, as ForwardDiff through the map gives it
+    f(free) = free[4]^2 / free[1] + sin(free[2]) * free[3]
+    gf(free) = [-free[4]^2 / free[1]^2, cos(free[2]) * free[3], sin(free[2]), 2 * free[4] / free[1]]
+    z = z_of(c, x)
+    @test grad_z(c, z, gf(free_of(c, z))) ≈ ForwardDiff.gradient(u -> f(free_of(c, u)), z) rtol = 1e-12
+    @test grad_z(b, z_of(b, x), gf(x)) ≈ gf(x) .* TRAPPED_BOX.scale rtol = 1e-14
+    # the starts under the cap keep their waist, focus and density and sit inside the ratio's bounds
+    st = starts_of(c)
+    @test keys(st) == keys(STARTS) && starts_of(b) === STARTS
+    for k in keys(STARTS)
+        @test st[k][2:end] == STARTS[k][2:end] && 1 < z_of(c, st[k])[1] < 1.55
+    end
+    @test z_of(c, st.base)[1] ≈ 1 + 0.55 * 2 / 5 rtol = 1e-12
+    # L-BFGS-B under the cap on J = n/τ, which wants the shortest pulse into the densest plasma: it
+    # ends on the floor at the density's bound, and no point it asks for breaks the floor
+    fake(free) = Dict{String,Any}("J" => free[4] / free[1], "gradient" => [-free[4] / free[1]^2, 0.0, 0.0, 1 / free[1]], "a0" => 1.9)
+    dir = mktempdir()
+    store = PointStore(joinpath(dir, "points"); run = fake)
+    r = optimize_start(store, st.base, joinpath(dir, "base"); maxiters = 30, pgtol = 1e-10, coords = c)
+    @test r["u"][1] == 1.0 && r["free"][4] == 0.10
+    @test isapprox(r["free"][1], duration_floor(cap, 0.10); rtol = 1e-14) && isapprox(r["J"], 0.10 / duration_floor(cap, 0.10); rtol = 1e-14)
+    @test r["free"][2:3] == st.base[2:3]                                  # no gradient in waist and focus
+    @test all(q -> q["free"][1] >= duration_floor(cap, q["free"][4]) * (1 - 1e-14), r["calls"])
+    @test r["projected_gradient"] == 0.0 && on_bounds(c, r["u"]) == "τ/τ_floor=lo, density=hi"
+    @test all(p -> haskey(store.records, p["key"]), r["path"])          # the path's keys are the records' points
+    # the scan over the cap's coordinates: the pair grids span τ/τ_floor, every job keeps the floor
+    jobs = scan_jobs(dir, Dict{String,Any}("n" => 5); coords = c)
+    @test !isempty(jobs) && all(j -> j[2][1] >= duration_floor(cap, j[2][4]) * (1 - 1e-12), jobs)
+    p12 = filter(j -> j[3]["kind"] == "pair" && j[3]["a"] == 1, jobs)
+    @test sort(unique(round(shown(c, j[2])[1]; digits = 10) for j in p12)) ≈ collect(range(1.0, 1.55; length = 5)) rtol = 1e-12
 end
