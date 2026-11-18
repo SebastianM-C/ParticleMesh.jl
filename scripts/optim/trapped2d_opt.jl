@@ -13,7 +13,10 @@
 #       cap=none (or cetal25, cetal35: a peak power cap, which at the fixed energy is a floor on
 #       the duration that rises with the density, `cetal_cap`; the duration then lies between
 #       the floor and duration_hi=12, `Coords`, and the window is longer behind by
-#       `window_extend` wavelengths to emit the longest pulse)
+#       `window_extend` wavelengths to emit the longest pulse), objective=any (or born: the
+#       ionization's electrons alone; plasmacap: any origin with the plasma's own share capped
+#       smoothly at kappa=0.05, `objective_value`), from=<run dir> (one start at that run's best
+#       optimum instead of the starts, e.g. to re-optimize it on a finer grid)
 #   julia +1.13 --project=scripts -t 2 scripts/optim/trapped2d_opt.jl check <dir> [ppl=48 ny=3 fdppl=32 fdny=2 power=13]
 #       at the best optimum of <dir>'s starts: a plain run and one with duals at ppl×ny in the
 #       optimization's element type, and a Float64 run with duals and Float64 central differences
@@ -186,18 +189,20 @@ One run of the case at the four free parameters `free` (the delay at the base po
 `backend` in `float`, with `gather` ([`born_numerics`](@ref)): J, the gradient in the free
 parameters (physical units) when `grad` (duals in the four free directions; J is the plain run's
 bit for bit, T-912), a₀, the run's seconds and [`trapped_summary`](@ref), with its dark current.
-`read` holds `fade` and `rise` for J and the summary; the other keywords go to the case's problem.
+`read` holds `fade` and `rise` for J and the summary; `objective` and `kappa` choose what J is
+([`objective_value`](@ref)); the other keywords go to the case's problem.
 """
 function run_point(free; ppl::Integer, ny::Integer, float::Type{<:AbstractFloat} = Float64, backend = CPU(), gather = nothing,
-                   grad::Bool = true, energy = budget(), read = (;), kw...)
+                   grad::Bool = true, energy = budget(), read = (;), objective::AbstractString = "any", kappa::Real = 0.05, kw...)
     F = float
     x = trapped_point(collect(Float64, free))
     n = length(TCASE.free)
     arg(i) = (k = findfirst(==(i), TCASE.free); grad && k !== nothing ? ForwardDiff.Dual{Nothing}(F(x[i]), ntuple(j -> F(j == k), n)) : F(x[i]))
     args = ntuple(arg, length(x))
     t = @elapsed st = trapped_state(args...; energy = F(energy), ppl, ny, float = F, backend, gather, kw...)
-    J = trapped_energy(st; read...)
+    J = objective_value(trapped_parts(st; read...), objective, kappa)
     out = Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st; read...)))
+    out["objective"] = objective
     out["J"] = Float64(value_of(J))
     out["free"] = collect(Float64, free)
     out["x"] = collect(Float64, x)
@@ -307,6 +312,26 @@ function optimize_start(store::PointStore, start, dir; maxiters::Integer, pgtol:
     return out
 end
 
+"""
+    objective_value(parts, objective, kappa) -> J
+
+The objective from the two parts of WP-065's J ([`trapped_parts`](@ref)), in their element type:
+- `"any"`: born + plasma, WP-065's J (every trapped electron of the first bucket, any origin);
+- `"born"`: born alone, the electrons the ionization released (WP-064's label);
+- `"plasmacap"`: born + κ·tanh(plasma/κ), any origin with the plasma's own injection counted
+  in full while small and capped smoothly at `kappa`: it can add at most κ to J, so the
+  optimizer gains nothing by driving the plasma deep into its own injection.
+"""
+function objective_value(parts, objective::AbstractString, kappa::Real)
+    objective == "any" && return parts.born + parts.plasma
+    objective == "born" && return parts.born
+    if objective == "plasmacap"
+        k = oftype(parts.plasma, kappa)
+        return parts.born + k * tanh(parts.plasma / k)
+    end
+    throw(ArgumentError("the objective is any, born or plasmacap, got $objective"))
+end
+
 "`key=value` options from `args` over `defaults`, each parsed to its default's type; an unknown key is an error."
 function parse_options(args, defaults)
     opts = Dict{String,Any}(string(k) => v for (k, v) in pairs(defaults))
@@ -323,21 +348,38 @@ function parse_options(args, defaults)
 end
 
 const OPT_DEFAULTS = (ppl = 32, ny = 2, float = 32, backend = "cuda", gather = "compensated", maxiters = 25, pgtol = 2.0^-6, a0E = 1.9, starts = join(keys(STARTS), ","),
-                      cap = "none", duration_hi = 12.0)
+                      cap = "none", duration_hi = 12.0, objective = "any", kappa = 0.05, from = "")
 
 element_type(bits) = bits == 32 ? Float32 : bits == 64 ? Float64 : error("float is 32 or 64, got $bits")
 
 "The window's extension and the read-out keywords of a run from its options (or manifest parameters): [`window_extend`](@ref), [`run_read`](@ref)."
 run_geometry(o) = (k = window_extend(coords_of(o)); (; extend = k, read = run_read(k)))
 
+"What every run of a run directory is run with besides its numerics: [`run_geometry`](@ref) and the objective (`any` where the options predate the choice)."
+run_setup(o) = (; run_geometry(o)..., objective = string(get(o, "objective", "any")), kappa = Float64(get(o, "kappa", 0.05)))
+
+"""
+    start_points(o) -> NamedTuple of starts (free parameters)
+
+The starts of a run's options: [`starts_of`](@ref) its coordinates, or, with `from = <run dir>`,
+one start `from` at the best optimum of that run directory's starts.
+"""
+function start_points(o)
+    from = get(o, "from", "")
+    isempty(from) && return starts_of(coords_of(o))
+    rs = load_results(from)
+    isempty(rs) && error("no start in $from has a result")
+    return (; from = Float64.(rs[argmax(n -> rs[n]["J"], collect(keys(rs)))]["free"]))
+end
+
 "The run's configuration from its options: what every point of a store is run with."
 point_config(o) = (; ppl = o["ppl"], ny = o["ny"], float = element_type(o["float"]), backend = opt_backend(o["backend"]), gather = opt_gather(o["gather"]),
-                    energy = budget(o["a0E"]), run_geometry(o)...)
+                    energy = budget(o["a0E"]), run_setup(o)...)
 
 function run_manifest(name, dir, o; extra_params = Dict{String,Any}())
     params = merge(Dict{String,Any}(o), Dict{String,Any}("box" => Dict("lo" => TRAPPED_BOX.lo, "hi" => TRAPPED_BOX.hi, "scale" => TRAPPED_BOX.scale),
                                                          "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
-                                                         "start_points" => Dict(string(k) => v for (k, v) in pairs(starts_of(coords_of(o)))),
+                                                         "start_points" => Dict(string(k) => v for (k, v) in pairs(start_points(o))),
                                                          "duration_floor" => coords_of(o).cap === nothing ? "none" :
                                                                              Dict("c" => coords_of(o).cap.c, "p" => coords_of(o).cap.p, "duration_hi" => o["duration_hi"]),
                                                          "window_extend" => window_extend(coords_of(o))), extra_params)
@@ -352,21 +394,23 @@ end
 """
     main_opt(dir, o)
 
-Every start of `o["starts"]` in turn, with one store for all of them: the base point's run first,
-whose gradient sets the stopping tolerance, `o["pgtol"]` times its largest component in z.
+Every start of `o["starts"]` in turn (or the one start of `from`, [`start_points`](@ref)), with
+one store for all of them: the first start's point run first, whose gradient sets the stopping
+tolerance, `o["pgtol"]` times its largest component in z.
 """
 function main_opt(dir, o)
     cfg = point_config(o)
     d = run_manifest("trapped2d-opt", dir, o)
     store = PointStore(joinpath(d, "points"); run = free -> run_point(free; cfg..., grad = true))
     coords = coords_of(o)
-    starts = starts_of(coords)
-    zb = z_of(coords, starts.base)
+    starts = start_points(o)
+    names = isempty(o["from"]) ? split(o["starts"], ",") : ["from"]
+    zb = z_of(coords, starts[Symbol(first(names))])
     base = record!(store, free_of(coords, zb))
     gb = grad_z(coords, zb, base["gradient"])
     pgtol = o["pgtol"] * maximum(abs, gb)
     println("base point: J = $(base["J"]) at $(base["free"]), gradient in z $gb, pgtol $pgtol"); flush(stdout)
-    for name in split(o["starts"], ",")
+    for name in names
         sdir = joinpath(d, name)
         isfile(joinpath(sdir, "result.json")) && (println("start $name: done"); continue)
         println("start $name from $(starts[Symbol(name)])"); flush(stdout)
@@ -421,7 +465,7 @@ function main_check(dir, o)
         f = joinpath(cdir, id * ".json")
         isfile(f) && continue
         extra = Dict{String,Any}(string(k) => j[k] for k in (:direction, :sign, :h) if haskey(j, k))
-        r = run_point(j[:free]; ppl = j[:ppl], ny = j[:ny], float = j[:float], backend = be, gather = ga, grad = j[:grad], energy, run_geometry(oo)...)
+        r = run_point(j[:free]; ppl = j[:ppl], ny = j[:ny], float = j[:float], backend = be, gather = ga, grad = j[:grad], energy, run_setup(oo)...)
         merge!(r, extra, Dict{String,Any}("id" => id, "start" => best))
         open(io -> JSON.print(io, r, 2), f, "w")
         println(id, ": J = ", r["J"], " in ", round(r["seconds"]; digits = 1), " s"); flush(stdout)
@@ -538,7 +582,7 @@ function main_scan(dir, o)
     mine = [j for (q, j) in enumerate(jobs) if mod(q - 1, of) == k - 1 && !isfile(joinpath(sdir, j[1] * ".json"))]
     println("scan: $(length(jobs)) jobs, $(length(mine)) to run in shard $k of $of"); flush(stdout)
     for (q, (id, free, spec)) in enumerate(mine)
-        r = run_point(free; ppl = m["ppl"], ny = m["ny"], float = F, backend = be, gather = ga, grad = false, energy, run_geometry(m)...)
+        r = run_point(free; ppl = m["ppl"], ny = m["ny"], float = F, backend = be, gather = ga, grad = false, energy, run_setup(m)...)
         merge!(r, spec, Dict{String,Any}("id" => id))
         tmp = joinpath(sdir, id * ".json.tmp")
         open(io -> JSON.print(io, r, 2), tmp, "w")
