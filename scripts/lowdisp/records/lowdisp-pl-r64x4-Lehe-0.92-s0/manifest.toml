@@ -1,0 +1,13 @@
+[run]
+study = "low-dispersion field solvers on the WP-064/065 ionization-injection case"
+code = "Smilei"
+code_version = "v5.1"
+code_commit = "438d43d8ab727d02dd8f4402c50393343e871b99"
+build = "native make, MPI + OpenMP + parallel HDF5 (Ubuntu openmpi), same flags as scripts/crosscode/containers/smilei.Containerfile"
+inputs_commit = "501cb04"
+inputs = "scripts/lowdisp/gen.py (namelist.py and meta.json in this directory)"
+analysis_commit = "35bef40"
+analysis = "scripts/lowdisp/analyze.py -> summary.json; HDF5 repacked by scripts/lowdisp/pack.py"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+threads = 4
+date = "2026-11-18"

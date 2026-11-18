@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/Fields0-f32.h5"
+bytes = 1313772
+sha256 = "06da2a870e5cfab30cca52baf00d630a86c18d5757bd4350fa6d9f0773ae4754"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/Probes0-f32.h5"
+bytes = 2484913
+sha256 = "a4d7cb7e87b547fb1fa927ba4a4dba924006ede1c2b580d708904bf43c34e164"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/container.txt"
+bytes = 19
+sha256 = "6286f385263952cdd6ec6c9bd6e410e356d9a604fbaecf5ee38c87c304caf060"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/meta.json"
+bytes = 590
+sha256 = "55f32275eda76cd574fd4b1e0bef00cf840c96b526bb02a398605e19f005a99a"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/namelist.py"
+bytes = 1409
+sha256 = "8672ed60ab65a31e7258ca3057f22c14065348d8a69a87f07914fdb56c62006c"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/profil.txt"
+bytes = 2893
+sha256 = "2f273fb825cfc82e11c8a484868e571a0d76bc45f58e9fcd1e62f9f9e40b0f0e"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/scalars.txt"
+bytes = 187420
+sha256 = "17b03717b22b32795b49fb01a47d0e3037e60c4d9da35c82e84b0b5c24da0879"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/smilei.log"
+bytes = 7519
+sha256 = "860f8859f916135671686e27408434b9e7d431d8fac94dce19a548121ec78875"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/smilei.py"
+bytes = 66525
+sha256 = "6e5523965cb072aca9c6190e802a5295c2c9f8f341cdd57b8fae88b438d088e2"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-M4-yee/summary.json"
+bytes = 47623
+sha256 = "55dd873844c95239fcb18c5e894766becc67a7112f733190931c0d3d6b28b08e"

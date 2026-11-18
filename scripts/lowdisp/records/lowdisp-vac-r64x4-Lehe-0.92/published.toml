@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/Fields0-f32.h5"
+bytes = 5100282
+sha256 = "56f0d3b2d0e36055017f7cf0d6bcd0278fac6537a3c60df4660f4a806f65e14c"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/Probes0-f32.h5"
+bytes = 4575702
+sha256 = "20706543e88e6a35c689b8d57bb80f236ca75f0aef8a1d7355d78bd7555a12a7"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/container.txt"
+bytes = 20
+sha256 = "46c3ff18ef90f0c7ec7bec5a032bfc53a21e00f9eb9d73ce51f716da05b86f81"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/meta.json"
+bytes = 593
+sha256 = "08bab37d2abaa4260db44899b5deea54667fc551bd50c79db3f5f3d9e1daa621"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/namelist.py"
+bytes = 1415
+sha256 = "94178eb31f53466ed36bc6e53d1a2af3ddd3503c2626a2fd909477d97a1a2456"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/profil.txt"
+bytes = 5048
+sha256 = "c5e6fdb22073a3b0bd80e25fcac42396f1989e4ed997eeff5f0dc3fd2f75f371"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/scalars.txt"
+bytes = 185879
+sha256 = "e4f4abf07b4774eed0e9d7ee883ff82069abbf3f25cb5448f250f55f7ef8047a"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/smilei.log"
+bytes = 7964
+sha256 = "47043d38ab51cdc3be606c8b80e17e768d8413d353593972e8022c5240a4050c"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/smilei.py"
+bytes = 66531
+sha256 = "6358bc2501511a4eda7f6918093e020adfb974e2957ecc61ab3761c8ae8852cf"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Lehe-0.92/summary.json"
+bytes = 47373
+sha256 = "c672cac9d3c8067af6c668a12ddd7b2e5ffe7d2a490d67793f914c100312d624"

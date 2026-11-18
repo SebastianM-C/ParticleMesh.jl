@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/Fields0-f32.h5"
+bytes = 2892245
+sha256 = "ff723e8ecc5688f8658a3724deec368befe7636bbdaec81149d09345e47441ed"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/Probes0-f32.h5"
+bytes = 3587536
+sha256 = "db74434fb239b916f2f07b524c3b31f0252c5c1247cebf4e9942e82731714b5e"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/container.txt"
+bytes = 19
+sha256 = "50a7b8f5780b9a01f238906af17afa4495e80d4db96310541b3a62d6604dbccf"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/meta.json"
+bytes = 587
+sha256 = "cd062d23b58d663fc236ac21df00197f3990f1d4dc9f0041061204341bc2b315"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/namelist.py"
+bytes = 1407
+sha256 = "fb85ee937c7448086697c1f0fd01bc8a0d5ff9155462282696b9c37402ee5a11"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/profil.txt"
+bytes = 4369
+sha256 = "baba11dc9b46f405926edd6424532a0dc77a29d1e6a40217da7fecfceea3718e"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/scalars.txt"
+bytes = 192043
+sha256 = "ed0a602a2431a45d65fa9b930ae503170bbebb584475d8b00216c3529d2449ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/smilei.log"
+bytes = 7603
+sha256 = "7c8fc2029f17464bdbc3e80387aa2165f723de18749ac8e4f72ed1fb07a19f77"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/smilei.py"
+bytes = 66523
+sha256 = "aa782d204239d861de6ce3d99a34ec11981b9fc0759ce0274e82d117c16e6fe8"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Yee-yee/summary.json"
+bytes = 48936
+sha256 = "d4550000c964734a1cd68e43715e66485b5eb5644ed30928796a6eca1b2ca3ae"

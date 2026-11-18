@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/Fields0-f32.h5"
+bytes = 7594502
+sha256 = "79d453a8891d83f1a0ee7173695d7e8a8d3e370e00142c09dc7b1668650f8d16"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/Probes0-f32.h5"
+bytes = 6671479
+sha256 = "1ba6671d1ac9845c3e2bc98e051a32c364c60f435a0b6ec28db079cbd78bf1eb"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/container.txt"
+bytes = 20
+sha256 = "6b0e6cc8de843c88687489c5f448b0797cb18e38c088ab9e5f9e488a23e64bca"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/meta.json"
+bytes = 594
+sha256 = "23f5858f78abe4eb058a6f73854ba9650528353aba9a6d992c302715292d6309"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/namelist.py"
+bytes = 1412
+sha256 = "882f1e82b37b4ca768dcf97300ebf25bfda8c85012f31e4460292dc1ac205248"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/profil.txt"
+bytes = 7528
+sha256 = "1b8b453915387f3a9c9b48fd4a11d77236d1a95a63509ac6df9fd91dd4e13b3f"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/scalars.txt"
+bytes = 190502
+sha256 = "304e8a860cd361a87f34c1f405161ae01ad0d9cbd2d52ed9ef7d73c2d01484ab"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/smilei.log"
+bytes = 8114
+sha256 = "30ea1765d8ec8acb9a4815450563b41d0df898f3989530780df80074a8b2c796"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/smilei.py"
+bytes = 66528
+sha256 = "52afcd4f5f6661cf6559aee47637d113bbdaddeb2de7b06427d0b8078d556740"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r96x4-M4-yee/summary.json"
+bytes = 48733
+sha256 = "c9c86331b4eaad061f14354898aa9df35d8185940d4bf775274e32d070a81842"

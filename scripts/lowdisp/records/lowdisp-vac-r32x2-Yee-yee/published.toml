@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/Fields0-f32.h5"
+bytes = 1312442
+sha256 = "53374bc76fee5bc4703c966f667cae0044cad6a409317305b8718939b5092faa"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/Probes0-f32.h5"
+bytes = 2458493
+sha256 = "24f1bbebdddff5f1cd7b48075d27bf1dd3f95f6156a0b2d52ff434ac3843bcda"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/container.txt"
+bytes = 19
+sha256 = "9888a43e685d85c61bcdc4f0b945132b8842e9778a1a2f7daf7de9149fba406f"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/meta.json"
+bytes = 591
+sha256 = "01063d5d3b869365e20e271c9c8338fd64e5bdf435db8f48934e475423080339"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/namelist.py"
+bytes = 1411
+sha256 = "00a35ea95d6fb0f3a124c3566470a852b8ed6fb64d896b6647e8802769a06565"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/profil.txt"
+bytes = 2893
+sha256 = "afdd007788d120ab5dea52a0b91cb64bb67a98367a3e9df38da65a10a7feaef7"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/scalars.txt"
+bytes = 187420
+sha256 = "8b02c7fe7ce672a33ff7f308df6c428a9892b61c3fdba1c4f347084f6d27d3f7"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/smilei.log"
+bytes = 7465
+sha256 = "f835f05fb5d052c06173c551e3d7ce439f0454b3cf73ae38fd44ae7561bcc3c6"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/smilei.py"
+bytes = 66527
+sha256 = "11da821a3c76b4aa86358739e86caa2ef8c3edff00299274389c4ab0e713ea25"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r32x2-Yee-yee/summary.json"
+bytes = 47610
+sha256 = "b72183450f4b4b1b7d5783d1b298808be6cfeb3fcf427dd75b4bc578c795b44d"

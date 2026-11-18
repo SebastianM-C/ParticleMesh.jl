@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/Fields0-f32.h5"
+bytes = 2893948
+sha256 = "1a43b1e9a41c13de903bf45398a23e483a3a18696856ed563b273e10b0e1453d"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/Probes0-f32.h5"
+bytes = 3570869
+sha256 = "f1a8f8a72e7edf40b8059d81fac94b8e06b6778a0ea2e8118147cffca75b3cf0"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/container.txt"
+bytes = 19
+sha256 = "50a7b8f5780b9a01f238906af17afa4495e80d4db96310541b3a62d6604dbccf"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/meta.json"
+bytes = 589
+sha256 = "1d84fa28989150f0450bd6824887ffde06d4a161116bfd16e000729985bc5a8f"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/namelist.py"
+bytes = 1411
+sha256 = "7edc79df3a806d4146b6b9be4b3f8b7f32b26376df6c40755e75010f93e26558"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/profil.txt"
+bytes = 3631
+sha256 = "8f40f7d3e0f86a9d99ff459b5750a9b537c13d3c32c90cb31406d7d3e0b9d760"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/scalars.txt"
+bytes = 185879
+sha256 = "d83b99c6e60f6f96f074fe6e9a168b10186d8764f3b25639bb81f532f897425c"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/smilei.log"
+bytes = 7711
+sha256 = "500d4e3885bea7972fe73389282065c056b42734cf96ae902eae7f62d6f0ea08"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/smilei.py"
+bytes = 66527
+sha256 = "e475eb653f3ace2796f54f48150e49894c613e3e26198aca224a9e2d6ee29d27"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-Lehe-0.92/summary.json"
+bytes = 47330
+sha256 = "979207455e2261bfb2519281e2ce54a2a25b65361f991ee70d2f6cf31778a040"

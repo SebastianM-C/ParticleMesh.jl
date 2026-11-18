@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/Fields0-f32.h5"
+bytes = 5097794
+sha256 = "657b24226687e5784e216f46e40c36d866378256a805468fdf10327026d67652"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/Probes0-f32.h5"
+bytes = 4476215
+sha256 = "7cf446aa9b5abc7e219c9f924dc1932f287660c2e29d7a02582c3b7ff5919584"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/container.txt"
+bytes = 20
+sha256 = "46c3ff18ef90f0c7ec7bec5a032bfc53a21e00f9eb9d73ce51f716da05b86f81"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/meta.json"
+bytes = 591
+sha256 = "a1ef359b447c1643db507d7fc62786b53795867bf40cc9bc6b53b03d37aa1c0a"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/namelist.py"
+bytes = 1413
+sha256 = "02dd48d0264e6983b60e436f0e1fb4ab6fa2518a89774267fd9caf8606b54bf0"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/profil.txt"
+bytes = 5786
+sha256 = "d36b540668c6a15cf3a58cd9bc0c3faa953b0963da322ca3cb2d344292b10a25"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/scalars.txt"
+bytes = 187420
+sha256 = "6d7f65372fbba0bdaea404b3ae17cae4f62a2f97cc93980aa5278a74b7ddaafb"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/smilei.log"
+bytes = 7853
+sha256 = "5ac3486839ceb1ff193141d8066762922b89d1e1eab185d252f78343723ac637"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/smilei.py"
+bytes = 66529
+sha256 = "063290e98eb94b665cb094b9488109fb6a1e82125ecad0cfe600e45f78e9f8ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-Yee-yee/summary.json"
+bytes = 47628
+sha256 = "32f315c54f7e63d3c9e5fe5b049d14498b54504547240be250563357aeb39b57"

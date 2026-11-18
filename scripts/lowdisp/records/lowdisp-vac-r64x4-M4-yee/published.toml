@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/Fields0-f32.h5"
+bytes = 5106300
+sha256 = "af21ee3725bdc17473506ec4fc52b5c2c8233f0354f14feb0f4f503eea93fb0f"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/Probes0-f32.h5"
+bytes = 4519970
+sha256 = "b505f60459323248fe27b00d323a00e141ccfd128f14cec4e27644e03e48c52d"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/container.txt"
+bytes = 20
+sha256 = "5cdba02151b1f7fdba3654e6ebfb4bebb4f2df4ed5b5274045b114b6111daa5c"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/meta.json"
+bytes = 590
+sha256 = "e3d854808a75af8476f6057016f387628d7742c7dd1cb0abc08cb5e1c49cc1a5"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/namelist.py"
+bytes = 1411
+sha256 = "b47ac2e5b027f91f76256741df744639c4eee942903597c16b176a1b41417ec6"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/profil.txt"
+bytes = 5786
+sha256 = "6f18a4e9f2d7ff7cc45fa5363880e707f0a4b06c3ba11ac2d7d5c6677b5bb4b6"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/scalars.txt"
+bytes = 187420
+sha256 = "2a07431d726c5d4d0753d0149f8c092d6949567722e8d8c08295c2938314cf9c"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/smilei.log"
+bytes = 7908
+sha256 = "a5cf90ec9c8353898fb1b9fecb1203b6aff980ed6bf677032efa1c06b0697ac4"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/smilei.py"
+bytes = 66527
+sha256 = "c85b8ee38d19010bd2b255c079686134f5794003d90055020442bf65bd062f60"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r64x4-M4-yee/summary.json"
+bytes = 47688
+sha256 = "1d72b9cec919a32d4e738b5cd5efb21f6bfa4726667b5ddc2f986f1f873d12c1"

@@ -1,0 +1,72 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/ParticleBinning0.h5"
+bytes = 4671
+sha256 = "922a23ffb264f6758d4cf74799ec3539b2ee3e362a434e82447986e0156d0576"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/Probes0-f32.h5"
+bytes = 7875385
+sha256 = "253ff75fa255401b0752b0fff417638485c4dfd12f1dde76293668d370b266f1"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/TrackParticlesDisordered_born.h5"
+bytes = 339628
+sha256 = "4a03c70b703dd70c785857acdcb94e537f77d78417c1ec90902f8829d651f9d9"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/TrackParticlesDisordered_electron.h5"
+bytes = 16440
+sha256 = "b0edafb7879f73fcbecc1adcf7c6adf3ee6b3e805679b2627074fa4c80b3ad45"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/container.txt"
+bytes = 21
+sha256 = "b5389da2c6079814425fa7ae63a6a1c058f672bda22252beac6a715176ccf753"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/meta.json"
+bytes = 609
+sha256 = "55d83008754620dfa857dd49ec106c0a6b8acb7a3be0c14df60386a9f7b00447"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/namelist.py"
+bytes = 3313
+sha256 = "8d21d942f7e6948f86560eded3fbea251bd4c60d3e3ec541f79a0288fa8d5b9d"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/profil.txt"
+bytes = 5699
+sha256 = "8ac5e4c50bb02ae40d6632d8da272494c594bdedcadbd7ed1bace87efd047b81"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/scalars.txt"
+bytes = 231357
+sha256 = "d904da6a1f0f2fbc6bb11e92e751f5e7196b49645d695778403a3b10dd9fa73b"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/smilei.log"
+bytes = 9576
+sha256 = "cf5a797ef0102e3b2e87e91b41ff6d61b2f5c45c7ed523e9e0cac950242d9e0c"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/smilei.py"
+bytes = 68429
+sha256 = "ca3b5d63d2f2a6411b269f0a3802eacfaa8220f876ebee06388bfd9f427f1508"
+
+[[files]]
+path = "scripts/runs/lowdisp-pl-r96x4-Yee-yee-s0/summary.json"
+bytes = 47999
+sha256 = "1bbfa0e4a60e8a7bd84f216d6cb56001421432dcbea0c940c3c45b0e70a9a1f0"

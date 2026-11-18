@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/Fields0-f32.h5"
+bytes = 346537
+sha256 = "396ef440ce25210fe10858aae1125d0c77063c4f5c9eee2e01d7585c5f96675f"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/Probes0-f32.h5"
+bytes = 1556071
+sha256 = "0b1ce5705daefccf3fd269160ab4879928b5f64e33aa2c7928d1f1ac0cba5b09"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/container.txt"
+bytes = 19
+sha256 = "480de3b4cca4f84e8248759ea5b07a368021ec8663c794fb2b4b9e4e56568d6e"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/meta.json"
+bytes = 583
+sha256 = "6b4971d5c3e6370c779fe216ae8296ec31a6bdb87287f1a6e654e2b9c24e1926"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/namelist.py"
+bytes = 1402
+sha256 = "818ba1bc4a06be1d9ef5b951c663de03882335424a0aacd31d2d1f508c9a4fae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/profil.txt"
+bytes = 1476
+sha256 = "589f23ea45e2e27385b43ff8a17332675bac63e7fb2196f96e3693915d23b9c1"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/scalars.txt"
+bytes = 201289
+sha256 = "bd82e980c13e64f2cf2d159a7c29393df5a73ce41f2e866e0facd2e3c19c9e32"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/smilei.log"
+bytes = 7375
+sha256 = "63fc768a137149d87b40ae887379ce525a8fffbddb1780339e2b32c3392e5141"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/smilei.py"
+bytes = 66517
+sha256 = "9b840ddc4aa9a674b4823a4df487c7b02beaaf7e5927a76120529fbc258cf4ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r16x1-M4-yee/summary.json"
+bytes = 50693
+sha256 = "f80fb996b7cb023851fe0ecc4756b019bf8a48d116785d12b5f6bd7609587eaa"

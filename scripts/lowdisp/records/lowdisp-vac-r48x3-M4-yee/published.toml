@@ -1,0 +1,62 @@
+branch = "runs/lowdisp-smilei-1"
+commit = "aaf22448c7d04ce2dbee6e42ad5ca54229869916"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/Fields0-f32.h5"
+bytes = 2896847
+sha256 = "100547ca0b01bb874b32296ff81cb100ed669aaba2541e3f8b611769949ef4a6"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/Probes0-f32.h5"
+bytes = 3624295
+sha256 = "bfcd71885edf0d6f7cffdf74394d075df6418e5438212a07921478d35286a8cb"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/container.txt"
+bytes = 19
+sha256 = "d6a09403a9c86015cc06a49069245648fde3292860709f4259eb1ba193a115d9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/manifest.toml"
+bytes = 627
+sha256 = "5e27deaa7d63f48a8b231c63b4372304379b47d804cc23a3294f3224aba705ae"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/meta.json"
+bytes = 586
+sha256 = "4bf10472446388bb13a3811ee22a380aaa4f76ebae9aea615d1568c1f30597f6"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/namelist.py"
+bytes = 1405
+sha256 = "a93575012d5655cc694641233b3b6698dd2e54feeefaae12f2b125bd55f710ee"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/patch_load.txt"
+bytes = 36
+sha256 = "41389ab1305e17e1e9db4987cf7a99bbf882ce1e5dc666d3611e3ca0bac9def9"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/profil.txt"
+bytes = 4369
+sha256 = "ed934a966dc6080557a70c827f306ef589eca85ec1fe816f65d2627adf3e245b"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/scalars.txt"
+bytes = 192043
+sha256 = "81fad294dfc024555706c21ddde0d9c772dddce3ae97b86c88b4ec2c21f9d950"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/smilei.log"
+bytes = 7657
+sha256 = "44f81b62ec64e3bdd9855d42915dd0bf2679052a3113a5148bf08e49c1ce5f3b"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/smilei.py"
+bytes = 66521
+sha256 = "4921866cd2f889d93ac5fa85303604970b7c541f51e38e392289ef2219d08698"
+
+[[files]]
+path = "scripts/runs/lowdisp-vac-r48x3-M4-yee/summary.json"
+bytes = 48841
+sha256 = "d35e16292a14d9e073dfc1e9ef033219f009c4608a5e6134f636a3330918c2d3"
