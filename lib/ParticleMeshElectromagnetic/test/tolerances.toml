@@ -917,3 +917,12 @@ scale = "eps(T)·max|off| of the array; the bins change only the order in which 
 C = 64
 measured = { Float32 = 37.7, Float64 = 30.7, "Dual{Float32,3}" = 37.7 }
 status = "proposed; the largest gap is in Ex, the wake, and grows with the steps (20.9 and 33.3 eps at 80 steps for Float32 and Float64); Dual{Float32,3}'s values are Float32's bit for bit"
+
+# WP-067, the shape-compensated gather.
+
+["T-960"]
+quantity = "the sharpened copy of a sampled mode against (1 + 4β sin²(kΔx/2)) times the mode, every entry and every component (stencil); the projection of the particles' gather of each field component at 8 offsets per cell onto the mode against the stencil's transfer times the shape's closed-form lattice mean (gather)"
+scale = "eps(T) (mode amplitude 1)"
+C = 8
+measured = { stencil = 2.32, gather = 1.69 }
+status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU)"

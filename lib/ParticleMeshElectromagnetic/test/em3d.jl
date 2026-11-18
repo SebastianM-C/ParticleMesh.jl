@@ -273,7 +273,7 @@ function em3_state(::Type{T}; shape = Quadratic, record = RECORD_GROUPS, every =
     K = KernelAbstractions.zeros(backend, T, cld(capacity(s), PME.KINETIC_CHUNK))
     recorder = HistoryRecorder(backend, T, grid, em3_box(grid), EM3_KMODE, 6; record, every)
     aux = (spectral = SpectralWorkspace(backend, T, grid), φ = field(backend, T, grid))
-    return EMState(numerics, grid, T(1 // 10), (s,), (Workspace(s, grid),), em_fields(backend, T, grid), field(backend, T, grid), K,
+    return EMState(numerics, grid, T(1 // 10), (s,), (Workspace(s, grid),), em_fields(backend, T, grid), nothing, field(backend, T, grid), K,
                    recorder, (), (), aux, Ref(false))
 end
 

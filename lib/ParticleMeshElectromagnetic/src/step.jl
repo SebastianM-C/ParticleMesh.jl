@@ -200,7 +200,9 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   a stale `K`.
 - Scratch, written before it is read within a call: the species' workspaces `ws` and extras (the
   old position the push stores), the field `ρ` (the charge for the initial field, then the scratch
-  of the current filter and of the window's shift), and at N = 2 in `aux` the spectral workspace
+  of the current filter and of the window's shift), `sharpened`, the copy of E and B that the
+  particles read with a [`CompensatedGather`](@ref) (`nothing` without one; [`particle_fields`](@ref)),
+  and at N = 2 in `aux` the spectral workspace
   and the potential `φ` of the initial solve and the refill's `flags`, and the PMLs' shift scratch.
 - Configuration: the `numerics`, the `grid` (`PeriodicGrid{N}`), the time step `dt` (to time what
   the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
@@ -220,13 +222,14 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   diagnostic `kmode` and `nsteps`. A step does not read it; `step!` hands it to
   [`observe!`](@ref) unless another observer is given.
 """
-struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,A,KB,R,SU<:Tuple,MD<:Tuple{Vararg{FieldModifier}},X<:NamedTuple}
+struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:NamedTuple,GF,A,KB,R,SU<:Tuple,MD<:Tuple{Vararg{FieldModifier}},X<:NamedTuple}
     numerics::NU
     grid::G
     dt::T
     species::SP
     ws::WS
     fields::F
+    sharpened::GF
     ρ::A
     K::KB
     recorder::R
@@ -257,7 +260,8 @@ the parameters go by them), so a tuple with two of one of them is an `ArgumentEr
 """
 function with_modifiers(st::EMState, modifiers::Tuple)
     check_modifiers(modifiers)
-    return EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux, st.fresh)
+    return EMState(st.numerics, st.grid, st.dt, st.species, st.ws, st.fields, st.sharpened, st.ρ, st.K, st.recorder, st.setup, modifiers, st.aux,
+                   st.fresh)
 end
 
 # At most one of each modifier that a state finds by its type (a host check of the tuple's types).
@@ -301,7 +305,9 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
     ws = map(s -> Workspace(s, grid; append = sort_append(numerics, 0), bins = sort_bins(numerics, Val(1))), species)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = numerics.workgroupsize, every,
                                record)
-    return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
+    check_gather(numerics.gather, numerics.shape, grid)
+    fields = em_fields(backend, T, grid)
+    return EMState(numerics, grid, problem.dt, species, ws, fields, gather_scratch(numerics.gather, fields), field(backend, T, grid),
                    field(backend, T, grid), recorder, map(species_setup, problem.species), (), NamedTuple(), Ref(false))
 end
 
@@ -535,8 +541,10 @@ function initialize!(st::EMState{N}, p::EMParams; momenta_at::Symbol = :t0, dens
     add_background!(st.fields, p.E0, p.B0)
     if momenta_at === :t0
         g = Int32(guards(grid))
+        sharpen_gather!(st)
+        pf = particle_fields(st)
         for s in st.species
-            launcher(kick_kernel!, get_backend(s), wgs)(s, st.fields, numerics.pusher, numerics.shape, g,
+            launcher(kick_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g,
                                                         -s.q / s.m * st.dt / 4; ndrange = capacity(s))
         end
     end
@@ -606,7 +614,9 @@ previous step left in `K`; `nothing` observes nothing); then the module's step o
    atoms, and at a birth step releases its electrons, which from then on are pushed, deposited,
    retired and shifted as a species of the problem is;
 2. per species: store the old position as extras, push the momentum in Eⁿ, Bⁿ gathered at xⁿ on
-   each component's stagger (the pusher of the numerics) and move the particle along every
+   each component's stagger (the pusher of the numerics; with a [`CompensatedGather`](@ref) from
+   the sharpened copy, which the step writes before the ionization, whose rates and births read it
+   too) and move the particle along every
    resolved axis, xⁿ⁺¹ = xⁿ + Δt·u/γ;
 3. with a moving window (WP-028), retire the particles that crossed an x edge, before the
    current (their current would land at the opposite edge);
@@ -668,9 +678,11 @@ function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     observe!(observer, st, k)
     st.fresh[] = false                     # from here on the particles change: `K` is of the step's start
     inject_witness!(witness_frame(st), p.witness, grid, k, wgs)
+    sharpen_gather!(st)
     ionize!(ionization_frame(st), st, p, k)
+    pf = particle_fields(st)
     for s in (deposited_species(st)..., witness_species(st)...)
-        launcher(push_kernel!, get_backend(s), wgs)(s, fields, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
+        launcher(push_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
                                                     ndrange = capacity(s))
     end
     retire_x!(window, st)
