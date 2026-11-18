@@ -86,6 +86,21 @@ function leapfrog(pusher, a0, dt, nb, nend)
     return x, u
 end
 
+"The leapfrog's states (t, x at integer steps, u_y at the half steps after them) of one born electron, every step from `nb` to `nend`."
+function trace(pusher, a0, dt, nb, nend)
+    E(x, t) = (0.0, field(a0, t - x), 0.0)
+    B(x, t) = (0.0, 0.0, field(a0, t - x))
+    x = 0.0
+    u = push_momentum(pusher, (0.0, 0.0, 0.0), E(x, nb * dt), B(x, nb * dt), dt / 4)
+    ts, xs, uys, uxs = Float64[], Float64[], Float64[], Float64[]
+    for n in nb:(nend - 1)
+        u = push_momentum(pusher, u, E(x, n * dt), B(x, n * dt), -dt / 2)
+        push!(ts, n * dt); push!(xs, x); push!(uys, u[2]); push!(uxs, u[1])
+        x += dt * u[1] / lorentz_factor(u)
+    end
+    return Dict("t" => ts, "x" => xs, "uy" => uys, "ux" => uxs)
+end
+
 function study(a0, dt, levels, tab)
     nlo, nhi = floor(Int, -3TAU / dt), ceil(Int, 3TAU / dt)
     ns = collect(nlo:nhi)
@@ -135,6 +150,17 @@ function main(dir)
                     "  (physical uy rms $(round(s["physical"][:uy_rms]; sigdigits = 3)))")
             flush(stdout)
         end
+    end
+    # orbits to animate: a₀ = 1.9, births at three step times of λ₀/16's step near the central field peaks, every pusher, and the exact orbit
+    a0, dt = 1.9, grid_dt(16, 1)
+    tab = exact_tables(a0)
+    out["orbits"] = map((-3, 0, 2)) do k
+        nb = round(Int, (k * π + 0.15) / dt)
+        nend = ceil(Int, 4TAU / dt)
+        te = collect(range(nb * dt, nend * dt; length = 400))
+        ex = [exact_state(tab, nb * dt, t) for t in te]
+        Dict{String,Any}("birth" => nb * dt, "dt" => dt, "exact" => Dict("t" => te, "x" => [e.x for e in ex], "uy" => [e.uy for e in ex], "ux" => [e.ux for e in ex]),
+                         "pushers" => Dict(name => trace(P, a0, dt, nb, nend) for (name, P) in PUSHERS))
     end
     open(io -> JSON.print(io, out), joinpath(dir, "born_orbits.json"), "w")
     return dir
