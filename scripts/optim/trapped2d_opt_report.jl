@@ -208,7 +208,9 @@ function scan_figure(out, dir, sdir, results, paths, io)
             lines!(ax, cu, cv, log10.(cJ); color = c, linewidth = 2)
             scatter!(ax, cu, cv, log10.(cJ); color = c, markersize = 5)
         end
-        sidecar[key] = merge(Dict{String,Any}("u" => g["u"], "v" => g["v"], "J" => g["J"], "dark_weight" => g["dark_weight"], "xlabel" => xl, "ylabel" => yl,
+        # grid cells without a run (outside the box) are NaN in the plot and null in the sidecar
+        nonan(A) = map(x -> isnan(x) ? nothing : x, A)
+        sidecar[key] = merge(Dict{String,Any}("u" => g["u"], "v" => g["v"], "J" => nonan(g["J"]), "dark_weight" => nonan(g["dark_weight"]), "xlabel" => xl, "ylabel" => yl,
                                               "paths" => [Dict("start" => c[1], "u" => c[2], "v" => c[3], "J" => c[4]) for c in curves]), extra)
     end
     save_plot(out, "trapped2d_opt_scan", fig, sidecar)
