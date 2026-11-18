@@ -66,12 +66,15 @@ const FIELD_LAYOUT = field_layout(Val(1))
 const FIELD_LAYOUT_2D = field_layout(Val(2))
 "The stagger of ρ at N = 2, the primal nodes on both axes."
 const RHO_STAGGER_2D = (RHO_STAGGER, RHO_STAGGER)
+"The module's 3D field layout, [`field_layout`](@ref)`(Val(3))`."
+const FIELD_LAYOUT_3D = field_layout(Val(3))
 
 # The engine has two conventions for a stagger: a bare `Stagger` in its 1D calls (`gather_at`,
 # `deposit!`, `deposit_flux!`), one `Stagger` per axis in its N-axis ones. The step is written
 # once over N, so it asks for the layout here.
 "The field layout with one stagger per resolved axis for every component, as the engine's N-axis `gather_at` takes it."
 @inline gather_layout(::Val{2}) = FIELD_LAYOUT_2D
+@inline gather_layout(::Val{3}) = FIELD_LAYOUT_3D
 "The stagger of ρ as the engine's depositions take it at N: bare at N = 1, one per axis above (the primal nodes on every axis)."
 @inline rho_stagger(::Val{1}) = RHO_STAGGER
 @inline rho_stagger(::Val{2}) = RHO_STAGGER_2D

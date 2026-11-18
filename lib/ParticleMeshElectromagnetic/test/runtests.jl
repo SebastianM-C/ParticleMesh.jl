@@ -16,6 +16,7 @@ include("pml_cases.jl")        # WP-034: the PML's runs and its discrete theory
 include("window_cases.jl")     # WP-028: the moving window's problems
 include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, after window_cases.jl
 include("ionization_cases.jl") # WP-059: the field ionization's problems, after em2d_cases.jl
+include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl
 
 # The suite's files in their order; each note says what a file reuses from earlier ones. CI runs
 # them in the groups of groups.toml, in parallel jobs (ParticleMeshCore's test/groups.jl).
@@ -39,6 +40,7 @@ const TEST_FILES = [
     "em2d.jl",                # WP-024: T-350 to T-358, after determinism.jl (T-355 reuses its worker runs)
     "em2d_step.jl",           # WP-023: T-360 to T-369, after em2d.jl (its helpers) and determinism.jl (T-363's worker runs)
     "antenna.jl",             # WP-026: T-400 to T-409
+    "shaped_antenna.jl",      # WP-066: T-900 to T-908, shaped pulses (PulseShapes) on the antenna, after antenna.jl (antenna_cases.jl's analysis)
     "filter.jl",              # WP-029: T-440 to T-445, after em2d.jl and em2d_step.jl (their helpers)
     "boundaries.jl",          # WP-027: T-450 to T-457, after em2d_step.jl (its helpers) and determinism.jl (T-454's worker runs)
     "pml.jl",                 # WP-034: T-540 to T-549, after boundaries.jl (its helpers)
@@ -56,6 +58,8 @@ const TEST_FILES = [
     "ionization.jl",          # WP-059: T-770 to T-779 and T-781 to T-785, the field ionization of a dopant; its own helpers
     "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
+    "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
+    "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]

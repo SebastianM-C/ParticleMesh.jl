@@ -1,0 +1,87 @@
+branch = "runs/wp065-trapped-resolution"
+commit = "6e3183a1928849109c2288034cedaac89c103008"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/jobs.json"
+bytes = 3062
+sha256 = "e05c8b8daa44f76cb00ef83e59ce726e017c9fba7f47ee6f00566efdc3c9e8aa"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/manifest.toml"
+bytes = 6458
+sha256 = "169238b9bee52a3b7171aa925d59cf15628fb475d3e64fff9a8d03af03c67570"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E1.9-r32x1.json"
+bytes = 830
+sha256 = "f6384623546cb58b649943a8947935b7395906dd4930cf454a7c98c41f2dafba"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E1.9-r48x1.json"
+bytes = 828
+sha256 = "12ea12472339f6d2b61b8412b51743b50165b4097c1d7e376bc800b6529930cb"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E1.9-r64x1.json"
+bytes = 823
+sha256 = "e8f9b8de3d54ad944799a47f1033b8436d26a5554081d79b96a0629ed23aaeb2"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E2.175-r32x1.json"
+bytes = 877
+sha256 = "36e716ef4bb52ef36d50429dd5c4f8f0a2621cfffb3802b44fb8b24bca14238d"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E2.175-r48x1.json"
+bytes = 881
+sha256 = "0ec776f88f3c4483e90ccbe296df7c4010ddf3e879434ff6c7d965dd212b5092"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E2.175-r64x1.json"
+bytes = 878
+sha256 = "5559a58dee29a231d60d278f5efe8a4dc0ba06e24bacdc79a53f939ddc347a64"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E2.4-r32x1.json"
+bytes = 862
+sha256 = "cd2344880f4bcec3cd7654c4462e8b52b79658d822211c18ed1ee1405fc4241c"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E2.4-r48x1.json"
+bytes = 862
+sha256 = "7ea81ef3655cc12e513d3dd1f86ea293a1c78788478cc9958eed4a2273426415"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-E2.4-r64x1.json"
+bytes = 865
+sha256 = "f1c3b2aa8f704e6ec19e518154a5b27db2709fb05d3d5dcae17eac7b486653d2"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-n0.06-r32x1.json"
+bytes = 813
+sha256 = "6144876a583f12ab1f3ffd5dd8f8ed0326ef1c13c985686c9a645ba9f8ec4f69"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-n0.06-r48x1.json"
+bytes = 812
+sha256 = "08bb8b8be54a4cd7b556dd4fbcab782325f4cefb7a6993aeb30956fc6250f896"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-n0.06-r64x1.json"
+bytes = 814
+sha256 = "ceeaf86095ac4d2e52a86ac456417885306c6d16e06671ed8116c334a6736348"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-n0.085-r32x1.json"
+bytes = 879
+sha256 = "02e25f879acfddb860397af82853486c5c58387532f35aa34f5674d70c612058"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-n0.085-r48x1.json"
+bytes = 878
+sha256 = "e3cc689c56c440f1d457b4d4f61994a1bf3ded90dd8e398e4c15e7d08da03a74"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-xonly/xonly-n0.085-r64x1.json"
+bytes = 881
+sha256 = "4243616624da7a49fe9adeffdcc50204c7161c7450f9ff45bbba80b418175879"

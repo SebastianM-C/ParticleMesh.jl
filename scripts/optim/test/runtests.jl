@@ -536,10 +536,10 @@ end
 end
 
 # Tests of the WP-065 case (trapped2d_case.jl): every trapped electron at a fixed laser energy.
-# T-892 runs the case at λ₀/8 to t = 190 eleven times, a few minutes in all.
+# T-912 runs the case at λ₀/8 to t = 190 eleven times, a few minutes in all.
 include(joinpath(@__DIR__, "..", "trapped2d_case.jl"))
 
-@testset "T-890 a₀ from the fixed energy inverts laser_energy in duration and waist, with no energy derivative along either [A3, WP-065]" begin
+@testset "T-910 a₀ from the fixed energy inverts laser_energy in duration and waist, with no energy derivative along either [A3, WP-065]" begin
     E = budget(2.175)
     @test a0_for_energy(TCASE.x0[1], TCASE.x0[2]; energy = E) ≈ 2.175 rtol = 4eps()
     @test budget() == pulse_energy(1.9, 6.0, 10.0)
@@ -573,7 +573,7 @@ include(joinpath(@__DIR__, "..", "trapped2d_case.jl"))
     @test sp.ionization.density ≈ 0.0005 rtol = 4eps()
 end
 
-@testset "T-891 the objective is Δx·Δy·Σ w(γ − 1)S(x)R(u_x) over the born and the plasma's electrons alike [A3, WP-065]" begin
+@testset "T-911 the objective is Δx·Δy·Σ w(γ − 1)S(x)R(u_x) over the born and the plasma's electrons alike [A3, WP-065]" begin
     xs = [5.0, 15.0, 18.0, 30.0, 30.0, 60.0]
     us = [(8.0, 0.0, 0.0), (6.0, 1.0, 0.0), (4.0, -2.0, 0.5), (2.0, 3.0, 0.0), (10.0, 0.3, -0.2), (3.5, 0.0, 0.0)]
     ws = [1.0e-3, 2.0e-3, 5.0e-4, 7.0e-4, 3.0e-4, 1.1e-3]
@@ -654,7 +654,7 @@ end
 "The WP-065 objective at λ₀/8 read at t = 190, with a trapping weight from u_x = 0.5 to 3 that cuts through the electrons of that early time (the born ones reach u_x = 2.7, the plasma's 1.0)."
 trapped_small(x...; kw...) = trapped_objective(x...; ppl = 8, t_end = 190.0, capacity = 60_000, rise = (0.5, 3.0), fade = BCASE.fade, energy = budget(2.2), kw...)
 
-@testset "T-892 ForwardDiff through the run gives the objective's gradient in all five parameters [A3, A7, WP-065]" begin
+@testset "T-912 ForwardDiff through the run gives the objective's gradient in all five parameters [A3, A7, WP-065]" begin
     x0 = collect(TCASE.x0)
     xd = [ForwardDiff.Dual{Nothing}(x0[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5]
     Jd = trapped_small(xd...)
@@ -679,7 +679,7 @@ trapped_small(x...; kw...) = trapped_objective(x...; ppl = 8, t_end = 190.0, cap
     end
 end
 
-@testset "T-893 a finer y keeps the box, the absorbers' and the dopant's widths, and ny = 1 is WP-064's case [WP-065]" begin
+@testset "T-913 a finer y keeps the box, the absorbers' and the dopant's widths, and ny = 1 is WP-064's case [WP-065]" begin
     p1 = born_problem(; ppl = 16, t_end = 1.0)
     p2 = born_problem(; ppl = 16, t_end = 1.0, ny = 2)
     @test p2.cells == (p1.cells[1], 2 * p1.cells[2])
@@ -718,4 +718,23 @@ end
         @test q.ionization.rows === (yc - 18 * hy, yc + 18 * hy)
         @test born_numerics(ppl).absorber.cells == 12
     end
+end
+
+@testset "T-914 the case runs in Float32, with J and its derivative within 10⁻⁴ of Float64 [A8, WP-065]" begin
+    kw = (; ppl = 8, t_end = 190.0, capacity = 60_000, energy = budget(2.2), float = Float32)
+    st32 = trapped_state(TCASE.x0...; kw...)
+    @test eltype(st32.species[1].w) == Float32 && eltype(ionization_electrons(st32).w) == Float32
+    J32 = trapped_energy(st32; fade = BCASE.fade, rise = (0.5, 3.0))
+    @test J32 isa Float32
+    J64 = trapped_small(TCASE.x0...)
+    @test J32 ≈ J64 rtol = 1.0e-4                                               # 1.6·10⁻⁵ measured
+    # a Float32 dual keeps the run in Float32, and its derivative in the focus is Float64's
+    d32 = trapped_energy(trapped_state(6.0f0, 10.0f0, ForwardDiff.Dual{Nothing}(80.0f0, 1.0f0), 54.0f0, 0.072f0; kw...); fade = BCASE.fade, rise = (0.5, 3.0))
+    d64 = trapped_small(6.0, 10.0, ForwardDiff.Dual{Nothing}(80.0, 1.0), 54.0, 0.072)
+    @test d32 isa ForwardDiff.Dual{Nothing,Float32}
+    @test ForwardDiff.partials(d32)[1] ≈ ForwardDiff.partials(d64)[1] rtol = 1.0e-4
+    # a Float32 dual in the density stays Float32 through the dopant's fraction of it
+    stn = trapped_state(6.0f0, 10.0f0, 80.0f0, 54.0f0, ForwardDiff.Dual{Nothing}(0.072f0, 1.0f0); kw..., t_end = 1.0)
+    @test eltype(ionization_electrons(stn).w) == ForwardDiff.Dual{Nothing,Float32,1}
+    @test trapped_capacity(16, 1) == BCASE.capacity && trapped_capacity(64, 4) == 2_560_000
 end

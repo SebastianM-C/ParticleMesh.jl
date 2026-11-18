@@ -30,7 +30,7 @@ function n1_lines()
         foreach(i -> s.status[i] = ParticleMeshCore.FREE, DEAD_SLOTS)
         ws = Workspace(s, grid)
         sort_by_cell!(s, grid, ws)
-        push!(lines, "sort|$L|dead|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
+        push!(lines, "sort|$L|dead|$(fnv_digest(species_arrays(s)..., perm_digest(ws), ws.seg_start, ws.seg_stop))")
         for shape in SHAPES, stagger in STAGGERS
             case = "$(order(shape)),$(nameof(typeof(stagger)))"
             for mode in (Reference(), Fast())

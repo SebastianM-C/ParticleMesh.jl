@@ -59,7 +59,7 @@ copyback!(h::AbstractArray, d::AbstractArray) = (h === d || copyto!(h, d); nothi
 copyback!(h::Tuple, d::Tuple) = (foreach(copyback!, h, d); nothing)
 copyback!(h::NamedTuple, d::NamedTuple) = (foreach(copyback!, values(h), values(d)); nothing)
 copyback!(h::Species, d::Species) =
-    (foreach(f -> copyback!(getfield(h, f), getfield(d, f)), (:cell, :offset, :u, :w, :status, :count, :extras)); nothing)
+    (foreach(f -> copyback!(getproperty(h, f), getproperty(d, f)), (:cell, :offset, :u, :w, :status, :count, :extras)); nothing)
 copyback!(h::Workspace, d::Workspace) =
     (foreach(f -> copyback!(getfield(h, f), getfield(d, f)), (:key, :perm, :seg_start, :seg_stop)); nothing)
 copyback!(h, d) = nothing

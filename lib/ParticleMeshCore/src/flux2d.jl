@@ -15,13 +15,15 @@ flux_guard_width(shape::Shape, st::NTuple{N,Stagger}) where {N} = map(s -> flux_
 The species extras `deposit_flux!` reads the position before the step from, as a module
 declares them (`Species(...; extras = merge(flux_extras(T, N), more))`): for `N = 1`
 `(old_cell = Int32, old_offset = T)`, for `N = 2` one cell and one offset per axis,
-`(old_cell_1 = Int32, old_cell_2 = Int32, old_offset_1 = T, old_offset_2 = T)`. The `Int32` and
-`T` extras reuse the sort's core permutation buffers, so they add no scratch.
+`(old_cell_1 = Int32, old_cell_2 = Int32, old_offset_1 = T, old_offset_2 = T)`, and for `N = 3`
+likewise with a third axis. The `Int32` and `T` extras reuse the sort's core permutation buffers,
+so they add no scratch.
 """
 function flux_extras(::Type{T}, N::Integer) where {T}
     N == 1 && return (old_cell = Int32, old_offset = T)
     N == 2 && return (old_cell_1 = Int32, old_cell_2 = Int32, old_offset_1 = T, old_offset_2 = T)
-    throw(ArgumentError("deposit_flux! is implemented for N = 1 and N = 2, not N = $N"))
+    N == 3 && return (old_cell_1 = Int32, old_cell_2 = Int32, old_cell_3 = Int32, old_offset_1 = T, old_offset_2 = T, old_offset_3 = T)
+    throw(ArgumentError("deposit_flux! is implemented for N = 1, 2 and 3, not N = $N"))
 end
 
 has_flux_extras(s::Species{1}) = haskey(s.extras, :old_cell) && haskey(s.extras, :old_offset)
@@ -137,10 +139,13 @@ the cell frame's other nodes hold zeros, and along a component's own axis the pr
     return ((lo1, lo2), (length(Wo1), length(Wo2)), (jx, jy, jz))
 end
 
-# Atomic adds of the column-major block `v` of `M1` rows at the field index `(b1, b2)`.
+# Atomic adds of the column-major block `v` of `M1` rows at the field index `(b1, b2)`. The adds
+# are `:monotonic` (relaxed): nothing reads `J` before the kernel ends, so they need atomicity and
+# no ordering, and Atomix's default sequentially consistent adds stalled the kernel on memory
+# barriers (Nsight Compute on an RTX 5090: 28 barrier stall cycles per issued instruction, the top reason).
 @inline function atomic_add_block!(J, v::NTuple{K,Any}, b1::Int, b2::Int, ::Val{M1}) where {K,M1}
     for k in 1:K
-        @inbounds Atomix.@atomic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
+        @inbounds Atomix.@atomic :monotonic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
     end
     return nothing
 end
@@ -231,7 +236,7 @@ stagger), bins)`: `3·M₁·M₂`, three components on the `M₁ × M₂` flux s
 (`flux_bin_reach`): 108 at order 2 on nodes by cell, 75 by `NodeBins` of that shape and stagger.
 """
 flux_patch_values(shape::Shape, st::NTuple{2,Stagger}, bins = CellBins()) = 3 * prod(flux_widths(shape, st, bins))
-flux_patch_values(shape::Shape, st, bins = CellBins()) = throw(ArgumentError("flux scratch takes ρ's stagger pair at N = 2, got $st"))
+flux_patch_values(shape::Shape, st, bins = CellBins()) = throw(ArgumentError("flux scratch takes ρ's stagger, one per axis (N = 2 or 3), got $st"))
 
 """
     StencilMajor(), CellMajor()

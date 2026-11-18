@@ -80,14 +80,15 @@ end
 
 @testset "T-173 extras follow the sort [A4, WP-011]" begin
     for T in TYPES
-        # The two extras reuse the core permutation buffers: no extra scratch.
-        _, ws, grid = sorted_extras(T)
+        # The two extras reuse the core permutation buffers: no extra scratch (the gather array by
+        # array; the spare set of `swap` holds one more array per extra, T-921).
+        s, _, grid = sorted_extras(T)
         bare = test_species(T, grid, 500; seed = 13)
-        @test ParticleMeshCore.scratch_bytes(ws) == ParticleMeshCore.scratch_bytes(Workspace(bare, grid))
+        @test ParticleMeshCore.scratch_bytes(Workspace(s, grid; swap = false)) == ParticleMeshCore.scratch_bytes(Workspace(bare, grid; swap = false))
     end
     s, ws, grid = body_T173(CPU())
-    @test ParticleMeshCore.scratch_bytes(ws) ==
-          ParticleMeshCore.scratch_bytes(Workspace(test_species(Float32, grid, 40), grid)) + capacity(s) * (2 + 8)
+    @test ParticleMeshCore.scratch_bytes(Workspace(s, grid; swap = false)) ==
+          ParticleMeshCore.scratch_bytes(Workspace(test_species(Float32, grid, 40), grid; swap = false)) + capacity(s) * (2 + 8)
     for nt in (1, 4)
         d = worker_digests(nt)
         @test of_kind(d, "sort") == of_kind(INPROCESS_DIGESTS, "sort")

@@ -1,10 +1,11 @@
 """
     Workspace(species, grid; flux = nothing, flux_layout = flux_patch_layout(backend), append = nothing,
-              bins = CellBins())
+              bins = CellBins(), key_sort = key_sort_alg(backend, capacity(species)), swap = true)
 
-Scratch for one species on one grid, allocated once: the sort keys and permutation, the
+Scratch for one species on one grid, allocated once: the sort keys and the `Int32` permutation, the
 AcceleratedKernels sort workspace, one permutation buffer per element type of the core SoA
-arrays (`Int32`, `T`, `UInt8`), the buffers of the species' extras, and the per-cell segment
+arrays (`Int32`, `T`, `UInt8`), the buffers of the species' extras, with `swap` the spare set of
+the species' arrays (`spare`), and the per-cell segment
 bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the `Reference` deposition reads,
 one entry per linear bin (`prod(n)` of them; an empty bin has `seg_start = 1`, `seg_stop = 0`).
 The bins are `bins`: the cells (`CellBins()`, the default) or the first nodes of the particles'
@@ -16,20 +17,32 @@ the same element type where there is one (so `Int32`- and `T`-valued extras cost
 otherwise one new buffer per further element type, shared by the extras of that type. An empty
 extras tuple costs nothing.
 
+`swap = true` (the default) adds `spare`, a second set of every array of the species (the core
+arrays and the extras, as `SpeciesArrays`), into which the sort gathers all of them in one launch
+([`sort_by_cell!`](@ref)): a species that owns its arrays then takes the spare set as its own and
+the workspace keeps the old one as its spare, so nothing is copied back; a species over arrays it
+does not own gets them back by one copy launch. `swap = false` keeps the gather array by array
+through the shared buffers with a copy back, for half the scratch: `spare` is `nothing`.
+
+`key_sort` is the AcceleratedKernels algorithm that sorts the keys ([`key_sort_alg`](@ref) by
+default). The keys are unique, so every algorithm gives the same permutation: the choice changes
+the time, never the bits.
+
 `append = k` (an integer ≥ 0) adds the scratch of [`resort_by_cell!`](@ref) (`resort`, a
 [`ResortScratch`](@ref)), which sorts from the order of the last sort with a tail of up to `k`
 particles added behind its count; without it `resort` is `nothing` and costs nothing.
 
-`flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
+`flux = (shape, stagger)`, for `N = 2` and `N = 3`, adds the per-cell patches of the `Reference()` flux
 deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
 bin, `M_d` the flux stencil width of axis `d` in the bin's frame (`flux_bin_reach`; 5 or 6 at
 order 2 by cell, 5 at order 2 on nodes by `NodeBins` of that shape and stagger), in the array `flux_patch`,
 stored in the order `flux_layout`: `StencilMajor()`, `3·M₁·M₂ × prod(n)` with one column per
 cell, or `CellMajor()`, `prod(n) × 3·M₁·M₂`; the default is the backend's
-(`flux_patch_layout`). Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no
-flux scratch.
+(`flux_patch_layout`). For `N = 3` the patch holds one component at a time, `flux_patch_values`
+of them per bin (100 at order 2 on nodes by `NodeBins` of that shape and stagger, 180 by cell).
+Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no flux scratch.
 """
-struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS,B}
+struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,SP,FP,FS,FL,RS,B}
     key::VK
     perm::VP
     ak::AW
@@ -37,6 +50,7 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS,B}
     tmp_T::VT
     tmp_u8::VS
     tmp_extras::XT
+    spare::SP
     seg_start::VI
     seg_stop::VI
     flux_patch::FP
@@ -46,19 +60,35 @@ struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,FP,FS,FL,RS,B}
     bins::B
 end
 
+"""
+    key_sort_alg(backend, capacity)
+
+The algorithm that sorts a workspace's `Int64` keys: `AK.RadixSort()` on any backend but the CPU from
+`2^20` slots, AcceleratedKernels' `AK.Auto()` otherwise. `Auto()` switches to radix sort for
+64-bit keys only from `2^23` elements on CUDA (AcceleratedKernels 0.5); on an RTX 5090 radix sort
+of keys built like these is already 1.2× faster at `2^20`, 1.6× at `2^22` and 2.2× at `2^23`, and
+on smaller arrays the two are within a few percent. The CPU backend keeps `Auto()`, whose radix sort is a GPU kernel.
+"""
+key_sort_alg(backend, cap::Integer) = !(backend isa KernelAbstractions.CPU) && cap >= (1 << 20) ? AK.RadixSort() : AK.Auto()
+
 function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
-                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins()) where {N,T}
-    flux === nothing || N == 2 ||
-        throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
+                   flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins(),
+                   key_sort = key_sort_alg(get_backend(s), capacity(s)), swap::Bool = true) where {N,T}
+    flux === nothing || N >= 2 ||
+        throw(ArgumentError("flux scratch is for N = 2 and N = 3; the N = 1 deposit_flux! needs none"))
+    flux === nothing || flux isa Tuple{Shape,NTuple{N,Stagger}} ||
+        throw(ArgumentError("flux = (shape, stagger) with one stagger per axis (N = $N), got $flux"))
     backend = get_backend(s)
     cap = capacity(s)
+    cap <= typemax(Int32) || throw(ArgumentError("capacity $cap exceeds the Int32 permutation"))
     key = KernelAbstractions.zeros(backend, Int64, cap)
-    perm = KernelAbstractions.zeros(backend, Int, cap)
-    ak = AK.workspace(AK.sort!, key)
+    perm = KernelAbstractions.zeros(backend, Int32, cap)
+    ak = AK.workspace(AK.sort!, key; alg = key_sort)
     tmp_i32 = KernelAbstractions.zeros(backend, Int32, cap)
     tmp_T = KernelAbstractions.zeros(backend, T, cap)
     tmp_u8 = KernelAbstractions.zeros(backend, UInt8, cap)
     tmp_extras = extras_buffers(backend, cap, Tuple(values(s.extras)), (tmp_i32, tmp_T, tmp_u8))
+    spare = swap ? Ref(similar_arrays(species_data(s))) : nothing
     n = prod(grid.n)
     seg_start = KernelAbstractions.ones(backend, Int32, n)
     seg_stop = KernelAbstractions.zeros(backend, Int32, n)
@@ -67,9 +97,13 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
     patch_size = flux === nothing ? (0, 0) : flux_patch_size(flux_layout, flux_patch_values(flux..., bins), n)
     flux_patch = KernelAbstractions.zeros(backend, T, patch_size...)
     resort = append === nothing ? nothing : ResortScratch(s, n, append)
-    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, seg_start, seg_stop, flux_patch, flux, flux_layout, resort,
-                     bins)
+    return Workspace(key, perm, ak, tmp_i32, tmp_T, tmp_u8, tmp_extras, spare, seg_start, seg_stop, flux_patch, flux, flux_layout,
+                     resort, bins)
 end
+
+# A second set of arrays of the same types and sizes (contents undefined).
+similar_arrays(a::SpeciesArrays) = SpeciesArrays(map(similar, a.cell), map(similar, a.offset), map(similar, a.u), similar(a.w),
+                                                 similar(a.status), map(similar, a.extras))
 
 # One buffer per extra: the first of `pool` with the extra's element type, else a new one,
 # which joins the pool for the extras after it.
@@ -100,8 +134,9 @@ end
 function scratch_bytes(ws::Workspace)
     core = (ws.tmp_i32, ws.tmp_T, ws.tmp_u8)
     own = unique(objectid, Iterators.filter(b -> !any(c -> c === b, core), ws.tmp_extras))
+    spare = ws.spare === nothing ? 0 : sum(sizeof, flat_arrays(ws.spare[]))
     return sizeof(ws.key) + sizeof(ws.perm) + sizeof(ws.tmp_i32) + sizeof(ws.tmp_T) + sizeof(ws.tmp_u8) +
-           sum(sizeof, own; init = 0) + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + sizeof(ws.flux_patch) + AK.nbytes(ws.ak.plan) +
+           sum(sizeof, own; init = 0) + spare + sizeof(ws.seg_start) + sizeof(ws.seg_stop) + sizeof(ws.flux_patch) + AK.nbytes(ws.ak.plan) +
            resort_bytes(ws.resort)
 end
 
@@ -120,13 +155,13 @@ end
 # sorting the keys alone gives `sortperm`'s permutation, the keys being unique.
 @kernel function perm_from_keys_kernel!(perm, @Const(key), cap::Int64)
     j = @index(Global, Linear)
-    @inbounds perm[j] = Int(key[j] % cap) + 1
+    @inbounds perm[j] = Int32(key[j] % cap) + Int32(1)
 end
 
-# Sort the keys in place with AcceleratedKernels' `sort!` (the algorithm its `Auto()` picks for the
-# backend and length) and decode the permutation; `ws.key` is left sorted.
+# Sort the keys in place with AcceleratedKernels' `sort!`, with the algorithm the workspace's sort
+# plan resolved from its `key_sort`, and decode the permutation; `ws.key` is left sorted.
 function sort_keys!(ws, cap, backend, workgroupsize)
-    AK.sort!(ws.key; workspace = ws.ak)
+    AK.sort!(ws.key; alg = ws.ak.plan.alg, workspace = ws.ak)
     launcher(perm_from_keys_kernel!, backend, workgroupsize)(ws.perm, ws.key, Int64(cap); ndrange = cap)
     return nothing
 end
@@ -182,7 +217,8 @@ function permute_all!(as::Tuple, tmps::Tuple, perm, workgroupsize)
 end
 
 "Every SoA array of a species, the extras last, in the order `Species` lists them."
-species_arrays(s::Species) = (s.cell..., s.offset..., s.u..., s.w, s.status, values(s.extras)...)
+species_arrays(s::Species) = flat_arrays(species_data(s))
+flat_arrays(a::SpeciesArrays) = (a.cell..., a.offset..., a.u..., a.w, a.status, values(a.extras)...)
 
 @inline copy_each!(::Tuple{}, ::Tuple{}, j, i) = nothing
 @inline function copy_each!(d::Tuple, a::Tuple, j, i)
@@ -190,7 +226,8 @@ species_arrays(s::Species) = (s.cell..., s.offset..., s.u..., s.w, s.status, val
     return copy_each!(Base.tail(d), Base.tail(a), j, i)
 end
 
-# One work item per slot: slot `i` of every array of `dst` takes slot `perm[i]` of `src`.
+# One work item per slot: slot `i` of every array of `dst` takes slot `perm[i]` of `src`; the
+# permutation is read once for all of them.
 @kernel function gather_all_kernel!(dst, @Const(src), @Const(perm))
     i = @index(Global, Linear)
     @inbounds copy_each!(dst, src, i, perm[i])
@@ -202,15 +239,37 @@ end
 end
 
 # Every SoA array of the species, the extras included, gathered by `ws.perm` (slot `i` takes what
-# slot `ws.perm[i]` held) and copied back: in one launch each through the spare arrays of a
-# workspace built with `append`, otherwise array by array through the shared buffers.
-permute_species!(s::Species, ws::Workspace, workgroupsize) = permute_species!(s, ws, ws.resort, workgroupsize)
-function permute_species!(s::Species, ws::Workspace, r, workgroupsize)
-    a = species_arrays(s)
-    launcher(gather_all_kernel!, get_backend(s), workgroupsize)(r.spare, a, ws.perm; ndrange = capacity(s))
-    launcher(copy_all_kernel!, get_backend(s), workgroupsize)(a, r.spare; ndrange = capacity(s))
+# slot `ws.perm[i]` held). With the workspace's spare set (`swap`), a species that owns its arrays
+# is gathered in one launch into it, takes the spare set and leaves its old one as the workspace's
+# spare (no copy). A species over arrays it does not own keeps them: on the CPU one launch gathers
+# into the spare set and one copies back; on a GPU the arrays go one by one through the shared
+# buffers, which can stay in its L2 cache between the gather and the copy back (WP-041,
+# scripts/sort/gather_bench.jl: on an RTX 5090 the two-launch form took 1.2 to 2 times as long at
+# 3.8 million particles and in Float64 and duals at 0.9 million, and less below; on a 4-thread CPU
+# a third as long). Without the spare set, or for a species of other array types than the
+# workspace's (a workspace lent to another species), array by array as well. The choice reads types,
+# the backend and host references only.
+permute_species!(s::Species, ws::Workspace, workgroupsize) = permute_species!(s, ws, ws.spare, workgroupsize)
+function permute_species!(s::Species, ws::Workspace, spare::Base.RefValue{A}, workgroupsize) where {A<:SpeciesArrays}
+    a = species_data(s)
+    backend = get_backend(s)
+    (a isa A && (owns_arrays(s) || backend isa KernelAbstractions.CPU)) || return permute_species!(s, ws, nothing, workgroupsize)
+    b = spare[]
+    shares_array(flat_arrays(a), flat_arrays(b)) && return permute_species!(s, ws, nothing, workgroupsize)
+    launcher(gather_all_kernel!, backend, workgroupsize)(flat_arrays(b), flat_arrays(a), ws.perm; ndrange = capacity(s))
+    if owns_arrays(s)
+        getfield(s, :data)[] = b
+        spare[] = a
+    else
+        launcher(copy_all_kernel!, backend, workgroupsize)(flat_arrays(a), flat_arrays(b); ndrange = capacity(s))
+    end
     return s
 end
+# Whether a species' arrays and the spare set have an array in common: a borrowed species can
+# hold arrays that its owner's swap left in the spare set (a state view shares the owner's
+# extras), and gathering into them would read and write one array. Host references only.
+shares_array(a::Tuple, b::Tuple) = any(x -> any(y -> x === y, b), a)
+
 function permute_species!(s::Species{N}, ws::Workspace, ::Nothing, workgroupsize) where {N}
     for d in 1:N
         permute!(s.cell[d], ws.tmp_i32, ws.perm, workgroupsize)
@@ -232,7 +291,8 @@ Sort the particles in place by (bin, slot), with free slots last, the bin being 
 (`ws.bins`: the cell for `CellBins()`, the default, the first node of the stencil for
 `NodeBins`; `particle_bin`), and for N > 1 its column-major linear index of `linear_cell`; apply
 the one permutation to every SoA array, the module's extras included (`ws.perm[i]` is the slot
-that slot `i` held before); write the per-bin segment bounds into `ws` and the alive count into
+that slot `i` held before; with the workspace's spare set, a species that owns its arrays ends on
+the spare set and the workspace keeps its old arrays, see [`Workspace`](@ref)); write the per-bin segment bounds into `ws` and the alive count into
 `species.count`.
 Deterministic: the keys are unique, so the result does not depend on the sort algorithm, the
 backend, the thread count or `workgroupsize` (A4; T-136, T-173, T-177). `workgroupsize`

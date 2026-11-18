@@ -155,7 +155,7 @@ function engine2d_digests(be = CPU(); wgs = WG_SIZES)
     for T in TYPES, wg in wgs
         L = type_label(T)
         s, ws, grid = sorted_2d(T; workgroupsize = wg, be)
-        push!(lines, "sort2d|$L|extras|$wg|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
+        push!(lines, "sort2d|$L|extras|$wg|$(fnv_digest(species_arrays(s)..., perm_digest(ws), ws.seg_start, ws.seg_stop))")
         for shape in SHAPES, st in digest_pairs(shape)
             grid = grid2(T, guard_width(shape))
             for (ql, quantity) in (("qw", ChargeWeight()), ("qwuy", ChargeUy2()))

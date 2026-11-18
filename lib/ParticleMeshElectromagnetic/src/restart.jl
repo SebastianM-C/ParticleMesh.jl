@@ -60,7 +60,10 @@ evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(
 """
     evolved(state::EMState) -> Tuple
 
-What a run evolves, as a flat tuple of the state's own arrays (no copy), in this order:
+What a run evolves, as a flat tuple of the state's own arrays (no copy), in this order. The tuple
+is valid until the state's next sort: a state that owns its species' arrays swaps them with the
+workspace's spare set when it sorts, so a tuple held across a `step!` then holds scratch that a
+later sort overwrites; take a fresh `evolved(state)` after a step:
 
 1. per species: the cells and the offsets per axis, the momenta `u[1:3]`, the weights, the status
    and the alive count;
@@ -94,7 +97,7 @@ function species_on(s::Species{N}, a::Tuple) where {N}
     cell = ntuple(i -> a[i], Val(N))
     offset = ntuple(i -> a[N + i], Val(N))
     u = (a[2N + 1], a[2N + 2], a[2N + 3])
-    return typeof(s)(cell, offset, u, a[2N + 4], a[2N + 5], a[2N + 6], s.q, s.m, s.extras)
+    return Species(cell, offset, u, a[2N + 4], a[2N + 5], a[2N + 6], s.q, s.m, s.extras)
 end
 
 # Each `*_on(x, a)` returns `x` over the first arrays of `a` and the arrays left.
@@ -144,7 +147,7 @@ function ionization_on(fr::IonizationFrame, a::Tuple)
     core, a = species_on(fr.atoms, take(a, na)), drop(a, na)
     nx = Val(length(fr.atoms.extras))
     extras, a = NamedTuple{keys(fr.atoms.extras)}(take(a, nx)), drop(a, nx)
-    atoms = typeof(fr.atoms)(core.cell, core.offset, core.u, core.w, core.status, core.count, core.q, core.m, extras)
+    atoms = Species(core.cell, core.offset, core.u, core.w, core.status, core.count, core.q, core.m, extras)
     ne = Val(species_length(fr.electrons))
     electrons, a = species_on(fr.electrons, take(a, ne)), drop(a, ne)
     return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.row0, fr.nrows, fr.ncols, fr.ppc, a[1], fr.flags),
@@ -186,7 +189,7 @@ function on_evolved(st::EMState, a::Tuple, K, recorder, fresh::Base.RefValue{Boo
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     modifiers, aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux, fresh)
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.sharpened, st.ρ, K, recorder, st.setup, modifiers, aux, fresh)
 end
 
 """
@@ -199,7 +202,8 @@ the state's mode and length, unless one is given. So an observation of it reads 
 energy of its own particles, and a run continued from it records into its own histories. It
 shares the configuration and the scratch (workspaces, extras, `ρ`) with `state`: use one of them
 at a time. No copy of `arrays`; at N = 1 in a mode that sorts they are sorted, the identity for a
-state saved from such a mode.
+state saved from such a mode. The view borrows `arrays`: they stay valid only as long as the
+tuple does, until the next sort of the state they were taken from (see [`evolved`](@ref)).
 """
 function state_view(st::EMState, a::Tuple, recorder = empty_recorder(st.recorder))
     check_evolved(st, a)

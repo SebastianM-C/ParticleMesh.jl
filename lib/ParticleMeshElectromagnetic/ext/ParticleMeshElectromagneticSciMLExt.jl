@@ -132,7 +132,12 @@ function harness_problem(problem::EMProblem, numerics::EMNumerics, backend, tspa
     built = EMState(problem, numerics; backend)
     st = with_modifiers(built, modifiers(built.modifiers))
     initialize!(st, problem)
-    return DiscreteProblem(DiscreteFunction{true}(EMMap(st, backend, modifiers)), state_partition(st), tspan, problem; merge((; dt = 1), kwargs)...)
+    # the cache over its own arrays without owning them, so that no later sort of it (a `copyto!`
+    # into it at N = 1, a diagnostic, a run of it) swaps them for the workspaces' spare sets: its
+    # evolved arrays stay the problem's `u0` (WP-041)
+    cache = on_evolved(st, evolved(st), st.K, st.recorder, st.fresh)
+    return DiscreteProblem(DiscreteFunction{true}(EMMap(cache, backend, modifiers)), state_partition(cache), tspan, problem;
+                           merge((; dt = 1), kwargs)...)
 end
 
 """

@@ -6,12 +6,14 @@
 
 The density profile `n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x))`: background density (n_c), relative
 perturbation amplitude and wavenumber (ω₀/c); at N = 2, for a position `x::NTuple{2}`,
-`n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x[1] + p[4]·x[2]))` with the wave vector `(p[3], p[4])`. An
-isbits callable for the engine's loader, so the parameters enter through the weights (A3).
+`n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x[1] + p[4]·x[2]))` with the wave vector `(p[3], p[4])`, and at
+N = 3 likewise with `p[5]·x[3]` added and the wave vector `(p[3], p[4], p[5])`. An isbits
+callable for the engine's loader, so the parameters enter through the weights (A3).
 """
 struct CosineProfile end
 @inline (::CosineProfile)(x, p) = p[1] * (1 + p[2] * cos(p[3] * x))
 @inline (::CosineProfile)(x::NTuple{2}, p) = p[1] * (1 + p[2] * cos(p[3] * x[1] + p[4] * x[2]))
+@inline (::CosineProfile)(x::NTuple{3}, p) = p[1] * (1 + p[2] * cos(p[3] * x[1] + p[4] * x[2] + p[5] * x[3]))
 
 """
     SpeciesDescription{T}
@@ -35,7 +37,8 @@ bits of the cold loads; the first two always give a finite γ. Anything else, or
 `:maxwell_juttner` with a spread that is not isotropic and nonzero, is an `ArgumentError`. At N = 1 `mode` and `ppc` are integers and
 n(x) = density·(1 + amplitude·cos(2π·mode·x/L)); at N = 2 both are `NTuple{2,Int}`, one integer
 per axis, and n(x, y) = density·(1 + amplitude·cos(2π(mode₁·x/L₁ + mode₂·y/L₂))) on a lattice of
-`ppc₁ × ppc₂` particles per cell. A species of zero density is a set of test particles: zero
+`ppc₁ × ppc₂` particles per cell; at N = 3 both are `NTuple{3,Int}`, with the third axis' term
+`mode₃·z/L₃` added and `ppc₁ × ppc₂ × ppc₃` particles per cell. A species of zero density is a set of test particles: zero
 weight, so it carries no charge and no current.
 """
 struct SpeciesDescription{T,M}
@@ -92,16 +95,16 @@ end
 """
     EMProblem{N,T}
 
-The problem description of a periodic electromagnetic run in `N = 1` or `N = 2` dimensions, in
-A1 units (time 1/ω₀, length c/ω₀, density n_c, velocity c, fields mₑcω₀/e): the box `length`
-and number of `cells` (a number at N = 1, one per axis at N = 2), the time step `dt` and the
+The problem description of a periodic electromagnetic run in `N = 1`, `N = 2` or `N = 3`
+dimensions, in A1 units (time 1/ω₀, length c/ω₀, density n_c, velocity c, fields mₑcω₀/e): the
+box `length` and number of `cells` (a number at N = 1, one per axis at N = 2 and 3), the time step `dt` and the
 number of steps `nsteps`, the mobile `species` (a tuple of [`SpeciesDescription`](@ref);
 immobile species of uniform density are the neutralizing background and carry no particles,
 A2), the `seed` of the velocity draws, the diagnostic `kmode`, the uniform background fields
 `E0` and `B0` (three components each, zero by default), which [`initialize!`](@ref) adds to the
 fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
 not differentiable parameters, A3: the addition tests them for zero on the host), and the
-`lasers`, a tuple of [`GaussianLaser`](@ref) descriptions launched by antenna planes during
+`lasers`, a tuple of [`GaussianLaser`](@ref) or [`ShapedLaser`](@ref) descriptions launched by antenna planes during
 the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
 at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
@@ -117,8 +120,9 @@ finished its pulse before the window passes it (checked by the state). At N = 2 
 [`WitnessBunch`](@ref) (WP-047), adds test particles injected during the run whose mean energy
 gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
 a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
-without random numbers, its electrons born by weight into a species of their own. At N = 1
-`kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 it is an integer mode per axis, the wave
+without random numbers, its electrons born by weight into a species of their own. At N = 3
+the box is periodic on every axis, with no laser, window, witness or ionization (WP-042). At N = 1
+`kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
 
@@ -126,10 +130,11 @@ any [`EMNumerics`](@ref).
               window = nothing, profile = nothing, witness = nothing, ionization = nothing)
 
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
-of each at N = 2), that the cells and the particles per cell are positive, at N = 2 that
-`kmode` is not the zero mode, that lasers are given only at N = 2, and that the boundaries are
-`:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1 together with
-a `window` and the conditions above (an `ArgumentError` otherwise).
+of each at N = 2, three at N = 3), that the cells and the particles per cell are positive, at
+N = 2 and 3 that `kmode` is not the zero mode, that lasers are given only at N = 2, and that the
+boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
+together with a `window` and the conditions above, every axis `:periodic` at N = 3 (an
+`ArgumentError` otherwise).
 """
 struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB,IZ}
     name::String
@@ -154,24 +159,24 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
                    E0 = ntuple(_ -> zero(T), 3), B0 = ntuple(_ -> zero(T), 3), lasers::Tuple = (),
                    boundaries = nothing, window = nothing, profile = nothing, witness = nothing, ionization = nothing) where {T}
     N = cells isa Integer ? 1 : length(cells)
-    N in (1, 2) || throw(ArgumentError("cells = $cells: N = 1 (an integer) or N = 2 (two integers) are implemented"))
-    M = N == 1 ? Int : NTuple{2,Int}
+    N in (1, 2, 3) || throw(ArgumentError("cells = $cells: N = 1 (an integer), N = 2 or N = 3 (two or three integers) are implemented"))
+    M = N == 1 ? Int : NTuple{N,Int}
     if N == 1
         box isa Number || throw(ArgumentError("a 1D problem takes one box length, got $box"))
         kmode isa Number || throw(ArgumentError("a 1D problem takes the diagnostic wavenumber as a number, got $kmode"))
     else
-        box isa NTuple{2} || throw(ArgumentError("a 2D problem takes two box lengths, got $box"))
-        kmode isa NTuple{2,Int} || throw(ArgumentError("a 2D problem takes the diagnostic mode as two integers, got $kmode"))
-        kmode == (0, 0) && throw(ArgumentError("the diagnostic mode must not be (0, 0)"))
+        box isa NTuple{N} || throw(ArgumentError("a $(N)D problem takes $N box lengths, got $box"))
+        kmode isa NTuple{N,Int} || throw(ArgumentError("a $(N)D problem takes the diagnostic mode as $N integers, got $kmode"))
+        all(iszero, kmode) && throw(ArgumentError("the diagnostic mode must not be $kmode"))
     end
     all(>(0), cells) || throw(ArgumentError("cells = $cells must be positive"))
     for d in species
         d.mode isa M && d.ppc isa M ||
-            throw(ArgumentError("species $(d.name): mode $(d.mode) and ppc $(d.ppc) must be $(N == 1 ? "integers" : "two integers each") for N = $N"))
+            throw(ArgumentError("species $(d.name): mode $(d.mode) and ppc $(d.ppc) must be $(N == 1 ? "integers" : "$N integers each") for N = $N"))
         all(>(0), d.ppc) || throw(ArgumentError("species $(d.name): ppc = $(d.ppc) must be positive"))
     end
     isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
-    all(l -> l isa GaussianLaser, lasers) || throw(ArgumentError("lasers must be GaussianLaser descriptions, got $(map(typeof, lasers))"))
+    all(is_laser, lasers) || throw(ArgumentError("lasers must be GaussianLaser or ShapedLaser descriptions, got $(map(typeof, lasers))"))
     boundaries isa Union{Symbol,AbstractString} &&
         throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic, :open and :window per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
@@ -179,6 +184,8 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         throw(ArgumentError("boundaries = $boundaries: one of :periodic, :open and :window per axis, $N of them"))
     first(bd) in (:periodic, :window) && last(bd) !== :window ||
         throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), axis 2 :periodic or :open (the open transverse boundary)"))
+    N == 3 && any(!=(:periodic), bd) &&
+        throw(ArgumentError("boundaries = $bd: at N = 3 every axis is :periodic (open boundaries and the moving window are 2D)"))
     moving = first(bd) === :window
     moving && N != 2 && throw(ArgumentError("the moving window is implemented at N = 2 only"))
     moving == (window !== nothing) ||
@@ -223,11 +230,12 @@ Base.ndims(::EMProblem{N}) where {N} = N
 """
     Esirkepov()
 
-The charge-conserving current of an [`EMNumerics`](@ref), the default at N = 1 and N = 2: the
+The charge-conserving current of an [`EMNumerics`](@ref), the default at N = 1, 2 and 3: the
 engine's `deposit_flux!` from each particle's position before and after the move (Esirkepov's
-decomposition for the in-plane components; at N = 1 `q·w·u_{y,z}/γ` for Jy and Jz, at N = 2
-`q·w·u_z/γ` for Jz), so that with ρ deposited by the same shape the discrete continuity
-equation, and with it Gauss's law, holds to roundoff after every step (T-212, T-360).
+decomposition for the components along the resolved axes, all three at N = 3; at N = 1
+`q·w·u_{y,z}/γ` for Jy and Jz, at N = 2 `q·w·u_z/γ` for Jz), so that with ρ deposited by the
+same shape the discrete continuity equation, and with it Gauss's law, holds to roundoff after
+every step (T-212, T-360, T-950).
 """
 struct Esirkepov end
 
@@ -236,14 +244,14 @@ struct Esirkepov end
 
 The current choice of an [`EMNumerics`](@ref) that deposits no current: the step pushes the
 particles through the fields and solves Maxwell's equations with J = 0. For prescribed-field
-runs and test particles at N = 2; the 1D step always deposits the current and refuses it.
+runs and test particles at N = 2 and 3; the 1D step always deposits the current and refuses it.
 """
 struct NoCurrent end
 
 """
     EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
                current = Esirkepov(), filter = BinomialFilter(0), absorber = nothing, back_absorber = nothing, headroom = 1/4,
-               resort = false, node_bins = true)
+               resort = false, node_bins = true, gather = nothing)
 
 The numerical implementation, chosen by type (A10): the shape order, the deposition mode
 (`Reference()`, sorted and bitwise deterministic, or `Fast()`, atomics), the pusher, the mesh
@@ -253,7 +261,7 @@ a kernel accepts depends on the backend, the kernel and the element type (on the
 backend the 2D flux deposition with `Dual{Float32,3}` and the quadratic shape takes at most 983
 work-items, as PoCL reported it, #297), and a launch it does not fit stops the step with an
 `ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
-N = 1 and N = 2, or [`NoCurrent`](@ref)`()` at N = 2 only (prescribed fields); a state refuses
+N = 1, 2 and 3, or [`NoCurrent`](@ref)`()` at N = 2 and 3 (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
@@ -268,15 +276,19 @@ counted, [`window_lost`](@ref)); other states ignore it. `resort` sorts the part
 `Reference()` step from their order of the last sort (the engine's `resort_by_cell!`, WP-041),
 with the particles a window refill or a birth added since merged in; `false` sorts every key
 anew (`sort_by_cell!`). Both give the same bits. The default is `false`: on the CPU the full sort
-of the keys is as fast (WP-041's step timings), and `true` adds a second copy of every particle
-array per sorted species to the scratch. `node_bins` groups the particles of the sort by
+of the keys is as fast (WP-041's step timings), and on an RTX 5090 the sort from the last order
+is about 10 % faster in Float32 at 0.9 and 3.8 million particles but 10 to 20 % slower in Float64
+and duals at 3.8 million (`scripts/sort/gather_bench.jl`). `node_bins` groups the particles of the sort by
 the first node of their stencil with the shape and ρ's stagger (the engine's `NodeBins`, WP-041)
 instead of by cell: at order 2 the `Reference()` deposits then walk 3 bins per axis where they
 walk 4 cells, and the 2D flux patch holds 5 × 5 nodes per bin where a cell's holds 6 × 6; the
 current changes at roundoff (another order of summation), deterministic either way. On the
 window's x axis, which is not periodic, the bin is the cell. The ionization's atoms keep cells.
+`gather` is what the particles read: `nothing`, the grid's E and B, or a [`CompensatedGather`](@ref),
+a copy sharpened along axis 1 that undoes the shape's mean loss of field at a wavenumber, the
+laser's by default (WP-067); the mesh solve, the current and the diagnostics read the grid's.
 """
-struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
+struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K,GA}
     shape::S
     mode::M
     pusher::P
@@ -289,13 +301,18 @@ struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K}
     headroom::Float64
     resort::Bool
     node_bins::Bool
+    gather::GA
 end
 
 function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), solver = Yee(), workgroupsize = nothing,
                     current = Esirkepov(), filter::BinomialFilter = BinomialFilter(0), absorber = nothing, back_absorber = nothing,
-                    headroom::Real = 1 / 4, resort::Bool = false, node_bins::Bool = true)
+                    headroom::Real = 1 / 4, resort::Bool = false, node_bins::Bool = true,
+                    gather = nothing)
     headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
-    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort, node_bins)
+    gather === nothing || gather isa CompensatedGather ||
+        throw(ArgumentError("gather = $gather: a state reads the grid's fields (nothing) or a CompensatedGather(...)"))
+    return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort, node_bins,
+                      gather)
 end
 
 """
@@ -351,7 +368,7 @@ end
 The parameters of a run (A3), everything of the problem description that [`initialize!`](@ref)
 and [`step!`](@ref) read as numbers, in the state's element type `T`:
 
-- `lasers`: the [`GaussianLaser`](@ref)s, read by the antennas' source in every step;
+- `lasers`: the [`GaussianLaser`](@ref)s and [`ShapedLaser`](@ref)s, read by the antennas' source in every step;
 - `species`: one [`SpeciesParams`](@ref) per mobile species, read by the initial load and by the
   moving window's refill;
 - `profile`: the [`DensityRamp`](@ref) of a moving-window plasma, or `nothing`, read where the
@@ -414,7 +431,7 @@ Base.eltype(::EMParams{T}) where {T} = T
 
 # The wave vector of a cosine perturbation of integer `mode` per axis on a box of `box`.
 wavevector(mode::Integer, box::T) where {T} = (2 * T(π) * mode / box,)
-wavevector(mode::NTuple{2,Int}, box::NTuple{2,T}) where {T} = ntuple(a -> 2 * T(π) * mode[a] / box[a], Val(2))
+wavevector(mode::NTuple{N,Int}, box::Tuple{T,Vararg{T}}) where {N,T} = ntuple(a -> 2 * T(π) * mode[a] / box[a], Val(N))
 
 """
     params(problem::EMProblem) -> EMParams

@@ -12,6 +12,7 @@ include("recorded_2d.jl")     # WP-037: the 2D Reference digests recorded on a c
 include("spectral_cases.jl")
 include("momenta_cases.jl")
 include("engine3d_cases.jl")  # WP-042: the 3D grids, species, loads and digests of engine3d.jl and the thread-count workers
+include("flux3d_cases.jl")    # WP-042: the 3D flux cases and digests of flux3d.jl, gpu.jl and the thread-count workers
 include("recorded_3d.jl")     # WP-042: the solve digests at N = 1 and 2 and the 3D engine digests recorded on a commit (T-312, T-875)
 include("workers.jl")         # the thread-count worker runs and the helpers that read them
 include("groups.jl")          # the CI test groups (PM_TEST_GROUP)
@@ -29,9 +30,11 @@ const TEST_FILES = [
     "flux2d.jl",        # WP-020: T-300 to T-309, the flux deposition at N = 2
     "resort.jl",        # WP-041: T-850, T-851, the sort from the order of the last sort
     "bins.jl",          # WP-041: T-860 to T-864, nearest-node bins (after resort.jl, whose helpers it uses)
+    "swap.jl",          # WP-041: T-920 to T-924, the gather into swapped spare arrays (after resort.jl, whose helpers it uses)
     "spectral.jl",      # WP-021: T-310 to T-316, the periodic solve
     "momenta.jl",       # WP-033: T-530 to T-536, T-538, the momentum distributions (after engine.jl, whose worker it reads)
     "engine3d.jl",      # WP-042: T-870 to T-875, the engine at N = 3 outside the flux deposition
+    "flux3d.jl",        # WP-042: T-940 to T-945 and T-947 to T-949, the flux deposition at N = 3
     "input_checks.jl",  # T-340 to T-342, T-344, T-345: input checks, the Float32 draw, the Fast() fallback sort (#194, #195, #196, #201)
     "launch.jl",        # T-500, T-501: a fixed workgroupsize a kernel cannot take is refused by name (#297); T-502, the tuned one (#375)
     "switch.jl",        # WP-013: T-199, the GPU switch

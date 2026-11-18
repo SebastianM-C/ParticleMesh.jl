@@ -13,10 +13,12 @@ groups = [
     # the 2D step and its boundaries, each file after the ones whose helpers it uses
     ["determinism.jl", "em2d.jl", "em2d_step.jl", "filter.jl", "boundaries.jl", "pml.jl"],
     # the loads, the antenna, the moving window and the LWFA gradient
-    ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "window.jl", "pml_back.jl", "lwfa_gradient.jl",
+    ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "shaped_antenna.jl", "window.jl", "pml_back.jl", "lwfa_gradient.jl",
      "witness.jl", "tunables.jl"],
     # the gradient, the harness and the state layer built on it, and the quality checks
     ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "recorder.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
     # the field ionization, which reuses no other file, and its levels' rate laws
-    ["ionization.jl", "barrier_suppression.jl", "resort_step.jl"],
+    ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "gather.jl"],
+    # the periodic 3D step, which reuses no other file
+    ["em3d_step.jl"],
 ]

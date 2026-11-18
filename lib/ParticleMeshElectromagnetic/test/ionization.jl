@@ -694,12 +694,12 @@ const ION_NAMES = ("a0", "density", "prefactor", "start")
 """
 The two objectives of T-778 at `x = (a0, density, prefactor, start)`, after `ion_window`'s 110
 steps: the charge born (the electrons' summed weight, n_c·cells) and the born electrons' kinetic
-energy Σ w·(γ − 1). No electron has left the window.
+energy Σ w·(γ − 1). No electron has left the window. `gather` is the particles' gather (WP-067).
 """
-function ion_objectives(x, mode = Reference(); be = CPU())
+function ion_objectives(x, mode = Reference(); be = CPU(), gather = nothing)
     T = promote_type(map(typeof, x)...)
     prob = ion_window(T; a0 = x[1], density = x[2], prefactor = x[3], start = x[4])
-    st = ion_state(prob; mode, be)
+    st = ion_state(prob; mode, be, gather)
     run!(st, params(prob), prob.nsteps)
     el = born(st)
     ionization_lost(st) == 0 || error("a birth found no slot")

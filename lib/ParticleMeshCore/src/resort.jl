@@ -15,11 +15,10 @@ last in slot order); the tail of up to `append` slots behind the last sort's cou
 its permutation, the sortperm workspace and its per-cell bounds; the scan workspaces; the alive
 count of the last sort (`sorted_count`, on the device), whether there was one (`ordered`, on
 the host), the status array of the species it sorted (`sorted_on`, compared by `===`) and the
-number of calls that sorted from the last order instead of in full (`resorts`, on the host); and `spare`, a second copy of every particle array, into which both sorts gather the
-whole species in one launch and from which one launch copies it back (two launches where the
-gather array by array through the shared buffers takes two per array).
+number of calls that sorted from the last order instead of in full (`resorts`, on the host). The
+arrays move by the workspace's gather, as in `sort_by_cell!`.
 """
-struct ResortScratch{MI,VI,VK,VP,AT,AC,AS,SP}
+struct ResortScratch{MI,VI,VK,VP,AT,AC,AS}
     hist::MI
     cnt::VI
     cum::VI
@@ -35,7 +34,6 @@ struct ResortScratch{MI,VI,VK,VP,AT,AC,AS,SP}
     tail_stop::VI
     scan_cells::AC
     scan_slots::AS
-    spare::SP
     append::Int
     ordered::Base.RefValue{Bool}
     sorted_on::Base.RefValue{Any}
@@ -55,7 +53,7 @@ function ResortScratch(s::Species{N}, ncell::Integer, append::Integer) where {N}
     return ResortScratch(z(3^N, ncell), cnt, cum, KernelAbstractions.ones(backend, Int32, ncell), z(ncell), free, free_cum, z(1),
                          tail_key, tail_perm, tail_ak, KernelAbstractions.ones(backend, Int32, ncell), z(ncell),
                          AK.workspace(AK.accumulate!, +, cum, cnt), AK.workspace(AK.accumulate!, +, free_cum, free),
-                         map(similar, species_arrays(s)), Int(append), Ref(false), Ref{Any}(nothing), Ref(0))
+                         Int(append), Ref(false), Ref{Any}(nothing), Ref(0))
 end
 
 resort_bytes(::Nothing) = 0
@@ -63,7 +61,7 @@ function resort_bytes(r::ResortScratch)
     arrays = (r.hist, r.cnt, r.cum, r.new_start, r.new_stop, r.free, r.free_cum, r.sorted_count, r.tail_key, r.tail_perm,
               r.tail_start, r.tail_stop)
     plans = (r.scan_cells.plan, r.scan_slots.plan, r.tail_ak === nothing ? nothing : r.tail_ak.plan)
-    return sum(sizeof, arrays) + sum(sizeof, r.spare) + sum(p -> p === nothing ? 0 : AK.nbytes(p), plans)
+    return sum(sizeof, arrays) + sum(p -> p === nothing ? 0 : AK.nbytes(p), plans)
 end
 
 # After a full sort: the order is known, of these arrays, and its count is the start of the next tail.
@@ -213,7 +211,7 @@ end
             r = hist[k, Ls]
             hist[k, Ls] = r + Int32(1)
             p = new_start[linear_cell(cn, n)] + r
-            1 <= p <= length(perm) && (perm[p] = Int(i))   # always, within the precondition
+            1 <= p <= length(perm) && (perm[p] = Int32(i))   # always, within the precondition
         end
     end
 end
@@ -229,7 +227,7 @@ end
         if L <= ncell
             ntail = tail_stop[L] - tail_start[L] + Int32(1)
             p = new_start[L] + cnt[L] - ntail + (Int32(q) - tail_start[L])
-            1 <= p <= length(perm) && (perm[p] = Int(sorted_count[1]) + j)
+            1 <= p <= length(perm) && (perm[p] = sorted_count[1] + Int32(j))
         end
     end
 end
@@ -238,7 +236,7 @@ end
 @kernel function free_perm_kernel!(perm, @Const(status), @Const(free_cum), @Const(count))
     i = @index(Global, Linear)
     @inbounds if status[i] != ALIVE
-        perm[Int(count[1]) + Int(free_cum[i])] = i
+        perm[Int(count[1]) + Int(free_cum[i])] = Int32(i)
     end
 end
 
@@ -300,7 +298,7 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     copyto!(ws.seg_start, r.new_start)
     copyto!(ws.seg_stop, r.new_stop)
     permute_species!(s, ws, workgroupsize)
-    copyto!(r.sorted_count, s.count)
+    note_sorted!(r, s)                     # the arrays the species now holds (swapped, with `ws.spare`)
     r.resorts[] += 1
     return s
 end

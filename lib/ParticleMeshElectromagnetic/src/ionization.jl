@@ -548,7 +548,8 @@ and the births that found no slot added to `lost`. `nothing` without a frame.
 """
 ionize!(::Nothing, st, p, k) = nothing
 function ionize!(fr::IonizationFrame, st::EMState, p::EMParams, k::Integer)
-    (; numerics, grid, fields, dt) = st
+    (; numerics, grid, dt) = st
+    fields = particle_fields(st)
     wgs = numerics.workgroupsize
     a, e = fr.atoms, fr.electrons
     be = get_backend(a)

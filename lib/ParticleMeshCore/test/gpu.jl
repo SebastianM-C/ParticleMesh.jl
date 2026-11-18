@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -93,6 +93,40 @@ else
 
     @testset "T-876 the engine's N = 3 fill and fold, load, sort, gather and deposition on CUDA [A7, A8, WP-042]" begin
         rerun_on(GPU, (("T-871", body_T871), ("T-872", body_T872), ("T-873", body_T873)))
+    end
+
+    @testset "T-946 the 3D flux on CUDA: continuity, the sums, Fast against Reference, Reference bitwise across reruns, launch shapes and planes, and Reference against the sums in the stated order to roundoff [A4, A7, A8, WP-042]" begin
+        rerun_on(GPU, (("T-940", body_T940), ("T-941", body_T941), ("T-944", body_T944)))
+        runs = [flux3d_digests(GPU; wgs = GPU_WG_SIZES) for _ in 1:2]
+        @test runs[1] == runs[2]
+        for (case, digests) in by_case(runs[1])
+            @test length(digests) == length(GPU_WG_SIZES)
+            @test allequal(digests)
+        end
+        for T in TYPES
+            runs = [continuity_case_3d(T, Reference(), Quadratic, NODES3; bins = NodeBins(Quadratic, NODES3), planes, be = GPU)
+                    for planes in (nothing, 1, 5)]
+            @test all(r -> same_bits(r.Jx, runs[1].Jx) && same_bits(r.Jy, runs[1].Jy) && same_bits(r.Jz, runs[1].Jz), runs)
+            # the sums in the stated order, by hand on the host: T-945 holds the CPU's Reference to
+            # them bit for bit, but the device's arithmetic is not the host's (it does not give the
+            # host's bits on an RTX 5090, probably from fused multiply-adds, see tolerances.toml),
+            # so here they agree per node within T-944's roundoff bound, guards folded
+            for (shape, st, bins) in ((Quadratic, NODES3, NodeBins(Quadratic, NODES3)), (Quadratic, (Node(), Node(), Center()), CellBins()))
+                c = continuity_case_3d(T, Reference(), shape, st; bins, be = GPU)
+                H = reference_by_hand_3d(c, shape, st, bins)
+                A = flux_abs_3d(c.s, shape, st, c.grid, c.dt, bins)
+                foreach(a -> fold_guards!(a, c.grid), (c.Jx, c.Jy, c.Jz, H..., A...))
+                worst, zeros_ok, bitwise = 0.0, true, true
+                for (d, J) in enumerate((c.Jx, c.Jy, c.Jz)), a in eachindex(J)
+                    bitwise &= same_bits(J[a:a], H[d][a:a])
+                    A[d][a] == 0 && (zeros_ok &= J[a] == 0 && H[d][a] == 0; continue)
+                    worst = max(worst, absmax(J[a] - H[d][a]) / (eps(basetype(T)) * A[d][a]))
+                end
+                @info "T-946 the device's Reference against the host's sums in the stated order" T bins bitwise worst
+                @test zeros_ok
+                @test record!("T-946 order", T, worst, GPU) <= tolC("T-944")
+            end
+        end
     end
 
     @testset "T-192 Reference mode of the engine on CUDA is bitwise across reruns and launch shapes [A4, WP-013]" begin
@@ -219,6 +253,29 @@ else
             record!("T-198 sort host bytes", T, maximum(r -> r[3].sort_host, rows), GPU)
             record!("T-198 device bytes", T, maximum(r -> r[3].dev, rows), GPU)
             record!("T-198 host bytes", T, maximum(r -> r[3].host, rows), GPU)
+        end
+    end
+
+    @testset "T-891 on CUDA from 2^20 slots the workspace sorts its keys by radix sort, with the merge sort's bits [A4, WP-041]" begin
+        # The keys are unique, so the radix sort (key_sort_alg's choice here) and the merge sort
+        # (AcceleratedKernels' Auto below 2^23 keys) must give the same permutation; one sort of
+        # a species whose slots are not in cell order, every array compared.
+        AK = ParticleMeshCore.AK
+        n = (128, 96)
+        cap = 1 << 20
+        for T in (Float32, Float64)
+            grid = PeriodicGrid(n, (basetype(T)(1 // 2), basetype(T)(1 // 2)), 1)
+            host = resort_species(T, n, cap, 3 * cap ÷ 4; seed = 7)
+            a, b = todev(GPU, host), todev(GPU, host)
+            wa = Workspace(a, grid)
+            wb = Workspace(b, grid; key_sort = AK.MergeSort())
+            @test wa.ak.plan.alg isa AK.RadixSort && wb.ak.plan.alg isa AK.MergeSort
+            sort_by_cell!(a, grid, wa); sort_by_cell!(b, grid, wb)
+            KernelAbstractions.synchronize(GPU)
+            @test all(same_bits(Array(x), Array(y)) for (x, y) in zip(species_arrays(a), species_arrays(b)))
+            @test Array(a.count) == Array(b.count)
+            @test Array(wa.perm) == Array(wb.perm) && Array(wa.seg_start) == Array(wb.seg_start) && Array(wa.seg_stop) == Array(wb.seg_stop)
+            @test Array(wa.perm) != collect(1:cap)
         end
     end
 

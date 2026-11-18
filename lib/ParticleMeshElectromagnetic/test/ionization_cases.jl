@@ -62,9 +62,9 @@ function ion_window(::Type{T}; nsteps = 110, a0 = 1, density = T(1) / 200, prefa
                      profile = DensityRamp(; vacuum = T(24), ramp = T(8)), ionization = ion)
 end
 
-"The initialized state of an ionization problem with the charge-conserving current (`current = NoCurrent()` for prescribed fields; `absorber` for an open edge)."
-function ion_state(prob; mode = Reference(), workgroupsize = nothing, current = Esirkepov(), absorber = nothing, be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current, absorber); backend = be)
+"The initialized state of an ionization problem with the charge-conserving current (`current = NoCurrent()` for prescribed fields; `absorber` for an open edge; `gather` the particles' gather)."
+function ion_state(prob; mode = Reference(), workgroupsize = nothing, current = Esirkepov(), absorber = nothing, be = CPU(), gather = nothing)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current, absorber, gather); backend = be)
     initialize!(st, prob)
     return st
 end

@@ -229,8 +229,29 @@ jobs:
         run: julia --project=scripts scripts/lwfa/test/runtests.jl
       - name: Tests of the optimization scripts
         run: julia --project=scripts scripts/optim/test/runtests.jl
+      - name: Tests of the run-data tools
+        run: julia --project=scripts scripts/rundata/test/runtests.jl
       - name: Goal links, test tags and engine dependencies
         run: julia --project=scripts scripts/trace/build.jl --check
+  report-size:
+    name: Report size budget
+    # F3: files added or changed under reports/ stay within 1 MB each and 5 MB in all; a run's bulk
+    # data goes to its run branch (scripts/rundata/run-data.sh). Pushes to main pass.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Compare the pull request with its base
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "not a pull request"
+            exit 0
+          fi
+          # The pull_request checkout is the merge commit; its first parent is the base branch.
+          bash scripts/rundata/report-budget.sh HEAD^1 HEAD
   leak-scan:
     name: Reject private infrastructure references
     runs-on: ubuntu-latest
@@ -275,13 +296,13 @@ jobs:
     # The review depends on the tests: it starts when every CI job above has succeeded (the `Julia pre`
     # groups may fail, they continue on error), so a lens always has the test result of the commit it
     # reviews.
-    needs: [test, reactant, manifests, trace, leak-scan]
+    needs: [test, reactant, manifests, trace, leak-scan, report-size]
     # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
     # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
     # The needed results are written out behind `!cancelled()`: without a status function GitHub adds
     # `success()`, which looks at the whole chain of needed jobs, so the test groups that a pull
     # request without code paths skips (the `julia` job, behind `test`) would skip the review too (#445).
-    if: ${{ !cancelled() && needs.test.result == 'success' && needs.reactant.result == 'success' && needs.manifests.result == 'success' && needs.trace.result == 'success' && needs.leak-scan.result == 'success' && github.event_name == 'pull_request' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
+    if: ${{ !cancelled() && needs.test.result == 'success' && needs.reactant.result == 'success' && needs.manifests.result == 'success' && needs.trace.result == 'success' && needs.leak-scan.result == 'success' && needs.report-size.result == 'success' && github.event_name == 'pull_request' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -289,16 +310,17 @@ jobs:
       lenses: ${{ steps.pick.outputs.lenses }}
       tier2: ${{ steps.tier.outputs.files }}
     steps:
+      # A shallow checkout and then the base branch's history (--unshallow completes the PR's too),
+      # instead of fetch-depth 0, which also downloads every run branch.
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
       - name: Numerics lens only when code, goals or the architecture change
         id: pick
         env:
           BASE: ${{ github.event.pull_request.base.ref }}
         run: |
-          git fetch --no-tags origin "$BASE"
+          git fetch --no-tags --unshallow origin "$BASE"
           if git diff --name-only "origin/$BASE...HEAD" | grep -qE '^((src|lib|test|benchmark|scripts|docs/goals)/|docs/plan/architecture-draft\.md$)'; then
             echo 'lenses=["code","numerics"]' >> "$GITHUB_OUTPUT"
           else
@@ -353,16 +375,16 @@ jobs:
       matrix:
         lens: ${{ fromJSON(needs.lenses.outputs.lenses) }}
     steps:
+      # As in `lenses`: the base branch's history without the run branches.
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
       - name: Reviewer brief and contract from the base branch
         env:
           BASE: ${{ github.event.pull_request.base.ref }}
           LENS: ${{ matrix.lens }}
         run: |
-          git fetch --no-tags origin "$BASE"
+          git fetch --no-tags --unshallow origin "$BASE"
           git show "origin/$BASE:CLAUDE.md" > "$RUNNER_TEMP/contract.md"
           if ! git show "origin/$BASE:.claude/agents/$LENS-reviewer.md" > "$RUNNER_TEMP/brief.md" 2>/dev/null; then
             # A brief that does not exist on the base branch yet is being introduced by this PR; it needs
@@ -445,7 +467,7 @@ jobs:
 
   gate:
     name: Review gate
-    needs: [test, reactant, manifests, trace, leak-scan, lenses, lens]
+    needs: [test, reactant, manifests, trace, leak-scan, report-size, lenses, lens]
     if: ${{ always() && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
@@ -455,7 +477,7 @@ jobs:
     steps:
       - name: No review without passing tests
         # A failed or cancelled CI job skips the lenses, which must not read as a draft's skipped review.
-        if: ${{ needs.test.result != 'success' || needs.reactant.result != 'success' || needs.manifests.result != 'success' || needs.trace.result != 'success' || needs.leak-scan.result != 'success' }}
+        if: ${{ needs.test.result != 'success' || needs.reactant.result != 'success' || needs.manifests.result != 'success' || needs.trace.result != 'success' || needs.leak-scan.result != 'success' || needs.report-size.result != 'success' }}
         run: |
           echo "a CI job did not pass, so no review ran; fix the failing job and push, or re-run the failed jobs" >&2
           exit 1

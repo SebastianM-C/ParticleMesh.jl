@@ -728,3 +728,24 @@ end
         @test sum(Array(st.K)) ≈ sum(Array(fast.K)) rtol = 1e-12                    # the cache is of the restored particles
     end
 end
+
+# WP-041: a state view's species borrow the arrays they are given and share the extras (per-step
+# scratch) of the state they view, which that state's sort swaps into its workspace's spare set; a
+# sort of the view then gathers array by array instead of into the spare set it shares.
+@testset "T-927 a state and a state view of a copy of it, stepped one after the other, each give the bits of a lone run: 1D, 2D with two species, PMLs, window and witness bunch, and ionization [A4, A8, WP-041]" begin
+    for S in TYPES, (name, prob, num) in (("landau", case_problem("landau", S; HARNESS_KW...)...),
+                                         ("full", restart_full(S; species = 2)...),
+                                         ("ionization", ion_window(S), EMNumerics(; current = Esirkepov())))
+        p = params(prob)
+        n = min(prob.nsteps, 60)
+        lone, owner = (initialize!(EMState(prob, num; backend), prob) for _ in 1:2)
+        sv = state_view(owner, map(copy, evolved(owner)))
+        for k in 1:n
+            order = isodd(k) ? (owner, sv) : (sv, owner)
+            foreach(st -> step!(st, p, k), order)
+            step!(lone, p, k)
+        end
+        @test differences(lone, sv, 0) == String[]
+        @test differences(lone, owner, 0) == String[]
+    end
+end
