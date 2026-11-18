@@ -14,8 +14,13 @@
 #       at the best optimum of <dir>'s starts: a plain run and one with duals at ppl×ny in the
 #       optimization's element type, and a Float64 run with duals and Float64 central differences
 #       at a relative step 2^-power in the four free directions at fdppl×fdny, into <dir>/check/
+#   julia +1.13 --project=scripts -t 2 scripts/optim/trapped2d_opt.jl scan <dir> [n=11 shard=1/1]
+#       plain runs on n×n grids for figures of J around the paths: the plane of each start's path
+#       and every pair of free parameters over the box through the best optimum, into <dir>/scan/
+#       (`shard=k/m` runs every m-th job, for m processes on one card)
 #   julia +1.13 --project=scripts scripts/optim/trapped2d_opt.jl report <out dir> <run dir>
-#       trapped2d_opt.png + .json and tables.md into <out dir>
+#       trapped2d_opt.png (paths) and trapped2d_opt_scan.png (J around them, when scanned), each
+#       with its JSON sidecar, and tables.md into <out dir>
 #
 # Every point the optimizer asks for, for its value or for its gradient, is one run with duals
 # in the four free directions, which gives both: the value and the gradient L-BFGS-B asks for
@@ -288,12 +293,119 @@ end
 
 const CHECK_DEFAULTS = (ppl = 48, ny = 3, fdppl = 32, fdny = 2, power = 13)
 
-if length(ARGS) >= 1 && ARGS[1] in ("opt", "check")
-    # the backend loads at top level, so that the runs that follow see its methods (world age)
-    let o = parse_options(ARGS[2:end], OPT_DEFAULTS)[1]
-        ARGS[1] == "opt" && o["backend"] == "cuda" && opt_backend("cuda")
+"""
+    path_plane(zs, zopt) -> (; origin, e1, e2, s, t, residual)
+
+The plane through `zopt` that holds most of the path `zs` (points in z): its two leading
+directions of the path's offsets from `zopt` (the leading eigenvectors of Σ d·dᵀ over the offsets
+d; a path that moves along one line gets a second direction orthogonal to it, started from the
+coordinate the first one holds least of), each point's
+coordinates `s`, `t` in it, and the largest distance of a point from the plane.
+"""
+vdot(a, b) = sum(a .* b)
+vnorm(a) = sqrt(vdot(a, a))
+
+"The leading unit eigenvector of the symmetric matrix `C` orthogonal to the unit vectors `against`, by power iteration from the coordinate axis that is least along them."
+function leading_direction(C, against)
+    proj(v) = (w = copy(v); for a in against; w .-= vdot(w, a) .* a; end; w)
+    n = size(C, 1)
+    v = proj([Float64(i == argmin([sum(abs2(a[i]) for a in against; init = 0.0) for i in 1:n])) for i in 1:n])
+    v ./= vnorm(v)
+    for _ in 1:500
+        w = proj(C * v .+ 1.0e-3 * tr_of(C) .* v)                # the shift keeps a zero eigenvalue's direction from collapsing
+        nw = vnorm(w)
+        nw > 0 || break
+        w ./= nw
+        vnorm(w .- v) < 1.0e-13 && (v = w; break)
+        v = w
     end
-    if ARGS[1] == "check"
+    return v
+end
+tr_of(C) = sum(C[i, i] for i in axes(C, 1)) + eps()
+
+function path_plane(zs, zopt)
+    D = [z .- zopt for z in zs]
+    C = sum(d * d' for d in D; init = zeros(length(zopt), length(zopt)))
+    e1 = leading_direction(C, Vector{Float64}[])
+    e2 = leading_direction(C, [e1])
+    s = [vdot(z .- zopt, e1) for z in zs]
+    t = [vdot(z .- zopt, e2) for z in zs]
+    residual = maximum(vnorm(z .- zopt .- s[k] .* e1 .- t[k] .* e2) for (k, z) in enumerate(zs); init = 0.0)
+    return (; origin = collect(zopt), e1, e2, s, t, residual)
+end
+
+"""
+    scan_jobs(dir, o) -> Vector of (id, free, spec)
+
+Plain runs for the figures of J around the paths: for every start, an `o["n"]`×`o["n"]` grid on
+the plane of its path ([`path_plane`](@ref)) over the path's extent and a quarter more on each
+side (points outside the box left out); and for every pair of free parameters, a grid over the
+whole box in the two with the other two at the best start's optimum.
+"""
+function scan_jobs(dir, o)
+    results = load_results(dir)
+    isempty(results) && error("no start in $dir has a result")
+    n = o["n"]
+    lb, ub = TRAPPED_BOX.lo ./ TRAPPED_BOX.scale, TRAPPED_BOX.hi ./ TRAPPED_BOX.scale
+    jobs = Tuple{String,Vector{Float64},Dict{String,Any}}[]
+    for name in sort(collect(keys(results)))
+        r = results[name]
+        zs = [Float64.(p["z"]) for p in r["path"]]
+        pl = path_plane(zs, Float64.(r["u"]))
+        function span(c)
+            lo, hi = minimum(c; init = 0.0), maximum(c; init = 0.0)
+            m = max(0.25 * (hi - lo), 0.05)
+            return range(lo - m, hi + m; length = n)
+        end
+        S, Tt = span(pl.s), span(pl.t)
+        for (i, a) in enumerate(S), (j, b) in enumerate(Tt)
+            z = pl.origin .+ a .* pl.e1 .+ b .* pl.e2
+            all(lb .<= z .<= ub) || continue
+            push!(jobs, ("plane-$name-$i-$j", z .* TRAPPED_BOX.scale, Dict{String,Any}("kind" => "plane", "start" => name, "i" => i, "j" => j, "s" => a, "t" => b, "s_grid" => collect(S), "t_grid" => collect(Tt))))
+        end
+    end
+    best = argmax(k -> results[k]["J"], collect(keys(results)))
+    opt = Float64.(results[best]["free"])
+    for a in 1:4, b in (a + 1):4, (i, va) in enumerate(range(TRAPPED_BOX.lo[a], TRAPPED_BOX.hi[a]; length = n)), (j, vb) in enumerate(range(TRAPPED_BOX.lo[b], TRAPPED_BOX.hi[b]; length = n))
+        x = copy(opt)
+        x[a], x[b] = va, vb
+        push!(jobs, ("pair-$a$b-$i-$j", x, Dict{String,Any}("kind" => "pair", "start" => best, "a" => a, "b" => b, "i" => i, "j" => j)))
+    end
+    return jobs
+end
+
+"""
+    main_scan(dir, o)
+
+The plain runs of [`scan_jobs`](@ref) into `dir/scan/<id>.json`, in the run's numerics; with
+`shard = "k/m"` only every m-th job from the k-th (k from 1), so that m processes share the card.
+A job with a JSON is not run again.
+"""
+function main_scan(dir, o)
+    m = TOML.parsefile(joinpath(dir, "manifest.toml"))["parameters"]
+    be, ga, F, energy = opt_backend(m["backend"]), opt_gather(m["gather"]), element_type(m["float"]), budget(m["a0E"])
+    k, of = parse.(Int, split(o["shard"], "/"))
+    jobs = scan_jobs(dir, o)
+    sdir = joinpath(dir, "scan")
+    mkpath(sdir)
+    mine = [j for (q, j) in enumerate(jobs) if mod(q - 1, of) == k - 1 && !isfile(joinpath(sdir, j[1] * ".json"))]
+    println("scan: $(length(jobs)) jobs, $(length(mine)) to run in shard $k of $of"); flush(stdout)
+    for (q, (id, free, spec)) in enumerate(mine)
+        r = run_point(free; ppl = m["ppl"], ny = m["ny"], float = F, backend = be, gather = ga, grad = false, energy)
+        merge!(r, spec, Dict{String,Any}("id" => id))
+        tmp = joinpath(sdir, id * ".json.tmp")
+        open(io -> JSON.print(io, r, 2), tmp, "w")
+        mv(tmp, joinpath(sdir, id * ".json"); force = true)
+        (q % 20 == 0 || q == length(mine)) && (println("scan shard $k: $q of $(length(mine)), last J = $(r["J"]) in $(round(r["seconds"]; digits = 2)) s"); flush(stdout))
+    end
+end
+
+const SCAN_DEFAULTS = (n = 11, shard = "1/1")
+
+if length(ARGS) >= 1 && ARGS[1] in ("opt", "check", "scan")
+    # the backend loads at top level, so that the runs that follow see its methods (world age)
+    ARGS[1] == "opt" && parse_options(ARGS[2:end], OPT_DEFAULTS)[1]["backend"] == "cuda" && opt_backend("cuda")
+    if ARGS[1] in ("check", "scan")
         m = TOML.parsefile(joinpath(ARGS[2], "manifest.toml"))
         m["parameters"]["backend"] == "cuda" && opt_backend("cuda")
     end
@@ -305,9 +417,12 @@ if length(ARGS) >= 1 && ARGS[1] == "opt"
 elseif length(ARGS) >= 2 && ARGS[1] == "check"
     o, _ = parse_options(ARGS[3:end], CHECK_DEFAULTS)
     main_check(ARGS[2], o)
+elseif length(ARGS) >= 2 && ARGS[1] == "scan"
+    o, _ = parse_options(ARGS[3:end], SCAN_DEFAULTS)
+    main_scan(ARGS[2], o)
 elseif length(ARGS) >= 3 && ARGS[1] == "report"
     include(joinpath(@__DIR__, "trapped2d_opt_report.jl"))
     opt_report(ARGS[2], ARGS[3])
 elseif !isempty(ARGS)
-    error("usage: trapped2d_opt.jl opt [dir] [key=value...] | check <dir> [key=value...] | report <out dir> <run dir>")
+    error("usage: trapped2d_opt.jl opt [dir] [key=value...] | check <dir> [key=value...] | scan <dir> [n=11 shard=k/m] | report <out dir> <run dir>")
 end

@@ -858,3 +858,47 @@ end
     @test all(rec -> haskey(rec, "dark_weight") && rec["a0"] == a0_for_energy(rec["free"][1], rec["free"][2]; energy = budget(2.2)), values(store.records))
     @test r["path"][1]["J"] == start["J"] && r["path"][end]["J"] == r["J"]
 end
+
+@testset "T-974 the scan's grids: the plane that holds a path, and the pairs of free parameters over the box through the optimum [WP-068]" begin
+    # a path in the plane of two known directions through the optimum
+    zopt = [1.0, 1.1, 1.2, 0.9]
+    a, b = [1.0, 1.0, 0.0, 0.0] ./ sqrt(2), [0.0, 0.0, 0.6, 0.8]
+    zs = [zopt .+ s .* a .+ t .* b for (s, t) in ((0.3, -0.1), (0.2, 0.05), (0.1, 0.02), (0.0, 0.0), (-0.05, 0.1))]
+    pl = path_plane(zs, zopt)
+    @test pl.residual < 1e-12
+    @test abs(vdot(pl.e1, pl.e2)) < 1e-12 && vnorm(pl.e1) ≈ 1 && vnorm(pl.e2) ≈ 1
+    for (k, z) in enumerate(zs)
+        @test zopt .+ pl.s[k] .* pl.e1 .+ pl.t[k] .* pl.e2 ≈ z atol = 1e-12
+    end
+    # a straight path still gets a second direction, orthogonal to the first
+    line = path_plane([zopt .+ s .* a for s in (0.0, 0.1, 0.2)], zopt)
+    @test abs(abs(vdot(line.e1, a)) - 1) < 1e-12 && abs(vdot(line.e1, line.e2)) < 1e-12 && line.residual < 1e-12
+    # the jobs of a run with two starts of a smooth objective
+    scale = TRAPPED_BOX.scale
+    c = [7.3, 11.0, 120.0, 0.065]
+    fake(free) = Dict{String,Any}("J" => 2.0 - sum(((free .- c) ./ scale) .^ 2), "gradient" => -2 .* (free .- c) ./ scale .^ 2, "a0" => 1.9)
+    dir = mktempdir()
+    store = PointStore(joinpath(dir, "points"); run = fake)
+    for nm in (:base, :short)
+        optimize_start(store, STARTS[nm], joinpath(dir, string(nm)); maxiters = 30, pgtol = 1e-8)
+    end
+    jobs = scan_jobs(dir, Dict{String,Any}("n" => 5))
+    pairs = filter(j -> j[3]["kind"] == "pair", jobs)
+    planes = filter(j -> j[3]["kind"] == "plane", jobs)
+    @test length(pairs) == 6 * 25 && length(unique(j[1] for j in jobs)) == length(jobs)
+    @test 0 < length(planes) <= 2 * 25
+    @test all(j -> all(TRAPPED_BOX.lo .- 1e-12 .<= j[2] .<= TRAPPED_BOX.hi .+ 1e-12), jobs)
+    best = load_results(dir)[pairs[1][3]["start"]]["free"]
+    for (id, x, spec) in pairs
+        others = setdiff(1:4, (spec["a"], spec["b"]))
+        @test x[others] == best[others]
+        @test x[spec["a"]] == range(TRAPPED_BOX.lo[spec["a"]], TRAPPED_BOX.hi[spec["a"]]; length = 5)[spec["i"]]
+    end
+    # every plane point is on its start's plane, and the grid reaches past the path on both sides
+    for (id, x, spec) in planes
+        r = load_results(dir)[spec["start"]]
+        p = path_plane([Float64.(q["z"]) for q in r["path"]], Float64.(r["u"]))
+        @test x ./ scale ≈ p.origin .+ spec["s"] .* p.e1 .+ spec["t"] .* p.e2 atol = 1e-12
+        @test spec["s_grid"][1] < minimum(p.s) && spec["s_grid"][end] > maximum(p.s)
+    end
+end

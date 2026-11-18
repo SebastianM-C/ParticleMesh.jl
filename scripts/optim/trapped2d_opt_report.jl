@@ -133,6 +133,64 @@ function opt_report(out, dir)
         sidecar["check"] = Dict{String,Any}("jobs" => jobs, "fd" => rows, "optimum" => best)
         open(f -> JSON.print(f, sidecar, 2), joinpath(out, "trapped2d_opt.json"), "w")
     end
+    sdir = joinpath(dir, "scan")
+    isdir(sdir) && scan_figure(out, dir, sdir, results, paths, io)
     write(joinpath(out, "tables.md"), String(take!(io)))
     println("report: ", path_png, " and ", joinpath(out, "tables.md"))
+end
+
+"J on the scan's grids, with each path drawn over them: the plane of every start's path, and every pair of free parameters through the best optimum."
+function scan_figure(out, dir, sdir, results, paths, io)
+    jobs = [JSON.parsefile(joinpath(sdir, f)) for f in readdir(sdir) if endswith(f, ".json")]
+    isempty(jobs) && return
+    n = maximum(j -> max(j["i"], j["j"]), jobs)
+    grids = Dict{String,Any}()
+    for j in jobs
+        key = j["kind"] == "plane" ? "plane-$(j["start"])" : "pair-$(j["a"])$(j["b"])"
+        g = get!(grids, key) do
+            Dict{String,Any}("J" => fill(NaN, n, n), "dark_weight" => fill(NaN, n, n), "u" => fill(NaN, n), "v" => fill(NaN, n), "kind" => j["kind"], "spec" => j)
+        end
+        g["J"][j["i"], j["j"]] = j["J"]
+        g["dark_weight"][j["i"], j["j"]] = j["dark_weight"]
+        if j["kind"] == "plane"
+            g["u"] .= j["s_grid"]; g["v"] .= j["t_grid"]
+        else
+            g["u"][j["i"]], g["v"][j["j"]] = j["free"][j["a"]], j["free"][j["b"]]
+        end
+    end
+    keys_sorted = sort(collect(keys(grids)))
+    fig = Figure(; size = (420 * min(5, length(keys_sorted)), 400 * cld(length(keys_sorted), 5)))
+    colors = Makie.wong_colors()
+    names = sort(collect(keys(results)); by = n -> findfirst(==(Symbol(n)), keys(STARTS)))
+    sidecar = Dict{String,Any}()
+    for (q, key) in enumerate(keys_sorted)
+        g = grids[key]
+        spec = g["spec"]
+        if g["kind"] == "plane"
+            r = results[spec["start"]]
+            pl = path_plane([Float64.(p["z"]) for p in r["path"]], Float64.(r["u"]))
+            xl, yl, title = "s (z units, first direction)", "t (second direction)", "start $(spec["start"]): the path's plane (off it by ≤ $(fmt(pl.residual; d = 2)) in z)"
+            curves = [(spec["start"], pl.s, pl.t, [p["J"] for p in paths[spec["start"]]])]
+            extra = Dict{String,Any}("origin" => pl.origin, "e1" => pl.e1, "e2" => pl.e2, "residual" => pl.residual)
+        else
+            a, b = spec["a"], spec["b"]
+            xl, yl = TCASE.names[TCASE.free[a]], TCASE.names[TCASE.free[b]]
+            title = "$xl × $yl, the others at start $(spec["start"])'s optimum"
+            curves = [(nm, [p["free"][a] for p in paths[nm]], [p["free"][b] for p in paths[nm]], [p["J"] for p in paths[nm]]) for nm in names]
+            extra = Dict{String,Any}("a" => a, "b" => b, "at" => results[spec["start"]]["free"])
+        end
+        # J spans orders of magnitude across the box (the plasma's own injection), so the height is log₁₀ J
+        ax = Axis3(fig[cld(q, 5), mod1(q, 5)]; xlabel = xl, ylabel = yl, zlabel = "log₁₀ J", title, titlesize = 11)
+        surface!(ax, g["u"], g["v"], log10.(max.(g["J"], 1.0e-8)); colormap = :viridis, nan_color = (:white, 0.0))
+        for (k, (nm, cu, cv, cJ)) in enumerate(curves)
+            c = colors[findfirst(==(nm), names)]
+            lines!(ax, cu, cv, log10.(cJ); color = c, linewidth = 2)
+            scatter!(ax, cu, cv, log10.(cJ); color = c, markersize = 5)
+        end
+        sidecar[key] = merge(Dict{String,Any}("u" => g["u"], "v" => g["v"], "J" => g["J"], "dark_weight" => g["dark_weight"], "xlabel" => xl, "ylabel" => yl,
+                                              "paths" => [Dict("start" => c[1], "u" => c[2], "v" => c[3], "J" => c[4]) for c in curves]), extra)
+    end
+    save_plot(out, "trapped2d_opt_scan", fig, sidecar)
+    println(io, "\nScan: ", length(jobs), " plain runs on ", length(grids), " grids of ", n, "×", n, " (", fmt(sum(j -> j["seconds"], jobs)), " s of runs); ",
+            "J on them from ", fmt(minimum(j -> j["J"], jobs)), " to ", fmt(maximum(j -> j["J"], jobs)), ", largest dark current weight ", fmt(maximum(j -> j["dark_weight"], jobs)), ".")
 end
