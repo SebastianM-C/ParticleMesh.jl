@@ -140,7 +140,7 @@ function landau3d_run(be; cells, ppc, seeds, float, t_end)
                               "mean_rel" => (mean(single) - th.gamma) / th.gamma,
                               "omega" => [r.omega for r in ens.single_seed], "maxima" => [length(r.t_fit) for r in ens.single_seed]),
         "per_seed" => recs)
-    open(io -> JSON.print(io, out, 2; allownan = true), joinpath(dir, "observables.json"), "w")
+    open(io -> JSON.json(io, out; pretty = 2, allownan = true), joinpath(dir, "observables.json"), "w")
     landau3d_figure(dir, ts, coeffs, ens, th, cells, ppc, T)
     write_manifest(dir; root = REPO, extra = Dict{String,Any}("finished" => string(now(UTC)) * "Z",
         "outputs" => Dict{String,Any}(f => "sha256:" * RunManifest.file_hash(joinpath(dir, f))
@@ -170,8 +170,8 @@ function landau3d_figure(dir, ts, coeffs, ens, th, cells, ppc, T)
     axislegend(ax; position = :rt)
     save(joinpath(dir, "landau3d.png"), fig)
     open(joinpath(dir, "landau3d.json"), "w") do io
-        JSON.print(io, Dict("t" => ts, "ensemble_energy" => ens.U, "t_fit" => ens.t_fit, "U_fit" => ens.U_fit,
-                            "gamma" => ens.gamma, "gamma_theory" => th.gamma, "floor" => ens.floor), 2; allownan = true)
+        JSON.json(io, Dict("t" => ts, "ensemble_energy" => ens.U, "t_fit" => ens.t_fit, "U_fit" => ens.U_fit,
+                            "gamma" => ens.gamma, "gamma_theory" => th.gamma, "floor" => ens.floor); pretty = 2, allownan = true)
     end
 end
 
@@ -180,7 +180,7 @@ function landau3d_table(dirs)
     println("| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |")
     println("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for d in dirs
-        o = JSON.parsefile(joinpath(d, "observables.json"))
+        o = JSON.parsefile(joinpath(d, "observables.json"); allownan = true)
         s, e, ss, ps = o["size"], o["ensemble"], o["single_seed"], o["per_seed"]
         f(x; d = 4) = string(round(x; sigdigits = d))
         println("| $(s["cells"])³, $(s["ppc"]) per cell, $(length(ps)) seeds, $(s["element_type"]) | $(s["particles"]) | $(f(s["dx_over_debye"]; d = 3)) | $(s["steps"]) | ",
@@ -189,7 +189,7 @@ function landau3d_table(dirs)
                 "$(f(maximum(p -> p["gauss_end"], ps); d = 2)), $(f(maximum(p -> p["divB_end"], ps); d = 2)) | ",
                 "$(f(maximum(p -> abs(p["energy_drift"]), ps); d = 2)) | $(round(Int, mean(p -> p["wall_seconds"], ps))) |")
     end
-    th = JSON.parsefile(joinpath(first(dirs), "observables.json"))["theory"]
+    th = JSON.parsefile(joinpath(first(dirs), "observables.json"); allownan = true)["theory"]
     println("\nTheory: γ = $(th["gamma"]), ω = $(th["omega"]) ($(th["source"])).")
 end
 
