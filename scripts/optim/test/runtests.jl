@@ -738,3 +738,317 @@ end
     @test eltype(ionization_electrons(stn).w) == ForwardDiff.Dual{Nothing,Float32,1}
     @test trapped_capacity(16, 1) == BCASE.capacity && trapped_capacity(64, 4) == 2_560_000
 end
+
+# Tests of the WP-068 optimizer (trapped2d_opt.jl): the box, the gather keyword, the store of
+# points and one L-BFGS-B step on the case at λ₀/8.
+include(joinpath(@__DIR__, "..", "trapped2d_opt.jl"))
+
+@testset "T-970 the optimizer's box is WP-068's and holds the base point and the starts with z in [0.6, 1.5], and the delay stays at the base point's [WP-068]" begin
+    base = [TCASE.x0[i] for i in TCASE.free]
+    @test TRAPPED_BOX.scale == [TCASE.scale[i] for i in TCASE.free] == [6.0, 10.0, 80.0, 0.072]
+    @test STARTS.base == base
+    for s in values(STARTS)
+        @test length(s) == 4 && all(TRAPPED_BOX.lo .< s .< TRAPPED_BOX.hi)
+    end
+    @test TRAPPED_BOX.lo == [4.0, 6.0, 64.0, 0.05] && TRAPPED_BOX.hi == [9.0, 14.0, 110.0, 0.10]   # WP-068's box
+    zlo, zhi = TRAPPED_BOX.lo ./ TRAPPED_BOX.scale, TRAPPED_BOX.hi ./ TRAPPED_BOX.scale
+    @test all(0.6 .<= zlo .< 1) && all(1 .< zhi .<= 1.5)
+    # the four free parameters and the fixed delay make the case's five, in any element type
+    @test trapped_point(base) === TCASE.x0
+    @test trapped_point([4.0, 6.0, 64.0, 0.05]) === (4.0, 6.0, 64.0, 54.0, 0.05)
+    d = ForwardDiff.Dual{Nothing}(7.0f0, 1.0f0)
+    p = trapped_point([d, ForwardDiff.Dual{Nothing}(8.0f0, 0.0f0), ForwardDiff.Dual{Nothing}(90.0f0, 0.0f0), ForwardDiff.Dual{Nothing}(0.08f0, 0.0f0)])
+    @test p[4] isa ForwardDiff.Dual{Nothing,Float32,1} && ForwardDiff.value(p[4]) == 54.0f0 && ForwardDiff.partials(p[4])[1] == 0
+    @test p[1] === d
+    @test_throws ArgumentError trapped_point([6.0, 10.0])
+    @test_throws ArgumentError trapped_point(collect(TCASE.x0))
+    # a₀ at the 1.9 budget: about 1.3 and 3.0 at the box's corners, and the starts' as STARTS says
+    @test a0_for_energy(9.0, 14.0) ≈ 1.31 atol = 0.01
+    @test a0_for_energy(4.0, 6.0) ≈ 2.99 atol = 0.01
+    @test [round(a0_for_energy(s[1], s[2]); digits = 2) for s in (STARTS.base, STARTS.long, STARTS.short, STARTS.narrow)] == [1.9, 1.5, 2.32, 2.1]
+end
+
+@testset "T-971 the gather keyword reaches the case's numerics and changes the run; gather = nothing is the default run [WP-067, WP-068]" begin
+    @test born_numerics(32, 2).gather === nothing
+    @test born_numerics(32, 2; gather = CompensatedGather()).gather isa CompensatedGather
+    @test born_numerics(32, 2; gather = CompensatedGather()).absorber.cells == born_numerics(32, 2).absorber.cells
+    st, _, _ = born_start(; ppl = 8, t_end = 1.0, capacity = 10, gather = CompensatedGather())
+    @test st.numerics.gather isa CompensatedGather
+    @test born_start(; ppl = 8, t_end = 1.0, capacity = 10)[1].numerics.gather === nothing
+    @test opt_gather("compensated") isa CompensatedGather && opt_gather("plain") === nothing
+    @test_throws ErrorException opt_gather("sharp")
+    sc = trapped_state(TCASE.x0...; ppl = 8, t_end = 190.0, capacity = 60_000, energy = budget(2.2), gather = CompensatedGather())
+    @test sc.numerics.gather isa CompensatedGather
+    J0 = trapped_small(TCASE.x0...)
+    @test trapped_small(TCASE.x0...; gather = nothing) === J0
+    Jc = trapped_energy(sc; fade = BCASE.fade, rise = (0.5, 3.0))
+    # the particles feel the laser field the quadratic shape removes at λ₀/8 (sinc(π/8)³ ≈ 0.92)
+    @test Jc > 1.05 * J0
+    @test run_point(STARTS.base; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, energy = budget(2.2), gather = CompensatedGather(),
+                    grad = false, read = (; fade = BCASE.fade, rise = (0.5, 3.0)))["J"] === Float64(Jc)
+end
+
+@testset "T-972 the store gives the value and the gradient of a point from one run, and a stopped optimization continues from its records on the same path [WP-068]" begin
+    # a smooth objective in place of the case, with its exact gradient, counting its runs
+    scale = TRAPPED_BOX.scale
+    c = [7.3, 11.0, 120.0, 0.065]                                  # the focus's maximum outside the box
+    Jq(x) = 2.0 - sum(((x .- c) ./ scale) .^ 2)
+    gq(x) = -2 .* (x .- c) ./ scale .^ 2
+    ran = Ref(0)
+    fake(free) = (ran[] += 1; Dict{String,Any}("J" => Jq(free), "gradient" => gq(free), "a0" => a0_for_energy(free[1], free[2])))
+    dir = mktempdir()
+    store = PointStore(joinpath(dir, "points"); run = fake)
+    calls = Dict{String,Any}[]
+    prob = case_problem(stored_objective(store, calls), TRAPPED_BOX, Tuple(STARTS.base))
+    J, g = value_gradient(prob, prob.u0)
+    @test J == Jq(STARTS.base) && g == gq(STARTS.base) .* scale    # the chain rule in z through the record's gradient
+    @test prob.f(prob.u0, prob.p) == J
+    @test ran[] == 1 && store.made == 1                              # one run for the value and the gradient
+    @test [c["asked"] for c in calls] == ["gradient", "value"] && [c["stored"] for c in calls] == [false, true]
+    @test isfile(joinpath(dir, "points", point_key(STARTS.base) * ".json"))
+    @test point_key([1.0, 2.0]) == "3ff0000000000000-4000000000000000"
+    @test point_key([0.072, 80.0]) != point_key([nextfloat(0.072), 80.0]) != point_key([0.072, prevfloat(80.0)])
+    # an optimization from a start, then again from the records only: the same path, no run
+    r1 = optimize_start(store, STARTS.long, joinpath(dir, "long"); maxiters = 30, pgtol = 1e-8)
+    @test r1["free"][3] == TRAPPED_BOX.hi[3]                          # the focus on its bound
+    @test r1["free"][[1, 2, 4]] ≈ c[[1, 2, 4]] rtol = 1e-6
+    @test r1["projected_gradient"] <= 1e-8
+    n = ran[]
+    again = PointStore(joinpath(dir, "points"); run = fake)
+    @test length(again.records) == length(store.records)
+    r2 = optimize_start(again, STARTS.long, joinpath(dir, "long2"); maxiters = 30, pgtol = 1e-8)
+    @test ran[] == n && again.made == 0
+    @test r2["path"] == [merge(p, Dict("seconds" => q["seconds"])) for (p, q) in zip(r1["path"], r2["path"])]
+    @test r2["free"] == r1["free"] && r2["J"] == r1["J"]
+    @test JSON.parsefile(joinpath(dir, "long", "result.json"))["free"] == r1["free"]
+    @test all(p -> haskey(store.records, p["key"]), r1["path"])            # every point of the path has its record
+    # stopped after one iteration, then continued from the records: the uninterrupted path, and
+    # only the points past the stop are run
+    sdir = mktempdir()
+    stopped = PointStore(sdir; run = fake)
+    rs = optimize_start(stopped, STARTS.long, joinpath(sdir, "a"); maxiters = 1, pgtol = 1e-8)
+    @test rs["retcode"] == "MaxIters" && rs["iterations"] == 1 < r1["iterations"]
+    n = ran[]
+    resumed = PointStore(sdir; run = fake)
+    rr = optimize_start(resumed, STARTS.long, joinpath(sdir, "b"); maxiters = 30, pgtol = 1e-8)
+    @test [p["z"] for p in rr["path"]] == [p["z"] for p in r1["path"]] && rr["free"] == r1["free"]
+    @test ran[] - n == resumed.made == r1["points_run"] - rs["points_run"] > 0
+    # the stopped result's projected gradient is in z, the record's physical gradient times the scale
+    gs = stopped.records[rs["key"]]["gradient"] .* scale
+    @test rs["projected_gradient"] == projected_gradient(gs, Float64.(rs["u"]), prob.lb, prob.ub) > 1e-6
+    # pgtol reaches the solver: a loose one stops before a tight one
+    loose = optimize_start(PointStore(mktempdir(); run = fake), STARTS.long, joinpath(dir, "loose"); maxiters = 30, pgtol = 0.6)
+    @test loose["iterations"] < r1["iterations"] && loose["retcode"] == "Success" && loose["projected_gradient"] <= 0.6
+    # each distinct point ran once, and every point stayed in the box
+    @test length(unique(c["key"] for c in r1["calls"])) == r1["points_run"]
+    @test all(c -> all(TRAPPED_BOX.lo .<= c["free"] .<= TRAPPED_BOX.hi), r1["calls"])
+    # the projected gradient drops the components that push out of the box at their bounds
+    lb, ub = prob.lb, prob.ub
+    @test projected_gradient([1.0, -2.0, 0.5, 0.1], ub, lb, ub) == 2.0
+    @test projected_gradient([1.0, -2.0, 0.5, 0.1], [ub[1], lb[2], ub[3], 1.0], lb, ub) == 0.1
+    @test projected_gradient([-1.0, 2.0, 0.0, 0.0], [ub[1], lb[2], 1.0, 1.0], lb, ub) == 2.0
+    # the check's central differences step one free parameter each, by its relative 2^-power
+    jobs = check_jobs(STARTS.base, Dict{String,Any}("float" => 32, "ppl" => 48, "ny" => 3, "fdppl" => 32, "fdny" => 2, "power" => 13))
+    @test [j[1] for j in jobs[1:3]] == ["fine-plain", "fine-grad", "f64-grad"] && length(jobs) == 3 + 8
+    @test jobs[1][2][:float] == Float32 && jobs[3][2][:float] == Float64 && jobs[1][2][:ppl] == 48 && jobs[3][2][:ppl] == 32
+    @test [j[2][:grad] for j in jobs[1:3]] == [false, true, true] && jobs[1][2][:ny] == jobs[2][2][:ny] == 3 && jobs[2][2][:ppl] == 48
+    @test jobs[3][2][:ny] == 2 && jobs[2][2][:float] == Float32
+    @test all(j -> j[2][:ppl] == 32 && j[2][:ny] == 2 && j[2][:float] == Float64 && !j[2][:grad], jobs[4:end])
+    @test all(j -> j[2][:h] == STARTS.base[j[2][:direction]] * 2.0^-13, jobs[4:end])
+    for (id, j) in jobs[4:end]
+        i = j[:direction]
+        @test j[:free] == STARTS.base .+ [k == i ? j[:sign] * STARTS.base[i] * 2.0^-13 : 0.0 for k in 1:4]
+        @test id == "fd-$(TCASE.names[TCASE.free[i]])-$(j[:sign] > 0 ? "p" : "m")"
+    end
+    @test parse_options(["ppl=48", "gather=plain", "pgtol=0.5", "out"], OPT_DEFAULTS) ==
+          (merge(Dict{String,Any}(string(k) => v for (k, v) in pairs(OPT_DEFAULTS)), Dict{String,Any}("ppl" => 48, "gather" => "plain", "pgtol" => 0.5)), ["out"])
+    @test_throws ErrorException parse_options(["speed=2"], OPT_DEFAULTS)
+end
+
+@testset "T-973 one L-BFGS-B step on the case at λ₀/8 moves J up, every point a run with duals in the free directions with the delay fixed [A3, WP-068]" begin
+    read = (; fade = BCASE.fade, rise = (0.5, 3.0))
+    dir = mktempdir()
+    store = PointStore(dir; run = free -> run_point(free; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, energy = budget(2.2), read))
+    r = optimize_start(store, STARTS.base, joinpath(dir, "base"); maxiters = 1, pgtol = 0.0)
+    start = store.records[point_key(STARTS.base)]
+    @test start["J"] === trapped_small(TCASE.x0...)                    # the run with duals gives the plain run's J
+    @test r["J"] > start["J"]
+    @test r["iterations"] == 1 && r["points_run"] == length(store.records) >= 2
+    # the record's gradient is ForwardDiff's in the free parameters, the delay's derivative left out
+    x0 = collect(TCASE.x0)
+    xd = [ForwardDiff.Dual{Nothing}(x0[i], ntuple(j -> Float64(i == TCASE.free[j]), 4)) for i in 1:5]
+    @test start["gradient"] == collect(ForwardDiff.partials(trapped_small(xd...)))
+    @test all(rec -> rec["x"][4] == TCASE.x0[4] && length(rec["gradient"]) == 4, values(store.records))
+    @test all(rec -> haskey(rec, "dark_weight") && rec["a0"] == a0_for_energy(rec["free"][1], rec["free"][2]; energy = budget(2.2)), values(store.records))
+    # the summary reads with the same weights as J, and the record's z is the point over the box's scale
+    @test all(rec -> rec["J_born"] + rec["J_plasma"] == rec["J"] && rec["z"] == rec["free"] ./ TRAPPED_BOX.scale, values(store.records))
+    @test r["path"][1]["J"] == start["J"] && r["path"][end]["J"] == r["J"]
+end
+
+@testset "T-974 the scan's grids: the plane that holds a path, and the pairs of free parameters over the box through the optimum [WP-068]" begin
+    # a path in the plane of two known directions through the optimum
+    zopt = [1.0, 1.1, 1.2, 0.9]
+    a, b = [1.0, 1.0, 0.0, 0.0] ./ sqrt(2), [0.0, 0.0, 0.6, 0.8]
+    zs = [zopt .+ s .* a .+ t .* b for (s, t) in ((0.3, -0.1), (0.2, 0.05), (0.1, 0.02), (0.0, 0.0), (-0.05, 0.1))]
+    pl = path_plane(zs, zopt)
+    @test pl.residual < 1e-12
+    @test abs(vdot(pl.e1, pl.e2)) < 1e-12 && vnorm(pl.e1) ≈ 1 && vnorm(pl.e2) ≈ 1
+    for (k, z) in enumerate(zs)
+        @test zopt .+ pl.s[k] .* pl.e1 .+ pl.t[k] .* pl.e2 ≈ z atol = 1e-12
+    end
+    # a straight path still gets a second direction, orthogonal to the first
+    line = path_plane([zopt .+ s .* a for s in (0.0, 0.1, 0.2)], zopt)
+    @test abs(abs(vdot(line.e1, a)) - 1) < 1e-12 && abs(vdot(line.e1, line.e2)) < 1e-12 && line.residual < 1e-12
+    # a path that never moves in the first coordinates still gets its own plane
+    b2 = [0.0, 1.0, 1.0, 0.0] ./ sqrt(2)
+    off = path_plane([zopt .+ s .* b2 .+ t .* b for (s, t) in ((0.3, -0.1), (0.2, 0.05), (0.0, 0.0), (-0.05, 0.1))], zopt)
+    @test off.residual < 1e-12 && off.e1[1] == 0 && off.e2[1] == 0
+    stay = path_plane([zopt .+ s .* [0.0, 0.0, 0.6, 0.8] for s in (0.0, 0.1, 0.3)], zopt)
+    @test stay.e1 ≈ [0.0, 0.0, 0.6, 0.8] && stay.s ≈ [0.0, 0.1, 0.3] && all(iszero, stay.t)
+    @test path_plane([zopt], zopt).residual == 0                         # a path of one point
+    # the jobs of a run with two starts of an objective with two maxima, the higher one near `short`
+    scale = TRAPPED_BOX.scale
+    c1, c2 = [7.3, 11.0, 120.0, 0.065], [4.6, 7.0, 68.0, 0.098]
+    bump(x, c) = exp(-sum(((x .- c) ./ scale) .^ 2) / 0.02)
+    fake(free) = (J = bump(free, c1) + 2 * bump(free, c2);
+                  g = -2 .* ((free .- c1) .* bump(free, c1) .+ 2 .* (free .- c2) .* bump(free, c2)) ./ scale .^ 2 ./ 0.02;
+                  Dict{String,Any}("J" => J, "gradient" => g, "a0" => 1.9))
+    dir = mktempdir()
+    store = PointStore(joinpath(dir, "points"); run = fake)
+    rs = Dict(nm => optimize_start(store, STARTS[nm], joinpath(dir, string(nm)); maxiters = 50, pgtol = 1e-10) for nm in (:long, :short))
+    @test rs[:short]["J"] > rs[:long]["J"]
+    @test rs[:short]["free"] ≈ c2 rtol = 1e-4
+    jobs = scan_jobs(dir, Dict{String,Any}("n" => 5); coords = Coords())
+    pairs = filter(j -> j[3]["kind"] == "pair", jobs)
+    planes = filter(j -> j[3]["kind"] == "plane", jobs)
+    @test length(pairs) == 6 * 25 && length(unique(j[1] for j in jobs)) == length(jobs)
+    @test 0 < length(planes) <= 2 * 25
+    @test all(j -> all(TRAPPED_BOX.lo .- 1e-12 .<= j[2] .<= TRAPPED_BOX.hi .+ 1e-12), jobs)
+    @test all(j -> j[3]["start"] == "short", pairs)                       # the pairs go through the best optimum
+    best = rs[:short]["free"]
+    for (id, x, spec) in pairs
+        others = setdiff(1:4, (spec["a"], spec["b"]))
+        @test x[others] == best[others]
+        @test x[spec["a"]] == range(TRAPPED_BOX.lo[spec["a"]] / scale[spec["a"]], TRAPPED_BOX.hi[spec["a"]] / scale[spec["a"]]; length = 5)[spec["i"]] * scale[spec["a"]]
+        @test x[spec["b"]] == range(TRAPPED_BOX.lo[spec["b"]] / scale[spec["b"]], TRAPPED_BOX.hi[spec["b"]] / scale[spec["b"]]; length = 5)[spec["j"]] * scale[spec["b"]]
+    end
+    @test sort(unique((j[3]["a"], j[3]["b"]) for j in pairs)) == [(a, b) for a in 1:4 for b in (a + 1):4]
+    # every plane point is on its start's plane, and the grid reaches past the path on both sides
+    for (id, x, spec) in planes
+        r = load_results(dir)[spec["start"]]
+        p = path_plane([Float64.(q["z"]) for q in r["path"]], Float64.(r["u"]))
+        @test x ./ scale ≈ p.origin .+ spec["s"] .* p.e1 .+ spec["t"] .* p.e2 atol = 1e-12
+        @test spec["s_grid"][1] < minimum(p.s) && spec["s_grid"][end] > maximum(p.s)
+        @test spec["t_grid"][1] < minimum(p.t) && spec["t_grid"][end] > maximum(p.t)
+        @test spec["s"] == spec["s_grid"][spec["i"]] && spec["t"] == spec["t_grid"][spec["j"]]
+        @test spec["e1"] == p.e1 && spec["e2"] == p.e2 && spec["origin"] == p.origin
+    end
+end
+
+include(joinpath(@__DIR__, "..", "trapped2d_opt_report.jl"))
+
+@testset "T-975 the report's central differences and the scan's planes from the records [WP-068]" begin
+    # the check's central differences against the Float64 gradient, in d ln J/dz, from synthetic records
+    dir = mktempdir()
+    g = [0.5, -0.2, 0.01, 30.0]
+    J0 = 2.0
+    write_job(id, d) = open(io -> JSON.print(io, d), joinpath(dir, id * ".json"), "w")
+    write_job("f64-grad", Dict("J" => J0, "gradient" => g))
+    for i in 1:4, (sfx, sgn) in (("p", 1), ("m", -1))
+        h = STARTS.base[i] * 2.0^-13
+        write_job("fd-$(TCASE.names[TCASE.free[i]])-$sfx", Dict("J" => J0 + sgn * h * 1.1 * g[i], "h" => h))
+    end
+    rows = check_rows(dir)
+    @test [r["direction"] for r in rows] == ["duration", "waist", "focus", "density"]
+    for (i, r) in enumerate(rows)
+        @test r["fd"] ≈ 1.1 * g[i] rtol = 1e-9
+        @test r["ad_log"] == g[i] * TRAPPED_BOX.scale[i] / J0
+        @test r["fd_log"] ≈ 1.1 * r["ad_log"] rtol = 1e-9
+    end
+    @test isempty(check_rows(joinpath(dir, "none")))
+    # a scan's plane from its jobs' points, with and without the plane recorded in them
+    o, e1, e2 = [1.0, 1.1, 1.2, 0.9], [0.6, 0.8, 0.0, 0.0], [0.0, 0.0, 0.8, -0.6]
+    jobs = [Dict{String,Any}("kind" => "plane", "start" => "x", "i" => i, "j" => j, "s" => s, "t" => t, "z" => o .+ s .* e1 .+ t .* e2)
+            for (i, s) in enumerate((-0.1, 0.0, 0.2)) for (j, t) in enumerate((-0.05, 0.1))]
+    pl = scan_plane(jobs)
+    @test isapprox(pl.origin, o; atol = 1e-14) && isapprox(pl.e1, e1; atol = 1e-12) && isapprox(pl.e2, e2; atol = 1e-12)
+    rec = [merge(j, Dict{String,Any}("origin" => o, "e1" => e1, "e2" => e2)) for j in jobs]
+    @test scan_plane(rec) == (; origin = o, e1, e2)
+end
+
+@testset "T-976 a peak power cap as a floor on the duration, in the solver's coordinates [WP-068]" begin
+    # CETAL's 25 fs at 4.2e18 cm^-3: T_p = 2π/ω_p = 54.4 fs, so τ_FWHM ≥ 0.460 λ_p, τ ≥ 2.454/√n
+    cap = cetal_cap()
+    Tp = 2π / (5.641e4 * sqrt(4.2e18)) * 1e15
+    @test 54.0 < Tp < 54.8 && cap.p == 0.5
+    @test cap.c ≈ 25 / Tp * 2π / sqrt(2 * log(2)) rtol = 1e-14
+    @test round(cap.c; digits = 2) == 2.45 && round(duration_floor(cap, 0.10); digits = 1) == 7.8 && round(duration_floor(cap, 0.05); digits = 1) == 11.0
+    @test cetal_cap(; fwhm_fs = 35.0).c ≈ 1.4 * cap.c rtol = 1e-14
+    # the floor in the shortest duration is the power cap: P ∝ W/τ at the fixed energy, so at the
+    # floor every waist has the same peak power a₀²·w·(1 + 1/(2w²)) ∝ W/τ_floor
+    W = budget()
+    power(τ, w) = a0_for_energy(τ, w; energy = W)^2 * w * (1 + 1 / (2 * w^2))
+    @test power(duration_floor(cap, 0.08), 6.0) ≈ power(duration_floor(cap, 0.08), 14.0) rtol = 1e-12
+    @test power(duration_floor(cap, 0.08), 6.0) ≈ 4W / (π * duration_floor(cap, 0.08)) rtol = 1e-12
+    # the coordinates: the duration's place between the floor and 12, from 0 to 1, the others as in the box
+    c = Coords(cap)
+    b = Coords()
+    @test c.duration_hi == 12.0 && c.lo == [0.0; b.lo[2:end]] && c.hi == [1.0; b.hi[2:end]]
+    @test b.lo == TRAPPED_BOX.lo ./ TRAPPED_BOX.scale && free_of(b, [1.0, 1.0, 1.0, 1.0]) == TRAPPED_BOX.scale
+    @test_throws ArgumentError Coords(cap; duration_hi = 10.5)          # below the floor at 0.05 n_c, 11.0
+    x = [9.0, 8.0, 100.0, 0.09]
+    f9 = cap.c / sqrt(0.09)
+    @test isapprox(free_of(c, z_of(c, x)), x; rtol = 1e-14) && isapprox(z_of(c, x)[1], (9.0 - f9) / (12.0 - f9); rtol = 1e-14)
+    @test free_of(c, [0.0, 1.0, 1.0, 1.25])[1] == duration_floor(cap, 0.09) && free_of(c, [1.0, 1.0, 1.0, 1.25])[1] ≈ 12.0
+    @test isapprox(shown(c, x)[1], z_of(c, x)[1]; rtol = 1e-14) && shown(c, x)[2:end] == x[2:end] && shown(b, x) == x
+    @test shown_name(c, 1) == "τ: floor→12" && shown_name(b, 1) == "duration" && shown_bounds(c).lo == [0.0; TRAPPED_BOX.lo[2:end]]
+    @test coords_of(Dict{String,Any}()) isa Coords{Nothing} && coords_of(Dict{String,Any}("cap" => "none")) isa Coords{Nothing}
+    @test coords_of(Dict{String,Any}("cap" => "cetal25", "duration_hi" => 13.0)).duration_hi == 13.0
+    @test_throws ArgumentError coords_of(Dict{String,Any}("cap" => "cetal35"))   # its floor at 0.05 n_c is 15.4
+    @test_throws ErrorException coords_of(Dict{String,Any}("cap" => "1PW"))
+    @test OPT_DEFAULTS.cap == "none" && OPT_DEFAULTS.duration_hi == 12.0
+    # the gradient in z is the chain rule through the floor, as ForwardDiff through the map gives it
+    f(free) = free[4]^2 / free[1] + sin(free[2]) * free[3]
+    gf(free) = [-free[4]^2 / free[1]^2, cos(free[2]) * free[3], sin(free[2]), 2 * free[4] / free[1]]
+    z = z_of(c, x)
+    @test grad_z(c, z, gf(free_of(c, z))) ≈ ForwardDiff.gradient(u -> f(free_of(c, u)), z) rtol = 1e-12
+    @test grad_z(b, z_of(b, x), gf(x)) ≈ gf(x) .* TRAPPED_BOX.scale rtol = 1e-14
+    # the starts under the cap keep their waist, focus and density, with the duration at the same
+    # place between the floor and 12 as between 4 and 9 in the box
+    st = starts_of(c)
+    @test keys(st) == keys(STARTS) && starts_of(b) === STARTS
+    for k in keys(STARTS)
+        @test st[k][2:end] ≈ STARTS[k][2:end] rtol = 1e-15
+        @test z_of(c, st[k])[1] ≈ (STARTS[k][1] - 4) / 5 rtol = 1e-12
+    end
+    # L-BFGS-B under the cap on J = n/τ, which wants the shortest pulse into the densest plasma: it
+    # ends on the floor at the density's bound, and no point it asks for breaks the floor
+    fake(free) = Dict{String,Any}("J" => free[4] / free[1], "gradient" => [-free[4] / free[1]^2, 0.0, 0.0, 1 / free[1]], "a0" => 1.9)
+    dir = mktempdir()
+    store = PointStore(joinpath(dir, "points"); run = fake)
+    r = optimize_start(store, st.base, joinpath(dir, "base"); maxiters = 30, pgtol = 1e-10, coords = c)
+    @test r["u"][1] == 0.0 && r["free"][4] == 0.10
+    @test isapprox(r["free"][1], duration_floor(cap, 0.10); rtol = 1e-14) && isapprox(r["J"], 0.10 / duration_floor(cap, 0.10); rtol = 1e-14)
+    @test r["free"][2:3] ≈ st.base[2:3] rtol = 1e-15                     # no gradient in waist and focus
+    @test all(q -> q["free"][1] >= duration_floor(cap, q["free"][4]) * (1 - 1e-14), r["calls"])
+    @test r["projected_gradient"] == 0.0 && on_bounds(c, r["u"]) == "τ: floor→12=lo, density=hi"
+    @test all(p -> haskey(store.records, p["key"]), r["path"])          # the path's keys are the records' points
+    # the scan over the cap's coordinates: the pair grids span the duration's place, every job keeps the floor and 12
+    jobs = scan_jobs(dir, Dict{String,Any}("n" => 5); coords = c)
+    @test !isempty(jobs) && all(j -> duration_floor(cap, j[2][4]) * (1 - 1e-12) <= j[2][1] <= 12 * (1 + 1e-12), jobs)
+    p12 = filter(j -> j[3]["kind"] == "pair" && j[3]["a"] == 1, jobs)
+    @test sort(unique(round(shown(c, j[2])[1]; digits = 10) for j in p12)) ≈ collect(range(0.0, 1.0; length = 5)) atol = 1e-12
+    # the window for the longest pulse: delay + 6τ = 54 + 72 must stay within its start 108 + 2πk
+    @test window_extend(b) == 0 && window_extend(c) == 3 && window_extend(Coords(cap; duration_hi = 11.5)) == 3
+    @test 54 + 6 * 12 <= BCASE.start + 2π * 3 && 54 + 6 * 12 > BCASE.start + 2π * 2
+    @test run_read(0) == (;) && run_read(3).fade == TCASE.fade .+ 6π
+    @test run_geometry(Dict{String,Any}("cap" => "cetal25")) == (; extend = 3, read = run_read(3))
+    long = trapped_problem(12.0, 10.0, 80.0, TCASE.x0[4], 0.05; ppl = 8, t_end = 20.0)
+    @test_throws ArgumentError start_of(long; ppl = 8, ny = 1)            # the case's window refuses the longest pulse
+    @test start_of(trapped_problem(12.0, 10.0, 80.0, TCASE.x0[4], 0.05; ppl = 8, t_end = 20.0, extend = 3); ppl = 8, ny = 1)[1] isa EMState
+    # the longer window leaves the run as it is: the same J at the base point with the weight moved back
+    kw = (; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, energy = budget(2.2), gather = CompensatedGather(), grad = false)
+    J0 = run_point(STARTS.base; kw..., read = (; fade = BCASE.fade, rise = (0.5, 3.0)))["J"]
+    J3 = run_point(STARTS.base; kw..., extend = 3, read = (; fade = BCASE.fade .+ 6π, rise = (0.5, 3.0)))["J"]
+    @test J0 > 0.2 && isapprox(J3, J0; rtol = 1e-7)                     # 2·10⁻⁹ apart here (the plasma's own injection carries roundoff), 10⁻¹² at λ₀/16 to t = 300
+end
