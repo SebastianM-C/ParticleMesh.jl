@@ -743,15 +743,16 @@ end
 # points and one L-BFGS-B step on the case at λ₀/8.
 include(joinpath(@__DIR__, "..", "trapped2d_opt.jl"))
 
-@testset "T-970 the optimizer's box holds the base point and the starts with z in [0.5, 2], and the delay stays at the base point's [WP-068]" begin
+@testset "T-970 the optimizer's box is WP-068's and holds the base point and the starts with z in [0.6, 1.5], and the delay stays at the base point's [WP-068]" begin
     base = [TCASE.x0[i] for i in TCASE.free]
     @test TRAPPED_BOX.scale == [TCASE.scale[i] for i in TCASE.free] == [6.0, 10.0, 80.0, 0.072]
     @test STARTS.base == base
     for s in values(STARTS)
         @test length(s) == 4 && all(TRAPPED_BOX.lo .< s .< TRAPPED_BOX.hi)
     end
+    @test TRAPPED_BOX.lo == [4.0, 6.0, 64.0, 0.05] && TRAPPED_BOX.hi == [9.0, 14.0, 110.0, 0.10]   # WP-068's box
     zlo, zhi = TRAPPED_BOX.lo ./ TRAPPED_BOX.scale, TRAPPED_BOX.hi ./ TRAPPED_BOX.scale
-    @test all(0.5 .<= zlo .< 1) && all(1 .< zhi .<= 2)
+    @test all(0.6 .<= zlo .< 1) && all(1 .< zhi .<= 1.5)
     # the four free parameters and the fixed delay make the case's five, in any element type
     @test trapped_point(base) === TCASE.x0
     @test trapped_point([4.0, 6.0, 64.0, 0.05]) === (4.0, 6.0, 64.0, 54.0, 0.05)
@@ -767,7 +768,7 @@ include(joinpath(@__DIR__, "..", "trapped2d_opt.jl"))
     @test [round(a0_for_energy(s[1], s[2]); digits = 2) for s in (STARTS.base, STARTS.long, STARTS.short, STARTS.narrow)] == [1.9, 1.5, 2.32, 2.1]
 end
 
-@testset "T-971 the gather keyword reaches the case's numerics and changes the run; without it the run keeps its bits [WP-067, WP-068]" begin
+@testset "T-971 the gather keyword reaches the case's numerics and changes the run; gather = nothing is the default run [WP-067, WP-068]" begin
     @test born_numerics(32, 2).gather === nothing
     @test born_numerics(32, 2; gather = CompensatedGather()).gather isa CompensatedGather
     @test born_numerics(32, 2; gather = CompensatedGather()).absorber.cells == born_numerics(32, 2).absorber.cells
@@ -787,7 +788,7 @@ end
                     grad = false, read = (; fade = BCASE.fade, rise = (0.5, 3.0)))["J"] === Float64(Jc)
 end
 
-@testset "T-972 the store gives the value and the gradient of a point from one run, and a stopped optimization replays its path from the records [WP-068]" begin
+@testset "T-972 the store gives the value and the gradient of a point from one run, and a stopped optimization continues from its records on the same path [WP-068]" begin
     # a smooth objective in place of the case, with its exact gradient, counting its runs
     scale = TRAPPED_BOX.scale
     c = [7.3, 11.0, 120.0, 0.065]                                  # the focus's maximum outside the box
@@ -806,6 +807,7 @@ end
     @test [c["asked"] for c in calls] == ["gradient", "value"] && [c["stored"] for c in calls] == [false, true]
     @test isfile(joinpath(dir, "points", point_key(STARTS.base) * ".json"))
     @test point_key([1.0, 2.0]) == "3ff0000000000000-4000000000000000"
+    @test point_key([0.072, 80.0]) != point_key([nextfloat(0.072), 80.0]) != point_key([0.072, prevfloat(80.0)])
     # an optimization from a start, then again from the records only: the same path, no run
     r1 = optimize_start(store, STARTS.long, joinpath(dir, "long"); maxiters = 30, pgtol = 1e-8)
     @test r1["free"][3] == TRAPPED_BOX.hi[3]                          # the focus on its bound
@@ -819,6 +821,24 @@ end
     @test r2["path"] == [merge(p, Dict("seconds" => q["seconds"])) for (p, q) in zip(r1["path"], r2["path"])]
     @test r2["free"] == r1["free"] && r2["J"] == r1["J"]
     @test JSON.parsefile(joinpath(dir, "long", "result.json"))["free"] == r1["free"]
+    @test all(p -> haskey(store.records, p["key"]), r1["path"])            # every point of the path has its record
+    # stopped after one iteration, then continued from the records: the uninterrupted path, and
+    # only the points past the stop are run
+    sdir = mktempdir()
+    stopped = PointStore(sdir; run = fake)
+    rs = optimize_start(stopped, STARTS.long, joinpath(sdir, "a"); maxiters = 1, pgtol = 1e-8)
+    @test rs["retcode"] == "MaxIters" && rs["iterations"] == 1 < r1["iterations"]
+    n = ran[]
+    resumed = PointStore(sdir; run = fake)
+    rr = optimize_start(resumed, STARTS.long, joinpath(sdir, "b"); maxiters = 30, pgtol = 1e-8)
+    @test [p["z"] for p in rr["path"]] == [p["z"] for p in r1["path"]] && rr["free"] == r1["free"]
+    @test ran[] - n == resumed.made == r1["points_run"] - rs["points_run"] > 0
+    # the stopped result's projected gradient is in z, the record's physical gradient times the scale
+    gs = stopped.records[rs["key"]]["gradient"] .* scale
+    @test rs["projected_gradient"] == projected_gradient(gs, Float64.(rs["u"]), prob.lb, prob.ub) > 1e-6
+    # pgtol reaches the solver: a loose one stops before a tight one
+    loose = optimize_start(PointStore(mktempdir(); run = fake), STARTS.long, joinpath(dir, "loose"); maxiters = 30, pgtol = 0.6)
+    @test loose["iterations"] < r1["iterations"] && loose["retcode"] == "Success" && loose["projected_gradient"] <= 0.6
     # each distinct point ran once, and every point stayed in the box
     @test length(unique(c["key"] for c in r1["calls"])) == r1["points_run"]
     @test all(c -> all(TRAPPED_BOX.lo .<= c["free"] .<= TRAPPED_BOX.hi), r1["calls"])
@@ -831,6 +851,10 @@ end
     jobs = check_jobs(STARTS.base, Dict{String,Any}("float" => 32, "ppl" => 48, "ny" => 3, "fdppl" => 32, "fdny" => 2, "power" => 13))
     @test [j[1] for j in jobs[1:3]] == ["fine-plain", "fine-grad", "f64-grad"] && length(jobs) == 3 + 8
     @test jobs[1][2][:float] == Float32 && jobs[3][2][:float] == Float64 && jobs[1][2][:ppl] == 48 && jobs[3][2][:ppl] == 32
+    @test [j[2][:grad] for j in jobs[1:3]] == [false, true, true] && jobs[1][2][:ny] == jobs[2][2][:ny] == 3 && jobs[2][2][:ppl] == 48
+    @test jobs[3][2][:ny] == 2 && jobs[2][2][:float] == Float32
+    @test all(j -> j[2][:ppl] == 32 && j[2][:ny] == 2 && j[2][:float] == Float64 && !j[2][:grad], jobs[4:end])
+    @test all(j -> j[2][:h] == STARTS.base[j[2][:direction]] * 2.0^-13, jobs[4:end])
     for (id, j) in jobs[4:end]
         i = j[:direction]
         @test j[:free] == STARTS.base .+ [k == i ? j[:sign] * STARTS.base[i] * 2.0^-13 : 0.0 for k in 1:4]
@@ -856,6 +880,8 @@ end
     @test start["gradient"] == collect(ForwardDiff.partials(trapped_small(xd...)))
     @test all(rec -> rec["x"][4] == TCASE.x0[4] && length(rec["gradient"]) == 4, values(store.records))
     @test all(rec -> haskey(rec, "dark_weight") && rec["a0"] == a0_for_energy(rec["free"][1], rec["free"][2]; energy = budget(2.2)), values(store.records))
+    # the summary reads with the same weights as J, and the record's z is the point over the box's scale
+    @test all(rec -> rec["J_born"] + rec["J_plasma"] == rec["J"] && rec["z"] == rec["free"] ./ TRAPPED_BOX.scale, values(store.records))
     @test r["path"][1]["J"] == start["J"] && r["path"][end]["J"] == r["J"]
 end
 
@@ -873,32 +899,79 @@ end
     # a straight path still gets a second direction, orthogonal to the first
     line = path_plane([zopt .+ s .* a for s in (0.0, 0.1, 0.2)], zopt)
     @test abs(abs(vdot(line.e1, a)) - 1) < 1e-12 && abs(vdot(line.e1, line.e2)) < 1e-12 && line.residual < 1e-12
-    # the jobs of a run with two starts of a smooth objective
+    # a path that never moves in the first coordinates still gets its own plane
+    b2 = [0.0, 1.0, 1.0, 0.0] ./ sqrt(2)
+    off = path_plane([zopt .+ s .* b2 .+ t .* b for (s, t) in ((0.3, -0.1), (0.2, 0.05), (0.0, 0.0), (-0.05, 0.1))], zopt)
+    @test off.residual < 1e-12 && off.e1[1] == 0 && off.e2[1] == 0
+    stay = path_plane([zopt .+ s .* [0.0, 0.0, 0.6, 0.8] for s in (0.0, 0.1, 0.3)], zopt)
+    @test stay.e1 ≈ [0.0, 0.0, 0.6, 0.8] && stay.s ≈ [0.0, 0.1, 0.3] && all(iszero, stay.t)
+    @test path_plane([zopt], zopt).residual == 0                         # a path of one point
+    # the jobs of a run with two starts of an objective with two maxima, the higher one near `short`
     scale = TRAPPED_BOX.scale
-    c = [7.3, 11.0, 120.0, 0.065]
-    fake(free) = Dict{String,Any}("J" => 2.0 - sum(((free .- c) ./ scale) .^ 2), "gradient" => -2 .* (free .- c) ./ scale .^ 2, "a0" => 1.9)
+    c1, c2 = [7.3, 11.0, 120.0, 0.065], [4.6, 7.0, 68.0, 0.098]
+    bump(x, c) = exp(-sum(((x .- c) ./ scale) .^ 2) / 0.02)
+    fake(free) = (J = bump(free, c1) + 2 * bump(free, c2);
+                  g = -2 .* ((free .- c1) .* bump(free, c1) .+ 2 .* (free .- c2) .* bump(free, c2)) ./ scale .^ 2 ./ 0.02;
+                  Dict{String,Any}("J" => J, "gradient" => g, "a0" => 1.9))
     dir = mktempdir()
     store = PointStore(joinpath(dir, "points"); run = fake)
-    for nm in (:base, :short)
-        optimize_start(store, STARTS[nm], joinpath(dir, string(nm)); maxiters = 30, pgtol = 1e-8)
-    end
+    rs = Dict(nm => optimize_start(store, STARTS[nm], joinpath(dir, string(nm)); maxiters = 50, pgtol = 1e-10) for nm in (:long, :short))
+    @test rs[:short]["J"] > rs[:long]["J"]
+    @test rs[:short]["free"] ≈ c2 rtol = 1e-4
     jobs = scan_jobs(dir, Dict{String,Any}("n" => 5))
     pairs = filter(j -> j[3]["kind"] == "pair", jobs)
     planes = filter(j -> j[3]["kind"] == "plane", jobs)
     @test length(pairs) == 6 * 25 && length(unique(j[1] for j in jobs)) == length(jobs)
     @test 0 < length(planes) <= 2 * 25
     @test all(j -> all(TRAPPED_BOX.lo .- 1e-12 .<= j[2] .<= TRAPPED_BOX.hi .+ 1e-12), jobs)
-    best = load_results(dir)[pairs[1][3]["start"]]["free"]
+    @test all(j -> j[3]["start"] == "short", pairs)                       # the pairs go through the best optimum
+    best = rs[:short]["free"]
     for (id, x, spec) in pairs
         others = setdiff(1:4, (spec["a"], spec["b"]))
         @test x[others] == best[others]
         @test x[spec["a"]] == range(TRAPPED_BOX.lo[spec["a"]], TRAPPED_BOX.hi[spec["a"]]; length = 5)[spec["i"]]
+        @test x[spec["b"]] == range(TRAPPED_BOX.lo[spec["b"]], TRAPPED_BOX.hi[spec["b"]]; length = 5)[spec["j"]]
     end
+    @test sort(unique((j[3]["a"], j[3]["b"]) for j in pairs)) == [(a, b) for a in 1:4 for b in (a + 1):4]
     # every plane point is on its start's plane, and the grid reaches past the path on both sides
     for (id, x, spec) in planes
         r = load_results(dir)[spec["start"]]
         p = path_plane([Float64.(q["z"]) for q in r["path"]], Float64.(r["u"]))
         @test x ./ scale ≈ p.origin .+ spec["s"] .* p.e1 .+ spec["t"] .* p.e2 atol = 1e-12
         @test spec["s_grid"][1] < minimum(p.s) && spec["s_grid"][end] > maximum(p.s)
+        @test spec["t_grid"][1] < minimum(p.t) && spec["t_grid"][end] > maximum(p.t)
+        @test spec["s"] == spec["s_grid"][spec["i"]] && spec["t"] == spec["t_grid"][spec["j"]]
+        @test spec["e1"] == p.e1 && spec["e2"] == p.e2 && spec["origin"] == p.origin
     end
+end
+
+include(joinpath(@__DIR__, "..", "trapped2d_opt_report.jl"))
+
+@testset "T-975 the report's central differences and the scan's planes from the records [WP-068]" begin
+    # the check's central differences against the Float64 gradient, in d ln J/dz, from synthetic records
+    dir = mktempdir()
+    g = [0.5, -0.2, 0.01, 30.0]
+    J0 = 2.0
+    write_job(id, d) = open(io -> JSON.print(io, d), joinpath(dir, id * ".json"), "w")
+    write_job("f64-grad", Dict("J" => J0, "gradient" => g))
+    for i in 1:4, (sfx, sgn) in (("p", 1), ("m", -1))
+        h = STARTS.base[i] * 2.0^-13
+        write_job("fd-$(TCASE.names[TCASE.free[i]])-$sfx", Dict("J" => J0 + sgn * h * 1.1 * g[i], "h" => h))
+    end
+    rows = check_rows(dir)
+    @test [r["direction"] for r in rows] == ["duration", "waist", "focus", "density"]
+    for (i, r) in enumerate(rows)
+        @test r["fd"] ≈ 1.1 * g[i] rtol = 1e-9
+        @test r["ad_log"] == g[i] * TRAPPED_BOX.scale[i] / J0
+        @test r["fd_log"] ≈ 1.1 * r["ad_log"] rtol = 1e-9
+    end
+    @test isempty(check_rows(joinpath(dir, "none")))
+    # a scan's plane from its jobs' points, with and without the plane recorded in them
+    o, e1, e2 = [1.0, 1.1, 1.2, 0.9], [0.6, 0.8, 0.0, 0.0], [0.0, 0.0, 0.8, -0.6]
+    jobs = [Dict{String,Any}("kind" => "plane", "start" => "x", "i" => i, "j" => j, "s" => s, "t" => t, "z" => o .+ s .* e1 .+ t .* e2)
+            for (i, s) in enumerate((-0.1, 0.0, 0.2)) for (j, t) in enumerate((-0.05, 0.1))]
+    pl = scan_plane(jobs)
+    @test isapprox(pl.origin, o; atol = 1e-14) && isapprox(pl.e1, e1; atol = 1e-12) && isapprox(pl.e2, e2; atol = 1e-12)
+    rec = [merge(j, Dict{String,Any}("origin" => o, "e1" => e1, "e2" => e2)) for j in jobs]
+    @test scan_plane(rec) == (; origin = o, e1, e2)
 end

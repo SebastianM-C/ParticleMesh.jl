@@ -139,6 +139,23 @@ function opt_report(out, dir)
     println("report: ", path_png, " and ", joinpath(out, "tables.md"))
 end
 
+"""
+    scan_plane(jobs) -> (; origin, e1, e2)
+
+The plane of one start's scan from its jobs: the one they record, or, for jobs that do not, the
+one their points span (z = origin + s·e1 + t·e2 at each job's grid coordinates s, t).
+"""
+function scan_plane(jobs)
+    j0 = jobs[1]
+    haskey(j0, "e1") && return (; origin = Float64.(j0["origin"]), e1 = Float64.(j0["e1"]), e2 = Float64.(j0["e2"]))
+    z(j) = Float64.(j["z"])
+    a = findfirst(j -> j["j"] == j0["j"] && j["i"] != j0["i"], jobs)
+    b = findfirst(j -> j["i"] == j0["i"] && j["j"] != j0["j"], jobs)
+    e1 = (z(jobs[a]) .- z(j0)) ./ (jobs[a]["s"] - j0["s"])
+    e2 = (z(jobs[b]) .- z(j0)) ./ (jobs[b]["t"] - j0["t"])
+    return (; origin = z(j0) .- j0["s"] .* e1 .- j0["t"] .* e2, e1, e2)
+end
+
 "J on the scan's grids, with each path drawn over them: the plane of every start's path, and every pair of free parameters through the best optimum."
 function scan_figure(out, dir, sdir, results, paths, io)
     jobs = [JSON.parsefile(joinpath(sdir, f)) for f in readdir(sdir) if endswith(f, ".json")]
@@ -168,10 +185,14 @@ function scan_figure(out, dir, sdir, results, paths, io)
         spec = g["spec"]
         if g["kind"] == "plane"
             r = results[spec["start"]]
-            pl = path_plane([Float64.(p["z"]) for p in r["path"]], Float64.(r["u"]))
-            xl, yl, title = "s (z units, first direction)", "t (second direction)", "start $(spec["start"]): the path's plane (off it by ≤ $(fmt(pl.residual; d = 2)) in z)"
-            curves = [(spec["start"], pl.s, pl.t, [p["J"] for p in paths[spec["start"]]])]
-            extra = Dict{String,Any}("origin" => pl.origin, "e1" => pl.e1, "e2" => pl.e2, "residual" => pl.residual)
+            pl = scan_plane(filter(j -> j["kind"] == "plane" && j["start"] == spec["start"], jobs))
+            zs = [Float64.(p["z"]) for p in r["path"]]
+            ps = [vdot(z .- pl.origin, pl.e1) for z in zs]
+            pt = [vdot(z .- pl.origin, pl.e2) for z in zs]
+            residual = maximum(vnorm(z .- pl.origin .- ps[k] .* pl.e1 .- pt[k] .* pl.e2) for (k, z) in enumerate(zs))
+            xl, yl, title = "s (z units, first direction)", "t (second direction)", "start $(spec["start"]): the path's plane (off it by ≤ $(fmt(residual; d = 2)) in z)"
+            curves = [(spec["start"], ps, pt, [p["J"] for p in paths[spec["start"]]])]
+            extra = Dict{String,Any}("origin" => pl.origin, "e1" => pl.e1, "e2" => pl.e2, "residual" => residual)
         else
             a, b = spec["a"], spec["b"]
             xl, yl = TCASE.names[TCASE.free[a]], TCASE.names[TCASE.free[b]]

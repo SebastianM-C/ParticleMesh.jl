@@ -206,7 +206,7 @@ point_config(o) = (; ppl = o["ppl"], ny = o["ny"], float = element_type(o["float
 function run_manifest(name, dir, o; extra_params = Dict{String,Any}())
     params = merge(Dict{String,Any}(o), Dict{String,Any}("box" => Dict("lo" => TRAPPED_BOX.lo, "hi" => TRAPPED_BOX.hi, "scale" => TRAPPED_BOX.scale),
                                                          "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
-                                                         "starts" => Dict(string(k) => v for (k, v) in pairs(STARTS))), extra_params)
+                                                         "start_points" => Dict(string(k) => v for (k, v) in pairs(STARTS))), extra_params)
     cuda = o["backend"] == "cuda"
     return run_dir(name, @__FILE__; prefix = "optim", work_package = "WP-068", dir, params,
                    backend = cuda ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
@@ -293,36 +293,43 @@ end
 
 const CHECK_DEFAULTS = (ppl = 48, ny = 3, fdppl = 32, fdny = 2, power = 13)
 
-"""
-    path_plane(zs, zopt) -> (; origin, e1, e2, s, t, residual)
-
-The plane through `zopt` that holds most of the path `zs` (points in z): its two leading
-directions of the path's offsets from `zopt` (the leading eigenvectors of Σ d·dᵀ over the offsets
-d; a path that moves along one line gets a second direction orthogonal to it, started from the
-coordinate the first one holds least of), each point's
-coordinates `s`, `t` in it, and the largest distance of a point from the plane.
-"""
 vdot(a, b) = sum(a .* b)
 vnorm(a) = sqrt(vdot(a, a))
+tr_of(C) = sum(C[i, i] for i in axes(C, 1)) + eps()
 
-"The leading unit eigenvector of the symmetric matrix `C` orthogonal to the unit vectors `against`, by power iteration from the coordinate axis that is least along them."
+"""
+The leading unit eigenvector of the symmetric positive semi-definite matrix `C` orthogonal to the
+unit vectors `against`, by power iteration from the column of `C` (projected off `against`) of
+largest norm, or, where every such column vanishes, from the coordinate axis that `against` holds
+least of; its largest component is positive.
+"""
 function leading_direction(C, against)
-    proj(v) = (w = copy(v); for a in against; w .-= vdot(w, a) .* a; end; w)
+    proj(v) = (w = collect(Float64, v); for a in against; w .-= vdot(w, a) .* a; end; w)
     n = size(C, 1)
-    v = proj([Float64(i == argmin([sum(abs2(a[i]) for a in against; init = 0.0) for i in 1:n])) for i in 1:n])
+    cols = [proj(C[:, k]) for k in 1:n]
+    k = argmax(vnorm.(cols))
+    v = vnorm(cols[k]) > 1.0e-12 * tr_of(C) ? cols[k] : proj([Float64(i == argmin([sum(abs2(a[i]) for a in against; init = 0.0) for i in 1:n])) for i in 1:n])
     v ./= vnorm(v)
-    for _ in 1:500
+    for _ in 1:1000
         w = proj(C * v .+ 1.0e-3 * tr_of(C) .* v)                # the shift keeps a zero eigenvalue's direction from collapsing
         nw = vnorm(w)
         nw > 0 || break
         w ./= nw
-        vnorm(w .- v) < 1.0e-13 && (v = w; break)
+        done = vnorm(w .- v) < 1.0e-13
         v = w
+        done && break
     end
-    return v
+    return v[argmax(abs.(v))] < 0 ? -v : v
 end
-tr_of(C) = sum(C[i, i] for i in axes(C, 1)) + eps()
 
+"""
+    path_plane(zs, zopt) -> (; origin, e1, e2, s, t, residual)
+
+The plane through `zopt` that holds most of the path `zs` (points in z): the two leading
+directions of the path's offsets d from `zopt` (eigenvectors of Σ d·dᵀ, [`leading_direction`](@ref);
+a path along one line gets a second direction orthogonal to it), each point's coordinates `s`,
+`t` in it, and the largest distance of a point from the plane.
+"""
 function path_plane(zs, zopt)
     D = [z .- zopt for z in zs]
     C = sum(d * d' for d in D; init = zeros(length(zopt), length(zopt)))
@@ -361,7 +368,8 @@ function scan_jobs(dir, o)
         for (i, a) in enumerate(S), (j, b) in enumerate(Tt)
             z = pl.origin .+ a .* pl.e1 .+ b .* pl.e2
             all(lb .<= z .<= ub) || continue
-            push!(jobs, ("plane-$name-$i-$j", z .* TRAPPED_BOX.scale, Dict{String,Any}("kind" => "plane", "start" => name, "i" => i, "j" => j, "s" => a, "t" => b, "s_grid" => collect(S), "t_grid" => collect(Tt))))
+            push!(jobs, ("plane-$name-$i-$j", z .* TRAPPED_BOX.scale, Dict{String,Any}("kind" => "plane", "start" => name, "i" => i, "j" => j, "s" => a, "t" => b, "s_grid" => collect(S), "t_grid" => collect(Tt),
+                                                                                  "origin" => pl.origin, "e1" => pl.e1, "e2" => pl.e2)))
         end
     end
     best = argmax(k -> results[k]["J"], collect(keys(results)))
