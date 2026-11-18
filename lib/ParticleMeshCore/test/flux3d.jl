@@ -6,13 +6,24 @@ foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) 
 const INPROCESS_FLUX3D = flux3d_digests()
 f3d_worker(nt) = [chopprefix(l, "F3D ") for l in worker_lines(nt) if startswith(l, "F3D ")]
 
-"The bins of the 3D flux tests for `shape` and `st`: the cells, and for order 2 on ρ's nodes also `NodeBins` of that shape and stagger."
-flux3d_bins(shape, st) = shape === Quadratic && st == NODES3 ? (CellBins(), NodeBins(Quadratic, NODES3)) : (CellBins(),)
+"""
+The bins of the 3D flux tests for `shape` and `st`: the cells, and for order 2 on ρ's nodes and
+on (Node, Node, Center) also `NodeBins` of that shape and stagger (the second has another reach
+on axis 3 than on the others).
+"""
+flux3d_bins(shape, st) = shape === Quadratic && st in (NODES3, (Node(), Node(), Center())) ? (CellBins(), NodeBins(Quadratic, st)) : (CellBins(),)
 
 function body_T940(be)
     C = tolC("T-940")
     for T in TYPES, shape in SHAPES, st in FLUX3D_TRIPLES, mode in FLUX3D_MODES, bins in flux3d_bins(shape, st)
         c = folded_3d(continuity_case_3d(T, mode, shape, st; be, bins); be)
+        @test record!("T-940", T, continuity_residual_3d(c), be) <= C
+    end
+    # bins of another stagger than the flux's (T-864 at N = 3): node bins of ρ's nodes under a flux
+    # at the cell centres, with the one more guard cell they need
+    CCC = (Center(), Center(), Center())
+    for T in TYPES, mode in FLUX3D_MODES
+        c = folded_3d(continuity_case_3d(T, mode, Quadratic, CCC; be, bins = NodeBins(Quadratic, NODES3), g = 3); be)
         @test record!("T-940", T, continuity_residual_3d(c), be) <= C
     end
 end
@@ -45,13 +56,27 @@ end
     s = flux_species_3d(Float64, grid, 50)
     bare = test_species_3d(Float64, grid, 50)
     @test_throws ArgumentError deposit_flux!(Fast(), J..., bare, Quadratic, st, grid, w(bare); dt = 0.25)
+    for k in keys(flux_extras(Float64, 3))           # any one extra missing
+        part = test_species_3d(Float64, grid, 50; extras = Base.structdiff(flux_extras(Float64, 3), NamedTuple{(k,)}))
+        @test_throws r"reads the old position" deposit_flux!(Fast(), J..., part, Quadratic, st, grid, w(part); dt = 0.25)
+    end
     @test_throws ArgumentError deposit_flux!(Fast(), J..., s, Quadratic, st, grid, w(s); dt = 0.25, quantity_z = ChargeWeight())
     @test_throws ArgumentError deposit_flux!(Fast(), J..., s, Quadratic, st, grid, w(s); dt = 0.25, quantity_y = ChargeWeight())
     @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, grid, w(s); dt = 0.25)
     @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, grid, w(s; flux = (Linear, st)); dt = 0.25)
-    # another stagger triple with the same patch size (180 values per cell at order 2 on nodes)
-    @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, grid, w(s; flux = (Quadratic, (Node(), Node(), Center())));
-                                             dt = 0.25)
+    # another stagger triple, with another patch size (150 values per cell against 180) and with
+    # the same (150 for both (Node, Node, Center) and (Center, Node, Node))
+    NNC, CNN = (Node(), Node(), Center()), (Center(), Node(), Node())
+    @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, grid, w(s; flux = (Quadratic, NNC)); dt = 0.25)
+    @test ParticleMeshCore.flux_patch_values(Quadratic, NNC) == ParticleMeshCore.flux_patch_values(Quadratic, CNN) == 150
+    @test_throws r"workspace was built with" deposit_flux!(Reference(), J..., s, Quadratic, NNC, grid, w(s; flux = (Quadratic, CNN)); dt = 0.25)
+    # node bins of ρ's nodes under a flux at the cell centres need one more guard than the flux's 2
+    CCC = (Center(), Center(), Center())
+    gC = flux_grid3(Float64, Quadratic, CCC)
+    sC = flux_species_3d(Float64, gC, 50)
+    @test guards(gC) == 2
+    @test_throws r"with these bins needs 3 guard cells" deposit_flux!(Reference(), fields3(Float64, gC)..., sC, Quadratic, CCC, gC,
+                                                                      w(sC, gC; flux = (Quadratic, CCC), bins = NodeBins(Quadratic, NODES3)); dt = 0.25)
     @test_throws ArgumentError w(s; flux = (Quadratic, (Node(), Node())))
     @test_throws ArgumentError deposit_flux!(Reference(), J..., s, Quadratic, st, grid, w(s; flux = (Quadratic, st)); dt = 0.25, planes = 0)
     @test deposit_flux!(Fast(), J..., s, Quadratic, st, grid, w(s); dt = 0.25) isa Tuple
@@ -186,6 +211,22 @@ function body_T944(be)
         cR = continuity_case_3d(T, Reference(), shape, st; np = prod(N3F) * 8, seed = 11, bins, be)
         cF = continuity_case_3d(T, Fast(), shape, st; np = prod(N3F) * 8, seed = 11, bins, be)
         A = flux_abs_3d(cR.s, shape, st, cR.grid, cR.dt, bins)
+        # Both add into the fields they are given: into a pattern, Reference() gives the pattern
+        # plus its current into zeros bit for bit (its sum is added once per node); Fast() differs
+        # from the pattern plus its current into zeros by at most the roundoff of its k atomic adds
+        # on the node, in either run, each within eps/2 of |pattern| + A there (`flux_hits_3d`).
+        # Unfolded, where Fast()'s nodes are the particles' own (those of `A`).
+        J0 = pattern_fields_3d(T, cR.grid, map(J -> maximum(abs, J), (cR.Jx, cR.Jy, cR.Jz)))
+        pR = continuity_case_3d(T, Reference(), shape, st; np = prod(N3F) * 8, seed = 11, bins, be, J0)
+        pF = continuity_case_3d(T, Fast(), shape, st; np = prod(N3F) * 8, seed = 11, bins, be, J0)
+        @test all(same_bits(p, J0[d] .+ J) for (d, (p, J)) in enumerate(((pR.Jx, cR.Jx), (pR.Jy, cR.Jy), (pR.Jz, cR.Jz))))
+        k = flux_hits_3d(cF.s, shape, st, cF.grid, cF.dt)
+        added = 0.0
+        for (d, (p, J)) in enumerate(((pF.Jx, cF.Jx), (pF.Jy, cF.Jy), (pF.Jz, cF.Jz))), a in eachindex(p)
+            r = abs(Float64(p[a]) - Float64(J0[d][a]) - Float64(J[a]))
+            added = max(added, r / (eps(T) * (k[d][a] + 1) * (abs(J0[d][a]) + A[d][a])))
+        end
+        @test record!("T-944 added", T, added, be) <= tolC("T-944", "C_added")
         # compared folded: a node bin wraps periodically (a particle near an axis' last node is in
         # its first bin), so Reference() writes such a particle's values into the other periodic
         # image of the guards than Fast(), and the two agree once the guards are folded
@@ -200,7 +241,7 @@ function body_T944(be)
     end
 end
 
-@testset "T-944 Reference and Fast agree per node at N = 3; a particle's values are the same bits in its own frame and its bin's [A4, WP-042]" begin
+@testset "T-944 Reference and Fast agree per node at N = 3 and add into the fields they are given; a particle's values are the same bits in its own frame and its bin's [A4, WP-042]" begin
     body_T944(CPU())
     # Fast()'s particle frame against the bin frame of Reference(): on the nodes both hold the same
     # bits; the bin frame's other nodes hold zeros, and along the component's axis past the
@@ -244,7 +285,7 @@ end
     end
 end
 
-@testset "T-945 the 3D Reference flux is bitwise across reruns, threads, launch shapes and planes per launch, and equals recorded bits [A4, WP-042]" begin
+@testset "T-945 the 3D Reference flux is bitwise across reruns, threads, launch shapes and planes per launch, sums in the stated order, and equals recorded bits [A4, WP-042]" begin
     groups = by_case(INPROCESS_FLUX3D)
     @test length(groups) == length(TYPES) * (length(SHAPES) * length(FLUX3D_DIGEST_TRIPLES) + 1)
     @test all(v -> length(v) == length(WG_SIZES) && allequal(v), values(groups))
@@ -260,6 +301,12 @@ end
         runs = [continuity_case_3d(T, Reference(), shape, st; bins, planes) for planes in (nothing, 1, 2, 6)]
         @test all(r -> same_bits(r.Jx, runs[1].Jx) && same_bits(r.Jy, runs[1].Jy) && same_bits(r.Jz, runs[1].Jz), runs)
         @test all(r -> same_bits(r.ws.flux_patch, runs[1].ws.flux_patch), runs)
+    end
+    # The order of the sums, which the recorded bits pin only on one Julia version and the CPU:
+    # per bin its particles' values in slot order, per node the bins in increasing index.
+    for T in TYPES, shape in SHAPES, st in FLUX3D_TRIPLES, bins in flux3d_bins(shape, st)
+        c = continuity_case_3d(T, Reference(), shape, st; bins)
+        @test same_bits.(reference_by_hand_3d(c, shape, st, bins), (c.Jx, c.Jy, c.Jz)) == (true, true, true)
     end
     M = ParticleMeshCore.flux_widths(Quadratic, NODES3, NodeBins(Quadratic, NODES3))
     @test M == (5, 5, 5)
@@ -292,7 +339,7 @@ end
     end
 end
 
-@testset "T-948 Dual weights at N = 3: exact partials, the primal the Float32 run [A8, WP-042]" begin
+@testset "T-948 Dual weights at N = 3: exact partials, the primal the Float32 run; Fast() needs no prior sort [A8, WP-042]" begin
     C = tolC("T-948")
     for shape in SHAPES, st in FLUX3D_TRIPLES, bins in flux3d_bins(shape, st)
         grid = flux_grid3(Float32, shape, st)
@@ -332,6 +379,16 @@ end
                 end
             end
         end
+    end
+    # Fast() on a Dual species falls back to Reference() and sorts first (T-345 at N = 3): never
+    # sorted, it gives the sorted Reference() run bit for bit
+    for bins in (CellBins(), NodeBins(Quadratic, NODES3))
+        grid = flux_grid3(D3, Quadratic, NODES3)
+        s = flux_species_3d(D3, grid, 400; seed = 5)
+        expect = flux3d(Reference(), flux_species_3d(D3, grid, 400; seed = 5), Quadratic, NODES3, grid; bins)[1:3]
+        J = fields3(D3, grid)
+        deposit_flux!(Fast(), J..., s, Quadratic, NODES3, grid, Workspace(s, grid; flux = (Quadratic, NODES3), bins); dt = D3(Float32(1 // 4)))
+        @test same_bits.(J, expect) == (true, true, true)
     end
 end
 

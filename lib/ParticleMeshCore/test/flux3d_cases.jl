@@ -13,8 +13,13 @@ flux_g3(shape, st) = maximum(flux_guard_width(shape, st))
 flux_grid3(::Type{T}, shape, st; n = N3F) where {T} = grid3(T, flux_g3(shape, st); n)
 
 const FLUX3D_MODES = (Reference(), Fast())
-"The stagger triples of the 3D flux tests: ρ's nodes (the module's), the cell centres, and a mixed triple."
-const FLUX3D_TRIPLES = ((Node(), Node(), Node()), (Center(), Center(), Center()), (Center(), Node(), Center()))
+"""
+The stagger triples of the 3D flux tests: ρ's nodes (the module's), the cell centres, and two
+mixed triples. (Center, Node, Center) tells axis 2 from the others and (Node, Node, Center) axis 3,
+so a stagger read from another axis fails a test, which no palindrome triple shows.
+"""
+const FLUX3D_TRIPLES = ((Node(), Node(), Node()), (Center(), Center(), Center()), (Center(), Node(), Center()),
+                        (Node(), Node(), Center()))
 const NODES3 = (Node(), Node(), Node())
 
 "Store the current position of every slot as the old one (the extras of `flux_extras(T, 3)`)."
@@ -89,22 +94,67 @@ function flux3d(mode, s, shape, st, grid; dt = basetype(eltype(s))(1 // 4), work
 end
 
 """
-    continuity_case_3d(T, mode, shape, st; np, seed, workgroupsize, be, dt, bins, planes)
+    continuity_case_3d(T, mode, shape, st; np, seed, workgroupsize, be, dt, bins, planes, g, J0)
 
-One step of `flux_species_3d` on the 3D flux test grid: ρ at the old positions, then, after a
-sort, ρ at the new positions in `mode` and the flux. Unfolded host fields.
+One step of `flux_species_3d` on the 3D flux test grid (with `g` guard cells if given): ρ at the
+old positions, then, after a sort, ρ at the new positions in `mode` and the flux, added into
+fields of zeros or into copies of the fields `J0`. Unfolded host fields.
 """
 function continuity_case_3d(::Type{T}, mode, shape, st; np = 400, seed = 3, workgroupsize = nothing, be = CPU(),
-                            dt = basetype(T)(1 // 4), bins = CellBins(), planes = nothing) where {T}
-    grid = flux_grid3(T, shape, st)
+                            dt = basetype(T)(1 // 4), bins = CellBins(), planes = nothing, g = nothing, J0 = nothing) where {T}
+    grid = g === nothing ? flux_grid3(T, shape, st) : grid3(T, g; n = N3F)
     s = flux_species_3d(T, grid, np; seed)
     ρold = deposited_3d(Reference(), at_old_positions_3d(s), shape, st, grid; be)
     ws = Workspace(s, grid; flux = (shape, st), bins)
     on(be, sort_by_cell!, s, grid, ws; workgroupsize)
     ρnew = on(be, deposit!, mode, field(backend, T, grid), s, shape, st, grid, ws)
-    Jx, Jy, Jz = fields3(T, grid)
+    Jx, Jy, Jz = J0 === nothing ? fields3(T, grid) : map(copy, J0)
     on(be, deposit_flux!, mode, Jx, Jy, Jz, s, shape, st, grid, ws; dt = T(dt), planes, workgroupsize)
     return (; ρold, ρnew, Jx, Jy, Jz, grid, s, ws, dt = T(dt))
+end
+
+"Fields of `T` on `grid` holding a fixed pattern of values up to `scale[c]` in component `c`, guards included."
+pattern_fields_3d(::Type{T}, grid, scale) where {T} =
+    ntuple(c -> T[T(scale[c] * sin(0.7 * k + 1.3 * c)) for k in reshape(1:prod(ncells(grid) .+ 2guards(grid)), ncells(grid) .+ 2guards(grid))], 3)
+
+"""
+    reference_by_hand_3d(c, shape, st, bins) -> (Jx, Jy, Jz)
+
+The Reference() flux of the case `c` (a `continuity_case_3d` into fields of zeros) summed on the
+host in the order contract 13 states, from the engine's own per-particle values
+(`flux_values_3d`): per bin, its particles' values in slot order from zero; per node, the bins'
+sums in increasing column-major linear bin index from zero. The engine's bits on every backend.
+"""
+function reference_by_hand_3d(c, shape, st, bins)
+    (; s, grid, ws, dt) = c
+    T = eltype(s)
+    n, g = Int32.(ncells(grid)), guards(grid)
+    sx = map(h -> h / dt, cellsize(grid))
+    frame = bin_frame(bins)
+    seg_start, seg_stop = Array(ws.seg_start), Array(ws.seg_stop)
+    J = fields3(T, grid)
+    bins_ci = CartesianIndices(Int.(n))
+    for C in 1:3
+        vC = Val(C)
+        for L in 1:prod(n)
+            seg_stop[L] >= seg_start[L] || continue
+            b = Tuple(bins_ci[L])
+            patch, lo, D = nothing, nothing, nothing
+            for i in seg_start[L]:seg_stop[L]
+                l, parts = ParticleMeshCore.flux_parts_3d(vC, s, i, shape, st, n, sx, frame)
+                a, _ = ParticleMeshCore.transverse_axes(vC)
+                M = ntuple(d -> length(d == C ? parts[1] : d == a ? parts[2] : parts[3]), 3)
+                D = ParticleMeshCore.flux_dims_3d(vC, M)
+                v = ParticleMeshCore.flux_values_3d(vC, parts, Val(0), Val(prod(D)))
+                patch = patch === nothing ? map(x -> zero(T) + x, v) : map(+, patch, v)
+                lo = Int.(l)
+            end
+            for (k, K) in enumerate(CartesianIndices(D))
+                J[C][ntuple(d -> b[d] + lo[d] + K[d] - 1 + g, 3)...] += patch[k]
+            end
+        end
+    end
+    return J
 end
 
 "Fold the guards of every field of a 3D case (in place, on `be`) and return it."
@@ -195,6 +245,26 @@ function flux_abs_3d(s, shape, st, grid, dt, bins)
     return A
 end
 
+"""
+    flux_hits_3d(s, shape, st, grid, dt) -> (kx, ky, kz)
+
+Per node and component, how many particles' own frames (`ParticleFrame()`, Fast()'s atomics)
+hold the node, unfolded.
+"""
+function flux_hits_3d(s, shape, st, grid, dt)
+    k = ntuple(_ -> zeros(Int, ncells(grid) .+ 2guards(grid)), 3)
+    n, g = Int32.(ncells(grid)), guards(grid)
+    sx = cellsize(grid) ./ dt
+    for i in 1:capacity(s)
+        s.status[i] == ParticleMeshCore.ALIVE || continue
+        c = ntuple(d -> s.cell[d][i], 3)
+        for (C, (lo, D, _)) in enumerate(particle_values_3d(s, i, shape, st, n, sx, ParticleMeshCore.ParticleFrame())), K in CartesianIndices(D)
+            k[C][ntuple(d -> c[d] + lo[d] + K[d] - 1 + g, 3)...] += 1
+        end
+    end
+    return k
+end
+
 "The stagger triples of the 3D flux digests: ρ's nodes and the mixed triple."
 const FLUX3D_DIGEST_TRIPLES = ((Node(), Node(), Node()), (Center(), Node(), Center()))
 
@@ -219,7 +289,7 @@ function flux3d_digests(be = CPU(); wgs = WG_SIZES)
     return lines
 end
 
-# Hand evaluation (T-946): Esirkepov's 3D weights from the B-splines written out on the host
+# Hand evaluation (T-943): Esirkepov's 3D weights from the B-splines written out on the host
 # (`bspline`, `hand_weight` of flux2d_cases.jl), independent of the engine's `shape_weights`.
 
 """
