@@ -159,8 +159,16 @@ function main(dir)
         nend = ceil(Int, 4TAU / dt)
         te = collect(range(nb * dt, nend * dt; length = 400))
         ex = [exact_state(tab, nb * dt, t) for t in te]
+        prs = Dict{String,Any}()
+        for (name, P) in PUSHERS
+            tr = trace(P, a0, dt, nb, nend)
+            # errors against the exact orbit at the leapfrog's own times: x at tⁿ, u at tⁿ + Δt/2
+            tr["dx"] = [tr["x"][i] - exact_state(tab, nb * dt, tr["t"][i]).x for i in eachindex(tr["t"])]
+            tr["duy"] = [tr["uy"][i] - exact_state(tab, nb * dt, tr["t"][i] + dt / 2).uy for i in eachindex(tr["t"])]
+            prs[name] = tr
+        end
         Dict{String,Any}("birth" => nb * dt, "dt" => dt, "exact" => Dict("t" => te, "x" => [e.x for e in ex], "uy" => [e.uy for e in ex], "ux" => [e.ux for e in ex]),
-                         "pushers" => Dict(name => trace(P, a0, dt, nb, nend) for (name, P) in PUSHERS))
+                         "pushers" => prs)
     end
     open(io -> JSON.print(io, out), joinpath(dir, "born_orbits.json"), "w")
     return dir
