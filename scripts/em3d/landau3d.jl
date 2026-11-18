@@ -183,8 +183,8 @@ function landau3d_table(dirs)
         s, e, ss, ps = o["size"], o["ensemble"], o["single_seed"], o["per_seed"]
         f(x; d = 4) = string(round(x; sigdigits = d))
         println("| $(s["cells"])³, $(s["ppc"]) per cell, $(length(ps)) seeds, $(s["element_type"]) | $(s["particles"]) | $(f(s["dx_over_debye"]; d = 3)) | $(s["steps"]) | ",
-                "$(f(e["gamma"])) ± $(f(e["jackknife"]; d = 2)) | $(f(100e["gamma_rel"]; d = 3)) % ± $(f(100e["jackknife_rel"]; d = 2)) % | ",
-                "$(f(100e["omega_rel"]; d = 2)) % | $(e["maxima"]) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) | ",
+                "$(f(e["gamma"])) ± $(f(e["jackknife"]; d = 2)) | $(f(100 * e["gamma_rel"]; d = 3)) % ± $(f(100 * e["jackknife_rel"]; d = 2)) % | ",
+                "$(f(100 * e["omega_rel"]; d = 2)) % | $(e["maxima"]) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) | ",
                 "$(f(maximum(p -> p["gauss_end"], ps); d = 2)), $(f(maximum(p -> p["divB_end"], ps); d = 2)) | ",
                 "$(f(maximum(p -> abs(p["energy_drift"]), ps); d = 2)) | $(round(Int, mean(p -> p["wall_seconds"], ps))) |")
     end
