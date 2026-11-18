@@ -42,58 +42,83 @@ const BCASE = (waist = 10.0, delay = 54.0, focus = 80.0, vacuum = 64.0, ramp = 4
                every = 1, capacity = 400_000, wavelength = 0.8e-6, fade = (12.0, 24.0), u_fast = 5.0)
 
 """
-    born_problem(a0, dopant; t_end, ppl, every, capacity, section, duration, density, ramp) -> EMProblem{2}
+    born_problem(a0, dopant; t_end, ppl, ny, every, capacity, section, duration, density, ramp, waist, delay, focus) -> EMProblem{2}
 
 The case at a normalized vector potential `a0` and a dopant density `dopant` (n_c); the element
-type follows the arguments. `ppl` cells per λ₀ along x at the same box and the same Δy (it must be
-a multiple of 8), `t_end` the read-out time, `ramp` the length of the plasma's density ramp (the
-dopant's `section` does not move with it: pass both).
+type follows the arguments. `ppl` cells per λ₀ along x at the same box (it must be a multiple of
+8), and `ny` times as many cells along y as the case's 128 of Δy = π/4 (Δy = π/(4·ny), with the
+PMLs and the dopant's rows the same width); `t_end` the read-out time, `ramp` the length of the
+plasma's density ramp (the dopant's `section` does not move with it: pass both); `waist`,
+`delay` and `focus` the pulse's ([`GaussianLaser`](@ref)); `extend` whole wavelengths added to
+the window behind the case's 14, with the window's start delayed by as much, so that the box at
+every time holds the case's box and that much more of the wake behind it (the front, the plasma
+and the pulse are where they are in the case, in the lab frame). The element type is `float`
+(Float64 by default, Float32 for the GPU), with every plain float argument taken in it, or the
+argument's own type when it is a dual (a dual of `float` keeps the run in `float`).
+
+Float32 serves the objective and most of its ForwardDiff gradient: Float32 duals on an RTX 5090
+against Float64 on the CPU (WP-065's `trapped_energy`) give J within 8·10⁻⁵ at λ₀/16 and λ₀/32
+at five points, and d ln J/d ln x of the free parameters and the budget within 0.05, except at
+0.085 n_c and λ₀/32, where they differ by 2 (open in WP-065's report); at λ₀/8 to t = 190, J
+within 1.6·10⁻⁵ (T-914). Float64 stays the default for the central
+differences that check the gradient: their steps reach 2⁻¹⁸ of a parameter, below Float32's
+resolution of it (2⁻²⁴), where the difference of two Float32 runs is roundoff.
 """
-function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, every::Integer = BCASE.every,
-                      capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp)
+function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, ny::Integer = 1, every::Integer = BCASE.every,
+                      capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp,
+                      waist = BCASE.waist, delay = BCASE.delay, focus = BCASE.focus, extend::Integer = 0,
+                      float::Type{<:AbstractFloat} = Float64)
     ppl % 8 == 0 || throw(ArgumentError("ppl must be a multiple of 8 to keep Δy = π/4, got $ppl"))
-    T = promote_type(typeof(a0), typeof(dopant), typeof(duration), typeof(density), Float64)
+    ny >= 1 || throw(ArgumentError("ny must be at least 1, got $ny"))
+    extend >= 0 || throw(ArgumentError("extend must be at least 0, got $extend"))
+    base(x) = x isa AbstractFloat ? float : typeof(x)
+    T = promote_type(base(a0), base(dopant), base(duration), base(density), base(waist), base(delay), base(focus), float)
     z3 = (zero(T), zero(T), zero(T))
     h = 2 * T(π) / ppl
-    hy = (ppl ÷ 8) * h
-    cells = (BCASE.length_wavelengths * ppl, BCASE.rows)
+    hy = (ppl ÷ 8) * h / ny
+    cells = ((BCASE.length_wavelengths + extend) * ppl, BCASE.rows * ny)
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
     nsteps = ceil(Int, t_end / Float64(value_of(dt)))
     hy64 = Float64(value_of(hy))
     yc = cells[2] * hy64 / 2
-    pulse = GaussianLaser(; a0 = T(a0), waist = T(BCASE.waist), duration = T(duration), delay = T(BCASE.delay), focus = T(BCASE.focus),
+    pulse = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = T(delay), focus = T(focus),
                           position = max(12, 192 ÷ ppl) * (2 * T(π) / 32), center = cells[2] * hy / 2)
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(density), zero(T), (1, 0), BCASE.ppc, z3, z3, 1)
     levels = (adk_level(T, :N, 6; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff),
               adk_level(T, :N, 7; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff))
     ion = FieldIonization(; density = T(dopant), levels, capacity, every, ppc = (1, 1),
-                          rows = (yc - BCASE.half_rows * hy64, yc + BCASE.half_rows * hy64),
+                          rows = (yc - BCASE.half_rows * ny * hy64, yc + BCASE.half_rows * ny * hy64),
                           section = DopantSection(; start = T(section.start), stop = T(section.stop), ramp = T(section.ramp)))
     return EMProblem("born2d", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
-                     lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = T(BCASE.start)),
+                     lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = T(BCASE.start) + extend * 2 * T(π)),
                      profile = DensityRamp(; vacuum = T(BCASE.vacuum), ramp = T(ramp)), ionization = ion)
 end
 
-"The case's numerics: Reference mode, PMLs at the open y edges and at the window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the back edge, at least 6 cells)."
-born_numerics(ppl::Integer = BCASE.ppl) =
-    EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
+"The case's numerics: Reference mode, PMLs at the open y edges (`ny` times 12 cells) and at the window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the back edge, at least 6 cells)."
+born_numerics(ppl::Integer = BCASE.ppl, ny::Integer = 1) =
+    EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
 
-"The case's state at its start and its parameters; `ppl` and the rest as [`born_problem`](@ref)."
-function born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, kw...)
-    prob = born_problem(a0, dopant; ppl, kw...)
-    st = EMState(prob, born_numerics(ppl); record = ())
+"The case's state at its start on `backend` and its parameters; `ppl`, `ny` and the rest as [`born_problem`](@ref)."
+born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, ny::Integer = 1, backend = CPU(), kw...) =
+    start_of(born_problem(a0, dopant; ppl, ny, kw...); ppl, ny, backend)
+
+"The state of a problem of the case at its start on `backend`, with the case's numerics at the `ppl` and `ny` the problem was made with, its parameters, and the problem."
+function start_of(prob; ppl::Integer, ny::Integer, backend = CPU())
+    st = EMState(prob, born_numerics(ppl, ny); record = (), backend)
     p = params(prob)
     initialize!(st, p)
     return st, p, prob
 end
 
-"The case's state after its run. A birth that found no free slot is an error: the capacity was too small."
-function born_state(a0 = BCASE.a0, dopant = BCASE.dopant; kw...)
-    st, p, prob = born_start(a0, dopant; kw...)
+"The state at the end of the run of a start (a state, its parameters and its problem). A birth that found no free slot is an error: the capacity was too small."
+function run_to_end((st, p, prob))
     run!(st, p, prob.nsteps)
     ionization_lost(st) == 0 || error("$(ionization_lost(st)) births found no free slot: raise `capacity`")
     return st
 end
+
+"The case's state after its run (the arguments of [`born_start`](@ref))."
+born_state(a0 = BCASE.a0, dopant = BCASE.dopant; kw...) = run_to_end(born_start(a0, dopant; kw...))
 
 """
     smooth_rise(x, lo, hi)

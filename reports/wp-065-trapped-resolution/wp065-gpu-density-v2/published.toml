@@ -1,0 +1,122 @@
+branch = "runs/wp065-trapped-resolution"
+commit = "6e3183a1928849109c2288034cedaac89c103008"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.05-r48x3-f32-cuda.json"
+bytes = 1273
+sha256 = "0f7f056b9e2a8ecd0de130193b8305d79f77dbe7f0cfcade62a39ac09b84bad8"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.05-r64x4-f32-cuda.json"
+bytes = 1267
+sha256 = "fb684593e0133f1dd05270263bbddca0ae9ae3174203887c1a3a3b8196bbcbe6"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.055-r48x3-f32-cuda.json"
+bytes = 1270
+sha256 = "4895740e5ff7bf46b337c7aab125b12258bc5a23a599e047a955e9e1f071d774"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.055-r64x4-f32-cuda.json"
+bytes = 1267
+sha256 = "5a9fd6f40943053a17a303eba268f27017819556e8732b301f92dc9024b0ecd2"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.06-r48x3-f32-cuda.json"
+bytes = 1257
+sha256 = "ccecc40707d6176bd8e1a1d9dc39707394844e3a9f4ff72ab946bd3024c1f022"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.06-r64x4-f32-cuda.json"
+bytes = 1264
+sha256 = "b652ead5b10b48969fe29ead33bff6ca84211ca5f2e7da6a8b6d1a3083861065"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.065-r48x3-f32-cuda.json"
+bytes = 1264
+sha256 = "e9ab6555045d29f23d8ffffbab3a7f2eaee6d39ff224694df779fa84ac7908bd"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.065-r64x4-f32-cuda.json"
+bytes = 1259
+sha256 = "7be2ff10796713f5ede52a1ba1071017a83fa4d0ec0e11172f7c8ab5b1cb8cdb"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.07-r48x3-f32-cuda.json"
+bytes = 1251
+sha256 = "a4cd719e35b3bb42d06aa145b3ea88b60fc6145ff2e55218f56d604dfb518d40"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.07-r64x4-f32-cuda.json"
+bytes = 1260
+sha256 = "b32ea62ea0dc5c9056252f25c713c13a579cb677d40a9813d54447c6a268dac9"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.075-r48x3-f32-cuda.json"
+bytes = 1268
+sha256 = "b21986e30c0e112a4df8e832b5bf21e29ed5a78134545f008f7693319e92f3c5"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.075-r64x4-f32-cuda.json"
+bytes = 1265
+sha256 = "edeafa07a5f0a39529fb818b688c53f35c7b77b84318dd0e0da667ed683b5c68"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.08-r48x3-f32-cuda.json"
+bytes = 1311
+sha256 = "e327bac97919f2b0b1cc0dfd465d2069ab51e6820a25ab796989874643d492aa"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.08-r64x4-f32-cuda.json"
+bytes = 1311
+sha256 = "b2d509636a54605c81a406471efc7e002ca89a84dbf0db71abaea48a0755ea99"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.085-r48x3-f32-cuda.json"
+bytes = 1301
+sha256 = "d068d4290e3b41cc03147671bbe7fbf26c5a028d248774d6237a20860335c512"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.085-r64x4-f32-cuda.json"
+bytes = 1309
+sha256 = "26df3b6b8b24346c8c2d1d0d264533228bd1d045d90390f5352532037add559e"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.09-r48x3-f32-cuda.json"
+bytes = 1301
+sha256 = "010f6b669a794fcf4da341821292454d4bdb56b8e06e506598be5ed798976867"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.09-r64x4-f32-cuda.json"
+bytes = 1306
+sha256 = "8e2eceeed3e83ba4dccf658640ba598bba91cdc889c6dd360fe06fc32c2bcfdd"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.095-r48x3-f32-cuda.json"
+bytes = 1307
+sha256 = "3c670d140fb15f59d62aa82a8526080ec1fca357f1986987be5a12d3c4b13d7b"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.095-r64x4-f32-cuda.json"
+bytes = 1301
+sha256 = "028cf04c2b3b48d671f84809699c59b6d5ed0873e736e27fa405a7504c449614"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.1-r48x3-f32-cuda.json"
+bytes = 1305
+sha256 = "04820680d982e1007bfa9b56eec34810daeacbd0f98352b583877342f42c5e7f"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/density-0.1-r64x4-f32-cuda.json"
+bytes = 1297
+sha256 = "1c6911e932f67d797734aedd72bce2cc49807289f2be09b9afd265963e0000a5"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/jobs.json"
+bytes = 5100
+sha256 = "7382373e07ba2fc845367bfde7868caa291327bf0665ff378601dab0ee589cb9"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-density-v2/manifest.toml"
+bytes = 6543
+sha256 = "2cfc9f8c5b90c6846ab6dd7d2bd53816228f7e5a055103d32179d7f3e25cd4e6"

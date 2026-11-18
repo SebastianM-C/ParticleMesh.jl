@@ -1,0 +1,112 @@
+branch = "runs/wp065-trapped-resolution"
+commit = "6e3183a1928849109c2288034cedaac89c103008"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E1.9-r16x1-f32-cuda.json"
+bytes = 1308
+sha256 = "8b677a7b1755d8756a5e07cbc8019f17d7654736713da58abb22179ad8fea064"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E1.9-r32x2-f32-cuda.json"
+bytes = 1302
+sha256 = "2f1a19a58a12136a4c03f2d3d30cf58daa4d118c8c2a13845141737b66f63013"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E1.9-r48x3-f32-cuda.json"
+bytes = 1315
+sha256 = "790b51f6ee551c4b129cb8647863eab862e2d76faa06ae345c7f48e97b187cc1"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E1.9-r64x4-f32-cuda.json"
+bytes = 1303
+sha256 = "d5ec3c5b1d32f27b5af068b62ff98b39129d8f4f0670b5df2a62710569118a82"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.175-r16x1-f32-cuda.json"
+bytes = 1280
+sha256 = "02ff9f31c8722d34ce7141fb2d559b80bd30c31bd28e7c5148c1c6dccadc81dd"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.175-r32x2-f32-cuda.json"
+bytes = 1281
+sha256 = "949befdce233f84dbb28aec8581071fc3a4f35b4eceb419a168238b06f52c0fa"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.175-r48x3-f32-cuda.json"
+bytes = 1283
+sha256 = "7e01f0d60c21dd31b0b10e7730e47720a603a8cb9aec5476de993540e852400f"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.175-r64x4-f32-cuda.json"
+bytes = 1278
+sha256 = "372a25c0568739840bb1eb9c94fe7a84bc18206bb2178a8de4a0746998dbf131"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.4-r16x1-f32-cuda.json"
+bytes = 1306
+sha256 = "9ebf1abe0b94786487270e526d27938882aefff75621d45511ccbdf95139969d"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.4-r32x2-f32-cuda.json"
+bytes = 1302
+sha256 = "8dc062a4e726a19dafda7755ddd7633db2222a2e42bdea427c2ec6447098a85b"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.4-r48x3-f32-cuda.json"
+bytes = 1312
+sha256 = "7c56ddc77e8aa7406b38a41fae09b60a329f353e746fae7963f664b59971d2d0"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-E2.4-r64x4-f32-cuda.json"
+bytes = 1309
+sha256 = "a4836a17e2de750cb562e6dee8f24d348e29586995799a85580614e433184ee4"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.06-r16x1-f32-cuda.json"
+bytes = 1277
+sha256 = "2562654ba4cc9a2930142b882594a0142f0f7d639681413f29188b52c2c31774"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.06-r32x2-f32-cuda.json"
+bytes = 1273
+sha256 = "e07e6e5f6e929ed0deca21b927c3aacb7c612a4439f408966ef1ee4530770056"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.06-r48x3-f32-cuda.json"
+bytes = 1275
+sha256 = "8abf355cdb4492f03f83f5edb5ecd11573b36d680a7923ab8e720078db42801c"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.06-r64x4-f32-cuda.json"
+bytes = 1282
+sha256 = "eb971d1867828a78785133fa935605b46ab59c00d56fef82b79cae08dae369a0"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.085-r16x1-f32-cuda.json"
+bytes = 1332
+sha256 = "556a87cd5a2e05a8ad974f5364a460082a5dde10bf50b35c14a544a195abc532"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.085-r32x2-f32-cuda.json"
+bytes = 1321
+sha256 = "3dbb4089a2addbf5b1f9bba87d7af364ac10e2301a1f2a3f53405c8df8f9a5d2"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.085-r48x3-f32-cuda.json"
+bytes = 1321
+sha256 = "ad5113a4f13b763691f3f49893a3263914e721bc86bc99899aea2982a1b0ced1"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/conv-n0.085-r64x4-f32-cuda.json"
+bytes = 1328
+sha256 = "43a09fe029311d938aa7e1f640c7133ec3a17cac787edc2fc6db32e20fcf0d27"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/jobs.json"
+bytes = 5022
+sha256 = "84f72a4f22d22a6069ded6cf82ff483bc5692a8a125f990f4c060103cb416670"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-conv-v2/manifest.toml"
+bytes = 6559
+sha256 = "83c9f8cadf6ef019388af94f56bba27127a6f62a0b6cf8ec28e230438d2cf93c"
