@@ -1,0 +1,12 @@
+timeout = 10800
+category = "validation"
+outputs = ["scripts/runs/box-pshape1"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "ENV[\"GRIDPPC_MAX_PPL\"] = \"32\"; append!(empty!(ARGS), [\"campaign\", \"gather\", \"scripts/runs/box-pshape1/gather\", \"cpu\"]); include(\"scripts/resolution/gridppc.jl\")"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "ENV[\"GRIDPPC_MAX_PPL\"] = \"32\"; append!(empty!(ARGS), [\"campaign\", \"shape\", \"scripts/runs/box-pshape1/shape\", \"cpu\"]); include(\"scripts/resolution/gridppc.jl\")"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-e", "ENV[\"GRIDPPC_MIN_PPL\"] = \"48\"; ENV[\"GRIDPPC_MAX_PPL\"] = \"48\"; append!(empty!(ARGS), [\"campaign\", \"pusher\", \"scripts/runs/box-pshape1/pusher48\", \"cpu\"]); include(\"scripts/resolution/gridppc.jl\")"]
