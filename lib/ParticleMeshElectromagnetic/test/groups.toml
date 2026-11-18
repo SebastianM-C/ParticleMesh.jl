@@ -19,4 +19,6 @@ groups = [
     ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "recorder.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
     # the field ionization, which reuses no other file, and its levels' rate laws
     ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "gather.jl"],
+    # the periodic 3D step, which reuses no other file
+    ["em3d_step.jl"],
 ]
