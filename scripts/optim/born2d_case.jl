@@ -56,10 +56,11 @@ and the pulse are where they are in the case, in the lab frame). The element typ
 (Float64 by default, Float32 for the GPU), with every plain float argument taken in it, or the
 argument's own type when it is a dual (a dual of `float` keeps the run in `float`).
 
-Float32 is enough for the objective and its ForwardDiff gradient: at λ₀/16, a₀ = 2.175 (WP-065's
-`trapped_energy`), Float32 duals on an RTX 5090 give J within 6·10⁻⁶ of Float64 on the CPU and the
-six partials (the five parameters and the budget) within 3.3·10⁻³, below the changes with
-resolution that WP-065 studies; at λ₀/8 to t = 190, J within 1.6·10⁻⁵ (T-914). Float64 stays the default for the central
+Float32 serves the objective and most of its ForwardDiff gradient: Float32 duals on an RTX 5090
+against Float64 on the CPU (WP-065's `trapped_energy`) give J within 8·10⁻⁵ at λ₀/16 and λ₀/32
+at five points, and d ln J/d ln x of the free parameters and the budget within 0.05, except at
+0.085 n_c and λ₀/32, where they differ by 2 (open in WP-065's report); at λ₀/8 to t = 190, J
+within 1.6·10⁻⁵ (T-914). Float64 stays the default for the central
 differences that check the gradient: their steps reach 2⁻¹⁸ of a parameter, below Float32's
 resolution of it (2⁻²⁴), where the difference of two Float32 runs is roundoff.
 """

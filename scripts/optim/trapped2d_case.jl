@@ -28,9 +28,9 @@ Fixed parameters of the WP-065 case beyond [`BCASE`](@ref) (A1 units).
 - `x0` is the base point (duration, waist, focus, delay, density); `names` and `scale` give each
   parameter's name and the scale of z = x ./ scale in problem.jl.
 - `free` are the indices of the parameters an optimizer moves: all but the delay, which stays at
-  `x0[4]`. J along the delay is rough on the scale of a cell (its derivative changes sign from
-  one resolution to the next, and runs a small step apart scatter by about 10⁻³ of J), so its
-  ForwardDiff derivative does not predict J's change over a finite step (WP-065's report).
+  `x0[4]`. ForwardDiff's derivative in the delay does not give J's change over a finite step:
+  at λ₀/32 it is 11 to 16 in d ln J/d ln delay where central differences and runs 2⁻¹⁰ apart
+  give −0.3, and it changes sign from one grid to the next (WP-065's report).
 """
 const TCASE = (a0_energy = 1.9, budgets = (1.9, 2.175, 2.4), dopant_fraction = 0.01, rise = (3.0, 5.0), fade = (12.0, 24.0),
                x0 = (6.0, 10.0, 80.0, 54.0, 0.072), names = ("duration", "waist", "focus", "delay", "density"),
