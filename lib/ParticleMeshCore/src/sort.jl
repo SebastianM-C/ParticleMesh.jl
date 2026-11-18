@@ -252,6 +252,7 @@ function permute_species!(s::Species, ws::Workspace, spare::Base.RefValue{A}, wo
     backend = get_backend(s)
     (a isa A && (owns_arrays(s) || backend isa KernelAbstractions.CPU)) || return permute_species!(s, ws, nothing, workgroupsize)
     b = spare[]
+    shares_array(flat_arrays(a), flat_arrays(b)) && return permute_species!(s, ws, nothing, workgroupsize)
     launcher(gather_all_kernel!, backend, workgroupsize)(flat_arrays(b), flat_arrays(a), ws.perm; ndrange = capacity(s))
     if owns_arrays(s)
         getfield(s, :data)[] = b
@@ -261,6 +262,11 @@ function permute_species!(s::Species, ws::Workspace, spare::Base.RefValue{A}, wo
     end
     return s
 end
+# Whether a species' arrays and the spare set have an array in common: a borrowed species can
+# hold arrays that its owner's swap left in the spare set (a state view shares the owner's
+# extras), and gathering into them would read and write one array. Host references only.
+shares_array(a::Tuple, b::Tuple) = any(x -> any(y -> x === y, b), a)
+
 function permute_species!(s::Species{N}, ws::Workspace, ::Nothing, workgroupsize) where {N}
     for d in 1:N
         permute!(s.cell[d], ws.tmp_i32, ws.perm, workgroupsize)

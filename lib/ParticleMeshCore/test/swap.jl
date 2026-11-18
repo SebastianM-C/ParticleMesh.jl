@@ -4,6 +4,10 @@
 "A species over the arrays of `s` that it does not own (the copy-back form), as a state view builds one."
 borrowed(s::Species) = Species(s.cell, s.offset, s.u, s.w, s.status, s.count, s.q, s.m, s.extras)
 
+"An adaptor that copies every array: new storage of the same type, as a move to a device gives."
+struct CopyingAdaptor end
+ParticleMeshCore.Adapt.adapt_storage(::CopyingAdaptor, x::AbstractArray) = copy(x)
+
 """
     swap_run(T, n; swap_full, swap_resort, steps, wgs, bins) -> (Vector{Bool}, Int)
 
@@ -80,10 +84,15 @@ end
     t = s
     sort_by_cell!(s, grid, ws)
     @test all(map(===, ParticleMeshCore.species_arrays(t), spare))
-    # adapted to storage (as `adapt(CUDABackend(), s)` moves a species to a device) it keeps a
-    # reference of its own and swaps; adapted for a kernel it holds the arrays themselves
-    c = ParticleMeshCore.Adapt.adapt(Array, s)
+    # adapted to new storage (as `adapt(CUDABackend(), s)` moves a species to a device) it keeps a
+    # reference of its own and swaps; adapted to the storage it already has, it shares the
+    # arrays and borrows them, so it cannot swap them away from `s`
+    same = ParticleMeshCore.Adapt.adapt(Array, s)
+    @test getfield(same, :data) isa Base.RefValue && !ParticleMeshCore.owns_arrays(same)
+    @test all(map(===, ParticleMeshCore.species_arrays(same), ParticleMeshCore.species_arrays(s)))
+    c = ParticleMeshCore.Adapt.adapt(CopyingAdaptor(), s)
     @test getfield(c, :data) isa Base.RefValue && getfield(c, :data) !== getfield(s, :data) && ParticleMeshCore.owns_arrays(c)
+    @test !any(map(===, ParticleMeshCore.species_arrays(c), ParticleMeshCore.species_arrays(s)))
     wc = Workspace(c, grid)
     cs = ParticleMeshCore.flat_arrays(wc.spare[])
     sort_by_cell!(c, grid, wc)
@@ -152,5 +161,27 @@ end
             deposit!(Reference(), ρb, b, Quadratic, N == 1 ? Node() : st, g, wb)
             @test same_bits(ρa, ρb) && any(!iszero, ρb)
         end
+    end
+end
+
+@testset "T-925 a borrowed species that shares arrays with the workspace's spare set (a view over an owner's extras after the owner's swap) sorts array by array, with the bits of a lone copy [A4, WP-041]" begin
+    n = (16, 12)
+    g = PeriodicGrid(n, (1 / 2, 1 / 2), 1)
+    for T in TYPES, f in (sort_by_cell!, resort_by_cell!)
+        s = resort_species(T, n, 600, 500; seed = 9)
+        ws = Workspace(s, g; append = 5)
+        sort_by_cell!(s, g, ws)                          # the owner's old set is now the spare set
+        old = ws.spare[]
+        v = Species(map(copy, s.cell), map(copy, s.offset), map(copy, s.u), copy(s.w), copy(s.status), copy(s.count), s.q, s.m,
+                    old.extras)                          # its extras are the spare set's
+        r = Species(map(copy, v.cell), map(copy, v.offset), map(copy, v.u), copy(v.w), copy(v.status), copy(v.count), v.q, v.m,
+                    map(copy, v.extras))
+        @test ParticleMeshCore.shares_array(ParticleMeshCore.species_arrays(v), ParticleMeshCore.flat_arrays(ws.spare[]))
+        wr = Workspace(r, g; swap = false, append = 5)
+        resort_move!(v, n, ResortLCG(31)); resort_move!(r, n, ResortLCG(31))
+        f(v, g, ws)
+        f(r, g, wr)
+        @test same_sort(r, wr, v, ws)
+        @test all(map(===, values(v.extras), values(old.extras)))   # a borrowed species keeps its arrays
     end
 end

@@ -90,9 +90,13 @@ Base.propertynames(::Species) = (:cell, :offset, :u, :w, :status, :count, :q, :m
 # Adapted for a kernel the arrays are isbits device arrays, and the species holds them as they are
 # (an isbits kernel argument); adapted to other storage (`adapt(CUDABackend(), s)`, `adapt(Array, s)`)
 # they stay in a reference of the new species', which a sort can swap as before. Decided by types.
+# A species adapted to the storage it already has (`adapt(Array, s)` on the host) shares its arrays,
+# so the new one borrows them: it never swaps them away from the first.
 function Adapt.adapt_structure(to, s::Species)
     a = Adapt.adapt(to, species_data(s))
-    return Species(isbitstype(typeof(a)) ? a : Ref(a), Adapt.adapt(to, s.count), s.q, s.m, s.owns)
+    isbitstype(typeof(a)) && return Species(a, Adapt.adapt(to, s.count), s.q, s.m, s.owns)
+    same = any(x -> any(y -> x === y, flat_arrays(species_data(s))), flat_arrays(a))
+    return Species(Ref(a), Adapt.adapt(to, s.count), s.q, s.m, s.owns && !same)
 end
 
 """
