@@ -68,7 +68,7 @@ duration_floor(cap::PowerCap, n) = cap.c * n^(-cap.p)
 CETAL-PW's peak power at its energy (1 PW at 25 J, a 25 fs transform limit), carried to this case
 by τ/λ_p as the CETAL-scaled proposal of the optimization setup does: τ_FWHM ≥ (fwhm_fs/T_p)·λ_p,
 T_p = 2π/ω_p at `density_cm3` (the middle of CETAL's jet, 3.2 to 5.2·10¹⁸ cm⁻³, Diplasu et al.
-2021), ω_p = 5.641·10⁴ rad/s·√(n/cm⁻³). In the case's units (ω₀ = 1, λ_p = 2π/√n, intensity FWHM
+2021, a reference from memory, unverified: the paper has not been checked), ω_p = 5.641·10⁴ rad/s·√(n/cm⁻³). In the case's units (ω₀ = 1, λ_p = 2π/√n, intensity FWHM
 = τ·√(2 ln 2)) that is τ ≥ c/√n with c = (fwhm_fs/T_p)·2π/√(2 ln 2), about 2.45 at 25 fs.
 """
 function cetal_cap(; fwhm_fs = 25.0, density_cm3 = 4.2e18)
