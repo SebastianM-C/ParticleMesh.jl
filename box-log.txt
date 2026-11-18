@@ -1,0 +1,35 @@
+## step 0 (julia): exit 0 after 4691s
+17 of 17 jobs to run, 4 at a time with 4 threads each, into /home/pm/jobs/wp065-lines32/scripts/runs/wp065-energy32
+done energy-1.85-r32x2 in 1022.5 s
+done energy-1.8-r32x2 in 1023.4 s
+done energy-1.9-r32x2 in 1024.5 s
+done energy-1.95-r32x2 in 1025.1 s
+done energy-2.1-r32x2 in 1042.6 s
+done energy-2.0-r32x2 in 1044.9 s
+done energy-2.05-r32x2 in 1044.5 s
+done energy-2.15-r32x2 in 1045.4 s
+done energy-2.2-r32x2 in 1040.1 s
+done energy-2.25-r32x2 in 1040.5 s
+done energy-2.3-r32x2 in 1040.4 s
+done energy-2.35-r32x2 in 1044.3 s
+done energy-2.45-r32x2 in 1033.7 s
+done energy-2.4-r32x2 in 1034.8 s
+done energy-2.5-r32x2 in 1036.2 s
+done energy-2.55-r32x2 in 1034.7 s
+done energy-2.6-r32x2 in 534.5 s
+campaign energy done in 4676.7 s: /home/pm/jobs/wp065-lines32/scripts/runs/wp065-energy32
+
+## step 1 (julia): exit 0 after 2873s
+11 of 11 jobs to run, 4 at a time with 4 threads each, into /home/pm/jobs/wp065-lines32/scripts/runs/wp065-density32
+done density-0.05-r32x2 in 1029.1 s
+done density-0.06-r32x2 in 1029.9 s
+done density-0.055-r32x2 in 1030.7 s
+done density-0.065-r32x2 in 1032.3 s
+done density-0.075-r32x2 in 1021.5 s
+done density-0.08-r32x2 in 1022.8 s
+done density-0.07-r32x2 in 1025.3 s
+done density-0.085-r32x2 in 1024.4 s
+done density-0.09-r32x2 in 802.8 s
+done density-0.095-r32x2 in 807.9 s
+done density-0.1-r32x2 in 811.5 s
+campaign density done in 2866.5 s: /home/pm/jobs/wp065-lines32/scripts/runs/wp065-density32

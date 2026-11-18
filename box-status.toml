@@ -1,0 +1,27 @@
+branch = "runs/wp065-lines32"
+request_commit = "0341e8516094abb489a9964ccc03640eed5b74ac"
+started = "2026-11-18T01:12:58Z"
+category = "validation"
+outputs = ["scripts/runs/wp065-energy32", "scripts/runs/wp065-density32"]
+finished = "2026-11-18T03:19:02Z"
+ok = true
+files_returned = 62
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T01:12:58Z"
+exit = 0
+seconds = 4691
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T02:31:09Z"
+exit = 0
+seconds = 2873
