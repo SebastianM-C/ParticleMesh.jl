@@ -34,6 +34,10 @@ backend_label(be) = be isa CPU ? "KernelAbstractions CPU" : string(nameof(typeof
 gpu_name(be) = be isa CPU ? "none" : string(CUDACore.name(CUDACore.device()))
 const KMAG, VTH, AMPLITUDE = 10, 1 / 20, 1 / 10
 
+"Mean and standard deviation of the finite entries (a seed with fewer than three maxima above its floor has no rate)."
+fmean(x) = (y = filter(isfinite, x); isempty(y) ? NaN : mean(y))
+fstd(x) = (y = filter(isfinite, x); length(y) < 2 ? NaN : std(y))
+
 "T-954's problem at `cells`³ cells, `ppc`³ electrons per cell and t_end, element type T."
 function landau3d_problem(::Type{T}; cells, ppc, seed, t_end) where {T}
     L = T(2π * sqrt(3) / KMAG)
@@ -136,8 +140,8 @@ function landau3d_run(be; cells, ppc, seeds, float, t_end)
                            "jackknife_rel" => ens.jackknife.stderr / th.gamma, "omega" => ens.omega,
                            "omega_rel" => (ens.omega - th.omega) / th.omega, "maxima" => length(ens.t_fit),
                            "t_fit" => ens.t_fit, "seeds" => length(seeds)),
-        "single_seed" => Dict("gamma" => single, "mean" => mean(single), "std" => length(single) > 1 ? std(single) : NaN,
-                              "mean_rel" => (mean(single) - th.gamma) / th.gamma,
+        "single_seed" => Dict("gamma" => single, "fitted" => count(isfinite, single), "mean" => fmean(single), "std" => fstd(single),
+                              "mean_rel" => (fmean(single) - th.gamma) / th.gamma,
                               "omega" => [r.omega for r in ens.single_seed], "maxima" => [length(r.t_fit) for r in ens.single_seed]),
         "per_seed" => recs)
     open(io -> JSON.json(io, out; pretty = 2, allownan = true), joinpath(dir, "observables.json"), "w")
@@ -183,9 +187,10 @@ function landau3d_table(dirs)
         o = JSON.parsefile(joinpath(d, "observables.json"); allownan = true)
         s, e, ss, ps = o["size"], o["ensemble"], o["single_seed"], o["per_seed"]
         f(x; d = 4) = string(round(x; sigdigits = d))
-        println("| $(s["cells"])³, $(s["ppc"]) per cell, $(length(ps)) seeds, $(s["element_type"]) | $(s["particles"]) | $(f(s["dx_over_debye"]; d = 3)) | $(s["steps"]) | ",
+        i(x) = Int(x)
+        println("| $(i(s["cells"]))³, $(i(s["ppc"])) per cell, $(length(ps)) seeds, $(s["element_type"]) | $(i(s["particles"])) | $(f(s["dx_over_debye"]; d = 3)) | $(i(s["steps"])) | ",
                 "$(f(e["gamma"])) ± $(f(e["jackknife"]; d = 2)) | $(f(100 * e["gamma_rel"]; d = 3)) % ± $(f(100 * e["jackknife_rel"]; d = 2)) % | ",
-                "$(f(100 * e["omega_rel"]; d = 2)) % | $(e["maxima"]) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) | ",
+                "$(f(100 * e["omega_rel"]; d = 2)) % | $(i(e["maxima"])) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) ($(i(ss["fitted"])) fitted) | ",
                 "$(f(maximum(p -> p["gauss_end"], ps); d = 2)), $(f(maximum(p -> p["divB_end"], ps); d = 2)) | ",
                 "$(f(maximum(p -> abs(p["energy_drift"]), ps); d = 2)) | $(round(Int, mean(p -> p["wall_seconds"], ps))) |")
     end
