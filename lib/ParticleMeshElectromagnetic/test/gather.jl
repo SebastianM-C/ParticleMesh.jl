@@ -286,7 +286,7 @@ end
 # less of the laser's field) with the compensated gather, ForwardDiff of the born charge and the
 # born electrons' energy in the laser's a₀ and the dopant's density against the finite-difference
 # floor with T-778's bounds. The particles feel the laser's full field, so more charge is born
-# than without compensation.
+# than without compensation (8.7 % more charge, 18 % more energy, measured).
 @testset "T-963 ForwardDiff through the compensated gather against the finite-difference floor in a small ionization-injection run, which then births more charge [A0, A3, A7, WP-067]" begin
     x0 = collect(ION_X0)
     cg = CompensatedGather()
@@ -304,7 +304,10 @@ end
         @info "T-963 $name, $(ION_NAMES[i])" ad = ad[o, i] fd = r.fd[r.istar] rel = r.rel[r.istar] floor = r.floor_rel ratio
         get!(MEASURED, "T-963 rel/floor, $name", Dict{String,Float64}())[ION_NAMES[i]] = ratio
         @test isfinite(ad[o, i]) && ad[o, i] != 0
-        @test r.rel[r.istar] <= emC("T-778") * r.floor_rel
+        # the born charge is linear in the density (up to the electrons' own weak fields), so three
+        # neighbouring quotients can agree to the bit: a floor of zero, where the AD must then agree
+        # with them to a few hundred eps of the run (measured 5.3e-12)
+        @test r.rel[r.istar] <= (r.floor_rel > 0 ? emC("T-778") * r.floor_rel : 1.0e-10)
         @test r.floor_rel <= emC("T-778", "floor_max")
     end
 end
