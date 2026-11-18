@@ -1,0 +1,20 @@
+branch = "runs/wp042-flux3d-core-7e88991"
+request_commit = "828551ddd84002a7e9fe0483e4a2d3c28ed45a71"
+started = "2026-11-18T08:13:53Z"
+category = "test"
+outputs = []
+finished = "2026-11-18T08:39:31Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T08:13:53Z"
+exit = 1
+seconds = 1539
