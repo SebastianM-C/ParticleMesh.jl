@@ -20,7 +20,7 @@
 
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"))
-using ParticleMeshElectromagnetic: window_charge!, window_shifts, ionization_state, ionization_electrons, ionization_lost
+using ParticleMeshElectromagnetic: window_charge!, window_shifts, ionization_state, ionization_electrons, ionization_lost, CompensatedGather
 
 const BACKEND_NAME = let b = filter(a -> a in ("cpu", "cuda"), ARGS)
     isempty(b) ? "cpu" : b[end]
@@ -40,7 +40,7 @@ const GRAD_NAMES = ("duration", "waist", "focus", "density")
 const JOB_DEFAULTS = Dict{String,Any}("ppl" => 16, "ny" => 1, "ppc" => [2, 2], "ion_ppc" => [1, 1], "T" => "f64", "mode" => "reference",
                                       "shape" => 2, "cfl" => 95, "law" => "adk", "every" => 1, "a0E" => 1.9, "x" => collect(TCASE.x0),
                                       "grad" => false, "series" => true, "frames" => 0, "a0_scale" => 1.0, "t_end" => BCASE.t_end,
-                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0)
+                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0, "gather" => "plain")
 
 eltype_named(s) = s == "f64" ? Float64 : s == "f32" ? Float32 : error("element type $s: f64 or f32")
 
@@ -90,10 +90,14 @@ function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc =
                      profile = DensityRamp(; vacuum = R(BCASE.vacuum), ramp = R(BCASE.ramp)), ionization = ion)
 end
 
-"The case's numerics (`born_numerics`) with the job's shape order and deposition mode."
-study_numerics(ppl, ny; shape = 2, mode = "reference") =
+"""
+The case's numerics (`born_numerics`) with the job's shape order, deposition mode and gather: `plain` reads the grid's fields,
+`compensated` the engine's `CompensatedGather` at the laser wavenumber, which gives back the field the shape removes there.
+"""
+study_numerics(ppl, ny; shape = 2, mode = "reference", gather = "plain") =
     EMNumerics(; shape = shape == 2 ? Quadratic : shape == 1 ? Linear : error("shape order $shape: 1 or 2"),
                mode = mode == "reference" ? Reference() : mode == "fast" ? Fast() : error("mode $mode: reference or fast"),
+               gather = gather == "plain" ? nothing : gather == "compensated" ? CompensatedGather(; k = 1) : error("gather $gather: plain or compensated"),
                absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
 
 "The electron slots a job asks for: the dopant lattice of the whole window (a birth step offers one slot per atom slot) and room for the electrons alive."
@@ -314,7 +318,7 @@ function run_job(job0, dir)
     prob = study_problem(x, T(a0E); T, ppl, ny, ppc = Int.(job["ppc"]), ion_ppc = Int.(job["ion_ppc"]), cfl = Int(job["cfl"]), law = job["law"],
                          every = Int(job["every"]), capacity, t_end = Float64(job["t_end"]), a0_scale = Float64(job["a0_scale"]),
                          dopant_fraction = Float64(job["dopant_fraction"]))
-    numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"])
+    numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"], gather = job["gather"])
     t0 = time()
     st = EMState(prob, numerics; backend = BE, record = ())
     p = params(prob)
@@ -488,6 +492,47 @@ function campaign_jobs(name)
             plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "quad"); ppl, ny, a0_scale = 1 / blur(2))
             plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "linear"); ppl, ny, shape = 1)
             plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "lincomp"); ppl, ny, shape = 1, a0_scale = 1 / blur(1))
+        end
+    elseif name == "cg"
+        # the baseline again with the engine's compensated gather: the grid with gradients, the energy budgets, the particles per
+        # cell, the time step and the release cadence, the number format, and the smoothness and finite differences at λ₀/24 and λ₀/32
+        c = (; gather = "compensated")
+        for (ppl, ny) in ((16, 1), (24, 1), (24, 2), (32, 1), (32, 2), (48, 3), (64, 4), (96, 6))
+            pair!(jobs, jid("cg", "grid", "r$(ppl)x$(ny)"); ppl, ny, c...)
+        end
+        for a0E in (2.175, 2.4), (ppl, ny) in ((16, 1), (32, 2), (48, 3), (64, 4))
+            pair!(jobs, jid("cg", "grid", "E$a0E", "r$(ppl)x$(ny)"); ppl, ny, a0E, c...)
+        end
+        for ppc in ((1, 1), (4, 4))
+            pair!(jobs, jid("cg", "ppc", "r32x2", "p$(tag(ppc))"); ppl = 32, ny = 2, ppc = collect(ppc), c...)
+        end
+        pair!(jobs, jid("cg", "ppc", "r32x2", "p2x2", "i2x2"); ppl = 32, ny = 2, ion_ppc = [2, 2], c...)
+        for (ppl, ny) in ((24, 1), (32, 2)), cfl in (50, 70, 85, 99)
+            plain!(jobs, jid("cg", "num", "r$(ppl)x$(ny)", "cfl$cfl"); ppl, ny, cfl, c...)
+        end
+        for every in (2, 4, 8)
+            plain!(jobs, jid("cg", "num", "r32x2", "every$every"); ppl = 32, ny = 2, every, c...)
+        end
+        for (ppl, ny) in ((16, 1), (32, 2), (48, 3), (64, 4))
+            pair!(jobs, jid("cg", "types", "r$(ppl)x$(ny)", "f32"); ppl, ny, T = "f32", c...)
+            for rep in 1:2, T in ("f32", "f64")
+                plain!(jobs, jid("cg", "types", "r$(ppl)x$(ny)", T, "fast", rep); ppl, ny, T, mode = "fast", rep, series = false, c...)
+            end
+            plain!(jobs, jid("cg", "types", "r$(ppl)x$(ny)", "f64", "again"); ppl, ny, rep = 1, series = false, c...)
+            plain!(jobs, jid("cg", "types", "r$(ppl)x$(ny)", "f32", "again"); ppl, ny, T = "f32", rep = 1, series = false, c...)
+        end
+        for (name_, cfg) in (("r24x1-p2x2", (; ppl = 24, ny = 1)), ("r32x2-p2x2", (; ppl = 32, ny = 2))), (dir, di) in (("duration", 1), ("density", 5))
+            for s in -16:16
+                x = collect(TCASE.x0)
+                x[di] *= 1 + s * 2.0^-10
+                plain!(jobs, jid("cg", "rough", name_, dir, s); cfg..., x, series = false, direction = dir, offset = s, c...)
+                s in (-16, 0, 16) && plain!(jobs, jid("cg", "rough", name_, dir, s, "grad"); cfg..., x, grad = true, direction = dir, offset = s, c...)
+            end
+            for pw in (3, 5, 7, 9, 11, 13, 15, 17), sgn in (1, -1)
+                x = collect(TCASE.x0)
+                x[di] *= 1 + sgn * 2.0^-pw
+                plain!(jobs, jid("cg", "fd", name_, dir, pw, sgn > 0 ? "p" : "m"); cfg..., x, series = false, direction = dir, power = pw, sign = sgn, c...)
+            end
         end
     elseif name == "frames"
         for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
