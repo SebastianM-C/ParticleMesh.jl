@@ -66,9 +66,11 @@ the parameters, which are converted to `T` or are duals of it). At the defaults 
 function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc = (2, 2), ion_ppc = (1, 1), cfl::Integer = 95, law = "adk",
                        every::Integer = 1, capacity::Integer, t_end = BCASE.t_end, a0_scale = 1.0, dopant_fraction = TCASE.dopant_fraction)
     duration, waist, focus, delay, density = x
-    a0 = a0_for_energy(duration, waist; energy = budget(a0E)) * T(a0_scale)
+    # the budget is computed from the case's Float64 base point: convert it, or it promotes the whole run to Float64
+    a0 = a0_for_energy(duration, waist; energy = T(budget(a0E))) * T(a0_scale)
     dopant = T(dopant_fraction) * density
     R = promote_type(typeof(a0), typeof(dopant), typeof(duration), typeof(density), typeof(waist), typeof(delay), typeof(focus), T)
+    ForwardDiff.valtype(R) === T || error("study_problem: the run's element type is $R, asked for $T")
     z3 = (zero(R), zero(R), zero(R))
     h = 2 * R(π) / ppl
     hy = R(π) / (4 * ny)
@@ -104,6 +106,22 @@ end
 # --- read-outs -----------------------------------------------------------------------------------
 
 f64(a) = Float64.(value_of.(Array(a)))
+
+"""
+The GPU memory this process holds, in MiB as `nvidia-smi` reports it, or `nothing` (CPU runs, no `nvidia-smi`). The campaign
+releases the pool after every job, so read right after a run this is an upper bound of what that run needed.
+"""
+function gpu_pool_mib()
+    BACKEND_NAME == "cuda" || return nothing
+    try
+        for l in eachline(`nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits`)
+            f = split(l, ",")
+            length(f) == 2 && tryparse(Int, strip(f[1])) == getpid() && return tryparse(Int, strip(f[2]))
+        end
+    catch
+    end
+    return nothing
+end
 
 "The on-axis row of a field over the window's columns, on the host as Float64."
 function axis_line(st, a)
@@ -336,7 +354,8 @@ function run_job(job0, dir)
     out = Dict{String,Any}(job)
     merge!(out, Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st))))
     merge!(out, Dict{String,Any}("J" => Float64(value_of(J)), "W" => Float64(value_of(W)), "J_born_label" => Float64(value_of(born_energy(st))),
-                                 "seconds" => seconds, "threads" => Threads.nthreads(), "backend" => BACKEND_NAME, "cells" => collect(ncells(st.grid)),
+                                 "seconds" => seconds, "threads" => Threads.nthreads(), "backend" => BACKEND_NAME, "eltype" => string(eltype(st.fields.Ex)),
+                                 "gpu_pool_mib" => gpu_pool_mib(), "cells" => collect(ncells(st.grid)),
                                  "dx" => h[1], "dy" => h[2], "dt" => dt, "nsteps" => prob.nsteps, "capacity" => capacity, "ionization_lost" => lost,
                                  "a0" => Float64(value_of(a0_for_energy(x[1], x[2]; energy = budget(a0E)))) * Float64(job["a0_scale"]),
                                  "plasma_slots" => sum(s -> length(s.w), st.species), "bunch" => bunch_readout(st),
