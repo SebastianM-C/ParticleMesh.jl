@@ -3,8 +3,6 @@
 # (`plasma_step_3d`, em3d_cases.jl) has two mobile species of opposite charge whose particles
 # cross cells and the seams of every axis within a few steps.
 
-using ParticleMeshElectromagnetic: rho_stagger
-
 "Start em3d_worker.jl at `nt` threads, its output going to a file; once per suite."
 function start_em3d_worker(nt)
     get!(EM3D_WORKERS, nt) do
@@ -30,7 +28,8 @@ foreach(start_em3d_worker, (1, 4))     # the workers run beside this file's in-p
     gauss_residual_3d_step(state) -> (; res, scale, divB, bscale)
 
 The discrete Gauss law of the 3D layout, `res = max |Σ_d D⁻_d E_d − (ρ − mean ρ)|` over the
-interior nodes with ρ deposited now in the state's mode (the step sorts the species by their
+interior nodes with ρ deposited now in the state's mode at the primal nodes (written out here, not
+the module's `rho_stagger`, so that a wrong stagger there cannot cancel) (the step sorts the species by their
 current cells where the mode needs it), `scale = (n₁ + n₂ + n₃)·max|ρ|`; and
 `divB = max |Σ_d D⁺_d B_d|` at the cell centres with `bscale = (Σ_d 2/Δ_d)·max_d |B_d|`.
 `absmax` takes the partials of a dual too.
@@ -40,7 +39,7 @@ function gauss_residual_3d_step(st)
     T = eltype(st.ρ)
     ρd = field(get_backend(st.ρ), T, grid)
     for (s, ws) in zip(st.species, st.ws)
-        deposit!(numerics.mode, ρd, s, numerics.shape, rho_stagger(Val(3)), grid, ws)
+        deposit!(numerics.mode, ρd, s, numerics.shape, (Node(), Node(), Node()), grid, ws)
     end
     fold_guards!(ρd, grid)
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
@@ -419,6 +418,8 @@ end
     @test_throws ArgumentError EMState(prob, EMNumerics(; resort = true))
     @test_throws ArgumentError EMState(prob, EMNumerics(; gather = CompensatedGather()))
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4)))
+    @test_throws ArgumentError EMState(prob, EMNumerics(; back_absorber = PML(; cells = 4)))
+    @test_throws ArgumentError EMState(prob, EMNumerics(; current = nothing))
     fast = EMProblem("fast", L, n, 2 * prob.dt, 2, prob.species, 1, prob.kmode)
     @test_throws ArgumentError EMState(fast, EMNumerics())
     # a state of NoCurrent runs (prescribed fields): its J stays zero
@@ -427,6 +428,20 @@ end
     initialize!(st, prob)
     step!(st, params(prob), 1)
     @test all(c -> all(iszero, getfield(st.fields, c)), (:Jx, :Jy, :Jz))
+    # the state's recorder is that of the problem's box (not a cube, so a permuted box shows in
+    # k̂), mode and step count, with the cadence and the groups it is given; its kinetic-energy
+    # chunks cover every slot of every species
+    st = state_3d(prob)
+    ref = HistoryRecorder(CPU(), T, st.grid, L, prob.kmode, prob.nsteps)
+    @test st.recorder.aux.khat === ref.aux.khat
+    @test st.recorder.aux.khat != HistoryRecorder(CPU(), T, st.grid, reverse(L), prob.kmode, prob.nsteps).aux.khat
+    @test all(d -> Array(st.recorder.aux.tables[d]) == Array(ref.aux.tables[d]), 1:3)
+    @test st.recorder.kmode == prob.kmode && st.recorder.nsteps == prob.nsteps && st.recorder.every == 1
+    @test keys(st.recorder.hist) == keys(ref.hist)
+    every2 = EMState(prob, EMNumerics(); every = 2).recorder
+    @test every2.every == 2 && all(h -> length(h) == cld(prob.nsteps, 2), values(every2.hist))
+    @test isempty(EMState(prob, EMNumerics(); record = ()).recorder.hist)
+    @test length(st.K) == sum(s -> cld(ParticleMeshCore.capacity(s), ParticleMeshElectromagnetic.KINETIC_CHUNK), st.species)
     # a state is built for its problem's configuration: another cell count, or another N, is refused
     other = plasma_step_3d(T; cells = (8, 7, 7))
     @test_throws ArgumentError initialize!(state_3d(prob), other)

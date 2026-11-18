@@ -933,9 +933,9 @@ quantity = "after every 3D step with the Esirkepov current, two species crossing
 scale = "(n₁ + n₂ + n₃)·max|ρ|·√(k + 1) after k steps (C); (Σ_d 2/Δ_d)·max|B|·√k (C_divB)"
 C = 4
 C_divB = 2
-measured = { Float32 = 0.909, Float64 = 0.683, "Dual{Float32,3}" = 0.443, steps_400 = 0.354 }
+measured = { Float32 = 0.909, Float64 = 1.12, "Dual{Float32,3}" = 0.443, steps_400 = 0.45 }
 measured_divB = { Float32 = 0.322, Float64 = 0.346, "Dual{Float32,3}" = 0.667, steps_400 = 0.263 }
-status = "proposed; the largest over both modes and orders (CPU, two runs); Fast at order 2 in Float32 gave 0.804 and 0.909 in two runs (its atomics add in another order each run), so C is twice T-360's 2. Over 400 steps the residual stays within the √(k + 1) scale (0.354 at most)"
+status = "proposed; the largest over both modes and orders (CPU); Fast at order 2 gave 0.804 and 0.909 in Float32 and 0.683 to 1.12 in Float64 over three runs, the largest on a heavily loaded machine (its atomics add in another order each run), so C is twice T-360's 2. Over 400 steps the residual stays within the √(k + 1) scale (0.45 at most)"
 
 ["T-951"]
 quantity = "the Reference and Fast 3D steps: every field and current, and the kinetic-energy history, after k steps (20 steps)"
