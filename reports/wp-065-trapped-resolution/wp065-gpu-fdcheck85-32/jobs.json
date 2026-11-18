@@ -1,0 +1,439 @@
+[
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "float": 64,
+    "id": "conv-n0.085-r32x2-cuda",
+    "mode": "grad",
+    "ny": 2,
+    "point": "n0.085",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 1,
+    "float": 64,
+    "h": 0.01171875,
+    "id": "fd-n0.085-r32x2-duration-9-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.01171875,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 1,
+    "float": 64,
+    "h": 0.01171875,
+    "id": "fd-n0.085-r32x2-duration-9-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      5.98828125,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 1,
+    "float": 64,
+    "h": 0.000732421875,
+    "id": "fd-n0.085-r32x2-duration-13-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.000732421875,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 1,
+    "float": 64,
+    "h": 0.000732421875,
+    "id": "fd-n0.085-r32x2-duration-13-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      5.999267578125,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 2,
+    "float": 64,
+    "h": 0.01953125,
+    "id": "fd-n0.085-r32x2-waist-9-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.01953125,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 2,
+    "float": 64,
+    "h": 0.01953125,
+    "id": "fd-n0.085-r32x2-waist-9-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      9.98046875,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 2,
+    "float": 64,
+    "h": 0.001220703125,
+    "id": "fd-n0.085-r32x2-waist-13-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.001220703125,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 2,
+    "float": 64,
+    "h": 0.001220703125,
+    "id": "fd-n0.085-r32x2-waist-13-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      9.998779296875,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 3,
+    "float": 64,
+    "h": 0.15625,
+    "id": "fd-n0.085-r32x2-focus-9-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.0,
+      80.15625,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 3,
+    "float": 64,
+    "h": 0.15625,
+    "id": "fd-n0.085-r32x2-focus-9-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      10.0,
+      79.84375,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 3,
+    "float": 64,
+    "h": 0.009765625,
+    "id": "fd-n0.085-r32x2-focus-13-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.0,
+      80.009765625,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 3,
+    "float": 64,
+    "h": 0.009765625,
+    "id": "fd-n0.085-r32x2-focus-13-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      10.0,
+      79.990234375,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 5,
+    "float": 64,
+    "h": 0.000166015625,
+    "id": "fd-n0.085-r32x2-density-9-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.08516601562500001
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 5,
+    "float": 64,
+    "h": 0.000166015625,
+    "id": "fd-n0.085-r32x2-density-9-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.084833984375
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 5,
+    "float": 64,
+    "h": 1.03759765625e-5,
+    "id": "fd-n0.085-r32x2-density-13-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.08501037597656251
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cuda",
+    "direction": 5,
+    "float": 64,
+    "h": 1.03759765625e-5,
+    "id": "fd-n0.085-r32x2-density-13-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.0849896240234375
+    ]
+  },
+  {
+    "a0E": 2.1792480468749997,
+    "backend": "cuda",
+    "direction": 6,
+    "float": 64,
+    "h": 0.004248046875,
+    "id": "fd-n0.085-r32x2-a0E-9-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.170751953125,
+    "backend": "cuda",
+    "direction": 6,
+    "float": 64,
+    "h": 0.004248046875,
+    "id": "fd-n0.085-r32x2-a0E-9-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 9,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.1752655029296872,
+    "backend": "cuda",
+    "direction": 6,
+    "float": 64,
+    "h": 0.0002655029296875,
+    "id": "fd-n0.085-r32x2-a0E-13-p-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": 1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  },
+  {
+    "a0E": 2.1747344970703124,
+    "backend": "cuda",
+    "direction": 6,
+    "float": 64,
+    "h": 0.0002655029296875,
+    "id": "fd-n0.085-r32x2-a0E-13-m-cuda",
+    "mode": "plain",
+    "ny": 2,
+    "point": "n0.085",
+    "power": 13,
+    "ppl": 32,
+    "sign": -1,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.085
+    ]
+  }
+]

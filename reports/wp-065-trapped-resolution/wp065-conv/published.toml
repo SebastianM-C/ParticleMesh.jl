@@ -1,0 +1,37 @@
+branch = "runs/wp065-trapped-resolution"
+commit = "6e3183a1928849109c2288034cedaac89c103008"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/conv-E1.9-r32x2.json"
+bytes = 1264
+sha256 = "276c5d7fdea6fa5f386ad9197c1d8a6165e0e3fbaa5d527b9d9d8cfb5f2a8887"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/conv-E2.175-r32x2.json"
+bytes = 1243
+sha256 = "52175d4449d9536c913b39896fc4ad06a7cf55f7371be393c0aa610a03750e1e"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/conv-E2.4-r32x2.json"
+bytes = 1403
+sha256 = "737ea6ffa396f5e0f26233836078b10c965a74fa5227a69daa8645845ef1386c"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/conv-n0.06-r32x2.json"
+bytes = 1240
+sha256 = "bb41938cc8ad8de7420b17b360a5336c1833dc6d20808b037655ab98d3710ba1"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/conv-n0.085-r32x2.json"
+bytes = 1412
+sha256 = "496a5b4210c312f7f40e9dd0c1c438a65d5778e3a72418b1d0ef8c354cdd85a6"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/jobs.json"
+bytes = 3032
+sha256 = "2b5ad2695a9937d210fdb8360bb90f84c3b757fd1e1f543832914e6293188b03"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-conv/manifest.toml"
+bytes = 6460
+sha256 = "78ada0d6a924cbea046047ea04ca54d044ab6eca9865ab536b3b1e5f6f1854f1"

@@ -242,12 +242,14 @@ function tables(conv, xonly, fd, lines, check = [], fine = Dict{String,Any}())
         println(io, "| ", j["point"], " | ", res_label(j), " | ", join(sig.(log_gradient(j)), " | "), " |")
     end
     if !isempty(fd)
-        println(io, "\n| point | grid | direction | ForwardDiff's ∂ln J/∂z | |FD − AD| in ∂ln J/∂z at h/x = ", join(["2^-$k" for k in sort(unique(r["power"] for r in fd))], ", "), " |")
+        powers = sort(unique(r["power"] for r in fd))
+        println(io, "\n| point | grid | direction | ForwardDiff's ∂ln J/∂z | |FD − AD| in ∂ln J/∂z at h/x = ", join(["2^-$k" for k in powers], ", "), " |")
         println(io, "|---|---|---|---|---|")
         for p in unique(r["point"] for r in fd), r in unique((x["ppl"], x["ny"]) for x in fd), d in DIRECTIONS
             q = sort(filter(x -> x["point"] == p && (x["ppl"], x["ny"]) == r && x["direction"] == d, fd); by = x -> x["power"])
             isempty(q) && continue
-            println(io, "| ", p, " | λ₀/", r[1], ", Δy = π/", 4r[2], " | ", d, " | ", sig(q[1]["ad_log"]), " | ", join(sig.([x["log_difference"] for x in q]), ", "), " |")
+            println(io, "| ", p, " | λ₀/", r[1], ", Δy = π/", 4r[2], " | ", d, " | ", sig(q[1]["ad_log"]), " | ",
+                    join([(k = findfirst(x -> x["power"] == pw, q); k === nothing ? "–" : sig(q[k]["log_difference"])) for pw in powers], ", "), " |")
         end
     end
     if !isempty(fine)

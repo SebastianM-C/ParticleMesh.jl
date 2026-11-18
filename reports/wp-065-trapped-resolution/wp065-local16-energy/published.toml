@@ -1,0 +1,97 @@
+branch = "runs/wp065-trapped-resolution"
+commit = "6e3183a1928849109c2288034cedaac89c103008"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-1.8-r16x1.json"
+bytes = 1244
+sha256 = "236788d27faf8ab63cd1604219afd1cc7aad74e0f20895fbbbbfc98584542497"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-1.85-r16x1.json"
+bytes = 1253
+sha256 = "21d4852f47b08f671d779d56ec93cb900698db1c1cb742100f324684a6354216"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-1.9-r16x1.json"
+bytes = 1252
+sha256 = "23b2a76a0fd320d23bdeb6c32b59ef90838785f3c0f7b0b6c67ac52ee25d8b52"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-1.95-r16x1.json"
+bytes = 1235
+sha256 = "f801e9e247d2e59767938456cd8e05dd91aac4312acac8a25d07528fa10b9b46"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.0-r16x1.json"
+bytes = 1224
+sha256 = "21bfe3236f08461dc3592cf2004ff2de65046b21a0909de1784009c0e5890413"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.05-r16x1.json"
+bytes = 1225
+sha256 = "a6a03930958a0af934644adb2f51957a7d15b0a29cee18621f8d43c3dfc5362b"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.1-r16x1.json"
+bytes = 1217
+sha256 = "af99639e478a9de905aeda6070df7ff100ced8a5d538cf5b54245566ad342e6b"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.15-r16x1.json"
+bytes = 1220
+sha256 = "2f60c4f1e6bcc3abd6e4e5ec95b1795bfba26b28992625136870cafc58e43537"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.2-r16x1.json"
+bytes = 1207
+sha256 = "605c8584f9e67c80b98bf575f76124019fb47733b1b8b3f1d77909f73e04f812"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.25-r16x1.json"
+bytes = 1386
+sha256 = "c7dab5334f48ec62db208c4080546010a22d5f8a7a5203d98f4884a3501009bc"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.3-r16x1.json"
+bytes = 1380
+sha256 = "95d81c9035521bcf1001d335195acf229cbb38729268b290bfd6b7dfa6aa95a2"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.35-r16x1.json"
+bytes = 1381
+sha256 = "c93b9dfb54e04707c54c499dc452d1034d26944243b77dcc6b5801d4a30a89f4"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.4-r16x1.json"
+bytes = 1380
+sha256 = "94318bfe992bec3b307a98a99e7127887c2569625e823f4cd891c2340798b4e3"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.45-r16x1.json"
+bytes = 1383
+sha256 = "aafb987ba24f20ac213060ca50db01d8b2a93c00697f9265e605264439c6fe11"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.5-r16x1.json"
+bytes = 1389
+sha256 = "044ed953ff505e7431fb2b367bd6e60b7f04abebbc50996d8e494363ed7143d2"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.55-r16x1.json"
+bytes = 1389
+sha256 = "ac757d897de7242f71ab2efc929887d7e206ed8554e4e3c53c5c8dc35d7af034"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/energy-2.6-r16x1.json"
+bytes = 1379
+sha256 = "40263ed1963b600f9a19e55a8448af7cad5fc7aedfc88b1a979697aac0d432bc"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/jobs.json"
+bytes = 3061
+sha256 = "417567b1a1cca94deb710db1297ec4bdf84b7e3662b478940a5f1f3336faea58"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-local16-energy/manifest.toml"
+bytes = 6454
+sha256 = "ef2eda21706faa6ff69c99a5111a954b31345a5cc47fa5d89f263bbcf9c3cbb5"

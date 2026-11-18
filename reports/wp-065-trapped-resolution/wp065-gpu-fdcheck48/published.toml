@@ -1,0 +1,117 @@
+branch = "runs/wp065-trapped-resolution"
+commit = "6e3183a1928849109c2288034cedaac89c103008"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/conv-E2.175-r48x3-cuda.json"
+bytes = 1382
+sha256 = "194660afb360bb642da687887441ce202238809b1c446a49e4f2149c5e3ccd94"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-a0E-13-m-cuda.json"
+bytes = 1061
+sha256 = "6c86507fac9d8d383609132cd65c0b054f2d86545e045933d65e935f07da1af6"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-a0E-13-p-cuda.json"
+bytes = 1058
+sha256 = "f92135b2cffb49761089d6087c89b17da5618607417c4d5dd28dcd7f1aeaa6ad"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-a0E-9-m-cuda.json"
+bytes = 1049
+sha256 = "7a3b2c40a29a64517368e55d0466a405f64968bbb1d075c9e1525d5b74f6c0ef"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-a0E-9-p-cuda.json"
+bytes = 1053
+sha256 = "e9a83719c52092218c728e3e403c33e488b42e86847ae758bfe5a55b736ea03a"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-density-13-m-cuda.json"
+bytes = 1041
+sha256 = "1e56c7994f51fe9f9c74af1416540f63466b265161f898ebaf066f7b4820915c"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-density-13-p-cuda.json"
+bytes = 1037
+sha256 = "71331f08188b29447f95140d3810cef470549234b286a73d877c8ef1abe9220e"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-density-9-m-cuda.json"
+bytes = 1043
+sha256 = "df2a1bc6350a91d9d9547fc4d4e39e4a86161c23043d1fe26c8c800dd93aef9f"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-density-9-p-cuda.json"
+bytes = 1035
+sha256 = "259a1125a4a054a2bf3ef35cacdd45ddf6d97d5e1803859a3f565ddfbe28aef3"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-duration-13-m-cuda.json"
+bytes = 1060
+sha256 = "cc8d9cc9e7f61d3700e4207955a387429b9cb0faec74eaddaf774a722e2780cf"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-duration-13-p-cuda.json"
+bytes = 1059
+sha256 = "d2a4c6bc86cf450757a4c0b5d11f015496658f607702dca640a56247ca325329"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-duration-9-m-cuda.json"
+bytes = 1049
+sha256 = "12e1aa0c44a47d5e6be3b218b4c975fd7862961e5d8b547c35c13daa0e71fbe9"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-duration-9-p-cuda.json"
+bytes = 1045
+sha256 = "544b160ccaa9ed0eb6d11d2fe100786d819beedf18370668d5090e66bb95d7de"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-focus-13-m-cuda.json"
+bytes = 1033
+sha256 = "1f3789af259a3b7517eeab1aa0ce034fd018835c6f6751bcb8c162b06d923f59"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-focus-13-p-cuda.json"
+bytes = 1034
+sha256 = "d861670166f2d7a6581052d58ec896aacf1c5a186d6c8a8933a08fa09fe9bd72"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-focus-9-m-cuda.json"
+bytes = 1027
+sha256 = "4a1b0eb76035c127f95751842db497d1cc18c8d5efe95bab771bc8ef9ca6ef71"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-focus-9-p-cuda.json"
+bytes = 1027
+sha256 = "339edf68cd7540270dd10115a2d1f05d7d7621447965780de51336bfea33a861"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-waist-13-m-cuda.json"
+bytes = 1052
+sha256 = "5a2be8c190580f6d86d8d8ef7e83b0b181f99fc1a5c69275e65aad9dbb2b64bc"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-waist-13-p-cuda.json"
+bytes = 1059
+sha256 = "240d560d431358efcab665f6ac849fc717c86b42220c8d240a1f844cca51a23f"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-waist-9-m-cuda.json"
+bytes = 1043
+sha256 = "1c90c71c9d052210cfdfff264775fa3ab6780b94ad80cbaf71d4d95f40d30573"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/fd-E2.175-r48x3-waist-9-p-cuda.json"
+bytes = 1043
+sha256 = "a12e072e331eefbaeb76d69ce33fbe02566e433c71a26b8d89c9c7108e8fa521"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/jobs.json"
+bytes = 7138
+sha256 = "bdbcacc48c30a2e7f39d0df43aff3698ab4e67608433fc918bce44115775a2c7"
+
+[[files]]
+path = "scripts/runs/wp065-trapped-resolution/wp065-gpu-fdcheck48/manifest.toml"
+bytes = 6557
+sha256 = "7d6eb073fb89ac9d8ae76031dafa48e324c864052436396c7aba1cfcde8b24a1"
