@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876; WP-041, T-891. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -93,6 +93,21 @@ else
 
     @testset "T-876 the engine's N = 3 fill and fold, load, sort, gather and deposition on CUDA [A7, A8, WP-042]" begin
         rerun_on(GPU, (("T-871", body_T871), ("T-872", body_T872), ("T-873", body_T873)))
+    end
+
+    @testset "T-946 the 3D flux on CUDA: continuity, the sums, Fast against Reference, and Reference bitwise across reruns, launch shapes and planes [A4, A7, A8, WP-042]" begin
+        rerun_on(GPU, (("T-940", body_T940), ("T-941", body_T941), ("T-944", body_T944)))
+        runs = [flux3d_digests(GPU; wgs = GPU_WG_SIZES) for _ in 1:2]
+        @test runs[1] == runs[2]
+        for (case, digests) in by_case(runs[1])
+            @test length(digests) == length(GPU_WG_SIZES)
+            @test allequal(digests)
+        end
+        for T in TYPES
+            runs = [continuity_case_3d(T, Reference(), Quadratic, NODES3; bins = NodeBins(Quadratic, NODES3), planes, be = GPU)
+                    for planes in (nothing, 1, 5)]
+            @test all(r -> same_bits(r.Jx, runs[1].Jx) && same_bits(r.Jy, runs[1].Jy) && same_bits(r.Jz, runs[1].Jz), runs)
+        end
     end
 
     @testset "T-192 Reference mode of the engine on CUDA is bitwise across reruns and launch shapes [A4, WP-013]" begin

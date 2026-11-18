@@ -32,14 +32,15 @@ the time, never the bits.
 [`ResortScratch`](@ref)), which sorts from the order of the last sort with a tail of up to `k`
 particles added behind its count; without it `resort` is `nothing` and costs nothing.
 
-`flux = (shape, stagger)`, for `N = 2`, adds the per-cell patches of the `Reference()` flux
+`flux = (shape, stagger)`, for `N = 2` and `N = 3`, adds the per-cell patches of the `Reference()` flux
 deposition with that shape and ρ's stagger (`deposit_flux!`): `3·M₁·M₂` values of `T` per linear
 bin, `M_d` the flux stencil width of axis `d` in the bin's frame (`flux_bin_reach`; 5 or 6 at
 order 2 by cell, 5 at order 2 on nodes by `NodeBins` of that shape and stagger), in the array `flux_patch`,
 stored in the order `flux_layout`: `StencilMajor()`, `3·M₁·M₂ × prod(n)` with one column per
 cell, or `CellMajor()`, `prod(n) × 3·M₁·M₂`; the default is the backend's
-(`flux_patch_layout`). Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no
-flux scratch.
+(`flux_patch_layout`). For `N = 3` the patch holds one component at a time, `flux_patch_values`
+of them per bin (100 at order 2 on nodes by `NodeBins` of that shape and stagger, 180 by cell).
+Without `flux`, `flux_patch` is empty and costs nothing. `N = 1` needs no flux scratch.
 """
 struct Workspace{VK,VP,AW,VI,VT,VS,XT<:Tuple,SP,FP,FS,FL,RS,B}
     key::VK
@@ -73,8 +74,10 @@ key_sort_alg(backend, cap::Integer) = !(backend isa KernelAbstractions.CPU) && c
 function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
                    flux_layout = flux_patch_layout(get_backend(s)), append = nothing, bins = CellBins(),
                    key_sort = key_sort_alg(get_backend(s), capacity(s)), swap::Bool = true) where {N,T}
-    flux === nothing || N == 2 ||
-        throw(ArgumentError("flux scratch is for N = 2; the N = 1 deposit_flux! needs none"))
+    flux === nothing || N >= 2 ||
+        throw(ArgumentError("flux scratch is for N = 2 and N = 3; the N = 1 deposit_flux! needs none"))
+    flux === nothing || flux isa Tuple{Shape,NTuple{N,Stagger}} ||
+        throw(ArgumentError("flux = (shape, stagger) with one stagger per axis (N = $N), got $flux"))
     backend = get_backend(s)
     cap = capacity(s)
     cap <= typemax(Int32) || throw(ArgumentError("capacity $cap exceeds the Int32 permutation"))

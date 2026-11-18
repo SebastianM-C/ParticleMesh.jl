@@ -84,3 +84,22 @@ const E3D_RECORDED = String[
     "psolve3d|Dual{Float32,3}|n=8x6x5|6158026272795281876",
     "psolve3d|Dual{Float32,3}|n=5x7x4|4155450022843091785",
 ]
+
+# The 3D flux digests (`flux3d_digests`, checked by T-945), recorded as E3D_RECORDED was.
+const F3D_RECORDED = String[
+    "flux3d|Float32|1,Node,Node,Node,cells|8131901521509755689",
+    "flux3d|Float32|1,Center,Node,Center,cells|2504975187242835876",
+    "flux3d|Float32|2,Node,Node,Node,cells|14215050339344196552",
+    "flux3d|Float32|2,Center,Node,Center,cells|6660766563520897496",
+    "flux3d|Float32|2,Node,Node,Node,nodes|8962193270139364576",
+    "flux3d|Float64|1,Node,Node,Node,cells|3301038764799266248",
+    "flux3d|Float64|1,Center,Node,Center,cells|6434012951685651611",
+    "flux3d|Float64|2,Node,Node,Node,cells|8275375284228554054",
+    "flux3d|Float64|2,Center,Node,Center,cells|12558727329197389102",
+    "flux3d|Float64|2,Node,Node,Node,nodes|9604373842436504884",
+    "flux3d|Dual{Float32,3}|1,Node,Node,Node,cells|2108261306257912826",
+    "flux3d|Dual{Float32,3}|1,Center,Node,Center,cells|17064059982034923574",
+    "flux3d|Dual{Float32,3}|2,Node,Node,Node,cells|6428616049704803787",
+    "flux3d|Dual{Float32,3}|2,Center,Node,Center,cells|6884893137500053254",
+    "flux3d|Dual{Float32,3}|2,Node,Node,Node,nodes|17280255104068578412",
+]

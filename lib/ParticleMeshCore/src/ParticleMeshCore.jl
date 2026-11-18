@@ -18,8 +18,8 @@ every launch takes `workgroupsize = nothing` (the backend default), which select
 shape only; a fixed size the kernel cannot take is refused with an `ArgumentError` (`launcher`).
 `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
 the prefix sum, which is `N = 1` only). At `N = 3` the grid, the fill/fold pair, the quiet start,
-the sort, the gather, the deposition of a quantity and the periodic solve with its gradient are
-implemented and tested; the flux deposition is not. The contracts are those of
+the sort, the gather, the deposition of a quantity, the charge-conserving flux deposition and the
+periodic solve with its gradient are implemented and tested. The contracts are those of
 `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore
@@ -59,5 +59,6 @@ include("mesh_ops.jl")
 include("spectral.jl")
 include("flux.jl")
 include("flux2d.jl")
+include("flux3d.jl")
 
 end
