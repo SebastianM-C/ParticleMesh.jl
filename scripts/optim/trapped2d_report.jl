@@ -1,22 +1,28 @@
 # The figure and tables of reports/wp-065-trapped-resolution.md from the job results of
 # trapped2d.jl's campaigns: `trapped2d.jl report <out dir> <run dir>...` (included by trapped2d.jl).
 
-"Every job result (`<id>.json`) in the run directories, by id."
+"Every job result (`<id>.json`) in the run directories, by id; an id in two directories is an error."
 function load_jobs(dirs)
     out = Dict{String,Dict{String,Any}}()
+    from = Dict{String,String}()
     for d in dirs, f in readdir(d)
         endswith(f, ".json") && f ∉ ("jobs.json", "trapped2d.json") || continue
         j = JSON.parsefile(joinpath(d, f))
-        haskey(j, "id") && haskey(j, "J") && (out[j["id"]] = j)
+        haskey(j, "id") && haskey(j, "J") || continue
+        haskey(out, j["id"]) && error("job $(j["id"]) is in both $(from[j["id"]]) and $d")
+        out[j["id"]], from[j["id"]] = j, d
     end
     return out
 end
 
 # J is the first bucket's (`TCASE.fade`). Runs made while the case's weight reached back to x = 4
-# hold that J under "J" and the first bucket's under "J_first_bucket"; their born gradient is the
-# first bucket's (no born electron lies behind x = 12, and no plasma electron is trapped in the first bucket).
+# hold that J under "J" and the first bucket's under "J_first_bucket". Where the two agree (the
+# plasma traps nothing behind x = 12) the run's gradient is the first bucket's; where they do not
+# (the plasma's charge behind the first bucket), the born part's gradient is, to 2.3·10⁻⁴ (no
+# born electron is trapped behind x = 12), as long as no plasma electron is trapped in the first
+# bucket, which the density lines' runs of that kind show (their J_first_bucket is the born J).
 jval(j) = j["J_first_bucket"]
-jgrad(j) = haskey(j, "J_from_4") ? j["gradient"] : j["gradient_born"]
+jgrad(j) = haskey(j, "J_from_4") || abs(j["J"] - jval(j)) <= 1e-3 * jval(j) ? j["gradient"] : j["gradient_born"]
 res_label(j) = "λ₀/$(j["ppl"]), Δy = π/$(4 * j["ny"])"
 "Where a job ran: the RTX 5090 in Float32 or the CPU in Float64 (the runs of the study are one or the other)."
 source(j) = get(j, "backend", "cpu") == "cuda" ? "GPU, $(get(j, "eltype", "Float32"))" : "CPU, $(get(j, "eltype", "Float64"))"
@@ -105,12 +111,14 @@ end
 function report(outdir, dirs)
     mkpath(outdir)
     jobs = load_jobs(dirs)
-    # the GPU's runs make the convergence series where they exist; the CPU's in Float64 check them
+    # the GPU's Float32 runs make the convergence series where they exist; the others check them
     allconv = [j for (id, j) in jobs if startswith(id, "conv-")]
-    gpu = Set((j["point"], j["ppl"], j["ny"]) for j in allconv if on_gpu(j))
-    conv = sort([j for j in allconv if on_gpu(j) || (j["point"], j["ppl"], j["ny"]) ∉ gpu]; by = j -> (j["point"], j["ppl"]))
-    check = sort([(g, c) for g in allconv for c in allconv if on_gpu(g) && !on_gpu(c) && (g["point"], g["ppl"], g["ny"]) == (c["point"], c["ppl"], c["ny"])];
-                 by = p -> (p[1]["point"], p[1]["ppl"]))
+    main(j) = source(j) == "GPU, Float32"
+    gpu = Set((j["point"], j["ppl"], j["ny"]) for j in allconv if main(j))
+    conv = sort([j for j in allconv if main(j) || (!on_gpu(j) && get(j, "eltype", "Float64") == "Float64" && (j["point"], j["ppl"], j["ny"]) ∉ gpu)];
+                by = j -> (j["point"], j["ppl"]))
+    check = sort([(g, c) for g in allconv for c in allconv if main(g) && !main(c) && (g["point"], g["ppl"], g["ny"]) == (c["point"], c["ppl"], c["ny"])];
+                 by = p -> (p[1]["point"], p[1]["ppl"], source(p[2])))
     fine = fine_rows(jobs)
     xonly = sort([j for (id, j) in jobs if startswith(id, "xonly-")]; by = j -> (j["point"], j["ppl"]))
     fd = fd_rows(jobs)
@@ -221,11 +229,11 @@ function tables(conv, xonly, fd, lines, check = [], fine = Dict{String,Any}())
         end
     end
     if !isempty(check)
-        println(io, "\n| point | grid | GPU Float32 against CPU Float64: |ΔJ|/J | largest |Δ ∂ln J/∂z| over the free directions and the budget |")
-        println(io, "|---|---|---|---|")
+        println(io, "\n| point | grid | GPU Float32 against | |ΔJ|/J | largest |Δ ∂ln J/∂z| over the free directions and the budget |")
+        println(io, "|---|---|---|---|---|")
         for (g, c) in check
             dg = maximum(abs(log_gradient(g)[k] - log_gradient(c)[k]) for k in SHOWN)
-            println(io, "| ", g["point"], " | ", res_label(g), " | ", sig(abs(jval(g) / jval(c) - 1)), " | ", sig(dg), " |")
+            println(io, "| ", g["point"], " | ", res_label(g), " | ", source(c), " | ", sig(abs(jval(g) / jval(c) - 1)), " | ", sig(dg), " |")
         end
     end
     println(io, "\n| point | grid | ", join(["∂ln J/∂z: " * d * (k in SHOWN ? "" : " (fixed)") for (k, d) in enumerate(DIRECTIONS)], " | "), " |")
