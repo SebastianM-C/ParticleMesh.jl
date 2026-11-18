@@ -60,7 +60,10 @@ evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(
 """
     evolved(state::EMState) -> Tuple
 
-What a run evolves, as a flat tuple of the state's own arrays (no copy), in this order:
+What a run evolves, as a flat tuple of the state's own arrays (no copy), in this order. The tuple
+is valid until the state's next sort: a state that owns its species' arrays swaps them with the
+workspace's spare set when it sorts, so a tuple held across a `step!` then holds scratch that a
+later sort overwrites; take a fresh `evolved(state)` after a step:
 
 1. per species: the cells and the offsets per axis, the momenta `u[1:3]`, the weights, the status
    and the alive count;
@@ -199,7 +202,8 @@ the state's mode and length, unless one is given. So an observation of it reads 
 energy of its own particles, and a run continued from it records into its own histories. It
 shares the configuration and the scratch (workspaces, extras, `ρ`) with `state`: use one of them
 at a time. No copy of `arrays`; at N = 1 in a mode that sorts they are sorted, the identity for a
-state saved from such a mode.
+state saved from such a mode. The view borrows `arrays`: they stay valid only as long as the
+tuple does, until the next sort of the state they were taken from (see [`evolved`](@ref)).
 """
 function state_view(st::EMState, a::Tuple, recorder = empty_recorder(st.recorder))
     check_evolved(st, a)
