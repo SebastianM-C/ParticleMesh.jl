@@ -226,8 +226,12 @@ end
 # weights and kicked momenta) has the same bits, and the steps' fields differ (the plain state's
 # solve starts from the copy). The same for `initialize!`'s half-step kick: the compensated load
 # is the plain load at t − Δt/2 kicked by the module's kernel in the sharpened copy, bit for bit,
-# and not the plain kick. A compensated run restarted at step 3 continues with the uninterrupted
-# run's bits (the copy is scratch, written before it is read).
+# and not the plain kick. The step writes the copy itself before anything reads it (it starts
+# from NaN), and the observer reads the grid's fields: step 6's history entries are those of the
+# plain step from the same state. A compensated run restarted at step 3, and a view of it over
+# copies of its arrays (`state_view`, the harness' path), continue with the uninterrupted run's
+# bits (the copy is scratch, written before it is read). In the moving window the copy's x-guards
+# are zero as the grid's are, and its interior is the stencil's.
 function body_T962(be)
     for T in TYPES
         levels = (ADKLevel(one(T) / 2, T(3), one(T)), ADKLevel(one(T) / 2, T(4), T(3) / 2))
@@ -237,17 +241,21 @@ function body_T962(be)
         st = ion_state(prob; be, gather = cg)
         run!(st, p, 5)
         snap = snapshot(st, 5)
-        plain = EMState(prob, EMNumerics(); backend = be)
-        restore!(plain, snap)
-        sharpen_gather!(st)
+        plain = snap_state(prob, snap, be)          # to step in the sharpened fields
+        diag = snap_state(prob, snap, be)           # to step in the grid's own fields
+        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
         for name in GATHER_NAMES
-            copyto!(plain.fields[name], st.sharpened[name])
+            sharpen_x!(plain.fields[name], st.fields[name], β, st.grid)
         end
+        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))     # the step writes the copy before anything reads it
         step!(st, p, 6)
         step!(plain, p, 6)
+        step!(diag, p, 6)
         @test particle_bits(plain) == particle_bits(st)
         @test bits(plain.fields.Ey) != bits(st.fields.Ey)
         @test born(st).n > born(snap_state(prob, snap, be)).n           # step 6 gave birth
+        # the observer reads the grid's fields: step 6's history entries are those of the plain step from the same state
+        @test [bits(Array(h)[6:6]) for h in values(st.recorder.hist)] == [bits(Array(h)[6:6]) for h in values(diag.recorder.hist)]
         # the initial kick
         ic = EMState(prob, EMNumerics(; gather = cg); backend = be)
         initialize!(ic, prob)
@@ -276,13 +284,36 @@ function body_T962(be)
         restore!(fresh, s3)
         run!(fresh, p, prob.nsteps - 3; first = 4)
         @test map(bits, evolved(fresh)) == map(bits, evolved(full))
+        # a view of the state over other arrays (the harness' path) keeps the copy
+        ran = ion_state(prob; be, gather = cg)
+        run!(ran, p, 3)
+        sv = state_view(ran, map(copy, evolved(ran)))
+        @test sv.sharpened === ran.sharpened
+        run!(sv, p, prob.nsteps - 3; first = 4)
+        @test map(bits, evolved(sv)) == map(bits, evolved(full))
+        # the moving window: the copy's x-guards are zero as the grid's are, its interior the stencil's
+        wp = ion_window(T; nsteps = 70)
+        ws = ion_state(wp; be, gather = cg)
+        run!(ws, params(wp), 70)
+        sharpen_gather!(ws)
+        g, n1 = guards(ws.grid), ncells(ws.grid)[1]
+        βw = sharpening_beta(cg, ws.numerics.shape, ws.grid.dx[1])
+        for name in GATHER_NAMES
+            c = Array(ws.sharpened[name])
+            ref = similar(ws.fields[name])
+            sharpen_x!(ref, ws.fields[name], βw, ws.grid)
+            r = Array(ref)
+            @test all(iszero, c[1:g, :]) && all(iszero, c[(end - g + 1):end, :])
+            @test bits(c[(g + 1):(g + n1), :]) == bits(r[(g + 1):(g + n1), :])
+        end
+        @test maximum(absmax, Array(ws.sharpened.Ey)) > 1 / 10
     end
 end
 
 "A plain state holding the snapshot `snap` of `prob`."
 snap_state(prob, snap, be) = restore!(EMState(prob, EMNumerics(); backend = be), snap)
 
-@testset "T-962 what reads the compensated copy: the push, the ionization's rates and births, and the initial kick, bit for bit as the plain step in the sharpened fields; a restart continues with the run's bits [A2, A4, A8, WP-067]" begin
+@testset "T-962 what reads the compensated copy: the push, the ionization's rates and births, and the initial kick, bit for bit as the plain step in the sharpened fields; the observer the grid's; a restart and a view continue with the run's bits; the window's edges [A2, A4, A8, WP-067]" begin
     body_T962(CPU())
 end
 
