@@ -230,3 +230,24 @@ end
         @test r.again
     end
 end
+
+# WP-041: a species of a state sorted by its workspace takes the workspace's spare arrays (the
+# swap) when it owns its arrays; the harness's cache borrows them, so that a write into it or a
+# diagnostic that sorts it leaves `u0` its evolved arrays, and a solve, which steps views over
+# copies of `u0`, never gathers into `u0`.
+@testset "T-926 the harness's u0 stays the cache's evolved arrays when the cache sorts, and later solves give the same bits and leave u0 alone [A4, A9, WP-041]" begin
+    for T in TYPES
+        prob, num = case_problem("landau", T; HARNESS_KW...)
+        dprob = DiscreteProblem(prob, num; backend, nsteps = 40)
+        cache = harness_state(dprob)
+        @test all(map(===, evolved(cache), dprob.u0.x))
+        u0 = partition_bits(dprob.u0)
+        ref = partition_bits(solve(dprob, FunctionMap(); save_everystep = false).u[end])
+        copyto!(cache, copy(dprob.u0))              # a write into the cache: at N = 1 it sorts
+        @test all(map(===, evolved(cache), dprob.u0.x)) && partition_bits(dprob.u0) == u0
+        for _ in 1:2
+            @test partition_bits(solve(dprob, FunctionMap(); save_everystep = false).u[end]) == ref
+            @test partition_bits(dprob.u0) == u0
+        end
+    end
+end

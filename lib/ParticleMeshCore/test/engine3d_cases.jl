@@ -183,7 +183,7 @@ function engine3d_digests(be = CPU(); wgs = WG_SIZES)
     for T in TYPES, wg in wgs
         L = type_label(T)
         s, ws, grid = sorted_3d(T; workgroupsize = wg, be)
-        push!(lines, "sort3d|$L|extras|$wg|$(fnv_digest(species_arrays(s)..., ws.perm, ws.seg_start, ws.seg_stop))")
+        push!(lines, "sort3d|$L|extras|$wg|$(fnv_digest(species_arrays(s)..., perm_digest(ws), ws.seg_start, ws.seg_stop))")
         for shape in SHAPES, st in DIGEST_TRIPLES
             grid = grid3(T, guard_width(shape))
             m = moved_species_3d(T, grid, 300; dead = DEAD3)

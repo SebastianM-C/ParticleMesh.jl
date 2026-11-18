@@ -268,8 +268,9 @@ counted, [`window_lost`](@ref)); other states ignore it. `resort` sorts the part
 `Reference()` step from their order of the last sort (the engine's `resort_by_cell!`, WP-041),
 with the particles a window refill or a birth added since merged in; `false` sorts every key
 anew (`sort_by_cell!`). Both give the same bits. The default is `false`: on the CPU the full sort
-of the keys is as fast (WP-041's step timings), and `true` adds a second copy of every particle
-array per sorted species to the scratch. `node_bins` groups the particles of the sort by
+of the keys is as fast (WP-041's step timings), and on an RTX 5090 the sort from the last order
+is about 10 % faster in Float32 at 0.9 and 3.8 million particles but 10 to 20 % slower in Float64
+and duals at 3.8 million (`scripts/sort/gather_bench.jl`). `node_bins` groups the particles of the sort by
 the first node of their stencil with the shape and ρ's stagger (the engine's `NodeBins`, WP-041)
 instead of by cell: at order 2 the `Reference()` deposits then walk 3 bins per axis where they
 walk 4 cells, and the 2D flux patch holds 5 × 5 nodes per bin where a cell's holds 6 × 6; the
