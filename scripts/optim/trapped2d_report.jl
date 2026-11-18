@@ -30,14 +30,18 @@ log_gradient(j) = jgrad(j) .* [collect(TCASE.scale); 1.0] ./ jval(j)
 "Central differences of the fd jobs against the gradient of the conv job at the same point and resolution."
 function fd_rows(jobs)
     rows = Dict{String,Any}[]
+    # pairs and gradients matched by their fields, so that a GPU or Float32 job's id suffix does not matter
+    key(j) = (j["point"], j["ppl"], j["ny"], source(j))
+    minus = Dict((key(j), j["direction"], j["power"]) => j for (id, j) in jobs if startswith(id, "fd-") && j["sign"] == -1)
+    grads = Dict(key(j) => j for (id, j) in jobs if startswith(id, "conv-"))
     for (id, j) in jobs
         startswith(id, "fd-") && j["sign"] == 1 || continue
-        m = get(jobs, replace(id, r"-p$" => "-m"), nothing)
-        c = get(jobs, "conv-$(j["point"])-r$(j["ppl"])x$(j["ny"])", nothing)
+        m = get(minus, (key(j), j["direction"], j["power"]), nothing)
+        c = get(grads, key(j), nothing)
         (m === nothing || c === nothing) && continue
         fd = (jval(j) - jval(m)) / (2 * j["h"])
         ad = jgrad(c)[j["direction"]]
-        push!(rows, Dict{String,Any}("point" => j["point"], "ppl" => j["ppl"], "ny" => j["ny"], "direction" => DIRECTIONS[j["direction"]],
+        push!(rows, Dict{String,Any}("point" => j["point"], "ppl" => j["ppl"], "ny" => j["ny"], "source" => source(j), "direction" => DIRECTIONS[j["direction"]],
                                      "power" => j["power"], "h" => j["h"], "fd" => fd, "ad" => ad, "relative_difference" => abs(fd - ad) / abs(ad)))
     end
     return sort(rows; by = r -> (r["point"], r["ppl"], r["direction"], r["power"]))
@@ -66,13 +70,13 @@ function fine_rows(jobs)
     return out
 end
 
-"The scatter of a scan about its straight-line fit, over J at its middle: the roughness on the scale of 2⁻¹⁰."
+"The RMS scatter of a scan about its least-squares parabola, over J at its middle: the roughness on the scale of 2⁻¹⁰ (a parabola takes out J's curvature, which a line would count)."
 function rough(js, J0)
     k = Float64[j["step"] for j in js]
     y = [jval(j) / J0 for j in js]
-    A = [ones(length(k)) k]
+    A = [ones(length(k)) k k .^ 2]
     r = y .- A * (A \ y)
-    return sqrt(sum(abs2, r) / max(1, length(r) - 2))
+    return sqrt(sum(abs2, r) / max(1, length(r) - 3))
 end
 
 "The jobs of a line campaign (`energy` or `density`) grouped by resolution, sorted along the line, with the secant-against-tangent mismatch at the interior points."
@@ -230,7 +234,7 @@ function tables(conv, xonly, fd, lines, check = [], fine = Dict{String,Any}())
         end
     end
     if !isempty(fine)
-        println(io, "\n| fine scan | runs | scatter about a straight line, over J | J's change over the scan (±8·2⁻¹⁰), over J | ForwardDiff's prediction of it |")
+        println(io, "\n| fine scan | runs | RMS scatter about a parabola, over J | J's change over the scan (±8·2⁻¹⁰), over J | ForwardDiff's prediction of it |")
         println(io, "|---|---|---|---|---|")
         for (key, v) in sort(collect(fine); by = first)
             println(io, "| ", key, " | ", length(v["k"]), " | ", sig(v["scatter"]), " | ", sig(v["dJ"][end] - v["dJ"][1]), " | ",

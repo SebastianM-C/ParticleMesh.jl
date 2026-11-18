@@ -12,7 +12,8 @@
 #   julia +1.13 --project=scripts scripts/optim/trapped2d.jl campaign <kind> <resolutions> [dir] [jobs=N] [threads=M]
 #       kind: converge (the five points, with duals), xonly (plain runs with Δy kept at π/4),
 #             fine (17 plain runs 2⁻¹⁰ apart in the budget at two points and in the delay at one: roughness),
-#             fd (central differences at the points), energy (a line in the energy budget, with
+#             fd (central differences at the points), fdcheck (the gradient and central differences
+#             at 2⁻⁹ and 2⁻¹³ in the free directions and the budget at E2.175 only), energy (a line in the energy budget, with
 #             duals), density (a line in the density, with duals);
 #       resolutions: ppl×ny pairs, e.g. 16x1,32x2 (Δx = λ₀/ppl, Δy = π/(4·ny));
 #       dir: the run directory (made if missing; by default scripts/runs/optim-trapped2d-<kind>-<stamp>);
@@ -85,6 +86,18 @@ function campaign_jobs(kind, res)
                 add!(job_id("fd", p.name, r, DIRECTIONS[i], k, sgn > 0 ? "p" : "m"), a0E, x, ppl, ny, "plain";
                      point = p.name, direction = i, power = k, sign = sgn, h = h)
             end
+        elseif kind == "fdcheck"
+            # the gradient check at one point on a fine grid: the gradient run and central
+            # differences at 2⁻⁹ and 2⁻¹³ in the free directions and the budget, at E2.175
+            p = POINTS[2]
+            add!(job_id("conv", p.name, r), p.a0E, p.x, ppl, ny, "grad"; point = p.name)
+            for i in (TCASE.free..., length(DIRECTIONS)), k in (9, 13), sgn in (1, -1)
+                x, a0E = copy(p.x), p.a0E
+                h = (i == length(DIRECTIONS) ? a0E : x[i]) * 2.0^-k
+                i == length(DIRECTIONS) ? (a0E += sgn * h) : (x[i] += sgn * h)
+                add!(job_id("fd", p.name, r, DIRECTIONS[i], k, sgn > 0 ? "p" : "m"), a0E, x, ppl, ny, "plain";
+                     point = p.name, direction = i, power = k, sign = sgn, h = h)
+            end
         elseif kind == "fine"
             # roughness: 17 runs a relative 2⁻¹⁰ apart in the budget's a₀ at E2.175 and E2.4, and in the delay at E2.175
             for (p, i) in ((POINTS[2], 6), (POINTS[3], 6), (POINTS[2], 4)), k in -8:8
@@ -101,7 +114,7 @@ function campaign_jobs(kind, res)
                 add!(job_id("density", round(n; digits = 4), r), 2.175, [collect(TCASE.x0)[1:4]; n], ppl, ny, "grad")
             end
         else
-            error("unknown campaign kind $kind: converge, xonly, fine, fd, energy or density")
+            error("unknown campaign kind $kind: converge, xonly, fine, fd, fdcheck, energy or density")
         end
     end
     # the longest first, so that the last jobs to finish are short ones
