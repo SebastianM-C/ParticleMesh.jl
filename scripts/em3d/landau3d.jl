@@ -77,9 +77,8 @@ function run_seed(dir, ::Type{T}, be; cells, ppc, seed, t_end) where {T}
     st = EMState(prob, EMNumerics(; shape = Quadratic, mode = Reference()); backend = be)
     initialize!(st, prob)
     p = params(prob)
-    run!(st, p, 1)                      # compiles the step; its entry is part of the run
-    wall = @elapsed begin
-        run!(st, p, prob.nsteps - 1)
+    wall = @elapsed begin               # one call: a second run! call would record its steps from entry 1 again
+        run!(st, p, prob.nsteps)
         KernelAbstractions.synchronize(be)
     end
     h = histories(st)
@@ -99,7 +98,7 @@ function run_seed(dir, ::Type{T}, be; cells, ppc, seed, t_end) where {T}
                             "K" => Float64.(h.K)))
     end
     rec = Dict{String,Any}("seed" => seed, "steps" => prob.nsteps, "particles" => np, "wall_seconds" => wall,
-        "ns_per_particle_step" => 1e9 * wall / (np * (prob.nsteps - 1)),
+        "ns_per_particle_step" => 1e9 * wall / (np * prob.nsteps),     # the first seed includes compilation
         "transverse" => maximum(Et) / maximum(abs, El),
         "energy_drift" => (Wtot[end] - Wtot[1]) / Wtot[1], "gauss_end" => chk.gauss, "divB_end" => chk.divB)
     println("seed $seed: $(round(wall; digits = 1)) s, $np particles, $(prob.nsteps) steps, Gauss $(chk.gauss), ",
@@ -141,7 +140,7 @@ function landau3d_run(be; cells, ppc, seeds, float, t_end)
                               "mean_rel" => (mean(single) - th.gamma) / th.gamma,
                               "omega" => [r.omega for r in ens.single_seed], "maxima" => [length(r.t_fit) for r in ens.single_seed]),
         "per_seed" => recs)
-    open(io -> JSON.print(io, out, 2), joinpath(dir, "observables.json"), "w")
+    open(io -> JSON.print(io, out, 2; allownan = true), joinpath(dir, "observables.json"), "w")
     landau3d_figure(dir, ts, coeffs, ens, th, cells, ppc, T)
     write_manifest(dir; root = REPO, extra = Dict{String,Any}("finished" => string(now(UTC)) * "Z",
         "outputs" => Dict{String,Any}(f => "sha256:" * RunManifest.file_hash(joinpath(dir, f))
@@ -161,16 +160,18 @@ function landau3d_figure(dir, ts, coeffs, ens, th, cells, ppc, T)
     end
     lines!(ax, ts, ens.U; color = :black, linewidth = 1.2, label = "seed mean")
     scatter!(ax, ens.t_fit, ens.U_fit; color = :red, markersize = 8, label = "fitted maxima, γ = $(round(ens.gamma; sigdigits = 4))")
-    t0 = first(ens.t_fit)
-    tl = range(t0, last(ts); length = 50)
-    lines!(ax, tl, first(ens.U_fit) .* exp.(-2th.gamma .* (tl .- t0)); color = :blue, linestyle = :dash,
-           label = "theory, γ = $(round(th.gamma; sigdigits = 5))")
+    if !isempty(ens.t_fit)
+        t0 = first(ens.t_fit)
+        tl = range(t0, last(ts); length = 50)
+        lines!(ax, tl, first(ens.U_fit) .* exp.(-2th.gamma .* (tl .- t0)); color = :blue, linestyle = :dash,
+               label = "theory, γ = $(round(th.gamma; sigdigits = 5))")
+    end
     hlines!(ax, [ens.floor]; color = :orange, linestyle = :dot, label = "noise floor")
     axislegend(ax; position = :rt)
     save(joinpath(dir, "landau3d.png"), fig)
     open(joinpath(dir, "landau3d.json"), "w") do io
         JSON.print(io, Dict("t" => ts, "ensemble_energy" => ens.U, "t_fit" => ens.t_fit, "U_fit" => ens.U_fit,
-                            "gamma" => ens.gamma, "gamma_theory" => th.gamma, "floor" => ens.floor), 2)
+                            "gamma" => ens.gamma, "gamma_theory" => th.gamma, "floor" => ens.floor), 2; allownan = true)
     end
 end
 
