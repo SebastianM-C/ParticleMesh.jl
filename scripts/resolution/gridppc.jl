@@ -493,6 +493,12 @@ function campaign_jobs(name)
         for c in (0.5, 2.0)
             plain!(jobs, jid("gather", "r16x1", "quad", "c$c"); ppl = 16, ny = 1, comp = c)
         end
+    elseif name == "shape"
+        # the cubic B-spline (a prototype in ParticleMeshCore) against the linear and quadratic runs of the grid and gather campaigns
+        for (ppl, ny) in ((16, 1), (24, 1), (32, 2), (48, 3), (64, 4))
+            pair!(jobs, jid("shape", "r$(ppl)x$(ny)", "cubic"); ppl, ny, shape = 3)
+            plain!(jobs, jid("shape", "r$(ppl)x$(ny)", "cubic", "comp"); ppl, ny, shape = 3, comp = 1.0)
+        end
     elseif name == "frames"
         for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
             plain!(jobs, jid("frames", "r$(ppl)x$(ny)"); ppl, ny, frames = 60)
@@ -517,6 +523,10 @@ function run_campaign(name, dir)
                 params = Dict{String,Any}("campaign" => name, "jobs" => length(jobs), "defaults" => JOB_DEFAULTS))
     open(io -> JSON.print(io, jobs, 1), joinpath(dir, "jobs.json"), "w")
     todo = filter(j -> !isfile(joinpath(dir, j["id"] * ".json")), jobs)
+    # GRIDPPC_MIN_PPL and GRIDPPC_MAX_PPL run only the jobs between those cells per wavelength (to split a campaign between machines)
+    maxppl = parse(Int, get(ENV, "GRIDPPC_MAX_PPL", "100000"))
+    minppl = parse(Int, get(ENV, "GRIDPPC_MIN_PPL", "0"))
+    filter!(j -> minppl <= merge(JOB_DEFAULTS, j)["ppl"] <= maxppl, todo)
     println("campaign $name on $BACKEND_NAME: $(length(todo)) of $(length(jobs)) jobs to run, into $dir"); flush(stdout)
     t0 = time()
     for (i, j) in enumerate(todo)
