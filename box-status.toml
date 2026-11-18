@@ -1,0 +1,20 @@
+branch = "runs/swap-suites-2"
+request_commit = "9898cef9bcd20a49bd68c5604c3afd710a79fbab"
+started = "2026-11-18T06:12:29Z"
+category = "test"
+outputs = []
+finished = "2026-11-18T06:28:59Z"
+ok = false
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-18T06:12:29Z"
+exit = 1
+seconds = 990
