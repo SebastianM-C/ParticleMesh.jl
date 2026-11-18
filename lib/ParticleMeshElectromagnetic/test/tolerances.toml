@@ -964,8 +964,10 @@ rate_ensemble_note = "the rate of the ensemble over the four seeds LANDAU3_SEEDS
 status = "proposed; rate and frequency bound one seed as T-364's, an order check of the rate (one seed's std is 0.10 of theory); rate_ensemble is about four standard deviations of the four-seed subsets of sixteen seeds. Float64 on the CPU only, as T-364 (the four seeds in Float32, run once outside the suite, give the same per-seed and ensemble rates to three digits); no full-size 3D run against theory or another code yet"
 
 ["T-955"]
-quantity = "Dual{Float32,3} through 10 steps of the 3D step with current: the primal of every E and B component against the Float32 run"
-scale = "k·max|Float32 value| per component"
+quantity = "Dual{Float32,3} through 10 steps of the 3D step with current: the primal of every E and B component against the Float32 run (C); the partial ∂/∂(amplitude) of every component against the central difference of Float64 runs at amplitude 1/10 ± 10⁻⁴ (C_partial)"
+scale = "k·max|Float32 value| per component (C); k·eps(Float32)·max|central difference| per component (C_partial)"
 C = 8
+C_partial = 8
 measured = { "Dual{Float32,3}" = 2.46 }
+measured_partial = { "Dual{Float32,3}" = 1.81 }
 status = "proposed; not bitwise (A4)"
