@@ -193,7 +193,9 @@ weight of each with u_x above `rise[2]` over the whole window ahead of the back 
 (`fast_born_window`, `fast_plasma_window`), which shows trapped charge the position weight leaves
 out; the highest u_x of each; the dark current, the plasma's electrons with u_x above `rise[2]`
 between the back band's end and `fade[1]` (`dark_weight`, and `dark_energy` in J's units); and the
-number of alive particles.
+number of alive particles. The dark region starts at the back band's end, which a longer window
+(`extend`, as under a power cap) pushes back, so `dark_weight` and `dark_energy` of runs with
+different `extend` count different regions and are not comparable.
 """
 function trapped_summary(st; fade = TCASE.fade, rise = TCASE.rise)
     parts = trapped_parts(st; fade, rise)
