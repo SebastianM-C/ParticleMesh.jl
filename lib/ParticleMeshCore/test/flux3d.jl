@@ -7,11 +7,11 @@ const INPROCESS_FLUX3D = flux3d_digests()
 f3d_worker(nt) = [chopprefix(l, "F3D ") for l in worker_lines(nt) if startswith(l, "F3D ")]
 
 """
-The bins of the 3D flux tests for `shape` and `st`: the cells, and for order 2 on ρ's nodes and
-on (Node, Node, Center) also `NodeBins` of that shape and stagger (the second has another reach
-on axis 3 than on the others).
+The bins of the 3D flux tests for `shape` and `st`: the cells, and at order 2 also `NodeBins` of
+that shape and stagger for every triple but the cell centres', so that the bins' stagger differs
+between axes and a bin width or reach taken from another axis fails a test.
 """
-flux3d_bins(shape, st) = shape === Quadratic && st in (NODES3, (Node(), Node(), Center())) ? (CellBins(), NodeBins(Quadratic, st)) : (CellBins(),)
+flux3d_bins(shape, st) = shape === Quadratic && st != (Center(), Center(), Center()) ? (CellBins(), NodeBins(Quadratic, st)) : (CellBins(),)
 
 function body_T940(be)
     C = tolC("T-940")
