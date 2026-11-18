@@ -64,6 +64,33 @@ end
     end
 end
 
+@testset "T-934 publish records a non-ASCII or tab file name and the committed blob under core.autocrlf=input [A6]" begin
+    mktempdir() do root
+        work = fixture(root)
+        sh(work, `git config core.autocrlf input`)
+        d = run_dir(work, "demo")
+        name = "a₀\tb.png"
+        write(joinpath(d, "plots", name), rand(UInt8, 100))
+        write(joinpath(d, "log.txt"), "one\r\ntwo\r\n")
+        sh(work, `bash $RUNDATA publish demo-1 scripts/runs/demo`)
+        p = TOML.parsefile(joinpath(d, "published.toml"))
+        files = Dict(f["path"] => f for f in p["files"])
+        @test haskey(files, "scripts/runs/demo/plots/$name")
+        # the record holds the hash of the committed blob: CRLF normalized to LF
+        log = files["scripts/runs/demo/log.txt"]
+        @test log["bytes"] == 8 && log["sha256"] == bytes2hex(sha256("one\ntwo\n"))
+        @test log["sha256"] != hexsha(joinpath(d, "log.txt"))
+        # a fetch with the same setting normalizes nothing on the way out, so the record checks
+        other = joinpath(root, "other")
+        sh(root, `git clone -q $(joinpath(root, "remote.git")) $other`)
+        record = joinpath(root, "published.toml")
+        cp(joinpath(d, "published.toml"), record)
+        out = sh(other, `bash $RUNDATA fetch $record`)
+        @test occursin("matches its SHA-256", out)
+        @test isfile(joinpath(other, "scripts/runs/demo/plots", name))
+    end
+end
+
 @testset "T-931 publish refuses a used tag, large or leaking files, an unpushed HEAD and other paths [A6]" begin
     mktempdir() do root
         work = fixture(root)
