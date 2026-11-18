@@ -27,10 +27,14 @@ Fixed parameters of the WP-065 case beyond [`BCASE`](@ref) (A1 units).
   it is the dark current, reported beside J ([`trapped_summary`](@ref)) and not counted in it.
 - `x0` is the base point (duration, waist, focus, delay, density); `names` and `scale` give each
   parameter's name and the scale of z = x ./ scale in problem.jl.
+- `free` are the indices of the parameters an optimizer moves: all but the delay, which stays at
+  `x0[4]`. J along the delay is rough on the scale of a cell (its derivative changes sign from
+  one resolution to the next, and runs a small step apart scatter by about 10⁻³ of J), so its
+  ForwardDiff derivative does not predict J's change over a finite step (WP-065's report).
 """
 const TCASE = (a0_energy = 1.9, budgets = (1.9, 2.175, 2.4), dopant_fraction = 0.01, rise = (3.0, 5.0), fade = (12.0, 24.0),
                x0 = (6.0, 10.0, 80.0, 54.0, 0.072), names = ("duration", "waist", "focus", "delay", "density"),
-               scale = (6.0, 10.0, 80.0, 54.0, 0.072))
+               scale = (6.0, 10.0, 80.0, 54.0, 0.072), free = (1, 2, 3, 5))
 
 """
     pulse_energy(a0, duration, waist) -> W

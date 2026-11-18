@@ -27,7 +27,7 @@ sol.u .* WAKE_BOX.scale                                       # the optimum; sol
 | `slab.jl` (with `wake2d_case.jl`) | WP-051 | as WP-045 | `slab_amplitude`, a wake amplitude that does not depend on when it is read |
 | `witness2d_case.jl` | WP-052: 830 steps, fixed laser energy, a witness bunch | τ ∈ [4, 9], n₀ ∈ [0.04, 0.10], witness centre x_c ∈ [30, 50] (`WITNESS_BOX`) | `witness_gain`, the witness bunch's mean energy gain |
 | `born2d_case.jl` | WP-064: 900 steps at λ₀/16, PMLs, a nitrogen K-shell dopant in a short section (WP-059) | a₀ ∈ [1.5, 2.4] (`BORN_BOX` in `born2d.jl`, a scan, no optimizer yet) | `born_energy`, the kinetic energy of the ionization-born electrons ahead of the window's back, with `plasma_peak_energy` and `plasma_fast_weight` as the guard on the plasma's own electrons |
-| `trapped2d_case.jl` | WP-065: WP-064's case at a fixed laser energy (a₀ from duration and waist), the dopant at 1 % of the density, `ny` refining y | duration, waist, focus, delay, density (`TCASE.x0`; no box or optimizer yet) | `trapped_energy`, the kinetic energy of every electron with u_x above about 4 (a smooth weight from 3 to 5) ahead of the window's back band, born or the plasma's own |
+| `trapped2d_case.jl` | WP-065: WP-064's case at a fixed laser energy (a₀ from duration and waist), the dopant at 1 % of the density, `ny` refining y | duration, waist, focus, density (`TCASE.free`; the delay stays at `TCASE.x0[4]`; no box or optimizer yet) | `trapped_energy`, the kinetic energy of every electron of the first bucket (a position weight rising from 0 at window x = 12 to 1 at 24) with u_x above about 4 (a smooth weight from 3 to 5), born or the plasma's own |
 
 ## The drivers
 

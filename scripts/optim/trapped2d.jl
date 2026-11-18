@@ -1,6 +1,7 @@
 # WP-065: the objective over every trapped electron of the first bucket (trapped2d_case.jl) at a fixed laser energy,
 # under refinement, and its ForwardDiff gradient in the five parameters (duration, waist, focus,
-# delay, density) and in the energy budget against central differences. No optimizer runs here.
+# delay, density) and in the energy budget against central differences. The delay is measured
+# here to show why an optimizer leaves it fixed (`TCASE.free`). No optimizer runs here.
 #
 # A campaign is a list of independent runs ("jobs"); each job is one run of the case at one point
 # and one resolution, plain or with duals in all six directions, and writes `<id>.json` into the
