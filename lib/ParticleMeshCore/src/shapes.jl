@@ -7,6 +7,7 @@ is type-level configuration, so kernels specialize on it.
 struct Shape{P} end
 const Linear = Shape{1}()
 const Quadratic = Shape{2}()
+const Cubic = Shape{3}()
 order(::Shape{P}) where {P} = P
 
 "Guard cells needed on each side for any stagger: the stencil reach of the shape."
@@ -60,6 +61,24 @@ end
     return (b - Int32(1), quadratic_weights(u - T(b)))
 end
 
+# The cubic B-spline on the four nodes around a point at ξ ∈ [0, 1) past the second of them.
+@inline function cubic_weights(ξ::T) where {T}
+    a = one(T) - ξ
+    ξ2 = ξ * ξ
+    ξ3 = ξ2 * ξ
+    return (a * a * a / 6, (4 - 6 * ξ2 + 3 * ξ3) / 6, (1 + 3 * ξ + 3 * ξ2 - 3 * ξ3) / 6, ξ3 / 6)
+end
+
+@inline function shape_weights(::Shape{3}, ::Node, δ::T) where {T}
+    return (Int32(-1), cubic_weights(δ))
+end
+
+@inline function shape_weights(::Shape{3}, s::Stagger, δ::T) where {T}
+    u = δ - stagger_offset(s, T)
+    f = floor(Int32, u)
+    return (f - Int32(1), cubic_weights(u - T(f)))
+end
+
 """
     stencil_reach(shape, stagger) -> (lo, hi)
 
@@ -69,6 +88,8 @@ stencil_reach(::Shape{1}, ::Node) = (0, 1)
 stencil_reach(::Shape{1}, ::Center) = (-1, 1)
 stencil_reach(::Shape{2}, ::Center) = (-1, 1)
 stencil_reach(::Shape{2}, ::Node) = (-1, 2)
+stencil_reach(::Shape{3}, ::Node) = (-1, 2)
+stencil_reach(::Shape{3}, ::Center) = (-2, 2)
 
 """
     advance(cell, δ, Δ, n) -> (cell′, δ′)

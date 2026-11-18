@@ -17,6 +17,8 @@ end
 @inline flux_width(::Shape{1}, ::Center) = Val(5)
 @inline flux_width(::Shape{2}, ::Center) = Val(5)
 @inline flux_width(::Shape{2}, ::Node) = Val(6)
+@inline flux_width(::Shape{3}, ::Node) = Val(6)
+@inline flux_width(::Shape{3}, ::Center) = Val(7)
 
 """
     flux_guard_width(shape, stagger)

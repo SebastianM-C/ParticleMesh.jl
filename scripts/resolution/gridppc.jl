@@ -20,6 +20,7 @@
 
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"))
+include(joinpath(@__DIR__, "gather_comp.jl"))
 using ParticleMeshElectromagnetic: window_charge!, window_shifts, ionization_state, ionization_electrons, ionization_lost
 
 const BACKEND_NAME = let b = filter(a -> a in ("cpu", "cuda"), ARGS)
@@ -40,7 +41,7 @@ const GRAD_NAMES = ("duration", "waist", "focus", "density")
 const JOB_DEFAULTS = Dict{String,Any}("ppl" => 16, "ny" => 1, "ppc" => [2, 2], "ion_ppc" => [1, 1], "T" => "f64", "mode" => "reference",
                                       "shape" => 2, "cfl" => 95, "law" => "adk", "every" => 1, "a0E" => 1.9, "x" => collect(TCASE.x0),
                                       "grad" => false, "series" => true, "frames" => 0, "a0_scale" => 1.0, "t_end" => BCASE.t_end,
-                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0)
+                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0, "pusher" => "boris", "comp" => 0.0)
 
 eltype_named(s) = s == "f64" ? Float64 : s == "f32" ? Float32 : error("element type $s: f64 or f32")
 
@@ -88,10 +89,14 @@ function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc =
                      profile = DensityRamp(; vacuum = R(BCASE.vacuum), ramp = R(BCASE.ramp)), ionization = ion)
 end
 
-"The case's numerics (`born_numerics`) with the job's shape order and deposition mode."
-study_numerics(ppl, ny; shape = 2, mode = "reference") =
-    EMNumerics(; shape = shape == 2 ? Quadratic : shape == 1 ? Linear : error("shape order $shape: 1 or 2"),
+"The pushers by a job's name for them."
+const PUSHERS = Dict("boris" => Boris(), "vay" => Vay(), "hc" => HigueraCary(), "exact" => BorisExactRotation(), "qu" => QuadraticUnitary())
+
+"The case's numerics (`born_numerics`) with the job's shape order, deposition mode and pusher."
+study_numerics(ppl, ny; shape = 2, mode = "reference", pusher = "boris") =
+    EMNumerics(; shape = shape == 2 ? Quadratic : shape == 1 ? Linear : shape == 3 ? Cubic : error("shape order $shape: 1, 2 or 3"),
                mode = mode == "reference" ? Reference() : mode == "fast" ? Fast() : error("mode $mode: reference or fast"),
+               pusher = haskey(PUSHERS, pusher) ? PUSHERS[pusher] : error("pusher $pusher: $(join(sort(collect(keys(PUSHERS))), ", "))"),
                absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
 
 "The electron slots a job asks for: the dopant lattice of the whole window (a birth step offers one slot per atom slot) and room for the electrons alive."
@@ -296,11 +301,14 @@ function run_job(job0, dir)
     prob = study_problem(x, T(a0E); T, ppl, ny, ppc = Int.(job["ppc"]), ion_ppc = Int.(job["ion_ppc"]), cfl = Int(job["cfl"]), law = job["law"],
                          every = Int(job["every"]), capacity, t_end = Float64(job["t_end"]), a0_scale = Float64(job["a0_scale"]),
                          dopant_fraction = Float64(job["dopant_fraction"]))
-    numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"])
+    numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"], pusher = job["pusher"])
     t0 = time()
     st = EMState(prob, numerics; backend = BE, record = ())
     p = params(prob)
     initialize!(st, p)
+    # `comp` in units of the β that makes the gather's mean transfer one at the laser's wavenumber (gather_comp.jl)
+    β = Float64(job["comp"]) * comp_beta(Int(job["shape"]), ppl)
+    stg = β == 0 ? st : gather_state(st, gather_fields(st))
     dt = Float64(value_of(prob.dt))
     series = Dict{String,Any}[]
     nframes = Int(job["frames"])
@@ -313,7 +321,7 @@ function run_job(job0, dir)
     FX, FY = 448, 128
     k = 0
     for stop in stops
-        stop > k && run!(st, p, stop - k; first = k + 1)
+        stop > k && run_comp!(st, stg, β, p, stop - k; first = k + 1)
         k = stop
         stop in sample_steps && push!(series, sample(st, k, dt, ppl))
         if stop in frame_steps
@@ -340,7 +348,7 @@ function run_job(job0, dir)
                                  "dx" => h[1], "dy" => h[2], "dt" => dt, "nsteps" => prob.nsteps, "capacity" => capacity, "ionization_lost" => lost,
                                  "a0" => Float64(value_of(a0_for_energy(x[1], x[2]; energy = budget(a0E)))) * Float64(job["a0_scale"]),
                                  "plasma_slots" => sum(s -> length(s.w), st.species), "bunch" => bunch_readout(st),
-                                 "atoms" => length(ionization_state(st).w)))
+                                 "atoms" => length(ionization_state(st).w), "comp_beta" => β))
     if grad
         out["gradient"] = Float64.(collect(ForwardDiff.partials(J)))
         out["gradient_born"] = Float64.(collect(ForwardDiff.partials(parts.born)))
@@ -470,6 +478,21 @@ function campaign_jobs(name)
             plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "linear"); ppl, ny, shape = 1)
             plain!(jobs, jid("comp", "r$(ppl)x$(ny)", "lincomp"); ppl, ny, shape = 1, a0_scale = 1 / blur(1))
         end
+    elseif name == "pusher"
+        # the five pushers on the diagonal grids, each plain and with duals
+        for (ppl, ny) in ((16, 1), (24, 1), (32, 2), (48, 3), (64, 4)), pusher in ("boris", "hc", "vay", "exact", "qu")
+            pair!(jobs, jid("pusher", "r$(ppl)x$(ny)", pusher); ppl, ny, pusher)
+        end
+    elseif name == "gather"
+        # the gather sharpened to undo the shape's field loss at the laser's wavenumber (gather_comp.jl)
+        for (ppl, ny) in ((16, 1), (24, 1), (32, 2), (48, 3), (64, 4))
+            pair!(jobs, jid("gather", "r$(ppl)x$(ny)", "quad"); ppl, ny, comp = 1.0)
+            plain!(jobs, jid("gather", "r$(ppl)x$(ny)", "linear"); ppl, ny, shape = 1, comp = 1.0)
+            plain!(jobs, jid("gather", "r$(ppl)x$(ny)", "linear", "plain"); ppl, ny, shape = 1)
+        end
+        for c in (0.5, 2.0)
+            plain!(jobs, jid("gather", "r16x1", "quad", "c$c"); ppl = 16, ny = 1, comp = c)
+        end
     elseif name == "frames"
         for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
             plain!(jobs, jid("frames", "r$(ppl)x$(ny)"); ppl, ny, frames = 60)
@@ -489,7 +512,7 @@ function run_campaign(name, dir)
     isfile(joinpath(dir, "manifest.toml")) ||
         run_dir("gridppc-$name", @__FILE__; prefix = "resolution", work_package = "none (study for a report)", dir,
                 backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU", extra,
-                extra_inputs = [joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"), joinpath(@__DIR__, "..", "optim", "born2d_case.jl"),
+                extra_inputs = [joinpath(@__DIR__, "gather_comp.jl"), joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"), joinpath(@__DIR__, "..", "optim", "born2d_case.jl"),
                                 joinpath(@__DIR__, "..", "ionization", "atomic.jl")],
                 params = Dict{String,Any}("campaign" => name, "jobs" => length(jobs), "defaults" => JOB_DEFAULTS))
     open(io -> JSON.print(io, jobs, 1), joinpath(dir, "jobs.json"), "w")

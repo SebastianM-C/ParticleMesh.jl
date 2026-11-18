@@ -323,6 +323,7 @@ sort_bins(numerics::EMNumerics, ::Val{N}; window::Bool = false) where {N} =
     CellBins()
 cell_stagger(::Shape{1}) = Node()
 cell_stagger(::Shape{2}) = Center()
+cell_stagger(::Shape{3}) = Node()
 sorts(st::EMState, s) = deposit_mode(st, s) isa Reference
 
 "Deposit the kinetic energy density at the current momenta into `st.K` (positions sorted if the mode needs it)."

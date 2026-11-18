@@ -32,7 +32,7 @@ import AcceleratedKernels as AK
 
 export PeriodicGrid, ncells, cellsize, guards, field, interior, interior_view, linear_cell, cartesian_cell
 export Species, capacity, alive_count
-export Shape, Linear, Quadratic, Node, Center, order, guard_width, shape_weights, tensor_weights, advance
+export Shape, Linear, Quadratic, Cubic, Node, Center, order, guard_width, shape_weights, tensor_weights, advance
 export fill_guards!, fold_guards!
 export Reference, Fast, Atomic, Sorted, accumulation, effective_mode
 export Workspace, sort_by_cell!, resort_by_cell!, forget_order!, deposit!, gather!, ChargeWeight, CellBins, NodeBins

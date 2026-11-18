@@ -70,4 +70,6 @@ end
 @inline stencil_width(::Shape{1}, ::Center) = Val(3)
 @inline stencil_width(::Shape{2}, ::Center) = Val(3)
 @inline stencil_width(::Shape{2}, ::Node) = Val(4)
+@inline stencil_width(::Shape{3}, ::Node) = Val(4)
+@inline stencil_width(::Shape{3}, ::Center) = Val(5)
 _width(::Val{M}) where {M} = M
