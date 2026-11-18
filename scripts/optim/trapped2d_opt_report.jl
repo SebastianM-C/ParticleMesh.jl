@@ -86,7 +86,7 @@ function opt_report(out, dir)
     io = IOBuffer()
     println(io, "Run `", basename(dir), "`: λ₀/", params["ppl"], ", Δy = π/", 4 * params["ny"], ", Float", params["float"], ", ", params["backend"],
             ", gather ", params["gather"], ", budget of a₀ = ", params["a0E"], " at the base pulse; L-BFGS-B with maxiters = ", params["maxiters"],
-            coords.cap === nothing ? "" : "; peak power cap $(params["cap"]): τ ≥ $(fmt(coords.cap.c))·n^-$(coords.cap.p), τ/τ_floor up to $(coords.hi[1])", ".\n")
+            coords.cap === nothing ? "" : "; peak power cap $(params["cap"]): τ ≥ $(fmt(coords.cap.c))·n^-$(coords.cap.p), the duration between its floor and $(coords.duration_hi), the window $(window_extend(coords)) λ₀ longer behind", ".\n")
     println(io, "| start | from (τ, w, focus, n) | a₀ | J there | to (τ, w, focus, n) | a₀ | J there | J ratio | on the box's bounds | stop | iterations | points run | largest dark current weight on the path | largest J_plasma/J on the path |")
     println(io, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for n in names

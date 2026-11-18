@@ -11,8 +11,9 @@
 #       tolerance on the projected gradient in z, relative to the largest component of the
 #       base point's gradient; default 2⁻⁶), a0E=1.9 (the budget's a₀ at the base pulse),
 #       cap=none (or cetal25, cetal35: a peak power cap, which at the fixed energy is a floor on
-#       the duration that rises with the density, `cetal_cap`; the solver then works in
-#       τ/τ_floor(n) between 1 and ratio_hi=1.55, `Coords`)
+#       the duration that rises with the density, `cetal_cap`; the duration then lies between
+#       the floor and duration_hi=12, `Coords`, and the window is longer behind by
+#       `window_extend` wavelengths to emit the longest pulse)
 #   julia +1.13 --project=scripts -t 2 scripts/optim/trapped2d_opt.jl check <dir> [ppl=48 ny=3 fdppl=32 fdny=2 power=13]
 #       at the best optimum of <dir>'s starts: a plain run and one with duals at ppl×ny in the
 #       optimization's element type, and a Float64 run with duals and Float64 central differences
@@ -76,23 +77,27 @@ function cetal_cap(; fwhm_fs = 25.0, density_cm3 = 4.2e18)
 end
 
 """
-    Coords(cap; ratio_hi)
+    Coords(cap; duration_hi = 12)
 
 The solver's coordinates z over the free parameters and their bounds. Without a cap (`nothing`),
-z = x ./ scale over `TRAPPED_BOX`. With a [`PowerCap`](@ref), the first coordinate is the
-duration over its floor at the point's density, τ/τ_floor(n), between 1 and `ratio_hi`, and the
-others are as without; the floor makes the box in (τ, n) curved, which L-BFGS-B's bounds cannot
-hold in τ itself. [`free_of`](@ref) maps z to the free parameters and carries duals through.
+z = x ./ scale over `TRAPPED_BOX`. With a [`PowerCap`](@ref), the duration lies between its floor
+at the point's density and `duration_hi`, and the first coordinate is its place between the two,
+(τ − τ_floor(n))/(duration_hi − τ_floor(n)) from 0 to 1; the others are as without. That region
+is curved in (τ, n), which L-BFGS-B's bounds cannot hold in τ itself. [`free_of`](@ref) maps z to
+the free parameters and carries duals through.
 """
 struct Coords{C}
     cap::C
+    duration_hi::Float64
     lo::Vector{Float64}
     hi::Vector{Float64}
 end
-function Coords(cap = nothing; ratio_hi = 1.55)
+function Coords(cap = nothing; duration_hi = 12.0)
     lo, hi = TRAPPED_BOX.lo ./ TRAPPED_BOX.scale, TRAPPED_BOX.hi ./ TRAPPED_BOX.scale
-    cap === nothing && return Coords{Nothing}(nothing, lo, hi)
-    return Coords{PowerCap}(cap, [1.0; lo[2:end]], [Float64(ratio_hi); hi[2:end]])
+    cap === nothing && return Coords{Nothing}(nothing, TRAPPED_BOX.hi[1], lo, hi)
+    duration_floor(cap, TRAPPED_BOX.lo[4]) < duration_hi ||
+        throw(ArgumentError("the floor at the box's lowest density, $(duration_floor(cap, TRAPPED_BOX.lo[4])), is not below duration_hi = $duration_hi"))
+    return Coords{PowerCap}(cap, Float64(duration_hi), [0.0; lo[2:end]], [1.0; hi[2:end]])
 end
 
 "The free parameters (duration, waist, focus, density) at the solver's coordinates `z`."
@@ -100,30 +105,53 @@ free_of(c::Coords{Nothing}, z) = collect(z) .* TRAPPED_BOX.scale
 function free_of(c::Coords{PowerCap}, z)
     s = TRAPPED_BOX.scale
     n = z[4] * s[4]
-    return [z[1] * duration_floor(c.cap, n), z[2] * s[2], z[3] * s[3], n]
+    f = duration_floor(c.cap, n)
+    return [f + z[1] * (c.duration_hi - f), z[2] * s[2], z[3] * s[3], n]
 end
+
+"The place of the duration `τ` between its floor at the density `n` and `duration_hi`, from 0 to 1."
+duration_place(c::Coords{PowerCap}, τ, n) = (f = duration_floor(c.cap, n); (τ - f) / (c.duration_hi - f))
 
 "The solver's coordinates of the free parameters `free`, the inverse of [`free_of`](@ref)."
 z_of(c::Coords{Nothing}, free) = collect(Float64, free) ./ TRAPPED_BOX.scale
-z_of(c::Coords{PowerCap}, free) = [free[1] / duration_floor(c.cap, free[4]); collect(Float64, free[2:end]) ./ TRAPPED_BOX.scale[2:end]]
+z_of(c::Coords{PowerCap}, free) = [duration_place(c, free[1], free[4]); collect(Float64, free[2:end]) ./ TRAPPED_BOX.scale[2:end]]
 
-"The parameters as the figures show them: the free parameters, with τ/τ_floor(n) in place of the duration under a cap."
+"The parameters as the figures show them: the free parameters, with the duration's place between its floor and `duration_hi` in place of the duration under a cap."
 shown(c::Coords{Nothing}, free) = collect(Float64, free)
-shown(c::Coords{PowerCap}, free) = [free[1] / duration_floor(c.cap, free[4]); collect(Float64, free[2:end])]
+shown(c::Coords{PowerCap}, free) = [duration_place(c, free[1], free[4]); collect(Float64, free[2:end])]
 shown_bounds(c::Coords{Nothing}) = (lo = collect(TRAPPED_BOX.lo), hi = collect(TRAPPED_BOX.hi))
-shown_bounds(c::Coords{PowerCap}) = (lo = [c.lo[1]; TRAPPED_BOX.lo[2:end]], hi = [c.hi[1]; TRAPPED_BOX.hi[2:end]])
-shown_name(c::Coords, i) = i == 1 && c isa Coords{PowerCap} ? "τ/τ_floor" : TCASE.names[TCASE.free[i]]
+shown_bounds(c::Coords{PowerCap}) = (lo = [0.0; TRAPPED_BOX.lo[2:end]], hi = [1.0; TRAPPED_BOX.hi[2:end]])
+shown_name(c::Coords, i) = i == 1 && c isa Coords{PowerCap} ? "τ: floor→$(fmt_hi(c.duration_hi))" : TCASE.names[TCASE.free[i]]
+fmt_hi(x) = isinteger(x) ? string(Int(x)) : string(x)
+
+"The longest duration of the coordinates' region."
+duration_max(c::Coords) = c.cap === nothing ? TRAPPED_BOX.hi[1] : c.duration_hi
 
 "The gradient in the solver's coordinates at `z` from `g`, the gradient in the free parameters (the chain rule through [`free_of`](@ref))."
 grad_z(c::Coords, z, g) = ForwardDiff.jacobian(u -> free_of(c, u), collect(Float64, z))' * collect(Float64, g)
 
-"The coordinates of a run's options (or manifest parameters): `cap = none`, `cetal25` or `cetal35` (CETAL's 25 fs limit or its measured 35 fs), with `ratio_hi`."
+"The coordinates of a run's options (or manifest parameters): `cap = none`, `cetal25` or `cetal35` (CETAL's 25 fs limit or its measured 35 fs), with `duration_hi`."
 function coords_of(o)
     cap = get(o, "cap", "none")
     cap == "none" && return Coords()
     cap in ("cetal25", "cetal35") || error("the cap is none, cetal25 or cetal35, got $cap")
-    return Coords(cetal_cap(; fwhm_fs = cap == "cetal25" ? 25.0 : 35.0); ratio_hi = get(o, "ratio_hi", 1.55))
+    return Coords(cetal_cap(; fwhm_fs = cap == "cetal25" ? 25.0 : 35.0); duration_hi = get(o, "duration_hi", 12.0))
 end
+
+"""
+    window_extend(c) -> k
+
+The whole wavelengths the case's window needs behind its 14 (born_problem's `extend`) for the
+coordinates' longest pulse: the window may pass the antenna only six durations after the pulse's
+centroid (`check_window_antennas`), so delay + 6τ must stay within the window's start, 108 + 2πk
+(the delay at the base point's 54). Extending the window keeps the case's box, plasma and pulse
+where they are in the lab frame (it only adds wake behind, T-976), with the objective's position
+weight moved back by 2πk in window x ([`run_read`](@ref)). 0 for the box without a cap (τ ≤ 9).
+"""
+window_extend(c::Coords) = max(0, ceil(Int, (TCASE.x0[4] + 6 * duration_max(c) - BCASE.start) / (2π) - 1.0e-12))
+
+"The read-out keywords of a run whose window is `k` wavelengths longer: the position weight `fade` moved back with the window's back."
+run_read(k::Integer) = k == 0 ? (;) : (; fade = TCASE.fade .+ 2π * k)
 
 "The coordinates a run directory's optimization used, from its manifest."
 run_coords(dir) = coords_of(TOML.parsefile(joinpath(dir, "manifest.toml"))["parameters"])
@@ -132,15 +160,12 @@ run_coords(dir) = coords_of(TOML.parsefile(joinpath(dir, "manifest.toml"))["para
     starts_of(c) -> NamedTuple of starts (free parameters)
 
 [`STARTS`](@ref) without a cap; under one, each start's waist, focus and density with its duration
-moved to the same place between the floor and `ratio_hi`·floor as it had between the box's 4 and 9.
+moved to the same place between the floor and `duration_hi` as it had between the box's 4 and 9.
 """
 starts_of(c::Coords{Nothing}) = STARTS
 function starts_of(c::Coords{PowerCap})
     lo, hi = TRAPPED_BOX.lo[1], TRAPPED_BOX.hi[1]
-    return map(STARTS) do x
-        r = c.lo[1] + (c.hi[1] - c.lo[1]) * (x[1] - lo) / (hi - lo)
-        [r * duration_floor(c.cap, x[4]); x[2:end]]
-    end
+    return map(x -> free_of(c, [(x[1] - lo) / (hi - lo); x[2:end] ./ TRAPPED_BOX.scale[2:end]]), STARTS)
 end
 
 "The backend named `cpu` or `cuda` (loaded on first use; the scripts environment has CUDACore)."
@@ -298,20 +323,24 @@ function parse_options(args, defaults)
 end
 
 const OPT_DEFAULTS = (ppl = 32, ny = 2, float = 32, backend = "cuda", gather = "compensated", maxiters = 25, pgtol = 2.0^-6, a0E = 1.9, starts = join(keys(STARTS), ","),
-                      cap = "none", ratio_hi = 1.55)
+                      cap = "none", duration_hi = 12.0)
 
 element_type(bits) = bits == 32 ? Float32 : bits == 64 ? Float64 : error("float is 32 or 64, got $bits")
 
+"The window's extension and the read-out keywords of a run from its options (or manifest parameters): [`window_extend`](@ref), [`run_read`](@ref)."
+run_geometry(o) = (k = window_extend(coords_of(o)); (; extend = k, read = run_read(k)))
+
 "The run's configuration from its options: what every point of a store is run with."
 point_config(o) = (; ppl = o["ppl"], ny = o["ny"], float = element_type(o["float"]), backend = opt_backend(o["backend"]), gather = opt_gather(o["gather"]),
-                    energy = budget(o["a0E"]))
+                    energy = budget(o["a0E"]), run_geometry(o)...)
 
 function run_manifest(name, dir, o; extra_params = Dict{String,Any}())
     params = merge(Dict{String,Any}(o), Dict{String,Any}("box" => Dict("lo" => TRAPPED_BOX.lo, "hi" => TRAPPED_BOX.hi, "scale" => TRAPPED_BOX.scale),
                                                          "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
                                                          "start_points" => Dict(string(k) => v for (k, v) in pairs(starts_of(coords_of(o)))),
                                                          "duration_floor" => coords_of(o).cap === nothing ? "none" :
-                                                                             Dict("c" => coords_of(o).cap.c, "p" => coords_of(o).cap.p, "ratio_hi" => o["ratio_hi"])), extra_params)
+                                                                             Dict("c" => coords_of(o).cap.c, "p" => coords_of(o).cap.p, "duration_hi" => o["duration_hi"]),
+                                                         "window_extend" => window_extend(coords_of(o))), extra_params)
     cuda = o["backend"] == "cuda"
     return run_dir(name, @__FILE__; prefix = "optim", work_package = "WP-068", dir, params,
                    backend = cuda ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
@@ -392,7 +421,7 @@ function main_check(dir, o)
         f = joinpath(cdir, id * ".json")
         isfile(f) && continue
         extra = Dict{String,Any}(string(k) => j[k] for k in (:direction, :sign, :h) if haskey(j, k))
-        r = run_point(j[:free]; ppl = j[:ppl], ny = j[:ny], float = j[:float], backend = be, gather = ga, grad = j[:grad], energy)
+        r = run_point(j[:free]; ppl = j[:ppl], ny = j[:ny], float = j[:float], backend = be, gather = ga, grad = j[:grad], energy, run_geometry(oo)...)
         merge!(r, extra, Dict{String,Any}("id" => id, "start" => best))
         open(io -> JSON.print(io, r, 2), f, "w")
         println(id, ": J = ", r["J"], " in ", round(r["seconds"]; digits = 1), " s"); flush(stdout)
@@ -509,7 +538,7 @@ function main_scan(dir, o)
     mine = [j for (q, j) in enumerate(jobs) if mod(q - 1, of) == k - 1 && !isfile(joinpath(sdir, j[1] * ".json"))]
     println("scan: $(length(jobs)) jobs, $(length(mine)) to run in shard $k of $of"); flush(stdout)
     for (q, (id, free, spec)) in enumerate(mine)
-        r = run_point(free; ppl = m["ppl"], ny = m["ny"], float = F, backend = be, gather = ga, grad = false, energy)
+        r = run_point(free; ppl = m["ppl"], ny = m["ny"], float = F, backend = be, gather = ga, grad = false, energy, run_geometry(m)...)
         merge!(r, spec, Dict{String,Any}("id" => id))
         tmp = joinpath(sdir, id * ".json.tmp")
         open(io -> JSON.print(io, r, 2), tmp, "w")

@@ -990,47 +990,65 @@ end
     power(τ, w) = a0_for_energy(τ, w; energy = W)^2 * w * (1 + 1 / (2 * w^2))
     @test power(duration_floor(cap, 0.08), 6.0) ≈ power(duration_floor(cap, 0.08), 14.0) rtol = 1e-12
     @test power(duration_floor(cap, 0.08), 6.0) ≈ 4W / (π * duration_floor(cap, 0.08)) rtol = 1e-12
-    # the coordinates: ratio τ/τ_floor(n) in [1, ratio_hi], the others as in the box
-    c = Coords(cap; ratio_hi = 1.55)
+    # the coordinates: the duration's place between the floor and 12, from 0 to 1, the others as in the box
+    c = Coords(cap)
     b = Coords()
-    @test c.lo == [1.0; b.lo[2:end]] && c.hi == [1.55; b.hi[2:end]]
+    @test c.duration_hi == 12.0 && c.lo == [0.0; b.lo[2:end]] && c.hi == [1.0; b.hi[2:end]]
     @test b.lo == TRAPPED_BOX.lo ./ TRAPPED_BOX.scale && free_of(b, [1.0, 1.0, 1.0, 1.0]) == TRAPPED_BOX.scale
+    @test_throws ArgumentError Coords(cap; duration_hi = 10.5)          # below the floor at 0.05 n_c, 11.0
     x = [9.0, 8.0, 100.0, 0.09]
-    @test isapprox(free_of(c, z_of(c, x)), x; rtol = 1e-14) && isapprox(z_of(c, x)[1], 9.0 * sqrt(0.09) / cap.c; rtol = 1e-14)
+    f9 = cap.c / sqrt(0.09)
+    @test isapprox(free_of(c, z_of(c, x)), x; rtol = 1e-14) && isapprox(z_of(c, x)[1], (9.0 - f9) / (12.0 - f9); rtol = 1e-14)
+    @test free_of(c, [0.0, 1.0, 1.0, 1.25])[1] == duration_floor(cap, 0.09) && free_of(c, [1.0, 1.0, 1.0, 1.25])[1] ≈ 12.0
     @test isapprox(shown(c, x)[1], z_of(c, x)[1]; rtol = 1e-14) && shown(c, x)[2:end] == x[2:end] && shown(b, x) == x
-    @test shown_name(c, 1) == "τ/τ_floor" && shown_name(b, 1) == "duration" && shown_bounds(c).lo == [1.0; TRAPPED_BOX.lo[2:end]]
+    @test shown_name(c, 1) == "τ: floor→12" && shown_name(b, 1) == "duration" && shown_bounds(c).lo == [0.0; TRAPPED_BOX.lo[2:end]]
     @test coords_of(Dict{String,Any}()) isa Coords{Nothing} && coords_of(Dict{String,Any}("cap" => "none")) isa Coords{Nothing}
-    @test coords_of(Dict{String,Any}("cap" => "cetal35", "ratio_hi" => 1.3)).hi[1] == 1.3
+    @test coords_of(Dict{String,Any}("cap" => "cetal25", "duration_hi" => 13.0)).duration_hi == 13.0
+    @test_throws ArgumentError coords_of(Dict{String,Any}("cap" => "cetal35"))   # its floor at 0.05 n_c is 15.4
     @test_throws ErrorException coords_of(Dict{String,Any}("cap" => "1PW"))
-    @test OPT_DEFAULTS.cap == "none" && OPT_DEFAULTS.ratio_hi == 1.55
+    @test OPT_DEFAULTS.cap == "none" && OPT_DEFAULTS.duration_hi == 12.0
     # the gradient in z is the chain rule through the floor, as ForwardDiff through the map gives it
     f(free) = free[4]^2 / free[1] + sin(free[2]) * free[3]
     gf(free) = [-free[4]^2 / free[1]^2, cos(free[2]) * free[3], sin(free[2]), 2 * free[4] / free[1]]
     z = z_of(c, x)
     @test grad_z(c, z, gf(free_of(c, z))) ≈ ForwardDiff.gradient(u -> f(free_of(c, u)), z) rtol = 1e-12
     @test grad_z(b, z_of(b, x), gf(x)) ≈ gf(x) .* TRAPPED_BOX.scale rtol = 1e-14
-    # the starts under the cap keep their waist, focus and density and sit inside the ratio's bounds
+    # the starts under the cap keep their waist, focus and density, with the duration at the same
+    # place between the floor and 12 as between 4 and 9 in the box
     st = starts_of(c)
     @test keys(st) == keys(STARTS) && starts_of(b) === STARTS
     for k in keys(STARTS)
-        @test st[k][2:end] == STARTS[k][2:end] && 1 < z_of(c, st[k])[1] < 1.55
+        @test st[k][2:end] ≈ STARTS[k][2:end] rtol = 1e-15
+        @test z_of(c, st[k])[1] ≈ (STARTS[k][1] - 4) / 5 rtol = 1e-12
     end
-    @test z_of(c, st.base)[1] ≈ 1 + 0.55 * 2 / 5 rtol = 1e-12
     # L-BFGS-B under the cap on J = n/τ, which wants the shortest pulse into the densest plasma: it
     # ends on the floor at the density's bound, and no point it asks for breaks the floor
     fake(free) = Dict{String,Any}("J" => free[4] / free[1], "gradient" => [-free[4] / free[1]^2, 0.0, 0.0, 1 / free[1]], "a0" => 1.9)
     dir = mktempdir()
     store = PointStore(joinpath(dir, "points"); run = fake)
     r = optimize_start(store, st.base, joinpath(dir, "base"); maxiters = 30, pgtol = 1e-10, coords = c)
-    @test r["u"][1] == 1.0 && r["free"][4] == 0.10
+    @test r["u"][1] == 0.0 && r["free"][4] == 0.10
     @test isapprox(r["free"][1], duration_floor(cap, 0.10); rtol = 1e-14) && isapprox(r["J"], 0.10 / duration_floor(cap, 0.10); rtol = 1e-14)
-    @test r["free"][2:3] == st.base[2:3]                                  # no gradient in waist and focus
+    @test r["free"][2:3] ≈ st.base[2:3] rtol = 1e-15                     # no gradient in waist and focus
     @test all(q -> q["free"][1] >= duration_floor(cap, q["free"][4]) * (1 - 1e-14), r["calls"])
-    @test r["projected_gradient"] == 0.0 && on_bounds(c, r["u"]) == "τ/τ_floor=lo, density=hi"
+    @test r["projected_gradient"] == 0.0 && on_bounds(c, r["u"]) == "τ: floor→12=lo, density=hi"
     @test all(p -> haskey(store.records, p["key"]), r["path"])          # the path's keys are the records' points
-    # the scan over the cap's coordinates: the pair grids span τ/τ_floor, every job keeps the floor
+    # the scan over the cap's coordinates: the pair grids span the duration's place, every job keeps the floor and 12
     jobs = scan_jobs(dir, Dict{String,Any}("n" => 5); coords = c)
-    @test !isempty(jobs) && all(j -> j[2][1] >= duration_floor(cap, j[2][4]) * (1 - 1e-12), jobs)
+    @test !isempty(jobs) && all(j -> duration_floor(cap, j[2][4]) * (1 - 1e-12) <= j[2][1] <= 12 * (1 + 1e-12), jobs)
     p12 = filter(j -> j[3]["kind"] == "pair" && j[3]["a"] == 1, jobs)
-    @test sort(unique(round(shown(c, j[2])[1]; digits = 10) for j in p12)) ≈ collect(range(1.0, 1.55; length = 5)) rtol = 1e-12
+    @test sort(unique(round(shown(c, j[2])[1]; digits = 10) for j in p12)) ≈ collect(range(0.0, 1.0; length = 5)) atol = 1e-12
+    # the window for the longest pulse: delay + 6τ = 54 + 72 must stay within its start 108 + 2πk
+    @test window_extend(b) == 0 && window_extend(c) == 3 && window_extend(Coords(cap; duration_hi = 11.5)) == 3
+    @test 54 + 6 * 12 <= BCASE.start + 2π * 3 && 54 + 6 * 12 > BCASE.start + 2π * 2
+    @test run_read(0) == (;) && run_read(3).fade == TCASE.fade .+ 6π
+    @test run_geometry(Dict{String,Any}("cap" => "cetal25")) == (; extend = 3, read = run_read(3))
+    long = trapped_problem(12.0, 10.0, 80.0, TCASE.x0[4], 0.05; ppl = 8, t_end = 20.0)
+    @test_throws ArgumentError start_of(long; ppl = 8, ny = 1)            # the case's window refuses the longest pulse
+    @test start_of(trapped_problem(12.0, 10.0, 80.0, TCASE.x0[4], 0.05; ppl = 8, t_end = 20.0, extend = 3); ppl = 8, ny = 1)[1] isa EMState
+    # the longer window leaves the run as it is: the same J at the base point with the weight moved back
+    kw = (; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, energy = budget(2.2), gather = CompensatedGather(), grad = false)
+    J0 = run_point(STARTS.base; kw..., read = (; fade = BCASE.fade, rise = (0.5, 3.0)))["J"]
+    J3 = run_point(STARTS.base; kw..., extend = 3, read = (; fade = BCASE.fade .+ 6π, rise = (0.5, 3.0)))["J"]
+    @test J0 > 0.2 && isapprox(J3, J0; rtol = 1e-7)                     # 2·10⁻⁹ apart here (the plasma's own injection carries roundoff), 10⁻¹² at λ₀/16 to t = 300
 end
