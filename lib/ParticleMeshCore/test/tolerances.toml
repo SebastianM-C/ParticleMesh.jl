@@ -364,7 +364,8 @@ C_weights = 8
 C_draws = 2
 C_draws_device = 6
 measured = { Float32 = 0.485, Float64 = 0.0, "Dual{Float32,3}" = 1.45, weights_Float32 = 1.26, weights_Float64 = 0.0, "weights_Dual{Float32,3}" = 1.26, draws_Float32 = 1.75, draws_Float64 = 1.27, "draws_Dual{Float32,3}" = 1.92 }
-status = "proposed"
+measured_device = { "draws_Float32 on CUDABackend" = 1.92, "draws_Float64 on CUDABackend" = 2.32, "draws_Dual{Float32,3} on CUDABackend" = 1.92, "weights_Float32 on CUDABackend" = 1.22, "weights_Float64 on CUDABackend" = 2.24, "weights_Dual{Float32,3} on CUDABackend" = 1.22 }
+status = "proposed; measured_device on an RTX 5090 (T-876, CUDACore 6.5, main at 249ac36)"
 
 ["T-873"]
 quantity = "3D deposited total minus Σ quantity (q·w and q·w·u₂); gather of a + b·x + c·y + d·z + e·x·y·z against the exact value; adjointness with gather; per-node Reference against Fast"
@@ -414,14 +415,16 @@ scale = "max|ρ|/Δt (400 particles on 8 × 7 × 6 cells, orders 1 and 2, four s
 C = 16
 measured = { Float32 = 2.98, Float64 = 2.68, "Dual{Float32,3}" = 2.64 }
 measured_breaker = { Float32 = 6.09, Float64 = 4.98, "Dual{Float32,3}" = 6.09, dual_partial_own_scale = 7.31 }
-status = "proposed; measured_breaker is the physics breaker's wider sweep (1,766 cases: grids from 4 × 4 × 4 to 24 × 6 × 6, all eight triples, orders 1 and 2, both modes, cell and node bins, moves up to 0.999 cell, particles on faces, edges and corners), worst at order 2, (Center, Node, Center), NodeBins, 6 × 6 × 6"
+measured_device = { "Float32 on CUDABackend" = 3.75, "Float64 on CUDABackend" = 3.11, "Dual{Float32,3} on CUDABackend" = 2.94 }
+status = "proposed; measured_device on an RTX 5090 (T-946); measured_breaker is the physics breaker's wider sweep (1,766 cases: grids from 4 × 4 × 4 to 24 × 6 × 6, all eight triples, orders 1 and 2, both modes, cell and node bins, moves up to 0.999 cell, particles on faces, edges and corners), worst at order 2, (Center, Node, Center), NodeBins, 6 × 6 × 6"
 
 ["T-941"]
 quantity = "Σ J_d - Σ q·w·Δ_d·Δx_d/Δt at N = 3, per axis"
 scale = "count·max|q·w·Δx_d/Δt|"
 C = 8
 measured = { Float32 = 0.063, Float64 = 0.054, "Dual{Float32,3}" = 0.865 }
-status = "proposed"
+measured_device = { "Float32 on CUDABackend" = 0.0405, "Float64 on CUDABackend" = 0.054, "Dual{Float32,3} on CUDABackend" = 1.08 }
+status = "proposed; measured_device on an RTX 5090 (T-946)"
 
 ["T-942"]
 quantity = "the axis-3 sums of the 3D Jx, Jy of a species that does not move along axis 3 against the 2D flux; the axis-1-and-2 sums of Jz of a species moving along axis 3 only against the 1D flux"
@@ -446,7 +449,8 @@ C_added = 1
 measured = { Float32 = 0.448, Float64 = 0.439 }
 measured_tail = { Float32 = 0.434, Float64 = 0.41, "Dual{Float32,3}" = 0.649 }
 measured_added = { Float32 = 0.251, Float64 = 0.173 }
-status = "proposed"
+measured_device = { "Float32 on CUDABackend" = 0.654, "Float64 on CUDABackend" = 0.467, "added Float32 on CUDABackend" = 0.251, "added Float64 on CUDABackend" = 0.173 }
+status = "proposed; measured_device on an RTX 5090 (T-946). On CUDA, T-946 also holds the device's Reference to the host's sums in the stated order (`reference_by_hand_3d`) per node within C on this scale, guards folded: the device gave none of the host's bits there on an RTX 5090 (all six cases, every component), which T-945 checks bit for bit on the CPU"
 
 ["T-947"]
 quantity = "ForwardDiff derivative of Σ φ·Jx + Σ ψ·Jy + Σ χ·Jz in the displacement against fd_scan, end points within 1e-7 of a face, an edge or the corner: rel[istar] / floor_rel; and floor_rel itself"

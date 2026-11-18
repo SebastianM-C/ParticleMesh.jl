@@ -929,20 +929,21 @@ status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU)"
 
 # WP-042: the periodic 3D3V step with the charge-conserving current (T-950 to T-955)
 ["T-950"]
-quantity = "after every 3D step with the Esirkepov current, two species crossing cells and the seams of every axis, 20 steps, both modes, orders 1 and 2, and every tenth of 400 steps at order 2 (Float32, Float64): Gauss's law |Σ_d D⁻_d E_d − (ρ − mean ρ)| (C); |Σ_d D⁺_d B_d| (C_divB)"
-scale = "(n₁ + n₂ + n₃)·max|ρ|·√(k + 1) after k steps (C); (Σ_d 2/Δ_d)·max|B|·√k (C_divB)"
-C = 4
+quantity = "after every 3D step with the Esirkepov current, two species crossing cells and the seams of every axis, 20 steps, both modes, orders 1 and 2; every tenth of 400 steps at order 2 (Float32, Float64); and 20 steps of a quasi-neutral electron–ion plasma whose net charge is 10⁻³ of each species' (neutral_plasma_3d, Float32, Float64): Gauss's law |Σ_d D⁻_d E_d − (ρ − mean ρ)| (C); |Σ_d D⁺_d B_d| (C_divB)"
+scale = "(n₁ + n₂ + n₃)·Σ_s max|ρ_s|·√(k + 1) after k steps, ρ_s each species' charge (C); (Σ_d 2/Δ_d)·max|B|·√k (C_divB)"
+C = 2
 C_divB = 2
-measured = { Float32 = 0.909, Float64 = 1.12, "Dual{Float32,3}" = 0.443, steps_400 = 0.45 }
-measured_divB = { Float32 = 0.322, Float64 = 0.346, "Dual{Float32,3}" = 0.667, steps_400 = 0.263 }
-status = "proposed; the largest over both modes and orders (CPU); Fast at order 2 gave 0.804 and 0.909 in Float32 and 0.683 to 1.12 in Float64 over three runs, the largest on a heavily loaded machine (its atomics add in another order each run), so C is twice T-360's 2. Over 400 steps the residual stays within the √(k + 1) scale (0.45 at most)"
+measured = { Float32 = 0.325, Float64 = 0.347, "Dual{Float32,3}" = 0.167, steps_400 = 0.13, neutral = 0.127 }
+measured_divB = { Float32 = 0.322, Float64 = 0.346, "Dual{Float32,3}" = 0.667, steps_400 = 0.277, neutral = 0.421 }
+status = "proposed; the largest over both modes and orders (CPU), Fast at order 2 the largest (its atomics add in another order each run: on the net-charge scale of before, 0.683 to 1.12 in Float64 over three runs). C is T-360's 2. The species' scale replaces max|ρ| of the net charge, on which the physics breaker's quasi-neutral plasma measured 4.3 to 5.0 (net charge 10⁻³ of each species'); on the species' scale the same runs give 0.14 to 0.36, and its beams at |β| = 0.999 over ions 0.28 to 0.62"
 
 ["T-951"]
 quantity = "the Reference and Fast 3D steps: every field and current, and the kinetic-energy history, after k steps (20 steps)"
-scale = "k·√(prod(ppc))·max|Reference value| per component"
-C = 80
-measured = { Float32 = 26.9, Float64 = 27.7 }
-status = "proposed; 26.9 and 25.8 in every run at 1, 2, 3 and 4 threads alone, 22.7 and 27.7 in the group run beside the thread workers (the CPU backend's atomics order follows its scheduling); C is about three times the largest, as T-290's. Larger than T-362's 8 in 2D, probably because a node of the 3D stencil sums about P + 2 times as many particles' values (not measured)"
+scale = "k·√(prod(ppc))·(the largest Reference value of the kind: E and B together, J together; K alone)"
+C = 16
+measured = { Float32 = 4.01, Float64 = 5.26 }
+measured_wider = { ppc_5 = 5.13, cells_16x14x12_ppc_3 = 5.15, order1_ppc_5 = 2.96, steps_100 = 5.01 }
+status = "proposed; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
 
 ["T-953"]
 quantity = "a 3D run invariant along one axis against the 2D run (its plane mapped cyclically onto the other two axes), after initialize! and after every step: every component on every line of the invariant axis; 20 steps of two cold counter-streaming beams, one perturbed along mode (1, 1)"
@@ -956,11 +957,11 @@ quantity = "Landau damping of mode (1, 1, 1) at |k|λ_D = 0.5 at test size (24³
 rate = 0.8
 frequency = 0.08
 transverse = 0.05
-rate_ensemble = 0.12
-rate_ensemble_offset = 0.22
+rate_ensemble = 0.17
+rate_ensemble_offset = 0.18
 measured = { rate = 0.2, frequency = -0.0203, transverse = 0.000797, rate_ensemble = 0.231 }
-rate_ensemble_note = "the rate of the ensemble over the four seeds LANDAU3_SEEDS (T-364's rule: the fit of |⟨k̂·Ê⟩_seeds|², the seed mean of the complex coefficient), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. Eight seeds at test size (the four and 20265031 to 20268031): per-seed rates +0.178 ± 0.120 (mean ± std) of theory, frequencies −0.6 % to −2.9 %, every seed with three to five maxima; +0.220 as one ensemble; the 70 four-seed subsets +0.220 ± 0.033, from +0.148 to +0.295, at least four maxima each. The offset falls with resolution: the same eight seeds at 32³ cells (3 × 3 × 3 per cell) give per-seed rates +0.125 ± 0.031 and frequencies −0.3 % to −1.5 %. The check fails for a rate about 9 % too high or 11 % too low (its four seeds give +0.231)"
-status = "proposed; rate and frequency bound one seed as T-364's, an order check of the rate (one seed's std is 0.12 of theory); rate_ensemble is about 3.6 standard deviations of the four-seed subsets. Float64 on the CPU only, as T-364 (the four seeds in Float32, run once outside the suite, give the same per-seed and ensemble rates to three digits); no full-size 3D run against theory or another code yet"
+rate_ensemble_note = "the rate of the ensemble over the four seeds LANDAU3_SEEDS (T-364's rule: the fit of |⟨k̂·Ê⟩_seeds|², the seed mean of the complex coefficient), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. Sixteen seeds at test size (the four, 20265031 to 20268031, and 1 to 8): per-seed rates +0.150 ± 0.100 (mean ± std) of theory, frequencies −0.6 % to −2.9 %, every seed with three to five maxima; +0.185 as one ensemble; the 1820 four-seed subsets +0.182 ± 0.043, from +0.018 to +0.303, every one within the bound. The first eight seeds alone gave subsets of +0.220 ± 0.033 and seeds 1 to 8 alone +0.149 ± 0.030 (the physics breaker), so eight seeds did not pin the offset. The offset falls with resolution: the first eight seeds at 32³ cells (3 × 3 × 3 per cell) give per-seed rates +0.125 ± 0.031 and frequencies −0.3 % to −1.5 %. The check fails for a rate about 10 % too high or 18 % too low (its four seeds give +0.231)"
+status = "proposed; rate and frequency bound one seed as T-364's, an order check of the rate (one seed's std is 0.10 of theory); rate_ensemble is about four standard deviations of the four-seed subsets of sixteen seeds. Float64 on the CPU only, as T-364 (the four seeds in Float32, run once outside the suite, give the same per-seed and ensemble rates to three digits); no full-size 3D run against theory or another code yet"
 
 ["T-955"]
 quantity = "Dual{Float32,3} through 10 steps of the 3D step with current: the primal of every E and B component against the Float32 run"

@@ -28,24 +28,30 @@ foreach(start_em3d_worker, (1, 4))     # the workers run beside this file's in-p
     gauss_residual_3d_step(state) -> (; res, scale, divB, bscale)
 
 The discrete Gauss law of the 3D layout, `res = max |Σ_d D⁻_d E_d − (ρ − mean ρ)|` over the
-interior nodes with ρ deposited now in the state's mode at the primal nodes (written out here, not
-the module's `rho_stagger`, so that a wrong stagger there cannot cancel) (the step sorts the species by their
-current cells where the mode needs it), `scale = (n₁ + n₂ + n₃)·max|ρ|`; and
+interior nodes, ρ the sum of each species' charge deposited now in the state's mode at the
+primal nodes (written out here rather than the module's `rho_stagger`, so that a wrong stagger
+there cannot cancel; the step sorts the species by their current cells where the mode needs it),
+and `scale = (n₁ + n₂ + n₃)·Σ_s max|ρ_s|`, the species' charges taken apart so that the scale
+does not shrink where they cancel (as `gauss_residual`'s `species_scale` at N = 1); and
 `divB = max |Σ_d D⁺_d B_d|` at the cell centres with `bscale = (Σ_d 2/Δ_d)·max_d |B_d|`.
 `absmax` takes the partials of a dual too.
 """
 function gauss_residual_3d_step(st)
     (; grid, numerics) = st
     T = eltype(st.ρ)
-    ρd = field(get_backend(st.ρ), T, grid)
-    for (s, ws) in zip(st.species, st.ws)
-        deposit!(numerics.mode, ρd, s, numerics.shape, (Node(), Node(), Node()), grid, ws)
-    end
-    fold_guards!(ρd, grid)
     g, n, h = guards(grid), ncells(grid), cellsize(grid)
     I = CartesianIndices(ntuple(d -> (g + 1):(g + n[d]), 3))
     e = ntuple(d -> CartesianIndex(ntuple(a -> Int(a == d), 3)), 3)
-    ρ = Array(ρd)
+    ρ = zeros(T, size(st.ρ))
+    species_scale = 0.0
+    for (s, ws) in zip(st.species, st.ws)
+        ρs = field(get_backend(st.ρ), T, grid)
+        deposit!(numerics.mode, ρs, s, numerics.shape, (Node(), Node(), Node()), grid, ws)
+        fold_guards!(ρs, grid)
+        a = Array(ρs)
+        species_scale += Float64(maximum(absmax, a[I]))
+        ρ .+= a
+    end
     E = map(Array, (st.fields.Ex, st.fields.Ey, st.fields.Ez))
     B = map(Array, (st.fields.Bx, st.fields.By, st.fields.Bz))
     ρ̄ = sum(ρ[I]) / prod(n)
@@ -53,7 +59,7 @@ function gauss_residual_3d_step(st)
     divB = maximum(absmax(sum(d -> (B[d][j + e[d]] - B[d][j]) / h[d], 1:3)) for j in I)
     bmax = maximum(b -> maximum(absmax, b[I]), B)
     hv = map(value_of, h)
-    return (; res, scale = sum(n) * maximum(absmax, ρ[I]), divB, bscale = sum(d -> 2 / hv[d], 1:3) * bmax)
+    return (; res, scale = sum(n) * species_scale, divB, bscale = sum(d -> 2 / hv[d], 1:3) * bmax)
 end
 
 # --- T-950 ----------------------------------------------------------------------------------
@@ -62,8 +68,8 @@ end
 # Δt(∇×B − J); D⁻·(∇×B) vanishes identically (the discrete curls are each other's transpose,
 # T-322), and the 3D deposit_flux! makes (ρⁿ⁺¹ − ρⁿ)/Δt + D⁻·J = 0 to roundoff (T-940), so
 # D⁻·Eⁿ⁺¹ = ρⁿ⁺¹ − mean ρ after every step, every component of J now being Esirkepov's. The
-# residual is not re-solved: each step adds its roundoff, hence T-360's scale
-# (Σ n_d)·max|ρ|·√(k + 1). ∇·B starts at zero and stays at roundoff of the curl updates, scaled by
+# residual is not re-solved: each step adds its roundoff, hence T-360's scale with the species'
+# charges taken apart, (Σ n_d)·Σ_s max|ρ_s|·√(k + 1). ∇·B starts at zero and stays at roundoff of the curl updates, scaled by
 # (Σ 2/Δ_d)·max|B|·√k.
 function body_T950(be)
     C, CB = emC("T-950"), emC("T-950", "C_divB")
@@ -108,9 +114,27 @@ function body_T950(be)
         @test worst <= C
         @test worstB <= CB
     end
+    # a quasi-neutral plasma, where the net charge is a thousandth of each species' (the scale
+    # takes the species apart)
+    for T in (Float32, Float64), mode in (Reference(), Fast())
+        prob = neutral_plasma_3d(T)
+        st = state_3d(prob; mode, be)
+        p = params(prob)
+        worst, worstB = 0.0, 0.0
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            r = gauss_residual_3d_step(st)
+            worst = max(worst, r.res / (base_eps(T) * r.scale * sqrt(k + 1)))
+            r.bscale > 0 && (worstB = max(worstB, r.divB / (base_eps(T) * r.bscale * sqrt(k))))
+        end
+        record!("T-950 neutral $(nameof(typeof(mode)))", T, worst, be)
+        record!("T-950 divB neutral $(nameof(typeof(mode)))", T, worstB, be)
+        @test worst <= C
+        @test worstB <= CB
+    end
 end
 
-@testset "T-950 Gauss's law and ∇·B to roundoff after every 3D step with moving particles, both modes, orders 1 and 2, and over 400 steps [A2, A7, A8, WP-042]" begin
+@testset "T-950 Gauss's law and ∇·B to roundoff after every 3D step with moving particles, both modes, orders 1 and 2, over 400 steps and in a quasi-neutral plasma [A2, A7, A8, WP-042]" begin
     body_T950(CPU())
 end
 
@@ -118,8 +142,10 @@ end
 
 # A4 rule 3: the two deposition modes agree. Their currents differ by the association order of
 # the atomic sums only, so after k steps the fields differ by roundoff that the dynamics carry
-# along, measured as T-362 measures it: relative to k·√(particles per cell per species)·(the
-# largest Reference value of the component), over 20 steps; and the kinetic energy likewise.
+# along, measured relative to k·√(particles per cell per species)·(the largest Reference value
+# of the kind: E and B together, J together, as T-953), over 20 steps; and the kinetic energy
+# likewise. Per component, as T-362 measures it, a component that is still small (Bx after one
+# step, of order Δt² times the current's curl) would divide the current's roundoff by itself.
 function body_T951(be)
     C = emC("T-951")
     for T in (Float32, Float64)
@@ -132,11 +158,14 @@ function body_T951(be)
         for k in 1:prob.nsteps
             step!(sr, params(prob), k)
             step!(sf, params(prob), k)
-            for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz, :Jx, :Jy, :Jz)
-                a, b = Array(getfield(sr.fields, c)), Array(getfield(sf.fields, c))
-                iszero(maximum(abs, a)) && continue
-                worst = max(worst, maximum(abs, a .- b) / (eps(T) * maximum(abs, a) * k * scale))
-                bitwise &= a == b
+            for kind in ((:Ex, :Ey, :Ez, :Bx, :By, :Bz), (:Jx, :Jy, :Jz))
+                A = map(c -> Array(getfield(sr.fields, c)), kind)
+                F = map(c -> Array(getfield(sf.fields, c)), kind)
+                m = maximum(a -> maximum(abs, a), A)
+                for (a, b) in zip(A, F)
+                    worst = max(worst, maximum(abs, a .- b) / (eps(T) * m * k * scale))
+                    bitwise &= a == b
+                end
             end
         end
         hr, hf = histories(sr), histories(sf)
@@ -262,12 +291,13 @@ end
 # (`landau_rate_relativistic`, Maxwell–Jüttner), as T-364's. The run is CI-sized: LANDAU3_CELLS
 # cells per axis and LANDAU3_PPC electrons per cell, a 10 % perturbation, t = 18; the fit is the
 # case's rule (maxima of |k̂·Ê|² after t = 3 above ten times the noise floor). As T-364, one seed
-# is an order check of the rate (one seed's std is 0.12 of theory at this size) and a closer check
+# is an order check of the rate (one seed's std is 0.10 of theory at this size) and a closer check
 # of the frequency and of the longitudinal polarization, and the ensemble of the four seeds of
-# LANDAU3_SEEDS checks the rate within about 10 % around the test size's offset from theory (+0.22;
-# it falls with resolution, tolerances.toml). At 16³ cells and 4³ electrons per cell (as many
-# electrons, Δx/λ_D = 1.36) one seed in four left only two maxima above the floor; 24³ and 3³
-# (Δx/λ_D = 0.91, as T-364's 0.88) give three to five for each of eight seeds.
+# LANDAU3_SEEDS checks the rate within about 10 to 18 % around the test size's offset from theory
+# (+0.18 over sixteen seeds; it falls with resolution, tolerances.toml). At 16³ cells and 4³
+# electrons per cell (as many electrons, Δx/λ_D = 1.36) one seed in four left only two maxima
+# above the floor; 24³ and 3³ (Δx/λ_D = 0.91, as T-364's 0.88) give three to five for each of
+# sixteen seeds.
 const LANDAU3_CELLS = 24
 const LANDAU3_PPC = (3, 3, 3)
 const LANDAU3_SEEDS = (20261031, 20262031, 20263031, 20264031)

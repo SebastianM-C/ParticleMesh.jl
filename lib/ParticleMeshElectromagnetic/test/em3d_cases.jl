@@ -24,6 +24,27 @@ function plasma_step_3d(::Type{T}; amplitude = one(T) / 10, cells = (8, 7, 6), p
     return EMProblem("plasma-step-3d", L, cells, T(dt), nsteps, (e, p), seed, (2, 1, -1))
 end
 
+"""
+    neutral_plasma_3d(T; nsteps = 20) -> EMProblem{3}
+
+A quasi-neutral plasma whose two species' charges cancel to 10⁻³: drifting thermal electrons
+(v_th = 0.1, drift (0.1, −0.05, 0.02), perturbation 10⁻³ of mode (1, 1, 1)) and ions of mass 100
+(v_th = 0.01) at the same density, on 10 × 8 × 6 cells of a box of 2π × 3π/2 × 6π/5, Δt at 0.9
+of the Courant limit. Its net charge is a thousandth of each species', so T-950 checks it on the
+species' scale (the physics breaker's case).
+"""
+function neutral_plasma_3d(::Type{T}; nsteps = 20) where {T}
+    L = (2 * T(π), 3 * T(π) / 2, 6 * T(π) / 5)
+    cells = (10, 8, 6)
+    dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:3))) / 10
+    tenth = one(T) / 10
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), one(T) / 1000, (1, 1, 1), (2, 2, 2), (tenth, -tenth / 2, tenth / 5),
+                              (tenth, tenth, tenth), 1)
+    i = SpeciesDescription{T}(:ion, one(T), 100 * one(T), one(T), zero(T), (1, 1, 1), (2, 2, 2), zero3(T),
+                              (tenth / 10, tenth / 10, tenth / 10), 2)
+    return EMProblem("neutral-plasma-3d", L, cells, T(dt), nsteps, (e, i), 11, (1, 1, 1))
+end
+
 "The 3D state of `prob` with the `current` (`Esirkepov()` by default), initialized."
 function state_3d(prob; mode = Reference(), workgroupsize = nothing, shape = Quadratic, be = CPU(), current = Esirkepov(),
                   node_bins = true)

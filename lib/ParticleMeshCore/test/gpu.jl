@@ -95,7 +95,7 @@ else
         rerun_on(GPU, (("T-871", body_T871), ("T-872", body_T872), ("T-873", body_T873)))
     end
 
-    @testset "T-946 the 3D flux on CUDA: continuity, the sums, Fast against Reference, and Reference bitwise across reruns, launch shapes and planes and in the stated order [A4, A7, A8, WP-042]" begin
+    @testset "T-946 the 3D flux on CUDA: continuity, the sums, Fast against Reference, Reference bitwise across reruns, launch shapes and planes, and Reference against the sums in the stated order to roundoff [A4, A7, A8, WP-042]" begin
         rerun_on(GPU, (("T-940", body_T940), ("T-941", body_T941), ("T-944", body_T944)))
         runs = [flux3d_digests(GPU; wgs = GPU_WG_SIZES) for _ in 1:2]
         @test runs[1] == runs[2]
@@ -107,10 +107,24 @@ else
             runs = [continuity_case_3d(T, Reference(), Quadratic, NODES3; bins = NodeBins(Quadratic, NODES3), planes, be = GPU)
                     for planes in (nothing, 1, 5)]
             @test all(r -> same_bits(r.Jx, runs[1].Jx) && same_bits(r.Jy, runs[1].Jy) && same_bits(r.Jz, runs[1].Jz), runs)
-            # the order of the sums (T-945's check, which the recorded bits do not pin on a GPU)
+            # the sums in the stated order, by hand on the host: T-945 holds the CPU's Reference to
+            # them bit for bit, but the device's arithmetic is not the host's (it does not give the
+            # host's bits on an RTX 5090, probably from fused multiply-adds, see tolerances.toml),
+            # so here they agree per node within T-944's roundoff bound, guards folded
             for (shape, st, bins) in ((Quadratic, NODES3, NodeBins(Quadratic, NODES3)), (Quadratic, (Node(), Node(), Center()), CellBins()))
                 c = continuity_case_3d(T, Reference(), shape, st; bins, be = GPU)
-                @test same_bits.(reference_by_hand_3d(c, shape, st, bins), (c.Jx, c.Jy, c.Jz)) == (true, true, true)
+                H = reference_by_hand_3d(c, shape, st, bins)
+                A = flux_abs_3d(c.s, shape, st, c.grid, c.dt, bins)
+                foreach(a -> fold_guards!(a, c.grid), (c.Jx, c.Jy, c.Jz, H..., A...))
+                worst, zeros_ok, bitwise = 0.0, true, true
+                for (d, J) in enumerate((c.Jx, c.Jy, c.Jz)), a in eachindex(J)
+                    bitwise &= same_bits(J[a:a], H[d][a:a])
+                    A[d][a] == 0 && (zeros_ok &= J[a] == 0 && H[d][a] == 0; continue)
+                    worst = max(worst, absmax(J[a] - H[d][a]) / (eps(basetype(T)) * A[d][a]))
+                end
+                @info "T-946 the device's Reference against the host's sums in the stated order" T bins bitwise worst
+                @test zeros_ok
+                @test record!("T-946 order", T, worst, GPU) <= tolC("T-944")
             end
         end
     end
