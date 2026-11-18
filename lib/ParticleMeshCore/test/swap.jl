@@ -125,7 +125,7 @@ end
     end
 end
 
-@testset "T-923 a workspace lent to a species of other array types gathers array by array, with the same bits [A4, WP-041]" begin
+@testset "T-923 a workspace lent to a species of other array types (borrowed or owned) gathers array by array, with the same bits [A4, WP-041]" begin
     n = (16, 12)
     grid = PeriodicGrid(n, (1 / 2, 1 / 2), 1)
     a = resort_species(Float32, n, 600, 500; seed = 6)
@@ -138,6 +138,18 @@ end
     sort_by_cell!(a, grid, wa)
     sort_by_cell!(v, grid, wv)
     @test same_sort(a, wa, v, wv) && same_sort(a, wa, b, wv)
+    # a species that owns arrays of another type than the spare set's cannot take that set: it
+    # gathers array by array and keeps its arrays
+    c = deepcopy(b)
+    o = Species(Ref(ParticleMeshCore.SpeciesArrays(map(vw, c.cell), map(vw, c.offset), map(vw, c.u), vw(c.w), vw(c.status), map(vw, c.extras))),
+                copy(c.count), c.q, c.m, true)
+    @test ParticleMeshCore.owns_arrays(o)
+    held = ParticleMeshCore.species_arrays(o)
+    wo = Workspace(c, grid)
+    resort_move!(a, n, ResortLCG(8)); resort_move!(o, n, ResortLCG(8))
+    sort_by_cell!(a, grid, wa)
+    sort_by_cell!(o, grid, wo)
+    @test same_sort(a, wa, o, wo) && all(map(===, ParticleMeshCore.species_arrays(o), held))
     @test all(map((x, y) -> parent(x) === y, ParticleMeshCore.species_arrays(v), ParticleMeshCore.species_arrays(b)))
 end
 
