@@ -1,0 +1,49 @@
+
+
+--- Timestep = 0 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 2.988e+00	 2.988e+00	 2.988e+00	 0.000e+00
+       Maxwell	 2.903e-01	 2.903e-01	 2.903e-01	 0.000e+00
+    Maxwell_BC	 1.090e-01	 1.090e-01	 1.090e-01	 0.000e+00
+   Diagnostics	 9.726e-02	 9.726e-02	 9.726e-02	 0.000e+00
+     Densities	 4.524e-03	 4.524e-03	 4.524e-03	 0.000e+00
+Sync Particles	 3.686e-01	 3.686e-01	 3.686e-01	 0.000e+00
+   Sync Fields	 3.010e-02	 3.010e-02	 3.010e-02	 0.000e+00
+Sync Densities	 6.609e-02	 6.609e-02	 6.609e-02	 0.000e+00
+  Part Merging	 5.252e-03	 5.252e-03	 5.252e-03	 0.000e+00
+
+
+--- Timestep = 1 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 1.388e+01	 1.388e+01	 1.388e+01	 0.000e+00
+       Maxwell	 5.668e-01	 5.668e-01	 5.668e-01	 0.000e+00
+    Maxwell_BC	 1.996e-01	 1.996e-01	 1.996e-01	 0.000e+00
+   Diagnostics	 2.557e-01	 2.557e-01	 2.557e-01	 0.000e+00
+    Mov window	 1.462e-01	 1.462e-01	 1.462e-01	 0.000e+00
+Sync Particles	 9.847e-01	 9.847e-01	 9.847e-01	 0.000e+00
+   Sync Fields	 6.289e-02	 6.289e-02	 6.289e-02	 0.000e+00
+Sync Densities	 1.145e-01	 1.145e-01	 1.145e-01	 0.000e+00
+
+
+--- Timestep = 2 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 3.816e+01	 3.816e+01	 3.816e+01	 0.000e+00
+       Maxwell	 9.214e-01	 9.214e-01	 9.214e-01	 0.000e+00
+    Maxwell_BC	 3.130e-01	 3.130e-01	 3.130e-01	 0.000e+00
+   Diagnostics	 4.441e-01	 4.441e-01	 4.441e-01	 0.000e+00
+    Mov window	 2.896e-01	 2.896e-01	 2.896e-01	 0.000e+00
+Sync Particles	 1.989e+00	 1.989e+00	 1.989e+00	 0.000e+00
+   Sync Fields	 1.050e-01	 1.050e-01	 1.050e-01	 0.000e+00
+Sync Densities	 1.798e-01	 1.798e-01	 1.798e-01	 0.000e+00
+
+
+--- Timestep = 2 x Main.print_every =  ---
+       Time 	 Min   		 Avg  		 Max   		 SD 
+     Particles	 3.816e+01	 3.816e+01	 3.816e+01	 0.000e+00
+       Maxwell	 9.214e-01	 9.214e-01	 9.214e-01	 0.000e+00
+    Maxwell_BC	 3.130e-01	 3.130e-01	 3.130e-01	 0.000e+00
+   Diagnostics	 5.254e-01	 5.254e-01	 5.254e-01	 0.000e+00
+    Mov window	 3.725e-01	 3.725e-01	 3.725e-01	 0.000e+00
+Sync Particles	 1.989e+00	 1.989e+00	 1.989e+00	 0.000e+00
+   Sync Fields	 1.050e-01	 1.050e-01	 1.050e-01	 0.000e+00
+Sync Densities	 1.798e-01	 1.798e-01	 1.798e-01	 0.000e+00

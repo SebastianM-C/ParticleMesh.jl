@@ -1,0 +1,224 @@
+                    _            _
+  ___           _  | |        _  \ \   Version : 5.1-HEAD
+ / __|  _ __   (_) | |  ___  (_)  | |   
+ \__ \ | '  \   _  | | / -_)  _   | |
+ |___/ |_|_|_| |_| |_| \___| |_|  | |  
+                                 /_/    
+ 
+ 
+
+ Reading the simulation parameters
+ -------------------------------------------------------------------------------
+ HDF5 version 1.10.10
+ Python version 3.13.18
+	 Parsing pyinit.py
+	 Parsing 5.1-HEAD
+	 Parsing pyprofiles.py
+	 Parsing namelist.py
+	 Parsing pycontrol.py
+	 Check for function preprocess()
+	 python preprocess function does not exist
+	 Calling python _smilei_check
+	 Calling python _prepare_checkpoint_dir
+	 Calling python _keep_python_running() :
+[1;36mCAREFUL: Patches distribution: hilbertian
+[0m
+	 Smilei will run on CPU devices
+[;33m
+[WARNING](0) src/Params/Params.cpp:1170 (compute) simulation_time has been redefined from 300.035432 to 300.005938 to match timestep.[0m
+[;33m
+[WARNING](0) src/Params/Params.cpp:1262 (compute) Particles cluster width `cluster_width` set to : 14[0m
+	 All components of B are exchanged at synchronization
+ 
+
+ Geometry: 2Dcartesian
+ -------------------------------------------------------------------------------
+	 Interpolation order : 2
+	 Maxwell solver : M4
+	 simulation duration = 300.005938,   total number of iterations = 5086
+	 timestep = 0.058987 = 0.950000 x CFL,   time resolution = 16.952998
+	 Grid length: 87.9646, 100.531
+	 Cell length: 0.0654498, 0.19635, 0
+	 Number of cells: 1344, 512
+	 Spatial resolution: 15.2789, 5.09296
+ 
+
+ Electromagnetic boundary conditions
+ -------------------------------------------------------------------------------
+	 xmin silver-muller, absorbing vector [1, 0]
+	 xmax silver-muller, absorbing vector [-1, -0]
+	 ymin silver-muller, absorbing vector [0, 1]
+	 ymax silver-muller, absorbing vector [-0, -1]
+ 
+
+ Vectorization: 
+ -------------------------------------------------------------------------------
+	 Mode: off
+	 Calling python writeInfo
+ 
+
+ Initializing MPI
+ -------------------------------------------------------------------------------
+	 MPI_THREAD_MULTIPLE enabled
+	 Number of MPI processes: 1
+	 Number of threads per MPI process : 4
+	 OpenMP task parallelization not activated
+ 
+	 Number of patches: 32 x 4
+	 Number of cells in one patch: 42 x 128
+	 Dynamic load balancing: never
+ 
+
+ Initializing the restart environment
+ -------------------------------------------------------------------------------
+ 
+
+ Initializing moving window
+ -------------------------------------------------------------------------------
+	 Moving window is active:
+		 velocity_x : 1.000000
+		 time_start : 108.000000
+ 
+ 
+ 
+
+ Initializing laser parameters
+ -------------------------------------------------------------------------------
+ 		Laser #0: separable profile
+			omega              : 1
+			chirp_profile      : 1D built-in profile `tconstant` (0.000000)
+			time envelope      : 1D built-in profile `tgaussian` (start: 0.000000, duration: 115.221493, sigma: 36.000000, center: 57.610746, order: 2.000000)
+			space envelope (y) : 1D user-defined function
+			space envelope (z) : 1D user-defined function
+			phase          (y) : 1D user-defined function
+			phase          (z) : 1D user-defined function
+		delay phase      (y) : 0
+		delay phase      (z) : 0
+ 
+
+ Initializing Patches
+ -------------------------------------------------------------------------------
+	 First patch created
+		 Approximately 10% of patches created
+		 Approximately 20% of patches created
+		 Approximately 30% of patches created
+		 Approximately 40% of patches created
+		 Approximately 50% of patches created
+		 Approximately 60% of patches created
+		 Approximately 70% of patches created
+		 Approximately 80% of patches created
+		 Approximately 90% of patches created
+	 All patches created
+ 
+
+ Creating Diagnostics, antennas, and external fields
+ -------------------------------------------------------------------------------
+	 Diagnostic Fields #0  :
+		 Ex Ey Bz_m 
+	 Probe diagnostic #0
+		 5376 points
+		 origin : 0, 50.2655
+		 corner 0 : 87.9646, 50.2655
+ 
+
+ Finalize MPI environment
+ -------------------------------------------------------------------------------
+	 Done creating diagnostics, antennas, and external fields
+ 
+
+ Minimum memory consumption (does not include all temporary buffers)
+ -------------------------------------------------------------------------------
+              Particles: Master 0 MB;   Max 0 MB;   Global 0 GB
+                 Fields: Master 79 MB;   Max 79 MB;   Global 0.0775 GB
+            scalars.txt: Master 0 MB;   Max 0 MB;   Global 0 GB
+             Fields0.h5: Master 0 MB;   Max 0 MB;   Global 0 GB
+             Probes0.h5: Master 0 MB;   Max 0 MB;   Global 0.000451 GB
+ 
+
+ Initial fields setup
+ -------------------------------------------------------------------------------
+	 Applying external fields at time t = 0
+	 Applying prescribed fields at time t = 0
+	 Applying antennas at time t = 0
+ 
+
+ Open files & initialize diagnostics
+ -------------------------------------------------------------------------------
+ 
+
+ Running diags at time t = 0
+ -------------------------------------------------------------------------------
+ 
+
+ Species creation summary
+ -------------------------------------------------------------------------------
+ 
+
+ Expected disk usage (approximate)
+ -------------------------------------------------------------------------------
+	 WARNING: disk usage by non-uniform particles maybe strongly underestimated,
+	    especially when particles are created at runtime (ionization, pair generation, etc.)
+	 
+	 Expected disk usage for diagnostics:
+		 File Fields0.h5: 2.44 K
+		 File Probes0.h5: 20.16 M
+		 File scalars.txt: 79.57 K
+	 Total disk usage for diagnostics: 20.24 M
+	 
+ 
+
+ Keeping or closing the python runtime environment
+ -------------------------------------------------------------------------------
+	 Checking for cleanup() function:
+	 python cleanup function does not exist
+	 Closing Python
+ 
+
+ Time-Loop started: number of time-steps n_time = 5086
+ -------------------------------------------------------------------------------
+[1;36mCAREFUL: The following `push time` assumes a global number of 4 cores (hyperthreading is unknown)
+[0m
+    timestep       sim time   cpu time [s]   (    diff [s] )   push time [ns]
+    500/5086     2.9523e+01     2.2348e+00   (  2.2348e+00 )    ?? 
+   1000/5086     5.9016e+01     4.6452e+00   (  2.4105e+00 )    ?? 
+   1500/5086     8.8509e+01     6.3723e+00   (  1.7270e+00 )    ?? 
+ >>> Window starts moving
+   2000/5086     1.1800e+02     8.1244e+00   (  1.7521e+00 )    ?? 
+   2500/5086     1.4750e+02     9.7142e+00   (  1.5898e+00 )    ?? 
+   3000/5086     1.7699e+02     1.1287e+01   (  1.5733e+00 )    ?? 
+   3500/5086     2.0648e+02     1.2918e+01   (  1.6306e+00 )    ?? 
+   4000/5086     2.3598e+02     1.4469e+01   (  1.5506e+00 )    ?? 
+   4500/5086     2.6547e+02     1.6138e+01   (  1.6691e+00 )    ?? 
+   5000/5086     2.9496e+02     1.7803e+01   (  1.6650e+00 )    ?? 
+ 
+
+ End time loop, time dual = 3.0004e+02
+ -------------------------------------------------------------------------------
+ 
+
+ Time profiling : (print time > 0.001%)
+ -------------------------------------------------------------------------------
+ Time_in_time_loop	1.8119e+01	9.9281e+01% coverage
+ 	           Particles	1.553816e+00	8.6e+00%
+ 	             Maxwell	1.118467e+01	6.2e+01%
+ 	          Maxwell_BC	3.091902e+00	1.7e+01%
+ 	         Diagnostics	9.599462e-01	5.3e+00%
+ 	          Collisions	3.189413e-02	    <1%
+ 	          Mov window	1.223020e-01	    <1%
+ 	      Sync Particles	4.942233e-02	    <1%
+ 	         Sync Fields	6.109801e-01	3.4e+00%
+ 	      Sync Densities	2.418913e-02	    <1%
+ 	        Part Merging	4.238542e-02	    <1%
+ 	      Part Injection	2.144158e-02	    <1%
+ 
+	 Printed times are averaged per MPI process
+ 		 See advanced metrics in profil.txt
+ 
+	Diagnostics profile :
+ 		         scalars.txt	6.2e-01
+ 		          Fields0.h5	3.5e-02
+ 		          Probes0.h5	2.4e-01
+ 
+
+ END
+ -------------------------------------------------------------------------------
