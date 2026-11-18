@@ -1,0 +1,54 @@
+{
+  "J": 0.0009501403546892107,
+  "J_born": 0.0009501403546892107,
+  "J_plasma": 0.0,
+  "a": 2,
+  "a0": 1.4046729350580505,
+  "b": 4,
+  "cells": [
+    544,
+    256
+  ],
+  "dark_energy": 0.0,
+  "dark_weight": 0.0,
+  "eltype": "Float32",
+  "fast_born_window": 0.00011167207543689299,
+  "fast_plasma_window": 0.0,
+  "free": [
+    10.977615699252357,
+    10.0,
+    110.0,
+    0.05
+  ],
+  "gather": "compensated",
+  "gradient": null,
+  "i": 6,
+  "id": "pair-24-6-1",
+  "j": 1,
+  "kind": "pair",
+  "mean_energy_born": 6.581388720957448,
+  "mean_energy_plasma": 0.0,
+  "ny": 2,
+  "objective": "born",
+  "particles": 615053,
+  "ppl": 32,
+  "seconds": 3.891177251,
+  "start": "short",
+  "ux_max_born": 13.608648300170898,
+  "ux_max_plasma": 0.4759088158607483,
+  "weight_born": 0.00014436776111759374,
+  "weight_plasma": 0.0,
+  "x": [
+    10.977615699252357,
+    10.0,
+    110.0,
+    54.0,
+    0.05
+  ],
+  "z": [
+    1.8296026165420596,
+    1.0,
+    1.375,
+    0.6944444444444445
+  ]
+}
