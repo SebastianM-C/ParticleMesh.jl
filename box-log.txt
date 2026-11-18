@@ -1,0 +1,127 @@
+## step 0 (julia): exit 0 after 2295s
+51 of 51 jobs to run, 4 at a time with 4 threads each, into /home/pm/jobs/wp065-fine/scripts/runs/wp065-fine32
+done fine-E2.175-a0E--5-r32x2 in 183.9 s
+done fine-E2.175-a0E--6-r32x2 in 184.4 s
+done fine-E2.175-a0E--8-r32x2 in 185.4 s
+done fine-E2.175-a0E--7-r32x2 in 185.4 s
+done fine-E2.175-a0E--4-r32x2 in 181.7 s
+done fine-E2.175-a0E--2-r32x2 in 180.6 s
+done fine-E2.175-a0E--3-r32x2 in 182.4 s
+done fine-E2.175-a0E--1-r32x2 in 182.6 s
+done fine-E2.175-a0E-0-r32x2 in 180.3 s
+done fine-E2.175-a0E-1-r32x2 in 180.7 s
+done fine-E2.175-a0E-2-r32x2 in 181.1 s
+done fine-E2.175-a0E-3-r32x2 in 181.7 s
+done fine-E2.175-a0E-5-r32x2 in 181.9 s
+done fine-E2.175-a0E-7-r32x2 in 180.2 s
+done fine-E2.175-a0E-4-r32x2 in 184.5 s
+done fine-E2.175-a0E-6-r32x2 in 183.4 s
+done fine-E2.4-a0E--8-r32x2 in 179.2 s
+done fine-E2.4-a0E--7-r32x2 in 178.9 s
+done fine-E2.175-a0E-8-r32x2 in 180.9 s
+done fine-E2.4-a0E--6-r32x2 in 180.5 s
+done fine-E2.4-a0E--5-r32x2 in 178.1 s
+done fine-E2.4-a0E--4-r32x2 in 179.1 s
+done fine-E2.4-a0E--3-r32x2 in 179.0 s
+done fine-E2.4-a0E--2-r32x2 in 179.4 s
+done fine-E2.4-a0E-0-r32x2 in 176.3 s
+done fine-E2.4-a0E--1-r32x2 in 178.4 s
+done fine-E2.4-a0E-1-r32x2 in 178.3 s
+done fine-E2.4-a0E-2-r32x2 in 177.6 s
+done fine-E2.4-a0E-4-r32x2 in 177.8 s
+done fine-E2.4-a0E-3-r32x2 in 179.0 s
+done fine-E2.4-a0E-5-r32x2 in 178.1 s
+done fine-E2.4-a0E-6-r32x2 in 176.6 s
+done fine-E2.4-a0E-8-r32x2 in 175.8 s
+done fine-E2.4-a0E-7-r32x2 in 177.8 s
+done fine-E2.175-delay--7-r32x2 in 176.7 s
+done fine-E2.175-delay--8-r32x2 in 177.4 s
+done fine-E2.175-delay--6-r32x2 in 176.4 s
+done fine-E2.175-delay--5-r32x2 in 175.8 s
+done fine-E2.175-delay--4-r32x2 in 175.8 s
+done fine-E2.175-delay--3-r32x2 in 175.9 s
+done fine-E2.175-delay--2-r32x2 in 175.0 s
+done fine-E2.175-delay--1-r32x2 in 174.4 s
+done fine-E2.175-delay-1-r32x2 in 174.5 s
+done fine-E2.175-delay-0-r32x2 in 176.7 s
+done fine-E2.175-delay-4-r32x2 in 172.0 s
+done fine-E2.175-delay-2-r32x2 in 175.1 s
+done fine-E2.175-delay-3-r32x2 in 175.1 s
+done fine-E2.175-delay-5-r32x2 in 173.6 s
+done fine-E2.175-delay-6-r32x2 in 132.4 s
+done fine-E2.175-delay-7-r32x2 in 133.6 s
+done fine-E2.175-delay-8-r32x2 in 134.8 s
+campaign fine done in 2281.9 s: /home/pm/jobs/wp065-fine/scripts/runs/wp065-fine32
+
+## step 1 (julia): exit 1 after 7118s
+51 of 51 jobs to run, 4 at a time with 4 threads each, into /home/pm/jobs/wp065-fine/scripts/runs/wp065-fine48
+FAILED fine-E2.175-a0E--7-r48x3 in 559.0 s
+FAILED fine-E2.175-a0E--6-r48x3 in 560.7 s
+FAILED fine-E2.175-a0E--5-r48x3 in 561.3 s
+FAILED fine-E2.175-a0E--8-r48x3 in 562.4 s
+FAILED fine-E2.175-a0E--3-r48x3 in 551.6 s
+FAILED fine-E2.175-a0E--2-r48x3 in 557.3 s
+FAILED fine-E2.175-a0E--1-r48x3 in 560.9 s
+FAILED fine-E2.175-a0E--4-r48x3 in 564.5 s
+FAILED fine-E2.175-a0E-0-r48x3 in 564.8 s
+FAILED fine-E2.175-a0E-1-r48x3 in 559.5 s
+FAILED fine-E2.175-a0E-3-r48x3 in 555.2 s
+FAILED fine-E2.175-a0E-2-r48x3 in 556.5 s
+FAILED fine-E2.175-a0E-4-r48x3 in 553.8 s
+FAILED fine-E2.175-a0E-5-r48x3 in 555.2 s
+FAILED fine-E2.175-a0E-6-r48x3 in 555.5 s
+FAILED fine-E2.175-a0E-7-r48x3 in 555.2 s
+FAILED fine-E2.175-a0E-8-r48x3 in 557.8 s
+FAILED fine-E2.4-a0E--7-r48x3 in 554.9 s
+FAILED fine-E2.4-a0E--6-r48x3 in 554.9 s
+FAILED fine-E2.4-a0E--8-r48x3 in 558.4 s
+FAILED fine-E2.4-a0E--5-r48x3 in 555.8 s
+FAILED fine-E2.4-a0E--3-r48x3 in 555.1 s
+FAILED fine-E2.4-a0E--4-r48x3 in 556.1 s
+FAILED fine-E2.4-a0E--2-r48x3 in 555.8 s
+FAILED fine-E2.4-a0E--1-r48x3 in 554.7 s
+FAILED fine-E2.4-a0E-0-r48x3 in 555.0 s
+FAILED fine-E2.4-a0E-1-r48x3 in 556.3 s
+FAILED fine-E2.4-a0E-2-r48x3 in 557.3 s
+FAILED fine-E2.4-a0E-4-r48x3 in 553.6 s
+FAILED fine-E2.4-a0E-3-r48x3 in 558.2 s
+FAILED fine-E2.4-a0E-5-r48x3 in 556.1 s
+FAILED fine-E2.4-a0E-6-r48x3 in 554.9 s
+FAILED fine-E2.4-a0E-7-r48x3 in 559.2 s
+FAILED fine-E2.4-a0E-8-r48x3 in 556.7 s
+FAILED fine-E2.175-delay--7-r48x3 in 555.2 s
+FAILED fine-E2.175-delay--8-r48x3 in 558.4 s
+FAILED fine-E2.175-delay--5-r48x3 in 552.3 s
+FAILED fine-E2.175-delay--6-r48x3 in 555.4 s
+FAILED fine-E2.175-delay--4-r48x3 in 556.1 s
+FAILED fine-E2.175-delay--3-r48x3 in 555.9 s
+FAILED fine-E2.175-delay--1-r48x3 in 557.0 s
+FAILED fine-E2.175-delay-1-r48x3 in 555.3 s
+FAILED fine-E2.175-delay-0-r48x3 in 557.3 s
+FAILED fine-E2.175-delay--2-r48x3 in 563.0 s
+FAILED fine-E2.175-delay-4-r48x3 in 551.2 s
+FAILED fine-E2.175-delay-2-r48x3 in 556.3 s
+FAILED fine-E2.175-delay-5-r48x3 in 556.0 s
+FAILED fine-E2.175-delay-3-r48x3 in 559.6 s
+FAILED fine-E2.175-delay-6-r48x3 in 411.0 s
+FAILED fine-E2.175-delay-7-r48x3 in 427.5 s
+FAILED fine-E2.175-delay-8-r48x3 in 425.8 s
+ERROR: LoadError: 51 jobs failed: fine-E2.175-a0E--7-r48x3, fine-E2.175-a0E--6-r48x3, fine-E2.175-a0E--5-r48x3, fine-E2.175-a0E--8-r48x3, fine-E2.175-a0E--3-r48x3, fine-E2.175-a0E--2-r48x3, fine-E2.175-a0E--1-r48x3, fine-E2.175-a0E--4-r48x3, fine-E2.175-a0E-0-r48x3, fine-E2.175-a0E-1-r48x3, fine-E2.175-a0E-3-r48x3, fine-E2.175-a0E-2-r48x3, fine-E2.175-a0E-4-r48x3, fine-E2.175-a0E-5-r48x3, fine-E2.175-a0E-6-r48x3, fine-E2.175-a0E-7-r48x3, fine-E2.175-a0E-8-r48x3, fine-E2.4-a0E--7-r48x3, fine-E2.4-a0E--6-r48x3, fine-E2.4-a0E--8-r48x3, fine-E2.4-a0E--5-r48x3, fine-E2.4-a0E--3-r48x3, fine-E2.4-a0E--4-r48x3, fine-E2.4-a0E--2-r48x3, fine-E2.4-a0E--1-r48x3, fine-E2.4-a0E-0-r48x3, fine-E2.4-a0E-1-r48x3, fine-E2.4-a0E-2-r48x3, fine-E2.4-a0E-4-r48x3, fine-E2.4-a0E-3-r48x3, fine-E2.4-a0E-5-r48x3, fine-E2.4-a0E-6-r48x3, fine-E2.4-a0E-7-r48x3, fine-E2.4-a0E-8-r48x3, fine-E2.175-delay--7-r48x3, fine-E2.175-delay--8-r48x3, fine-E2.175-delay--5-r48x3, fine-E2.175-delay--6-r48x3, fine-E2.175-delay--4-r48x3, fine-E2.175-delay--3-r48x3, fine-E2.175-delay--1-r48x3, fine-E2.175-delay-1-r48x3, fine-E2.175-delay-0-r48x3, fine-E2.175-delay--2-r48x3, fine-E2.175-delay-4-r48x3, fine-E2.175-delay-2-r48x3, fine-E2.175-delay-5-r48x3, fine-E2.175-delay-3-r48x3, fine-E2.175-delay-6-r48x3, fine-E2.175-delay-7-r48x3, fine-E2.175-delay-8-r48x3; their logs are in /home/pm/jobs/wp065-fine/scripts/runs/wp065-fine48
+Stacktrace:
+ [1] error(s::String)
+   @ Base ./error.jl:44
+ [2] run_campaign(jobs::Vector{Dict{String, Any}}, dir::String)
+   @ Main ~/jobs/wp065-fine/scripts/optim/trapped2d.jl:152
+ [3] macro expansion
+   @ ./timing.jl:463 [inlined]
+ [4] main_campaign(kind::String, resarg::String, dir::String)
+   @ Main ~/jobs/wp065-fine/scripts/optim/trapped2d.jl:167
+ [5] top-level scope
+   @ ~/jobs/wp065-fine/scripts/optim/trapped2d.jl:183
+ [6] include(mod::Module, _path::String)
+   @ Base ./Base.jl:309
+ [7] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:344
+ [8] _start()
+   @ Base ./client.jl:577
+in expression starting at /home/pm/jobs/wp065-fine/scripts/optim/trapped2d.jl:171

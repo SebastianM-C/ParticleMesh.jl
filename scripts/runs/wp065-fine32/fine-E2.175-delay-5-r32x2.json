@@ -1,0 +1,43 @@
+{
+  "J": 0.30243898719141427,
+  "J_born": 0.30243898719141427,
+  "J_born_label": 0.30310379512233065,
+  "J_first_bucket": 0.30243898719141427,
+  "J_from_4": 0.30245113807107576,
+  "J_plasma": 0.0,
+  "J_rise_2.0_4.0": 0.3028180680283121,
+  "J_rise_4.0_6.0": 0.3020366429983172,
+  "a0": 2.175,
+  "a0E": 2.175,
+  "cells": [
+    448,
+    256
+  ],
+  "dark_energy": 0.0,
+  "dark_weight": 0.0,
+  "direction": 4,
+  "fast_born_window": 0.014857017658427587,
+  "fast_plasma_window": 0.0,
+  "id": "fine-E2.175-delay-5-r32x2",
+  "mean_energy_born": 20.2190307080658,
+  "mean_energy_plasma": 0.0,
+  "mode": "plain",
+  "ny": 2,
+  "particles": 533235,
+  "point": "E2.175",
+  "ppl": 32,
+  "seconds": 163.536677643,
+  "step": 5,
+  "threads": 4,
+  "ux_max_born": 25.76999743784364,
+  "ux_max_plasma": 23.79185150120319,
+  "weight_born": 0.01495813481655997,
+  "weight_plasma": 0.0,
+  "x": [
+    6.0,
+    10.0,
+    80.0,
+    54.263671875,
+    0.072
+  ]
+}
