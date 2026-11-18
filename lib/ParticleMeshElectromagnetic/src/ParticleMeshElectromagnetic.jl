@@ -78,6 +78,7 @@ export state_partition, remake_reload, harness_state
 export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPlanes, laser_energy, laser_field
 export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
+export CompensatedGather, sharpening_beta, gather_transfer, sharpen_x!, particle_fields, sharpen_gather!
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
 export IonizationLevel, ionization_rate, ADKLevel, adk_rate, TongLinLevel, DopantSection, FieldIonization, IonizationParams
@@ -98,6 +99,7 @@ include("filter.jl")
 include("problem.jl")
 include("step.jl")
 include("step2d.jl")
+include("gather.jl")
 include("antenna.jl")
 include("shaped.jl")
 include("boundaries.jl")

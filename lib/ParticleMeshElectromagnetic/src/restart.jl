@@ -189,7 +189,7 @@ function on_evolved(st::EMState, a::Tuple, K, recorder, fresh::Base.RefValue{Boo
     nf = Val(length(st.fields))
     fields = NamedTuple{keys(st.fields)}(take(a, nf))
     modifiers, aux, _ = aux_on(st, drop(a, nf))
-    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.ρ, K, recorder, st.setup, modifiers, aux, fresh)
+    return EMState(st.numerics, st.grid, st.dt, species, st.ws, fields, st.sharpened, st.ρ, K, recorder, st.setup, modifiers, aux, fresh)
 end
 
 """

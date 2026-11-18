@@ -93,7 +93,9 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs, every, record)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            window = window, witness = witness, ionization = ionization)
-    return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), field(backend, T, grid),
+    check_gather(numerics.gather, numerics.shape, grid)
+    fields = em_fields(backend, T, grid)
+    return EMState(numerics, grid, problem.dt, species, ws, fields, gather_scratch(numerics.gather, fields), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
                    field_modifiers(layer, back, planes, window), aux, Ref(false))
 end
