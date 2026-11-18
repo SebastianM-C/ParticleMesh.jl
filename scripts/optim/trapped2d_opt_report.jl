@@ -53,8 +53,8 @@ function opt_report(out, dir)
     fig = Figure(; size = (1500, 720))
     colors = Makie.wong_colors()
     axs = [Axis(fig[1, 1]; xlabel = "point of the solver", ylabel = "J", yscale = log10, title = "objective"),
-           Axis(fig[1, 2]; xlabel = "point of the solver", ylabel = "a₀", title = "a₀ at the fixed energy (band: plasma's own injection, WP-065)"),
-           Axis(fig[1, 3]; xlabel = "point of the solver", ylabel = "dark current weight", title = "plasma electrons above u_x = 5 behind the first bucket"),
+           Axis(fig[1, 2]; xlabel = "point of the solver", ylabel = "a₀", title = "a₀ (band: own injection at 0.072 n_c)"),
+           Axis(fig[1, 3]; xlabel = "point of the solver", ylabel = "dark current weight", title = "dark current (u_x > 5, behind bucket 1)"),
            Axis(fig[1, 4]; xlabel = "point of the solver", ylabel = "J_plasma / J", title = "the plasma's own share of J")]
     paxs = [Axis(fig[2, i]; xlabel = "point of the solver", ylabel = TCASE.names[TCASE.free[i]], title = "$(TCASE.names[TCASE.free[i]]) (dashed: the box)") for i in 1:4]
     hspan!(axs[2], 2.45, 2.55; color = (:gray, 0.3))
