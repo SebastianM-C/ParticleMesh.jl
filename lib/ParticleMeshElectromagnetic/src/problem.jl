@@ -431,7 +431,7 @@ Base.eltype(::EMParams{T}) where {T} = T
 
 # The wave vector of a cosine perturbation of integer `mode` per axis on a box of `box`.
 wavevector(mode::Integer, box::T) where {T} = (2 * T(π) * mode / box,)
-wavevector(mode::NTuple{N,Int}, box::NTuple{N,T}) where {N,T} = ntuple(a -> 2 * T(π) * mode[a] / box[a], Val(N))
+wavevector(mode::NTuple{N,Int}, box::Tuple{T,Vararg{T}}) where {N,T} = ntuple(a -> 2 * T(π) * mode[a] / box[a], Val(N))
 
 """
     params(problem::EMProblem) -> EMParams
