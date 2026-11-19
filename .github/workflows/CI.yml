@@ -113,7 +113,7 @@ jobs:
         if: matrix.version == 'pre'
         run: julia --project -e 'using Pkg; Pkg.update()'
       - name: Instantiate the workspace
-        run: julia --project -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project -e 'using Pkg; Pkg.instantiate(workspace = true)'
       - name: Test ${{ matrix.suite.project }}, group ${{ matrix.suite.group || 'all' }}
         env:
           PROJECT: ${{ matrix.suite.project }}
@@ -183,7 +183,7 @@ jobs:
       - if: steps.member.outputs.exists == 'true'
         name: Instantiate the workspace and run the smoke test
         run: |
-          julia --project -e 'using Pkg; Pkg.instantiate()'
+          julia --project -e 'using Pkg; Pkg.instantiate(workspace = true)'
           julia --project=lib/ParticleMeshReactant -e 'using Pkg; Pkg.test()'
   manifests:
     name: Committed manifests are in sync
@@ -205,7 +205,7 @@ jobs:
         env:
           JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: |
-          julia --project -e 'using Pkg; Pkg.instantiate()'
+          julia --project -e 'using Pkg; Pkg.instantiate(workspace = true)'
           julia --project=scripts -e 'using Pkg; Pkg.instantiate()'
           git diff --exit-code -- Manifest.toml scripts/Manifest.toml
   trace:
