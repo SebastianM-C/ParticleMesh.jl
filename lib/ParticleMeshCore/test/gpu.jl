@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -276,6 +276,41 @@ else
             @test Array(a.count) == Array(b.count)
             @test Array(wa.perm) == Array(wb.perm) && Array(wa.seg_start) == Array(wb.seg_start) && Array(wa.seg_stop) == Array(wb.seg_stop)
             @test Array(wa.perm) != collect(1:cap)
+        end
+    end
+
+    @testset "T-892 resort_by_cell! on CUDA gives sort_by_cell!'s bits at N = 2 and 3 through moves, frees and appended particles [A4, WP-041]" begin
+        # T-850's run with device species: the moves, frees and appends of resort.jl's helpers on
+        # host copies (moved to the host and back around them), the sorts on the device, compared
+        # bit for bit every round; the resort must have sorted from the order, not in full.
+        sync!(dst, src) = foreach(copyto!, species_arrays(dst), species_arrays(src))
+        for (T, n) in ((Float32, (40, 36)), (Float32, (24, 20, 18)), (Float64, (24, 20, 18)))
+            N = length(n)
+            cap = 12 * prod(n)
+            append = 23
+            grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
+            ha = resort_species(T, n, cap, 8 * prod(n); seed = 3)
+            hb = deepcopy(ha)
+            a, b = todev(GPU, ha), todev(GPU, hb)
+            wa, wb = Workspace(a, grid), Workspace(b, grid; append)
+            sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb)
+            same = Bool[]
+            for k in 1:6
+                for (h, d) in ((ha, a), (hb, b))
+                    sync!(h, d)
+                    rng = ResortLCG(3 + 100k)
+                    resort_move!(h, n, rng)
+                    iseven(k) && resort_append!(h, n, append, rng; tag0 = 1000k)
+                    sync!(d, h)
+                end
+                sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb)
+                KernelAbstractions.synchronize(GPU)
+                push!(same, all(same_bits(Array(x), Array(y)) for (x, y) in zip(species_arrays(a), species_arrays(b))) &&
+                            Array(wa.perm) == Array(wb.perm) && Array(wa.seg_start) == Array(wb.seg_start) &&
+                            Array(wa.seg_stop) == Array(wb.seg_stop))
+            end
+            @test all(same)
+            @test wb.resort.resorts[] == 6
         end
     end
 
