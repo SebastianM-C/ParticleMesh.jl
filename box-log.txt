@@ -1,0 +1,43 @@
+## step 0 (julia): exit 0 after 4756s
+40 of 40 jobs to run, 4 at a time with 4 threads each, into /home/pm/jobs/wp070-gathers/scripts/runs/wp070-gathers
+done gather-galerkin-E1.9-r64x4 in 1450.3 s
+done gather-galerkin-compensated-E1.9-r64x4 in 1453.4 s
+done gather-compensated-E1.9-r64x4 in 1461.3 s
+done gather-plain-E1.9-r64x4 in 1461.8 s
+done gather-galerkin-E2.175-r64x4 in 1477.8 s
+done gather-galerkin-compensated-E2.175-r64x4 in 1470.2 s
+done gather-compensated-E2.175-r64x4 in 1483.8 s
+done gather-plain-E2.175-r64x4 in 1477.5 s
+done gather-galerkin-E1.9-r48x3 in 553.6 s
+done gather-compensated-E1.9-r48x3 in 554.9 s
+done gather-galerkin-compensated-E1.9-r48x3 in 555.4 s
+done gather-plain-E1.9-r48x3 in 553.3 s
+done gather-galerkin-E2.175-r48x3 in 548.9 s
+done gather-plain-E2.175-r48x3 in 556.5 s
+done gather-galerkin-compensated-E2.175-r48x3 in 564.9 s
+done gather-compensated-E2.175-r48x3 in 569.4 s
+done gather-compensated-E1.9-r32x2 in 176.0 s
+done gather-plain-E1.9-r32x2 in 171.3 s
+done gather-galerkin-E1.9-r32x2 in 178.5 s
+done gather-galerkin-compensated-E1.9-r32x2 in 173.4 s
+done gather-compensated-E2.175-r32x2 in 170.5 s
+done gather-galerkin-compensated-E2.175-r32x2 in 168.6 s
+done gather-galerkin-E2.175-r32x2 in 173.5 s
+done gather-plain-E2.175-r32x2 in 175.0 s
+done gather-compensated-E1.9-r24x2 in 116.9 s
+done gather-galerkin-E1.9-r24x2 in 110.5 s
+done gather-galerkin-compensated-E1.9-r24x2 in 115.9 s
+done gather-plain-E1.9-r24x2 in 118.4 s
+done gather-compensated-E2.175-r24x2 in 117.5 s
+done gather-galerkin-E2.175-r24x2 in 113.7 s
+done gather-galerkin-compensated-E2.175-r24x2 in 114.6 s
+done gather-plain-E2.175-r24x2 in 113.8 s
+done gather-compensated-E1.9-r16x1 in 54.5 s
+done gather-galerkin-E1.9-r16x1 in 54.9 s
+done gather-galerkin-compensated-E1.9-r16x1 in 54.6 s
+done gather-plain-E1.9-r16x1 in 53.1 s
+done gather-compensated-E2.175-r16x1 in 53.6 s
+done gather-galerkin-E2.175-r16x1 in 49.4 s
+done gather-galerkin-compensated-E2.175-r16x1 in 51.9 s
+done gather-plain-E2.175-r16x1 in 49.8 s
+campaign gathers done in 4738.4 s: /home/pm/jobs/wp070-gathers/scripts/runs/wp070-gathers

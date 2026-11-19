@@ -1,0 +1,20 @@
+branch = "runs/wp070-gathers"
+request_commit = "d947fe9a672db66dbc17a73994ee2aa841bec437"
+started = "2026-11-19T22:26:06Z"
+category = "validation"
+outputs = ["scripts/runs/wp070-gathers"]
+finished = "2026-11-19T23:45:22Z"
+ok = true
+files_returned = 83
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-19T22:26:06Z"
+exit = 0
+seconds = 4756
