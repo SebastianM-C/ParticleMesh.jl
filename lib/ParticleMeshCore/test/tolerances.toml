@@ -468,3 +468,10 @@ C = 16
 measured = { "Dual{Float32,3}" = 3.13, primal = "bitwise equal to the Float32 run for both orders, every tested triple and NodeBins" }
 measured_breaker = { "Dual{Float32,3}" = 5.39 }
 status = "proposed; measured_breaker is the physics breaker's denser case (10 × 9 × 8 cells at 40 particles per cell, 28,800 particles)"
+
+["T-980"]
+quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a random field x and random signed yᵢ = q·wᵢ, N = 1, 2, 3, Fast and Reference by cells and by NodeBins"
+scale = "Σᵢ|yᵢ|·max|x|"
+C = 1
+measured = { Float32 = 0.378, Float64 = 0.378, "Dual{Float32,3}" = 0.401 }
+status = "proposed"
