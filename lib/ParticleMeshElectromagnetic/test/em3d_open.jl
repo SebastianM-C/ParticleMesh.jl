@@ -6,7 +6,7 @@
 # plasma runs are `open_plasma_3d` (em3d_cases.jl), whose particles leave through every open
 # face. After em3d_step.jl, whose helpers (`invariant_error_3d`, the worker) this file reuses.
 
-using ParticleMeshElectromagnetic: LayerFactors, PMLFields, pml_b!, pml_e!, place_absorber, open_absorbers
+using ParticleMeshElectromagnetic: LayerFactors, PMLFields, pml_b!, pml_e!, absorb_b!, absorb_e!, place_absorber, open_absorbers, state_view
 
 "The number of alive particles of every species of `st`."
 alive_3d(st) = sum(s -> count(==(ParticleMeshCore.ALIVE), Array(s.status)), st.species)
@@ -257,6 +257,40 @@ end
             end
         end
     end
+    # where the layers of y and z overlap each damps on its own: on fields of ones, each axis' damping
+    # alone depends on its own index only (the corners and edges included), and the damping of both
+    # axes is the product of the two, bit for bit (one times a factor is the factor)
+    sl = open_state_3d(open_plasma_3d(T), OPEN3_ABSORBERS[1][2])
+    Ly, Lz = open_absorbers(sl)
+    ones_f() = map(a -> fill!(similar(a), one(T)), sl.fields)
+    for damp! in (absorb_b!, absorb_e!)
+        fy, fz, fyz = ones_f(), ones_f(), ones_f()
+        damp!(Ly, fy, nothing)
+        damp!(Lz, fz, nothing)
+        damp!(Ly, fyz, nothing)
+        damp!(Lz, fyz, nothing)
+        for c in keys(fyz)
+            a, y, z = Array(getfield(fyz, c)), Array(getfield(fy, c)), Array(getfield(fz, c))
+            @test all(y .== view(y, 1:1, :, 1:1)) && all(z .== view(z, 1:1, 1:1, :))
+            @test bits(a) == bits(y .* z)
+            any(!isone, y) && any(!isone, z) && @test any(!isone, y .* z)
+        end
+    end
+    # the PML's ψ_B advances once per step, in the second B half step, from Eⁿ⁺¹: after one solve with
+    # both axes' PMLs on random fields and ψ, each axis' ψ_B is one advance of its value before the
+    # solve with the solve's final E
+    sp = open_state_3d(open_plasma_3d(T), OPEN3_ABSORBERS[2][2])
+    foreach(a -> (a .= randn(Xoshiro(11), size(a)); fill_guards!(a, sp.grid)), values(sp.fields))
+    foreach(L -> foreach(a -> (a .= randn(Xoshiro(12), size(a))), values(L.ψ)), open_absorbers(sp))
+    ψ0 = map(L -> map(copy, L.ψ), open_absorbers(sp))
+    solve_fields!(Yee(), sp.fields, sp.grid, prob.dt, sp.modifiers, nothing, 1)
+    for (d, L, p0) in zip((2, 3), open_absorbers(sp), ψ0)
+        Lc = PMLFields(OPEN3_ABSORBERS[2][2], sp.grid, prob.dt; axis = d, backend = CPU())
+        foreach(k -> copyto!(Lc.ψ[k], p0[k]), keys(Lc.ψ))
+        pml_b!(Lc, map(copy, sp.fields), sp.grid, prob.dt / 2, true, nothing)
+        bk = filter(k -> startswith(String(k), "B"), keys(Lc.ψ))
+        @test length(bk) == 2 && all(k -> bits(Array(Lc.ψ[k])) == bits(Array(L.ψ[k])), bk)
+    end
     # every guard is its interior image after a solve with both axes' absorbers
     for (_, ab) in OPEN3_ABSORBERS
         sl = open_state_3d(open_plasma_3d(T), ab)
@@ -350,7 +384,7 @@ end
         else
             record!("T-1015 $label", Float64, Ws[end])
             @test Ws[end] <= bound
-            @test maximum(Ws[half:end]) <= max(2 * Ws[half], bound)   # no late growth (corner instability)
+            @test maximum(Ws[half:end]) <= 2 * Ws[half]              # no late growth (corner instability)
         end
     end
 end
@@ -360,7 +394,13 @@ end
 # Dual{Float32,3} through 10 open 3D steps with each absorber, as T-955: the primal against the
 # Float32 run, the partials ∂/∂(amplitude) finite, nonzero, the unseeded directions zero, and the
 # seeded one against the central difference of Float64 runs at amplitude 1/10 ± 10⁻⁴; and the
-# convolution fields' partials likewise.
+# convolution fields' partials likewise. Retirement makes the run piecewise in a parameter that moves
+# the particles: a particle that leaves at another step in the run at +δ than at −δ puts a jump of
+# order 1/δ into the central difference, which no derivative sees. The comparison holds at this
+# configuration only (10 Quadratic steps on this box): the runs at ±δ retire up to one particle
+# apart there (13980 and 13979 with the PML, the same count with the layer) and the difference stays within C_partial, while with 20 steps or the
+# Linear shape it is 10⁵ times larger. The primal and the partials' finiteness and seeding do not
+# depend on it.
 @testset "T-1016 Dual through the open 3D step, each absorber [A3, A8, WP-072]" begin
     C, CP = emC("T-1016"), emC("T-1016", "C_partial")
     a = mkdual(1 / 10, 1, 0, 0)
@@ -376,6 +416,8 @@ end
             run!(s, params(p), p.nsteps)
             s
         end
+        @test alive_3d(fd[1]) < alive_3d(open_state_3d(pf, ab))   # particles left through the open faces
+        @test alive_3d(sd) == alive_3d(sf)
         arrays(s) = (map(c -> getfield(s.fields, c), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))..., evolved_arrays(open_absorber(s, 2))..., evolved_arrays(open_absorber(s, 3))...)
         worst, worst_partial = 0.0, 0.0
         for (A, B, P, M) in zip(map(Array, arrays(sd)), map(Array, arrays(sf)), map(Array, arrays(fd[1])), map(Array, arrays(fd[2])))
@@ -387,7 +429,7 @@ end
             worst_partial = max(worst_partial, maximum(abs, map(x -> Float64(partials(x)[1]), A) .- slope) /
                                                (eps(Float32) * maximum(abs, slope) * pd.nsteps))
         end
-        @info "T-1016" label worst worst_partial
+        @info "T-1016" label worst worst_partial alive_plus = alive_3d(fd[1]) alive_minus = alive_3d(fd[2])
         record!("T-1016 $label", D3, worst)
         record!("T-1016 partial $label", D3, worst_partial)
         @test worst <= C
@@ -442,6 +484,9 @@ end
     @test_throws ArgumentError EMState(mk((:periodic, :open, :open); cells = (6, 8, 12)), EMNumerics(; absorber = AbsorbingLayer(; cells = 4, strength = 1)))
     @test_throws ArgumentError EMState(mk((:periodic, :open, :open)), EMNumerics(; absorber = PML(; cells = 2)))   # thinner than the guards
     @test_throws ArgumentError EMState(ok, EMNumerics(; absorber = PML(; cells = 4), back_absorber = PML(; cells = 4)))
+    @test_throws ArgumentError EMState(mk((:periodic, :open, :open); cells = (6, 14, 8)), EMNumerics(; absorber = AbsorbingLayer(; cells = 4, strength = 1)))
+    @test_throws ArgumentError mk((:periodic, :open, :window))
+    @test_throws ArgumentError mk((:periodic, :window, :open))
     for (label, ab) in OPEN3_ABSORBERS
         st = EMState(ok, EMNumerics(; absorber = ab))
         Ly, Lz = open_absorber(st, 2), open_absorber(st, 3)
@@ -455,5 +500,22 @@ end
         @test open_absorber(only_y, 3) === nothing && length(open_absorbers(only_y)) == 1
         only_z = EMState(open_plasma_3d(T; boundaries = (:periodic, :periodic, :open)), EMNumerics(; absorber = ab))
         @test open_absorber(only_z, 2) === nothing && open_absorber(only_z, 3) !== nothing
+        @test_throws ArgumentError initialize!(st, open_plasma_3d(T; boundaries = (:periodic, :open, :periodic)))
+        @test_throws ArgumentError with_modifiers(st, (st.modifiers..., place_absorber(ab, st.grid, ok.dt; axis = 3, backend = CPU())))
+        # a state over the evolved arrays (restore, the harness) keeps each axis' absorber, and its run
+        # is the state's own bit for bit
+        sv = state_view(st, evolved(st))
+        @test map(typeof, open_absorbers(sv)) == map(typeof, open_absorbers(st))
+        fresh = EMState(ok, EMNumerics(; absorber = ab))
+        p = params(ok)
+        initialize!(sv, p)
+        initialize!(fresh, p)
+        for k in 1:ok.nsteps
+            step!(sv, p, k)
+            step!(fresh, p, k)
+        end
+        @test all(c -> bits(Array(getfield(sv.fields, c))) == bits(Array(getfield(fresh.fields, c))), keys(fresh.fields))
+        ψs(x) = collect(Iterators.flatten(map(evolved_arrays, open_absorbers(x))))
+        @test length(ψs(sv)) == (ab isa PML ? 8 : 0) && all(((a, b),) -> bits(Array(a)) == bits(Array(b)), zip(ψs(sv), ψs(fresh)))
     end
 end
