@@ -98,7 +98,7 @@ function body_T991()
         end
         @test miss_full > 1 / 50        # today's full-shape gather is not the transpose
     end
-    record!("T-991", Float64, worst)
+    record!("T-991", Float64, worst)      # the largest over Float32 and Float64
     @info "T-991 transpose err/eps" worst
 end
 
@@ -150,7 +150,7 @@ function body_T992()
             @test miss > 1 / 10
         end
     end
-    record!("T-992", Float64, worst)
+    record!("T-992", Float64, worst)      # the largest over Float32 and Float64
     @info "T-992 Faraday err/(eps·scale)" worst
 end
 

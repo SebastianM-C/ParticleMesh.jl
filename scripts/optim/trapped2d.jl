@@ -23,6 +23,7 @@
 #       float=32 runs every job in Float32 (default 64), backend=cuda on the GPU (default cpu)
 #   julia +1.13 --project=scripts -t 4 scripts/optim/trapped2d.jl job <dir> <job JSON>
 #   julia +1.13 --project=scripts scripts/optim/trapped2d.jl report <out dir> <run dir>...
+#   julia +1.13 --project=scripts scripts/optim/trapped2d.jl report-gathers <out dir> <run dir>...   (the gathers campaign, WP-070)
 #
 # The report writes trapped2d.png + .json (convergence, gradients, finite differences, lines) and
 # tables.md into <out dir>.
@@ -242,6 +243,10 @@ elseif length(ARGS) >= 3 && ARGS[1] == "campaign"
 elseif length(ARGS) >= 3 && ARGS[1] == "report"
     include(joinpath(@__DIR__, "trapped2d_report.jl"))
     report(ARGS[2], ARGS[3:end])
+elseif length(ARGS) >= 3 && ARGS[1] == "report-gathers"
+    include(joinpath(@__DIR__, "trapped2d_report.jl"))
+    include(joinpath(@__DIR__, "gathers_report.jl"))
+    report_gathers(ARGS[2], ARGS[3:end])
 elseif !isempty(ARGS)
-    error("usage: trapped2d.jl campaign <kind> <resolutions> [dir] | job <dir> <job JSON> | report <out dir> <run dir>...")
+    error("usage: trapped2d.jl campaign <kind> <resolutions> [dir] | job <dir> <job JSON> | report <out dir> <run dir>... | report-gathers <out dir> <run dir>...")
 end
