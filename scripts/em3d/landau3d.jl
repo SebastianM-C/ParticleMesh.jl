@@ -11,12 +11,13 @@
 #
 #   julia +1.13 --project=scripts scripts/em3d/landau3d.jl run cells=64 ppc=6 seeds=20261031,20262031 float=32 backend=cuda t_end=24 amplitude=0.01
 #   julia +1.13 --project=scripts scripts/em3d/landau3d.jl table <run dir>...
+#   julia +1.13 --project=scripts scripts/em3d/landau3d.jl subset <run dir> <seed>,<seed>,...
 #
 # `run` writes scripts/runs/em3d-landau3d-<cells>c<ppc>p-f<float>-<timestamp>/: manifest.toml (F3),
 # seed-<seed>/series.json (the mode coefficients and energies of every step) per seed,
 # observables.json (theory, the ensemble and per-seed rates, the checks, the cost) and
 # landau3d.png with its sidecar landau3d.json. `table` prints the Markdown table of the run
-# directories' observables, for the report.
+# directories' observables, for the report; `subset` the ensemble rate over some of a run's seeds.
 include(joinpath(@__DIR__, "..", "em1d", "common.jl"))
 include(joinpath(REPO, "scripts", "crosscode", "ensemble.jl"))
 using .Ensemble: ensemble_damping
@@ -183,8 +184,8 @@ end
 
 "The Markdown table of the run directories' observables."
 function landau3d_table(dirs)
-    println("| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |")
-    println("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    println("| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | transverse (max) | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |")
+    println("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for d in dirs
         o = JSON.parsefile(joinpath(d, "observables.json"); allownan = true)
         s, e, ss, ps = o["size"], o["ensemble"], o["single_seed"], o["per_seed"]
@@ -192,12 +193,22 @@ function landau3d_table(dirs)
         i(x) = Int(x)
         println("| $(i(s["cells"]))³, $(i(s["ppc"])) per cell, $(length(ps)) seeds, $(s["element_type"]), δn/n $(get(s, "amplitude", 0.1)) | $(i(s["particles"])) | $(f(s["dx_over_debye"]; d = 3)) | $(i(s["steps"])) | ",
                 "$(f(e["gamma"])) ± $(f(e["jackknife"]; d = 2)) | $(f(100 * e["gamma_rel"]; d = 3)) % ± $(f(100 * e["jackknife_rel"]; d = 2)) % | ",
-                "$(f(100 * e["omega_rel"]; d = 2)) % | $(i(e["maxima"])) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) ($(i(ss["fitted"])) fitted) | ",
+                "$(f(100 * e["omega_rel"]; d = 2)) % | $(i(e["maxima"])) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) ($(i(ss["fitted"])) fitted) | $(f(maximum(p -> p["transverse"], ps); d = 2)) | ",
                 "$(f(maximum(p -> p["gauss_end"], ps); d = 2)), $(f(maximum(p -> p["divB_end"], ps); d = 2)) | ",
                 "$(f(maximum(p -> abs(p["energy_drift"]), ps); d = 2)) | $(round(Int, mean(p -> p["wall_seconds"], ps))) |")
     end
     th = JSON.parsefile(joinpath(first(dirs), "observables.json"); allownan = true)["theory"]
     println("\nTheory: γ = $(th["gamma"]), ω = $(th["omega"]) ($(th["source"])).")
+end
+
+"The ensemble rate of a run directory over a subset of its seeds, from their series.json (to compare runs of different seed counts)."
+function landau3d_subset(dir, seeds)
+    j(s) = JSON.parsefile(joinpath(dir, "seed-$s", "series.json"))
+    cs = [(x = j(s); complex.(Float64.(x["El_re"]), Float64.(x["El_im"]))) for s in seeds]
+    t = Float64.(j(first(seeds))["t"])
+    e = ensemble_damping(t, cs; fit_start = FIT_START, floor_factor = FLOOR_FACTOR)
+    th = JSON.parsefile(joinpath(dir, "observables.json"); allownan = true)["theory"]["gamma"]
+    println("$(basename(normpath(dir))), seeds $(join(seeds, ", ")): γ = $(e.gamma) ± $(e.jackknife.stderr), rel. to theory $((e.gamma - th) / th), $(length(e.t_fit)) maxima")
 end
 
 function main(args)
@@ -211,6 +222,8 @@ function main(args)
                           t_end = parse(Float64, get(kv, "t_end", "24")), amplitude = parse(Float64, get(kv, "amplitude", "0.01")))
     elseif cmd == "table"
         landau3d_table(args[2:end])
+    elseif cmd == "subset"
+        landau3d_subset(args[2], parse.(Int, split(args[3], ",")))
     else
         error("unknown command $cmd")
     end
