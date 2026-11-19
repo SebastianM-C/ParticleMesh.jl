@@ -12,9 +12,11 @@ kernels, and the sort, whose permutation of the species' arrays Enzyme does not 
 What the rules tape: a copy of the species' arrays (the pullbacks read the positions, weights and
 quantities of the forward call, which a later push or sort overwrites, and Enzyme's `overwritten`
 does not see writes into arrays reached through the species' reference), the field a gather read,
-and the sort's permutation (the next sort overwrites it). Width 1 only (no batched shadows). Keyword arguments (`dt`, the quantities,
-`workgroupsize`) are constant: no derivative with respect to `dt`. The workspace, the grid, the
-shape, the stagger and the mode take no adjoint.
+and the sort's permutation (the next sort overwrites it). Width 1 only (no batched shadows).
+Keyword arguments (`dt`, the quantities, `workgroupsize`) are constant, declared so through
+`EnzymeRules.inactive_kwarg` (marked experimental in EnzymeCore 0.8): no derivative with respect to
+`dt` flows through the current, even when `dt` comes from a differentiated state. The workspace,
+the grid, the shape, the stagger and the mode take no adjoint.
 """
 module ParticleMeshCoreEnzymeCoreExt
 
@@ -55,6 +57,12 @@ primal_return(config, x) = needs_primal(config) ? x : nothing
 "A zero field like `a` for a constant field whose adjoint a pullback reads (the adjoint of a constant is zero)."
 field_shadow(x::Duplicated) = x.dval
 field_shadow(x::Const) = fill!(similar(x.val), zero(eltype(x.val)))
+
+# The keyword arguments are constant (`dt`, the quantities, `workgroupsize`): a step reads `dt` from
+# its state, which Enzyme would otherwise take as a differentiable keyword and refuse.
+for f in (:deposit!, :gather!, :deposit_flux!, :sort_by_cell!, :resort_by_cell!)
+    @eval EnzymeRules.inactive_kwarg(::typeof($f), args...; kwargs...) = nothing
+end
 
 # --- deposit! ---------------------------------------------------------------------------------
 

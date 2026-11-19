@@ -248,6 +248,18 @@ function flux_loss(mode, s, ws, J, J̄, shape, st, grid, sorts, overwrite)
     return inner3(J̄, J)
 end
 
+struct FluxHolder{S,W,T}
+    s::S
+    ws::W
+    dt::T
+end
+
+function holder_loss(h, J, J̄, shape, st, grid)
+    foreach(a -> fill!(a, 0.0), J)
+    deposit_flux!(Fast(), J..., h.s, shape, st, grid, h.ws; dt = h.dt, quantity_z = QZ2)
+    return inner3(J̄, J)
+end
+
 function deposit_loss(mode, s, ws, ρ, ρ̄, shape, st, grid, quantity)
     effective_mode(mode, Float64) isa Reference && sort_by_cell!(s, grid, ws)
     fill!(ρ, 0.0)
@@ -290,6 +302,19 @@ end
             r <= C || @info "T-1064 flux" mode overwrite float_arrays(s0)[k][1] r
             @test r <= C
         end
+    end
+    # dt read from a differentiated structure, as a step reads it from its state: a constant
+    # keyword (inactive_kwarg), the same gradient, and no adjoint for dt
+    sh = deepcopy(s0)
+    h = FluxHolder(sh, Workspace(sh, grid; flux = (shape, st)), 0.25)
+    dh = Enzyme.make_zero(h)
+    J = fields3(Float64, grid)
+    autodiff(Reverse, holder_loss, Active, Duplicated(h, dh), Duplicated(J, map(zero, J)), Const(J̄), Const(shape), Const(st), Const(grid))
+    @test dh.dt == 0
+    for k in eachindex(float_arrays(s0))
+        v = direction(s0, k)
+        rhs, scale = jvp_pair(J̄, flux2d(Reference(), dualize(s0, v), shape, st, grid)[1:3])
+        @test chain_ratio("T-1064", pair(dh.s, v), rhs, scale) <= C
     end
     # deposit! and gather! at N = 2, ρ's own stagger
     s0 = flux_species_2d(Float64, grid2(Float64, 2), 300; seed = 5)
