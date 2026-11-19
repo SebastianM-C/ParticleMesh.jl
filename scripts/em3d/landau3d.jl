@@ -3,7 +3,7 @@
 # The case is T-954's (lib/ParticleMeshElectromagnetic/test/em3d_step.jl, `landau_3d`) at a size
 # chosen on the command line: a cube of side 2π√3/|k| with |k| = 10 ω₀/c, v_th = 0.05 c, a density
 # perturbation of `amplitude` (1 % by default, as the 2D case landau-oblique-2d; T-954's 10 % buys
-# a CI-sized run its signal but puts the wave's bounce frequency √(kE) ≈ 0.32 above γ ≈ 0.15, out
+# a CI-sized run its signal but puts the wave's initial bounce frequency √(kE) ≈ 0.32 above γ ≈ 0.15, out
 # of the linear regime), the quadratic shape, Reference mode, Δt = 0.95 of the 3D Courant limit.
 # The observable is WP-023's `damping_rate_mode_ensemble`: the fit of |⟨k̂·Ê⟩_seeds|² at its
 # maxima after t = 3 above ten times the noise floor (scripts/crosscode/ensemble.jl), with the
