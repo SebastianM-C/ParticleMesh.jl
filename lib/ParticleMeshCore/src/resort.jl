@@ -9,7 +9,8 @@
     ResortScratch
 
 The scratch of [`resort_by_cell!`](@ref) in a [`Workspace`](@ref) built with `append`: per linear
-cell the `3^N` move counts `hist` (later the ranks), the new counts `cnt` and their running sums
+cell the `3^N` move counts `hist` (later the ranks; `ncell × 3^N`, cell-major, so that the work items
+of neighbouring cells read and write neighbouring entries), the new counts `cnt` and their running sums
 `cum`, the new segment bounds; per slot the free flags and their running sums (the free slots go
 last in slot order); the tail of up to `append` slots behind the last sort's count, with its keys,
 its permutation, the sortperm workspace and its per-cell bounds; the scan workspaces; the alive
@@ -50,7 +51,7 @@ function ResortScratch(s::Species{N}, ncell::Integer, append::Integer) where {N}
     tail_key = KernelAbstractions.zeros(backend, Int64, append)
     tail_perm = KernelAbstractions.zeros(backend, Int, append)
     tail_ak = append > 0 ? AK.workspace(AK.sortperm!, tail_perm, tail_key) : nothing
-    return ResortScratch(z(3^N, ncell), cnt, cum, KernelAbstractions.ones(backend, Int32, ncell), z(ncell), free, free_cum, z(1),
+    return ResortScratch(z(ncell, 3^N), cnt, cum, KernelAbstractions.ones(backend, Int32, ncell), z(ncell), free, free_cum, z(1),
                          tail_key, tail_perm, tail_ak, KernelAbstractions.ones(backend, Int32, ncell), z(ncell),
                          AK.workspace(AK.accumulate!, +, cum, cnt), AK.workspace(AK.accumulate!, +, free_cum, free),
                          Int(append), Ref(false), Ref{Any}(nothing), Ref(0))
@@ -119,13 +120,13 @@ end
 @kernel function resort_count_kernel!(hist, s, bins, @Const(seg_start), @Const(seg_stop), n::NTuple{N,Int32}) where {N}
     Ls = Int32(@index(Global, Linear))
     c = cartesian_cell(Ls, n)
-    @inbounds for k in axes(hist, 1)
-        hist[k, Ls] = Int32(0)
+    @inbounds for k in axes(hist, 2)
+        hist[Ls, k] = Int32(0)
     end
     @inbounds for i in seg_start[Ls]:seg_stop[Ls]
         if s.status[i] == ALIVE
             k = resort_bin(c, particle_bin(bins, s, i, n), n)
-            hist[k, Ls] += Int32(1)
+            hist[Ls, k] += Int32(1)
         end
     end
 end
@@ -176,8 +177,8 @@ end
     @inbounds for cs in resort_neighbours(c, n)
         Ls = linear_cell(cs, n)
         k = resort_bin(cs, c, n)
-        m = hist[k, Ls]
-        hist[k, Ls] = r
+        m = hist[Ls, k]
+        hist[Ls, k] = r
         r += m
     end
     @inbounds cnt[L] = r + tail_stop[L] - tail_start[L] + Int32(1)
@@ -208,8 +209,8 @@ end
         if s.status[i] == ALIVE
             cn = particle_bin(bins, s, i, n)
             k = resort_bin(c, cn, n)
-            r = hist[k, Ls]
-            hist[k, Ls] = r + Int32(1)
+            r = hist[Ls, k]
+            hist[Ls, k] = r + Int32(1)
             p = new_start[linear_cell(cn, n)] + r
             1 <= p <= length(perm) && (perm[p] = Int32(i))   # always, within the precondition
         end
