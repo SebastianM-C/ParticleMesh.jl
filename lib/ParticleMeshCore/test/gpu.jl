@@ -283,6 +283,7 @@ else
         # T-850's run with device species: the moves, frees and appends of resort.jl's helpers on
         # host copies (moved to the host and back around them), the sorts on the device, compared
         # bit for bit every round; the resort must have sorted from the order, not in full.
+        # `species_arrays` includes `count` (engine_cases.jl), so the host copies append behind the device's count.
         sync!(dst, src) = foreach(copyto!, species_arrays(dst), species_arrays(src))
         for (T, n) in ((Float32, (40, 36)), (Float32, (24, 20, 18)), (Float64, (24, 20, 18)))
             N = length(n)
@@ -303,6 +304,9 @@ else
                     iseven(k) && resort_append!(h, n, append, rng; tag0 = 1000k)
                     sync!(d, h)
                 end
+                # the resort's precondition: no alive particle past the last sort's count plus the tail
+                tail_end = Int(Array(wb.resort.sorted_count)[1]) + append
+                @test !any(Array(b.status)[(tail_end + 1):end] .== ParticleMeshCore.ALIVE)
                 sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb)
                 KernelAbstractions.synchronize(GPU)
                 push!(same, all(same_bits(Array(x), Array(y)) for (x, y) in zip(species_arrays(a), species_arrays(b))) &&
