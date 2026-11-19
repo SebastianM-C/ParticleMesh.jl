@@ -9,12 +9,16 @@
 #   julia +1.13 --project=scripts -t 4 scripts/resolution/gridppc.jl campaign <name> <dir> [cpu|cuda]
 #   julia +1.13 --project=scripts -t 4 scripts/resolution/gridppc.jl job <dir> <job JSON> [cpu|cuda]
 #   julia +1.13 --project=scripts scripts/resolution/gridppc.jl list <name>
+#   julia +1.13 --project=scripts -t 4 scripts/resolution/gridppc.jl timed <name> <job id> <dir> [cpu|cuda]
 #
 # A campaign is a list of independent jobs run one after the other in this process (so that a
 # backend compiles each kernel once); each writes `<id>.json` into the directory, a job whose JSON
 # is there is not run again, and a job that fails writes `<id>.err` and the campaign goes on.
 # While a file `PAUSE` exists in the directory the campaign waits between jobs (for timings of
 # other work on a shared GPU). `frames` jobs also write `<id>.frames.bin` (Float32 maps).
+# `timed` runs one job of a campaign twice in this process and keeps the second run (the first
+# compiles), with the device memory of that run alone; `run_timing.sh` gives each job its own
+# process that way.
 #
 # The numbers are measurements of single runs, not independently reviewed.
 
@@ -40,7 +44,7 @@ const GRAD_NAMES = ("duration", "waist", "focus", "density")
 const JOB_DEFAULTS = Dict{String,Any}("ppl" => 16, "ny" => 1, "ppc" => [2, 2], "ion_ppc" => [1, 1], "T" => "f64", "mode" => "reference",
                                       "shape" => 2, "cfl" => 95, "law" => "adk", "every" => 1, "a0E" => 1.9, "x" => collect(TCASE.x0),
                                       "grad" => false, "series" => true, "frames" => 0, "a0_scale" => 1.0, "t_end" => BCASE.t_end,
-                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0, "gather" => "plain")
+                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0, "gather" => "plain", "extend" => 0)
 
 eltype_named(s) = s == "f64" ? Float64 : s == "f32" ? Float32 : error("element type $s: f64 or f32")
 
@@ -54,17 +58,20 @@ function study_levels(::Type{R}, law) where {R}
 end
 
 """
-    study_problem(x, a0E; T, ppl, ny, ppc, ion_ppc, cfl, law, every, capacity, t_end, a0_scale, dopant_fraction)
+    study_problem(x, a0E; T, ppl, ny, ppc, ion_ppc, cfl, law, every, capacity, t_end, a0_scale, dopant_fraction, extend)
 
 The case of `trapped_problem` at x = (duration, waist, focus, delay, density) and the energy budget
 of `a0E`, with what that function fixes left open: Δx = λ₀/`ppl` for any `ppl` (Δy = π/(4·`ny`)
 whatever `ppl` is), the plasma's and the dopant's particles per cell, the time step as `cfl`
 hundredths of the Courant limit, the rate law, and the element type `T` (the problem's is that of
-the parameters, which are converted to `T` or are duals of it). At the defaults it is
-`trapped_problem`'s problem.
+the parameters, which are converted to `T` or are duals of it), and `extend` whole wavelengths
+added to the window behind the case's 14, as `born_problem` adds them for the long pulses of a
+power cap. At the defaults it is `trapped_problem`'s problem.
 """
 function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc = (2, 2), ion_ppc = (1, 1), cfl::Integer = 95, law = "adk",
-                       every::Integer = 1, capacity::Integer, t_end = BCASE.t_end, a0_scale = 1.0, dopant_fraction = TCASE.dopant_fraction)
+                       every::Integer = 1, capacity::Integer, t_end = BCASE.t_end, a0_scale = 1.0, dopant_fraction = TCASE.dopant_fraction,
+                       extend::Integer = 0)
+    extend >= 0 || throw(ArgumentError("extend must be at least 0, got $extend"))
     duration, waist, focus, delay, density = x
     # the budget is computed from the case's Float64 base point: convert it, or it promotes the whole run to Float64
     a0 = a0_for_energy(duration, waist; energy = T(budget(a0E))) * T(a0_scale)
@@ -74,7 +81,7 @@ function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc =
     z3 = (zero(R), zero(R), zero(R))
     h = 2 * R(π) / ppl
     hy = R(π) / (4 * ny)
-    cells = (BCASE.length_wavelengths * ppl, BCASE.rows * ny)
+    cells = ((BCASE.length_wavelengths + extend) * ppl, BCASE.rows * ny)
     dt = R(cfl) / 100 / sqrt(1 / h^2 + 1 / hy^2)
     nsteps = ceil(Int, t_end / Float64(value_of(dt)))
     hy64 = Float64(value_of(hy))
@@ -86,7 +93,7 @@ function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc =
                           rows = (yc - BCASE.half_rows * ny * hy64, yc + BCASE.half_rows * ny * hy64),
                           section = DopantSection(; start = R(BCASE.section.start), stop = R(BCASE.section.stop), ramp = R(BCASE.section.ramp)))
     return EMProblem("gridppc", (cells[1] * h, cells[2] * hy), cells, dt, nsteps, (e,), 1, (1, 0);
-                     lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = R(BCASE.start)),
+                     lasers = (pulse,), boundaries = (:window, :open), window = MovingWindow(; start = R(BCASE.start) + extend * 2 * R(π)),
                      profile = DensityRamp(; vacuum = R(BCASE.vacuum), ramp = R(BCASE.ramp)), ionization = ion)
 end
 
@@ -103,7 +110,7 @@ study_numerics(ppl, ny; shape = 2, mode = "reference", gather = "plain") =
 "The electron slots a job asks for: the dopant lattice of the whole window (a birth step offers one slot per atom slot) and room for the electrons alive."
 function study_capacity(job)
     ppl, ny, ip = Int(job["ppl"]), Int(job["ny"]), Int.(job["ion_ppc"])
-    atoms = BCASE.length_wavelengths * ppl * 2 * BCASE.half_rows * ny * prod(ip)
+    atoms = (BCASE.length_wavelengths + Int(get(job, "extend", 0))) * ppl * 2 * BCASE.half_rows * ny * prod(ip)
     return haskey(job, "capacity") ? Int(job["capacity"]) : atoms + max(400_000, round(Int, 6 * atoms * (ppl / 16) / Int(job["every"])))
 end
 
@@ -126,6 +133,31 @@ function gpu_pool_mib()
     end
     return nothing
 end
+
+# The device memory pool's counters, by the driver's attribute names; `nothing` on the CPU or where the pool cannot be read.
+function pool_attribute(name::Symbol)
+    BACKEND_NAME == "cuda" || return nothing
+    try
+        pool = CUDACore.pool_create(CUDACore.device())
+        return Int(CUDACore.attribute(UInt64, pool, getproperty(CUDACore, name)))
+    catch
+        return nothing
+    end
+end
+
+"Sets the pool's high-water marks back to what it holds now, so that the next reading is of the work in between."
+function reset_pool_peaks!()
+    BACKEND_NAME == "cuda" || return nothing
+    try
+        pool = CUDACore.pool_create(CUDACore.device())
+        CUDACore.attribute!(pool, CUDACore.MEMPOOL_ATTR_USED_MEM_HIGH, UInt64(0))
+        CUDACore.attribute!(pool, CUDACore.MEMPOOL_ATTR_RESERVED_MEM_HIGH, UInt64(0))
+    catch
+    end
+    return nothing
+end
+
+mib(b) = b === nothing ? nothing : round(b / 2^20; digits = 1)
 
 "The on-axis row of a field over the window's columns, on the host as Float64."
 function axis_line(st, a)
@@ -206,7 +238,7 @@ function born_arrays(st)
 end
 
 """
-    bunch_readout(st) -> Dict
+    bunch_readout(st; fade = TCASE.fade) -> Dict
 
 The trapped born electrons of the first bucket as a bunch (the weights w·S·R of the objective):
 macro-particles alive, those with u_x above the trapping weight's upper edge, the effective number
@@ -215,11 +247,11 @@ heaviest hundredth of the particles carries, the mean and rms of γ − 1, the r
 their means and the normalized rms emittance in y, and the weighted spectrum over γ − 1 in bins
 of 1 from 0 to 60.
 """
-function bunch_readout(st)
+function bunch_readout(st; fade = TCASE.fade)
     b = born_arrays(st)
     area = prod(Float64.(value_of.(cellsize(st.grid))))
     g = sqrt.(1 .+ b.ux .^ 2 .+ b.uy .^ 2 .+ b.uz .^ 2) .- 1
-    s = b.w .* smooth_rise.(b.x, TCASE.fade[1], TCASE.fade[2]) .* smooth_rise.(b.ux, TCASE.rise[1], TCASE.rise[2])
+    s = b.w .* smooth_rise.(b.x, fade[1], fade[2]) .* smooth_rise.(b.ux, TCASE.rise[1], TCASE.rise[2])
     q = s .* g
     W, Q = sum(s; init = 0.0), sum(q; init = 0.0)
     out = Dict{String,Any}("alive" => length(b.w), "fast" => count(>(TCASE.rise[2]), b.ux), "weight" => area * W,
@@ -243,17 +275,17 @@ function bunch_readout(st)
 end
 
 """
-    wake_energy(st) -> W
+    wake_energy(st; shift = 0.0) -> W
 
 A second objective with no ionization in it, for comparison: the energy of the longitudinal field
-Δx·Δy·Σ E_x²/2 over the first bucket's box (window x from 24 to 44, within 8 c/ω₀ of the axis),
-summed on the host in storage order.
+Δx·Δy·Σ E_x²/2 over the first bucket's box (window x from 24 to 44, moved by `shift` for a longer
+window, within 8 c/ω₀ of the axis), summed on the host in storage order.
 """
-function wake_energy(st)
+function wake_energy(st; shift = 0.0)
     g, n = guards(st.grid), ncells(st.grid)
     h = cellsize(st.grid)
     h64 = Float64.(value_of.(h))
-    i1, i2 = round(Int, 24 / h64[1]), round(Int, 44 / h64[1])
+    i1, i2 = round(Int, (24 + shift) / h64[1]), round(Int, (44 + shift) / h64[1])
     jc, dj = n[2] ÷ 2, round(Int, 8 / h64[2])
     Ex = Array(view(st.fields.Ex, (g + i1):(g + i2), (g + 1 + jc - dj):(g + jc + dj)))
     return h[1] * h[2] * foldl(+, vec(Ex .* Ex)) / 2
@@ -301,7 +333,10 @@ end
 One run of the case as the job describes it (`JOB_DEFAULTS`). A plain job gives J, the summaries,
 the bunch, the wake's energy, the on-axis lines at the read-out and, with `series`, the time
 series every 2.5 c/ω₀; a `grad` job runs with duals in duration, waist, focus and density and
-gives J with its gradient and the wake energy with its own.
+gives J with its gradient and the wake energy with its own. With `extend` the window is that many
+wavelengths longer and the read-outs' positions move back with it (as WP-068's runs under a power
+cap); the time series and the on-axis lines are left out there. `seconds` is the wall time of the
+state's construction, the load and the steps, `seconds_init` the part before the first step.
 """
 function run_job(job0, dir)
     job = merge(JOB_DEFAULTS, job0)
@@ -309,6 +344,8 @@ function run_job(job0, dir)
     ppl, ny = Int(job["ppl"]), Int(job["ny"])
     x64, a0E = Float64.(job["x"]), Float64(job["a0E"])
     grad = job["grad"] == true
+    extend = Int(job["extend"])
+    fade = TCASE.fade .+ 2π * extend
     x = if grad
         ntuple(i -> (q = findfirst(==(i), GRAD_DIRS); q === nothing ? T(x64[i]) : ForwardDiff.Dual{Nothing}(T(x64[i]), ntuple(j -> T(j == q), length(GRAD_DIRS)))), 5)
     else
@@ -317,17 +354,19 @@ function run_job(job0, dir)
     capacity = study_capacity(job)
     prob = study_problem(x, T(a0E); T, ppl, ny, ppc = Int.(job["ppc"]), ion_ppc = Int.(job["ion_ppc"]), cfl = Int(job["cfl"]), law = job["law"],
                          every = Int(job["every"]), capacity, t_end = Float64(job["t_end"]), a0_scale = Float64(job["a0_scale"]),
-                         dopant_fraction = Float64(job["dopant_fraction"]))
+                         dopant_fraction = Float64(job["dopant_fraction"]), extend)
     numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"], gather = job["gather"])
     t0 = time()
     st = EMState(prob, numerics; backend = BE, record = ())
     p = params(prob)
     initialize!(st, p)
+    KernelAbstractions.synchronize(BE)
+    seconds_init = time() - t0
     dt = Float64(value_of(prob.dt))
     series = Dict{String,Any}[]
     nframes = Int(job["frames"])
     frame_steps = nframes > 0 ? unique(round.(Int, range(prob.nsteps / nframes, prob.nsteps; length = nframes))) : Int[]
-    sample_steps = job["series"] == true && !grad ? unique(round.(Int, (2.5:2.5:Float64(job["t_end"])) ./ dt)) : Int[]
+    sample_steps = job["series"] == true && !grad && extend == 0 ? unique(round.(Int, (2.5:2.5:Float64(job["t_end"])) ./ dt)) : Int[]
     stops = sort(unique(vcat(frame_steps, sample_steps, prob.nsteps)))
     frame_io = nframes > 0 ? open(joinpath(dir, job["id"] * ".frames.bin"), "w") : nothing
     ρbuf = nframes > 0 ? field(BE, eltype(st.fields.Ex), st.grid) : nothing
@@ -349,20 +388,23 @@ function run_job(job0, dir)
         end
     end
     frame_io === nothing || close(frame_io)
+    KernelAbstractions.synchronize(BE)
     seconds = time() - t0
+    peak = (pool_attribute(:MEMPOOL_ATTR_USED_MEM_HIGH), pool_attribute(:MEMPOOL_ATTR_RESERVED_MEM_HIGH))
     lost = ionization_lost(st)
-    J = trapped_energy(st)
-    W = wake_energy(st)
-    parts = trapped_parts(st)
+    J = trapped_energy(st; fade)
+    W = wake_energy(st; shift = 2π * extend)
+    parts = trapped_parts(st; fade)
     h = Float64.(value_of.(cellsize(st.grid)))
     out = Dict{String,Any}(job)
-    merge!(out, Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st))))
-    merge!(out, Dict{String,Any}("J" => Float64(value_of(J)), "W" => Float64(value_of(W)), "J_born_label" => Float64(value_of(born_energy(st))),
-                                 "seconds" => seconds, "threads" => Threads.nthreads(), "backend" => BACKEND_NAME, "eltype" => string(eltype(st.fields.Ex)),
+    merge!(out, Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st; fade))))
+    merge!(out, Dict{String,Any}("J" => Float64(value_of(J)), "W" => Float64(value_of(W)), "J_born_label" => Float64(value_of(born_energy(st; fade))),
+                                 "seconds" => seconds, "seconds_init" => seconds_init, "gpu_peak_used_mib" => mib(peak[1]),
+                                 "gpu_peak_reserved_mib" => mib(peak[2]), "threads" => Threads.nthreads(), "backend" => BACKEND_NAME, "eltype" => string(eltype(st.fields.Ex)),
                                  "gpu_pool_mib" => gpu_pool_mib(), "cells" => collect(ncells(st.grid)),
                                  "dx" => h[1], "dy" => h[2], "dt" => dt, "nsteps" => prob.nsteps, "capacity" => capacity, "ionization_lost" => lost,
                                  "a0" => Float64(value_of(a0_for_energy(x[1], x[2]; energy = budget(a0E)))) * Float64(job["a0_scale"]),
-                                 "plasma_slots" => sum(s -> length(s.w), st.species), "bunch" => bunch_readout(st),
+                                 "plasma_slots" => sum(s -> length(s.w), st.species), "bunch" => bunch_readout(st; fade),
                                  "atoms" => length(ionization_state(st).w)))
     if grad
         out["gradient"] = Float64.(collect(ForwardDiff.partials(J)))
@@ -370,7 +412,7 @@ function run_job(job0, dir)
         out["gradient_plasma"] = Float64.(collect(ForwardDiff.partials(parts.plasma)))
         out["gradient_W"] = Float64.(collect(ForwardDiff.partials(W)))
         out["gradient_names"] = collect(GRAD_NAMES)
-    else
+    elseif extend == 0
         out["axis"] = axis_readout(st, prob.nsteps, ppl)
         nx = ncells(st.grid)[1]
         stride = max(1, nx ÷ 896)
@@ -534,6 +576,18 @@ function campaign_jobs(name)
                 plain!(jobs, jid("cg", "fd", name_, dir, pw, sgn > 0 ? "p" : "m"); cfg..., x, series = false, direction = dir, power = pw, sign = sgn, c...)
             end
         end
+    elseif name == "timing"
+        # wall times and device memory for the optimization's planning: the compensated gather in Float32 over the grids, plain and
+        # with duals; at λ₀/32 also Float64 and the atomics mode; and the window of WP-068's power cap (3 wavelengths longer) at the
+        # capped runs' base start and at the optimum they found (reports/wp-068-first-gpu-optimizations/power/tables.md)
+        c = (; gather = "compensated", series = false)
+        for (ppl, ny) in ((16, 1), (24, 2), (32, 2), (48, 3), (64, 4))
+            pair!(jobs, jid("timing", "r$(ppl)x$(ny)", "f32"); ppl, ny, T = "f32", c...)
+        end
+        pair!(jobs, "timing-r32x2-f64"; ppl = 32, ny = 2, c...)
+        plain!(jobs, "timing-r32x2-f32-fast"; ppl = 32, ny = 2, T = "f32", mode = "fast", c...)
+        pair!(jobs, "timing-r32x2-f32-ext3-capstart"; ppl = 32, ny = 2, T = "f32", extend = 3, x = [10.29, 10.0, 80.0, 54.0, 0.072], c...)
+        pair!(jobs, "timing-r32x2-f32-ext3-capbest"; ppl = 32, ny = 2, T = "f32", extend = 3, x = [8.235, 6.472, 110.0, 54.0, 0.1], c...)
     elseif name == "frames"
         for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
             plain!(jobs, jid("frames", "r$(ppl)x$(ny)"); ppl, ny, frames = 60)
@@ -545,18 +599,24 @@ function campaign_jobs(name)
     return sort(jobs; by = cost)
 end
 
-function run_campaign(name, dir)
+"The campaign's manifest and job list in its directory, written once."
+function campaign_manifest(name, dir, jobs)
     mkpath(dir)
-    jobs = campaign_jobs(name)
+    isfile(joinpath(dir, "manifest.toml")) && return dir
     gpu = BACKEND_NAME == "cuda" ? CUDACore.name(CUDACore.device()) : nothing
     extra = gpu === nothing ? Dict{String,Any}() : Dict{String,Any}("gpu" => gpu, "cudacore" => string(pkgversion(CUDACore)))
-    isfile(joinpath(dir, "manifest.toml")) ||
-        run_dir("gridppc-$name", @__FILE__; prefix = "resolution", work_package = "none (study for a report)", dir,
-                backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU", extra,
-                extra_inputs = [joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"), joinpath(@__DIR__, "..", "optim", "born2d_case.jl"),
-                                joinpath(@__DIR__, "..", "ionization", "atomic.jl")],
-                params = Dict{String,Any}("campaign" => name, "jobs" => length(jobs), "defaults" => JOB_DEFAULTS))
+    run_dir("gridppc-$name", @__FILE__; prefix = "resolution", work_package = "none (study for a report)", dir,
+            backend = BACKEND_NAME == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU", extra,
+            extra_inputs = [joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"), joinpath(@__DIR__, "..", "optim", "born2d_case.jl"),
+                            joinpath(@__DIR__, "..", "ionization", "atomic.jl")],
+            params = Dict{String,Any}("campaign" => name, "jobs" => length(jobs), "defaults" => JOB_DEFAULTS))
     open(io -> JSON.print(io, jobs, 1), joinpath(dir, "jobs.json"), "w")
+    return dir
+end
+
+function run_campaign(name, dir)
+    jobs = campaign_jobs(name)
+    campaign_manifest(name, dir, jobs)
     todo = filter(j -> !isfile(joinpath(dir, j["id"] * ".json")), jobs)
     println("campaign $name on $BACKEND_NAME: $(length(todo)) of $(length(jobs)) jobs to run, into $dir"); flush(stdout)
     t0 = time()
@@ -579,7 +639,35 @@ function run_campaign(name, dir)
     return dir
 end
 
-if length(ARGS) >= 3 && ARGS[1] == "campaign"
+"""
+    run_timed(name, id, dir) -> Dict
+
+One job of a campaign for its wall time and device memory, in a process of its own: the job runs twice and the second run is
+kept, the first having compiled the kernels (`seconds_first`, `J_first`). Between the two the device's pool is emptied and its
+high-water marks reset, so `gpu_peak_used_mib` is the most device memory the second run's arrays held at once (the pool's own
+count, without the context's few hundred MiB), `gpu_peak_reserved_mib` what the pool had reserved for them, and `gpu_pool_mib`
+the process's total as `nvidia-smi` gives it after the run.
+"""
+function run_timed(name, id, dir)
+    jobs = campaign_jobs(name)
+    campaign_manifest(name, dir, jobs)
+    job = only(filter(j -> j["id"] == id, jobs))
+    warm = run_job(job, dir)
+    GC.gc(true)
+    BACKEND_NAME == "cuda" && CUDACore.reclaim()
+    reset_pool_peaks!()
+    out = run_job(job, dir)
+    merge!(out, Dict{String,Any}("timed" => true, "seconds_first" => warm["seconds"], "seconds_init_first" => warm["seconds_init"],
+                                 "J_first" => warm["J"], "gpu_pool_mib_first" => warm["gpu_pool_mib"]))
+    open(io -> JSON.print(io, out), joinpath(dir, id * ".json"), "w")
+    println("timed $id: J = $(out["J"]) (first run $(warm["J"])), $(round(out["seconds"]; digits = 2)) s, of which $(round(out["seconds_init"]; digits = 2)) s before the first step ",
+            "(first run $(round(warm["seconds"]; digits = 1)) s); device peak $(out["gpu_peak_used_mib"]) MiB, process $(out["gpu_pool_mib"]) MiB")
+    return out
+end
+
+if length(ARGS) >= 4 && ARGS[1] == "timed"
+    run_timed(ARGS[2], ARGS[3], abspath(ARGS[4]))
+elseif length(ARGS) >= 3 && ARGS[1] == "campaign"
     run_campaign(ARGS[2], abspath(ARGS[3]))
 elseif length(ARGS) >= 3 && ARGS[1] == "job"
     job = JSON.parse(ARGS[3])
