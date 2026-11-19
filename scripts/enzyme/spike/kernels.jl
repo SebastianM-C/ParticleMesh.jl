@@ -117,7 +117,7 @@ tests = [
   ("check_params", (st, out) -> (PME.check_params(st, p); st.fields.Ex .*= 2; nothing), seed_EB!),
   ("step without kinetic", (st, out) -> (step_body!(st, p, 1, false); nothing), seed_EB!),
   ("step without check_params", (st, out) -> (step_body!(st, p, 1, true; check = false); nothing), seed_EB!),
-  ("step", (st, out) -> (step!(st, p, 1; observer = nothing); nothing), seed_EB!),
+  ("step", (st, out) -> (step!(st, p, 1; observer = ()); nothing), seed_EB!),
 ]
 leaves!(out, path, x::AbstractArray{<:AbstractFloat}) = (any(y -> y === x, values(out)) || (out[path] = x); out)
 leaves!(out, path, x::AbstractArray) = out

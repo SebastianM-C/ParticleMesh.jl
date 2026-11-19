@@ -143,9 +143,14 @@ end
 # are `:monotonic` (relaxed): nothing reads `J` before the kernel ends, so they need atomicity and
 # no ordering, and Atomix's default sequentially consistent adds stalled the kernel on memory
 # barriers (Nsight Compute on an RTX 5090: 28 barrier stall cycles per issued instruction, the top reason).
+# The `K` adds are written out with `ntuple`, not left to a loop, so that a reverse-mode AD of the
+# kernel (Enzyme) keeps their addresses in its fixed-size tape instead of allocating device memory
+# per work item and step (WP-050); the same adds in the same order.
 @inline function atomic_add_block!(J, v::NTuple{K,Any}, b1::Int, b2::Int, ::Val{M1}) where {K,M1}
-    for k in 1:K
+    ntuple(Val(K)) do k
+        @inline
         @inbounds Atomix.@atomic :monotonic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
+        nothing
     end
     return nothing
 end

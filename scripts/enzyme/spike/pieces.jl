@@ -134,8 +134,8 @@ current_part!(st, p) = (PME.current!(st.numerics.current, st); nothing)
 solve_part!(st, p) = (PME.solve_fields!(st.numerics.solver, st.fields, st.grid, st.dt, st.modifiers, p, 1); nothing)
 kinetic_part!(st, p) = (PME.kinetic!(st); nothing)
 push_current_part!(st, p) = (push_part!(st, p); current_part!(st, p); nothing)
-step_part!(st, p) = (step!(st, p, 1; observer = nothing); nothing)
-step2_part!(st, p) = (step!(st, p, 1; observer = nothing); step!(st, p, 2; observer = nothing); nothing)
+step_part!(st, p) = (step!(st, p, 1; observer = ()); nothing)
+step2_part!(st, p) = (step!(st, p, 1; observer = ()); step!(st, p, 2; observer = ()); nothing)
 const PARTS = Dict("gather" => gather_part!, "gather arrays" => gather_arrays_part!, "gather Ex" => gather_ex_part!,
                    "gather Ex manual" => gather_ex_manual_part!, "push" => push_part!, "current" => current_part!, "solve" => solve_part!, "kinetic" => kinetic_part!,
                    "push+current" => push_current_part!, "step" => step_part!, "two steps" => step2_part!)

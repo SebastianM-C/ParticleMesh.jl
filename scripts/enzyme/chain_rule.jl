@@ -1,13 +1,15 @@
 # WP-050: Enzyme reverse mode through the 2D electromagnetic step, checked against ForwardDiff
-# by the chain rule. Runs only in the side environment of `setup.jl`.
+# by the chain rule. Runs in the module's test environment, which carries Enzyme:
 #
-#     julia +1.13 --project=<dir>/env scripts/enzyme/chain_rule.jl [mode] [steps] [species] [T] [seed] [workgroupsize]
+#     julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/chain_rule.jl [mode] [steps] [species] [T] [seed] [workgroupsize]
 #
-# mode `fast` or `reference`, `steps` steps (default 1), `species` 1 or 2 (2 needs the
-# `--foreach` environment), `T` Float64 or Float32, the load's `seed` (default 7), the
-# kernels' `workgroupsize` (default: KernelAbstractions', 1024 on the CPU in 0.9, which puts
-# each kernel of this case in one workgroup and so runs it serially; give 16 with
-# `julia -t 4` to run the kernels on several threads).
+# mode `fast` or `reference`, `steps` steps (default 1), `species` 1 or 2 (two species meet #384
+# in the step's `for` loops over the species tuple; not rerun since Enzyme 0.13.219), `T` Float64 or
+# Float32, the load's `seed` (default 7), the kernels' `workgroupsize` (default:
+# KernelAbstractions'). PM_BACKEND=cuda runs the state on the GPU, the only backend where Enzyme
+# differentiates the kernels (on the CPU, KernelAbstractions 0.10's POCL backend, Enzyme fails
+# on the atomics and the OpenCL math builtins: #509). The steps run with `observer = ()`, so no
+# step computes the kinetic-energy cache, which a reverse pass would otherwise tape at every step.
 #
 # The case is WP-023's `plasma_step_2d` (Esirkepov current, Quadratic shape, Boris, Yee,
 # 10 × 8 cells, 3 × 3 particles per cell) with the electrons' density perturbation amplitude α
@@ -28,26 +30,7 @@
 # component), which the test suite's T-tests guard. The run writes `result.toml` and `manifest.toml` to
 # `scripts/runs/enzyme-<stamp>/`.
 
-using ParticleMeshCore, ParticleMeshElectromagnetic, KernelAbstractions, ForwardDiff, Enzyme
-# PM_ENZYME_PATCH: spike-only patches (`spike/active_args.jl`, `spike/unroll.jl`), a `;`-separated list
-foreach(f -> isempty(f) || include(abspath(f)), split(get(ENV, "PM_ENZYME_PATCH", ""), ';'))
-# PM_BACKEND=cuda runs the state on the GPU (CUDACore of the test environment)
-const ON_GPU = get(ENV, "PM_BACKEND", "cpu") == "cuda"
-if ON_GPU
-    using CUDACore
-    CUDACore.allowscalar(false)
-    # PM_CUDA_HEAP=<bytes>: Enzyme's dynamic tapes live on the device heap (8 MB by default) from the
-    # augmented forward to the reverse kernels, so more than about one step needs a larger heap (Enzyme.jl#2324)
-    haskey(ENV, "PM_CUDA_HEAP") && CUDACore.limit!(CUDACore.CU_LIMIT_MALLOC_HEAP_SIZE, parse(Int, ENV["PM_CUDA_HEAP"]))
-end
-backend() = ON_GPU ? CUDACore.CUDABackend() : CPU()
-using ParticleMeshCore: Reference, Fast
-using Printf, TOML, Dates
-using SHA: sha256
-
-const REPO = normpath(joinpath(@__DIR__, "..", ".."))
-const CASES = joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "test", "em2d_cases.jl")
-include(CASES)    # plasma_step_2d, the WP-023 case
+include(joinpath(@__DIR__, "common.jl"))
 
 mode_name = get(ARGS, 1, "fast")
 nsteps = parse(Int, get(ARGS, 2, "1"))
@@ -58,81 +41,15 @@ wgs = length(ARGS) >= 6 ? parse(Int, ARGS[6]) : nothing
 mode = Dict("fast" => Fast(), "reference" => Reference())[mode_name]
 α0 = T(1) / 10
 
-function problem(::Type{S}, α) where {S}
-    prob = plasma_step_2d(S; amplitude = α, nsteps = max(nsteps, 1), seed)
-    nspecies == 1 || return prob
-    return EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species[1:1], prob.seed, prob.kmode)
-end
-# A Dual has no atomics, so its state runs Reference() (`effective_mode`) and `initialize!` sorts
-# its particles by cell; a Float state in Fast() mode is not sorted. The two sides of the chain
-# rule pair arrays slot by slot, so the Float state is sorted the same way here: otherwise slot i
-# holds another particle on each side (the "primal gap" below shows it).
-function initialized(prob)
-    st = EMState(prob, EMNumerics(; mode, current = Esirkepov(), workgroupsize = wgs); backend = backend())
-    initialize!(st, prob)
-    if !ParticleMeshElectromagnetic.sorts(st, st.species[1])
-        for (s, ws) in zip(ParticleMeshElectromagnetic.deposited_species(st), ParticleMeshElectromagnetic.deposited_workspaces(st))
-            sort_by_cell!(s, st.grid, ws; workgroupsize = wgs)
-        end
-    end
-    return st
-end
-energy(st) = sum(a -> sum(abs2, a), (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz))
-# The reverse pass differentiates `steps_density!`: the steps, then the energy density per node
-# into `E2`, returning nothing. A reduction to a scalar inside it would synchronize the GPU
-# stream, which Enzyme cannot differentiate, so the adjoint of E2 is seeded with ones instead and
-# the gradient is that of f = sum(E2).
-@kernel function energy_density_kernel!(E2, @Const(Ex), @Const(Ey), @Const(Ez), @Const(Bx), @Const(By), @Const(Bz))
-    i = @index(Global, Linear)
-    @inbounds E2[i] = Ex[i] * Ex[i] + Ey[i] * Ey[i] + Ez[i] * Ez[i] + Bx[i] * Bx[i] + By[i] * By[i] + Bz[i] * Bz[i]
-end
-function steps_density!(E2, st, p, k)
-    for i in 1:k
-        step!(st, p, i; observer = nothing)
-    end
-    f = st.fields
-    energy_density_kernel!(get_backend(E2))(E2, f.Ex, f.Ey, f.Ez, f.Bx, f.By, f.Bz; ndrange = length(E2))
-    return nothing
-end
-function reverse_gradient(st, p, k)
-    @assert allequal(map(size, (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz)))
-    E2 = similar(st.fields.Ex); fill!(E2, 0)
-    dE2 = similar(E2); fill!(dE2, 1)
-    dst = Enzyme.make_zero(st)
-    Enzyme.autodiff(set_runtime_activity(Reverse), steps_density!, Const, Duplicated(E2, dE2), Duplicated(st, dst), Const(p), Const(k))
-    KernelAbstractions.synchronize(get_backend(E2))
-    return dst
-end
-function run_energy!(st, p, k)
-    for i in 1:k
-        step!(st, p, i; observer = nothing)
-    end
-    return energy(st)
-end
-
-# every floating-point array of a state, by its path
-leaves!(out, path, x::AbstractArray{<:Union{AbstractFloat,ForwardDiff.Dual}}) = (any(y -> y === x, values(out)) || (out[path] = x); out)
-leaves!(out, path, x::AbstractArray) = out
-leaves!(out, path, x::Union{Tuple,NamedTuple}) = (foreach(k -> leaves!(out, "$path.$k", x[k]), keys(x)); out)
-function leaves!(out, path, x)
-    isstructtype(typeof(x)) || return out
-    for f in fieldnames(typeof(x))
-        isdefined(x, f) && leaves!(out, "$path.$f", getfield(x, f))
-    end
-    return out
-end
-# Each array once, by identity: workspace temporaries alias other arrays of the state, and counting
-# an array under two paths would count its share of ⟨∇f, v⟩ twice (paths are visited in field
-# order, so the same path wins in a state, its Dual twin and its shadow).
-leaves(x) = leaves!(Dict{String,Any}(), "st", x)
-
-prob = problem(T, α0)
+case(S, α) = problem(S, α; nsteps, nspecies, seed)
+initialized(prob) = initialized(prob, mode; wgs)
+prob = case(T, α0)
 p = params(prob)
 st0 = initialized(prob)
 
 # forward mode
 D = ForwardDiff.Dual{:α}(α0, one(T))
-probd = problem(typeof(D), D)
+probd = case(typeof(D), D)
 std = initialized(probd)
 Ld, L = leaves(std), leaves(st0)
 common = sort!(collect(intersect(keys(Ld), keys(L))))
@@ -184,7 +101,6 @@ tol = 64 * eps(T) * max(nsteps, 1) * max(cancel, 1)
 verdict = rel <= tol && relv <= tol ? "pass" : "FAIL"
 
 # timings once compiled: the primal, one reverse pass, one forward pass
-sync() = KernelAbstractions.synchronize(backend())
 st1 = deepcopy(st0); t_primal = @elapsed (f0 = run_energy!(st1, p, nsteps); sync())
 st1 = deepcopy(st0); t_primal = @elapsed (run_energy!(st1, p, nsteps); sync())
 st2 = deepcopy(st0)
@@ -223,7 +139,7 @@ open(io -> TOML.print(io, Dict(
 commit = try readchomp(`git -C $REPO rev-parse HEAD`) catch; "unknown" end
 dirty = try !isempty(readchomp(`git -C $REPO status --porcelain --untracked-files=no`)) catch; missing end
 hash(f) = bytes2hex(open(sha256, f))
-inputs = [@__FILE__, CASES, joinpath(@__DIR__, "setup.jl"), Base.active_project(), joinpath(REPO, "Manifest.toml")]
+inputs = [@__FILE__, joinpath(@__DIR__, "common.jl"), CASES, Base.active_project(), joinpath(REPO, "Manifest.toml")]
 step2d = joinpath(pkgdir(ParticleMeshElectromagnetic), "src", "step2d.jl")
 open(io -> TOML.print(io, Dict(
     "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),

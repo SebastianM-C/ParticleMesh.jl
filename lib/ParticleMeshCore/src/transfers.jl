@@ -186,18 +186,23 @@ end
     gather_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape, stagger::NTuple{N}, g)
 
 The device-level gather on N axes: Σ over the `(P+1)^N` stencil, axis 1 fastest, of the
-tensor-product weight times the field (guards filled).
+tensor-product weight times the field (guards filled), added left to right from zero.
+
+The `(P+1)^N` terms are written out with `ntuple`, not left to a loop: a reverse-mode AD of the
+kernel (Enzyme) then keeps what each term needs in its fixed-size tape, where for a loop it
+allocates device memory per work item and step (WP-050). The sum is the same bits as the loop's.
 """
 @inline function gather_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape::Shape{P}, stagger::NTuple{N,Stagger},
                            g::Int32) where {N,T,P}
     fw = shape_weights(shape, stagger, δ)
-    acc = zero(T)
-    @inbounds for K in CartesianIndices(ntuple(_ -> Base.OneTo(P + 1), Val(N)))
-        k = Tuple(K)
+    stencil = CartesianIndices(ntuple(_ -> Base.OneTo(P + 1), Val(N)))
+    terms = ntuple(Val((P + 1)^N)) do L
+        @inline
+        k = Tuple(stencil[L])
         idx = ntuple(d -> c[d] + fw[d][1] + g + Int32(k[d] - 1), Val(N))
-        acc += tensor_weight(fw, k) * a[idx...]
+        @inbounds tensor_weight(fw, k) * a[idx...]
     end
-    return acc
+    return foldl(+, terms; init = zero(T))
 end
 
 @kernel function gather_nd_kernel!(out, @Const(a), s, shape, stagger::NTuple{N,Stagger}, g::Int32) where {N}
