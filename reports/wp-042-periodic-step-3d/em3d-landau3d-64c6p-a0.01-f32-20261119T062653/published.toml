@@ -1,0 +1,62 @@
+branch = "runs/wp042-landau3d"
+commit = "309e4cd2d7e0024e5ba0dfb6cd95eb15ace7d5a1"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/landau3d.json"
+bytes = 129511
+sha256 = "bbae1a049a1c8c78b1b9fcda3c277c9eaed54ccec26f2d3616c35a7d00ecb9bb"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/landau3d.png"
+bytes = 280169
+sha256 = "8845e9dc7ce9445ed83841c45dbee9e59832a6611572b19815faa4b5c74ff176"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/manifest.toml"
+bytes = 7280
+sha256 = "984f24b421b3600710eacd66b560e676eb0e4cf02a0915f605fad72e4a8a30ab"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/observables.json"
+bytes = 4277
+sha256 = "79ca080d43389ea4d652498e774cd1135d5d62d0fd2fd402c4c0c457f080bb24"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20261031/series.json"
+bytes = 325672
+sha256 = "c2a5f96b3ecf027d8677e03d4ebdc5549d312e0d829d36031bd6955f53d47ea0"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20262031/series.json"
+bytes = 325205
+sha256 = "568fddce39cf7777bc63f09a0dbb3e392f02708636f1b14e8932ec7edc09329b"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20263031/series.json"
+bytes = 325936
+sha256 = "a79b317df1e65ec0a3157b85fc694e3bf29c797f88651bda467fec744754c810"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20264031/series.json"
+bytes = 325470
+sha256 = "6a6cd591c18917f75a2640d687357ece79e3f8f9e5177430d17630ddfee31595"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20265031/series.json"
+bytes = 325404
+sha256 = "78365f022307c81abe57eb826206b6eb868e26ae346d5b0d1342c6f4a6e0e6bc"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20266031/series.json"
+bytes = 325478
+sha256 = "d5f4ac718bc01b0638e634a04a500a3dd78d29cc2ae304610c3911591b4b1bed"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20267031/series.json"
+bytes = 325002
+sha256 = "988ea87cbd3caf5217c832ece6baf9a9865e2922bbcb001f3ce11dd577c510c2"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-64c6p-a0.01-f32-20261119T062653/seed-20268031/series.json"
+bytes = 325808
+sha256 = "cd4ab98d11e689d5b1d0f95966ff94ce68a0f428a3ccdf12a43050a7724e7cca"
