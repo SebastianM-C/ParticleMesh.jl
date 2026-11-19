@@ -9,8 +9,8 @@ cd "$(dirname "$0")/../.."
 out="scripts/runs/enzyme-gpu-$(date -u +%Y%m%dT%H%M%S)"
 mkdir -p "$out"
 J=(julia +1.13 --startup=no --project=lib/ParticleMeshElectromagnetic/test)
-export PM_BACKEND=cuda PM_ENZYME_PATCH=scripts/enzyme/spike/active_args.jl
-{ echo "# commit $(git rev-parse HEAD), started $(date -u +%FT%TZ)"; nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; } > "$out/summary.txt"
+export PM_BACKEND=cuda PM_ENZYME_PATCH="${PM_ENZYME_PATCH:-scripts/enzyme/spike/active_args.jl}"
+{ echo "# commit $(git rev-parse HEAD), patches $PM_ENZYME_PATCH, started $(date -u +%FT%TZ)"; nvidia-smi --query-gpu=name,driver_version --format=csv,noheader; } > "$out/summary.txt"
 run() {  # run <log name> <command...>: once at the default heap, again at 1 GiB if that fails
     local name="$1"; shift
     echo "== $(date -u +%H:%M:%S) $name: $*" >> "$out/summary.txt"
