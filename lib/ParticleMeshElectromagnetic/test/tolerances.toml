@@ -929,6 +929,31 @@ C = 8
 measured = { stencil = 2.32, gather = 1.69 }
 status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU)"
 
+# WP-070, the Galerkin gather.
+
+["T-991"]
+quantity = "⟨J_d, E⟩/ΣJ_d of the charge-conserving current of one particle moved symmetrically along axis d (2/32 of a cell, no knot crossed) against E_d read with the Galerkin weights at the move's centre, random E, N = 1 to 3, orders 1 and 2"
+scale = "eps(T) (E of size 1)"
+C = 64
+measured = { Float64 = 0.0 }
+status = "proposed"
+
+["T-992"]
+quantity = "the change of the Galerkin-gathered B over the Yee half step h against −h times the curl of the Galerkin-gathered E (ForwardDiff in the position), 30 points, random E, N = 1 to 3, orders 1 and 2"
+scale = "eps(T)·max|∇×E| over the points"
+C = 64
+measured = { Float64 = 0.0 }
+status = "proposed"
+
+["T-994"]
+quantity = "with the Galerkin gather, the largest relative change of the total energy over the run, per case, T-217's measure in T-214's to T-216's configurations; momentum_cold: the largest change of a component of Σ m w u from the start to the end of the cold symmetric cases over Σ m w |u|"
+landau = 5e-7
+two-stream = 1.5e-5
+weibel = 2.5e-5
+momentum_cold = 1e-12
+measured = { landau = 2.22e-7, two-stream = 6.36e-6, weibel = 1.16e-5 }
+status = "proposed; bounds about twice the measured changes (CPU, Float64)"
+
 # WP-042: the periodic 3D3V step with the charge-conserving current (T-950 to T-955)
 ["T-950"]
 quantity = "after every 3D step with the Esirkepov current, two species crossing cells and the seams of every axis, 20 steps, both modes, orders 1 and 2; every tenth of 400 steps at order 2 (Float32, Float64); and 20 steps of a quasi-neutral electron–ion plasma whose net charge is 10⁻³ of each species' (neutral_plasma_3d, Float32, Float64): Gauss's law |Σ_d D⁻_d E_d − (ρ − mean ρ)| (C); |Σ_d D⁺_d B_d| (C_divB)"

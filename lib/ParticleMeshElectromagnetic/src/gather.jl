@@ -38,6 +38,82 @@ struct CompensatedGather
     end
 end
 
+# The Galerkin gather (WP-070). The charge-conserving current of a particle of shape order p moving
+# along axis d has weights one order lower along d, at the faces half a cell from ρ's nodes: the
+# derivative of the order-p B-spline is the difference of two order-(p − 1) splines half a cell
+# apart. A gather with those weights for E_d (order p − 1 along d, at its `Center()` stagger there,
+# order p along the other axes) is the transpose of the current deposition for a vanishing move,
+# so the work the field does on the particles is the work Σ J·E booked on the grid: the energy of
+# fields and particles is kept to the time integrator's error. B does no work; its components are
+# read one order lower along their two `Center()` axes too, which makes the gathered B follow
+# Faraday's law with the gathered E: the discrete curl of the grid's E, read with B's weights, is
+# the curl of E read with E's weights (B. B. Godfrey and J.-L. Vay, J. Comput. Phys. 248, 33
+# (2013), arXiv:1211.0232, abstract read; the rule is WarpX's `interpolation.galerkin_scheme`,
+# its default on staggered grids with Esirkepov deposition, parameter documentation read). The
+# rule is one line: along every axis on which a component sits at `Center()`, one order lower.
+
+"""
+    GalerkinGather(; compensate = nothing)
+
+The `gather` of an [`EMNumerics`](@ref) that reads every field component one shape order lower
+along each axis on which the component sits at `Center()` in [`field_layout`](@ref) (WP-070):
+with the quadratic shape, Ex with the linear shape along x and the quadratic along y and z, Bz
+with the linear shape along x and y, and so on; with the linear shape, the lower order is the
+nearest grid point (`Shape{0}`). E's weights are then those of the charge-conserving current for
+a vanishing move, so the gather is the current deposition's transpose and the total energy of
+fields and particles is kept to the time integrator's error; B's weights make the gathered B
+follow Faraday's law with the gathered E. Momentum is not kept (a lone particle pushes itself).
+The mesh solve, the current and the diagnostics are unchanged.
+
+`compensate` is `nothing` or a [`CompensatedGather`](@ref): the particles then read the sharpened
+copy of E and B, each component's β for the order it is read with along axis 1
+([`sharpening_beta`](@ref) of the lower order where the component sits at `Center()` along x),
+so that the mean transfer at the compensation's wavenumber is one for every component.
+"""
+struct GalerkinGather{C<:Union{Nothing,CompensatedGather}}
+    compensate::C
+end
+function GalerkinGather(; compensate = nothing)
+    compensate === nothing || compensate isa CompensatedGather ||
+        throw(ArgumentError("GalerkinGather(; compensate = $compensate): nothing or a CompensatedGather(...)"))
+    return GalerkinGather(compensate)
+end
+
+"""
+    GalerkinRead{P}()
+
+What the particles' gather kernels receive as their shape with a [`GalerkinGather`](@ref) of the
+shape order `P`: [`component_shape`](@ref) turns it into one shape per axis for each component's
+stagger. Without it they receive the numerics' `Shape` itself, and every component is read with it.
+"""
+struct GalerkinRead{P} end
+
+"""
+    read_shape(gather, shape)
+
+The shape argument of the particles' gathers (the push, the initial kick, the ionization): the
+`shape` itself without a Galerkin gather, [`GalerkinRead`](@ref) of its order with one.
+"""
+read_shape(::Union{Nothing,CompensatedGather}, shape::Shape) = shape
+read_shape(::GalerkinGather, ::Shape{P}) where {P} = GalerkinRead{P}()
+read_shape(numerics) = read_shape(numerics.gather, numerics.shape)
+
+"""
+    component_shape(read, stagger)
+
+The shape a component on `stagger` is read with: `read` itself when it is a `Shape`; for a
+[`GalerkinRead`](@ref)`{P}`, `Shape{P−1}()` on `Center()` and `Shape{P}()` on `Node()`, per axis
+for a tuple of staggers.
+"""
+@inline component_shape(s::Shape, stagger) = s
+@inline component_shape(::GalerkinRead{P}, ::Center) where {P} = Shape{P - 1}()
+@inline component_shape(::GalerkinRead{P}, ::Node) where {P} = Shape{P}()
+@inline component_shape(r::GalerkinRead, st::Tuple) = map(s -> component_shape(r, s), st)
+
+# The shape a component is read with along axis 1, where the compensation sharpens.
+axis1_shape(read, st::Stagger) = component_shape(read, st)
+axis1_shape(read, st::Tuple) = component_shape(read, st[1])
+
 """
     sharpening_beta(gather::CompensatedGather, shape, dx) -> β
 
@@ -117,6 +193,7 @@ function sharpen_x!(out, a, β, grid::PeriodicGrid; workgroupsize = nothing)
 end
 
 # The scratch of the copy: nothing without compensation, E and B arrays like the state's otherwise.
+gather_scratch(g::GalerkinGather, fields::NamedTuple) = gather_scratch(g.compensate, fields)
 gather_scratch(::Nothing, fields::NamedTuple) = nothing
 gather_scratch(::CompensatedGather, fields::NamedTuple) =
     (Ex = similar(fields.Ex), Ey = similar(fields.Ey), Ez = similar(fields.Ez), Bx = similar(fields.Bx), By = similar(fields.By),
@@ -125,6 +202,7 @@ gather_scratch(::CompensatedGather, fields::NamedTuple) =
 # A state's check that its gather's wavenumber is resolved (β is finite and the stencil sharpens).
 check_gather(::Nothing, shape, grid) = nothing
 check_gather(c::CompensatedGather, shape, grid) = (sharpening_beta(c, shape, grid.dx[1]); nothing)
+check_gather(g::GalerkinGather, shape, grid) = check_gather(g.compensate, shape, grid)
 
 """
     particle_fields(state) -> NamedTuple
@@ -140,18 +218,22 @@ particle_fields(copy::NamedTuple, fields::NamedTuple) = merge(fields, copy)
 """
     sharpen_gather!(state) -> state
 
-Write the sharpened copy of the state's E and B (guards filled) for its [`CompensatedGather`](@ref):
-each component through [`sharpen_x!`](@ref), then, with a moving window, its x-guards set to
-zero as the grid's are. Nothing without compensation.
+Write the sharpened copy of the state's E and B (guards filled) for its [`CompensatedGather`](@ref)
+(alone or in a [`GalerkinGather`](@ref)): each component through [`sharpen_x!`](@ref) with the β
+of the shape it is read with along axis 1, then, with a moving window, its x-guards set to zero
+as the grid's are. Nothing without compensation.
 """
 sharpen_gather!(st::EMState) = (sharpen_gather!(st.numerics.gather, st); st)
 sharpen_gather!(::Nothing, st::EMState) = nothing
-function sharpen_gather!(c::CompensatedGather, st::EMState)
+sharpen_gather!(g::GalerkinGather, st::EMState) = sharpen_gather!(g.compensate, st)
+function sharpen_gather!(c::CompensatedGather, st::EMState{N}) where {N}
     (; numerics, grid, fields) = st
     wgs = numerics.workgroupsize
-    β = sharpening_beta(c, numerics.shape, grid.dx[1])
+    read = read_shape(numerics)
+    L = field_layout(Val(N))
     window = window_frame(st)
     for name in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
+        β = sharpening_beta(c, axis1_shape(read, L[name]), grid.dx[1])
         out = st.sharpened[name]
         sharpen_x!(out, fields[name], β, grid; workgroupsize = wgs)
         zero_x_edges!(window, out; workgroupsize = wgs)

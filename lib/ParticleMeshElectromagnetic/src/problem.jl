@@ -286,7 +286,9 @@ current changes at roundoff (another order of summation), deterministic either w
 window's x axis, which is not periodic, the bin is the cell. The ionization's atoms keep cells.
 `gather` is what the particles read: `nothing`, the grid's E and B, or a [`CompensatedGather`](@ref),
 a copy sharpened along axis 1 that undoes the shape's mean loss of field at a wavenumber, the
-laser's by default (WP-067); the mesh solve, the current and the diagnostics read the grid's.
+laser's by default (WP-067), or a [`GalerkinGather`](@ref), each component read one order lower
+along its staggered axes, the transpose of the current deposition, optionally with a compensation
+(WP-070); the mesh solve, the current and the diagnostics read the grid's.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K,GA}
     shape::S
@@ -309,8 +311,8 @@ function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), s
                     headroom::Real = 1 / 4, resort::Bool = false, node_bins::Bool = true,
                     gather = nothing)
     headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
-    gather === nothing || gather isa CompensatedGather ||
-        throw(ArgumentError("gather = $gather: a state reads the grid's fields (nothing) or a CompensatedGather(...)"))
+    gather === nothing || gather isa CompensatedGather || gather isa GalerkinGather ||
+        throw(ArgumentError("gather = $gather: a state reads the grid's fields (nothing), a CompensatedGather(...) or a GalerkinGather(...)"))
     return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort, node_bins,
                       gather)
 end
@@ -600,7 +602,7 @@ function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude
 end
 
 """
-    numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing) -> EMNumerics
+    numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing, gather = nothing) -> EMNumerics
 
 The numerics a case file asks for (either schema): its `shape_order` (1 or 2); the deposition
 must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filter_passes`
@@ -609,10 +611,10 @@ anything else is an `ArgumentError`. With an open boundary in `grid.boundaries`,
 `[numerics.absorbing_layer]` gives the layer's `cells`, `strength` and optional `order`
 ([`AbsorbingLayer`](@ref), WP-027), or the table `[numerics.pml]` the PML's `cells` and optional
 `sigma_max`, `order`, `kappa_max`, `kappa_order`, `alpha_max` and `alpha_order` ([`PML`](@ref),
-WP-034), exactly one of the two; a periodic case must have neither. The mode, the pusher
-and the launch shape are not in the case.
+WP-034), exactly one of the two; a periodic case must have neither. The mode, the pusher,
+the launch shape and the particles' `gather` are not in the case.
 """
-function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
+function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing, gather = nothing)
     num = case["numerics"]
     getnum(num, "current_deposition", "esirkepov") == "esirkepov" ||
         throw(ArgumentError("current_deposition must be \"esirkepov\""))
@@ -643,5 +645,5 @@ function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Bor
         has_pml && throw(ArgumentError("[numerics.pml] needs an open boundary"))
     end
     return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes),
-                      absorber)
+                      absorber, gather)
 end

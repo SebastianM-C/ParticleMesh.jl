@@ -79,6 +79,7 @@ export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPla
 export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export CompensatedGather, sharpening_beta, gather_transfer, sharpen_x!, particle_fields, sharpen_gather!
+export GalerkinGather, GalerkinRead, read_shape, component_shape
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
 export IonizationLevel, ionization_rate, ADKLevel, adk_rate, TongLinLevel, DopantSection, FieldIonization, IonizationParams

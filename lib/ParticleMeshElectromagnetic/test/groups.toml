@@ -18,7 +18,9 @@ groups = [
     # the gradient, the harness and the state layer built on it, and the quality checks
     ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "recorder.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
     # the field ionization, which reuses no other file, and its levels' rate laws
-    ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "gather.jl"],
+    ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "gather.jl", "galerkin.jl"],
     # the periodic 3D step, which reuses no other file
     ["em3d_step.jl"],
+    # the 1D cases with the Galerkin gather, after the 1D cases with today's gather (their runs)
+    ["physics.jl", "galerkin_physics.jl"],
 ]

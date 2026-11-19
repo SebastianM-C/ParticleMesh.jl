@@ -9,13 +9,14 @@ using ParticleMeshElectromagnetic: fields_at, kick_kernel!, FIELD_LAYOUT
 const GATHER_NAMES = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
 
 """
-The mean of a B-spline gather of order `p` over `M` evenly spaced offsets per cell (M even), of a
+The mean of a B-spline gather of order `p` (0, 1 or 2) over `M` evenly spaced offsets per cell (M even), of a
 sampled mode of wavenumber `k` (x = kΔx/2): the shape's transfer at k and at its aliases
 k + 2πlM/Δx, which those offsets cannot tell from k, Σ_l (sin x/(x + πlM))^(p+1), in closed form
 with Σ_l (z + πl)^−2 = csc²z and Σ_l (z + πl)^−3 = csc²z·cot z (z = x/M). In BigFloat.
 """
 function gather_lattice_mean(p, x, M)
     x, z = big(x), big(x) / M
+    p == 0 && return sin(x) / M / sin(z)      # the nearest grid point (WP-070): |(1/M)Σ_m e^(2ix·m/M)|
     p == 1 && return sin(x)^2 / M^2 / sin(z)^2
     p == 2 && return sin(x)^3 / M^3 * cos(z) / sin(z)^3
     error("order $p")
