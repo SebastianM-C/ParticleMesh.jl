@@ -467,3 +467,26 @@ C = 16
 measured = { "Dual{Float32,3}" = 3.13, primal = "bitwise equal to the Float32 run for both orders, every tested triple and NodeBins" }
 measured_breaker = { "Dual{Float32,3}" = 5.39 }
 status = "proposed; measured_breaker is the physics breaker's denser case (10 × 9 × 8 cells at 40 particles per cell, 28,800 particles)"
+
+["T-1000"]
+quantity = "per component d, |⟨J_d, E_d⟩ over the interior − Σ_i quantity_d(i)·o_d[i]|, J from deposit_flux! (guards folded), o from gather_flux! (E's guards filled)"
+scale = "max|E_d| · Σ_i |quantity_d(i)| · factor_d · (P + 2)^N, factor_d = Δx_d/Δt in space and 1 out of it (400 particles; N = 1 on 10 cells, N = 2 on 16 × 12, N = 3 on 8 × 7 × 6)"
+C = 1
+status = "proposed"
+
+["T-1001"]
+quantity = "max over particles of |o_x − (Δx/Δt)·Σ_j E_j·∫ S_{P-1}(X − x_face_j) dX| at N = 1, the integral in closed form on the host"
+scale = "(Δx/Δt)·max|E|·(P + 1)"
+C = 4
+status = "proposed"
+
+["T-1002"]
+quantity = "max over particles and components of |o_C/(Δ_C·Δx_C/Δt) − the energy-conserving gather at the move's midpoint| / max|E_C| (out of space: |o_C − the quadratic gather|), divided by the move ε in cells, at ε = 1e-4 and 1e-5, order 2, Float64"
+C = 1
+status = "proposed"
+
+["T-1003"]
+quantity = "at rest, N = 2, max over particles of |o_z − gather!(Ez)|"
+scale = "max|Ez|"
+C = 4
+status = "proposed"
