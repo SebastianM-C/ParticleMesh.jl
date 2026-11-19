@@ -4,6 +4,8 @@ using KernelAbstractions, Enzyme
 const KAExt = Base.get_extension(KernelAbstractions, :EnzymeExt)
 const ACTIVE_SEEN = Set{String}()
 @eval KAExt begin
+    @inline _active_zero(a::EnzymeCore.Active) = EnzymeCore.make_zero(a.val)
+    @inline _active_zero(a) = nothing
     function _drop_active(func, args)
         map(args) do a
             if a isa EnzymeCore.Active
@@ -35,7 +37,7 @@ const ACTIVE_SEEN = Set{String}()
     function EnzymeRules.reverse(config::RevConfig, func::Const{<:Kernel}, ::Type{<:EnzymeCore.Annotation}, tape, args::Vararg{Any, N};
                                  ndrange = nothing, workgroupsize = nothing) where {N}
         subtape, arg_refs, tape_type = tape
-        res = ntuple(i -> args[i] isa EnzymeCore.Active ? EnzymeCore.make_zero(args[i].val) : nothing, Val(N))
+        res = map(_active_zero, args)
         args2 = _drop_active(func, args)
         kernel = func.val
         f = kernel.f
