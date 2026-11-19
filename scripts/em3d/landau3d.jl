@@ -1,13 +1,15 @@
 # The full-size 3D Landau case of WP-042: a Langmuir wave of mode (1, 1, 1), oblique to all three
 # axes, in a periodic cube, against the relativistic linear theory of its Maxwell–Jüttner load.
 # The case is T-954's (lib/ParticleMeshElectromagnetic/test/em3d_step.jl, `landau_3d`) at a size
-# chosen on the command line: a cube of side 2π√3/|k| with |k| = 10 ω₀/c, v_th = 0.05 c, a 10 %
-# density perturbation, the quadratic shape, Reference mode, Δt = 0.95 of the 3D Courant limit.
+# chosen on the command line: a cube of side 2π√3/|k| with |k| = 10 ω₀/c, v_th = 0.05 c, a density
+# perturbation of `amplitude` (1 % by default, as the 2D case landau-oblique-2d; T-954's 10 % buys
+# a CI-sized run its signal but puts the wave's bounce frequency √(kE) ≈ 0.32 above γ ≈ 0.15, out
+# of the linear regime), the quadratic shape, Reference mode, Δt = 0.95 of the 3D Courant limit.
 # The observable is WP-023's `damping_rate_mode_ensemble`: the fit of |⟨k̂·Ê⟩_seeds|² at its
 # maxima after t = 3 above ten times the noise floor (scripts/crosscode/ensemble.jl), with the
 # jackknife over seeds as its error; per seed the same rule on one seed's |k̂·Ê|².
 #
-#   julia +1.13 --project=scripts scripts/em3d/landau3d.jl run cells=64 ppc=6 seeds=20261031,20262031 float=32 backend=cuda t_end=24
+#   julia +1.13 --project=scripts scripts/em3d/landau3d.jl run cells=64 ppc=6 seeds=20261031,20262031 float=32 backend=cuda t_end=24 amplitude=0.01
 #   julia +1.13 --project=scripts scripts/em3d/landau3d.jl table <run dir>...
 #
 # `run` writes scripts/runs/em3d-landau3d-<cells>c<ppc>p-f<float>-<timestamp>/: manifest.toml (F3),
@@ -32,18 +34,18 @@ end
 
 backend_label(be) = be isa CPU ? "KernelAbstractions CPU" : string(nameof(typeof(be)))
 gpu_name(be) = be isa CPU ? "none" : string(CUDACore.name(CUDACore.device()))
-const KMAG, VTH, AMPLITUDE = 10, 1 / 20, 1 / 10
+const KMAG, VTH = 10, 1 / 20
 
 "Mean and standard deviation of the finite entries (a seed with fewer than three maxima above its floor has no rate)."
 fmean(x) = (y = filter(isfinite, x); isempty(y) ? NaN : mean(y))
 fstd(x) = (y = filter(isfinite, x); length(y) < 2 ? NaN : std(y))
 
 "T-954's problem at `cells`³ cells, `ppc`³ electrons per cell and t_end, element type T."
-function landau3d_problem(::Type{T}; cells, ppc, seed, t_end) where {T}
+function landau3d_problem(::Type{T}; cells, ppc, seed, t_end, amplitude) where {T}
     L = T(2π * sqrt(3) / KMAG)
     dt = T(95 // 100) * inv(sqrt(3 * (cells / L)^2))
     nsteps = round(Int, t_end / dt)
-    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), T(AMPLITUDE), (1, 1, 1), (ppc, ppc, ppc),
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), T(amplitude), (1, 1, 1), (ppc, ppc, ppc),
                               (zero(T), zero(T), zero(T)), (T(VTH), T(VTH), T(VTH)), 1)
     return EMProblem("landau-oblique-3d", (L, L, L), (cells, cells, cells), dt, nsteps, (e,), seed, (1, 1, 1))
 end
@@ -76,8 +78,8 @@ function gauss_3d(st)
 end
 
 "One seed: run it, write seed-<seed>/series.json, return its mode coefficient and record."
-function run_seed(dir, ::Type{T}, be; cells, ppc, seed, t_end) where {T}
-    prob = landau3d_problem(T; cells, ppc, seed, t_end)
+function run_seed(dir, ::Type{T}, be; cells, ppc, seed, t_end, amplitude) where {T}
+    prob = landau3d_problem(T; cells, ppc, seed, t_end, amplitude)
     st = EMState(prob, EMNumerics(; shape = Quadratic, mode = Reference()); backend = be)
     initialize!(st, prob)
     p = params(prob)
@@ -111,19 +113,19 @@ function run_seed(dir, ::Type{T}, be; cells, ppc, seed, t_end) where {T}
     return ts, El, rec, prob
 end
 
-function landau3d_run(be; cells, ppc, seeds, float, t_end)
+function landau3d_run(be; cells, ppc, seeds, float, t_end, amplitude)
     T = float == 32 ? Float32 : float == 64 ? Float64 : error("float = 32 or 64")
     gpu = gpu_name(be)
     params_ = Dict{String,Any}("cells" => cells, "ppc" => ppc, "seeds" => seeds, "element_type" => string(T), "t_end" => t_end,
-        "k" => KMAG, "vth" => VTH, "amplitude" => AMPLITUDE, "mode" => "Reference", "shape" => "Quadratic", "kmode" => [1, 1, 1],
+        "k" => KMAG, "vth" => VTH, "amplitude" => amplitude, "mode" => "Reference", "shape" => "Quadratic", "kmode" => [1, 1, 1],
         "fit_start" => FIT_START, "floor_factor" => FLOOR_FACTOR)
-    dir = run_dir("landau3d-$(cells)c$(ppc)p-f$float", @__FILE__, nothing; params = params_, work_package = "WP-042",
+    dir = run_dir("landau3d-$(cells)c$(ppc)p-a$(amplitude)-f$float", @__FILE__, nothing; params = params_, work_package = "WP-042",
                   backend = backend_label(be), extra = Dict{String,Any}("gpu" => gpu), prefix = "em3d",
                   extra_inputs = [joinpath(REPO, "scripts", "crosscode", "ensemble.jl")])
     println("# run directory: $(relpath(dir, REPO))")
     coeffs, recs, ts, prob = Vector{ComplexF64}[], Dict{String,Any}[], nothing, nothing
     for s in seeds
-        ts, El, rec, prob = run_seed(dir, T, be; cells, ppc, seed = s, t_end)
+        ts, El, rec, prob = run_seed(dir, T, be; cells, ppc, seed = s, t_end, amplitude)
         push!(coeffs, El)
         push!(recs, rec)
         GC.gc()
@@ -134,7 +136,7 @@ function landau3d_run(be; cells, ppc, seeds, float, t_end)
     L = 2π * sqrt(3) / KMAG
     out = Dict{String,Any}(
         "theory" => Dict("gamma" => th.gamma, "omega" => th.omega, "source" => "landau_rate_relativistic, Maxwell–Jüttner, |k| = $KMAG, v_th = $VTH"),
-        "size" => Dict("cells" => cells, "ppc" => ppc^3, "particles" => recs[1]["particles"], "steps" => prob.nsteps,
+        "size" => Dict("amplitude" => amplitude, "cells" => cells, "ppc" => ppc^3, "particles" => recs[1]["particles"], "steps" => prob.nsteps,
                        "dt" => Float64(prob.dt), "dx_over_debye" => L / cells / VTH, "element_type" => string(T)),
         "ensemble" => Dict("gamma" => ens.gamma, "gamma_rel" => (ens.gamma - th.gamma) / th.gamma, "jackknife" => ens.jackknife.stderr,
                            "jackknife_rel" => ens.jackknife.stderr / th.gamma, "omega" => ens.omega,
@@ -188,7 +190,7 @@ function landau3d_table(dirs)
         s, e, ss, ps = o["size"], o["ensemble"], o["single_seed"], o["per_seed"]
         f(x; d = 4) = string(round(x; sigdigits = d))
         i(x) = Int(x)
-        println("| $(i(s["cells"]))³, $(i(s["ppc"])) per cell, $(length(ps)) seeds, $(s["element_type"]) | $(i(s["particles"])) | $(f(s["dx_over_debye"]; d = 3)) | $(i(s["steps"])) | ",
+        println("| $(i(s["cells"]))³, $(i(s["ppc"])) per cell, $(length(ps)) seeds, $(s["element_type"]), δn/n $(get(s, "amplitude", 0.1)) | $(i(s["particles"])) | $(f(s["dx_over_debye"]; d = 3)) | $(i(s["steps"])) | ",
                 "$(f(e["gamma"])) ± $(f(e["jackknife"]; d = 2)) | $(f(100 * e["gamma_rel"]; d = 3)) % ± $(f(100 * e["jackknife_rel"]; d = 2)) % | ",
                 "$(f(100 * e["omega_rel"]; d = 2)) % | $(i(e["maxima"])) | $(f(ss["mean"])) ± $(f(ss["std"]; d = 2)) ($(i(ss["fitted"])) fitted) | ",
                 "$(f(maximum(p -> p["gauss_end"], ps); d = 2)), $(f(maximum(p -> p["divB_end"], ps); d = 2)) | ",
@@ -206,7 +208,7 @@ function main(args)
         be = backend_named(get(kv, "backend", "cuda"))
         Base.invokelatest(landau3d_run, be; cells = parse(Int, kv["cells"]), ppc = parse(Int, kv["ppc"]),
                           seeds = parse.(Int, split(kv["seeds"], ",")), float = parse(Int, get(kv, "float", "32")),
-                          t_end = parse(Float64, get(kv, "t_end", "24")))
+                          t_end = parse(Float64, get(kv, "t_end", "24")), amplitude = parse(Float64, get(kv, "amplitude", "0.01")))
     elseif cmd == "table"
         landau3d_table(args[2:end])
     else
