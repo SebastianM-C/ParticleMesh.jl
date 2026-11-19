@@ -60,23 +60,46 @@ function push_part!(st, p)
                                                          Int32.(st.grid.n); ndrange = capacity(s))
     return nothing
 end
+@kernel function gather_probe_kernel!(out, s, f, shape, g::Int32)
+    i = @index(Global, Linear)
+    @inbounds if s.status[i] == 0x01
+        E, B = PME.fields_at(f, ParticleMeshCore.particle_cell(s, i, Val(2)), ParticleMeshCore.particle_offset(s, i, Val(2)), shape, g)
+        out[i] = E[1] * E[1] + E[2] + E[3] + B[1] + B[2] * B[3]
+    end
+end
+function gather_part!(st, p)
+    s = st.species[1]
+    gather_probe_kernel!(get_backend(s))(st.ws[1].tmp_T, s, PME.particle_fields(st), st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s))
+    return nothing
+end
 current_part!(st, p) = (PME.current!(st.numerics.current, st); nothing)
 solve_part!(st, p) = (PME.solve_fields!(st.numerics.solver, st.fields, st.grid, st.dt, st.modifiers, p, 1); nothing)
 kinetic_part!(st, p) = (PME.kinetic!(st); nothing)
 push_current_part!(st, p) = (push_part!(st, p); current_part!(st, p); nothing)
 step_part!(st, p) = (step!(st, p, 1; observer = nothing); nothing)
 step2_part!(st, p) = (step!(st, p, 1; observer = nothing); step!(st, p, 2; observer = nothing); nothing)
-const PARTS = Dict("push" => push_part!, "current" => current_part!, "solve" => solve_part!, "kinetic" => kinetic_part!,
+const PARTS = Dict("gather" => gather_part!, "push" => push_part!, "current" => current_part!, "solve" => solve_part!, "kinetic" => kinetic_part!,
                    "push+current" => push_current_part!, "step" => step_part!, "two steps" => step2_part!)
 
+# PM_ONE_PARTICLE=1: only the first particle alive, so no two work items touch the same node
+const KEEP = parse(Int, get(ENV, "PM_KEEP", get(ENV, "PM_ONE_PARTICLE", "0") == "1" ? "1" : "0"))   # PM_KEEP=n: the first n particles alive
+const one_particle = KEEP > 0
+function keep_one!(st)
+    s = st.species[1]
+    st_ = Array(s.status); st_[(KEEP + 1):end] .= 0x00
+    copyto!(s.status, st_)
+    return st
+end
 function check(name)
     g! = PARTS[name]
     rng = Xoshiro(11)
     st0 = initialized(PROB)
+    one_particle && keep_one!(st0)
     L0 = leaves(st0)
     keys0 = sort!(collect(keys(L0)))
     # forward: a Dual state with random tangents V on every array
     std = initialized(DUALPROB)
+    one_particle && keep_one!(std)
     Ld = leaves(std)
     common = [k for k in keys0 if haskey(Ld, k)]
     V = Dict(k => dev(randn(rng, T, size(L0[k]))) for k in common)
@@ -113,7 +136,7 @@ function check(name)
         # isolate the inputs: forward pass with a tangent on one input array at a time
         for k in common
             all(iszero, G[k]) && continue
-            stk = initialized(DUALPROB); Lk = leaves(stk)
+            stk = initialized(DUALPROB); one_particle && keep_one!(stk); Lk = leaves(stk)
             for j in common
                 Lk[j] .= ForwardDiff.Dual{:v}.(L0[j], j == k ? V[j] : zero(V[j]))
             end
@@ -126,12 +149,12 @@ function check(name)
     flush(stdout)
 end
 
-println("pieces: backend ", BE, ", mode ", MODE, ", patches ", get(ENV, "PM_ENZYME_PATCH", ""))
+println("pieces: backend ", BE, ", mode ", MODE, ", one particle ", one_particle, ", patches ", get(ENV, "PM_ENZYME_PATCH", ""))
 for name in (isempty(ARGS) ? ["solve", "push", "kinetic", "current", "push+current", "step", "two steps"] : ARGS)
     try
         check(name)
     catch e
-        println("[$name] FAILED: ", replace(first(sprint(showerror, e), 3000), "\n" => " | "))
+        println("[$name] FAILED: ", replace(first(sprint(showerror, e), 12000), "\n" => " | "))
         flush(stdout)
     end
 end
