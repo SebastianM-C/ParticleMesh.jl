@@ -1,0 +1,6 @@
+timeout = 21600
+category = "validation"
+outputs = ["scripts/runs/wp070-gathers"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/trapped2d.jl", "campaign", "gathers", "16x1,24x2,32x2,48x3,64x4", "scripts/runs/wp070-gathers", "jobs=4", "threads=4"]
