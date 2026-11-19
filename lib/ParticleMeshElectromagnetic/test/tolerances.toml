@@ -650,11 +650,12 @@ measured = { Float64 = 0.00331 }
 status = "proposed"
 
 ["T-575"]
-quantity = "random fields in back_lwfa's empty window with PIConGPU's 8-cell back-edge PML, 4000 steps, Float64: in a static window the largest field energy and the final one over those of the same run without the layer, and in a window moving from t = 0 the largest energy over its start after 450 steps; the test asks for at most 1, below 1/2 and below 1/20"
+quantity = "random fields in back_lwfa's empty window with PIConGPU's 8-cell back-edge PML, 4000 steps, Float64: in a static window the largest field energy and the final one over those of the same run without the layer, and in a window moving from t = 0 the largest energy over its start after 450 steps; the test asks for at most C.static_peak, below C.static_end and below C.moving"
 scale = "the run without the layer (static), the initial energy (moving)"
-C = { static_peak = 1, static_end = 0.5, moving = 0.05 }
+C = { static_peak = 0.95, static_end = 0.42, moving = 0.05 }
 measured = { static_peak = 0.894, static_end = 0.391, moving = 0.0305 }
-note = "fixed bounds, not a theory: T-576 pins the layer against its discrete theory, this test only that a long run stays bounded; in the static window α_max > 0 grows a uniform Bz (#357), so the test uses the default α = 0"
+measured_seeds = { static_peak = [0.904, 0.901, 0.894, 0.898, 0.896, 0.892, 0.900, 0.896], static_end = [0.390, 0.373, 0.391, 0.387, 0.396, 0.380, 0.385, 0.381], moving = [0.0147, 0.044, 0.0305, 0.0148, 0.0138, 0.0929, 0.0201, 0.0449] }
+note = "not a theory: T-576 pins the layer against its discrete theory, this test that a long run stays bounded; in the static window α_max > 0 grows a uniform Bz (#357), so the test uses the default α = 0. The test draws seed 3 and is deterministic; the static bounds are the largest of seeds 1 to 8 (measured_seeds, Xoshiro, Float64) with about 5 % above it, so that a slow growth of the static window fails (seeds 9 to 24, the PR's physics breaker: peak up to 0.911, end up to 0.397). static_end holds at 4000 steps only: the end ratio of seed 3 falls with the run, 0.445 at 1000 steps, 0.391 at 4000, 0.336 at 12000. The moving ratio spreads over seeds from 0.014 to 0.093, so its bound stays 0.05: tighter would fail on a change of the random fields alone"
 status = "proposed"
 
 ["T-576"]
@@ -746,11 +747,12 @@ measured = { "RTX 4080 SUPER, 350 steps" = 7.78e-6, "RTX 4080 SUPER, refined, 12
 status = "proposed"
 
 ["T-612"]
-quantity = "the Dual{Float32,3} log-mean-exp of the on-axis E_x past window_back_band (primal and three partials) of the WP-043 case at 600·r steps with Δx, Δy, Δt divided by r = 1, 2, 3, Reference, on CUDA: the largest ratio of the successive differences |c₃ − c₂| / |c₂ − c₁| over the four components"
-scale = "convergence with resolution (below 1 the differences shrink)"
-C = 0.5
-measured = { "RTX 4080 SUPER, Dual{Float32,3}" = 0.287, "CPU, Float64 duals" = 0.28 }
-status = "proposed; the largest ratio is the duration partial's (density 0.23, a₀ 0.19, the primal 0.19)"
+quantity = "the Dual{Float32,3} log-mean-exp of the on-axis E_x past a fixed width, the coarse case's back band (9 cells of Δx at r = 1, 9r at r), (primal and three partials) of the WP-043 case at 600·r steps with Δx, Δy, Δt divided by r = 1, 2, 3, Reference, on CUDA: the largest ratio of the successive differences |c₃ − c₂| / |c₂ − c₁| over the four components"
+scale = "convergence with resolution: an error of order p in Δx gives (2⁻ᵖ − 3⁻ᵖ)/(1 − 2⁻ᵖ), 0.333 at first order and 0.185 at second; C = 0.35 asks for about first order (p ≥ 0.9)"
+C = 0.35
+measured = { "RTX 5090, Dual{Float32,3}" = 0.287, "CPU (Intel Xeon 2.1 GHz), Dual{Float32,3}" = 0.287, "CPU (Intel Xeon 2.1 GHz), Float64 duals" = 0.287, "CPU, Dual{Float32,3}, Fast()" = 0.287 }
+measured_band_cells = { "RTX 4080 SUPER, Dual{Float32,3}" = 0.287, "CPU, Float64 duals" = 0.28, "CPU (Intel Xeon), Dual{Float32,3}" = 0.287 }
+status = "proposed; the largest ratio is the duration partial's (CPU: primal 0.223, a₀ 0.195, density 0.235); measured_band_cells are the earlier functional's, past the refined band's 9 cells at every r. The ratio depends on the width read past (the PR's physics breaker, CPU: 0.276 past twice the band, 0.393 past three times, where the density partial no longer moves one way), so C belongs to this width; the test also asks that every component move the same way from r = 1 to 2 as from 2 to 3. On the RTX 5090 every component moves one way, components 0.223 / 0.195 / 0.287 / 0.235 as on the CPU"
 
 ["T-771"]
 quantity = "one ionization level in a constant prescribed field, 20 steps, born every 3: the atoms' bound population against exp(−W·n·Δt) (measured), their emitted and pending fractions and their sum against 1, the born electrons' momenta against −Ex·Δt·(n − k_b + ½) (measured_momenta) and weights against the released fraction (measured_weights), value and partials; T-776's populations in a full buffer take the same C"
