@@ -125,6 +125,13 @@ end
     return i === nothing ? :(nothing) : :(ms[$i])
 end
 
+# The absorber of the open axis `d` in a tuple, or `nothing`: as `pick_modifier`, with the type
+# `OpenAbsorberOf{d}` formed when the method is generated (inference does not fold it in a body).
+@generated function pick_open_absorber(ms::Tuple, ::Val{d}) where {d}
+    i = findfirst(E -> E <: OpenAbsorberOf{d}, fieldtypes(ms))
+    return i === nothing ? :(nothing) : :(ms[$i])
+end
+
 # Every modifier of type `M` in a tuple, in its order, as a tuple: resolved from the tuple's type.
 @generated function pick_modifiers(::Type{M}, ms::Tuple) where {M}
     idx = findall(E -> E <: M, collect(fieldtypes(ms)))

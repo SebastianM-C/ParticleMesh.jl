@@ -255,7 +255,9 @@ end
 The placed absorber of the state's open axis `d` (a [`LayerFactors`](@ref) or a
 [`PMLFields`](@ref) of that axis), or `nothing` where the axis is not open.
 """
-open_absorber(st::EMState, d::Integer = 2) = pick_modifier(OpenAbsorberOf{d}, st.modifiers)
+open_absorber(st::EMState) = open_absorber(st, Val(2))
+open_absorber(st::EMState, d::Integer) = open_absorber(st, Val(d))
+open_absorber(st::EMState, ::Val{d}) where {d} = pick_open_absorber(st.modifiers, Val(d))
 "The placed absorbers of every open axis of a state, in the order of its tuple of modifiers (`()` for a periodic box)."
 open_absorbers(st::EMState) = pick_modifiers(OpenAbsorber, st.modifiers)
 "The placed PML of a moving window's back edge (a [`BackPMLFields`](@ref)), or `nothing`."
