@@ -1,6 +1,6 @@
 # WP-042: the periodic 3D3V step against linear Landau theory at full size
 
-- With a 1 % density perturbation, the oblique Langmuir wave of mode (1, 1, 1) damps at the rate of linear theory: +1.7 % ± 1.6 % at 64³ cells (57 million electrons, 8 seeds), −2.1 % ± 3.4 % at 48³ and +0.4 % ± 6.1 % at 32³, the errors the jackknife over seeds. The frequency is 0.5 % to 0.9 % below theory.
+- With a 1 % density perturbation, the oblique Langmuir wave of mode (1, 1, 1) damps at the rate of linear theory within a few percent, inside the seed errors: +1.7 % ± 1.6 % at 64³ cells (57 million electrons, 8 seeds), −2.1 % ± 3.4 % at 48³ and +0.4 % ± 6.1 % at 32³, the errors the jackknife over seeds. The frequency is 0.5 % to 0.9 % below theory.
 - Float32 and Float64 give the same rate: on the same four seeds at 64³ they agree to 2·10⁻⁵ of γ, and the mode amplitudes to 3·10⁻⁵ of their peak.
 - At T-954's 10 % perturbation the rate is 13 % to 16 % above theory at every size, with errors under 1 %. The amplitude scan at 32³ (+16 %, +4.6 %, −1.8 % at 10 %, 5 %, 2 %) shows that this is the wave's nonlinearity, not the step: its initial bounce frequency √(kE) ≈ 0.32 is twice γ. T-954 keeps 10 % for a CI-sized signal and bounds the rate around its measured offset.
 - Gauss's law holds at the end of every run to 1.2·10⁻⁵ of max|ρ| in Float32 and 1.7·10⁻¹⁴ in Float64, and the total energy drifts by at most 1.3·10⁻⁵.
