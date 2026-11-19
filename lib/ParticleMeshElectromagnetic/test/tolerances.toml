@@ -925,7 +925,8 @@ quantity = "the sharpened copy of a sampled mode against (1 + 4β sin²(kΔx/2))
 scale = "eps(T) (mode amplitude 1)"
 C = 8
 measured = { stencil = 2.32, gather = 1.69 }
-status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU)"
+measured_device = { "stencil on CUDABackend" = 2.32, "gather on CUDABackend" = 1.64 }
+status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU); measured_device is T-969 on an RTX 5090 at 82c1945 (Float64)"
 
 # WP-042: the periodic 3D3V step with the charge-conserving current (T-950 to T-955)
 ["T-950"]
@@ -935,7 +936,9 @@ C = 2
 C_divB = 2
 measured = { Float32 = 0.325, Float64 = 0.347, "Dual{Float32,3}" = 0.167, steps_400 = 0.13, neutral = 0.127 }
 measured_divB = { Float32 = 0.322, Float64 = 0.346, "Dual{Float32,3}" = 0.667, steps_400 = 0.277, neutral = 0.421 }
-status = "proposed; the largest over both modes and orders (CPU), Fast at order 2 the largest (its atomics add in another order each run: on the net-charge scale of before, 0.683 to 1.12 in Float64 over three runs). C is T-360's 2. The species' scale replaces max|ρ| of the net charge, on which the physics breaker's quasi-neutral plasma measured 4.3 to 5.0 (net charge 10⁻³ of each species'); on the species' scale the same runs give 0.14 to 0.36, and its beams at |β| = 0.999 over ions 0.28 to 0.62"
+measured_device = { "Float32 on CUDABackend" = 0.26, "Float64 on CUDABackend" = 0.241, "Dual{Float32,3} on CUDABackend" = 0.163, "steps_400 on CUDABackend" = 0.119, "neutral on CUDABackend" = 0.155 }
+measured_divB_device = { "Float32 on CUDABackend" = 0.375, "Float64 on CUDABackend" = 0.362, "Dual{Float32,3} on CUDABackend" = 0.615, "steps_400 on CUDABackend" = 0.246, "neutral on CUDABackend" = 0.375 }
+status = "proposed; the largest over both modes and orders (CPU); measured_device and measured_divB_device are T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945. Fast at order 2 the largest (its atomics add in another order each run: on the net-charge scale of before, 0.683 to 1.12 in Float64 over three runs). C is T-360's 2. The species' scale replaces max|ρ| of the net charge, on which the physics breaker's quasi-neutral plasma measured 4.3 to 5.0 (net charge 10⁻³ of each species'); on the species' scale the same runs give 0.14 to 0.36, and its beams at |β| = 0.999 over ions 0.28 to 0.62"
 
 ["T-951"]
 quantity = "the Reference and Fast 3D steps: every field and current, and the kinetic-energy history, after k steps (20 steps)"
@@ -943,14 +946,16 @@ scale = "k·√(prod(ppc))·(the largest Reference value of the kind: E and B to
 C = 16
 measured = { Float32 = 4.01, Float64 = 5.26 }
 measured_wider = { ppc_5 = 5.13, cells_16x14x12_ppc_3 = 5.15, order1_ppc_5 = 2.96, steps_100 = 5.01 }
-status = "proposed; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
+measured_device = { "Float32 on CUDABackend" = 4.76, "Float64 on CUDABackend" = 4.76 }
+status = "proposed; measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
 
 ["T-953"]
 quantity = "a 3D run invariant along one axis against the 2D run (its plane mapped cyclically onto the other two axes), after initialize! and after every step: every component on every line of the invariant axis; 20 steps of two cold counter-streaming beams, one perturbed along mode (1, 1)"
 scale = "k·(n₁ + n₂)·√(prod(ppc))·max|2D value of its kind| (E and B together, J together) after k ≥ 1 steps, n and ppc the 2D run's"
 C = 32
 measured = { Float32 = 5.86, Float64 = 7.48, "Dual{Float32,3}" = 0.273 }
-status = "proposed; the largest over the three invariant axes and both modes (Fast the larger)"
+measured_device = { "Float32 on CUDABackend" = 4.02, "Float64 on CUDABackend" = 7.81, "Dual{Float32,3} on CUDABackend" = 0.237 }
+status = "proposed; the largest over the three invariant axes and both modes (Fast the larger); measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945"
 
 ["T-954"]
 quantity = "Landau damping of mode (1, 1, 1) at |k|λ_D = 0.5 at test size (24³ cells, 3 × 3 × 3 electrons per cell, 10 % perturbation, t = 18, seed 20261031): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|Ê − (k̂·Ê)k̂|/max|k̂·Ê| (transverse), γ_theory and ω_r the relativistic linear theory of the loaded distribution (landau_rate_relativistic, Maxwell–Jüttner: 0.14857, 1.4113)"
@@ -960,6 +965,8 @@ transverse = 0.05
 rate_ensemble = 0.17
 rate_ensemble_offset = 0.18
 measured = { rate = 0.2, frequency = -0.0203, transverse = 0.000797, rate_ensemble = 0.231 }
+measured_device = { "rate on CUDABackend" = 0.2, "frequency on CUDABackend" = -0.0203, "transverse on CUDABackend" = 0.000797, "rate_ensemble on CUDABackend" = 0.231 }
+measured_device_note = "T-958 on an RTX 5090, at 46373e1 and 82c1945: the CPU's values to three digits"
 rate_ensemble_note = "the rate of the ensemble over the four seeds LANDAU3_SEEDS (T-364's rule: the fit of |⟨k̂·Ê⟩_seeds|², the seed mean of the complex coefficient), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. Sixteen seeds at test size (the four, 20265031 to 20268031, and 1 to 8): per-seed rates +0.150 ± 0.100 (mean ± std) of theory, frequencies −0.6 % to −2.9 %, every seed with three to five maxima; +0.185 as one ensemble; the 1820 four-seed subsets +0.182 ± 0.043, from +0.018 to +0.303, every one within the bound. The first eight seeds alone gave subsets of +0.220 ± 0.033 and seeds 1 to 8 alone +0.149 ± 0.030 (the physics breaker), so eight seeds did not pin the offset. The offset falls with resolution: the first eight seeds at 32³ cells (3 × 3 × 3 per cell) give per-seed rates +0.125 ± 0.031 and frequencies −0.3 % to −1.5 %. The check fails for a rate about 10 % too high or 18 % too low (its four seeds give +0.231)"
 status = "proposed; rate and frequency bound one seed as T-364's, an order check of the rate (one seed's std is 0.10 of theory); rate_ensemble is about four standard deviations of the four-seed subsets of sixteen seeds. Float64 on the CPU only, as T-364 (the four seeds in Float32, run once outside the suite, give the same per-seed and ensemble rates to three digits); no full-size 3D run against theory or another code yet"
 
