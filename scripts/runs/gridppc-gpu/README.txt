@@ -2,3 +2,4 @@ Output of scripts/resolution/run_gpu.sh at commit ae1a605 (comp campaign at d782
 Unreviewed measurements; the GPU was shared with other jobs during the run, so timings are not clean.
 Float32 rerun at 2cbc2bf: results-f32.tar.gz (types, rough and fd; Float32 jobs rerun, other jobs copied from results.tar.gz) and gpu-samples-f32.csv (nvidia-smi every 5 s, timestamps in UTC+2).
 Compensated-gather campaign (cg) at 56ac57f: results-cg.tar.gz (all 289 jobs; cg-grid-r96x6-grad ran out of GPU memory in the first pass and was rerun at 17:01-17:43Z, next to another job, so its time is not clean) and gpu-samples-cg.csv (nvidia-smi every 5 s, timestamps in UTC+2).
+Timing campaign at 8c28026: results-timing.tar.gz (the 17 jobs of gridppc.jl's timing campaign, one julia process each, the second run timed, on an otherwise idle card) and gpu-samples-timing.csv (compute processes' memory every second, UTC).
