@@ -973,3 +973,24 @@ C_partial = 8
 measured = { "Dual{Float32,3}" = 2.46 }
 measured_partial = { "Dual{Float32,3}" = 1.81 }
 status = "proposed; not bitwise (A4)"
+
+["T-985"]
+quantity = "⟨M x, y⟩ − ⟨x, Mᵀ y⟩ for 1 and 25 periodic Yee solves M with one current held, Mᵀ = yee_e!(−Δt/2), J̄ −= Δt·Ē, yee_b_half!(−Δt), yee_e!(−Δt/2) per step; random fields and current, 0.9 of the Courant limit, N = 1, 2, 3"
+scale = "‖x‖·‖y‖ over every interior entry (E, B and J of x; E and B of y)"
+C = 2
+measured = { Float32 = 0.206, Float64 = 0.369, "Dual{Float32,3}" = 0.489 }
+status = "proposed"
+
+["T-986"]
+quantity = "Σᵢ,c pᵢ_c·F_c(xᵢ) − Σ_c ⟨x_c, Gᵀ fold(deposit!(p_c at field_layout[c]))⟩, F the six components fields_at reads (plain, and from the compensated gather's sharpened copy G), N = 1, 2, 3"
+scale = "Σᵢ,c|pᵢ_c|·max|x|"
+C = 1
+measured = { Float32 = 0.0521, Float64 = 0.0712, "Dual{Float32,3}" = 0.0726 }
+status = "proposed"
+
+["T-987"]
+quantity = "⟨F x, y⟩ − ⟨x, F y⟩ on the periodic interior for F = sharpen_x! (order 2's β) and binomial! with 1 and 2 passes, N = 1, 2, 3"
+scale = "‖x‖·‖y‖"
+C = 1
+measured = { Float32 = 0.274, Float64 = 0.204, "Dual{Float32,3}" = 0.263 }
+status = "proposed"
