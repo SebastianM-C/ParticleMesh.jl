@@ -192,11 +192,13 @@ end
 # --- T-575 ----------------------------------------------------------------------------------
 
 # A long run: random fields in the empty window with PIConGPU's 8-cell back-edge PML, 4000 steps
-# (the report script runs 12000). In a window that never moves the energy never exceeds that of the
+# (the report script runs 12000). In a window that never moves the energy stays below that of the
 # same run without the layer (whose field-free outside reflects everything, about 1.19 of the start
-# at its largest, the staggered energy of random fields) and ends below half of it; in one that
+# at its largest, the staggered energy of random fields) and ends near 0.39 of it, both bounds about
+# 5 % over the largest of eight seeds, so a slow growth in the layer fails the end ratio; in one that
 # moves from t = 0 everything that does not travel with it leaves through the back edge, and less
-# than 5 % of the energy stays after 450 steps. The bounds are tolerances.toml's, the ratios recorded.
+# than 5 % of the energy stays after 450 steps (the shift alone does that: without the layer the
+# ratio is the same). The bounds are tolerances.toml's, the ratios recorded.
 @testset "T-575 random fields with the back-edge PML stay bounded over 4000 steps, the window static and moving [A2, A7, WP-034]" begin
     bare = back_long_run(nothing; start = Inf, nsteps = 4000)
     still = back_long_run(PML(; cells = 8); start = Inf, nsteps = 4000)

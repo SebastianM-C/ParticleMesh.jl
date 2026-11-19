@@ -149,6 +149,7 @@ else
                 KernelAbstractions.synchronize(be)
             end
             v = axis_Ex_past(st, width)
+            @test length(v) == ncells(st.grid)[1] - refine * window_back_band(coarse)    # the coarse band's width at every r
             @test all(iszero, ParticleMeshElectromagnetic.window_lost(st))
             return (lme = soft_maximum(v, LWFA_GRADIENT_BETA) - log(length(v)) / LWFA_GRADIENT_BETA, step = t / nsteps)
         end
@@ -164,10 +165,12 @@ else
         c = map(r -> components(runs[(GPU, r)].lme), (1, 2, 3))
         d12, d23 = abs.(c[2] .- c[1]), abs.(c[3] .- c[2])
         ratio = maximum(d23 ./ d12)
+        monotone = all((c[2] .- c[1]) .* (c[3] .- c[2]) .> 0)    # an oscillation would pass the ratio
         cpu_rel = maximum(abs.(c[2] .- components(runs[(CPU(), 2)].lme)) ./ abs.(c[2]))
-        @info "T-612 resolution convergence, CUDA" c d12 d23 ratio cpu_rel times = m
+        @info "T-612 resolution convergence, CUDA" c d12 d23 ratio monotone cpu_rel times = m
         m["successive difference ratio"], m["r = 2 CPU-CUDA rel"] = ratio, cpu_rel
         @test all(x -> all(isfinite, x) && all(!iszero, x), c)
+        @test monotone
         @test ratio <= emC("T-612")
         @test cpu_rel <= emC("T-611")      # the refined, longer run on CUDA is the CPU's too
     end

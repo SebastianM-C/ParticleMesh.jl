@@ -315,15 +315,19 @@ const LWFA_DUAL_PINNED = Tuple(emC("T-610", "pinned"))
     end
     # T-612's read-out: past the coarse case's back band as a physical width, the same columns'
     # positions at every r (r times the coarse band's cells, more than the refined band's own).
-    sc = first(lwfa_gradient_run(x0, Reference(); nsteps = 1))
+    # E_x is zero on the axis after one step, so each row is filled with distinct values first
+    # (the comparisons then see which columns are read, not only how many).
+    numbered!(st) = (st.fields.Ex .= reshape(1:length(st.fields.Ex), size(st.fields.Ex)); st)
+    sc = numbered!(first(lwfa_gradient_run(x0, Reference(); nsteps = 1)))
     b, h = window_back_band(sc), cellsize(sc.grid)[1]
     @test axis_Ex_past(sc, b * h) == axis_Ex(sc)
     @test_throws ArgumentError axis_Ex_past(sc, (b - 1) * h)        # inside the band
     @test_throws ArgumentError axis_Ex_past(sc, (b + 1 / 2) * h)    # not a whole number of cells
     for r in (2, 3)
-        sf = first(lwfa_gradient_run(x0, Reference(); refine = r, nsteps = 1))
+        sf = numbered!(first(lwfa_gradient_run(x0, Reference(); refine = r, nsteps = 1)))
         @test window_back_band(sf) < r * b
         @test axis_Ex_past(sf, b * h) == axis_Ex_all(sf)[(r * b + 1):end]
+        @test last(axis_Ex_past(sf, b * h)) == last(axis_Ex_all(sf)) && issorted(axis_Ex_past(sf, b * h))
     end
     sd = first(lwfa_gradient_run(lwfa_dual_x0(), Reference(); refine = 3, nsteps = 1))   # T-612's Float32 cells
     @test length(axis_Ex_past(sd, b * h)) == ncells(sd.grid)[1] - 3b
