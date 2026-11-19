@@ -19,7 +19,7 @@ prob = plasma_step_2d(Float64; amplitude = 0.1, nsteps = 1, seed = 7)
 prob = EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species[1:1], prob.seed, prob.kmode)
 st = EMState(prob, EMNumerics(; mode = MODE, current = Esirkepov()); backend = BE)
 initialize!(st, prob)
-p = params(prob)
+const p = params(prob)
 
 @kernel function k_scale!(s)
     i = @index(Global, Linear)
@@ -65,6 +65,32 @@ end
         out[i] = sum(Wo1) + sum(Wn1)
     end
 end
+# step! of step.jl written out, with its parts switchable
+function step_body!(st, p, k, kinetic::Bool; check::Bool = true)
+    check && PME.check_params(st, p)
+    (; numerics, grid, fields, dt) = st
+    wgs = numerics.workgroupsize
+    n = Int32.(grid.n)
+    g = Int32(guards(grid))
+    dt_dx = map(h -> dt / h, grid.dx)
+    window = PME.window_frame(st)
+    st.fresh[] = false
+    PME.inject_witness!(PME.witness_frame(st), p.witness, grid, k, wgs)
+    PME.sharpen_gather!(st)
+    PME.ionize!(PME.ionization_frame(st), st, p, k)
+    pf = PME.particle_fields(st)
+    for s in (PME.deposited_species(st)..., PME.witness_species(st)...)
+        PME.launcher(PME.push_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
+                                                            ndrange = capacity(s))
+    end
+    PME.retire_x!(window, st)
+    PME.current!(numerics.current, st)
+    PME.retire!(PME.open_absorber(st), st)
+    PME.solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs)
+    PME.advance_window!(window, st, p, k)
+    kinetic && PME.kinetic!(st)
+    return st
+end
 # Each test mutates the state (and `out`) and returns nothing: a reduction to a scalar inside the
 # differentiated function would synchronize the GPU stream there, which Enzyme cannot differentiate.
 # The seed sets the adjoint of the outputs (ones), so the gradient is that of the outputs' sum.
@@ -87,9 +113,13 @@ tests = [
           PME.launcher(PME.push_kernel!, get_backend(s), nothing)(s, pf, st.numerics.pusher, st.numerics.shape, g, s.q / s.m * st.dt / 2, dt_dx, n; ndrange = capacity(s))
       end; nothing), seed_u1!),
   ("push and current", (st, out) -> (s = st.species[1]; PME.launcher(PME.push_kernel!, get_backend(s), nothing)(s, st.fields, st.numerics.pusher, st.numerics.shape, Int32(guards(st.grid)), 0.05, map(h -> st.dt / h, st.grid.dx), Int32.(st.grid.n); ndrange = capacity(s)); PME.current!(st.numerics.current, st); nothing), seed_J!),
+  ("kinetic", (st, out) -> (PME.kinetic!(st); nothing), (d, dout) -> fill!(d.K, 1)),
+  ("check_params", (st, out) -> (PME.check_params(st, p); st.fields.Ex .*= 2; nothing), seed_EB!),
+  ("step without kinetic", (st, out) -> (step_body!(st, p, 1, false); nothing), seed_EB!),
+  ("step without check_params", (st, out) -> (step_body!(st, p, 1, true; check = false); nothing), seed_EB!),
   ("step", (st, out) -> (step!(st, p, 1; observer = nothing); nothing), seed_EB!),
 ]
-leaves!(out, path, x::AbstractArray{<:AbstractFloat}) = (out[path] = x; out)
+leaves!(out, path, x::AbstractArray{<:AbstractFloat}) = (any(y -> y === x, values(out)) || (out[path] = x); out)
 leaves!(out, path, x::AbstractArray) = out
 leaves!(out, path, x::Union{Tuple,NamedTuple}) = (foreach(k -> leaves!(out, "$path.$k", x[k]), keys(x)); out)
 function leaves!(out, path, x)
@@ -99,6 +129,9 @@ function leaves!(out, path, x)
     end
     return out
 end
+# Each array once, by identity: workspace temporaries alias other arrays of the state, and counting
+# an array under two paths would count its share of ⟨∇f, v⟩ twice (paths are visited in field
+# order, so the same path wins in a state, its Dual twin and its shadow).
 leaves(x) = leaves!(Dict{String,Any}(), "st", x)
 println("bisect: backend ", BE, ", mode ", MODE, ", patches ", get(ENV, "PM_ENZYME_PATCH", ""))
 only = get(ENV, "ONLY", "")

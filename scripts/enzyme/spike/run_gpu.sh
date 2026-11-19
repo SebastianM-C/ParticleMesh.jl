@@ -24,7 +24,7 @@ git rev-parse HEAD > "$out/commit.txt"
 tail -1 "$out/instantiate.log" | tee -a "$out/summary.txt"
 run minimal "${J[@]}" scripts/enzyme/spike/minimal.jl
 # the step's kernels, one process per test: an Enzyme abort ends the process and the tests after it
-TESTS=("arrays only" "species struct" "gather" "solve_fields" "shape" "stencil" "atomic" "current" "push" "push loop of step" "push and current" "step")
+TESTS=("arrays only" "species struct" "gather" "solve_fields" "shape" "stencil" "atomic" "current" "push" "push loop of step" "push and current" "kinetic" "check_params" "step without kinetic" "step without check_params" "step")
 for t in "${TESTS[@]}"; do
     tag="${t// /-}"
     ONLY="$t" PM_ENZYME_PATCH="$A" run "kernel-fast-active-$tag" "${J[@]}" scripts/enzyme/spike/kernels.jl

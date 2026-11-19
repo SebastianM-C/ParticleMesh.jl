@@ -99,7 +99,7 @@ function run_energy!(st, p, k)
 end
 
 # every floating-point array of a state, by its path
-leaves!(out, path, x::AbstractArray{<:Union{AbstractFloat,ForwardDiff.Dual}}) = (out[path] = x; out)
+leaves!(out, path, x::AbstractArray{<:Union{AbstractFloat,ForwardDiff.Dual}}) = (any(y -> y === x, values(out)) || (out[path] = x); out)
 leaves!(out, path, x::AbstractArray) = out
 leaves!(out, path, x::Union{Tuple,NamedTuple}) = (foreach(k -> leaves!(out, "$path.$k", x[k]), keys(x)); out)
 function leaves!(out, path, x)
@@ -109,6 +109,9 @@ function leaves!(out, path, x)
     end
     return out
 end
+# Each array once, by identity: workspace temporaries alias other arrays of the state, and counting
+# an array under two paths would count its share of ⟨∇f, v⟩ twice (paths are visited in field
+# order, so the same path wins in a state, its Dual twin and its shadow).
 leaves(x) = leaves!(Dict{String,Any}(), "st", x)
 
 prob = problem(T, α0)
@@ -206,7 +209,7 @@ open(io -> TOML.print(io, Dict(
 commit = try readchomp(`git -C $REPO rev-parse HEAD`) catch; "unknown" end
 dirty = try !isempty(readchomp(`git -C $REPO status --porcelain --untracked-files=no`)) catch; missing end
 hash(f) = bytes2hex(open(sha256, f))
-inputs = [@__FILE__, CASES, joinpath(@__DIR__, "setup.jl"), Base.active_project(), joinpath(dirname(Base.active_project()), "Manifest.toml")]
+inputs = [@__FILE__, CASES, joinpath(@__DIR__, "setup.jl"), Base.active_project(), joinpath(REPO, "Manifest.toml")]
 step2d = joinpath(pkgdir(ParticleMeshElectromagnetic), "src", "step2d.jl")
 open(io -> TOML.print(io, Dict(
     "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),
@@ -214,7 +217,7 @@ open(io -> TOML.print(io, Dict(
     "gpu" => ON_GPU ? CUDACore.name(CUDACore.device()) : "none", "patches" => get(ENV, "PM_ENZYME_PATCH", ""),
     "versions" => Dict(string(m) => string(pkgversion(m)) for m in (Enzyme, ForwardDiff, KernelAbstractions)),
     "inputs" => Dict(relpath(f, REPO) => hash(f) for f in inputs if startswith(f, REPO)),
-    "side_environment" => Dict("Project.toml" => hash(inputs[4]), "Manifest.toml" => hash(inputs[5]), "step2d.jl" => hash(step2d)))),
+    "environment" => Dict("Project.toml" => hash(inputs[4]), "Manifest.toml" => hash(inputs[5]), "step2d.jl" => hash(step2d)))),
     joinpath(out, "manifest.toml"), "w")
 println("  wrote ", out)
 println("  kernel arguments whose adjoints the spike patch dropped: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "none (no patch)")
