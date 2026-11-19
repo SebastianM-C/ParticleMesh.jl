@@ -1,0 +1,417 @@
+branch = "runs/wp070-galerkin-gather"
+commit = "49342e624061ae220639eb433df26cdab7b59dfa"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/README.txt"
+bytes = 93
+sha256 = "afc17c6322b8fb37baee067b21481e45bb5141ce06b200e8e94bce463166ac65"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r16x1.json"
+bytes = 1004
+sha256 = "16be38a42e59cc31c82c50a6c885a9e673e7fe7b5f2702d6f8c817e9f48e6631"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r16x1.log"
+bytes = 65
+sha256 = "fb5dd43ce23e78a4f49fae9bf43aa3667370ca42efd49a0f08d47401b2fb2b40"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r24x2.json"
+bytes = 1003
+sha256 = "33602c8bbcf9d05b62cb6ae89666ca2ae34a3a3d3a181663267ce2bf930b8261"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r24x2.log"
+bytes = 65
+sha256 = "d954cd540192a4a931034a7846b8f6923c10ab09f80aaf5c5e3c1e9d18ec5dc7"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r32x2.json"
+bytes = 1004
+sha256 = "fbc55f9c62f777ca16c51d14aebb50b290de2f059a9e203f2718a95ebb28acc3"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r32x2.log"
+bytes = 66
+sha256 = "1f50227425d26cf0a11a21e632daafecfb2d1892f3b22c2aa57dfdb568660bb3"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r48x3.json"
+bytes = 1005
+sha256 = "d2c743c805299b9c72b29bfc4840d8aa4c794a8d05eff5519874dd4973fc10cf"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r48x3.log"
+bytes = 67
+sha256 = "0db6eb4e80aa9e125eb31ab6ac50116c1d08c6d0bf7571a3b08d81f83cf3c848"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r64x4.json"
+bytes = 1009
+sha256 = "ebc7a398c8bb284be260bc49a7818e62533df52ed8e09051b48b2efa97b238a6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E1.9-r64x4.log"
+bytes = 68
+sha256 = "61368c9fa5fb694ba5a9bcf4cdb3d0bc75f0a45ec6475daa9c79065b7082b4fa"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r16x1.json"
+bytes = 983
+sha256 = "0ddd43b0f1ed9a2a10b69379757985172aea1c59c158cb3943021d5e0942f70a"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r16x1.log"
+bytes = 66
+sha256 = "adffaa58faea48da7d627a9c6d23d7245511e7449fdea4cb6ba13cd6f04f8cb1"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r24x2.json"
+bytes = 1041
+sha256 = "4b3bfde529f262cdee43f5db7764d8dc5f181c850f811c1e321aa2de61c0a106"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r24x2.log"
+bytes = 67
+sha256 = "29ea233725172b4bb5840f8163cdc88e7b54dcabb5f4f1686acacc854a02e530"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r32x2.json"
+bytes = 983
+sha256 = "aeea2b94f3ee8a642d7da1c6a62a449cc837377a692ba96d5477da8f708ca20c"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r32x2.log"
+bytes = 67
+sha256 = "e54438e689ad9a142cb7dd5ba187aec5fcbefc2c90145af5674ef02be4fa8c16"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r48x3.json"
+bytes = 984
+sha256 = "b1498288bcdcf614a3dd80125432cb9cec262c37d800ca0d100bf3085a7180a0"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r48x3.log"
+bytes = 67
+sha256 = "46ee331667d37058f1f8aaf1735c588b32611f07ee99c7eaca9ee13173a704dd"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r64x4.json"
+bytes = 987
+sha256 = "656a4fb71fd87eebe4c705ed309e53a0cafc807728bb6b87d6c2e3f3a0730623"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-compensated-E2.175-r64x4.log"
+bytes = 68
+sha256 = "8f52d288792a0975189ef62562204638381f8b792c5fdebf1dfc2384d1619c8c"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r16x1.json"
+bytes = 997
+sha256 = "b0ab63607516327d9488114e3d0169207cf29ceb906589785d3b772d7007a51b"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r16x1.log"
+bytes = 63
+sha256 = "3d6e7d4dcf66c054f7ba606bf6fdde50af35baf31bb45924d2113115d0755a8f"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r24x2.json"
+bytes = 1002
+sha256 = "7a8421a7c9785baa860710a0b9888dd68329657472af754ff71336af11012729"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r24x2.log"
+bytes = 63
+sha256 = "778741b659744426d7f6b93cdeccd05f9fb9109c953a4bbcd42258f462ad34fc"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r32x2.json"
+bytes = 999
+sha256 = "97d1cc1c1430d9e7d879fe39c8eba3a775b531349810c758fd82f69cb778a43d"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r32x2.log"
+bytes = 63
+sha256 = "c676fddc603f71667379b2af2c72c2e89295079a52a8566977edc053a8391ffc"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r48x3.json"
+bytes = 1002
+sha256 = "37890ee696e8c49d8e0e0d97c1ee19a9e738dcb2dacaad00df14db6381f01947"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r48x3.log"
+bytes = 64
+sha256 = "584ea0d581b9fe748f961959dcdc14c0bf1c6c50382ce8146d869eb50216ecb7"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r64x4.json"
+bytes = 1003
+sha256 = "3177b5426634ec7c0d9e360d66b70d0512566eac6905f0a0b599ad53ac795db7"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E1.9-r64x4.log"
+bytes = 65
+sha256 = "0fc7d5e7a767f11911664c2b98fbd1114c96c6a7342b09784b5bef7f293d8fa8"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r16x1.json"
+bytes = 1033
+sha256 = "7d82072a8f4cdca15731c7cff7eef31fe7bb8d2015a2710a416f33dbedd46577"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r16x1.log"
+bytes = 64
+sha256 = "813c8119ff1f61c0286cf46571b3a3e615928cf33927d91f9f9d4626fc0f98f0"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r24x2.json"
+bytes = 1031
+sha256 = "a710e92c69b42c28ee2844a64856562e31cda1cd6a8806f8fed7273bf2cc6d13"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r24x2.log"
+bytes = 64
+sha256 = "c4280126f9935ea55a944f095b6839ab89fc30d957ddfd907284e03bfe2e71eb"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r32x2.json"
+bytes = 980
+sha256 = "0740001d7cf42166e37697d6502d0da6ce987beb9e214a3aee896ad03bf4678c"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r32x2.log"
+bytes = 64
+sha256 = "4ae5e2c510fca8f527a2e707f86f61d754c6303cb2da1a940244d1e502c5b5c1"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r48x3.json"
+bytes = 981
+sha256 = "b17e660ef0f1050827b12ddb02afd815c2bb882c9534f2ee19fd1207ac07b71d"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r48x3.log"
+bytes = 64
+sha256 = "33517f230af6c21890aba5fbc6f6ee86a117184dc6bc112e470d63ff96724d3c"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r64x4.json"
+bytes = 990
+sha256 = "cf090304e44b4181190758a4ff3bad8d09ab46e428538a0ce5287270c43259bd"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-E2.175-r64x4.log"
+bytes = 66
+sha256 = "d5aa23162018f966ebba8bd6ab93db8140908950d54055f9debeaaddf997f0bf"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r16x1.json"
+bytes = 1025
+sha256 = "a6f0d611efcd108ff59b0a95424c3671e8fb5e0663d77e43770c2cb970b7c278"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r16x1.log"
+bytes = 75
+sha256 = "d402755692821f48d60c3da3316707950ffe5ffe6909f9903aba5dcd860cb5e0"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r24x2.json"
+bytes = 1025
+sha256 = "a802c0fc9fe28d12c5d0a09f7b008cc9933008792fdbfb56654ba1e7e9aee3fa"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r24x2.log"
+bytes = 75
+sha256 = "a6d8629029f9cefbfd1aae612aa74d0008d13f6d6d567406af45d7e10025c325"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r32x2.json"
+bytes = 1024
+sha256 = "af502820ae613b48d873a6fd3646fd1e25949e81de968ee030b7c8d5f9b5791c"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r32x2.log"
+bytes = 75
+sha256 = "f32d2d42c3479b1c3de84214539fa925a7a4a7b69fe294af73911dad4bb09ff7"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r48x3.json"
+bytes = 1024
+sha256 = "0f4ba8fa0c22eb5438f9c864910853b39ea1a669b9bf40c670182fd44e1950fb"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r48x3.log"
+bytes = 76
+sha256 = "57287b19efc4390b5abbdb12b5cbdb1e349eccfdfd9fdc80606cfb7699b0561c"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r64x4.json"
+bytes = 1026
+sha256 = "7c9b12186f85817356d75931183c368b1705962235f017711ea14d674ac6c5e5"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E1.9-r64x4.log"
+bytes = 77
+sha256 = "fbb1a5b84cc3be9c3e5d8f6e8ba1965e5699d66c0009842b62e000d2d2b7c9b6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r16x1.json"
+bytes = 1059
+sha256 = "c6ad49acb0edc4bc52cef8fd9383736f3e01a3f49e1e14fe2f377a4b85339fa6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r16x1.log"
+bytes = 76
+sha256 = "09971cd4012f613ffff7aa364ae76741536c21f4ba9e992fc457b1c7cd4e0a96"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r24x2.json"
+bytes = 1054
+sha256 = "11c61eee2e2424ef07926559fabf47569449d166cecf7ac1e0b6e3c2bcd42150"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r24x2.log"
+bytes = 77
+sha256 = "b0cd79078aff729a60080984ec76ef612039c0057c35f2f4c6b9333e9d93a33a"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r32x2.json"
+bytes = 1006
+sha256 = "7286e85f7cbdbb991c82d48965947b636196d0b11b08fcb632c1c4cbf0eba07f"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r32x2.log"
+bytes = 77
+sha256 = "c3bb5cf4c3f474cae567750e8e11d2b9eff4844e2b96d1f3f6d665afaaa30b78"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r48x3.json"
+bytes = 1009
+sha256 = "4382b9c5db042fde29e7c4810ed9c64cc0f456c3d4f54ee6aa6ad5333b4d5de2"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r48x3.log"
+bytes = 76
+sha256 = "66cec73ed8db6b9b7285fbfee6c4dcd81d73c9cb64bb3a14a460c5d8c80f7893"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r64x4.json"
+bytes = 1002
+sha256 = "89ba645d55e5b6b9eea3531fbdc4e81d99c9a6e6fe0d9306c071b541c8c3c064"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-galerkin-compensated-E2.175-r64x4.log"
+bytes = 76
+sha256 = "00ceb16c69c65ac7efff7512586ced9e0c2ad471c7bcdaa4e562a6c30c7807dd"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r16x1.json"
+bytes = 993
+sha256 = "714e591f03c8c6d2afecfe087e911a4a1054e006347b53f35c31c07f9066cca6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r16x1.log"
+bytes = 59
+sha256 = "1c87722ce3f933478097b83618012e600b936726c3ebe770e55f85f65fd8f4f0"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r24x2.json"
+bytes = 992
+sha256 = "22a3d9b179eb162970641322054ab277ed7a713088f32a69acdcb515adfcee0e"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r24x2.log"
+bytes = 60
+sha256 = "d132b570e09d02ef9899bd15d2d1f620bc2769390bbf207a786517197d85283d"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r32x2.json"
+bytes = 996
+sha256 = "c3a00348b1e84bbc81377a6dd1ab6fb7c185427f649172ff8e7cfd7f7159b683"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r32x2.log"
+bytes = 61
+sha256 = "5a2671bc8374805f52bebf43d0de01ddac69487e626aab6d9c25e6fd43cb4bb6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r48x3.json"
+bytes = 997
+sha256 = "1b17050365f55b112883a2b1ea0fa3f7bd5dfc0bc0ba465de44ac1ae364011b4"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r48x3.log"
+bytes = 61
+sha256 = "398da01493a9b35ece7cedc1118d4e65e0099987974ec099368d4ea4f3262431"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r64x4.json"
+bytes = 999
+sha256 = "45f6b6f09ce3189c74b35195d8b6cbcd8fe3080bb7bdd2a3c83078d2ffe7e6e1"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E1.9-r64x4.log"
+bytes = 62
+sha256 = "f469c704bc7cd5e3842d00ca3d1e00120063b331a3ce68dcb9ddc80c48f73650"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r16x1.json"
+bytes = 978
+sha256 = "3fd44c6ed059603493b51c38d8b8736e4d4893a7b8137b26ae3bf227135dcd44"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r16x1.log"
+bytes = 61
+sha256 = "be13a4dfa0db3a36757ab7b22989f15c78d25e569f0de91d00911f95c559a313"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r24x2.json"
+bytes = 1029
+sha256 = "26fc962e002b7c43056aefe13502c187d10587df6be7a43bbfefb147e72053b6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r24x2.log"
+bytes = 60
+sha256 = "509d3ed5a398ba4ae5371b72ac2f1f1716ac9a684753c597a42505521127967d"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r32x2.json"
+bytes = 973
+sha256 = "6a20e741930f5ee7f945d50559e059d53c0dc344d983c0bc24adbb232c721133"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r32x2.log"
+bytes = 60
+sha256 = "04ec2637b9260faa720291ce16f281f05f45f22a145ba98a997df15d8ab45af9"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r48x3.json"
+bytes = 979
+sha256 = "4c6bbceb9fba48b7126b452a1af4ed534cff5d8831ed9367502c1295b7b6dabe"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r48x3.log"
+bytes = 62
+sha256 = "6c62b3e6ae1d829b27d0fd75dd4a7b3da5c05405b427939ec6121c227b35fce6"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r64x4.json"
+bytes = 981
+sha256 = "2757da41e304084e893d54fa2fb077c1c2cf3b7a467a25612a38d14be61744f4"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/gather-plain-E2.175-r64x4.log"
+bytes = 63
+sha256 = "a54f632b79b357ce7d83aa789f0e980c64fa61138accfa006b8ee51d1fc49d71"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/jobs.json"
+bytes = 11402
+sha256 = "33b26ed0c381087fe167466b775b1dc48736be44e0206aa0d1e5e243d61199ac"
+
+[[files]]
+path = "scripts/runs/wp070-galerkin-gather/wp070-gathers/manifest.toml"
+bytes = 7578
+sha256 = "0472fa2fb0a7c768d177c455875fc01f16d157285c5fdb469410f0b0d8d41313"
