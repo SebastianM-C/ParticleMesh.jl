@@ -29,6 +29,15 @@
 # `scripts/runs/enzyme-<stamp>/`.
 
 using ParticleMeshCore, ParticleMeshElectromagnetic, KernelAbstractions, ForwardDiff, Enzyme
+# PM_ENZYME_PATCH: spike-only patches (`spike/active_args.jl`, `spike/unroll.jl`), a `;`-separated list
+foreach(f -> isempty(f) || include(abspath(f)), split(get(ENV, "PM_ENZYME_PATCH", ""), ';'))
+# PM_BACKEND=cuda runs the state on the GPU (CUDACore of the test environment)
+const ON_GPU = get(ENV, "PM_BACKEND", "cpu") == "cuda"
+if ON_GPU
+    using CUDACore
+    CUDACore.allowscalar(false)
+end
+backend() = ON_GPU ? CUDACore.CUDABackend() : CPU()
 using ParticleMeshCore: Reference, Fast
 using Printf, TOML, Dates
 using SHA: sha256
@@ -52,14 +61,14 @@ function problem(::Type{S}, α) where {S}
     return EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species[1:1], prob.seed, prob.kmode)
 end
 function initialized(prob)
-    st = EMState(prob, EMNumerics(; mode, current = Esirkepov(), workgroupsize = wgs))
+    st = EMState(prob, EMNumerics(; mode, current = Esirkepov(), workgroupsize = wgs); backend = backend())
     initialize!(st, prob)
     return st
 end
 energy(st) = sum(a -> sum(abs2, a), (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz))
 function run_energy!(st, p, k)
     for i in 1:k
-        step!(st, p, i)
+        step!(st, p, i; observer = nothing)
     end
     return energy(st)
 end
@@ -117,7 +126,8 @@ stv = initialized(probd)
 Lv = leaves(stv)
 V = Dict{String,Any}()
 for k in common
-    v = randn(rng, T, size(Lv[k]))
+    v = similar(L[k])
+    copyto!(v, randn(rng, T, size(Lv[k])))
     V[k] = v
     Lv[k] .= ForwardDiff.Dual{:α}.(L[k], v)
 end
@@ -133,15 +143,16 @@ tol = 64 * eps(T) * max(nsteps, 1) * max(cancel, 1)
 verdict = rel <= tol && relv <= tol ? "pass" : "FAIL"
 
 # timings once compiled: the primal, one reverse pass, one forward pass
-st1 = deepcopy(st0); t_primal = @elapsed f0 = run_energy!(st1, p, nsteps)
-st1 = deepcopy(st0); t_primal = @elapsed run_energy!(st1, p, nsteps)
+sync() = KernelAbstractions.synchronize(backend())
+st1 = deepcopy(st0); t_primal = @elapsed (f0 = run_energy!(st1, p, nsteps); sync())
+st1 = deepcopy(st0); t_primal = @elapsed (run_energy!(st1, p, nsteps); sync())
 st2 = deepcopy(st0); dst2 = Enzyme.make_zero(st2)
-t_rev = @elapsed Enzyme.autodiff(set_runtime_activity(Reverse), run_energy!, Active, Duplicated(st2, dst2), Const(p), Const(nsteps))
-std2 = initialized(probd); t_fwd = @elapsed run_energy!(std2, params(probd), nsteps)
+t_rev = @elapsed (Enzyme.autodiff(set_runtime_activity(Reverse), run_energy!, Active, Duplicated(st2, dst2), Const(p), Const(nsteps)); sync())
+std2 = initialized(probd); t_fwd = @elapsed (run_energy!(std2, params(probd), nsteps); sync())
 same = all(k -> G[k] == leaves(dst2)[k], keys(G))
 ninputs = sum(k -> length(G[k]), keys(G))
 
-@printf("mode=%s steps=%d species=%d T=%s seed=%d\n", mode_name, nsteps, nspecies, T, seed)
+@printf("mode=%s steps=%d species=%d T=%s seed=%d backend=%s\n", mode_name, nsteps, nspecies, T, seed, backend())
 @printf("  f = %.17g\n  forward df/dα = %.17g\n  reverse ⟨∇f, dx/dα⟩ = %.17g\n  relative difference %.3e (eps(T) = %.3e)\n",
         f0, fd, ad, rel, eps(T))
 @printf("  random direction on every array: forward %.17g, reverse %.17g, relative difference %.3e\n", fdv, adv, relv)
@@ -175,9 +186,11 @@ inputs = [@__FILE__, CASES, joinpath(@__DIR__, "setup.jl"), Base.active_project(
 step2d = joinpath(pkgdir(ParticleMeshElectromagnetic), "src", "step2d.jl")
 open(io -> TOML.print(io, Dict(
     "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),
-    "cpu" => Sys.cpu_info()[1].model, "args" => ARGS,
+    "cpu" => Sys.cpu_info()[1].model, "args" => ARGS, "backend" => string(backend()),
+    "gpu" => ON_GPU ? CUDACore.name(CUDACore.device()) : "none", "patches" => get(ENV, "PM_ENZYME_PATCH", ""),
     "versions" => Dict(string(m) => string(pkgversion(m)) for m in (Enzyme, ForwardDiff, KernelAbstractions)),
     "inputs" => Dict(relpath(f, REPO) => hash(f) for f in inputs if startswith(f, REPO)),
     "side_environment" => Dict("Project.toml" => hash(inputs[4]), "Manifest.toml" => hash(inputs[5]), "step2d.jl" => hash(step2d)))),
     joinpath(out, "manifest.toml"), "w")
 println("  wrote ", out)
+println("  kernel arguments whose adjoints the spike patch dropped: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "none (no patch)")
