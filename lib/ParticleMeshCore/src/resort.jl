@@ -173,16 +173,18 @@ end
 @kernel function resort_rank_kernel!(cnt, hist, @Const(tail_start), @Const(tail_stop), n::NTuple{N,Int32}) where {N}
     L = Int32(@index(Global, Linear))
     c = cartesian_cell(L, n)
-    r = Int32(0)
-    @inbounds for cs in resort_neighbours(c, n)
-        Ls = linear_cell(cs, n)
-        k = resort_bin(cs, c, n)
-        m = hist[Ls, k]
-        hist[Ls, k] = r
-        r += m
-    end
-    @inbounds cnt[L] = r + tail_stop[L] - tail_start[L] + Int32(1)
+    # All `3^N` counts are loaded before any rank is stored (static tuples): interleaved, every load
+    # waited for the store before it, which the compiler cannot reorder past a possible alias.
+    at = map(cs -> (linear_cell(cs, n), resort_bin(cs, c, n)), resort_neighbours(c, n))
+    m = map(t -> @inbounds(hist[t[1], t[2]]), at)
+    ranks = exclusive_sums(m, Int32(0))
+    map((t, r) -> (@inbounds(hist[t[1], t[2]] = r); nothing), at, ranks)
+    @inbounds cnt[L] = sum(m) + tail_stop[L] - tail_start[L] + Int32(1)
 end
+
+# The running sums of a tuple before each entry, starting at `r`: `(r, r + t₁, r + t₁ + t₂, …)`.
+@inline exclusive_sums(::Tuple{}, r) = ()
+@inline exclusive_sums(t::Tuple, r) = (r, exclusive_sums(Base.tail(t), r + first(t))...)
 
 @kernel function resort_segments_kernel!(seg_start, seg_stop, count, @Const(cum), @Const(cnt), ncell::Int32)
     L = Int32(@index(Global, Linear))
