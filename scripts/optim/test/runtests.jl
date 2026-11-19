@@ -1052,3 +1052,37 @@ end
     J3 = run_point(STARTS.base; kw..., extend = 3, read = (; fade = BCASE.fade .+ 6π, rise = (0.5, 3.0)))["J"]
     @test J0 > 0.2 && isapprox(J3, J0; rtol = 1e-7)                     # 2·10⁻⁹ apart here (the plasma's own injection carries roundoff), 10⁻¹² at λ₀/16 to t = 300
 end
+
+@testset "T-977 the objective's variants: born alone, and any origin with the plasma's share capped; one start from another run's optimum [WP-068]" begin
+    p = (; born = 0.2, plasma = 0.3)
+    @test objective_value(p, "any", 0.05) == 0.5 && objective_value(p, "born", 0.05) == 0.2
+    @test objective_value(p, "plasmacap", 0.05) ≈ 0.2 + 0.05 * tanh(6.0) rtol = 1e-15
+    @test objective_value((; born = 0.2, plasma = 10.0), "plasmacap", 0.05) < 0.2 + 0.05 + 1e-12   # the plasma adds at most κ
+    @test objective_value((; born = 0.2, plasma = 0.0), "plasmacap", 0.05) == 0.2
+    @test_throws ArgumentError objective_value(p, "plasma", 0.05)
+    # small plasma counts in full, and the derivative in the plasma part is sech² ∈ (0, 1]
+    d(x) = ForwardDiff.derivative(q -> objective_value((; born = 0.1, plasma = q), "plasmacap", 0.05), x)
+    @test d(0.0) == 1.0 && 0 < d(0.1) < 1 && d(1.0) < 1e-6
+    @test objective_value((; born = 0.2f0, plasma = 0.3f0), "plasmacap", 0.05) isa Float32
+    @test OPT_DEFAULTS.objective == "any" && OPT_DEFAULTS.kappa == 0.05 && OPT_DEFAULTS.from == ""
+    @test run_setup(Dict{String,Any}()) == (; extend = 0, read = (;), objective = "any", kappa = 0.05)
+    @test run_setup(Dict{String,Any}("cap" => "cetal25", "objective" => "born", "kappa" => 0.1)) == (; extend = 3, read = run_read(3), objective = "born", kappa = 0.1)
+    @test point_config(merge(parse_options(String[], OPT_DEFAULTS)[1], Dict("backend" => "cpu", "objective" => "plasmacap"))).objective == "plasmacap"
+    # one run at λ₀/8: the born objective is the born part of the same run, the default is their sum
+    kw = (; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, energy = budget(2.2), gather = CompensatedGather(), grad = false,
+          read = (; fade = BCASE.fade, rise = (0.5, 3.0)))
+    ra = run_point(STARTS.base; kw...)
+    rb = run_point(STARTS.base; kw..., objective = "born")
+    rc = run_point(STARTS.base; kw..., objective = "plasmacap", kappa = 0.05)
+    @test ra["J_plasma"] > 0.1 && rb["J"] == ra["J_born"] && rb["J_plasma"] == ra["J_plasma"] && rb["objective"] == "born"
+    @test rc["J"] ≈ ra["J_born"] + 0.05 * tanh(ra["J_plasma"] / 0.05) rtol = 1e-12
+    # `from`: one start at the best optimum of another run directory, which the manifest records
+    dir = mktempdir()
+    for (nm, J, free) in (("a", 0.3, [8.0, 7.0, 110.0, 0.1]), ("b", 0.5, [8.5, 6.5, 109.0, 0.1]))
+        mkpath(joinpath(dir, nm))
+        open(io -> JSON.print(io, Dict("J" => J, "free" => free)), joinpath(dir, nm, "result.json"), "w")
+    end
+    @test start_points(Dict{String,Any}("from" => dir)) == (; from = [8.5, 6.5, 109.0, 0.1])
+    @test start_points(Dict{String,Any}("from" => "", "cap" => "cetal25")) == starts_of(coords_of(Dict{String,Any}("cap" => "cetal25")))
+    @test_throws ErrorException start_points(Dict{String,Any}("from" => mktempdir()))
+end

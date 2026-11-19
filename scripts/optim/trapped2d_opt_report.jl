@@ -45,7 +45,7 @@ function opt_report(out, dir)
     mkpath(out)
     points = load_points(dir)
     results = load_results(dir)
-    names = sort(collect(keys(results)); by = n -> findfirst(==(Symbol(n)), keys(STARTS)))
+    names = sort(collect(keys(results)); by = n -> something(findfirst(==(Symbol(n)), keys(STARTS)), length(STARTS) + 1))
     paths = Dict(n => start_path(results[n], points) for n in names)
     m = TOML.parsefile(joinpath(dir, "manifest.toml"))
     params = m["parameters"]
@@ -86,6 +86,8 @@ function opt_report(out, dir)
     io = IOBuffer()
     println(io, "Run `", basename(dir), "`: λ₀/", params["ppl"], ", Δy = π/", 4 * params["ny"], ", Float", params["float"], ", ", params["backend"],
             ", gather ", params["gather"], ", budget of a₀ = ", params["a0E"], " at the base pulse; L-BFGS-B with maxiters = ", params["maxiters"],
+            get(params, "objective", "any") == "any" ? "" : "; objective $(params["objective"])$(params["objective"] == "plasmacap" ? " (κ = $(params["kappa"]))" : "") (J below is that objective)",
+            isempty(get(params, "from", "")) ? "" : "; one start from the best optimum of $(basename(params["from"]))",
             coords.cap === nothing ? "" : "; peak power cap $(params["cap"]): τ ≥ $(fmt(coords.cap.c))·n^-$(coords.cap.p), the duration between its floor and $(coords.duration_hi), the window $(window_extend(coords)) λ₀ longer behind, so its dark current column counts a longer region than a run without the cap does", ".\n")
     println(io, "| start | from (τ, w, focus, n) | a₀ | J there | to (τ, w, focus, n) | a₀ | J there | J ratio | on the box's bounds | stop | iterations | points run | largest dark current weight on the path | largest J_plasma/J on the path |")
     println(io, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
@@ -183,7 +185,7 @@ function scan_figure(out, dir, sdir, results, paths, io)
     keys_sorted = sort(collect(keys(grids)))
     fig = Figure(; size = (420 * min(5, length(keys_sorted)), 400 * cld(length(keys_sorted), 5)))
     colors = Makie.wong_colors()
-    names = sort(collect(keys(results)); by = n -> findfirst(==(Symbol(n)), keys(STARTS)))
+    names = sort(collect(keys(results)); by = n -> something(findfirst(==(Symbol(n)), keys(STARTS)), length(STARTS) + 1))
     sidecar = Dict{String,Any}()
     for (q, key) in enumerate(keys_sorted)
         g = grids[key]
