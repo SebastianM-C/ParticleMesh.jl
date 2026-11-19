@@ -68,7 +68,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
     open_y && numerics.filter.passes > 0 &&
         throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with an open boundary (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
-    layer = open_y ? place_absorber(numerics.absorber, grid, problem.dt; backend, workgroupsize = numerics.workgroupsize) : nothing
+    layers = open_y ? (place_absorber(numerics.absorber, grid, problem.dt; axis = 2, backend, workgroupsize = numerics.workgroupsize),) : ()
     numerics.back_absorber === nothing || numerics.back_absorber isa PML ||
         throw(ArgumentError("back_absorber = $(numerics.back_absorber): the window's back edge takes a PML(...) or nothing"))
     problem.window === nothing && numerics.back_absorber !== nothing &&
@@ -97,30 +97,36 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
     fields = em_fields(backend, T, grid)
     return EMState(numerics, grid, problem.dt, species, ws, fields, gather_scratch(numerics.gather, fields), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
-                   field_modifiers(layer, back, planes, window), aux, Ref(false))
+                   field_modifiers(layers, back, planes, window), aux, Ref(false))
 end
 
 """
-    field_modifiers(layer, back, planes, window) -> Tuple
+    field_modifiers(layers::Tuple, back, planes, window) -> Tuple
 
-The [`FieldModifier`](@ref)s of a 2D state, in the order the mesh solve walks them
+The [`FieldModifier`](@ref)s of a 2D or 3D state, in the order the mesh solve walks them
 ([`solve_fields!`](@ref)), from what the state placed on its grid (each `nothing` or empty where
-the problem has none): the open axis' absorber `layer`, the back edge's PML `back`, the antenna
-`planes` and the moving window's frame. Around each Yee sub-step that is
+the problem has none): the open axes' absorbers `layers` (one per open axis, in the axes' order),
+the back edge's PML `back`, the antenna `planes` and the moving window's frame. Around each Yee
+sub-step that is
 
-    before:  the absorbing layer's half damping
+    before:  the absorbing layers' half damping
     the Yee update
-    after:   the open axis' PML correction, the back edge's PML correction, the antennas'
-             corrections, the absorbing layer's half damping, the window's zero x-guards
+    after:   the open axes' PML corrections, the back edge's PML correction, the antennas'
+             corrections, the absorbing layers' half damping, the window's zero x-guards
 
 so a PML corrects the curl the update has just taken before a source is added to it, the
 absorbing layer damps what the sub-step and its source left (symmetric splitting), and the
 window's edges are set last, over whatever the others wrote into the x-guards. The order is the
-tuple's: a PML first, an absorbing layer after the antennas (an open axis has one or the other),
-the edges last.
+tuple's: the PMLs first, the absorbing layers after the antennas (the open axes have one kind or
+the other), the edges last.
 """
-field_modifiers(layer, back, planes::Tuple, window) =
-    (modifier_first(layer)..., present(back)..., antenna_modifier(planes, window)..., modifier_late(layer)..., present(edges_of(window))...)
+field_modifiers(layers::Tuple, back, planes::Tuple, window) =
+    (each_first(layers)..., present(back)..., antenna_modifier(planes, window)..., each_late(layers)..., present(edges_of(window))...)
+
+each_first(::Tuple{}) = ()
+each_first(ls::Tuple) = (modifier_first(first(ls))..., each_first(Base.tail(ls))...)
+each_late(::Tuple{}) = ()
+each_late(ls::Tuple) = (modifier_late(first(ls))..., each_late(Base.tail(ls))...)
 
 present(::Nothing) = ()
 present(m::FieldModifier) = (m,)

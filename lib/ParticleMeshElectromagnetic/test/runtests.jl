@@ -60,6 +60,7 @@ const TEST_FILES = [
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
+    "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]

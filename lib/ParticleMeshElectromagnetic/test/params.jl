@@ -73,12 +73,12 @@ function run_arrays(st::EMState)
     append!(out, map(Array, values(st.recorder.hist)))
     ndims(st) == 2 || return out
     L = open_absorber(st)
-    L isa PMLFields && append!(out, map(Array, (L.ψBx, L.ψBz, L.ψEx, L.ψEz)))
+    L isa PMLFields && append!(out, map(Array, (L.ψ.Bx, L.ψ.Bz, L.ψ.Ex, L.ψ.Ez)))
     w = st.aux.window
     w === nothing && return out
     append!(out, map(Array, (w.lost..., w.fast...)))
     b = back_absorber(st)
-    b === nothing || append!(out, map(Array, (b.ψBy, b.ψBz, b.ψEy, b.ψEz)))
+    b === nothing || append!(out, map(Array, (b.ψ.By, b.ψ.Bz, b.ψ.Ey, b.ψ.Ez)))
     return out
 end
 
@@ -571,7 +571,7 @@ function body_T734(be)
         initialize!(used, first)
         run!(used, params(first), first.nsteps)
         @test !same_run(fresh, used)
-        psis(s) = (L = open_absorber(s); B = back_absorber(s); (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
+        psis(s) = (L = open_absorber(s); B = back_absorber(s); (L.ψ.Bx, L.ψ.Bz, L.ψ.Ex, L.ψ.Ez, B.ψ.By, B.ψ.Bz, B.ψ.Ey, B.ψ.Ez))
         @test all(ψ -> any(!iszero, Array(ψ)), psis(used))
         @test witness_alive(used) > 0
         initialize!(used, prob)
@@ -630,7 +630,7 @@ end
     wa = solve(wd, FunctionMap())
     wua, wha = partition_bits(wa.u[end]), history_bits(harness_state(wa))
     back = back_absorber(harness_state(wa))
-    @test all(ψ -> any(!iszero, Array(ψ)), (back.ψBy, back.ψBz, back.ψEy, back.ψEz))
+    @test all(ψ -> any(!iszero, Array(ψ)), (back.ψ.By, back.ψ.Bz, back.ψ.Ey, back.ψ.Ez))
     wb = solve(wd, FunctionMap())
     wref = loop_state(wprob, wnum)
     @test partition_bits(wb.u[end]) == wua == state_bits(wref)
@@ -642,7 +642,7 @@ end
         dp = DiscreteProblem(prob, num; backend, save_everystep = false)
         a = solve(dp, FunctionMap())
         ua, ha = partition_bits(a.u[end]), history_bits(harness_state(a))
-        @test any(!iszero, Array(open_absorber(harness_state(a)).ψEx))
+        @test any(!iszero, Array(open_absorber(harness_state(a)).ψ.Ex))
         b = solve(dp, FunctionMap())
         ref = loop_state(prob, num)
         @test partition_bits(b.u[end]) == ua == state_bits(ref)

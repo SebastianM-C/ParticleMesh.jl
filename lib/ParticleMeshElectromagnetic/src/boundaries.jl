@@ -1,9 +1,12 @@
-# Open transverse boundaries at N = 2 (WP-027, A2): the problem says that axis 2 is open
-# (`EMProblem(...; boundaries = (:periodic, :open))`), the numerics say how: a simple absorbing
-# layer for the fields (`AbsorbingLayer`, A2: PML later) and particles retired through the alive
-# mask when they leave the box across the open axis (§0.4 rule 1: no buffer changes size).
+# Open transverse boundaries (WP-027 at N = 2, WP-072 at N = 3; A2): the problem says which
+# transverse axes are open (`EMProblem(...; boundaries = (:periodic, :open))`, at N = 3 y, z or
+# both), the numerics say how: a simple absorbing layer for the fields (`AbsorbingLayer`, A2: PML
+# later), placed on each open axis as its own modifier (`LayerFactors{d}`), and particles retired
+# through the alive mask when they leave the box across an open axis (§0.4 rule 1: no buffer
+# changes size). The text below speaks of y; an open z is the same with the axes exchanged, and
+# where two layers overlap (the edges of a 3D box) each damps by its own factor.
 #
-# The grid underneath stays the engine's `PeriodicGrid{2}`: the layer occupies the outer `cells`
+# The grid underneath stays the engine's `PeriodicGrid{N}`: the layer occupies the outer `cells`
 # rows on each side of the box, so the two layers meet at the periodic seam y = 0 ≡ Ly and form
 # one slab of 2·cells rows. A wave that leaves the interior crosses that slab before it can come
 # back from the other side, and the absorbing slab damps it on the way. In the layer the
@@ -57,91 +60,102 @@ and element type, since `d` is an integer), in the element type of `strength`. A
     return ifelse(d > 0, strength * (T(d) / T(2 * cells))^order, zero(T))
 end
 
-# The damping factor exp(−σ·τ) per array row j (guards included) for a field whose rows sit at the
-# half rows 2j₀ + sh (sh = 0 for Node(), 1 for Center()), j₀ the interior row j aliases; written
-# once by the state.
-@kernel function layer_factor_kernel!(fac, strength, order::Int, sh::Int32, τ, n2::Int32, g::Int32, cells::Int32)
+# The damping factor exp(−σ·τ) per array row j along the layer's axis (guards included) for a field
+# whose rows sit at the half rows 2j₀ + sh (sh = 0 for Node(), 1 for Center()), j₀ the interior row
+# j aliases, on an axis of nd rows; written once by the state.
+@kernel function layer_factor_kernel!(fac, strength, order::Int, sh::Int32, τ, nd::Int32, g::Int32, cells::Int32)
     j = Int32(@index(Global, Linear))
-    j0 = mod(j - g - Int32(1), n2)
-    σ = layer_sigma(strength, order, Int32(2) * j0 + sh, n2, cells)
+    j0 = mod(j - g - Int32(1), nd)
+    σ = layer_sigma(strength, order, Int32(2) * j0 + sh, nd, cells)
     @inbounds fac[j] = exp(-σ * τ)
 end
 
 """
-    LayerFactors
+    LayerFactors{D}
 
-The absorbing layer placed on a grid by the state: the damping factors exp(−σ·τ/2) per array row
-along axis 2 (guards included), applied before and after a sub-step of length τ, for the rows at
-`Node()` and at `Center()` along y and for τ = Δt/2 (`half`, the B half steps: factors
+The absorbing layer of the open axis `D` placed on a grid by the state (axis 2 at N = 2; axes 2
+and 3 at N = 3, one `LayerFactors` each): the damping factors exp(−σ·τ/2) per array row along
+the axis (guards included), applied before and after a sub-step of length τ, for the rows at
+`Node()` and at `Center()` along it and for τ = Δt/2 (`half`, the B half steps: factors
 exp(−σΔt/4)) and τ = Δt (`full`, the E step: exp(−σΔt/2)); the number of layer rows `cells`,
-the guard width and the interior rows, which fix the rows the damping visits. `dt` is the time
-step the factors were made for. A [`FieldModifier`](@ref): it damps the components a sub-step
-updates before the sub-step and after it, and has no parameter half.
+the guard width and the interior cells `n`, which fix the rows the damping visits. `dt` is the
+time step the factors were made for. A [`FieldModifier`](@ref): it damps the components a
+sub-step updates before the sub-step and after it, and has no parameter half. Where two open
+axes' layers cross (a corner at N = 3) both damp, σ_y + σ_z.
 """
-struct LayerFactors{V,T} <: FieldModifier
+struct LayerFactors{D,V,N,T} <: FieldModifier
     node_half::V
     center_half::V
     node_full::V
     center_full::V
     cells::Int
     g::Int
-    n::NTuple{2,Int}
+    n::NTuple{N,Int}
     dt::T
 end
+LayerFactors{D}(nh::V, ch::V, nf::V, cf::V, cells, g, n::NTuple{N,Int}, dt::T) where {D,V,N,T} = LayerFactors{D,V,N,T}(nh, ch, nf, cf, cells, g, n, dt)
 
 """
-    LayerFactors(layer::AbsorbingLayer, grid::PeriodicGrid{2}, dt; backend, workgroupsize = nothing)
+    LayerFactors(layer::AbsorbingLayer, grid::PeriodicGrid, dt; axis = 2, backend, workgroupsize = nothing)
 
-Write the damping factors of `layer` on `grid` for the step `dt` (whose type is the element
-type). Throws an `ArgumentError` unless `guards(grid) ≤ layer.cells` (so that every guard row is
-a layer row and the damping visits it with its interior image's factor) and `2·cells < n₂`
-(interior rows remain between the two layers).
+Write the damping factors of `layer` on the open `axis` of `grid` (N = 2 or 3) for the step `dt`
+(whose type is the element type). Throws an `ArgumentError` unless `guards(grid) ≤ layer.cells`
+(so that every guard row is a layer row and the damping visits it with its interior image's
+factor) and `2·cells < n_axis` (interior rows remain between the two layers).
 """
-place_absorber(l::AbsorbingLayer, grid, dt; backend, workgroupsize = nothing) = LayerFactors(l, grid, dt; backend, workgroupsize)
+place_absorber(l::AbsorbingLayer, grid, dt; axis::Integer = 2, backend, workgroupsize = nothing) =
+    LayerFactors(l, grid, dt; axis, backend, workgroupsize)
 
-function LayerFactors(l::AbsorbingLayer, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize = nothing) where {T}
-    n, h, g = ncells(grid), cellsize(grid), guards(grid)
+function LayerFactors(l::AbsorbingLayer, grid::PeriodicGrid{N}, dt::T; axis::Integer = 2, backend, workgroupsize = nothing) where {N,T}
+    n, g = ncells(grid), guards(grid)
+    2 <= axis <= N || throw(ArgumentError("an absorbing layer lies on axis 2 or 3 of the grid, got axis $axis at N = $N"))
     g <= l.cells || throw(ArgumentError("the absorbing layer of $(l.cells) cells must be at least as thick as the $g guard cells"))
-    2 * l.cells < n[2] ||
-        throw(ArgumentError("two absorbing layers of $(l.cells) cells leave no interior rows of the $(n[2]) cells along axis 2"))
-    fac = ntuple(_ -> KernelAbstractions.allocate(backend, T, n[2] + 2g), 4)
+    2 * l.cells < n[axis] ||
+        throw(ArgumentError("two absorbing layers of $(l.cells) cells leave no interior rows of the $(n[axis]) cells along axis $axis"))
+    fac = ntuple(_ -> KernelAbstractions.allocate(backend, T, n[axis] + 2g), 4)
     for (f, sh, τ) in zip(fac, Int32.((0, 1, 0, 1)), (dt / 4, dt / 4, dt / 2, dt / 2))
-        launcher(layer_factor_kernel!, backend, workgroupsize)(f, T(l.strength), l.order, sh, τ, Int32(n[2]), Int32(g),
+        launcher(layer_factor_kernel!, backend, workgroupsize)(f, T(l.strength), l.order, sh, τ, Int32(n[axis]), Int32(g),
                                                              Int32(l.cells); ndrange = length(f))
     end
-    return LayerFactors(fac..., l.cells, g, n, dt)
+    return LayerFactors{axis}(fac..., l.cells, g, n, dt)
 end
 
-# Multiply the rows of the two layers (guards included) by their factors: ndrange
-# (n₁ + 2g, 2(g + cells)), the first g + cells array rows and the last g + cells. Every entry is
-# written by one work item, so the result does not depend on the launch shape.
-@kernel function absorb_kernel!(a, @Const(fac), lo::Int32, shift::Int32)
-    i, k = @index(Global, NTuple)
-    j = ifelse(Int32(k) <= lo, Int32(k), Int32(k) + shift)
-    @inbounds a[i, j] *= fac[j]
+# Multiply the rows of the two layers along the axis d (guards included) by their factors: ndrange
+# the array's size with axis d cut to 2(g + cells), the first g + cells array rows and the last
+# g + cells. Every entry is written by one work item, so the result does not depend on the launch
+# shape.
+@kernel function absorb_kernel!(a, @Const(fac), lo::Int32, shift::Int32, ::Val{d}) where {d}
+    K = @index(Global, Cartesian)
+    k = Int32(K[d])
+    j = ifelse(k <= lo, k, k + shift)
+    I = CartesianIndex(ntuple(a -> a == d ? Int(j) : K[a], Val(length(K))))
+    @inbounds a[I] *= fac[j]
 end
 
-function absorb_rows!(a, fac, L::LayerFactors, wgs)
+function absorb_rows!(a, fac, L::LayerFactors{D}, wgs) where {D}
     lo = L.g + L.cells
-    shift = L.n[2] + 2L.g - 2lo
-    launcher(absorb_kernel!, get_backend(a), wgs)(a, fac, Int32(lo), Int32(shift); ndrange = (size(a, 1), 2lo))
+    shift = L.n[D] + 2L.g - 2lo
+    dims = ntuple(k -> k == D ? 2lo : size(a, k), ndims(a))
+    launcher(absorb_kernel!, get_backend(a), wgs)(a, fac, Int32(lo), Int32(shift), Val(D); ndrange = dims)
     return a
 end
 
 # The layer's half damping before and after each Yee sub-step: B around a half step, E around the
-# full step, each component with the factor of its own stagger along y (field_layout(Val(2))): Ex,
-# Ez, By on Node() rows, Ey, Bx, Bz on Center() rows. Symmetric splitting, second order in Δt. The
-# damping writes the guard rows with their interior images' factors, so every guard stays filled.
-function absorb_b!(L::LayerFactors, f, wgs)
-    absorb_rows!(f.Bx, L.center_half, L, wgs)
-    absorb_rows!(f.By, L.node_half, L, wgs)
-    absorb_rows!(f.Bz, L.center_half, L, wgs)
+# full step, each component with the factor of its own stagger along the layer's axis d
+# (field_layout): E_c on Center() rows for c = d and on Node() rows otherwise, B_c the other way
+# round (at N = 2 along y: Ex, Ez, By on Node() rows, Ey, Bx, Bz on Center() rows). Symmetric
+# splitting, second order in Δt. The damping writes the guard rows with their interior images'
+# factors, so every guard stays filled.
+function absorb_b!(L::LayerFactors{D}, f, wgs) where {D}
+    absorb_rows!(f.Bx, D == 1 ? L.node_half : L.center_half, L, wgs)
+    absorb_rows!(f.By, D == 2 ? L.node_half : L.center_half, L, wgs)
+    absorb_rows!(f.Bz, D == 3 ? L.node_half : L.center_half, L, wgs)
     return nothing
 end
-function absorb_e!(L::LayerFactors, f, wgs)
-    absorb_rows!(f.Ex, L.node_full, L, wgs)
-    absorb_rows!(f.Ey, L.center_full, L, wgs)
-    absorb_rows!(f.Ez, L.node_full, L, wgs)
+function absorb_e!(L::LayerFactors{D}, f, wgs) where {D}
+    absorb_rows!(f.Ex, D == 1 ? L.center_full : L.node_full, L, wgs)
+    absorb_rows!(f.Ey, D == 2 ? L.center_full : L.node_full, L, wgs)
+    absorb_rows!(f.Ez, D == 3 ? L.center_full : L.node_full, L, wgs)
     return nothing
 end
 
@@ -151,24 +165,39 @@ after_substep!(L::LayerFactors, mp, f, grid, ::BHalf, wgs) = absorb_b!(L, f, wgs
 before_substep!(L::LayerFactors, mp, f, grid, ::EStep, wgs) = absorb_e!(L, f, wgs)
 after_substep!(L::LayerFactors, mp, f, grid, ::EStep, wgs) = absorb_e!(L, f, wgs)
 
-# Particles that left the box across the open axis 2 this step are retired: below the Courant
-# limit a particle moves less than one cell per axis per step, so its cell along axis 2 changes by
-# at most one, except across the periodic seam, where it jumps by n₂ − 1 ≥ 2 (deposit_flux! needs
-# n₂ ≥ 3). After the current of that last move is deposited, the slot is marked free; it keeps
-# its data, every kernel skips it, and the next sort moves it behind the alive particles.
-@kernel function retire_kernel!(s)
+# Particles that left the box across an open axis this step are retired: below the Courant limit a
+# particle moves less than one cell per axis per step, so its cell along an open axis d changes by
+# at most one, except across the periodic seam, where it jumps by n_d − 1 ≥ 2 (deposit_flux! needs
+# n_d ≥ 3). After the current of that last move is deposited, the slot is marked free; it keeps its
+# data, every kernel skips it, and the next sort moves it behind the alive particles. `axes` are
+# the open axes, as a tuple of `Val`s.
+@inline old_cell(x, ::Val{1}) = x.old_cell_1
+@inline old_cell(x, ::Val{2}) = x.old_cell_2
+@inline old_cell(x, ::Val{3}) = x.old_cell_3
+@inline crossed(s, i, ::Tuple{}) = false
+@inline crossed(s, i, axes::Tuple) =
+    (vd = first(axes); d = axis_of(vd); @inbounds abs(s.cell[d][i] - old_cell(s.extras, vd)[i]) > Int32(1)) || crossed(s, i, Base.tail(axes))
+
+@kernel function retire_kernel!(s, axes)
     i = @index(Global, Linear)
-    @inbounds if s.status[i] == ALIVE && abs(s.cell[2][i] - s.extras.old_cell_2[i]) > Int32(1)
+    @inbounds if s.status[i] == ALIVE && crossed(s, i, axes)
         s.status[i] = ParticleMeshCore.FREE
     end
 end
 
-retire!(::Nothing, st) = nothing
-retire!(::LayerFactors, st) = retire_open!(st)
-function retire_open!(st)
+"""
+    retire_open!(absorbers::Tuple, state)
+
+Retire the particles (the species', a dopant's electrons and a witness bunch's) that crossed an
+open axis' edge this step, the axes being those of the state's placed `absorbers`
+([`open_absorbers`](@ref)); nothing without one.
+"""
+retire_open!(::Tuple{}, st) = nothing
+function retire_open!(absorbers::Tuple, st)
     wgs = st.numerics.workgroupsize
+    axes = map(L -> Val(absorber_axis(L)), absorbers)
     for s in (deposited_species(st)..., witness_species(st)...)
-        launcher(retire_kernel!, get_backend(s), wgs)(s; ndrange = capacity(s))
+        launcher(retire_kernel!, get_backend(s), wgs)(s, axes; ndrange = capacity(s))
     end
     return nothing
 end

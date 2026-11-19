@@ -125,6 +125,12 @@ end
     return i === nothing ? :(nothing) : :(ms[$i])
 end
 
+# Every modifier of type `M` in a tuple, in its order, as a tuple: resolved from the tuple's type.
+@generated function pick_modifiers(::Type{M}, ms::Tuple) where {M}
+    idx = findall(E -> E <: M, collect(fieldtypes(ms)))
+    return :(($((:(ms[$i]) for i in idx)...),))
+end
+
 # One sub-step of the solve: the modifiers' `before_substep!`, the solver's update, the modifiers'
 # `after_substep!`.
 function substep!(update!::U, f, grid, s, modifiers, mps, wgs) where {U}

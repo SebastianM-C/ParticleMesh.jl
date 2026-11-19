@@ -11,7 +11,7 @@ using SciMLBase: SciMLBase, DiscreteProblem, ReturnCode, remake, solve
 using OrdinaryDiffEqFunctionMap: FunctionMap
 
 "The eight convolution fields of a state with a PML on the open axis and on the window's back edge."
-psis(s) = (L = open_absorber(s); B = back_absorber(s); (L.ψBx, L.ψBz, L.ψEx, L.ψEz, B.ψBy, B.ψBz, B.ψEy, B.ψEz))
+psis(s) = (L = open_absorber(s); B = back_absorber(s); (L.ψ.Bx, L.ψ.Bz, L.ψ.Ex, L.ψ.Ez, B.ψ.By, B.ψ.Bz, B.ψ.Ey, B.ψ.Ez))
 
 """
     evolved_host(st) -> Vector{Pair{String,Any}}
@@ -30,12 +30,12 @@ function evolved_host(st::EMState)
     append!(out, map((n, a) -> string(n) => Array(a), keys(st.fields), values(st.fields)))
     ndims(st) == 2 || return out
     layer, window = open_absorber(st), st.aux.window
-    layer isa PMLFields && append!(out, map((n, a) -> "layer $n" => Array(a), ("ψBx", "ψBz", "ψEx", "ψEz"), (layer.ψBx, layer.ψBz, layer.ψEx, layer.ψEz)))
+    layer isa PMLFields && append!(out, map((n, a) -> "layer $n" => Array(a), ("ψBx", "ψBz", "ψEx", "ψEz"), (layer.ψ.Bx, layer.ψ.Bz, layer.ψ.Ex, layer.ψ.Ez)))
     window === nothing && return out
     append!(out, map(a -> "lost" => Array(a), window.lost))
     append!(out, map(a -> "fast" => Array(a), window.fast))
     b = back_absorber(st)
-    b === nothing || append!(out, map((n, a) -> "back $n" => Array(a), ("ψBy", "ψBz", "ψEy", "ψEz"), (b.ψBy, b.ψBz, b.ψEy, b.ψEz)))
+    b === nothing || append!(out, map((n, a) -> "back $n" => Array(a), ("ψBy", "ψBz", "ψEy", "ψEz"), (b.ψ.By, b.ψ.Bz, b.ψ.Ey, b.ψ.Ez)))
     return out
 end
 
@@ -330,7 +330,7 @@ function body_T742(be)
     f, L, w, b = st.fields, open_absorber(st), st.aux.window, back_absorber(st)
     sp(s) = (s.cell[1], s.cell[2], s.offset[1], s.offset[2], s.u[1], s.u[2], s.u[3], s.w, s.status, s.count)
     expected = (sp(st.species[1])..., sp(st.species[2])..., f.Ex, f.Ey, f.Ez, f.Bx, f.By, f.Bz, f.Jx, f.Jy, f.Jz,
-                L.ψBx, L.ψBz, L.ψEx, L.ψEz, w.lost[1], w.lost[2], w.fast[1], w.fast[2], b.ψBy, b.ψBz, b.ψEy, b.ψEz, sp(st.aux.witness.species)...)
+                L.ψ.Bx, L.ψ.Bz, L.ψ.Ex, L.ψ.Ez, w.lost[1], w.lost[2], w.fast[1], w.fast[2], b.ψ.By, b.ψ.Bz, b.ψ.Ey, b.ψ.Ez, sp(st.aux.witness.species)...)
     same_arrays(x, y) = length(x) == length(y) && all(map(===, x, y))
     @test length(expected) == 51 && same_arrays(@inferred(evolved(st)), expected)
     @test same_arrays(state_partition(st).x, expected)
@@ -524,7 +524,7 @@ end
         num = EMNumerics(; current = Esirkepov(), absorber = PML(; cells = 4, sigma_max = 1.5, order = 3, kappa_max = 2, kappa_order = 2, alpha_max = 0.2))
         dp = DiscreteProblem(prob, num; backend, save_everystep = false)
         half = solve(dp, FunctionMap())
-        @test any(!iszero, Array(open_absorber(harness_state(half, half.u[end])).ψEx))
+        @test any(!iszero, Array(open_absorber(harness_state(half, half.u[end])).ψ.Ex))
         rest = solve(remake(dp; u0 = half.u[end]), FunctionMap())
         hrest = history_bits(harness_state(rest))
         ref = EMState(prob, num; backend)
@@ -553,7 +553,7 @@ function body_T744(be)
         initialize!(a, prob)
         run!(a, p, 10; observer = nothing)
         L = open_absorber(a)
-        @test all(ψ -> any(!iszero, Array(ψ)), (L.ψBx, L.ψBz, L.ψEx, L.ψEz))
+        @test all(ψ -> any(!iszero, Array(ψ)), (L.ψ.Bx, L.ψ.Bz, L.ψ.Ex, L.ψ.Ez))
         snap = snapshot(a, 10)
         run!(a, p, 10; first = 11, observer = nothing)
         b = restore!(EMState(prob, num; backend = be), snap)
