@@ -58,6 +58,7 @@ function body_T994(be)
         @test d <= EMTOL["T-217"]["measured"][name] / 5
         if name == "landau"
             plain = haskey(PHYSICS, k) ? momentum_change(PHYSICS[k], name, (; be, ov...)) : nothing
+            plain === nothing || (MEASURED["T-994 relative momentum change"]["$k, today's gather"] = plain)
             plain === nothing || @test abs(dP - plain) <= plain / 100
         else
             @test dP <= tol["momentum_cold"]
