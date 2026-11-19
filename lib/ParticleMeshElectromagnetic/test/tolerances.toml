@@ -932,10 +932,10 @@ status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU)"
 # WP-070, the Galerkin gather.
 
 ["T-991"]
-quantity = "⟨J_d, E⟩/ΣJ_d of the charge-conserving current of one particle moved symmetrically along axis d (2/32 of a cell, no knot crossed) against E_d read with the Galerkin weights at the move's centre, random E, N = 1 to 3, orders 1 and 2"
-scale = "eps(T) (E of size 1)"
-C = 32
-measured = { Float64 = 5.81 }
+quantity = "⟨J_d, E⟩ − ΣJ_d · E_d(Galerkin weights at the move's centre) for the charge-conserving current of one particle moved symmetrically along axis d (2/32 and 2/1024 of a cell, no knot crossed), random E, N = 1 to 3, orders 1 and 2"
+scale = "eps(T) · |q w| Δx_d/Δt · max|E| (independent of the move)"
+C = 4
+measured = { Float64 = 1.26 }
 status = "proposed; the largest over Float32 and Float64 (CPU)"
 
 ["T-992"]

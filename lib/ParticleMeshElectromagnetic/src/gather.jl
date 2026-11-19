@@ -43,8 +43,12 @@ end
 # derivative of the order-p B-spline is the difference of two order-(p − 1) splines half a cell
 # apart. A gather with those weights for E_d (order p − 1 along d, at its `Center()` stagger there,
 # order p along the other axes) is the transpose of the current deposition for a vanishing move,
-# so the work the field does on the particles is the work Σ J·E booked on the grid: the energy of
-# fields and particles is kept to the time integrator's error. B does no work; its components are
+# so the work the field does on the particles is the work Σ J·E booked on the grid: with the
+# quadratic shape the energy of fields and particles is kept to the time integrator's error (it
+# falls by four per halving of Δt, T-995). With the linear shape the lower order is the nearest
+# grid point, whose gathered field jumps where a particle crosses a mid-cell: the energy error is
+# still far below the full-shape gather's but falls only about two per halving (measured 2.16 and
+# 2.28 in the Weibel case by the WP-070 physics breaker, not a test). B does no work; its components are
 # read one order lower along their two `Center()` axes too, which makes the gathered B follow
 # Faraday's law with the gathered E: the discrete curl of the grid's E, read with B's weights, is
 # the curl of E read with E's weights (B. B. Godfrey and J.-L. Vay, J. Comput. Phys. 248, 33
@@ -60,8 +64,9 @@ along each axis on which the component sits at `Center()` in [`field_layout`](@r
 with the quadratic shape, Ex with the linear shape along x and the quadratic along y and z, Bz
 with the linear shape along x and y, and so on; with the linear shape, the lower order is the
 nearest grid point (`Shape{0}`). E's weights are then those of the charge-conserving current for
-a vanishing move, so the gather is the current deposition's transpose and the total energy of
-fields and particles is kept to the time integrator's error; B's weights make the gathered B
+a vanishing move, so the gather is the current deposition's transpose; with the quadratic shape
+the total energy of fields and particles is then kept to the time integrator's error (second
+order in Δt), with the linear shape only to first order in Δt. B's weights make the gathered B
 follow Faraday's law with the gathered E. Momentum is not kept (a lone particle pushes itself).
 The mesh solve, the current and the diagnostics are unchanged.
 

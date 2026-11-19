@@ -43,10 +43,14 @@ struct NoTransverse end
 # degree 2 (1) between knots, so the difference of its weights at the two ends is exactly 2Δ times
 # its derivative at x, and Esirkepov's current along d is q·w·2Δ·Δx_d/Δt times the derivative's
 # prefix sum, the spline one order lower at the faces, times the unchanged weights of the other
-# axes. So ⟨J_d, E⟩/ΣJ_d, for any E, is E_d read at x with E_d's Galerkin weights, to roundoff:
-# the Galerkin gather is the transpose of the current deposition. N = 1, 2 and 3, both shapes,
-# Float32 and Float64, 20 random positions and fields per axis; the full-shape gather of today's
-# step misses the same quantity by more than 2 % of the field's size.
+# axes. So ⟨J_d, E⟩ = ΣJ_d · (E_d read at x with E_d's Galerkin weights), for any E, to roundoff:
+# the Galerkin gather is the transpose of the current deposition. The error is measured against
+# |q w| Δx_d/Δt · max|E| and not against ΣJ_d, which is proportional to the move: Esirkepov's
+# weight differences cancel at the scale of the weights, so the error relative to ΣJ_d grows as
+# 1/Δ for small moves (found by the physics breaker; 1.0e5 eps at Δ = 5·10⁻⁷ in Float64) while
+# this one does not. Δ = 1/32 and 1/1024 of a cell, N = 1, 2 and 3, both shapes, Float32 and
+# Float64, 20 random positions and fields per axis; the full-shape gather of today's step misses
+# ⟨J_d, E⟩/ΣJ_d by more than 2 % of the field's size.
 function body_T991()
     C = emC("T-991")
     worst = 0.0
@@ -58,9 +62,8 @@ function body_T991()
         L = galerkin_layout(N)
         stρ = N == 1 ? Node() : ntuple(_ -> Node(), N)
         g = Int32(guards(grid))
-        Δ = T(1) / 32
         miss_full = 0.0
-        for d in 1:N, trial in 1:20
+        for Δ in (T(1) / 32, T(1) / 1024), d in 1:N, trial in 1:20
             s = Species(CPU(), T, 1; q = -1, m = 1, N, extras = flux_extras(T, N))
             c = ntuple(_ -> Int32(rand(rng, 2:7)), N)
             x = ntuple(_ -> away_from_knots(rng, T, 1 / 16), N)
@@ -86,14 +89,16 @@ function body_T991()
             deposit_flux!(Fast(), J..., s, shape, stρ, grid, ws; dt = T(1) / 4, kw...)
             E = random_field!(field(CPU(), T, grid), grid, rng, T)
             Jd = interior_view(fold_guards!(J[d], grid), grid)
-            transposed = sum(Jd .* interior_view(E, grid)) / sum(Jd)
+            Ei = interior_view(E, grid)
+            work = sum(Jd .* Ei)
             st = L[(:Ex, :Ey, :Ez)[d]]
             gal = galerkin_read(E, c, x, component_shape(GalerkinRead{P}(), st), st, g)
             full = galerkin_read(E, c, x, shape, st, g)
-            err = abs(transposed - gal) / eps(T)
+            scale = abs(s.w[1]) * grid.dx[d] / (T(1) / 4) * maximum(abs, Ei)     # |q w| Δx_d/Δt · max|E|, q = -1
+            err = abs(work - sum(Jd) * gal) / (eps(T) * scale)
             worst = max(worst, err)
             @test err <= C
-            miss_full = max(miss_full, abs(transposed - full))
+            Δ == T(1) / 32 && (miss_full = max(miss_full, abs(work / sum(Jd) - full)))
             @test all(k -> k == d || all(iszero, J[k]), 1:N)      # a move along d puts no current on the other resolved axes
         end
         @test miss_full > 1 / 50        # today's full-shape gather is not the transpose
@@ -102,7 +107,7 @@ function body_T991()
     @info "T-991 transpose err/eps" worst
 end
 
-@testset "T-991 the Galerkin gather of E is the transpose of the charge-conserving current: ⟨J_d, E⟩/ΣJ_d for a symmetric move along d is E_d read with the Galerkin weights at the move's centre, to roundoff, N = 1 to 3, both shapes [A2, A7, WP-070]" begin
+@testset "T-991 the Galerkin gather of E is the transpose of the charge-conserving current: ⟨J_d, E⟩ for a symmetric move along d is ΣJ_d times E_d read with the Galerkin weights at the move's centre, to roundoff of the current's scale, moves of 1/32 and 1/1024 cell, N = 1 to 3, both shapes [A2, A7, WP-070]" begin
     body_T991()
 end
 
