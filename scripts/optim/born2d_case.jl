@@ -94,17 +94,22 @@ function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end,
                      profile = DensityRamp(; vacuum = T(BCASE.vacuum), ramp = T(ramp)), ionization = ion)
 end
 
-"The case's numerics: Reference mode, PMLs at the open y edges (`ny` times 12 cells) and at the window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the back edge, at least 6 cells)."
-born_numerics(ppl::Integer = BCASE.ppl, ny::Integer = 1) =
-    EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
+"""
+The case's numerics: Reference mode, PMLs at the open y edges (`ny` times 12 cells) and at the
+window's back (a quarter wavelength, at least 4 cells; the antenna is 12 cells of λ₀/32 from the
+back edge, at least 6 cells), and the particles' `gather`: the grid's fields (`nothing`, the
+default, WP-064's and WP-065's runs) or a `CompensatedGather` (WP-067).
+"""
+born_numerics(ppl::Integer = BCASE.ppl, ny::Integer = 1; gather = nothing) =
+    EMNumerics(; mode = Reference(), absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))), gather)
 
-"The case's state at its start on `backend` and its parameters; `ppl`, `ny` and the rest as [`born_problem`](@ref)."
-born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, ny::Integer = 1, backend = CPU(), kw...) =
-    start_of(born_problem(a0, dopant; ppl, ny, kw...); ppl, ny, backend)
+"The case's state at its start on `backend` and its parameters; `gather` as [`born_numerics`](@ref), `ppl`, `ny` and the rest as [`born_problem`](@ref)."
+born_start(a0 = BCASE.a0, dopant = BCASE.dopant; ppl::Integer = BCASE.ppl, ny::Integer = 1, backend = CPU(), gather = nothing, kw...) =
+    start_of(born_problem(a0, dopant; ppl, ny, kw...); ppl, ny, backend, gather)
 
-"The state of a problem of the case at its start on `backend`, with the case's numerics at the `ppl` and `ny` the problem was made with, its parameters, and the problem."
-function start_of(prob; ppl::Integer, ny::Integer, backend = CPU())
-    st = EMState(prob, born_numerics(ppl, ny); record = (), backend)
+"The state of a problem of the case at its start on `backend`, with the case's numerics (and `gather`) at the `ppl` and `ny` the problem was made with, its parameters, and the problem."
+function start_of(prob; ppl::Integer, ny::Integer, backend = CPU(), gather = nothing)
+    st = EMState(prob, born_numerics(ppl, ny; gather); record = (), backend)
     p = params(prob)
     initialize!(st, p)
     return st, p, prob

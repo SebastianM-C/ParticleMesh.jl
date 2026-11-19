@@ -44,6 +44,33 @@ polarized in the plane, the case's pulse): π·a₀²·w·τ/4·(1 + 1/(2w²)).
 """
 pulse_energy(a0, duration, waist) = π * a0^2 * waist * duration / 4 * (1 + 1 / (2 * waist^2))
 
+"""
+The optimizer's box over the free parameters `TCASE.free` (duration, waist, focus, density), in
+physical units, with their scales (WP-068): the duration from 4 to 9, the waist from 6 to 14, the
+focus from 64 to 110 and the density from 0.05 to 0.10 n_c, so z = x ./ scale stays in [0.6, 1.5].
+At the budget of a₀ = 1.9 at the base pulse, a₀ runs across it from about 1.3 (τ = 9, w = 14) to
+about 3.0 (τ = 4, w = 6), past the plasma's own injection into the first bucket from a₀ ≈ 2.45 to
+2.55 (WP-065).
+"""
+const TRAPPED_BOX = (lo = [4.0, 6.0, 64.0, 0.05], hi = [9.0, 14.0, 110.0, 0.10], scale = [TCASE.scale[i] for i in TCASE.free])
+
+"""
+    trapped_point(free) -> (duration, waist, focus, delay, density)
+
+The case's five parameters from the four free ones (in `TCASE.free`'s order), the delay at the
+base point's `TCASE.x0[4]` (every parameter outside `TCASE.free` at its base value), in the free parameters' type.
+"""
+function trapped_point(free)
+    length(free) == length(TCASE.free) || throw(ArgumentError("trapped_point takes the $(length(TCASE.free)) free parameters, got $(length(free))"))
+    T = promote_type(map(typeof, Tuple(free))...)
+    x = Vector{T}(undef, length(TCASE.x0))
+    for i in eachindex(x)
+        k = findfirst(==(i), TCASE.free)
+        x[i] = k === nothing ? T(TCASE.x0[i]) : free[k]
+    end
+    return Tuple(x)
+end
+
 "The energy budget of the pulse with `a0` at the base duration and waist."
 budget(a0 = TCASE.a0_energy) = pulse_energy(a0, TCASE.x0[1], TCASE.x0[2])
 
@@ -81,9 +108,14 @@ function trapped_problem(duration, waist, focus, delay, density; energy = budget
     return born_problem(a0, fraction * density; duration, waist, focus, delay, density, ppl, ny, capacity, kw...)
 end
 
-"The case's state after its run at the five parameters: the run of [`trapped_problem`](@ref)'s problem (and its keywords) on `backend`; a birth without a free slot is an error."
-trapped_state(duration, waist, focus, delay, density; ppl::Integer = BCASE.ppl, ny::Integer = 1, backend = CPU(), kw...) =
-    run_to_end(start_of(trapped_problem(duration, waist, focus, delay, density; ppl, ny, kw...); ppl, ny, backend))
+"""
+The case's state after its run at the five parameters: the run of [`trapped_problem`](@ref)'s
+problem (and its keywords) on `backend`, the particles reading the fields through `gather`
+([`born_numerics`](@ref): `nothing`, or WP-068's `CompensatedGather()`); a birth without a free
+slot is an error.
+"""
+trapped_state(duration, waist, focus, delay, density; ppl::Integer = BCASE.ppl, ny::Integer = 1, backend = CPU(), gather = nothing, kw...) =
+    run_to_end(start_of(trapped_problem(duration, waist, focus, delay, density; ppl, ny, kw...); ppl, ny, backend, gather))
 
 # The summand of a slot: weight × kinetic energy × position weight × trapping weight, zero for a free slot.
 @inline function slot_trapped(status, c1, o1, u1, u2, u3, w, h1, lo, hi, ulo, uhi)
@@ -161,7 +193,9 @@ weight of each with u_x above `rise[2]` over the whole window ahead of the back 
 (`fast_born_window`, `fast_plasma_window`), which shows trapped charge the position weight leaves
 out; the highest u_x of each; the dark current, the plasma's electrons with u_x above `rise[2]`
 between the back band's end and `fade[1]` (`dark_weight`, and `dark_energy` in J's units); and the
-number of alive particles.
+number of alive particles. The dark region starts at the back band's end, which a longer window
+(`extend`, as under a power cap) pushes back, so `dark_weight` and `dark_energy` of runs with
+different `extend` count different regions and are not comparable.
 """
 function trapped_summary(st; fade = TCASE.fade, rise = TCASE.rise)
     parts = trapped_parts(st; fade, rise)

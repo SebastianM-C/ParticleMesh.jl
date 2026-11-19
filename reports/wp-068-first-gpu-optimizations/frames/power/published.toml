@@ -1,0 +1,12 @@
+branch = "runs/wp068-frames-cpu"
+commit = "2d341236785b42888d26e409e0d6ba0f50259f1b"
+
+[[files]]
+path = "scripts/runs/wp068-frames/power/manifest.toml"
+bytes = 6948
+sha256 = "c8e8a74a97ed341e8c6d34617c2d1b15f297764dfa62beb95323fbfbf47b5395"
+
+[[files]]
+path = "scripts/runs/wp068-frames/power/power.json"
+bytes = 4281498
+sha256 = "03b846804d42dffcaaa9f80619deb31e6b1c970e0130a549c7d17a00c13552ab"

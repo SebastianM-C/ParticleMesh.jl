@@ -1,0 +1,12 @@
+branch = "runs/wp068-frames-cpu"
+commit = "2d341236785b42888d26e409e0d6ba0f50259f1b"
+
+[[files]]
+path = "scripts/runs/wp068-frames/powerborn/manifest.toml"
+bytes = 6956
+sha256 = "be202ab10398d9df5db3b7dec868cd70b7a10d576d91bd692efa98ab819d7b36"
+
+[[files]]
+path = "scripts/runs/wp068-frames/powerborn/powerborn.json"
+bytes = 4472101
+sha256 = "5fbd6eac89a7bde6a05f8f676adf718088c7e521a1fd031fc274a146752b23f0"

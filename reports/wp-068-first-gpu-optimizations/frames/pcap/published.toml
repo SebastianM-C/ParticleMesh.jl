@@ -1,0 +1,12 @@
+branch = "runs/wp068-frames-cpu"
+commit = "2d341236785b42888d26e409e0d6ba0f50259f1b"
+
+[[files]]
+path = "scripts/runs/wp068-frames/pcap/manifest.toml"
+bytes = 6951
+sha256 = "d48e96cfc650330bb07ab23b95505b712c8d31641423ac1aaca1a39a15b44426"
+
+[[files]]
+path = "scripts/runs/wp068-frames/pcap/pcap.json"
+bytes = 4407989
+sha256 = "8c5a67ea1af1ab9417d9849a2d51137c245431a7a45dde2ae690a8b7dd388d12"

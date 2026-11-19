@@ -27,7 +27,7 @@ sol.u .* WAKE_BOX.scale                                       # the optimum; sol
 | `slab.jl` (with `wake2d_case.jl`) | WP-051 | as WP-045 | `slab_amplitude`, a wake amplitude that does not depend on when it is read |
 | `witness2d_case.jl` | WP-052: 830 steps, fixed laser energy, a witness bunch | τ ∈ [4, 9], n₀ ∈ [0.04, 0.10], witness centre x_c ∈ [30, 50] (`WITNESS_BOX`) | `witness_gain`, the witness bunch's mean energy gain |
 | `born2d_case.jl` | WP-064: 900 steps at λ₀/16, PMLs, a nitrogen K-shell dopant in a short section (WP-059) | a₀ ∈ [1.5, 2.4] (`BORN_BOX` in `born2d.jl`, a scan, no optimizer yet) | `born_energy`, the kinetic energy of the ionization-born electrons ahead of the window's back, with `plasma_peak_energy` and `plasma_fast_weight` as the guard on the plasma's own electrons |
-| `trapped2d_case.jl` | WP-065: WP-064's case at a fixed laser energy (a₀ from duration and waist), the dopant at 1 % of the density, `ny` refining y | duration, waist, focus, density (`TCASE.free`; the delay stays at `TCASE.x0[4]`; no box or optimizer yet) | `trapped_energy`, the kinetic energy of every electron of the first bucket (a position weight rising from 0 at window x = 12 to 1 at 24) with u_x above about 4 (a smooth weight from 3 to 5), born or the plasma's own |
+| `trapped2d_case.jl` | WP-065: WP-064's case at a fixed laser energy (a₀ from duration and waist), the dopant at 1 % of the density, `ny` refining y | duration ∈ [4, 9], waist ∈ [6, 14], focus ∈ [64, 110], density ∈ [0.05, 0.10] (`TRAPPED_BOX` over `TCASE.free`; the delay stays at `TCASE.x0[4]`); `gather = CompensatedGather()` passes WP-067's gather to the numerics | `trapped_energy`, the kinetic energy of every electron of the first bucket (a position weight rising from 0 at window x = 12 to 1 at 24) with u_x above about 4 (a smooth weight from 3 to 5), born or the plasma's own |
 
 ## The drivers
 
@@ -41,7 +41,8 @@ sol.u .* WAKE_BOX.scale                                       # the optimum; sol
 | `solvers.jl` | `reports/wp-058-optimization-jl.md` | The WP-045 problem solved by L-BFGS-B and by MadNLP with a limited-memory Hessian |
 | `born2d.jl` | `reports/wp-064-born-electron-objective.md` | Whether the born-electron objective can be optimized on: a run that traps, a scan in a₀ with ForwardDiff tangents, finite differences, the cost per run |
 | `trapped2d.jl` | `reports/wp-065-trapped-resolution.md` | The trapped-electron objective and its five-parameter gradient from λ₀/16 to λ₀/64, against central differences and along lines in the energy budget and the density; campaigns of independent runs, several at a time, resumable |
+| `trapped2d_opt.jl` | `reports/wp-068-first-gpu-optimizations.md` | L-BFGS-B on the trapped-electron objective from four starts at λ₀/32 with the compensated gather in Float32 on the GPU, every point a run with duals recorded with J, its gradient, a₀ and the dark current (resumable), and a check of the optimum at λ₀/48 and against Float64 central differences |
 
 The reports of WP-045 to WP-052 record runs made with the hand-written projected BFGS that Optimization.jl replaced, so their call counts and paths are that optimizer's.
 
-Tests: `julia +1.13 --project=scripts scripts/optim/test/runtests.jl` (T-760 to T-763 for the layer, T-660 to T-665 and T-680 to T-682, T-830 to T-835 and T-910 to T-914 for the cases, and T-620 to T-623 for the Bayesian optimizer).
+Tests: `julia +1.13 --project=scripts scripts/optim/test/runtests.jl` (T-760 to T-763 for the layer, T-660 to T-665 and T-680 to T-682, T-830 to T-835 and T-910 to T-914 for the cases, T-970 to T-977 for the WP-068 driver, and T-620 to T-623 for the Bayesian optimizer).
