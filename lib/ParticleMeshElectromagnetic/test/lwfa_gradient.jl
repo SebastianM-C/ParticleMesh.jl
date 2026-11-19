@@ -78,6 +78,22 @@ end
 "E_x on the axis's node row, the interior columns past the window's back band (`window_back_band`)."
 axis_Ex(st) = axis_Ex_all(st)[(window_back_band(st) + 1):end]
 
+"""
+    axis_Ex_past(st, width) -> Vector
+
+E_x on the axis's node row past a fixed physical `width` (c/ω₀) behind the window's back: the
+same stretch of the window at every resolution, where `axis_Ex` drops a fixed number of cells
+(T-612). Throws an `ArgumentError` when `width` is not a whole number of cells or is narrower than
+the back band, whose columns are never read.
+"""
+function axis_Ex_past(st, width)
+    h = Float64(value_of(cellsize(st.grid)[1]))
+    k = round(Int, width / h)
+    abs(width / h - k) <= 1.0e-3 || throw(ArgumentError("width $width is not a whole number of cells of $h"))   # Float32 cells: a few ulps
+    k >= window_back_band(st) || throw(ArgumentError("width $width ($k cells) is narrower than the back band, $(window_back_band(st)) cells"))
+    return axis_Ex_all(st)[(k + 1):end]
+end
+
 "The soft maximum (1/β)·log Σ exp(β·v), shifted by the primal maximum (constant in the parameters) against overflow."
 function soft_maximum(v, β)
     m = maximum(value_of, v)
@@ -297,4 +313,18 @@ const LWFA_DUAL_PINNED = Tuple(emC("T-610", "pinned"))
         @test all(getfield(lf, k) == getfield(lc, k) for k in fieldnames(typeof(lc)) if !(k in (:position, :center)))
         @test f.window == c.window && f.profile == c.profile
     end
+    # T-612's read-out: past the coarse case's back band as a physical width, the same columns'
+    # positions at every r (r times the coarse band's cells, more than the refined band's own).
+    sc = first(lwfa_gradient_run(x0, Reference(); nsteps = 1))
+    b, h = window_back_band(sc), cellsize(sc.grid)[1]
+    @test axis_Ex_past(sc, b * h) == axis_Ex(sc)
+    @test_throws ArgumentError axis_Ex_past(sc, (b - 1) * h)        # inside the band
+    @test_throws ArgumentError axis_Ex_past(sc, (b + 1 / 2) * h)    # not a whole number of cells
+    for r in (2, 3)
+        sf = first(lwfa_gradient_run(x0, Reference(); refine = r, nsteps = 1))
+        @test window_back_band(sf) < r * b
+        @test axis_Ex_past(sf, b * h) == axis_Ex_all(sf)[(r * b + 1):end]
+    end
+    sd = first(lwfa_gradient_run(lwfa_dual_x0(), Reference(); refine = 3, nsteps = 1))   # T-612's Float32 cells
+    @test length(axis_Ex_past(sd, b * h)) == ncells(sd.grid)[1] - 3b
 end

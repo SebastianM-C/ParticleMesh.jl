@@ -130,20 +130,25 @@ else
     # The longer, refined cases the GPU is for: Δx, Δy and Δt divided by r = 2 and 3 (r² times the
     # cells and particles), 600·r steps (WP-044's horizon), read past the back band. The functional
     # here is the log-mean-exp, the soft maximum less log(n)/β: the soft maximum grows with the
-    # number n of columns read, which refining multiplies (the PR's physics breaker). The successive
-    # differences between resolutions shrink, the coarse case's being its discretization error
-    # (measured on the CPU, Float64 duals: density's partial −0.188, −0.228, −0.237). The runs are
+    # number n of columns read, which refining multiplies (the PR's physics breaker). It reads the
+    # window past the same physical width at every resolution, the back band of the coarse case
+    # (`axis_Ex_past`), not past the band's fixed number of cells, whose width shrinks as 1/r: the
+    # three runs then read the same stretch of wake, and the successive differences between
+    # resolutions are the discretization error of one functional (measured on the CPU,
+    # Dual{Float32,3}: density's partial −0.1876, −0.2278, −0.2373). The runs are
     # timed on both backends (r = 1 and 2), after one untimed coarse run per backend that compiles
     # every kernel, the window's included (they start at step 199).
     @testset "T-612 the refined and longer dual gradient case on CUDA converges with resolution [A7, A8, WP-046]" begin
         xd = lwfa_dual_x0()
+        coarse = first(lwfa_gradient_run(xd, Reference(); nsteps = 1))
+        width = window_back_band(coarse) * Float64(value_of(cellsize(coarse.grid)[1]))
         function timed(be, refine)
             nsteps = refine * LWFA_LONG_STEPS
             t = @elapsed begin
                 st, _ = lwfa_gradient_run(xd, Reference(); be, refine, nsteps)
                 KernelAbstractions.synchronize(be)
             end
-            v = axis_Ex(st)
+            v = axis_Ex_past(st, width)
             @test all(iszero, ParticleMeshElectromagnetic.window_lost(st))
             return (lme = soft_maximum(v, LWFA_GRADIENT_BETA) - log(length(v)) / LWFA_GRADIENT_BETA, step = t / nsteps)
         end
