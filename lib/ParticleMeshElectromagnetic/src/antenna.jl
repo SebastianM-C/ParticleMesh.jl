@@ -73,7 +73,9 @@ primal node (`position` is not differentiable). The energy the pulse carries thr
 At N = 3 (WP-073) `center = (y_c, z_c)` gives the axis, and the beam is the round paraxial Gaussian
 beam in three dimensions, u = (1 + iξ/z_R)^(−1)·exp(−((y − y_c)² + (z − z_c)²)/(waist²·(1 + iξ/z_R))),
 of Gouy phase −atan(ξ/z_R); the field is E = a0·Re[u·G]·(ŷ cos θ + ẑ sin θ) with G the time factor
-above, so `a0` is again the peak field at the focus. Its energy through the plane is
+above, so `a0` is again the peak of the paraxial incident field at the focus (the launched beam is
+that field's propagation by the Yee scheme, which departs from the paraxial beam at order k_⊥⁴ and
+by the scheme's dispersion, T-1022). Its energy through the plane is
 π^{3/2}·a0²·waist²·duration/(4√2). A number as `center` is a beam of the 2D plane, a pair one of
 the 3D box, and the problem checks that the laser fits its dimension.
 
@@ -416,6 +418,15 @@ end
 end
 @inline antenna_dy(a::Antenna, j::Int32, s) = antenna_d(a, 2, a.laser.center, j, s)
 
+# The incident field across a periodic axis is that of the nearest image of the beam's axis. Its even
+# terms are continuous where the images meet, at the antipode of the axis, but the cross term ∂_y∂_z u
+# of the 3D B is odd in each offset and changes sign there; a row within Δ/1000 of the antipode takes
+# the mean of the two images, zero, so that moving the axis by whole cells moves the field with it.
+@inline function antipode_weight(a::Antenna, axis, d)
+    T = typeof(a.xa)
+    return ifelse(abs(2 * abs(d) - a.len[axis]) * 1000 < a.dx[axis], zero(T), one(T))
+end
+
 # After the B half step to time t: Bz[ia−1] += c·Ey_inc(x_a, t), By[ia−1] −= c·Ez_inc(x_a, t),
 # c = h/Δx; one work item per row, guards included. Bz rows sit at Center(), By rows at Node().
 @kernel function antenna_b_kernel!(By, Bz, a, c, t)
@@ -488,8 +499,12 @@ end
     sθ, cθ = sincos(l.polarization)
     h = one(T) / 2
     @inbounds begin
-        _, bp, _, xy = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T)), s)
-        _, _, bs, xz = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h), s)
+        dyc, dzn = antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T))
+        dyn, dzc = antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h)
+        _, bp, _, xy = laser_field(l, ξ, dyc, dzn, s)
+        _, _, bs, xz = laser_field(l, ξ, dyn, dzc, s)
+        xy *= antipode_weight(a, 2, dyc) * antipode_weight(a, 3, dzn)
+        xz *= antipode_weight(a, 2, dyn) * antipode_weight(a, 3, dzc)
         Ey[i, j, k] += c * (bp * cθ - xy * sθ)
         Ez[i, j, k] += c * (bs * sθ - xz * cθ)
     end

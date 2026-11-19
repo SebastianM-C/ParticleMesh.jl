@@ -1047,26 +1047,26 @@ measured_linear = { "Dual{Float32,3}" = 0.0 }
 status = "proposed; the leak of the paraxial B at waist 4, the same for every type and polarization; at a0 = 1 the partial is the field bit for bit, C_linear leaves room for a reordered source"
 
 ["T-1022"]
-quantity = "the ω₀ component of the launched beam on probe planes at x = 6, 12, 20, 30 against the Yee angular-spectrum propagation of the incident field's ω₀ component at the plane, relative L² error times w0⁴ (C), and of the component the incident field lacks, relative to the main one (C_cross); Float64, waist 4, θ = 0 and π/2"
+quantity = "the ω₀ component of the launched beam on probe planes at x = 6, 12, 20, 30 against the Yee angular-spectrum propagation of the incident field's ω₀ component at the plane, relative L² error times w0⁴ (C), and of the component the incident field lacks, relative to the main one (C_cross); Float64, waist 4, θ = 0 and π/2 on 30 × 30 c/ω₀, and θ = 0 on 30 × 26 with 6 and 5 cells per wavelength along y and z, the axis off the diagonal"
 scale = "1/w0⁴, the order of the antenna's B (as T-402)"
-C = 16
-C_cross = 16
-measured = { main = 5.53, cross = 4.02 }
-status = "proposed; the same for both polarizations"
+C = 12
+C_cross = 8
+measured = { main = 5.53, cross = 4.02, main_y_ne_z = 5.38, cross_y_ne_z = 3.20 }
+status = "proposed; the same for both polarizations. C_cross is below the 12.6 of the run without the cross term ∂y∂z u (mutation check). Unverified beyond the test: at waist 3 and oblique θ an independent check measured up to 9.6"
 
 ["T-1023"]
 quantity = "the conserved energy of the launched pulse over the Poynting flux of the incident field through the plane, |W/Φ − 1|·w0⁴ (C), and the flux over laser_energy, |Φ/E − 1|/(Δt² + Δx²) (C_flux); Float64, both envelopes, θ = 0 and 0.6"
 scale = "C: 1/w0⁴; C_flux: Δt² + Δx²"
 C = 2
-C_flux = 0.5
-measured = { AxisTime = 0.602, WavefrontTime = 0.0414, flux = 0.119 }
+C_flux = 0.25
+measured = { AxisTime = 0.602, WavefrontTime = 0.0414, flux = 0.119, AxisTime_y_ne_z = 0.626, flux_y_ne_z = 0.120 }
 status = "proposed; AxisTime's larger value is the envelope's own departure from a solution of the wave equation at order 1/w0⁴, not measured further"
 
 ["T-1024"]
 quantity = "Gauss's law residual and ∇·B with the antenna and a drifting electron species, off the antenna's planes and on them after its surface charges, every 10 steps over 25 c/ω₀, both modes"
 scale = "eps(T)·√(k + 1) times the scales of T-950 (ρ's and B's)"
 C = 2
-measured = { Float32 = 0.367, Float64 = 0.302, "Dual{Float32,3}" = 0.378 }
+measured = { Float32 = 0.448, Float64 = 0.334, "Dual{Float32,3}" = 0.378 }
 status = "proposed; the largest of the four residuals (∇·B the larger) over both modes; T-1011's C"
 
 ["T-1025"]
@@ -1077,8 +1077,9 @@ measured = { focus = 0.112, waist = 0.112 }
 status = "proposed"
 
 ["T-1026"]
-quantity = "the z-polarized run against the y-polarized run mirrored (E as a vector, B as a pseudovector), max over the six components, on 30 × 18 × 18 c/ω₀ with the axis on the diagonal, both envelopes"
+quantity = "the z-polarized run against the y-polarized run mirrored (E as a vector, B as a pseudovector), max over the six components, on 30 × 18 × 18 c/ω₀ with the axis on the diagonal, both envelopes; and a run with its axis moved by whole cells across the seams on 23 transverse cells against the first, shifted back"
 scale = "eps(T)·max|component|·√nsteps"
 C = 8
 measured = { Float32 = 0.727, Float64 = 0.606 }
+measured_shift = { Float32 = 0.540, Float64 = 0.432 }
 status = "proposed; the largest over both envelopes"

@@ -203,14 +203,15 @@ end
                       envelope = AxisTime(), boundaries = periodic, center = middle) -> EMProblem{3}
 
 `antenna_problem` in 3D: a box of `length` (c/ω₀) with `ncx` cells per laser wavelength 2π along x
-and `nct` along y and z, Δt at `courant` of the Yee limit, `round(tend/Δt)` steps, and one round
+and `nct` along y and z (a number, or one per axis), Δt at `courant` of the Yee limit, `round(tend/Δt)` steps, and one round
 [`GaussianLaser`](@ref) whose envelope peaks at the antenna plane at t = 6·duration, its axis at
 the middle of the box's cross-section unless `center` gives it. Every laser parameter may be a dual (A3).
 """
 function antenna3d_problem(::Type{T}; ncx = 12, nct = 6, length = (60, 24, 24), waist = 4, duration = 5, position = 6, focus = 14,
                            polarization = 0, chirp = 0, a0 = 1, tend = 60, species = (), courant = 95 // 100, phase = 0,
                            envelope = AxisTime(), boundaries = (:periodic, :periodic, :periodic), center = nothing) where {T}
-    h = (2π / ncx, 2π / nct, 2π / nct)
+    ny, nz = nct isa Tuple ? nct : (nct, nct)
+    h = (2π / ncx, 2π / ny, 2π / nz)
     n = ntuple(d -> round(Int, length[d] / h[d]), 3)
     L = ntuple(d -> T(n[d] * h[d]), 3)
     dt = T(courant) / sqrt(sum(d -> 1 / (L[d] / n[d])^2, 1:3))

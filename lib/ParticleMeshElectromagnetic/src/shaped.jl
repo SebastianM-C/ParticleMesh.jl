@@ -52,6 +52,8 @@ end
 
 function ShapedLaser(; a0, delay, focus, position, center, profile::TransverseProfile, envelope::TemporalEnvelope,
                      polarization = 0, phase = 0)
+    center isa Real || throw(ArgumentError("a ShapedLaser's profiles are one-dimensional across the beam, so its center is one " *
+                                           "coordinate (a laser of the 2D box); at N = 3 a laser is a GaussianLaser"))
     T = promote_type(typeof(a0), typeof(delay), typeof(focus), typeof(polarization), typeof(phase),
                      map(typeof, parameter_values(profile))..., map(typeof, parameter_values(envelope))...)
     T = T <: Union{Integer,Rational} ? Float64 : T

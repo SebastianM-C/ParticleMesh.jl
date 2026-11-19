@@ -284,18 +284,21 @@ end
 @testset "T-1022 the launched 3D beam is the Yee angular-spectrum propagation of the incident field, to the antenna's order k_⊥⁴ [A2, A7, WP-073]" begin
     C, Cx = emC("T-1022"), emC("T-1022", "C_cross")
     w0 = 4
-    for (θ, main, cross) in ((0.0, :Ey, :Ez), (π / 2, :Ez, :Ey))
+    # the third run on a cross-section whose y and z differ in cells and cell size, the axis off the
+    # diagonal, so that an exchange of y and z anywhere shows
+    for (θ, main, cross, box) in ((0.0, :Ey, :Ez, (; length = (140, 30, 30))), (π / 2, :Ez, :Ey, (; length = (140, 30, 30))),
+                                  (0.0, :Ey, :Ez, (; length = (140, 30, 26), nct = (6, 5), center = (16.5, 11.0))))
         # at t = 130 the pulse lies within 64 ≤ x ≤ 112, past the probes and not yet wrapped round the
         # periodic x; the backward leak reaches the probes after t = 140
-        prob = antenna3d_problem(Float64; length = (140, 30, 30), waist = w0, duration = 8, position = 6, focus = 16, polarization = θ,
-                                 tend = 130)
+        prob = antenna3d_problem(Float64; waist = w0, duration = 8, position = 6, focus = 16, polarization = θ, tend = 130, box...)
         r = antenna3d_run(prob; probes = (6, 12, 20, 30))
         e = angular_error_3d(r; component = main)
         x = angular_error_3d(r; component = cross, against = main)
         worst, worst_x = maximum(p -> p.err, e) * w0^4, maximum(p -> p.err, x) * w0^4
-        @info "T-1022" θ errors = join([round(p.err; sigdigits = 3) for p in e], " ") cross = join([round(p.err; sigdigits = 3) for p in x], " ")
-        record!("T-1022 θ=$(round(θ; digits = 2))", Float64, worst)
-        record!("T-1022 cross θ=$(round(θ; digits = 2))", Float64, worst_x)
+        @info "T-1022" θ box errors = join([round(p.err; sigdigits = 3) for p in e], " ") cross = join([round(p.err; sigdigits = 3) for p in x], " ")
+        tag = haskey(box, :nct) ? " y≠z" : ""
+        record!("T-1022 θ=$(round(θ; digits = 2))$tag", Float64, worst)
+        record!("T-1022 cross θ=$(round(θ; digits = 2))$tag", Float64, worst_x)
         @test worst <= C
         @test worst_x <= Cx
     end
@@ -309,8 +312,10 @@ end
 # order Δ² (T-405 in 3D), for both envelopes and two polarizations.
 @testset "T-1023 the energy the 3D pulse carries matches the Poynting flux through the antenna and laser_energy [A2, A7, WP-073]" begin
     C, Cf = emC("T-1023"), emC("T-1023", "C_flux")
-    for env in (AxisTime(), WavefrontTime()), θ in (0.0, 0.6)
-        prob = antenna3d_problem(Float64; length = (100, 24, 24), position = 6, polarization = θ, envelope = env, tend = 60)
+    boxes = ((; length = (100, 24, 24)), (; length = (100, 24, 20), nct = (6, 5), center = (13.0, 9.0)))
+    for env in (AxisTime(), WavefrontTime()), θ in (0.0, 0.6), box in boxes
+        env isa WavefrontTime && haskey(box, :nct) && continue
+        prob = antenna3d_problem(Float64; position = 6, polarization = θ, envelope = env, tend = 60, box...)
         r = antenna3d_run(prob)
         a = run_antenna_3d(r)
         fwd, _ = forward_window_3d(r, 58)
@@ -318,9 +323,10 @@ end
         Φ = incident_flux_3d(r)
         rel = abs(W / Φ - 1) * 4^4
         relf = abs(Φ / laser_energy(a.laser) - 1) / (prob.dt^2 + a.dx[1]^2)
-        @info "T-1023" env θ rel relf
-        record!("T-1023 $(nameof(typeof(env))) θ=$θ", Float64, rel)
-        record!("T-1023 flux $(nameof(typeof(env))) θ=$θ", Float64, relf)
+        @info "T-1023" env θ box rel relf
+        tag = haskey(box, :nct) ? " y≠z" : ""
+        record!("T-1023 $(nameof(typeof(env))) θ=$θ$tag", Float64, rel)
+        record!("T-1023 flux $(nameof(typeof(env))) θ=$θ$tag", Float64, relf)
         @test rel <= C
         @test relf <= Cf
     end
@@ -337,6 +343,9 @@ subtracting the surface charges the corrections have accumulated over `nk` steps
 `(Δt/Δx)·(D⁻_y Bz_inc − D⁻_z By_inc)` on the E plane, and `(Δt/2Δx)·(D⁺_z Ey_inc − D⁺_y Ez_inc)` on the
 B plane for the incident E at both ends of the step.
 """
+# The antenna's cross term is the mean of the two images, zero, on a row at the antipode of the axis.
+odd_mean(a, d) = any(q -> abs(2 * abs(d[q - 1]) - a.len[q]) * 1000 < a.dx[q], (2, 3)) ? 0 : 1
+
 function antenna_divergences_3d(st, p, nk, dt)
     (; grid, numerics) = st
     T = eltype(st.ρ)
@@ -360,8 +369,10 @@ function antenna_divergences_3d(st, p, nk, dt)
     ξe, ξb = a.xa - l.focus, a.xa - a.hx - l.focus
     for m in 1:nk
         t = (m - 1) * dt
-        bz = [(f = laser_field(l, ξb, plane_d(a, j, k, EY_AT)..., t + dt / 2 + a.ht - l.delay); f[2] * cθ - f[4] * sθ) for j in 1:n2, k in 1:n3]
-        by = [(f = laser_field(l, ξb, plane_d(a, j, k, EZ_AT)..., t + dt / 2 + a.ht - l.delay); f[4] * cθ - f[3] * sθ) for j in 1:n2, k in 1:n3]
+        bz = [(d = plane_d(a, j, k, EY_AT); f = laser_field(l, ξb, d..., t + dt / 2 + a.ht - l.delay); f[2] * cθ - f[4] * odd_mean(a, d) * sθ)
+              for j in 1:n2, k in 1:n3]
+        by = [(d = plane_d(a, j, k, EZ_AT); f = laser_field(l, ξb, d..., t + dt / 2 + a.ht - l.delay); f[4] * odd_mean(a, d) * cθ - f[3] * sθ)
+              for j in 1:n2, k in 1:n3]
         for j in 1:n2, k in 1:n3
             qe[j, k] += dt / a.dx[1] * ((bz[j, k] - bz[mod1(j - 1, n2), k]) / a.dx[2] - (by[j, k] - by[j, mod1(k - 1, n3)]) / a.dx[3])
         end
@@ -473,7 +484,10 @@ end
 # The Yee staggers map onto each other under the exchange (Ey's (Node, Center, Node) onto Ez's
 # (Node, Node, Center)), so the two runs agree to roundoff (cos(π/2) is 6·10⁻¹⁷, not zero); a
 # sign or a stagger of the cross term ∂_y∂_z u, or of the Ez sheet, breaks it. Float64 and Float32,
-# both envelopes, focus off the plane.
+# both envelopes, focus off the plane. And the shift: an axis moved by whole cells, across the
+# periodic seams, moves the run with it to roundoff, on 23 transverse cells, where a row lies on the
+# antipode of the axis and the odd cross term takes the mean of the two images there (with the
+# nearest image alone it is 3·10⁻³ of the field there).
 function body_T1026(be)
     C = emC("T-1026")
     for T in (Float32, Float64), env in (AxisTime(), WavefrontTime())
@@ -491,9 +505,25 @@ function body_T1026(be)
         @test m > 0 && maximum(abs, fy.By) > 0                     # the cross term launches a By
         @test worst <= C
     end
+    h = 2π / 6                                                     # antenna3d_problem's transverse cell
+    for T in (Float32, Float64)
+        kw = (; length = (40, 24, 24), position = 6, tend = 30, polarization = 3 // 5)
+        r0 = antenna3d_run(antenna3d_problem(T; center = (15h, 13h), kw...); be)
+        r1 = antenna3d_run(antenna3d_problem(T; center = (2h, 2h), kw...); be)
+        g, n = guards(r0.st.grid), ncells(r0.st.grid)
+        @test n[2] == n[3] == 23
+        I = ((g + 1):(g + n[1]), (g + 1):(g + n[2]), (g + 1):(g + n[3]))
+        f0, f1 = map(a -> Array(a)[I...], r0.st.fields), map(a -> Array(a)[I...], r1.st.fields)
+        m = maximum(c -> maximum(abs, getfield(f0, c)), (:Ex, :Ey, :Ez, :Bx, :By, :Bz))
+        worst = maximum(c -> maximum(abs, circshift(getfield(f0, c), (0, -13, -11)) .- getfield(f1, c)), (:Ex, :Ey, :Ez, :Bx, :By, :Bz)) /
+                (eps(T) * m * sqrt(r0.prob.nsteps))
+        @info "T-1026 shift" T worst
+        record!("T-1026 shift", T, worst, be)
+        @test worst <= C
+    end
 end
 
-@testset "T-1026 the 3D antenna is symmetric under y ↔ z: the z-polarized run is the y-polarized run mirrored [A2, A8, WP-073]" begin
+@testset "T-1026 the 3D antenna is symmetric under y ↔ z and under shifts of its axis by whole cells across the seams [A2, A8, WP-073]" begin
     body_T1026(CPU())
 end
 
@@ -539,6 +569,8 @@ end
     shaped = ShapedLaser(; a0 = 1, delay = 18, focus = 5, position = 6, center = 4.0,
                          profile = GaussianBeam(; waist = 3), envelope = GaussianEnvelope(; duration = 3))
     @test_throws ArgumentError mk(shaped)
+    @test_throws ArgumentError ShapedLaser(; a0 = 1, delay = 18, focus = 5, position = 6, center = (4.0, 5.0),
+                                           profile = GaussianBeam(; waist = 3), envelope = GaussianEnvelope(; duration = 3))
     seam = GaussianLaser(; a0 = 1, waist = 3, duration = 3, delay = 18, focus = 5, position = 0.5, center = (4.0, 5.0))
     @test_throws ArgumentError EMState(mk(seam), EMNumerics())
     st = EMState(ok, EMNumerics())
@@ -558,4 +590,24 @@ end
     # a 3D laser's tunables round-trip with its center
     @test with_tunables(params(ok), tunables(params(ok))) === params(ok)
     @test with_tunables(ok, tunables(ok)) === ok
+    # on a cross-section whose y and z differ, with the axis off the diagonal: the center keeps its
+    # order through the problem, the parameters and the tunables; the plane holds each axis' own
+    # cells, cell size and length; and the plane's offsets are the grid's own positions less the
+    # center, to the nearest periodic image
+    ns = antenna3d_problem(T; length = (60, 24, 20), nct = (6, 5), center = (13.0, 9.0))
+    @test only(ns.lasers).center === (13.0, 9.0) && only(params(ns).lasers).center === (13.0, 9.0)
+    @test only(with_tunables(params(ns), tunables(params(ns))).lasers).center === (13.0, 9.0)
+    sn = EMState(ns, EMNumerics())
+    pn = only(antenna_planes(sn))
+    g, n, h = guards(sn.grid), ncells(sn.grid), cellsize(sn.grid)
+    @test n[2] != n[3] && h[2] != h[3]
+    @test pn.n == Int32.(n) && pn.dx == h && pn.len == ns.length
+    an = Antenna(only(params(ns).lasers), pn)
+    near(d, len) = d - len * round(d / len)
+    off = 0.0
+    for d in (2, 3), j in 1:n[d], s in (0.0, 0.5)
+        c = an.laser.center[d - 1]
+        off = max(off, abs(ParticleMeshElectromagnetic.antenna_d(an, d, c, Int32(g + j), s) - near((j - 1 + s) * h[d] - c, ns.length[d])))
+    end
+    @test off <= 1e-12
 end
