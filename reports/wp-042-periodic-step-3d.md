@@ -23,25 +23,25 @@ T-954's case at full size: a cube of side 2π√3/|k| with |k| = 10 ω₀/c (so 
 
 At 1 % (`julia +1.13 --project=scripts scripts/em3d/landau3d.jl table <dirs>`, pasted unchanged):
 
-| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 32³, 216 per cell, 8 seeds, Float32, δn/n 0.01 | 7077888 | 0.68 | 1287 | 0.1492 ± 0.0091 | 0.397 % ± 6.1 % | -0.89 % | 6 | 0.1449 ± 0.029 (8 fitted) | 8.5e-6, 2.7e-6 | 6.4e-6 | 10 |
-| 48³, 216 per cell, 8 seeds, Float32, δn/n 0.01 | 23887872 | 0.453 | 1930 | 0.1455 ± 0.005 | -2.07 % ± 3.4 % | -0.71 % | 6 | 0.1443 ± 0.011 (8 fitted) | 8.6e-6, 3.0e-6 | 9.7e-6 | 72 |
-| 64³, 216 per cell, 8 seeds, Float32, δn/n 0.01 | 56623104 | 0.34 | 2573 | 0.1511 ± 0.0023 | 1.7 % ± 1.6 % | -0.45 % | 6 | 0.15 ± 0.0093 (8 fitted) | 8.3e-6, 3.4e-6 | 1.3e-5 | 272 |
-| 64³, 216 per cell, 4 seeds, Float64, δn/n 0.01 | 56623104 | 0.34 | 2573 | 0.1435 ± 0.003 | -3.45 % ± 2.0 % | -0.58 % | 5 | 0.1459 ± 0.01 (4 fitted) | 1.7e-14, 6.1e-15 | 1.0e-6 | 534 |
+| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | transverse (max) | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32³, 216 per cell, 8 seeds, Float32, δn/n 0.01 | 7077888 | 0.68 | 1287 | 0.1492 ± 0.0091 | 0.397 % ± 6.1 % | -0.89 % | 6 | 0.1449 ± 0.029 (8 fitted) | 0.0082 | 8.5e-6, 2.7e-6 | 6.4e-6 | 10 |
+| 48³, 216 per cell, 8 seeds, Float32, δn/n 0.01 | 23887872 | 0.453 | 1930 | 0.1455 ± 0.005 | -2.07 % ± 3.4 % | -0.71 % | 6 | 0.1443 ± 0.011 (8 fitted) | 0.0049 | 8.6e-6, 3.0e-6 | 9.7e-6 | 72 |
+| 64³, 216 per cell, 8 seeds, Float32, δn/n 0.01 | 56623104 | 0.34 | 2573 | 0.1511 ± 0.0023 | 1.7 % ± 1.6 % | -0.45 % | 6 | 0.15 ± 0.0093 (8 fitted) | 0.0026 | 8.3e-6, 3.4e-6 | 1.3e-5 | 272 |
+| 64³, 216 per cell, 4 seeds, Float64, δn/n 0.01 | 56623104 | 0.34 | 2573 | 0.1435 ± 0.003 | -3.45 % ± 2.0 % | -0.58 % | 5 | 0.1459 ± 0.01 (4 fitted) | 0.0026 | 1.7e-14, 6.1e-15 | 1.0e-6 | 534 |
 
-The Float64 row has the first four seeds only. The Float32 run's first four seeds give γ = 0.143449 against Float64's 0.143451, so the 5 % between the two rows is seed noise between four and eight seeds.
+The Float64 row has the first four seeds only. On those four seeds the Float32 run gives γ = 0.143449 against Float64's 0.143451 (`landau3d.jl subset <dir> 20261031,20262031,20263031,20264031`), so the 5 % between the two rows is seed noise between four and eight seeds. The transverse column is the largest part of the mode's Ê perpendicular to k̂ over its k̂·Ê: the wave stays longitudinal.
 
 At larger amplitudes, the same table:
 
-| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 32³, 216 per cell, 4 seeds, Float32, δn/n 0.1 | 7077888 | 0.68 | 1287 | 0.1727 ± 0.0013 | 16.2 % ± 0.89 % | -2.0 % | 6 | 0.172 ± 0.002 (4 fitted) | 9.2e-6, 3.4e-6 | 9.6e-6 | 10 |
-| 32³, 216 per cell, 4 seeds, Float32, δn/n 0.05 | 7077888 | 0.68 | 1287 | 0.1554 ± 0.0012 | 4.57 % ± 0.79 % | -1.0 % | 6 | 0.1554 ± 0.0028 (4 fitted) | 7.4e-6, 2.4e-6 | 3.5e-6 | 10 |
-| 32³, 216 per cell, 4 seeds, Float32, δn/n 0.02 | 7077888 | 0.68 | 1287 | 0.1459 ± 0.0064 | -1.78 % ± 4.3 % | -0.96 % | 6 | 0.1471 ± 0.009 (4 fitted) | 6.7e-6, 2.7e-6 | 5.5e-6 | 10 |
-| 48³, 216 per cell, 4 seeds, Float32, δn/n 0.1 | 23887872 | 0.453 | 1930 | 0.1681 ± 0.001 | 13.2 % ± 0.7 % | -1.1 % | 5 | 0.1681 ± 0.0021 (4 fitted) | 1.1e-5, 4.0e-6 | 7.7e-6 | 72 |
-| 64³, 216 per cell, 4 seeds, Float32, δn/n 0.1 | 56623104 | 0.34 | 2573 | 0.1698 ± 0.00072 | 14.3 % ± 0.48 % | -1.5 % | 6 | 0.1688 ± 0.0034 (4 fitted) | 1.2e-5, 4.1e-6 | 5.1e-6 | 272 |
-| 32³, 216 per cell, 4 seeds, Float64, δn/n 0.1 | 7077888 | 0.68 | 1287 | 0.1727 ± 0.0013 | 16.2 % ± 0.89 % | -2.0 % | 6 | 0.172 ± 0.002 (4 fitted) | 1.5e-14, 5.6e-15 | 7.2e-6 | 29 |
+| size | particles | Δx/λ_D | steps | ensemble γ ± jackknife | rel. to theory | ω rel. | maxima | per-seed γ, mean ± std | transverse (max) | Gauss, ∇·B at end (max) | energy drift (max) | s per seed |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32³, 216 per cell, 4 seeds, Float32, δn/n 0.1 | 7077888 | 0.68 | 1287 | 0.1727 ± 0.0013 | 16.2 % ± 0.89 % | -2.0 % | 6 | 0.172 ± 0.002 (4 fitted) | 0.00049 | 9.2e-6, 3.4e-6 | 9.6e-6 | 10 |
+| 32³, 216 per cell, 4 seeds, Float32, δn/n 0.05 | 7077888 | 0.68 | 1287 | 0.1554 ± 0.0012 | 4.57 % ± 0.79 % | -1.0 % | 6 | 0.1554 ± 0.0028 (4 fitted) | 0.00094 | 7.4e-6, 2.4e-6 | 3.5e-6 | 10 |
+| 32³, 216 per cell, 4 seeds, Float32, δn/n 0.02 | 7077888 | 0.68 | 1287 | 0.1459 ± 0.0064 | -1.78 % ± 4.3 % | -0.96 % | 6 | 0.1471 ± 0.009 (4 fitted) | 0.0024 | 6.7e-6, 2.7e-6 | 5.5e-6 | 10 |
+| 48³, 216 per cell, 4 seeds, Float32, δn/n 0.1 | 23887872 | 0.453 | 1930 | 0.1681 ± 0.001 | 13.2 % ± 0.7 % | -1.1 % | 5 | 0.1681 ± 0.0021 (4 fitted) | 0.0005 | 1.1e-5, 4.0e-6 | 7.7e-6 | 72 |
+| 64³, 216 per cell, 4 seeds, Float32, δn/n 0.1 | 56623104 | 0.34 | 2573 | 0.1698 ± 0.00072 | 14.3 % ± 0.48 % | -1.5 % | 6 | 0.1688 ± 0.0034 (4 fitted) | 0.00025 | 1.2e-5, 4.1e-6 | 5.1e-6 | 272 |
+| 32³, 216 per cell, 4 seeds, Float64, δn/n 0.1 | 7077888 | 0.68 | 1287 | 0.1727 ± 0.0013 | 16.2 % ± 0.89 % | -2.0 % | 6 | 0.172 ± 0.002 (4 fitted) | 0.00049 | 1.5e-14, 5.6e-15 | 7.2e-6 | 29 |
 
 `wp-042-periodic-step-3d/landau3d.png` (sidecar `landau3d.json`) shows the 64³ Float32 run at 1 %: each seed's |k̂·Ê|², their mean, the fitted maxima and the theory's slope.
 
