@@ -22,6 +22,39 @@ struct KineticEnergy end
     end
 end
 
+# The pullbacks of the deposited quantities (`ParticleMeshCore.pullback_quantity!`, WP-077): the
+# adjoint of q̄ times the quantity with respect to the weight and the momentum, added at slot i.
+# With γ = √(1 + |u|²), ∂(u_k/γ)/∂u_l = δ_kl/γ − u_k·u_l/γ³ and ∂(γ − 1)/∂u_l = u_l/γ.
+@inline function pullback_current!(s̄, s, i, q̄, ::Val{K}) where {K}
+    @inbounds begin
+        u = (s.u[1][i], s.u[2][i], s.u[3][i])
+        γ = lorentz_factor(u)
+        a = s.q * q̄ / γ                          # ∂(q·w·u_K/γ)/∂w · q̄ / u_K
+        b = s.w[i] * a                           # q·w·q̄/γ
+        c = b * u[K] / (γ * γ)                   # q·w·q̄·u_K/γ³
+        s̄.w[i] += a * u[K]
+        s̄.u[1][i] += ifelse(K == 1, b, zero(b)) - c * u[1]
+        s̄.u[2][i] += ifelse(K == 2, b, zero(b)) - c * u[2]
+        s̄.u[3][i] += ifelse(K == 3, b, zero(b)) - c * u[3]
+    end
+    return nothing
+end
+@inline ParticleMeshCore.pullback_quantity!(s̄, ::CurrentY, s, i, q̄) = pullback_current!(s̄, s, i, q̄, Val(2))
+@inline ParticleMeshCore.pullback_quantity!(s̄, ::CurrentZ, s, i, q̄) = pullback_current!(s̄, s, i, q̄, Val(3))
+@inline function ParticleMeshCore.pullback_quantity!(s̄, ::KineticEnergy, s, i, q̄)
+    @inbounds begin
+        u1, u2, u3 = s.u[1][i], s.u[2][i], s.u[3][i]
+        u² = u1 * u1 + u2 * u2 + u3 * u3
+        γ = lorentz_factor(u1, u2, u3)
+        s̄.w[i] += s.m * u² / (γ + 1) * q̄
+        a = s.m * s.w[i] * q̄ / γ
+        s̄.u[1][i] += a * u1
+        s̄.u[2][i] += a * u2
+        s̄.u[3][i] += a * u3
+    end
+    return nothing
+end
+
 "E and B of the layout at offset `δ` of cell `c` (one entry per resolved axis; guards filled), each on its own stagger."
 @inline function fields_at(f, c::NTuple{N,Int32}, δ::NTuple{N,Any}, shape, g::Int32) where {N}
     L = gather_layout(Val(N))

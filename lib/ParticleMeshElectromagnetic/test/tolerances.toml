@@ -980,3 +980,10 @@ C_partial = 8
 measured = { "Dual{Float32,3}" = 2.46 }
 measured_partial = { "Dual{Float32,3}" = 1.81 }
 status = "proposed; not bitwise (A4)"
+
+["T-1065"]
+quantity = "pullback_quantity! of CurrentY, CurrentZ and KineticEnergy against the partials of the quantity of a Dual{Float64,4} weight and momentum"
+scale = "max|q̄·∂quantity| + |q̄·quantity|"
+C = 16
+measured = { Float64 = 0.0 }
+status = "proposed"

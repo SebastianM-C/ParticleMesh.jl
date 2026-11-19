@@ -101,6 +101,23 @@ nodes differ by at most one. On the nodes the two frames share, the weights are 
     return (f, Wo, Wn)
 end
 
+"""
+    flux_axis_slopes(shape::Shape{P}, stagger, c, δ, c0, δ0, n) -> (dWo, dWn)
+
+The derivatives of `flux_axis_frame`'s weights on the same `P + 2` nodes: `dWo[m] = ∂Wo[m]/∂δ0`
+and `dWn[m] = ∂Wn[m]/∂δ` (`shape_slopes` placed as the weights are), each zero where its
+stencil does not reach. The reverse rules of the flux deposition read them (WP-077).
+"""
+@inline function flux_axis_slopes(shape::Shape{P}, stagger::Stagger, c::Int32, δ, c0::Int32, δ0, n::Int32) where {P}
+    f1, d1 = shape_slopes(shape, stagger, δ)
+    fo, d0 = shape_slopes(shape, stagger, δ0)
+    f0 = fo + mod(c0 - c + Int32(1), n) - Int32(1)
+    f = min(f1, f0)
+    dWn = ntuple(m -> pick(d1, f + Int32(m - 1) - f1), Val(P + 2))
+    dWo = ntuple(m -> pick(d0, f + Int32(m - 1) - f0), Val(P + 2))
+    return (dWo, dWn)
+end
+
 # Running sums of a tuple, each one the serial left-to-right sum of its prefix (so every entry
 # is the same bits as a sequential prefix sum), with the length static.
 @inline function prefix_sums(t::NTuple{M,T}) where {M,T}

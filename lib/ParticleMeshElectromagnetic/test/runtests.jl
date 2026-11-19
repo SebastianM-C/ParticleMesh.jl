@@ -58,6 +58,7 @@ const TEST_FILES = [
     "ionization.jl",          # WP-059: T-770 to T-779 and T-781 to T-785, the field ionization of a dopant; its own helpers
     "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
+    "quantity_pullbacks.jl",  # WP-077: T-1065, the pullbacks of the module's deposited quantities; its own helpers
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
