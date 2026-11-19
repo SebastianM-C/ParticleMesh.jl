@@ -65,16 +65,24 @@ end
         out[i] = sum(Wo1) + sum(Wn1)
     end
 end
-energy(st) = sum(a -> sum(abs2, a), (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz))
+# Each test mutates the state (and `out`) and returns nothing: a reduction to a scalar inside the
+# differentiated function would synchronize the GPU stream there, which Enzyme cannot differentiate.
+# The seed sets the adjoint of the outputs (ones), so the gradient is that of the outputs' sum.
+seed_u1!(d, dout) = fill!(d.species[1].u[1], 1)
+seed_out!(d, dout) = fill!(dout, 1)
+seed_EB!(d, dout) = (fill!(d.fields.Ex, 1); fill!(d.fields.Bz, 1))
+seed_J!(d, dout) = (fill!(d.fields.Jx, 1); fill!(d.fields.Jy, 1))
 tests = [
-  "arrays only" => st -> (s = st.species[1]; k_arrays!(BE)(s.u[1], s.w, s.status; ndrange = capacity(s)); sum(s.u[1])),
-  "species struct" => st -> (s = st.species[1]; k_scale!(BE)(s; ndrange = capacity(s)); sum(s.u[1])),
-  "gather" => st -> (s = st.species[1]; o = st.ρ; out = similar(s.w); fill!(out, 0); k_gather!(BE)(out, s, st.fields, st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s)); sum(out)),
-  "solve_fields" => st -> (PME.solve_fields!(st.numerics.solver, st.fields, st.grid, st.dt, st.modifiers, p, 1); energy(st)),
-  "shape" => st -> (s = st.species[1]; out = similar(s.w); fill!(out, 0); k_shape!(BE)(out, s, st.numerics.shape, PME.rho_stagger(Val(2)), Int32.(st.grid.n); ndrange = capacity(s)); sum(out)),
-  "stencil" => st -> (s = st.species[1]; out = similar(s.w); fill!(out, 0); k_stencil!(BE)(out, s, st.numerics.shape, PME.rho_stagger(Val(2)), Int32.(st.grid.n), (1.0, 1.0), PME.transverse_currents(Val(2)).quantity_z; ndrange = capacity(s)); sum(out)),
-  "atomic" => st -> (s = st.species[1]; k_atomic!(BE)(st.fields.Jx, s; ndrange = capacity(s)); sum(abs2, st.fields.Jx)),
-  "current" => st -> (PME.current!(st.numerics.current, st); sum(abs2, st.fields.Jx) + sum(abs2, st.fields.Jy)),
+  ("arrays only", (st, out) -> (s = st.species[1]; k_arrays!(BE)(s.u[1], s.w, s.status; ndrange = capacity(s)); nothing), seed_u1!),
+  ("species struct", (st, out) -> (s = st.species[1]; k_scale!(BE)(s; ndrange = capacity(s)); nothing), seed_u1!),
+  ("gather", (st, out) -> (s = st.species[1]; k_gather!(BE)(out, s, st.fields, st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s)); nothing), seed_out!),
+  ("solve_fields", (st, out) -> (PME.solve_fields!(st.numerics.solver, st.fields, st.grid, st.dt, st.modifiers, p, 1); nothing), seed_EB!),
+  ("shape", (st, out) -> (s = st.species[1]; k_shape!(BE)(out, s, st.numerics.shape, PME.rho_stagger(Val(2)), Int32.(st.grid.n); ndrange = capacity(s)); nothing), seed_out!),
+  ("stencil", (st, out) -> (s = st.species[1]; k_stencil!(BE)(out, s, st.numerics.shape, PME.rho_stagger(Val(2)), Int32.(st.grid.n), (1.0, 1.0), PME.transverse_currents(Val(2)).quantity_z; ndrange = capacity(s)); nothing), seed_out!),
+  ("atomic", (st, out) -> (s = st.species[1]; k_atomic!(BE)(st.fields.Jx, s; ndrange = capacity(s)); nothing), (d, dout) -> fill!(d.fields.Jx, 1)),
+  ("current", (st, out) -> (PME.current!(st.numerics.current, st); nothing), seed_J!),
+  ("push", (st, out) -> (s = st.species[1]; PME.launcher(PME.push_kernel!, get_backend(s), nothing)(s, st.fields, st.numerics.pusher, st.numerics.shape, Int32(guards(st.grid)), 0.05, map(h -> st.dt / h, st.grid.dx), Int32.(st.grid.n); ndrange = capacity(s)); nothing), seed_u1!),
+  ("step", (st, out) -> (step!(st, p, 1; observer = nothing); nothing), seed_EB!),
 ]
 leaves!(out, path, x::AbstractArray{<:AbstractFloat}) = (out[path] = x; out)
 leaves!(out, path, x::AbstractArray) = out
@@ -89,11 +97,13 @@ end
 leaves(x) = leaves!(Dict{String,Any}(), "st", x)
 println("bisect: backend ", BE, ", mode ", MODE, ", patches ", get(ENV, "PM_ENZYME_PATCH", ""))
 only = get(ENV, "ONLY", "")
-for (name, f) in tests
+for (name, f, seed!) in tests
     isempty(only) || occursin(only, name) || continue
     s2 = deepcopy(st); d2 = Enzyme.make_zero(s2)
+    out = similar(st.species[1].w); fill!(out, 0); dout = zero(out)
+    seed!(d2, dout)
     t = @elapsed try
-        Enzyme.autodiff(Reverse, f, Active, Duplicated(s2, d2))
+        Enzyme.autodiff(Reverse, f, Const, Duplicated(s2, d2), Duplicated(out, dout))
         KernelAbstractions.synchronize(BE)
         println("[$name] OK, sum |gradient| over the state = ", sum(a -> Float64(sum(abs, a)), values(leaves(d2))))
     catch e

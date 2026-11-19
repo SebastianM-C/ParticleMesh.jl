@@ -27,33 +27,35 @@ end
     i = @index(Global)
     @inbounds y[i] = a * x[i]
 end
-function run(k, y, x, extra...)
-    fill!(y, 0)
+# The differentiated function launches and returns nothing: no reduction and no synchronize
+# inside it (Enzyme cannot differentiate a CUDA stream synchronize). The adjoint of y is seeded
+# with ones, so the gradients are those of sum(y).
+function run!(k, y, x, extra...)
     k(BE)(y, x, extra...; ndrange = length(x))
-    KernelAbstractions.synchronize(BE)
-    return sum(abs2, y)
+    return nothing
 end
-scale_run(y, x, a) = run(scaled!, y, x, 2 * a)
 
 x = [1.0, 2.0, 3.0, 4.0]; idx = [1, 2, 1, 3]
 cases = [
-    ("square", sq!, () -> (dev(zeros(4)),), () -> (), 4 .* x .^ 3),
-    ("sqrt", root!, () -> (dev(zeros(4)),), () -> (), 2 .* x),
-    ("atomic scatter", scatter!, () -> (dev(zeros(3)),), () -> (Const(dev(idx)),), [8 * (1 + 3), 8 * 2, 8 * (1 + 3), 8 * 4]),
+    ("square", sq!, 4, () -> (), 2 .* x),
+    ("sqrt", root!, 4, () -> (), x ./ sqrt.(1 .+ x .^ 2)),
+    ("atomic scatter", scatter!, 3, () -> (Const(dev(idx)),), fill(2.0, 4)),
 ]
-for (name, k, ys, extras, expected) in cases
-    y = ys()[1]; dy = zero(y); xd = dev(x); dx = zero(xd)
+for (name, k, ny, extras, expected) in cases
+    y = dev(zeros(ny)); dy = dev(ones(ny)); xd = dev(x); dx = dev(zeros(4))
     try
-        Enzyme.autodiff(Reverse, run, Active, Const(k), Duplicated(y, dy), Duplicated(xd, dx), extras()...)
+        Enzyme.autodiff(Reverse, run!, Const, Const(k), Duplicated(y, dy), Duplicated(xd, dx), extras()...)
+        KernelAbstractions.synchronize(BE)
         println("[$name] OK: dx = ", Array(dx), ", expected ", expected, Array(dx) ≈ expected ? " (agree)" : " (DISAGREE)")
     catch e
         println("[$name] FAILED: ", replace(first(sprint(showerror, e), 3000), "\n" => " | "))
     end
 end
-let y = dev(zeros(4)), dy = zero(y), xd = dev(x), dx = zero(xd)
+let y = dev(zeros(4)), dy = dev(ones(4)), xd = dev(x), dx = dev(zeros(4))
     try
-        r = Enzyme.autodiff(Reverse, scale_run, Active, Duplicated(y, dy), Duplicated(xd, dx), Active(1.5))
-        println("[active scalar argument] OK: da = ", r[1][3], ", expected ", 8 * 1.5 * sum(abs2, x))
+        r = Enzyme.autodiff(Reverse, run!, Const, Const(scaled!), Duplicated(y, dy), Duplicated(xd, dx), Active(1.5))
+        KernelAbstractions.synchronize(BE)
+        println("[active scalar argument] OK: da = ", r[1][4], ", expected ", sum(x), "; dx = ", Array(dx), ", expected 1.5 each")
     catch e
         println("[active scalar argument] FAILED: ", replace(first(sprint(showerror, e), 600), "\n" => " | "))
     end

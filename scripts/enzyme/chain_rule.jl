@@ -66,6 +66,31 @@ function initialized(prob)
     return st
 end
 energy(st) = sum(a -> sum(abs2, a), (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz))
+# The reverse pass differentiates `steps_density!`: the steps, then the energy density per node
+# into `E2`, returning nothing. A reduction to a scalar inside it would synchronize the GPU
+# stream, which Enzyme cannot differentiate, so the adjoint of E2 is seeded with ones instead and
+# the gradient is that of f = sum(E2).
+@kernel function energy_density_kernel!(E2, @Const(Ex), @Const(Ey), @Const(Ez), @Const(Bx), @Const(By), @Const(Bz))
+    i = @index(Global, Linear)
+    @inbounds E2[i] = Ex[i] * Ex[i] + Ey[i] * Ey[i] + Ez[i] * Ez[i] + Bx[i] * Bx[i] + By[i] * By[i] + Bz[i] * Bz[i]
+end
+function steps_density!(E2, st, p, k)
+    for i in 1:k
+        step!(st, p, i; observer = nothing)
+    end
+    f = st.fields
+    energy_density_kernel!(get_backend(E2))(E2, f.Ex, f.Ey, f.Ez, f.Bx, f.By, f.Bz; ndrange = length(E2))
+    return nothing
+end
+function reverse_gradient(st, p, k)
+    @assert allequal(map(size, (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz)))
+    E2 = similar(st.fields.Ex); fill!(E2, 0)
+    dE2 = similar(E2); fill!(dE2, 1)
+    dst = Enzyme.make_zero(st)
+    Enzyme.autodiff(set_runtime_activity(Reverse), steps_density!, Const, Duplicated(E2, dE2), Duplicated(st, dst), Const(p), Const(k))
+    KernelAbstractions.synchronize(get_backend(E2))
+    return dst
+end
 function run_energy!(st, p, k)
     for i in 1:k
         step!(st, p, i; observer = nothing)
@@ -103,8 +128,7 @@ t_fd = @elapsed fd = ForwardDiff.partials(run_energy!(std, params(probd), nsteps
 
 # reverse mode
 st = deepcopy(st0)
-dst = Enzyme.make_zero(st)
-t_first = @elapsed Enzyme.autodiff(set_runtime_activity(Reverse), run_energy!, Active, Duplicated(st, dst), Const(p), Const(nsteps))
+t_first = @elapsed dst = reverse_gradient(st, p, nsteps)
 G = leaves(dst)
 contrib = Dict(k => sum(G[k] .* tangent[k]) for k in common)
 ad = sum(values(contrib))
@@ -146,8 +170,8 @@ verdict = rel <= tol && relv <= tol ? "pass" : "FAIL"
 sync() = KernelAbstractions.synchronize(backend())
 st1 = deepcopy(st0); t_primal = @elapsed (f0 = run_energy!(st1, p, nsteps); sync())
 st1 = deepcopy(st0); t_primal = @elapsed (run_energy!(st1, p, nsteps); sync())
-st2 = deepcopy(st0); dst2 = Enzyme.make_zero(st2)
-t_rev = @elapsed (Enzyme.autodiff(set_runtime_activity(Reverse), run_energy!, Active, Duplicated(st2, dst2), Const(p), Const(nsteps)); sync())
+st2 = deepcopy(st0)
+t_rev = @elapsed dst2 = reverse_gradient(st2, p, nsteps)
 std2 = initialized(probd); t_fwd = @elapsed (run_energy!(std2, params(probd), nsteps); sync())
 same = all(k -> G[k] == leaves(dst2)[k], keys(G))
 ninputs = sum(k -> length(G[k]), keys(G))
