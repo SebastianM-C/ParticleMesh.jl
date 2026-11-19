@@ -1,0 +1,722 @@
+[
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E1.9-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E1.9",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E1.9-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E1.9",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E1.9-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E1.9",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E1.9-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E1.9",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E2.175-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E2.175",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E2.175-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E2.175",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E2.175-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E2.175",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E2.175-r64x4",
+    "mode": "plain",
+    "ny": 4,
+    "point": "E2.175",
+    "ppl": 64,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E1.9-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E1.9",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E1.9-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E1.9",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E1.9-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E1.9",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E1.9-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E1.9",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E2.175-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E2.175",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E2.175-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E2.175",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E2.175-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E2.175",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E2.175-r48x3",
+    "mode": "plain",
+    "ny": 3,
+    "point": "E2.175",
+    "ppl": 48,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E1.9-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E1.9-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E1.9-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E1.9-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E2.175-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E2.175-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E2.175-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E2.175-r32x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 32,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E1.9-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E1.9-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E1.9-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E1.9-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E1.9",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E2.175-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E2.175-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E2.175-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E2.175-r24x2",
+    "mode": "plain",
+    "ny": 2,
+    "point": "E2.175",
+    "ppl": 24,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E1.9-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E1.9",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E1.9-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E1.9",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E1.9-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E1.9",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 1.9,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E1.9-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E1.9",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "compensated",
+    "id": "gather-compensated-E2.175-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E2.175",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin",
+    "id": "gather-galerkin-E2.175-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E2.175",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "galerkin-compensated",
+    "id": "gather-galerkin-compensated-E2.175-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E2.175",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  },
+  {
+    "a0E": 2.175,
+    "backend": "cpu",
+    "float": 64,
+    "gather": "plain",
+    "id": "gather-plain-E2.175-r16x1",
+    "mode": "plain",
+    "ny": 1,
+    "point": "E2.175",
+    "ppl": 16,
+    "x": [
+      6.0,
+      10.0,
+      80.0,
+      54.0,
+      0.072
+    ]
+  }
+]
