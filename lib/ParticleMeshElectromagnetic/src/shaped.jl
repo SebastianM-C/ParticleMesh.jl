@@ -102,8 +102,8 @@ end
 @inline laser_field(l::ShapedLaser, ξ, dy, s) = shaped_field(l, ξ, dy, time_factor(l, s))
 
 function check_profile(a::AntennaPlane, l::ShapedLaser)
-    aliasing_period(l.profile) >= 2 * a.ly ||
-        throw(ArgumentError("the laser's profile repeats every $(aliasing_period(l.profile)) along y, less than twice the box height $(a.ly): raise its samples"))
+    aliasing_period(l.profile) >= 2 * a.len[2] ||
+        throw(ArgumentError("the laser's profile repeats every $(aliasing_period(l.profile)) along y, less than twice the box height $(a.len[2]): raise its samples"))
     return nothing
 end
 

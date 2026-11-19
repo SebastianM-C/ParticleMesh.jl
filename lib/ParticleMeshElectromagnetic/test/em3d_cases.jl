@@ -194,3 +194,93 @@ function open3d_step_digests(; workgroupsize = nothing, be = CPU())
     end
     return out
 end
+
+# WP-073: the laser antenna at N = 3, the runs of em3d_antenna.jl and the digests its worker shares.
+
+"""
+    antenna3d_problem(T; ncx = 12, nct = 6, length = (60, 24, 24), waist = 4, duration = 5, position = 6, focus = 14,
+                      polarization = 0, chirp = 0, a0 = 1, tend = 60, species = (), courant = 95//100, phase = 0,
+                      envelope = AxisTime(), boundaries = periodic, center = middle) -> EMProblem{3}
+
+`antenna_problem` in 3D: a box of `length` (c/ω₀) with `ncx` cells per laser wavelength 2π along x
+and `nct` along y and z, Δt at `courant` of the Yee limit, `round(tend/Δt)` steps, and one round
+[`GaussianLaser`](@ref) whose envelope peaks at the antenna plane at t = 6·duration, its axis at
+the middle of the box's cross-section unless `center` gives it. Every laser parameter may be a dual (A3).
+"""
+function antenna3d_problem(::Type{T}; ncx = 12, nct = 6, length = (60, 24, 24), waist = 4, duration = 5, position = 6, focus = 14,
+                           polarization = 0, chirp = 0, a0 = 1, tend = 60, species = (), courant = 95 // 100, phase = 0,
+                           envelope = AxisTime(), boundaries = (:periodic, :periodic, :periodic), center = nothing) where {T}
+    h = (2π / ncx, 2π / nct, 2π / nct)
+    n = ntuple(d -> round(Int, length[d] / h[d]), 3)
+    L = ntuple(d -> T(n[d] * h[d]), 3)
+    dt = T(courant) / sqrt(sum(d -> 1 / (L[d] / n[d])^2, 1:3))
+    c = center === nothing ? (n[2] * h[2] / 2, n[3] * h[3] / 2) : center
+    laser = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = 6 * T(duration), focus = T(focus),
+                          position = Float64(position), center = c, chirp = T(chirp), polarization = T(polarization), phase = T(phase),
+                          envelope)
+    return EMProblem("antenna-3d", L, n, dt, round(Int, tend / value_of(dt)), species, 1, (1, 0, 0); lasers = (laser,), boundaries)
+end
+
+"""
+    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing) -> (; st, prob, A, ip, shots)
+
+[`antenna_run`](@ref) in 3D: `A[q]` the discrete-time Fourier transforms at ω = 1 of Ey and Ez on
+the probe plane nearest to `probes[q]` (interior rows and layers), `shots` the fields after the
+steps in `snaps`.
+"""
+function antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, workgroupsize = nothing)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber); backend = be)
+    initialize!(st, prob)
+    p = params(prob)
+    (; grid, fields) = st
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    T = eltype(st.ρ)
+    dt = prob.dt
+    ip = [round(Int, x / value_of(h[1])) + 1 for x in probes]
+    J, K = (g + 1):(g + n[2]), (g + 1):(g + n[3])
+    A = [(Ey = zeros(Complex{T}, n[2], n[3]), Ez = zeros(Complex{T}, n[2], n[3])) for _ in ip]
+    function accumulate!(k)
+        w = cis(k * dt) * dt
+        Ey, Ez = Array(fields.Ey), Array(fields.Ez)
+        for (q, i) in enumerate(ip)
+            A[q].Ey .+= w .* view(Ey, g + i, J, K)
+            A[q].Ez .+= w .* view(Ez, g + i, J, K)
+        end
+    end
+    accumulate!(0)
+    shots = []
+    for k in 1:prob.nsteps
+        step!(st, p, k)
+        isempty(ip) || accumulate!(k)
+        k in snaps && push!(shots, (t = k * dt, f = map(Array, fields)))
+    end
+    return (; st, prob, A, ip, shots)
+end
+
+"""
+    antenna3d_step_digests(; workgroupsize = nothing, be = CPU()) -> Vector{(label, T, digest)}
+
+T-1027: Reference runs of a laser launched into a drifting plasma with y and z open (the PML),
+50 steps, and of the same laser polarized at 0.6 rad in a periodic box, per element type, one
+digest of every particle array, field, convolution field and history each.
+"""
+function antenna3d_step_digests(; workgroupsize = nothing, be = CPU())
+    out = Tuple{String,DataType,UInt64}[]
+    for T in TYPES, (label, bd, θ) in (("open", (:periodic, :open, :open), 0), ("periodic", (:periodic, :periodic, :periodic), 3 // 5))
+        tenth = one(T) / 10
+        sp = (SpeciesDescription{T}(:electron, -one(T), one(T), tenth, zero(T), (1, 0, 0), (1, 2, 2), (3tenth, tenth, -tenth),
+                                    (tenth / 2, tenth / 2, tenth / 2), 1),)
+        prob = antenna3d_problem(T; ncx = 8, nct = 6, length = (16, 12, 12), waist = 3, duration = 2, position = 4, focus = 8,
+                                 polarization = θ, a0 = 1 // 2, tend = 15, species = sp, boundaries = bd)
+        absorber = label == "open" ? PML(; cells = 4, kappa_max = 2, alpha_max = 0.1) : nothing
+        st = EMState(prob, EMNumerics(; workgroupsize, current = Esirkepov(), absorber); backend = be)
+        initialize!(st, prob)
+        run!(st, params(prob), prob.nsteps)
+        h = state_digest_3d(st)
+        for a in evolved(st)
+            h = hash(bits(a), h)
+        end
+        push!(out, (label, T, h))
+    end
+    return out
+end

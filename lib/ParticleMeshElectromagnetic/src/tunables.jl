@@ -180,9 +180,9 @@ end
 # A part of the description in the element type `S` with its tunables the next entries of `v`.
 # A laser keeps its `position` and `center` as they are: they are configuration, of a type of
 # their own.
-function with_part(::Type{S}, l::GaussianLaser{<:Any,P,E}, v, i) where {S,P,E}
+function with_part(::Type{S}, l::GaussianLaser{<:Any,P,E,C}, v, i) where {S,P,E,C}
     x = take_next!(v, i, length(LASER_TUNABLES))
-    return GaussianLaser{S,P,E}(x..., l.position, l.center, l.envelope)
+    return GaussianLaser{S,P,E,C}(x..., l.position, l.center, l.envelope)
 end
 function with_part(::Type{S}, l::ShapedLaser{<:Any,P}, v, i) where {S,P}
     x = take_next!(v, i, length(part_names(l)))

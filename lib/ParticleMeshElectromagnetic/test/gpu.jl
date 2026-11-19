@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -67,6 +67,15 @@ else
         @test open3d_step_digests(; be = GPU) == first
         for wgs in (64, 256)
             @test open3d_step_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1029 the 3D antenna on CUDA passes T-1024 and T-1026 with the CPU's tolerances, and its Reference step is bitwise across reruns and launch shapes [A2, A4, A5, A8, WP-073]" begin
+        rerun_module_on(GPU, (("T-1024", body_T1024), ("T-1026", body_T1026)))
+        first = antenna3d_step_digests(; be = GPU)
+        @test antenna3d_step_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test antenna3d_step_digests(; workgroupsize = wgs, be = GPU) == first
         end
     end
 
