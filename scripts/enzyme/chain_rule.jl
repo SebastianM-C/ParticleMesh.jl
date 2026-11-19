@@ -36,6 +36,9 @@ const ON_GPU = get(ENV, "PM_BACKEND", "cpu") == "cuda"
 if ON_GPU
     using CUDACore
     CUDACore.allowscalar(false)
+    # PM_CUDA_HEAP=<bytes>: Enzyme's dynamic tapes live on the device heap (8 MB by default) from the
+    # augmented forward to the reverse kernels, so more than about one step needs a larger heap (Enzyme.jl#2324)
+    haskey(ENV, "PM_CUDA_HEAP") && CUDACore.limit!(CUDACore.CU_LIMIT_MALLOC_HEAP_SIZE, parse(Int, ENV["PM_CUDA_HEAP"]))
 end
 backend() = ON_GPU ? CUDACore.CUDABackend() : CPU()
 using ParticleMeshCore: Reference, Fast
@@ -60,9 +63,18 @@ function problem(::Type{S}, α) where {S}
     nspecies == 1 || return prob
     return EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species[1:1], prob.seed, prob.kmode)
 end
+# A Dual has no atomics, so its state runs Reference() (`effective_mode`) and `initialize!` sorts
+# its particles by cell; a Float state in Fast() mode is not sorted. The two sides of the chain
+# rule pair arrays slot by slot, so the Float state is sorted the same way here: otherwise slot i
+# holds another particle on each side (the "primal gap" below shows it).
 function initialized(prob)
     st = EMState(prob, EMNumerics(; mode, current = Esirkepov(), workgroupsize = wgs); backend = backend())
     initialize!(st, prob)
+    if !ParticleMeshElectromagnetic.sorts(st, st.species[1])
+        for (s, ws) in zip(ParticleMeshElectromagnetic.deposited_species(st), ParticleMeshElectromagnetic.deposited_workspaces(st))
+            sort_by_cell!(s, st.grid, ws; workgroupsize = wgs)
+        end
+    end
     return st
 end
 energy(st) = sum(a -> sum(abs2, a), (st.fields.Ex, st.fields.Ey, st.fields.Ez, st.fields.Bx, st.fields.By, st.fields.Bz))
@@ -126,6 +138,8 @@ Ld, L = leaves(std), leaves(st0)
 common = sort!(collect(intersect(keys(Ld), keys(L))))
 only_float = sort!(collect(setdiff(keys(L), keys(Ld))))
 primal_gap = maximum(k -> maximum(abs.(ForwardDiff.value.(Ld[k]) .- L[k]); init = zero(T)), common)
+cells_equal = all(i -> Array(std.species[1].cell[i]) == Array(st0.species[1].cell[i]), 1:2)
+println("  initial states: primal gap ", primal_gap, ", cells equal slot by slot: ", cells_equal)
 tangent = Dict(k => ForwardDiff.partials.(Ld[k], 1) for k in common)
 t_fd = @elapsed fd = ForwardDiff.partials(run_energy!(std, params(probd), nsteps), 1)
 

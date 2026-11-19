@@ -15,6 +15,9 @@ const ON_GPU = get(ENV, "PM_BACKEND", "cpu") == "cuda"
 if ON_GPU
     using CUDACore
     CUDACore.allowscalar(false)
+    # PM_CUDA_HEAP=<bytes>: Enzyme's dynamic tapes live on the device heap (8 MB by default) from the
+    # augmented forward to the reverse kernels, so more than about one step needs a larger heap (Enzyme.jl#2324)
+    haskey(ENV, "PM_CUDA_HEAP") && CUDACore.limit!(CUDACore.CU_LIMIT_MALLOC_HEAP_SIZE, parse(Int, ENV["PM_CUDA_HEAP"]))
 end
 const BE = ON_GPU ? CUDACore.CUDABackend() : CPU()
 const REPO = normpath(joinpath(@__DIR__, "..", "..", ".."))
@@ -27,9 +30,16 @@ function problem(::Type{S}, α) where {S}
     prob = plasma_step_2d(S; amplitude = α, nsteps = 2, seed = 7)
     return EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species[1:1], prob.seed, prob.kmode)
 end
+# The Dual state runs Reference() (no atomics for Duals) and `initialize!` sorts it by cell; the
+# Float state is sorted the same way here, so that slot i holds the same particle on both sides.
 function initialized(prob)
     st = EMState(prob, EMNumerics(; mode = MODE, current = Esirkepov()); backend = BE)
     initialize!(st, prob)
+    if !PME.sorts(st, st.species[1])
+        for (s, ws) in zip(PME.deposited_species(st), PME.deposited_workspaces(st))
+            sort_by_cell!(s, st.grid, ws)
+        end
+    end
     return st
 end
 leaves!(out, path, x::AbstractArray{<:Union{AbstractFloat,ForwardDiff.Dual}}) = (any(y -> y === x, values(out)) || (out[path] = x); out)
@@ -72,18 +82,68 @@ function gather_part!(st, p)
     gather_probe_kernel!(get_backend(s))(st.ws[1].tmp_T, s, PME.particle_fields(st), st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s))
     return nothing
 end
+const PMC = ParticleMeshCore
+# the same probe from plain arrays, without the species struct
+@kernel function gather_arrays_kernel!(out, c1, c2, o1, o2, status, f, shape, g::Int32)
+    i = @index(Global, Linear)
+    @inbounds if status[i] == 0x01
+        E, B = PME.fields_at(f, (c1[i], c2[i]), (o1[i], o2[i]), shape, g)
+        out[i] = E[1] * E[1] + E[2] + E[3] + B[1] + B[2] * B[3]
+    end
+end
+function gather_arrays_part!(st, p)
+    s = st.species[1]
+    gather_arrays_kernel!(get_backend(s))(st.ws[1].tmp_T, s.cell[1], s.cell[2], s.offset[1], s.offset[2], s.status, PME.particle_fields(st),
+                                          st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s))
+    return nothing
+end
+# one component, one gather_at
+@kernel function gather_ex_kernel!(out, c1, c2, o1, o2, status, Ex, shape, g::Int32)
+    i = @index(Global, Linear)
+    @inbounds if status[i] == 0x01
+        out[i] = PMC.gather_at(Ex, (c1[i], c2[i]), (o1[i], o2[i]), shape, PME.gather_layout(Val(2)).Ex, g)
+    end
+end
+function gather_ex_part!(st, p)
+    s = st.species[1]
+    gather_ex_kernel!(get_backend(s))(st.ws[1].tmp_T, s.cell[1], s.cell[2], s.offset[1], s.offset[2], s.status, st.fields.Ex,
+                                      st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s))
+    return nothing
+end
+# one component, the stencil written out with the shape weights
+@kernel function gather_ex_manual_kernel!(out, c1, c2, o1, o2, status, Ex, shape, g::Int32)
+    i = @index(Global, Linear)
+    @inbounds if status[i] == 0x01
+        (f1, w1), (f2, w2) = PMC.shape_weights(shape, PME.gather_layout(Val(2)).Ex, (o1[i], o2[i]))
+        b1 = c1[i] + f1 + g
+        b2 = c2[i] + f2 + g
+        acc = zero(eltype(out))
+        acc += w1[1] * w2[1] * Ex[b1, b2]; acc += w1[2] * w2[1] * Ex[b1 + 1, b2]; acc += w1[3] * w2[1] * Ex[b1 + 2, b2]
+        acc += w1[1] * w2[2] * Ex[b1, b2 + 1]; acc += w1[2] * w2[2] * Ex[b1 + 1, b2 + 1]; acc += w1[3] * w2[2] * Ex[b1 + 2, b2 + 1]
+        acc += w1[1] * w2[3] * Ex[b1, b2 + 2]; acc += w1[2] * w2[3] * Ex[b1 + 1, b2 + 2]; acc += w1[3] * w2[3] * Ex[b1 + 2, b2 + 2]
+        out[i] = acc
+    end
+end
+function gather_ex_manual_part!(st, p)
+    s = st.species[1]
+    gather_ex_manual_kernel!(get_backend(s))(st.ws[1].tmp_T, s.cell[1], s.cell[2], s.offset[1], s.offset[2], s.status, st.fields.Ex,
+                                             st.numerics.shape, Int32(guards(st.grid)); ndrange = capacity(s))
+    return nothing
+end
 current_part!(st, p) = (PME.current!(st.numerics.current, st); nothing)
 solve_part!(st, p) = (PME.solve_fields!(st.numerics.solver, st.fields, st.grid, st.dt, st.modifiers, p, 1); nothing)
 kinetic_part!(st, p) = (PME.kinetic!(st); nothing)
 push_current_part!(st, p) = (push_part!(st, p); current_part!(st, p); nothing)
 step_part!(st, p) = (step!(st, p, 1; observer = nothing); nothing)
 step2_part!(st, p) = (step!(st, p, 1; observer = nothing); step!(st, p, 2; observer = nothing); nothing)
-const PARTS = Dict("gather" => gather_part!, "push" => push_part!, "current" => current_part!, "solve" => solve_part!, "kinetic" => kinetic_part!,
+const PARTS = Dict("gather" => gather_part!, "gather arrays" => gather_arrays_part!, "gather Ex" => gather_ex_part!,
+                   "gather Ex manual" => gather_ex_manual_part!, "push" => push_part!, "current" => current_part!, "solve" => solve_part!, "kinetic" => kinetic_part!,
                    "push+current" => push_current_part!, "step" => step_part!, "two steps" => step2_part!)
 
 # PM_ONE_PARTICLE=1: only the first particle alive, so no two work items touch the same node
 const KEEP = parse(Int, get(ENV, "PM_KEEP", get(ENV, "PM_ONE_PARTICLE", "0") == "1" ? "1" : "0"))   # PM_KEEP=n: the first n particles alive
 const one_particle = KEEP > 0
+const SEED_FIELDS = get(ENV, "PM_SEED_FIELDS", "0") == "1"
 function keep_one!(st)
     s = st.species[1]
     st_ = Array(s.status); st_[(KEEP + 1):end] .= 0x00
@@ -109,7 +169,10 @@ function check(name)
     g!(std, DUALP)
     JV = Dict(k => ForwardDiff.partials.(Ld[k], 1) for k in common)
     # reverse: seeds W on every array's final value
-    W = Dict(k => dev(randn(rng, T, size(L0[k]))) for k in common)
+    # PM_SEED_FIELDS=1: seeds on the fields and K only. A part that deposits sorts the Dual state
+    # (Reference) but not the Float one (Fast), so its particle outputs sit in other slots on the
+    # two sides; the fields do not depend on the slot order.
+    W = Dict(k => (SEED_FIELDS && !(startswith(k, "st.fields.") || k == "st.K")) ? dev(zeros(T, size(L0[k]))) : dev(randn(rng, T, size(L0[k]))) for k in common)
     st = deepcopy(st0)
     dst = Enzyme.make_zero(st)
     Lr = leaves(dst)
