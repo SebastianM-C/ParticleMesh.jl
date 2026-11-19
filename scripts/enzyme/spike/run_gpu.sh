@@ -23,9 +23,18 @@ git rev-parse HEAD > "$out/commit.txt"
 "${J[@]}" -e 'using Pkg; Pkg.instantiate(); using CUDACore; println(CUDACore.name(CUDACore.device()), " functional=", CUDACore.functional())' > "$out/instantiate.log" 2>&1
 tail -1 "$out/instantiate.log" | tee -a "$out/summary.txt"
 run minimal "${J[@]}" scripts/enzyme/spike/minimal.jl
-PM_ENZYME_PATCH="$A" run kernels-fast-active "${J[@]}" scripts/enzyme/spike/kernels.jl
-PM_ENZYME_PATCH="$A;$U" run kernels-fast-active-unroll "${J[@]}" scripts/enzyme/spike/kernels.jl
-PM_MODE=reference PM_ENZYME_PATCH="$A;$U" run kernels-reference-active-unroll "${J[@]}" scripts/enzyme/spike/kernels.jl
+# the step's kernels, one process per test: an Enzyme abort ends the process and the tests after it
+TESTS=("arrays only" "species struct" "gather" "solve_fields" "shape" "stencil" "atomic" "current" "push" "push loop of step" "push and current" "step")
+for t in "${TESTS[@]}"; do
+    tag="${t// /-}"
+    ONLY="$t" PM_ENZYME_PATCH="$A" run "kernel-fast-active-$tag" "${J[@]}" scripts/enzyme/spike/kernels.jl
+    if ! grep -q "^\[$t\] OK" "$out/kernel-fast-active-$tag.log"; then
+        ONLY="$t" PM_ENZYME_PATCH="$A;$U" run "kernel-fast-active-unroll-$tag" "${J[@]}" scripts/enzyme/spike/kernels.jl
+    fi
+done
+for t in "current" "step"; do
+    ONLY="$t" PM_MODE=reference PM_ENZYME_PATCH="$A;$U" run "kernel-reference-active-unroll-${t// /-}" "${J[@]}" scripts/enzyme/spike/kernels.jl
+done
 # whole steps: the smallest patch set that passes one step is used for the longer runs
 P="$A"
 PM_ENZYME_PATCH="$P" run chain-fast-1-Float64 "${J[@]}" scripts/enzyme/chain_rule.jl fast 1 1 Float64 7

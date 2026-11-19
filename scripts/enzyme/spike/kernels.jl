@@ -82,6 +82,11 @@ tests = [
   ("atomic", (st, out) -> (s = st.species[1]; k_atomic!(BE)(st.fields.Jx, s; ndrange = capacity(s)); nothing), (d, dout) -> fill!(d.fields.Jx, 1)),
   ("current", (st, out) -> (PME.current!(st.numerics.current, st); nothing), seed_J!),
   ("push", (st, out) -> (s = st.species[1]; PME.launcher(PME.push_kernel!, get_backend(s), nothing)(s, st.fields, st.numerics.pusher, st.numerics.shape, Int32(guards(st.grid)), 0.05, map(h -> st.dt / h, st.grid.dx), Int32.(st.grid.n); ndrange = capacity(s)); nothing), seed_u1!),
+  ("push loop of step", (st, out) -> (pf = PME.particle_fields(st); n = Int32.(st.grid.n); g = Int32(guards(st.grid)); dt_dx = map(h -> st.dt / h, st.grid.dx);
+      for s in (PME.deposited_species(st)..., PME.witness_species(st)...)
+          PME.launcher(PME.push_kernel!, get_backend(s), nothing)(s, pf, st.numerics.pusher, st.numerics.shape, g, s.q / s.m * st.dt / 2, dt_dx, n; ndrange = capacity(s))
+      end; nothing), seed_u1!),
+  ("push and current", (st, out) -> (s = st.species[1]; PME.launcher(PME.push_kernel!, get_backend(s), nothing)(s, st.fields, st.numerics.pusher, st.numerics.shape, Int32(guards(st.grid)), 0.05, map(h -> st.dt / h, st.grid.dx), Int32.(st.grid.n); ndrange = capacity(s)); PME.current!(st.numerics.current, st); nothing), seed_J!),
   ("step", (st, out) -> (step!(st, p, 1; observer = nothing); nothing), seed_EB!),
 ]
 leaves!(out, path, x::AbstractArray{<:AbstractFloat}) = (out[path] = x; out)
@@ -97,8 +102,9 @@ end
 leaves(x) = leaves!(Dict{String,Any}(), "st", x)
 println("bisect: backend ", BE, ", mode ", MODE, ", patches ", get(ENV, "PM_ENZYME_PATCH", ""))
 only = get(ENV, "ONLY", "")
+isempty(only) || println("only the test named ", repr(only))
 for (name, f, seed!) in tests
-    isempty(only) || occursin(only, name) || continue
+    isempty(only) || only == name || continue
     s2 = deepcopy(st); d2 = Enzyme.make_zero(s2)
     out = similar(st.species[1].w); fill!(out, 0); dout = zero(out)
     seed!(d2, dout)
@@ -110,5 +116,6 @@ for (name, f, seed!) in tests
         println("[$name] FAILED: ", replace(first(sprint(showerror, e), 6000), "\n" => " | "))
     end
     println("   ($(round(t, digits=1)) s)")
+    flush(stdout)
 end
 println(sort!(collect(ACTIVE_SEEN)))
