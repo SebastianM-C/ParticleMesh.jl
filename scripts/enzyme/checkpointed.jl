@@ -19,6 +19,7 @@
 # along a random direction v on every array (both from the same initialized state).
 #
 # `cost steps=<k1,k2,...> [plain=<kmax>] [dual=<kmax>]`: for each k, the median of three timings
+# (each on a fresh copy of the start state made outside the timing)
 # of the plain run, Dual{1} and Dual{4} passes (one Dual pass gives that many directional
 # derivatives; up to `dual` steps), the plain reverse pass (up to `plain` steps, since its tape
 # grows with k) and the checkpointed one, and each one's peak of device memory in use (the
@@ -195,35 +196,51 @@ function main_cost()
     dual_max = parse(Int, opt("dual", string(maximum(ks))))
     st0, p = start(T, α0, maximum(ks))
     CASE_INFO["particles"] = sum(alive_count, st0.species)
-    duals = Dict(N => start(typeof(ForwardDiff.Dual{:α}(α0, ntuple(i -> T(i == 1), N)...)), ForwardDiff.Dual{:α}(α0, ntuple(i -> T(i == 1), N)...), maximum(ks))
-                 for N in (1, 4))
+    # the Dual states are built when a row times them, one at a time (at 1024², a Dual{4} state is
+    # about five Float states, and two of them besides st0 and a copy do not fit a 16 GB card)
+    dualα(N) = ForwardDiff.Dual{:α}(α0, ntuple(i -> T(i == 1), N)...)
+    dual_case(N) = case(typeof(dualα(N)), dualα(N), maximum(ks))
+    dual_params = Dict(N => params(dual_case(N)) for N in (1, 4))
     snap = snapshot_bytes(st0)
     println("cost: $(DIM)D $T $MODE cells $CELLS ppc $PPC, $(CASE_INFO["particles"]) particles, $NCKPT checkpoints, snapshot $(round(snap / 2^20; digits = 1)) MiB, state $(round(state_bytes(st0) / 2^20; digits = 1)) MiB, backend $(backend())")
-    run_steps!(st, p, k) = (for i in 1:k; step!(st, p, i; observer = ()); end; st)
-    run_steps!(deepcopy(st0), p, 1); foreach(N -> run_steps!(deepcopy(duals[N][1]), duals[N][2], 1), (1, 4)); sync()
-    _, t_first_ck, m_first_ck = measured(() -> checkpointed_gradient(deepcopy(st0), p, 2, min(NCKPT, 2)))
-    _, t_first_pl, m_first_pl = measured(() -> reverse_gradient(deepcopy(st0), p, 1))
+    run_steps!(st, p, k) = (for i in 1:k; step!(st, p, i; observer = ()); end; nothing)
+    run_steps!(deepcopy(st0), p, 1); foreach(N -> run_steps!(initialized(dual_case(N), MODE), dual_params[N], 1), (1, 4)); reclaim(); sync()
+    _, t_first_ck, m_first_ck = measured(() -> (checkpointed_gradient(deepcopy(st0), p, 2, min(NCKPT, 2)); nothing))
+    _, t_first_pl, m_first_pl = measured(() -> (reverse_gradient(deepcopy(st0), p, 1); nothing))
     println(@sprintf("  first calls (compile): checkpointed %.1f s, plain %.1f s; plain reverse of 1 step %.1f MiB peak", t_first_ck, t_first_pl, m_first_pl / 2^20))
     rows = Dict{String,Any}[]
-    timed(f) = (ms = [measured(f) for _ in 1:3]; (median(getindex.(ms, 2)), maximum(getindex.(ms, 3))))
+    # three timings of `f(x)`, each on a fresh input `x = setup()` made outside the timing and the
+    # peak (so the peak is the memory `f` needs beyond its input); results are dropped at once
+    function timed(setup, f)
+        ts, peaks = Float64[], Int[]
+        for _ in 1:3
+            x = Ref{Any}(setup()); sync()
+            _, t, m = measured(() -> (f(x[]); nothing))
+            x[] = nothing
+            push!(ts, t); push!(peaks, m)
+        end
+        reclaim()
+        return median(ts), maximum(peaks)
+    end
+    copy0() = deepcopy(st0)
     for k in ks
         row = Dict{String,Any}("steps" => k)
-        row["primal"], row["primal_peak"] = timed(() -> run_steps!(deepcopy(st0), p, k))
+        row["primal"], row["primal_peak"] = timed(copy0, st -> run_steps!(st, p, k))
         if k <= dual_max
             for N in (1, 4)
-                row["dual$N"], row["dual$(N)_peak"] = timed(() -> run_steps!(deepcopy(duals[N][1]), duals[N][2], k))
+                row["dual$N"], row["dual$(N)_peak"] = timed(() -> initialized(dual_case(N), MODE), st -> run_steps!(st, dual_params[N], k))
             end
         end
         if k <= plain_max
             try
-                row["plain_reverse"], row["plain_reverse_peak"] = timed(() -> reverse_gradient(deepcopy(st0), p, k))
+                row["plain_reverse"], row["plain_reverse_peak"] = timed(copy0, st -> reverse_gradient(st, p, k))
             catch e
                 row["plain_error"] = sprint(showerror, e)[1:min(end, 300)]
             end
         end
         try
-            row["checkpointed"], row["checkpointed_peak"] = timed(() -> checkpointed_gradient(deepcopy(st0), p, k, NCKPT))
-            row["checkpointed_host"], row["checkpointed_host_peak"] = timed(() -> checkpointed_gradient(deepcopy(st0), p, k, NCKPT; host = true))
+            row["checkpointed"], row["checkpointed_peak"] = timed(copy0, st -> checkpointed_gradient(st, p, k, NCKPT))
+            row["checkpointed_host"], row["checkpointed_host_peak"] = timed(copy0, st -> checkpointed_gradient(st, p, k, NCKPT; host = true))
         catch e
             row["checkpointed_error"] = sprint(showerror, e)[1:min(end, 300)]
         end

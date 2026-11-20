@@ -19,8 +19,8 @@ runs=("$@")
     "check dim=3 T=Float32 mode=fast steps=16 c=3 plain=1"
     "check dim=2 T=Float64 mode=reference steps=400 c=10 plain=0"
     "check dim=3 T=Float64 mode=reference steps=200 c=8 plain=0"
-    "cost dim=2 T=Float32 mode=fast cells=1024x1024 ppc=2x2 steps=8,32,128,512 plain=16 dual=128 c=16"
-    "cost dim=2 T=Float32 mode=reference cells=1024x1024 ppc=2x2 steps=8,32,128,512 plain=16 dual=128 c=16"
+    "cost dim=2 T=Float32 mode=fast cells=1024x1024 ppc=2x2 steps=2,8,32,128,512 plain=2 dual=128 c=16"
+    "cost dim=2 T=Float32 mode=reference cells=1024x1024 ppc=2x2 steps=2,8,32,128,512 plain=2 dual=128 c=16"
     "cost dim=3 T=Float32 mode=fast cells=96x96x96 ppc=2x2x2 steps=8,32,128 plain=8 dual=32 c=8"
     "cost dim=3 T=Float32 mode=reference cells=96x96x96 ppc=2x2x2 steps=8,32,128 plain=8 dual=32 c=8")
 i=0
