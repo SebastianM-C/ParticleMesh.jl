@@ -181,7 +181,7 @@ through σ included.
 
 # The laser's functions and the antennas' kernels call sin and cos, never sincos: Enzyme's reverse
 # pass of a KernelAbstractions kernel on a GPU cannot allocate a tape that holds a sincos of an
-# active value (#547, T-1140), and both give the same bits on the CPU (T-1141).
+# active value (#547, T-1140). Inside a kernel the two differ by up to 2 ulp (T-1141).
 
 @inline function laser_field(::AxisTime, l::GaussianLaser, ξ, dy, s)
     w0 = l.waist

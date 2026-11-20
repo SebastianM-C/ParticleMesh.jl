@@ -1,5 +1,5 @@
-# WP-083: the laser's device functions call sin and cos, not sincos (#547). T-1141: the two give the
-# same bits on the CPU, so the CPU's runs are unchanged. T-1140 (run by gpu.jl on CUDA): Enzyme's
+# WP-083: the laser's device functions call sin and cos, not sincos (#547). T-1141: what that does
+# to the bits inside a kernel. T-1140 (run by gpu.jl on CUDA): Enzyme's
 # reverse mode through a KernelAbstractions kernel that evaluates the antenna's incident field per
 # row, from the laser's parameters in a device array, against ForwardDiff on the CPU.
 
@@ -7,18 +7,42 @@ using Enzyme: Enzyme
 using ParticleMeshElectromagnetic: GaussianLaser, AxisTime, WavefrontTime, laser_field
 using ParticleMeshElectromagnetic.PulseShapes: GaussianBeam, PupilBeam, GaussianPupil, profile
 
-@testset "T-1141 sin and cos give the bits of sincos for Float32, Float64 and Dual{Float32,3} [A4, A8, WP-083]" begin
-    rng = Xoshiro(1141)
-    for T in (Float32, Float64)
-        # the phases of the antenna (|φ| up to the box's time, about 10³) and of the pupil's sum,
-        # wider ranges for the argument reduction, and the edges
-        xs = vcat(T(2000) .* rand(rng, T, 20_000) .- T(1000), T(1e6) .* randn(rng, T, 2_000), T(1e-3) .* randn(rng, T, 2_000),
-                  T[0, -0.0, floatmin(T), -floatmin(T), eps(T), T(π) / 2, T(π), 2 * T(π), floatmax(T), T(1e30)])
-        @test all(x -> (sin(x), cos(x)) === sincos(x), xs)
+# Inside a kernel the backend's own sin, cos and sincos run (OpenCL's builtins on KernelAbstractions'
+# CPU backend, libdevice on CUDA), and its sincos need not give the bits of its sin and cos: on the
+# CPU backend they differ in about a fifth (Float32) and a tenth (Float64) of the arguments, by up
+# to 2 ulp, and the separate calls are the closer to the exact values. So the antenna's fields move
+# in their last bits with WP-083; its tests' tolerances hold them.
+@kernel function sincos_pair_kernel!(s1, c1, s2, c2, @Const(x))
+    i = @index(Global, Linear)
+    @inbounds begin
+        v = x[i]
+        s1[i], c1[i] = sincos(v)
+        s2[i] = sin(v)
+        c2[i] = cos(v)
     end
-    D = ForwardDiff.Dual{Nothing,Float32,3}
-    ds = [D(v, ForwardDiff.Partials(Tuple(randn(rng, Float32, 3)))) for v in Float32(2000) .* rand(rng, Float32, 20_000) .- 1000]
-    @test all(d -> (sin(d), cos(d)) === sincos(d), ds)
+end
+
+"Distance of `a` from the exact value `r` in ulps of `r` (of the type of `a`)."
+ulps(a, r) = Float64(abs(big(a) - r) / eps(max(typeof(a)(abs(r)), floatmin(typeof(a)))))
+
+@testset "T-1141 in a kernel, sin and cos are within 2 ulp of sincos and within 1 ulp of the exact values, Float32 and Float64 [A4, A7, WP-083]" begin
+    for T in (Float32, Float64), (k, x) in enumerate((T(2000) .* rand(Xoshiro(1141), T, 20_000) .- T(1000),   # the antenna's phases
+                                                      T(2e6) .* rand(Xoshiro(1142), T, 4_000) .- T(1e6),       # long, chirped runs
+                                                      T(1 // 1000) .* randn(Xoshiro(1143), T, 4_000)))
+        xd = KernelAbstractions.allocate(backend, T, length(x)); copyto!(xd, x)
+        s1, c1, s2, c2 = (similar(xd) for _ in 1:4)
+        sincos_pair_kernel!(backend)(s1, c1, s2, c2, xd; ndrange = length(x))
+        KernelAbstractions.synchronize(backend)
+        s1, c1, s2, c2 = Array.((s1, c1, s2, c2))
+        apart, err_pair, err_sincos = setprecision(BigFloat, 256) do
+            (maximum(i -> max(ulps(s2[i], big(s1[i])), ulps(c2[i], big(c1[i]))), eachindex(x)),
+             maximum(i -> max(ulps(s2[i], sin(big(x[i]))), ulps(c2[i], cos(big(x[i])))), eachindex(x)),
+             maximum(i -> max(ulps(s1[i], sin(big(x[i]))), ulps(c1[i], cos(big(x[i])))), eachindex(x)))
+        end
+        @info "T-1141 sin and cos against sincos in a kernel" T range = k differ = count(s1 .!== s2) + count(c1 .!== c2) apart err_pair err_sincos
+        @test record!("T-1141 apart", T, apart) <= emC("T-1141", "C_apart")
+        @test record!("T-1141 sin, cos", T, err_pair) <= emC("T-1141")
+    end
 end
 
 # The cases of T-1140: what the antenna's kernels evaluate per row, as functions of a tuple of

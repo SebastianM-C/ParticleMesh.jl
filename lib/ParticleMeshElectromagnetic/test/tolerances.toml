@@ -1348,3 +1348,11 @@ quantity = "Enzyme's reverse mode on CUDA through a kernel evaluating the antenn
 scale = "Σ_j |J_j|ᵀ|w̄_j|, the sum of the terms' magnitudes (J_j the row's Jacobian, w̄ the output's random adjoint); the device's sin, cos, exp and atan differ from the CPU's by an ulp or two"
 C = 64
 status = "proposed; not yet measured on CUDA"
+
+["T-1141"]
+quantity = "inside a kernel on the test backend: the largest distance between sin, cos and the backend's sincos (C_apart), and between sin, cos and the exact values (C)"
+scale = "ulps of the value; arguments uniform in ±10³, uniform in ±10⁶ and 10⁻³·randn"
+C = 1
+C_apart = 2
+measured = { Float32 = "apart 1, error 0.88", Float64 = "apart 1, error 0.72" }
+status = "proposed; KernelAbstractions' CPU backend (OpenCL builtins in PoCL), one thread"
