@@ -208,8 +208,11 @@ else
         # GPU merge sort launches one merge-pass kernel per doubling of the run length
         # (`merge_sort.jl`, AcceleratedKernels 0.5), so its host bookkeeping grows as log₂ of the
         # capacity while its device scratch is the workspace's; it is held to about 1 KiB per
-        # doubling. The rest of the step is held constant at 64 and 512 particles per cell (at 8
-        # per cell the second CUDA run measured 592 host bytes fewer, a step not yet explained).
+        # doubling. The rest of the step's host bytes are held to the reference row's plus 1 KiB:
+        # on every CUDA card measured so far one row or another of a group, at random, reads 144 to
+        # 592 bytes below the others (#435), a constant that follows neither the particle count nor
+        # the grid, while an allocation per particle or per cell would add far more than 1 KiB at
+        # 512 particles per cell or on the larger grid.
         function proxy(T, N, ncell, ppc)
             if N == 1
                 grid = PeriodicGrid(ncell, basetype(T)(1 // 2), flux_guard_width(Quadratic, Center()))
@@ -254,7 +257,7 @@ else
             refcap = sizes[1]^N * 64
             for (ncell, ppc, b) in rows
                 @test b.dev <= ref.dev && b.sort_dev <= ref.sort_dev
-                @test b.host <= ref.host
+                @test b.host <= ref.host + 1024
                 doublings = log2(ncell^N * ppc / refcap)
                 @test b.sort_host <= ref.sort_host + 1024 * (doublings + 1)
             end
