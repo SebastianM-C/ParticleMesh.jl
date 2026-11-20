@@ -1,0 +1,23 @@
+piece ionize at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+┌ Warning: Assignment to `rev` in soft scope is ambiguous because a global variable by the same name exists: `rev` will be treated as a new local. Disambiguate by using `local rev` to suppress this warning or `global rev` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:224
+┌ Warning: Assignment to `fwd` in soft scope is ambiguous because a global variable by the same name exists: `fwd` will be treated as a new local. Disambiguate by using `local fwd` to suppress this warning or `global fwd` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:225
+    region ≤count st.aux.ionization.electrons.data.x.extras.old_offset_1 rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.extras.old_offset_1 rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.extras.old_offset_2 rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.extras.old_offset_2 rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.offset.1   rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.offset.1   rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.offset.2   rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.offset.2   rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.1        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.1        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.2        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.2        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.3        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.3        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.w          rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.w          rev +0.000000e+00 fwd +0.000000e+00
+    count before 85687, after (reverse state) 117727, after (dual) 117727
+piece ionize check: reverse 90.011 s; total ⟨Jᵀr,v⟩−⟨r,v⟩ = +0.000000e+00, ⟨r,Jv⟩−⟨r,v⟩ = +0.000000e+00, relative 0.00e+00

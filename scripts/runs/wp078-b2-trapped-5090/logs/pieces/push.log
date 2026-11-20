@@ -1,0 +1,33 @@
+piece push at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+piece push: reverse OK in 85.3 s; |dst| over arrays 90322.3512916565; dp lasers (GaussianLaser{Float32, Float32, AxisTime, Float32}(0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, AxisTime()),)
+kernel arguments with dropped adjoints: ["gpu_push_kernel! :: mixed Species (scalar adjoints dropped)"]

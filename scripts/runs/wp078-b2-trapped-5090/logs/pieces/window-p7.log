@@ -1,0 +1,42 @@
+ERROR: LoadError: ArgumentError: Package EnzymeCore not found in current path.
+- Run `import Pkg; Pkg.add("EnzymeCore")` to install the EnzymeCore package.
+Stacktrace:
+  [1] macro expansion
+    @ ./loading.jl:2559 [inlined]
+  [2] macro expansion
+    @ ./lock.jl:376 [inlined]
+  [3] __require(into::Module, mod::Symbol)
+    @ Base ./loading.jl:2542
+  [4] require
+    @ ./loading.jl:2518 [inlined]
+  [5] eval_import_path
+    @ ./module.jl:36 [inlined]
+  [6] eval_import_path_all(at::Module, path::Expr, keyword::String)
+    @ Base ./module.jl:60
+  [7] _eval_import(::Bool, ::Module, ::Expr, ::Expr, ::Vararg{Expr})
+    @ Base ./module.jl:101
+  [8] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:101
+  [9] include(mapexpr::Function, mod::Module, _path::String)
+    @ Base ./Base.jl:310
+ [10] IncludeInto
+    @ ./Base.jl:311 [inlined]
+ [11] #2
+    @ ~/pm-wp078/scripts/enzyme/common.jl:5 [inlined]
+ [12] foreach(f::var"#2#3", itr::Vector{SubString{String}})
+    @ Base ./abstractarray.jl:3212
+ [13] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/common.jl:5
+ [14] include(mapexpr::Function, mod::Module, _path::String)
+    @ Base ./Base.jl:310
+ [15] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:9
+ [16] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [17] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [18] _start()
+    @ Base ./client.jl:577
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:101
+in expression starting at ~/pm-wp078/scripts/enzyme/common.jl:5
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:9

@@ -1,0 +1,30 @@
+ERROR: LoadError: UndefVarError: `_sinpi` not defined in `ParticleMeshElectromagnetic`
+Suggestion: check for spelling errors or missing imports.
+Stacktrace:
+  [1] getproperty(x::Module, f::Symbol)
+    @ Base ./Base_compiler.jl:50
+  [2] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:100
+  [3] include(mapexpr::Function, mod::Module, _path::String)
+    @ Base ./Base.jl:310
+  [4] IncludeInto
+    @ ./Base.jl:311 [inlined]
+  [5] #2
+    @ ~/pm-wp078/scripts/enzyme/common.jl:5 [inlined]
+  [6] foreach(f::var"#2#3", itr::Vector{SubString{String}})
+    @ Base ./abstractarray.jl:3212
+  [7] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/common.jl:5
+  [8] include(mapexpr::Function, mod::Module, _path::String)
+    @ Base ./Base.jl:310
+  [9] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:9
+ [10] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [11] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [12] _start()
+    @ Base ./client.jl:577
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:100
+in expression starting at ~/pm-wp078/scripts/enzyme/common.jl:5
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:9

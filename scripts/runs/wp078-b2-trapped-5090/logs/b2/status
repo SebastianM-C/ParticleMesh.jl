@@ -1,0 +1,28 @@
+steps1 exit 139 172s peak_MiB 4407
+steps180 exit 0 322s peak_MiB 15931
+steps180b exit 0 325s peak_MiB 15931
+grad20 exit 1 450s peak_MiB 25045
+grad20b exit 1 450s peak_MiB 25045
+grad20c exit 1 437s peak_MiB 25205
+grad20d exit 1 443s peak_MiB 25557
+grad20e exit 1 443s peak_MiB 25493
+grad20f exit 1 2s peak_MiB 925
+grad20g exit 1 465s peak_MiB 25045
+grad20h exit 1 499s peak_MiB 25045
+grad20i exit 0 522s peak_MiB 25045
+optborn exit 1 6s peak_MiB 1431
+optborn2 exit 1 45s peak_MiB 2197
+optborn3 exit 1 967s peak_MiB 28741
+optborn4 exit 1 574s peak_MiB 28117
+optborn5 exit 1 533s peak_MiB 28565
+graddev20 exit 0 518s peak_MiB 32181
+graddev40 exit 0 517s peak_MiB 32181
+devckpt-done
+optborn6 exit 0 3491s peak_MiB 28741
+gradh40heap1 exit 0 514s peak_MiB 29157
+gradh40heap4 exit 0 520s peak_MiB 32181
+heaptest-done
+gradh10 exit 0 547s peak_MiB 16991
+gradh5 exit 0 616s peak_MiB 11967
+gradh30 exit 0 570s peak_MiB 22933
+ctest-done

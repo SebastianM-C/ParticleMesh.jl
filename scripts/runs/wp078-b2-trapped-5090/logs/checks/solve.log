@@ -1,0 +1,18 @@
+piece solve at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+┌ Warning: Assignment to `rev` in soft scope is ambiguous because a global variable by the same name exists: `rev` will be treated as a new local. Disambiguate by using `local rev` to suppress this warning or `global rev` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:161
+┌ Warning: Assignment to `fwd` in soft scope is ambiguous because a global variable by the same name exists: `fwd` will be treated as a new local. Disambiguate by using `local fwd` to suppress this warning or `global fwd` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:162
+piece solve check: reverse 93.198 s; total ⟨Jᵀr,v⟩−⟨r,v⟩ = +2.010638e+03, ⟨r,Jv⟩−⟨r,v⟩ = +2.010638e+03, relative 1.48e-07
+    st.fields.Ez                                       rev +4.784886e+02 fwd +1.017815e+03 rel 5.30e-01 (|r·v| 7.53e+04)
+    st.fields.By                                       rev +2.148720e+02 fwd -2.453996e+02 rel 1.88e+00 (|r·v| 7.57e+04)
+    st.fields.Ex                                       rev +4.153558e+01 fwd +3.847809e+02 rel 8.92e-01 (|r·v| 7.59e+04)
+    st.modifiers.1.ψ.Ex                                rev +9.581076e+00 fwd -3.325536e+02 rel 1.03e+00 (|r·v| 1.36e+04)
+    st.fields.Bx                                       rev +5.957123e+02 fwd +2.763399e+02 rel 5.36e-01 (|r·v| 7.59e+04)
+    st.modifiers.2.ψ.Ey                                rev +4.530128e+01 fwd +2.663849e+02 rel 8.30e-01 (|r·v| 1.21e+03)
+    st.modifiers.1.ψ.Ez                                rev -1.183651e+01 fwd +1.923133e+02 rel 1.06e+00 (|r·v| 1.38e+04)
+    st.modifiers.2.ψ.Bz                                rev +5.883657e+00 fwd -1.968522e+02 rel 1.03e+00 (|r·v| 1.29e+03)
+    st.fields.Bz                                       rev +2.078488e+02 fwd +3.778717e+02 rel 4.50e-01 (|r·v| 7.55e+04)
+    st.modifiers.1.ψ.Bz                                rev +1.244523e+01 fwd -1.559505e+02 rel 1.08e+00 (|r·v| 1.38e+04)
+    st.modifiers.2.ψ.By                                rev +1.022712e+01 fwd +1.707313e+02 rel 9.40e-01 (|r·v| 1.25e+03)
+    st.modifiers.1.ψ.Bx                                rev +3.598996e+01 fwd -1.073512e+02 rel 1.34e+00 (|r·v| 1.37e+04)

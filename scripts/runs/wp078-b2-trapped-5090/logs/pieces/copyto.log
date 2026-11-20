@@ -1,0 +1,778 @@
+
+[1605090] signal 15: Terminated
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/copyto_check.jl:6
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+jl_parallel_gc_threadfun at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gc-stock.c:3744
+start_thread at /lib64/libc.so.6 (unknown line)
+__clone3 at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+wait_forever at ./task.jl:1196
+jfptr_wait_forever_64995.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__syscall_cancel_arch_start at /lib64/libc.so.6 (unknown line)
+__internal_syscall_cancel at /lib64/libc.so.6 (unknown line)
+__GI___futex_abstimed_wait_cancelable64 at /lib64/libc.so.6 (unknown line)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+ijl_task_get_next at /cache/build/linux-amdci4-3/julialang/julia-ci/src/scheduler.c:630
+wait at ./task.jl:1297
+#wait#392 at ./condition.jl:141
+wait at ./condition.jl:136 [inlined]
+_trywait at ./asyncevent.jl:186
+profile_printing_listener at ./Base.jl:335
+#start_profile_listener##0 at ./Base.jl:355
+jfptr_YY.start_profile_listenerYY.YY.0_17686.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+start_task at /cache/build/linux-amdci4-3/julialang/julia-ci/src/task.c:1287
+unknown function (ip: (nil)) at (unknown file)
+__memcmp_evex_movbe at /lib64/libc.so.6 (unknown line)
+_ZL17getTargetTypeInfoPKN4llvm13TargetExtTypeE at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/../lib/julia/libLLVM.so.20.1jl (unknown line)
+_ZNK4llvm13TargetExtType13getLayoutTypeEv at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/../lib/julia/libLLVM.so.20.1jl (unknown line)
+_ZNK4llvm10DataLayout12getAlignmentEPNS_4TypeEb at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/../lib/julia/libLLVM.so.20.1jl (unknown line)
+CreateAlloca at /opt/x86_64-linux-gnu/x86_64-linux-gnu/sys-root/usr/local/include/llvm/IR/IRBuilder.h:1791 [inlined]
+createCacheForScope at /workspace/srcdir/Enzyme/enzyme/Enzyme/CacheUtility.cpp:1193
+ensureLookupCached at /workspace/srcdir/Enzyme/enzyme/Enzyme/GradientUtils.cpp:2568 [inlined]
+ensureLookupCached at /workspace/srcdir/Enzyme/enzyme/Enzyme/GradientUtils.cpp:2554
+lookupM at /workspace/srcdir/Enzyme/enzyme/Enzyme/GradientUtils.cpp:8255
+recursivelyHandleSubfunction at /workspace/srcdir/Enzyme/enzyme/Enzyme/AdjointGenerator.h:6972
+visitCallInst at /workspace/srcdir/Enzyme/enzyme/Enzyme/AdjointGenerator.h:7528
+visit at /opt/x86_64-linux-gnu/x86_64-linux-gnu/sys-root/usr/local/include/llvm/IR/InstVisitor.h:111 [inlined]
+CreatePrimalAndGradient at /workspace/srcdir/Enzyme/enzyme/Enzyme/EnzymeLogic.cpp:4691
+recursivelyHandleSubfunction at /workspace/srcdir/Enzyme/enzyme/Enzyme/AdjointGenerator.h:6759
+visitCallInst at /workspace/srcdir/Enzyme/enzyme/Enzyme/AdjointGenerator.h:7528
+visit at /opt/x86_64-linux-gnu/x86_64-linux-gnu/sys-root/usr/local/include/llvm/IR/InstVisitor.h:111 [inlined]
+CreatePrimalAndGradient at /workspace/srcdir/Enzyme/enzyme/Enzyme/EnzymeLogic.cpp:4691
+recursivelyHandleSubfunction at /workspace/srcdir/Enzyme/enzyme/Enzyme/AdjointGenerator.h:6759
+visitCallInst at /workspace/srcdir/Enzyme/enzyme/Enzyme/AdjointGenerator.h:7528
+visit at /opt/x86_64-linux-gnu/x86_64-linux-gnu/sys-root/usr/local/include/llvm/IR/InstVisitor.h:111 [inlined]
+CreatePrimalAndGradient at /workspace/srcdir/Enzyme/enzyme/Enzyme/EnzymeLogic.cpp:4691
+EnzymeCreatePrimalAndGradient at /workspace/srcdir/Enzyme/enzyme/Enzyme/CApi.cpp:727
+EnzymeCreatePrimalAndGradient at ~/.julia/packages/Enzyme/5cjcV/src/api.jl:226
+jfptr_EnzymeCreatePrimalAndGradient_38328 at ~/.julia/compiled/v1.13/Enzyme/G1p5n_H29Yl.so (unknown line)
+macro expansion at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:3587 [inlined]
+macro expansion at ~/.julia/packages/LLVM/IG1Qq/src/base.jl:669 [inlined]
+enzyme! at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:3458
+compile_unhooked_impl at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:7151
+compile_unhooked at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:6272
+unknown function (ip: 0x7f1656f1efce) at (unknown file)
+#compile##0 at ~/.julia/packages/GPUCompiler/Do44q/src/driver.jl:91
+report_failure at ~/.julia/packages/GPUCompiler/Do44q/src/driver.jl:97
+compile at ~/.julia/packages/GPUCompiler/Do44q/src/driver.jl:90 [inlined]
+_thunk at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:8167
+_thunk at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:8165 [inlined]
+cached_compilation at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:8259 [inlined]
+thunkbase at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:8468
+thunk_generator at ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:8614
+unknown function (ip: 0x7f1656eb16b7) at (unknown file)
+jl_call_staged at /cache/build/linux-amdci4-3/julialang/julia-ci/src/method.c:729
+ijl_code_for_staged at /cache/build/linux-amdci4-3/julialang/julia-ci/src/method.c:802
+call_get_staged at ./../usr/share/julia/Compiler/src/utilities.jl:0 [inlined]
+get_staged at ./../usr/share/julia/Compiler/src/utilities.jl:88
+retrieve_code_info at ./../usr/share/julia/Compiler/src/utilities.jl:121
+InferenceState at ./../usr/share/julia/Compiler/src/inferencestate.jl:603 [inlined]
+typeinf_edge at ./../usr/share/julia/Compiler/src/typeinfer.jl:1169
+abstract_call_method at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:760
+infercalls at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:190
+abstract_call_gf_by_type at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:361
+abstract_call_known at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:2971
+abstract_call at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3077
+abstract_call at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3070 [inlined]
+abstract_call at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3230
+abstract_eval_call at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3248 [inlined]
+abstract_eval_statement_expr at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3604
+abstract_eval_basic_statement at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3998 [inlined]
+abstract_eval_basic_statement at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:3955 [inlined]
+typeinf_local at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:4504
+jfptr_typeinf_local_86334.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+typeinf at ./../usr/share/julia/Compiler/src/abstractinterpretation.jl:4665
+typeinf_ext at ./../usr/share/julia/Compiler/src/typeinfer.jl:1473
+typeinf_ext_toplevel at ./../usr/share/julia/Compiler/src/typeinfer.jl:1700 [inlined]
+typeinf_ext_toplevel at ./../usr/share/julia/Compiler/src/typeinfer.jl:1709
+jfptr_typeinf_ext_toplevel_84247.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+jl_type_infer at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gf.c:480
+jl_compile_method_internal at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gf.c:3727
+_jl_invoke at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gf.c:4201 [inlined]
+ijl_apply_generic at /cache/build/linux-amdci4-3/julialang/julia-ci/src/gf.c:4410
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+do_call at /cache/build/linux-amdci4-3/julialang/julia-ci/src/interpreter.c:123
+eval_value at /cache/build/linux-amdci4-3/julialang/julia-ci/src/interpreter.c:243
+eval_stmt_value at /cache/build/linux-amdci4-3/julialang/julia-ci/src/interpreter.c:194 [inlined]
+eval_body at /cache/build/linux-amdci4-3/julialang/julia-ci/src/interpreter.c:679
+jl_interpret_toplevel_thunk at /cache/build/linux-amdci4-3/julialang/julia-ci/src/interpreter.c:884
+jl_toplevel_eval_flex at /cache/build/linux-amdci4-3/julialang/julia-ci/src/toplevel.c:742
+jl_eval_toplevel_stmts at /cache/build/linux-amdci4-3/julialang/julia-ci/src/toplevel.c:585
+jl_toplevel_eval_flex at /cache/build/linux-amdci4-3/julialang/julia-ci/src/toplevel.c:683
+ijl_toplevel_eval at /cache/build/linux-amdci4-3/julialang/julia-ci/src/toplevel.c:754
+ijl_toplevel_eval_in at /cache/build/linux-amdci4-3/julialang/julia-ci/src/toplevel.c:799
+eval at ./boot.jl:489
+include_string at ./loading.jl:3091
+_include at ./loading.jl:3151
+include at ./Base.jl:309
+exec_options at ./client.jl:344
+_start at ./client.jl:577
+jfptr__start_59257.1 at ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/linux-amdci4-3/julialang/julia-ci/src/julia.h:2319 [inlined]
+true_main at /cache/build/linux-amdci4-3/julialang/julia-ci/src/jlapi.c:985
+jl_repl_entrypoint at /cache/build/linux-amdci4-3/julialang/julia-ci/src/jlapi.c:1152
+main at /cache/build/linux-amdci4-3/julialang/julia-ci/cli/loader_exe.c:58
+__libc_start_call_main at /lib64/libc.so.6 (unknown line)
+__libc_start_main at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8) at /workspace/srcdir/glibc-2.17/csu/../sysdeps/x86_64/start.S
+unknown function (ip: (nil)) at (unknown file)
+Allocations: 109189415 (Pool: 109188182; Big: 1233); GC: 48
+┌ Warning: ~/.julia/packages/CUDACore/UHVBW/lib/cudadrv/libcuda.jl:5450:0: in function preprocess_julia_managed_memory_11915 ptr addrspace(10) (ptr addrspace(10)): Enzyme: Cannot deduce type of load   %.unbox = load ptr, ptr addrspace(11) %33, align 8, !dbg !874, !tbaa !735, !alias.scope !739, !noalias !742, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: ~/.julia/packages/CUDACore/UHVBW/lib/cudadrv/libcuda.jl:5450:0: in function preprocess_julia_managed_memory_11915 ptr addrspace(10) (ptr addrspace(10)): Enzyme: Cannot deduce type of load   %.unbox = load ptr, ptr addrspace(11) %33, align 8, !dbg !874, !tbaa !735, !alias.scope !739, !noalias !742, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: essentials.jl:975:0: in function preprocess_julia__cooperative_wait_9_11088 { ptr addrspace(10), i8 } (ptr, ptr addrspace(11), ptr): Enzyme: Cannot deduce type of load   %68 = load i32, ptr addrspace(13) %memoryref_data77, align 4, !dbg !853, !tbaa !810, !alias.scope !813, !noalias !823, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Base_compiler.jl:57:0: in function preprocess_julia_stream_wait_11744 i8 (ptr addrspace(10), ptr addrspace(10)): Enzyme: Cannot deduce type of load   %value_phi133.handle = load ptr, ptr addrspace(11) %120, align 8, !dbg !1014, !tbaa !764, !alias.scope !768, !noalias !769, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: essentials.jl:975:0: in function preprocess_julia__cooperative_wait_9_11088 { ptr addrspace(10), i8 } (ptr, ptr addrspace(11), ptr): Enzyme: Cannot deduce type of load   %68 = load i32, ptr addrspace(13) %memoryref_data77, align 4, !dbg !853, !tbaa !810, !alias.scope !813, !noalias !823, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Base_compiler.jl:57:0: in function preprocess_julia_stream_wait_11744 i8 (ptr addrspace(10), ptr addrspace(10)): Enzyme: Cannot deduce type of load   %value_phi133.handle = load ptr, ptr addrspace(11) %120, align 8, !dbg !1014, !tbaa !764, !alias.scope !768, !noalias !769, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231

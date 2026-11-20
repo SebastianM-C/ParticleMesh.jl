@@ -1,0 +1,287 @@
+[21:26:50] start: ppl 32 ny 2 a0E 1.9 θ [6.0, 10.0, 80.0, 0.072], checkpoints every 5 steps in host memory, objective any (pool used 0.00 GiB, reserved 0.00 GiB)
+[21:27:28] primal with 360 checkpoints 22.8 s; J = 0.026008558 (born 0.0260086, plasma 0) (pool used 0.43 GiB, reserved 0.44 GiB)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func26, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func26, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func273, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func273, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func273, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[21:31:55] last segment (steps 1796 to 1799) 266.0 s; J from the reverse's forward 0.026008556 (pool used 1.94 GiB, reserved 1.94 GiB)
+[21:31:56] segment 360 (steps 1796 to 1799) 266.0 s (pool used 0.57 GiB, reserved 1.94 GiB)
+[21:34:54] segment 356 (steps 1776 to 1780) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:34:55] segment 352 (steps 1756 to 1760) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:34:55] segment 348 (steps 1736 to 1740) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:34:56] segment 344 (steps 1716 to 1720) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:34:57] segment 340 (steps 1696 to 1700) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:34:58] segment 336 (steps 1676 to 1680) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:34:59] segment 332 (steps 1656 to 1660) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:00] segment 328 (steps 1636 to 1640) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:01] segment 324 (steps 1616 to 1620) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:02] segment 320 (steps 1596 to 1600) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:03] segment 316 (steps 1576 to 1580) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:04] segment 312 (steps 1556 to 1560) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:05] segment 308 (steps 1536 to 1540) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:06] segment 304 (steps 1516 to 1520) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:07] segment 300 (steps 1496 to 1500) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:08] segment 296 (steps 1476 to 1480) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:09] segment 292 (steps 1456 to 1460) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:10] segment 288 (steps 1436 to 1440) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:11] segment 284 (steps 1416 to 1420) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:12] segment 280 (steps 1396 to 1400) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:13] segment 276 (steps 1376 to 1380) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:14] segment 272 (steps 1356 to 1360) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:15] segment 268 (steps 1336 to 1340) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:16] segment 264 (steps 1316 to 1320) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:17] segment 260 (steps 1296 to 1300) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:18] segment 256 (steps 1276 to 1280) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:19] segment 252 (steps 1256 to 1260) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:19] segment 248 (steps 1236 to 1240) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:20] segment 244 (steps 1216 to 1220) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:21] segment 240 (steps 1196 to 1200) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:22] segment 236 (steps 1176 to 1180) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:23] segment 232 (steps 1156 to 1160) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:24] segment 228 (steps 1136 to 1140) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:25] segment 224 (steps 1116 to 1120) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:26] segment 220 (steps 1096 to 1100) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:27] segment 216 (steps 1076 to 1080) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:28] segment 212 (steps 1056 to 1060) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:29] segment 208 (steps 1036 to 1040) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:30] segment 204 (steps 1016 to 1020) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:31] segment 200 (steps 996 to 1000) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:32] segment 196 (steps 976 to 980) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:33] segment 192 (steps 956 to 960) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:34] segment 188 (steps 936 to 940) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:35] segment 184 (steps 916 to 920) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:36] segment 180 (steps 896 to 900) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:37] segment 176 (steps 876 to 880) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:38] segment 172 (steps 856 to 860) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:38] segment 168 (steps 836 to 840) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:39] segment 164 (steps 816 to 820) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:40] segment 160 (steps 796 to 800) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:41] segment 156 (steps 776 to 780) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:42] segment 152 (steps 756 to 760) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:43] segment 148 (steps 736 to 740) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:44] segment 144 (steps 716 to 720) 0.0 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:45] segment 140 (steps 696 to 700) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:46] segment 136 (steps 676 to 680) 0.1 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:48] segment 132 (steps 656 to 660) 0.8 s (pool used 0.57 GiB, reserved 7.28 GiB)
+[21:35:49] segment 128 (steps 636 to 640) 0.0 s (pool used 0.57 GiB, reserved 7.16 GiB)
+[21:35:50] segment 124 (steps 616 to 620) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:51] segment 120 (steps 596 to 600) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:52] segment 116 (steps 576 to 580) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:53] segment 112 (steps 556 to 560) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:54] segment 108 (steps 536 to 540) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:54] segment 104 (steps 516 to 520) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:55] segment 100 (steps 496 to 500) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:56] segment 96 (steps 476 to 480) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:57] segment 92 (steps 456 to 460) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:58] segment 88 (steps 436 to 440) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:35:59] segment 84 (steps 416 to 420) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:00] segment 80 (steps 396 to 400) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:01] segment 76 (steps 376 to 380) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:02] segment 72 (steps 356 to 360) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:03] segment 68 (steps 336 to 340) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:04] segment 64 (steps 316 to 320) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:05] segment 60 (steps 296 to 300) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:06] segment 56 (steps 276 to 280) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:07] segment 52 (steps 256 to 260) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:08] segment 48 (steps 236 to 240) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:08] segment 44 (steps 216 to 220) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:09] segment 40 (steps 196 to 200) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:10] segment 36 (steps 176 to 180) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:11] segment 32 (steps 156 to 160) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:12] segment 28 (steps 136 to 140) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:13] segment 24 (steps 116 to 120) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:14] segment 20 (steps 96 to 100) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:15] segment 16 (steps 76 to 80) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:16] segment 12 (steps 56 to 60) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:17] segment 8 (steps 36 to 40) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:18] segment 4 (steps 16 to 20) 0.0 s (pool used 0.57 GiB, reserved 7.09 GiB)
+[21:36:18] reverse of 360 segments 529.8 s (pool used 5.46 GiB, reserved 7.09 GiB)
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+  J = 0.026008558 (primal), 0.026008585 (Dual{4}); primal with checkpoints 22.8 s, reverse 529.8 s, Dual{4} 17.1 s
+    dJ/dduration reverse -6.16924284e-03 (start +0.000e+00, parameters -6.169e-03)  Dual{4} -6.16894197e-03  relative difference 4.88e-05
+    dJ/dwaist    reverse +7.67041317e-04 (start +0.000e+00, parameters +7.670e-04)  Dual{4} +7.67155201e-04  relative difference 1.48e-04
+    dJ/dfocus    reverse +2.03782560e-03 (start +0.000e+00, parameters +2.038e-03)  Dual{4} +2.03786558e-03  relative difference 1.96e-05
+    dJ/ddensity  reverse +1.65187137e+00 (start -1.130e-01, parameters +1.765e+00)  Dual{4} +1.65191305e+00  relative difference 2.52e-05
+  kernel arguments with dropped adjoints: ["gpu_birth_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_ionize_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_load_atoms_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_push_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_refill_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_retire_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_retire_x_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_settle_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_shift_particles_kernel! :: mixed Species (scalar adjoints dropped)"]
+wrote scripts/runs/enzyme-trapped-grad-20261120T213656

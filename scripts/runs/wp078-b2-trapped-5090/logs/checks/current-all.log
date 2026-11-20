@@ -1,0 +1,35 @@
+piece current at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+┌ Warning: Assignment to `rev` in soft scope is ambiguous because a global variable by the same name exists: `rev` will be treated as a new local. Disambiguate by using `local rev` to suppress this warning or `global rev` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:224
+┌ Warning: Assignment to `fwd` in soft scope is ambiguous because a global variable by the same name exists: `fwd` will be treated as a new local. Disambiguate by using `local fwd` to suppress this warning or `global fwd` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:225
+    region ≤count st.aux.ionization.electrons.data.x.extras.old_offset_1 rev +1.570904e-04 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.extras.old_offset_1 rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.extras.old_offset_2 rev +3.486602e-04 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.extras.old_offset_2 rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.offset.1   rev -3.839048e-04 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.offset.1   rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.offset.2   rev -5.597467e-04 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.offset.2   rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.1        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.1        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.2        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.2        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.3        rev +7.355015e-05 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.3        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.w          rev +3.393405e+02 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.w          rev +0.000000e+00 fwd +0.000000e+00
+    count before 85687, after (reverse state) 85687, after (dual) 85687
+piece current check: reverse 127.067 s; total ⟨Jᵀr,v⟩−⟨r,v⟩ = -3.619043e+03, ⟨r,Jv⟩−⟨r,v⟩ = -3.588717e+03, relative 8.45e-03
+    st.aux.ionization.electrons.data.x.w               rev +3.393405e+02 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 2.54e+05)
+    st.fields.Jx                                       rev -5.664836e+02 fwd -3.874320e+02 rel 3.16e-01 (|r·v| 7.56e+04)
+    st.fields.Jy                                       rev -3.924877e+02 fwd -2.625678e+02 rel 3.31e-01 (|r·v| 7.59e+04)
+    st.species.1.data.x.w                              rev -3.705288e+02 fwd -2.858765e+02 rel 2.28e-01 (|r·v| 3.66e+05)
+    st.species.1.data.x.extras.old_offset_1            rev -3.773311e+02 fwd -3.984417e+02 rel 5.30e-02 (|r·v| 3.66e+05)
+    st.species.1.data.x.offset.2                       rev -1.775329e+03 fwd -1.785553e+03 rel 5.73e-03 (|r·v| 3.65e+05)
+    st.species.1.data.x.extras.old_offset_2            rev +1.439910e+03 fwd +1.445437e+03 rel 3.82e-03 (|r·v| 3.66e+05)
+    st.species.1.data.x.offset.1                       rev +3.550638e+02 fwd +3.569145e+02 rel 5.19e-03 (|r·v| 3.67e+05)
+    st.fields.Jz                                       rev -1.419462e+02 fwd -1.417750e+02 rel 1.21e-03 (|r·v| 7.60e+04)
+    st.species.1.data.x.u.3                            rev -2.101200e+03 fwd -2.101370e+03 rel 8.11e-05 (|r·v| 3.65e+05)
+    st.aux.ionization.electrons.data.x.offset.2        rev -5.597468e-04 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 2.55e+05)
+    st.aux.ionization.electrons.data.x.offset.1        rev -3.839049e-04 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 2.56e+05)

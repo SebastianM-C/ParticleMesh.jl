@@ -1,0 +1,49 @@
+piece ionize_nobirth at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+┌ Warning: Assignment to `rev` in soft scope is ambiguous because a global variable by the same name exists: `rev` will be treated as a new local. Disambiguate by using `local rev` to suppress this warning or `global rev` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:223
+┌ Warning: Assignment to `fwd` in soft scope is ambiguous because a global variable by the same name exists: `fwd` will be treated as a new local. Disambiguate by using `local fwd` to suppress this warning or `global fwd` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:224
+    region ≤count st.aux.ionization.electrons.data.x.extras.old_offset_1 rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.extras.old_offset_1 rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.extras.old_offset_2 rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.extras.old_offset_2 rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.offset.1   rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.offset.1   rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.offset.2   rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.offset.2   rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.1        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.1        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.2        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.2        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.u.3        rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.u.3        rev +0.000000e+00 fwd +0.000000e+00
+    region ≤count st.aux.ionization.electrons.data.x.w          rev +0.000000e+00 fwd +0.000000e+00
+    region >count st.aux.ionization.electrons.data.x.w          rev +0.000000e+00 fwd +0.000000e+00
+    count before 85687, after (reverse state) 85687, after (dual) 85687
+piece ionize_nobirth central differences (ε = 0.001): ⟨r,(F(x+εv)−F(x−εv))/2ε⟩−⟨r,v⟩ = +2.581393e-01
+    fd st.aux.ionization.atoms.data.x.extras.bound_1      +1.272667e-01
+    fd st.aux.ionization.atoms.data.x.extras.bound_2      +3.611575e-02
+    fd st.aux.ionization.atoms.data.x.extras.emitted      -3.051383e-05
+    fd st.aux.ionization.atoms.data.x.extras.pending      +1.050856e-01
+    fd st.aux.ionization.atoms.data.x.offset.1            +8.824203e-04
+    fd st.aux.ionization.atoms.data.x.offset.2            +2.168147e-03
+    fd st.aux.ionization.atoms.data.x.u.1                 -2.569296e-06
+    fd st.aux.ionization.atoms.data.x.u.2                 +2.493865e-06
+    fd st.aux.ionization.atoms.data.x.u.3                 +4.045220e-06
+    fd st.aux.ionization.atoms.data.x.w                   -3.158183e-06
+    fd st.aux.ionization.electrons.data.x.extras.old_offset_1 +3.113484e-03
+    fd st.aux.ionization.electrons.data.x.extras.old_offset_2 +4.789429e-03
+    fd st.aux.ionization.electrons.data.x.offset.1        -5.685350e-03
+    fd st.aux.ionization.electrons.data.x.offset.2        -1.541566e-03
+    fd st.aux.ionization.electrons.data.x.u.1             +5.585865e-03
+    fd st.aux.ionization.electrons.data.x.u.2             -1.197681e-02
+    fd st.aux.ionization.electrons.data.x.u.3             -3.268065e-06
+    fd st.aux.ionization.electrons.data.x.w               -1.613614e-05
+piece ionize_nobirth check: reverse 70.600 s; total ⟨Jᵀr,v⟩−⟨r,v⟩ = +2.630906e-01, ⟨r,Jv⟩−⟨r,v⟩ = +2.630915e-01, relative 3.25e-06
+    st.sharpened.Ey                                    rev +2.273732e-01 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 7.53e+04)
+    st.aux.ionization.atoms.data.x.extras.bound_1      rev +1.528024e-02 fwd +1.219366e-01 rel 8.75e-01 (|r·v| 2.03e+04)
+    st.aux.ionization.atoms.data.x.extras.pending      rev +0.000000e+00 fwd +1.051453e-01 rel 1.00e+00 (|r·v| 2.03e+04)
+    st.aux.ionization.atoms.data.x.extras.bound_2      rev -4.363660e-05 fwd +3.600959e-02 rel 1.00e+00 (|r·v| 2.05e+04)
+    st.sharpened.Ex                                    rev +3.165392e-02 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 7.62e+04)
+    st.aux.ionization.atoms.data.x.offset.1            rev -8.698907e-03 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 2.03e+04)
+    st.aux.ionization.atoms.data.x.offset.2            rev -2.474146e-03 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 2.05e+04)

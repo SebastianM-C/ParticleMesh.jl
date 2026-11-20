@@ -1,0 +1,727 @@
+[16:30:08] start: ppl 32 ny 2 a0E 1.9 θ [6.0, 10.0, 80.0, 0.072], ks [1, 4, 16] (pool used 0.00 GiB, reserved 0.00 GiB)
+[16:30:26] states made; 1799 steps to t_end, mid-run step 1079 (t = 180.01967072486877) (pool used 1.17 GiB, reserved 1.19 GiB)
+[16:30:42] primal to step 1079 4.1 s, Dual{5} 11.5 s (pool used 1.17 GiB, reserved 1.19 GiB)
+  arrays whose values differ between the two states: [("st.ws.1.spare.x.extras.old_offset_1", 0.9999648928642273), ("st.fields.Jy", 1.7755664885044098e-5), ("st.ws.1.flux_patch", 0.0013408700469881296), ("st.aux.ionization.electrons.data.x.u.1", 2.514040231704712), ("st.aux.ionization.electrons.data.x.w", 9.387491445522755e-6), ("st.species.1.data.x.extras.old_offset_1", 0.9999648928642273), ("st.aux.ionization.electrons_ws.spare.x.extras.old_offset_1", 0.9999677538871765), ("st.fields.Ey", 1.8081162124872208e-5), ("st.species.1.data.x.u.1", 0.6934114694595337), ("st.species.1.data.x.offset.2", 0.9999215602874756), ("st.sharpened.Ex", 7.316470146179199e-6), ("st.ws.1.spare.x.offset.2", 0.9999215602874756), ("st.aux.ionization.electrons_ws.spare.x.w", 9.387491445522755e-6), ("st.aux.ionization.atoms_ws.spare.x.extras.bound_2", 3.203749656677246e-7), ("st.aux.ionization.electrons.data.x.extras.old_offset_1", 0.9999677538871765), ("st.aux.ionization.atoms.data.x.extras.bound_1", 5.364418029785156e-7), ("st.modifiers.2.ψ.Bz", 7.95908272266388e-6), ("st.fields.Ex", 7.1339309215545654e-6), ("st.aux.ionization.electrons.data.x.offset.2", 0.9999868869781494), ("st.fields.Bz", 6.243819370865822e-6), ("st.aux.ionization.electrons_ws.spare.x.u.1", 2.514040231704712), ("st.species.1.data.x.offset.1", 0.9940942525863647), ("st.ws.1.spare.x.extras.old_offset_2", 0.9997586011886597), ("st.fields.Jx", 2.7101486921310425e-5), ("st.sharpened.Ey", 1.918058842420578e-5), ("st.aux.ionization.electrons.data.x.offset.1", 0.9606016278266907), ("st.ws.1.spare.x.u.1", 0.6934114694595337), ("st.ws.1.spare.x.u.2", 0.5985005497932434), ("st.aux.ionization.atoms.data.x.extras.pending", 3.2782554626464844e-7), ("st.aux.ionization.electrons_ws.spare.x.u.2", 2.5144526958465576), ("st.aux.ionization.electrons_ws.spare.x.offset.1", 0.9606016278266907), ("st.aux.ionization.atoms.data.x.extras.emitted", 1.862645149230957e-7), ("st.aux.ionization.electrons_ws.spare.x.offset.2", 0.9999868869781494), ("st.ρ", 6.243819370865822e-6), ("st.modifiers.1.ψ.Ex", 6.156915333122015e-8), ("st.sharpened.Bz", 5.387701094150543e-6), ("st.aux.ionization.atoms_ws.spare.x.extras.emitted", 1.862645149230957e-7), ("st.aux.ionization.atoms_ws.spare.x.extras.bound_1", 5.364418029785156e-7), ("st.modifiers.1.ψ.Bz", 5.018955562263727e-8), ("st.aux.ionization.atoms_ws.spare.x.extras.pending", 3.2782554626464844e-7), ("st.ws.1.spare.x.offset.1", 0.9940942525863647), ("st.species.1.data.x.extras.old_offset_2", 0.9997586011886597), ("st.aux.ionization.atoms.data.x.extras.bound_2", 3.203749656677246e-7), ("st.modifiers.2.ψ.Ey", 7.786322385072708e-6), ("st.species.1.data.x.u.2", 0.5985005497932434), ("st.aux.ionization.electrons.data.x.extras.old_offset_2", 0.9819037914276123), ("st.aux.ionization.electrons_ws.flux_patch", 2.2956136547236383e-8), ("st.aux.ionization.electrons.data.x.u.2", 2.5144526958465576), ("st.species.1.data.x.w", 0.017999999225139618), ("st.ws.1.spare.x.w", 0.017066214233636856), ("st.aux.ionization.electrons_ws.spare.x.extras.old_offset_2", 0.9819037914276123)]
+  primal gap between the Float32 and the Dual state at step 1079: 2.5144526958465576; alive: 458040 plasma, 85687 born
+  scalars of the Dual state with a tangent: String[]
+[16:30:45] reverse of 1 steps, first call (compiles) (pool used 1.32 GiB, reserved 1.34 GiB)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func265, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func265, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func2735, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func2735, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func2735, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[16:35:17] first call 272.6 s (pool used 2.01 GiB, reserved 2.03 GiB)
+[16:35:18] reverse of 1 steps (pool used 1.32 GiB, reserved 2.03 GiB)
+[16:35:18] reverse of 1 steps 0.011 s (11.39 ms per step) (pool used 2.05 GiB, reserved 2.06 GiB)
+  k = 1: J 0 (reverse's forward) 0 (primal) 0 (dual); reverse 0.011 s, primal 0.0010 s, Dual{5} 0.0087 s
+    random v   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    duration   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    waist      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    focus      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    density    forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    cancellation of ⟨∇J, v⟩ over the arrays 0.0
+[16:35:21] reverse of 4 steps (pool used 1.17 GiB, reserved 4.00 GiB)
+[16:35:21] reverse of 4 steps 0.036 s (9.03 ms per step) (pool used 2.88 GiB, reserved 4.00 GiB)
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: ~/.julia/packages/AcceleratedKernels/heLhw/src/reduce/mapreduce_nd.jl:65:0: in function preprocess_julia__mapreduce_nd__148_156763 ptr addrspace(10) (i64, ptr addrspace(11), ptr addrspace(11), ptr, ptr addrspace(10), ptr addrspace(10), ptr addrspace(11), ptr addrspace(11)): Enzyme: Cannot deduce type of load   %.target_blocks_ptr.unbox = load i64, ptr addrspace(11) %.target_blocks_ptr, align 8, !dbg !88, !tbaa !74, !alias.scope !64, !noalias !65, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: boot.jl:845:0: in function preprocess_julia__mapreduce_nd__148_156763 ptr addrspace(10) (i64, ptr addrspace(11), ptr addrspace(11), ptr, ptr addrspace(10), ptr addrspace(10), ptr addrspace(11), ptr addrspace(11)): Enzyme: Cannot deduce type of load   %.target_blocks_ptr.unbox77 = load i64, ptr addrspace(11) %.target_blocks_ptr, align 8, !dbg !256, !tbaa !74, !alias.scope !64, !noalias !65, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: ~/.julia/packages/AcceleratedKernels/heLhw/src/reduce/mapreduce_nd.jl:65:0: in function preprocess_julia__mapreduce_nd__148_156763 ptr addrspace(10) (i64, ptr addrspace(11), ptr addrspace(11), ptr, ptr addrspace(10), ptr addrspace(10), ptr addrspace(11), ptr addrspace(11)): Enzyme: Cannot deduce type of load   %.target_blocks_ptr.unbox = load i64, ptr addrspace(11) %.target_blocks_ptr, align 8, !dbg !88, !tbaa !74, !alias.scope !64, !noalias !65, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: boot.jl:845:0: in function preprocess_julia__mapreduce_nd__148_156763 ptr addrspace(10) (i64, ptr addrspace(11), ptr addrspace(11), ptr, ptr addrspace(10), ptr addrspace(10), ptr addrspace(11), ptr addrspace(11)): Enzyme: Cannot deduce type of load   %.target_blocks_ptr.unbox77 = load i64, ptr addrspace(11) %.target_blocks_ptr, align 8, !dbg !256, !tbaa !74, !alias.scope !64, !noalias !65, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: ~/.julia/packages/CUDACore/UHVBW/lib/cudadrv/libcuda.jl:5450:0: in function preprocess_julia_unsafe_convert_159860 i64 (ptr addrspace(10)): Enzyme: Cannot deduce type of load   %.unbox = load ptr, ptr addrspace(11) %33, align 8, !dbg !780, !tbaa !641, !alias.scope !645, !noalias !648, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: ~/.julia/packages/CUDACore/UHVBW/lib/cudadrv/libcuda.jl:5450:0: in function preprocess_julia_unsafe_convert_159860 i64 (ptr addrspace(10)): Enzyme: Cannot deduce type of load   %.unbox = load ptr, ptr addrspace(11) %33, align 8, !dbg !780, !tbaa !641, !alias.scope !645, !noalias !648, assumed {[-1]:Pointer}
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+  k = 4: J 0 (reverse's forward) 0 (primal) 0 (dual); reverse 0.036 s, primal 0.0038 s, Dual{5} 0.0344 s
+    random v   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    duration   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    waist      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    focus      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    density    forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    cancellation of ⟨∇J, v⟩ over the arrays 0.0
+[16:35:21] reverse of 16 steps (pool used 1.17 GiB, reserved 4.84 GiB)
+[16:35:21] reverse of 16 steps 0.149 s (9.31 ms per step) (pool used 6.80 GiB, reserved 6.81 GiB)
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+┌ Error: Failed to release a GPU resource; keeping it alive
+│   exception =
+│    ArgumentError: Attempt to release freed data.
+│    Stacktrace:
+│      [1] release(::GPUArrays.RefCounted{CUDACore.Managed{CUDACore.DeviceMemory}})
+│        @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:38
+│      [2] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:100 [inlined]
+│      [3] unsafe_free!
+│        @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/abstractarray.jl:206 [inlined]
+│      [4] release_now(a::CuArray{Int32, 1, CUDACore.DeviceMemory})
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:127
+│      [5] (::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64})()
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:306
+│      [6] releasing(f::CUDACore.var"#drain_retired##0#drain_retired##1"{Int64}; blocking::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:78
+│      [7] releasing
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:70 [inlined]
+│      [8] drain_retired(limit::Int64)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:296
+│      [9] drain_retired
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:276 [inlined]
+│     [10] reclaim_step(level::CUDACore.ReclaimLevel, dev::CuDevice, stream_ordered::Bool)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:91
+│     [11] reclaim(level::CUDACore.ReclaimLevel)
+│        @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:146
+│     [12] reclaim
+│        @ ~/.julia/packages/CUDACore/UHVBW/src/resources/reclaim.jl:145 [inlined]
+│     [13] reclaim
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:64 [inlined]
+│     [14] main_steps()
+│        @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:225
+│     [15] top-level scope
+│        @ ~/pm-wp078/scripts/enzyme/trapped.jl:431
+│     [16] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [17] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [18] _start()
+│        @ Base ./client.jl:577
+└ @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/resources/lifecycle.jl:202
+  k = 16: J 0 (reverse's forward) 0 (primal) 0 (dual); reverse 0.149 s, primal 0.0147 s, Dual{5} 0.1382 s
+    random v   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    duration   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    waist      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    focus      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    density    forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    cancellation of ⟨∇J, v⟩ over the arrays 0.0
+  kernel arguments with dropped adjoints: ["gpu_ionize_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_load_atoms_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_push_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_refill_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_retire_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_retire_x_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_shift_particles_kernel! :: mixed Species (scalar adjoints dropped)"]
+wrote scripts/runs/enzyme-trapped-steps-20261120T163522

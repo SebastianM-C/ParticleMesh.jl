@@ -1,0 +1,3 @@
+piece ionize at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+piece ionize: reverse OK in 91.2 s; |dst| over arrays 75870.728515625; dp lasers (GaussianLaser{Float32, Float32, AxisTime, Float32}(0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, AxisTime()),)
+kernel arguments with dropped adjoints: ["gpu_ionize_kernel! :: mixed Species (scalar adjoints dropped)"]

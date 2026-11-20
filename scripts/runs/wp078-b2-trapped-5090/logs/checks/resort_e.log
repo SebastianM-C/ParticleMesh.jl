@@ -1,0 +1,14 @@
+piece resort_e at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+┌ Warning: Assignment to `rev` in soft scope is ambiguous because a global variable by the same name exists: `rev` will be treated as a new local. Disambiguate by using `local rev` to suppress this warning or `global rev` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:167
+┌ Warning: Assignment to `fwd` in soft scope is ambiguous because a global variable by the same name exists: `fwd` will be treated as a new local. Disambiguate by using `local fwd` to suppress this warning or `global fwd` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:168
+piece resort_e check: reverse 76.931 s; total ⟨Jᵀr,v⟩−⟨r,v⟩ = -2.796942e+03, ⟨r,Jv⟩−⟨r,v⟩ = -2.796942e+03, relative 9.82e-08
+    st.species.1.data.x.extras.old_offset_2            rev +1.445436e+03 fwd +1.445437e+03 rel 1.69e-07 (|r·v| 3.66e+05)
+    st.species.1.data.x.offset.2                       rev -1.785553e+03 fwd -1.785553e+03 rel 1.37e-07 (|r·v| 3.65e+05)
+    st.species.1.data.x.u.1                            rev +1.460138e+02 fwd +1.460135e+02 rel 1.67e-06 (|r·v| 3.65e+05)
+    st.species.1.data.x.extras.old_offset_1            rev -3.984419e+02 fwd -3.984417e+02 rel 5.36e-07 (|r·v| 3.66e+05)
+    st.species.1.data.x.offset.1                       rev +3.569147e+02 fwd +3.569145e+02 rel 5.13e-07 (|r·v| 3.67e+05)
+    st.species.1.data.x.u.2                            rev -1.740651e+02 fwd -1.740650e+02 rel 7.01e-07 (|r·v| 3.66e+05)
+    st.species.1.data.x.w                              rev -2.858763e+02 fwd -2.858765e+02 rel 4.27e-07 (|r·v| 3.66e+05)
+    st.species.1.data.x.u.3                            rev -2.101370e+03 fwd -2.101370e+03 rel 0.00e+00 (|r·v| 3.65e+05)

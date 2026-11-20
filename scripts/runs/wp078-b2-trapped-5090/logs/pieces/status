@@ -1,0 +1,54 @@
+retire_x exit 0
+sharpen exit 0
+push exit 0
+ionize exit 0
+current exit 139
+summand exit 0
+retire_open exit 0
+solve exit 0
+window exit 139
+done
+current-unrolled exit 139
+window-unrolled exit 139
+step-unrolled exit 139
+done2
+filter exit 139
+edges exit 0
+dep_e exit 0
+dep_b exit 0
+resort_b exit 0
+resort_e exit 0
+done3
+filter-kacopy exit 0
+window-kacopy exit 139
+step-kacopy exit 139
+copyto exit 143
+done4
+w_fields-p5 exit 0
+w_absorbers-p5 exit 0
+w_species-p5 exit 0
+w_load-p5 exit 1
+w_ionization-p5 exit 1
+window-p5 exit 1
+step-p5 exit 1
+done5
+window-p6 exit 1
+w_load-p6 exit 1
+w_ionization-p6 exit 1
+step-p6 exit 1
+done6
+step-p7 exit 1
+window-p7 exit 1
+w_ionization-p7 exit 1
+w_load-p7 exit 1
+done7
+w_load-p8 exit 1
+w_ionization-p8 exit 1
+window-p8 exit 1
+step-p8 exit 1
+done8
+w_load-p9 exit 0
+w_ionization-p9 exit 0
+window-p9 exit 0
+step-p9 exit 0
+done9

@@ -1,0 +1,55 @@
+ERROR: LoadError: deepcopy of Modules not supported
+Stacktrace:
+    [1] error(s::String)
+      @ Base ./error.jl:44
+    [2] deepcopy_internal(x::Module, stackdict::IdDict{Any, Any})
+      @ Base ./deepcopy.jl:41
+ ┌  [3] _deepcopy_memory_t(x::Memory, T::Type, stackdict::IdDict{Any, Any})
+ │    @ Base ./deepcopy.jl:120
+ ├  [4] deepcopy_internal
+ │    @ ./deepcopy.jl:104 [inlined]
+ ├  [5] deepcopy_internal(x::MemoryRef{Any}, stackdict::IdDict{Any, Any})
+ │    @ Base ./deepcopy.jl:142
+ ├  [6] deepcopy_internal(x::Vector{Any}, stackdict::IdDict{Any, Any})
+ │    @ Base ./deepcopy.jl:133
+ ├  [7] deepcopy_internal(x::Any, stackdict::IdDict{Any, Any})
+ │    @ Base ./deepcopy.jl:74
+ ╰───── repeated 7 times
+   [38] deepcopy_internal(x::Dict{Symbol, Any}, stackdict::IdDict{Any, Any})
+      @ Base ./deepcopy.jl:161
+   [39] deepcopy(x::Any)
+      @ Base ./deepcopy.jl:34
+   [40] __kernel(expr::Expr, __source__::LineNumberNode, __module__::Module, force_inbounds::Bool, unsafe_indices::Bool, generated::Bool)
+      @ KernelAbstractions ~/.julia/packages/KernelAbstractions/KltUz/src/macros.jl:47
+   [41] var"@kernel"(__source__::LineNumberNode, __module__::Module, expr::Any)
+      @ KernelAbstractions ~/.julia/packages/KernelAbstractions/KltUz/src/KernelAbstractions.jl:80
+   [42] fl_lower(ex::Expr, mod::Module, filename::String, lineno::UInt64, world::UInt64, warn::Bool)
+      @ Base ./flfrontend.jl:24
+   [43] eval(m::Module, e::Any)
+      @ Core ./boot.jl:489
+   [44] top-level scope
+      @ ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:235
+   [45] include(mapexpr::Function, mod::Module, _path::String)
+      @ Base ./Base.jl:310
+   [46] IncludeInto
+      @ ./Base.jl:311 [inlined]
+   [47] #2
+      @ ~/pm-wp078/scripts/enzyme/common.jl:5 [inlined]
+   [48] foreach(f::var"#2#3", itr::Vector{SubString{String}})
+      @ Base ./abstractarray.jl:3212
+   [49] top-level scope
+      @ ~/pm-wp078/scripts/enzyme/common.jl:5
+   [50] include(mapexpr::Function, mod::Module, _path::String)
+      @ Base ./Base.jl:310
+   [51] top-level scope
+      @ ~/pm-wp078/scripts/enzyme/trapped.jl:35
+   [52] include(mod::Module, _path::String)
+      @ Base ./Base.jl:309
+   [53] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:344
+   [54] _start()
+      @ Base ./client.jl:577
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:236
+in expression starting at ~/pm-wp078/scripts/enzyme/spike/unrolled_species.jl:235
+in expression starting at ~/pm-wp078/scripts/enzyme/common.jl:5
+in expression starting at ~/pm-wp078/scripts/enzyme/trapped.jl:35

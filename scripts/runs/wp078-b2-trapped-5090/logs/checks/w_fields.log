@@ -1,0 +1,13 @@
+piece w_fields at step 1080 (t = 180.01967072486877), ppl 32 ny 2; born alive 85687
+┌ Warning: Assignment to `rev` in soft scope is ambiguous because a global variable by the same name exists: `rev` will be treated as a new local. Disambiguate by using `local rev` to suppress this warning or `global rev` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:161
+┌ Warning: Assignment to `fwd` in soft scope is ambiguous because a global variable by the same name exists: `fwd` will be treated as a new local. Disambiguate by using `local fwd` to suppress this warning or `global fwd` to assign to the existing global variable.
+└ @ ~/pm-wp078/scripts/enzyme/spike/trapped_pieces.jl:162
+piece w_fields check: reverse 63.050 s; total ⟨Jᵀr,v⟩−⟨r,v⟩ = -1.692816e+02, ⟨r,Jv⟩−⟨r,v⟩ = -1.692813e+02, relative 1.80e-06
+    st.ρ                                               rev -1.520576e+03 fwd +0.000000e+00 rel 1.00e+00 (|r·v| 7.56e+04)
+    st.fields.Ez                                       rev +1.002179e+02 fwd -8.773834e+02 rel 1.11e+00 (|r·v| 7.53e+04)
+    st.fields.Ey                                       rev -4.360655e+01 fwd -6.855480e+02 rel 9.36e-01 (|r·v| 7.56e+04)
+    st.fields.Bz                                       rev -6.170634e+01 fwd +2.955211e+02 rel 1.21e+00 (|r·v| 7.55e+04)
+    st.fields.By                                       rev +3.711352e+02 fwd +1.872479e+01 rel 9.50e-01 (|r·v| 7.57e+04)
+    st.fields.Bx                                       rev +8.414474e+02 fwd +9.301653e+02 rel 9.54e-02 (|r·v| 7.59e+04)
+    st.fields.Ex                                       rev +1.438064e+02 fwd +1.492389e+02 rel 3.64e-02 (|r·v| 7.59e+04)
