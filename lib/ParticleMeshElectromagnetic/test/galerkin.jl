@@ -168,8 +168,8 @@ end
 # The option. The shapes per component are the rule's (one order lower along each `Center()`
 # axis, the linear shape's lower order the nearest grid point) for N = 1, 2 and 3; a state with
 # `gather = nothing` or a `CompensatedGather` passes its shape itself to the kernels; the
-# construction refuses what is not a gather, a 3D state takes the plain Galerkin gather and
-# refuses it with a compensation. What reads the Galerkin weights, each bit for bit as the same
+# construction refuses what is not a gather, a 3D state takes the Galerkin gather, plain and with a
+# compensation (WP-076). What reads the Galerkin weights, each bit for bit as the same
 # kernel launched by hand with `GalerkinRead` and not as with the plain shape: the push (a 2D
 # Fast-mode step of a plasma in random fields, which moves no particle between slots), the
 # ionization's rates (T-962's run from its step-5 snapshot, a step without births), and
@@ -294,11 +294,11 @@ end
     @test_throws ArgumentError GalerkinGather(; compensate = 1)
     @test_throws ArgumentError GalerkinGather(; compensate = GalerkinGather())
     @test_throws ArgumentError gather_state(Float64, 1, Quadratic, GalerkinGather(; compensate = CompensatedGather(; k = 13)))   # unresolved, as T-960
-    # a 3D state takes the plain Galerkin gather, not a compensation
+    # a 3D state takes the Galerkin gather, plain and with a compensation (WP-076; T-996 at N = 3)
     p3 = EMProblem("g3", (3.0, 3.0, 3.0), (6, 6, 6), 0.1, 1, (), 1, (1, 0, 0))
     @test EMState(p3, EMNumerics(; gather = GalerkinGather())).numerics.gather === GalerkinGather()
-    @test_throws ArgumentError EMState(p3, EMNumerics(; gather = GalerkinGather(; compensate = CompensatedGather())))
-    @test_throws ArgumentError EMState(p3, EMNumerics(; gather = CompensatedGather()))
+    @test EMState(p3, EMNumerics(; gather = GalerkinGather(; compensate = CompensatedGather()))).sharpened isa NamedTuple
+    @test EMState(p3, EMNumerics(; gather = CompensatedGather())).sharpened isa NamedTuple
     body_T993(CPU())
 end
 
@@ -311,11 +311,12 @@ end
 # of wavenumber k is that stencil's transfer times the mean of that order over the offsets
 # (`gather_lattice_mean`, the nearest grid point's sin x/(M sin(x/M)) for order 0), to roundoff:
 # one at k = 1 for every component and both shapes but for the offsets' aliases. Without the
-# compensation the particles read the grid's fields themselves. All three types, N = 1 and 2.
+# compensation the particles read the grid's fields themselves. All three types, N = 1, 2 and 3
+# (WP-076: the copy is sharpened along x on every transverse line).
 function body_T996(be)
     C = emC("T-960")
     worst = 0.0
-    for T in TYPES, N in (1, 2), shape in (Linear, Quadratic), k in (1, 2), comp in (true, false)
+    for T in TYPES, N in (1, 2, 3), shape in (Linear, Quadratic), k in (1, 2), comp in (true, false)
         cg = CompensatedGather()
         gg = GalerkinGather(; compensate = comp ? cg : nothing)
         st = gather_state(T, N, shape, gg; be)
@@ -342,7 +343,9 @@ function body_T996(be)
             Cs, Ss = zeros(BigFloat, nc), zeros(BigFloat, nc)
             for c in 1:n1, m in 0:(M - 1)
                 δ = T(m) / M
-                E, B = N == 1 ? fields_at(hf, (Int32(c),), (δ,), rd, g) : fields_at(hf, (Int32(c), Int32(3)), (δ, T(37) / 100), rd, g)
+                E, B = N == 1 ? fields_at(hf, (Int32(c),), (δ,), rd, g) :
+                       N == 2 ? fields_at(hf, (Int32(c), Int32(3)), (δ, T(37) / 100), rd, g) :
+                                fields_at(hf, (Int32(c), Int32(3), Int32(4)), (δ, T(37) / 100, T(61) / 100), rd, g)
                 v = (E..., B...)[j]
                 ξ = k * (c - 1 + m / M) * big(h)
                 Cs .+= BigFloat.(components(v)) .* cos(ξ)

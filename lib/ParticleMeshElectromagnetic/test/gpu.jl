@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -92,6 +92,11 @@ else
     @testset "T-1049 the 3D ionization on CUDA passes T-1040 to T-1045 with the CPU's tolerances, its Reference step bitwise across reruns and launch shapes (T-1045's body) [A2, A3, A4, A7, A8, WP-075]" begin
         rerun_module_on(GPU, (("T-1040", body_T1040), ("T-1041", body_T1041), ("T-1042", body_T1042), ("T-1043", body_T1043),
                               ("T-1044", body_T1044), ("T-1045", body_T1045)))
+    end
+
+    @testset "T-1059 the 3D compensated gather on CUDA passes T-1050 to T-1054 with the CPU's tolerances, its Reference step bitwise across reruns and launch shapes (T-1054's body) [A2, A4, A7, A8, WP-076]" begin
+        rerun_module_on(GPU, (("T-1050", body_T1050), ("T-1051", body_T1051), ("T-1052", body_T1052), ("T-1053", body_T1053),
+                              ("T-1054", body_T1054)))
     end
 
     @testset "T-446 the binomial filter on CUDA passes T-440 to T-442 with the CPU's tolerances, and the filtered Reference step is bitwise across reruns and launch shapes [A2, A4, A7, WP-029]" begin

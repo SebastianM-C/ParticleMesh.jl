@@ -2,57 +2,7 @@
 # The particles read a copy of E and B sharpened along axis 1 by E + β(2E_i − E_{i−1} − E_{i+1}),
 # whose transfer 1 + 4β sin²(kΔx/2) undoes the shape's mean transfer sinc(kΔx/2)^(p+1) at the
 # laser's wavenumber; the mesh solve, the current and the diagnostics keep the grid's fields.
-# The problems with a dopant are ionization_cases.jl's.
-
-using ParticleMeshElectromagnetic: fields_at, kick_kernel!, FIELD_LAYOUT
-
-const GATHER_NAMES = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
-
-"""
-The mean of a B-spline gather of order `p` (0, 1 or 2) over `M` evenly spaced offsets per cell (M even), of a
-sampled mode of wavenumber `k` (x = kΔx/2): the shape's transfer at k and at its aliases
-k + 2πlM/Δx, which those offsets cannot tell from k, Σ_l (sin x/(x + πlM))^(p+1), in closed form
-with Σ_l (z + πl)^−2 = csc²z and Σ_l (z + πl)^−3 = csc²z·cot z (z = x/M). In BigFloat.
-"""
-function gather_lattice_mean(p, x, M)
-    x, z = big(x), big(x) / M
-    p == 0 && return sin(x) / M / sin(z)      # the nearest grid point (WP-070): |(1/M)Σ_m e^(2ix·m/M)|
-    p == 1 && return sin(x)^2 / M^2 / sin(z)^2
-    p == 2 && return sin(x)^3 / M^3 * cos(z) / sin(z)^3
-    error("order $p")
-end
-
-"""
-A state of `N` = 1 or 2 resolved axes, 12 cells per laser wavelength along x over two wavelengths
-(24 cells; at N = 2 six rows of 0.7), a cold species that the test does not push, the `gather`.
-"""
-function gather_state(::Type{T}, N, shape, gather; be = CPU()) where {T}
-    h = 2 * T(π) / 12
-    if N == 1
-        sp = (SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), 1, 4, zero3(T), zero3(T), 1),)
-        prob = EMProblem("gather-1d", 24h, 24, 2h / 5, 4, sp, 1, 1)
-    else
-        sp = (SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), (1, 0), (2, 2), zero3(T), zero3(T), 1),)
-        prob = EMProblem("gather-2d", (24h, 6 * T(7) / 10), (24, 6), 2h / 5, 4, sp, 1, (1, 0))
-    end
-    return EMState(prob, EMNumerics(; shape, gather); backend = be)
-end
-
-"The mode cos(k·x_i + φ) along axis 1 of a field of `grid`, sampled at the interior array index i (x_i = (i − 1)Δx), each partial of a dual its own phase; guards the periodic images."
-function mode_field!(a, grid, k, φ, ::Type{T}) where {T}
-    g, n, h = guards(grid), ncells(grid), Float64(value_of(cellsize(grid)[1]))
-    A = zeros(T, size(a))
-    for I in CartesianIndices(A)
-        i = I[1]
-        g < i <= g + n[1] || continue
-        all(d -> g < I[d] <= g + n[d], 2:ndims(A)) || continue
-        θ = k * (i - g - 1) * h + φ
-        A[I] = T <: Dual ? mkdual(cos(θ), sin(θ), cos(θ + 1) / 2, -sin(θ + 2)) : T(cos(θ))
-    end
-    copyto!(a, A)
-    fill_guards!(a, grid)
-    return a
-end
+# The problems with a dopant are ionization_cases.jl's, the states and sampled modes gather_cases.jl's.
 
 # --- T-960 ----------------------------------------------------------------------------------
 
@@ -227,8 +177,9 @@ end
 # weights and kicked momenta) has the same bits, and the steps' fields differ (the plain state's
 # solve starts from the copy). The same for `initialize!`'s half-step kick: the compensated load
 # is the plain load at t − Δt/2 kicked by the module's kernel in the sharpened copy, bit for bit,
-# and not the plain kick. The step writes the copy itself before anything reads it (it starts
-# from NaN), and the observer reads the grid's fields: step 6's history entries are those of the
+# and not the plain kick. The step writes the copy itself before anything reads it, at every step
+# (from NaN before steps 5 and 6, the copy after each is the stencil's of the fields the step
+# started from), and the observer reads the grid's fields: step 6's history entries are those of the
 # plain step from the same state. A compensated run restarted at step 3, and a view of it over
 # copies of its arrays (`state_view`, the harness' path), continue with the uninterrupted run's
 # bits (the copy is scratch, written before it is read). In the moving window the copy's x-guards
@@ -240,16 +191,23 @@ function body_T962(be)
         p = params(prob)
         cg = CompensatedGather()
         st = ion_state(prob; be, gather = cg)
-        run!(st, p, 5)
+        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
+        copy_bits() = map(name -> bits(st.sharpened[name]), GATHER_NAMES)
+        run!(st, p, 4)
+        want = map(name -> (r = similar(st.fields[name]); sharpen_x!(r, st.fields[name], β, st.grid); bits(r)), GATHER_NAMES)
+        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))     # the step writes the copy before anything reads it, at every step
+        step!(st, p, 5)
+        @test copy_bits() == want                  # the copy of the fields step 5 started from
         snap = snapshot(st, 5)
         plain = snap_state(prob, snap, be)          # to step in the sharpened fields
         diag = snap_state(prob, snap, be)           # to step in the grid's own fields
-        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
         for name in GATHER_NAMES
             sharpen_x!(plain.fields[name], st.fields[name], β, st.grid)
         end
-        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))     # the step writes the copy before anything reads it
+        want = map(name -> bits(plain.fields[name]), GATHER_NAMES)
+        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))
         step!(st, p, 6)
+        @test copy_bits() == want                  # and of those step 6 started from
         step!(plain, p, 6)
         step!(diag, p, 6)
         @test particle_bits(plain) == particle_bits(st)
