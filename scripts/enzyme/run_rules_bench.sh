@@ -38,7 +38,7 @@ for mode in fast reference; do
             echo "== $(date -u +%H:%M:%S) $mode $steps steps, rules $rules" | tee -a "$out/summary.txt"
             PM_ENZYME_PATCH=$patch timeout 3600 "${J[@]}" scripts/enzyme/chain_rule.jl "$mode" "$steps" 1 Float64 7 > "$log" 2>&1
             echo "   exit $?" >> "$out/summary.txt"
-            grep -E 'rules_off|relative difference|verdict|times:|wrote|^ERROR|Segmentation|signal' "$log" | cut -c1-300 >> "$out/summary.txt"
+            grep -E 'rules_off|relative difference|verdict|times:|wrote|^ERROR|Segmentation|signal [0-9]' "$log" | cut -c1-300 >> "$out/summary.txt"
         done
     done
 done

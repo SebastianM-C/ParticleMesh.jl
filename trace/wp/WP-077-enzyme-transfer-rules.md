@@ -1,6 +1,6 @@
 +++
 id = "WP-077"
-status = "active"
+status = "done"
 goals = ["A0", "A4", "A7", "A8"]
 depends_on = ["WP-020", "WP-041", "WP-050"]
 adds_dependencies = ["EnzymeCore", "Enzyme"]

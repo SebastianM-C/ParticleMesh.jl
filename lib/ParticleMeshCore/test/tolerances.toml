@@ -502,8 +502,8 @@ status = "proposed"
 quantity = "the pullbacks on CUDA against the CPU, per array: flux_pullback! (N = 1, 2), deposit_pullback!, gather_pullback! (N = 1 to 3)"
 scale = "max|CPU entry| of the array"
 C = 16
-measured = {}
-status = "proposed; not yet run on a GPU"
+measured = { "Float32 on CUDABackend" = 2.83, "Float64 on CUDABackend" = 3.14 }
+status = "proposed; measured on an RTX 4080 SUPER"
 
 ["T-980"]
 quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a random field x and random signed yᵢ = q·wᵢ, N = 1, 2, 3, Fast and Reference by cells and by NodeBins"
