@@ -1116,14 +1116,14 @@ measured = { Float64 = 4.51 }
 status = "proposed; T-474's C"
 
 ["T-1035"]
-quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 steps of the 3D window against the ramp length, Float64, Reference (C); Dual{Float32,3} with the ramp length the first partial: the primal of every E and B component against the Float32 run (C_primal) and the partial against the central difference of Float64 runs at L = 4 ± 10⁻³ (C_partial)"
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 steps of the 3D window against the ramp length, Float64, Reference (C); Dual{Float32,3} with the ramp length the first partial: the primal of every E and B component against the Float32 run (C_primal) and the partial against the Float64 run's ForwardDiff partial (C_partial; a central difference at a fixed step jumps by 1/δ where a particle retires at the back edge in only one of the two runs)"
 scale = "C: the finite-difference floor (A7); C_primal, C_partial: eps(Float32)·max over the six components·nsteps (as T-955)"
 C = 1
 C_primal = 8
 C_partial = 8
 measured = { Float64 = 0.0151 }
 measured_primal = { "Dual{Float32,3}" = 0.0 }
-measured_partial = { "Dual{Float32,3}" = 0.295 }
+measured_partial = { "Dual{Float32,3}" = 0.167 }
 status = "proposed; T-475's C and T-1016's"
 
 ["T-1036"]
@@ -1133,4 +1133,4 @@ C = 1000
 C_near = 0.05
 measured = { bare = 140.0, back_PML = 144.0 }
 measured_near = { bare = 1.84, back_PML = 0.0198 }
-status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72"
+status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72. C_near holds at normal incidence only: at oblique incidence (150°, 90°, 59° to x, in the x–y and x–z planes alike) the physics breaker measured the PML's energy ahead of the back edge at 0.2 to 0.24 of the bare edge's with 6 cells and 0.07 to 0.1 with 10, the 2D back PML's behaviour (T-1030 ties the 3D window to it), unverified in 2D"

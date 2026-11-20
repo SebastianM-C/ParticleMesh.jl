@@ -317,8 +317,11 @@ end
 # plasma drifting at 0.1 c into the window (the drift against the immobile background charges the
 # ramp, so the fields depend on the ramp length L), by ForwardDiff with L a dual, against the
 # finite-difference floor of `fd_scan` (Float64, Reference, one seed). Then the same run with L a
-# `Dual{Float32,3}`: its primal is the Float32 run's to roundoff and its partial ∂/∂L the central
-# difference of Float64 runs at L ± 10⁻³ (A8), on Ex, the only component the drift along x drives.
+# `Dual{Float32,3}`: its primal is the Float32 run's to roundoff and its partial ∂/∂L the Float64
+# run's ForwardDiff partial (A8), on every component. The fd_scan check above ties AD to finite
+# differences; the per-component check takes the Float64 partial instead of a central difference at
+# a fixed step, which a particle retiring at the back edge in only one of the L ± δ runs turns into a
+# 1/δ jump (a warm plasma gave 1270 times C_partial at δ = 10⁻³ on column 1, the physics breaker).
 function body_T1035(be)
     run(L; T = typeof(L), mode = Reference(), nsteps = 30) = begin
         prob = window_plasma_3d(T; ramp = L, drift = (T(1) / 10, zero(T), zero(T)), nsteps, cells = (24, 6, 6), ppc = (2, 1, 1))
@@ -336,14 +339,13 @@ function body_T1035(be)
     record!("T-1035", Float64, s.rel[s.istar] / s.floor_rel, be)
     @test s.rel[s.istar] <= emC("T-1035") * s.floor_rel
     sd, sf = run(mkdual(4, 1, 0, 0)), run(4.0f0)
-    δ = 1e-3
-    sp, sm = run(4.0 + δ), run(4.0 - δ)
+    s64 = run(ForwardDiff.Dual(4.0, 1.0))
     # every component against the largest value and slope of all six (the drift along x drives Ex;
     # the others are the current's roundoff across a uniform plasma)
     cs = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
     A = map(c -> Array(getfield(sd.fields, c)), cs)
     B = map(c -> Array(getfield(sf.fields, c)), cs)
-    slope = map(c -> (Array(getfield(sp.fields, c)) .- Array(getfield(sm.fields, c))) ./ (2δ), cs)
+    slope = map(c -> map(x -> ForwardDiff.partials(x)[1], Array(getfield(s64.fields, c))), cs)
     @test all(a -> all(x -> all(isfinite, partials(x)) && iszero(partials(x)[2]) && iszero(partials(x)[3]), a), A)
     bmax, smax = maximum(b -> maximum(abs, b), B), maximum(a -> maximum(abs, a), slope)
     worst = maximum(i -> maximum(abs, value_of.(A[i]) .- B[i]), 1:6) / (eps(Float32) * bmax * 30)
