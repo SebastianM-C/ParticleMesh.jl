@@ -447,6 +447,13 @@ end
         J̄ = ntuple(k -> lcg_field(field(backend, Float64, grid), 40 + k), 3)
         x̄ = zero_like(s)
         flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.125)
+        # it adds to the adjoint it is given (in a step the push's and the gather's are there first)
+        x̄1 = zero_like(s)
+        foreach(((_, a),) -> fill!(a, 1.0), float_arrays(x̄1))
+        flux_pullback!(x̄1, J̄..., s, shape, st, grid; dt = 0.125)
+        for ((_, a1), (_, a0)) in zip(float_arrays(x̄1), float_arrays(x̄))
+            @test maximum(abs.((a1 .- 1) .- a0)) <= 4 * eps(Float64) * (1 + maximum(abs, a0))
+        end
         for k in eachindex(float_arrays(s))
             v = direction(s, k)
             JD = flux3d(Reference(), dualize(s, v), shape, st, grid; dt = 0.125)[1:3]

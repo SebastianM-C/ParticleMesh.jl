@@ -1,6 +1,6 @@
 # Checkpointed reverse mode (WP-080): Enzyme's reverse pass over a run of many steps through
-# Checkpointing.jl's schemes (`Revolve`, `Periodic`, `Online_r2`), with checkpoints that hold the
-# evolved arrays of the states the loop steps, not copies of the whole loop body. The storage type
+# Checkpointing.jl's `Revolve` scheme, with checkpoints that hold the evolved arrays of the states
+# the loop steps, not copies of the whole loop body. The storage type
 # lives in the extension on Checkpointing (`ParticleMeshElectromagneticCheckpointingExt`), so this
 # package does not depend on Checkpointing or Enzyme.
 
@@ -36,6 +36,10 @@ ionization), against the whole state that Checkpointing.jl's default `ArrayStora
 `Reference()` mode the recomputed steps are those of the first forward run bit for bit, so the
 reverse pass reads the states the forward pass produced (A4); in `Fast()` mode they differ at the
 atomics' roundoff.
+
+Only `Revolve` keeps all its checkpoints in this storage. Checkpointing.jl 0.13's `Periodic`
+takes it for the period's boundaries but holds the steps inside a period in its own `ArrayStorage`
+(whole-body copies), so with `Periodic` the memory is not that of the evolved arrays.
 
 The loop body must evolve nothing but the captured states: another array it writes is neither
 saved nor restored. A body that captures no `EMState` is refused when the first checkpoint is

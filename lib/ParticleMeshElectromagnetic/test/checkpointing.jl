@@ -66,9 +66,12 @@ const CKPT_CASES = (
             @test k !== nothing
             k === nothing && continue
             push!(steps, k - 1)
-            # restored into the used state through the storage and continued, it gives the run's end
+            # restored into the used state through the storage and continued, it gives the run's end;
+            # the restore is restore!'s, which refreshes the caches (marks K current)
+            st.fresh[] = false
             Checkpointing.load!(body, scheme.storage, findfirst(x -> x === slot, scheme.storage.slots))
             @test same_arrays(evolved(st), run_bits[k])
+            @test st.fresh[]
             for j in k:n
                 step!(st, p, j; observer = ())
             end
