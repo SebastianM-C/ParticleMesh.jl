@@ -19,7 +19,10 @@ out="scripts/runs/wp077-rules-bench-$(date -u +%Y%m%dT%H%M%S)"
 mkdir -p "$out"
 git rev-parse HEAD > "$out/commit.txt"
 git fetch -q origin "$spike" && git rev-parse FETCH_HEAD > "$out/spike-commit.txt"
-git checkout FETCH_HEAD -- scripts/enzyme/spike scripts/enzyme/chain_rule.jl
+git checkout FETCH_HEAD -- scripts/enzyme/spike scripts/enzyme/chain_rule.jl scripts/enzyme/common.jl
+# the unrolled gather and atomic adds as patches: the spike's tip moved them into its engine
+# (21d1cc5), which this branch does not have; 8443716 has the same code as patches
+git checkout 8443716d -- scripts/enzyme/spike/unroll/gather.jl scripts/enzyme/spike/unroll/atomic.jl
 julia +1.13 --startup=no --project=lib/ParticleMeshElectromagnetic/test -e 'using Pkg; Pkg.add(name = "Enzyme", version = "0.13.221")' > "$out/setup.log" 2>&1
 julia +1.13 --startup=no --project -e 'using Pkg; Pkg.instantiate(workspace = true)' >> "$out/setup.log" 2>&1
 nvidia-smi --query-gpu=name,driver_version --format=csv,noheader > "$out/gpu.txt" 2>&1
