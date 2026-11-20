@@ -60,13 +60,15 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("resort = true: the sort from the previous order is not yet tested at N = 3, so a 3D state takes resort = false"))
     n = problem.cells
     wgs = numerics.workgroupsize
-    grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
+    grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
     check_gather(numerics.gather, numerics.shape, grid)
-    layers = map(d -> place_absorber(numerics.absorber, grid, problem.dt; axis = d, backend, workgroupsize = wgs), open)
+    layers = map(d -> place_absorber(numerics.absorber, grid, problem.dt; axis = d, backend, workgroupsize = wgs,
+                                                solver = numerics.solver), open)
     window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
-    back = numerics.back_absorber === nothing ? nothing : BackPMLFields(numerics.back_absorber, grid, problem.dt; backend, workgroupsize = wgs)
-    planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
+    back = numerics.back_absorber === nothing ? nothing : BackPMLFields(numerics.back_absorber, grid, problem.dt; backend, workgroupsize = wgs,
+                                                                        solver = numerics.solver)
+    planes = map(l -> AntennaPlane(l.position, grid, problem.dt, numerics.solver), problem.lasers)
     window === nothing || check_window_antennas(window, back, map(Antenna, params(problem).lasers, planes))
     ionization = problem.ionization === nothing ? nothing : IonizationFrame(problem, grid, backend, numerics, window)
     species = map(problem.species) do d

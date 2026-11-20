@@ -1258,3 +1258,87 @@ C_dual = 1e-5
 measured = { charge = 0.0156, energy = 0.0249 }
 measured_dual = { charge = 8.92e-7, energy = 1.01e-6, charge_primal = 6.59e-7, energy_primal = 9.03e-7 }
 status = "proposed; T-1046's C"
+
+["T-1080"]
+quantity = "an oblique discrete eigenmode of the M4 scheme (m = 3 at N = 1, (3, −2) at N = 2, (3, −2, 1) at N = 3) in each polarization against the exact M4 relation: largest field error over every E and B component, value and partials"
+scale = "steps (amplitude 1), 200 steps at Δt = 1/2 and 95/100 of the Courant limit"
+C = 0.5
+measured = { Float32 = 0.178, Float64 = 0.16, "Dual{Float32,3}" = 0.178 }
+status = "proposed"
+
+["T-1081"]
+quantity = "the fitted order of M4's phase-velocity error 1 − ω/|k| between 16, 32 and 64 cells per wavelength, Courant number 0.95, along the axis at N = 1 and 2 and on the diagonal at N = 2"
+scale = "|order − 4|"
+order_tol = 0.1
+measured = 0.0077
+status = "proposed"
+
+["T-1082"]
+quantity = "M4's own ∇·B (the divergence with its difference), change after up to 100 steps (C); one step's change of the backward-difference ∇·E plus Δt·∇·J with a prescribed J (C_current); random fields, every part of the duals, 95/100 of the Courant limit"
+scale = "max|B|·Σ_d 2/Δ_d·steps (C); max(|E|, |B|, Δt|J|)·Σ_d 2/Δ_d (C_current)"
+C = 0.5
+C_current = 1
+measured = { C = "0.24 to 0.34 over the types", C_current = "0.30 to 0.54 over the types" }
+status = "proposed"
+
+["T-1083"]
+quantity = "the largest plain field norm Σ(E² + B²) over 4000 steps at 0.99 of the Courant limit relative to the start, random fields (C); relative difference of the measured growth per step at 1.01 from M4's corner eigenvalue (C_growth)"
+scale = "ratio (C); relative (C_growth)"
+C = 10
+C_growth = 1e-10
+measured = { C = 3.42 }
+status = "proposed"
+
+["T-1085"]
+quantity = "relative L² difference of the M4 run's ω₀ transform on the probe columns from M4's angular-spectrum propagation of the incident field (m4_kx), the main beam in three polarizations (C); the same for a plane wave in the A8 matrix (C_plane); the plane wave launched by the Yee antenna in the M4 run (C_naive, a lower bound)"
+scale = "(3/16)·√105/w0⁴ (waist 6, Float64) for C; eps(T)·√steps for C_plane and C_naive"
+C = 1.5
+C_plane = 2
+C_naive = 1000
+measured = { Ey = 1.16, Ez = 0.847, C_plane = { Float64 = 0.473 }, C_naive = { Float64 = 7.4e12 } }
+status = "proposed"
+
+["T-1086"]
+quantity = "energy behind the M4 antenna over the pulse's for a narrow band beam (waist 20, duration 25, Ey and Ez polarized) (C); the same with the Yee antenna in the M4 run over the M4 antenna's (C_naive, a lower bound); the A8 and main runs take T-401's C, C_main and C_linear; the B corrections as an operator, the larger of the scattered region's B and the total region's difference from the full half step, over max|B| (C_operator, eps(T), 2D and 3D); the incident E the corrections read on ia − 1, ia, ia + 1 against the beam written out, over its largest |E| (C_incident, eps(T))"
+scale = "fraction (C); ratio (C_naive)"
+C = 1e-7
+C_naive = 100
+C_operator = 8
+C_incident = 4
+measured = { C_incident = 0.0, Ey = 2.01e-9, Ez = 7.2e-9, naive = { Ey = 4.41e-6, Ez = 4.51e-6 }, small = 0.508, main = 0.288, C_operator = { Float32 = 1.5, Float64 = 0.777, "Dual{Float32,3}" = 1.5, "3D Float64" = 1.9 } }
+status = "proposed"
+
+["T-1088"]
+quantity = "reflection of T-540's slab packets off the PML in the M4 run over the Yee scheme's discrete theory at the same geometry, 8 and 16 cells, 0 to 0.8 rad, TE and TM (C); with Yee's difference in the layer's B corrections, over the M4 layer's (C_naive, a lower bound); the largest field energy over 4000 steps of random fields in an open box with the PML relative to the start (C_long)"
+scale = "ratio"
+C = 1.5
+C_naive = 5
+C_long = 1.1
+measured = { C = 0.905, naive = "7 to 600 times the M4 layer", C_long = 0.66 }
+status = "proposed"
+
+["T-1089"]
+quantity = "M4's ∇·B (Σ_d D̃_d B_d) on the cell centres whose stencil reads no layer row, particles leaving through the PML in 2D (T-1089) and through each absorber on y and z in 3D (T-1097), both modes; Gauss's law takes T-451's and T-1011's C, and T-212's in 1D"
+scale = "(Σ 2/Δ_d)·max|B|·√k"
+C_divB = 2
+measured = { open = "0.12 to 0.19", open_3d = "0.19 to 1.02" }
+status = "proposed"
+
+["T-1090"]
+quantity = "T-570 with M4: the back-edge PML's largest difference from free space on the eight columns behind it over the bare back edge's (C_back), with M4's layer"
+scale = "ratio"
+C_back = 0.0035
+measured = { Float64 = 0.00215 }
+status = "proposed"
+
+["T-1087"]
+quantity = "relative L² difference of the M4 shaped beam's ω₀ transform on the antenna plane's own column from M4's angular-spectrum propagation of its incident field (the probes past the plane take T-906's C and C_leak)"
+scale = "(3/16)·√⟨k_y⁸⟩ over the pupil's angular spectrum"
+C_at_plane = 5
+status = "proposed; measured 3.4 for Ey and 0.91 for Ez in Float64 at 95/100 of the Courant limit, 0.95 for Ey at half the time step"
+
+["T-1100"]
+quantity = "T-1036 and T-1032 with M4 in the 3D window: the vacuum pulse against its static twin (bare, back PML of 6 cells, plane moving back while it launches), the back PML's difference against free space over the bare edge's, and Gauss's law across shifts; the bounds are T-1036's C and C_near and T-1032's C"
+scale = "as T-1036 and T-1032"
+measured = { twin = 196.0, near = 0.0151, gauss = "0.087 to 0.113" }
+status = "proposed"

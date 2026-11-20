@@ -25,7 +25,7 @@ units of mₑc (per unit mass), charge in e, mass in mₑ. Maxwell's equations t
 Problem description and numerics are separate (A10, `docs/plan/architecture-draft.md` §0.5):
 an [`EMProblem`](@ref) holds the grid extent, the species and the parameters in A1 units and
 names no kernel; an [`EMNumerics`](@ref) chooses, by type, the shape, the deposition mode, the
-pusher ([`Boris`](@ref)), the mesh solver ([`Yee`](@ref)) and the current filter
+pusher ([`Boris`](@ref)), the mesh solver ([`Yee`](@ref), or the low-dispersion [`M4`](@ref), WP-079) and the current filter
 ([`BinomialFilter`](@ref)). Every kernel is a
 KernelAbstractions kernel, generic in the element type and within the Reactant rules of §0.4.
 
@@ -63,6 +63,7 @@ using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger, particle_c
 
 export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
+export M4, m4_b_half!, faraday_stencil, YeeStencil, M4Stencil, m4_wavenumber
 export FieldModifier, BHalf, EStep, modifier_params, before_substep!, after_substep!, evolved_arrays, on_arrays, field_modifiers
 export open_absorber, open_absorbers, retire_open!, back_absorber, antenna_planes, with_modifiers
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
@@ -94,6 +95,7 @@ using .PulseShapes: PulseShapes, TemporalEnvelope, GaussianEnvelope, SpectralEnv
 
 include("layout.jl")
 include("yee.jl")
+include("m4.jl")
 include("modifiers.jl")
 include("pushers.jl")
 include("test_particles.jl")
@@ -105,6 +107,7 @@ include("gather.jl")
 include("step3d.jl")
 include("antenna.jl")
 include("shaped.jl")
+include("m4_antenna.jl")
 include("boundaries.jl")
 include("pml.jl")
 include("window.jl")

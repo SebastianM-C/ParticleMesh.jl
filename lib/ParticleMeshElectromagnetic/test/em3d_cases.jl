@@ -165,8 +165,8 @@ function open_plasma_3d(::Type{T}; boundaries = (:periodic, :open, :open), cells
 end
 
 "The initialized 3D state of `prob` with the `absorber` on its open axes, in `mode`, with the `Esirkepov()` current."
-function open_state_3d(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU(), shape = Quadratic)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, shape, current = Esirkepov(), absorber); backend = be)
+function open_state_3d(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU(), shape = Quadratic, solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, shape, current = Esirkepov(), absorber, solver); backend = be)
     initialize!(st, prob)
     return st
 end
@@ -223,14 +223,17 @@ function antenna3d_problem(::Type{T}; ncx = 12, nct = 6, length = (60, 24, 24), 
 end
 
 """
-    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing) -> (; st, prob, A, ip, shots)
+    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, solver = Yee(),
+                  antenna_solver = solver) -> (; st, prob, A, ip, shots)
 
 [`antenna_run`](@ref) in 3D: `A[q]` the discrete-time Fourier transforms at ω = 1 of Ey and Ez on
 the probe plane nearest to `probes[q]` (interior rows and layers), `shots` the fields after the
 steps in `snaps`.
 """
-function antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, workgroupsize = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber); backend = be)
+function antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, workgroupsize = nothing,
+                       solver = Yee(), antenna_solver = solver)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber, solver); backend = be)
+    st = replant_antennas(st, prob, antenna_solver)
     initialize!(st, prob)
     p = params(prob)
     (; grid, fields) = st
@@ -342,9 +345,10 @@ function static_twin_3d(prob::EMProblem{3,T}, n1) where {T}
                      window = MovingWindow(; start = T(Inf)), profile = prob.profile)
 end
 
-"The initialized state of a 3D window problem, with `back` on the back edge and `absorber` on its open axes."
-function window_state_3d(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, back = nothing, be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber, back_absorber = back); backend = be)
+"The initialized state of a 3D window problem, with `back` on the back edge, `absorber` on its open axes and `solver` the field solver."
+function window_state_3d(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, back = nothing, be = CPU(),
+                         solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber, back_absorber = back, solver); backend = be)
     initialize!(st, prob)
     return st
 end

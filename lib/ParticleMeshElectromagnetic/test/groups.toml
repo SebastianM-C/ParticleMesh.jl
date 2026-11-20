@@ -8,24 +8,24 @@ full_suite_only = ["gpu.jl"]   # reruns bodies of the other files on the GPU
 
 groups = [
     # the 1D solver and pushers, the solver in N dimensions with the 3D layout, initial field and recorder, and the 1D physics cases
-    ["yee.jl", "yee_nd.jl", "em3d.jl", "boris.jl", "pushers.jl", "pushers_sciml.jl", "pushers_resolution.jl", "gauss.jl",
+    ["yee.jl", "yee_nd.jl", "m4.jl", "em3d.jl", "boris.jl", "pushers.jl", "pushers_sciml.jl", "pushers_resolution.jl", "gauss.jl",
      "fast_reference.jl", "physics.jl"],
     # the 2D step and its boundaries, each file after the ones whose helpers it uses
     ["determinism.jl", "em2d.jl", "em2d_step.jl", "filter.jl", "boundaries.jl", "pml.jl"],
-    # the loads, the antenna, the moving window and the LWFA gradient
-    ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "shaped_antenna.jl", "window.jl", "pml_back.jl", "lwfa_gradient.jl",
+    # the loads, the antenna, the moving window, the M4 solver in the 2D step and the LWFA gradient
+    ["initialize.jl", "subluminal.jl", "momenta.jl", "antenna.jl", "shaped_antenna.jl", "window.jl", "pml_back.jl", "m4_step.jl", "lwfa_gradient.jl",
      "witness.jl", "tunables.jl"],
     # the gradient, the harness and the state layer built on it, and the quality checks
     ["gradient.jl", "allocations.jl", "harness.jl", "params.jl", "recorder.jl", "restart.jl", "modifiers.jl", "one_step.jl", "qa.jl"],
     # the field ionization, which reuses no other file, and its levels' rate laws; the transposed pairs;
     # the Galerkin gather (gather.jl's and ionization.jl's helpers)
     ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "quantity_pullbacks.jl", "gather.jl", "galerkin.jl", "transposes.jl"],
-    # the 3D step, periodic and open, and its antenna, which reuse no other file
-    ["em3d_step.jl", "em3d_open.jl", "em3d_antenna.jl"],
+    # the 3D step, periodic and open, its antenna and the M4 solver in it, which reuse no other file
+    ["em3d_step.jl", "em3d_open.jl", "em3d_antenna.jl", "m4_3d.jl"],
     # the 1D cases with the Galerkin gather, after the 1D cases with today's gather (their runs)
     ["physics.jl", "galerkin_physics.jl"],
-    # the 3D moving window, with the 3D step whose helpers and worker it reuses
-    ["em3d_step.jl", "em3d_window.jl"],
+    # the 3D moving window, with the 3D step whose helpers and worker it reuses, and the M4 solver in it
+    ["em3d_step.jl", "em3d_window.jl", "m4_window_3d.jl"],
     # the 3D step's field ionization, which reuses no other file
     ["em3d_ionization.jl"],
     # the 3D step's compensated gather, which reuses no other file

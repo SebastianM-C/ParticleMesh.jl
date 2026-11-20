@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -77,6 +77,27 @@ else
         for wgs in (64, 256)
             @test antenna3d_step_digests(; workgroupsize = wgs, be = GPU) == first
         end
+    end
+
+    # WP-079: the M4 solver. T-1085's plane wave (its main beams run on the CPU only), T-1087's shaped
+    # beam and T-1091's bitwise Reference step and Fast–Reference agreement on CUDA, and the M4
+    # window run of T-561 on both backends, differing by roundoff.
+    @testset "T-1098 the M4 2D step on CUDA passes T-1085, T-1087 and T-1091 with the CPU's tolerances, and differs from the CPU's by roundoff [A2, A4, A7, A8, WP-079]" begin
+        rerun_module_on(GPU, (("T-1085", body_T1085), ("T-1087", body_T1087), ("T-1091", body_T1091)))
+        prob = window_lwfa(Float64; nsteps = 120)
+        g, c = window_state(prob; be = GPU, solver = M4()), window_state(prob; solver = M4())
+        run!(g, params(prob), prob.nsteps)
+        run!(c, params(prob), prob.nsteps)
+        names = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
+        m = maximum(n -> maximum(abs, getfield(c.fields, n)), names)
+        d = maximum(n -> maximum(abs, Array(getfield(g.fields, n)) .- getfield(c.fields, n)), names)
+        @info "T-1098 CPU–CUDA M4 window fields" rel = d / m
+        record!("T-1098", Float64, d / (m * eps(Float64)), GPU)
+        @test d <= emC("T-561") * eps(Float64) * m
+    end
+
+    @testset "T-1099 the M4 3D step on CUDA passes T-1094, T-1096, T-1097 and T-1100 with the CPU's tolerances [A2, A4, A7, A8, WP-079]" begin
+        rerun_module_on(GPU, (("T-1094", body_T1094), ("T-1096", body_T1096), ("T-1097", body_T1097), ("T-1100", body_T1100)))
     end
 
     @testset "T-1039 the 3D window on CUDA passes T-1030 to T-1033, T-1035, T-1036 and T-1038 with the CPU's tolerances, and its Reference step is bitwise across reruns and launch shapes [A2, A3, A4, A7, A8, WP-074]" begin

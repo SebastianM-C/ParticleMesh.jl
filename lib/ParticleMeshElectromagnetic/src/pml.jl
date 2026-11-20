@@ -14,6 +14,10 @@
 # it. This is PIConGPU's rule (its `updatePsiB` is set in one of the two B half steps only); it
 # keeps ψ_B a function of E at integer times, and the half steps' B sum to one Δt-centred update.
 #
+# With the M4 solver (WP-079) D_y in the B terms is M4's difference along y (its third difference
+# and its x- and z-averages), the derivative its B update takes, and the correction below is the
+# same with that D; the E terms keep Yee's difference.
+#
 # The update is a correction after the plain Yee sub-step, which already added the vacuum term
 # ±τ·D_y F: in the layer rows X ← X ± τ·((1/κ − 1)·D_y F + ψ), with ψ advanced first where it
 # advances (τ = Δt/2 for the B half steps, Δt for the E step), the sign that
@@ -195,7 +199,9 @@ end
 
 The PML of an open transverse axis `D` placed on a grid by the state (axis 2 at N = 2; axes 2 and
 3 at N = 3, one `PMLFields` each): per stagger along the axis (`node` for E's differences,
-`center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row, and
+`center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row, the
+solver's B difference `stencil` ([`faraday_stencil`](@ref): with [`M4`](@ref) the stretched
+difference along `D` is M4's, the one its B update takes), and
 `ψ`, the convolution fields of the four terms with a difference along `D`, named by their
 component (along y: `ψ.Bx`, `ψ.Bz` on B's Center() rows, `ψ.Ex`, `ψ.Ez` on E's Node() rows; along
 z: `ψ.Bx`, `ψ.By`, `ψ.Ex`, `ψ.Ey`), each of the interior's shape with axis `D` cut to its 2·cells
@@ -204,7 +210,7 @@ array of their size for the moving window's shift. `n` are the interior cells, `
 the coefficients were made for, `sigma_max` the σ_max they use. A [`FieldModifier`](@ref): a
 correction after each sub-step, with no parameter half.
 """
-struct PMLFields{D,V,P<:NamedTuple,M,N,T} <: FieldModifier
+struct PMLFields{D,V,P<:NamedTuple,M,N,T,S} <: FieldModifier
     node::NTuple{3,V}
     center::NTuple{3,V}
     ψ::P
@@ -214,28 +220,30 @@ struct PMLFields{D,V,P<:NamedTuple,M,N,T} <: FieldModifier
     n::NTuple{N,Int}
     dt::T
     sigma_max::T
+    stencil::S
 end
-PMLFields{D}(node::NTuple{3,V}, center, ψ::P, scratch::M, cells, g, n::NTuple{N,Int}, dt::T, sm) where {D,V,P,M,N,T} =
-    PMLFields{D,V,P,M,N,T}(node, center, ψ, scratch, cells, g, n, dt, sm)
+PMLFields{D}(node::NTuple{3,V}, center, ψ::P, scratch::M, cells, g, n::NTuple{N,Int}, dt::T, sm, st::S = YeeStencil()) where {D,V,P,M,N,T,S} =
+    PMLFields{D,V,P,M,N,T,S}(node, center, ψ, scratch, cells, g, n, dt, sm, st)
 
 """
-    PMLFields(pml::PML, grid::PeriodicGrid, dt; axis = 2, backend, workgroupsize = nothing)
+    PMLFields(pml::PML, grid::PeriodicGrid, dt; axis = 2, backend, workgroupsize = nothing, solver = Yee())
 
 Place `pml` on the open `axis` of `grid` (N = 2 or 3) for the step `dt` (whose type is the element
-type): write the coefficients once and allocate the convolution fields, zero. Throws an
+type) and the `solver`: write the coefficients once and allocate the convolution fields, zero. Throws an
 `ArgumentError` unless `guards(grid) ≤ pml.cells` and `2·cells < n_axis` (interior rows remain
 between the two layers).
 """
-place_absorber(l::PML, grid, dt; axis::Integer = 2, backend, workgroupsize = nothing) = PMLFields(l, grid, dt; axis, backend, workgroupsize)
+place_absorber(l::PML, grid, dt; axis::Integer = 2, backend, workgroupsize = nothing, solver = Yee()) =
+    PMLFields(l, grid, dt; axis, backend, workgroupsize, solver)
 
-function PMLFields(l::PML, grid::PeriodicGrid{N}, dt::T; axis::Integer = 2, backend, workgroupsize = nothing) where {N,T}
+function PMLFields(l::PML, grid::PeriodicGrid{N}, dt::T; axis::Integer = 2, backend, workgroupsize = nothing, solver = Yee()) where {N,T}
     n, g = ncells(grid), guards(grid)
     2 <= axis <= N || throw(ArgumentError("an open axis' PML lies on axis 2 or 3 of the grid, got axis $axis at N = $N"))
     g <= l.cells || throw(ArgumentError("the PML of $(l.cells) cells must be at least as thick as the $g guard cells"))
     2 * l.cells < n[axis] ||
         throw(ArgumentError("two PMLs of $(l.cells) cells leave no interior rows of the $(n[axis]) cells along axis $axis"))
     sets, ψ, scratch, sm = place_layer(l, grid, dt, axis, TwoSided(); backend, workgroupsize)
-    return PMLFields{axis}(sets..., ψ, scratch, l.cells, g, n, dt, sm)
+    return PMLFields{axis}(sets..., ψ, scratch, l.cells, g, n, dt, sm, faraday_stencil(solver, grid, dt))
 end
 
 """
@@ -246,10 +254,10 @@ The PML of the moving window's back edge placed on a grid (a state's `back_absor
 B's) the coefficients b, c (τ = Δt) and q = 1/κ − 1 per layer column, the convolution fields
 `ψ.By`, `ψ.Bz` (Center() columns) and `ψ.Ey`, `ψ.Ez` (Node() columns), each of the interior's
 shape with axis 1 cut to the `cells` layer columns, zero at t = 0, and a scratch of their size for
-the shift. `n`, `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁). A
+the shift. `n`, `dt`, `sigma_max` and `stencil` as in [`PMLFields`](@ref) (σ_max from Δx₁). A
 [`FieldModifier`](@ref) of a moving-window state, after the open axes' PMLs in its tuple.
 """
-struct BackPMLFields{V,P<:NamedTuple,M,N,T} <: FieldModifier
+struct BackPMLFields{V,P<:NamedTuple,M,N,T,S} <: FieldModifier
     node::NTuple{3,V}
     center::NTuple{3,V}
     ψ::P
@@ -259,21 +267,23 @@ struct BackPMLFields{V,P<:NamedTuple,M,N,T} <: FieldModifier
     n::NTuple{N,Int}
     dt::T
     sigma_max::T
+    stencil::S
 end
+BackPMLFields(node, center, ψ, scratch, cells, g, n, dt, sm) = BackPMLFields(node, center, ψ, scratch, cells, g, n, dt, sm, YeeStencil())
 
 """
-    BackPMLFields(pml::PML, grid::PeriodicGrid, dt; backend, workgroupsize = nothing)
+    BackPMLFields(pml::PML, grid::PeriodicGrid, dt; backend, workgroupsize = nothing, solver = Yee())
 
-Place `pml` on the back `pml.cells` columns of `grid` (N = 2 or 3) for the step `dt`. Throws an
+Place `pml` on the back `pml.cells` columns of `grid` (N = 2 or 3) for the step `dt` and the `solver`. Throws an
 `ArgumentError` unless `guards(grid) ≤ pml.cells` and `2·cells < n₁` (the profile evaluated at the
 back reads no row of the front).
 """
-function BackPMLFields(l::PML, grid::PeriodicGrid{N}, dt::T; backend, workgroupsize = nothing) where {N,T}
+function BackPMLFields(l::PML, grid::PeriodicGrid{N}, dt::T; backend, workgroupsize = nothing, solver = Yee()) where {N,T}
     n, g = ncells(grid), guards(grid)
     g <= l.cells || throw(ArgumentError("the back-edge PML of $(l.cells) cells must be at least as thick as the $g guard cells"))
     2 * l.cells < n[1] || throw(ArgumentError("a back-edge PML of $(l.cells) cells needs more than $(2 * l.cells) window columns, got $(n[1])"))
     sets, ψ, scratch, sm = place_layer(l, grid, dt, 1, BackSide(); backend, workgroupsize)
-    return BackPMLFields(sets..., ψ, scratch, l.cells, g, n, dt, sm)
+    return BackPMLFields(sets..., ψ, scratch, l.cells, g, n, dt, sm, faraday_stencil(solver, grid, dt))
 end
 
 "Any placed PML: of an open axis or of the window's back edge."
@@ -285,28 +295,31 @@ pml_side(::BackPMLFields) = BackSide()
 
 # One correction: one work item per layer entry K of X (ψ's index). Along the axis d the layer row
 # k = K[d] is the interior row j₀ = layer_row(k) (array index g + 1 + j₀); along the others the
-# array index is g + K[a]. D the difference of F along d at X's stagger (forward from Node() for B,
-# `fwd = true`; backward from Center() for E), then ψ ← bψ + c·D where `adv` (else ψ is read as it
-# is) and X ← X + s·τ·(q·D + ψ), s the curl term's sign.
-@kernel function pml_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rd, fwd::Bool, adv::Bool, g::Int32, nd::Int32,
+# array index is g + K[a]. D the difference of F along d at X's stagger (for B the solver's forward
+# difference from Node(), `diff` its stencil; for E, `diff = Backward()`, the backward one from
+# Center()), then ψ ← bψ + c·D where `adv` (else ψ is read as it is) and X ← X + s·τ·(q·D + ψ), s
+# the curl term's sign. With the M4 stencil D is M4's difference along d, rows of the other axes
+# included: the stretched coordinate stretches the derivative the update takes.
+@inline layer_difference(::Backward, F, I, vd, vN) = (e = unit_step(vd, vN); @inbounds F[I] - F[I - e])
+@inline layer_difference(st, F, I, vd, vN) = forward_difference(st, F, I, vd, vN)
+@kernel function pml_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rd, diff, adv::Bool, g::Int32, nd::Int32,
                                      cells::Int32, vd::Val{d}, side) where {d}
     K = @index(Global, Cartesian)
     vN = Val(length(K))
     k = Int32(K[d])
     jd = g + Int32(1) + layer_row(side, k, nd, cells)
     I = CartesianIndex(ntuple(a -> a == d ? jd : Int32(K[a]) + g, vN))
-    e = unit_step(vd, vN)
     @inbounds begin
-        D = ifelse(fwd, F[I + e] - F[I], F[I] - F[I - e]) * rd
+        D = layer_difference(diff, F, I, vd, vN) * rd
         p = ifelse(adv, b[k] * ψ[K] + c[k] * D, ψ[K])
         ψ[K] = p
         X[I] += sτ * (q[k] * D + p)
     end
 end
 
-function pml_correct!(X, ψ, F, coef, sτ, rd, fwd, adv, L::PlacedPML, grid, wgs)
+function pml_correct!(X, ψ, F, coef, sτ, rd, diff, adv, L::PlacedPML, grid, wgs)
     vd = pml_axis(L)
-    launcher(pml_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rd, fwd, adv, Int32(L.g), Int32(L.n[axis_of(vd)]),
+    launcher(pml_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rd, diff, adv, Int32(L.g), Int32(L.n[axis_of(vd)]),
                                                          Int32(L.cells), vd, pml_side(L); ndrange = size(ψ))
     fill_guards!(X, grid; workgroupsize = wgs)
     return X
@@ -324,8 +337,8 @@ function pml_b!(L::PlacedPML, f, grid, h, adv, wgs)
     B, E = (f.Bx, f.By, f.Bz), (f.Ex, f.Ey, f.Ez)
     v1, v2 = pml_components(vd)
     sτ(vc) = b_minus(vc, vd) ? -T(h) : T(h)
-    pml_correct!(B[axis_of(v1)], L.ψ[1], E[other_axis(v1, vd)], L.center, sτ(v1), rd, true, adv, L, grid, wgs)
-    pml_correct!(B[axis_of(v2)], L.ψ[2], E[other_axis(v2, vd)], L.center, sτ(v2), rd, true, adv, L, grid, wgs)
+    pml_correct!(B[axis_of(v1)], L.ψ[1], E[other_axis(v1, vd)], L.center, sτ(v1), rd, L.stencil, adv, L, grid, wgs)
+    pml_correct!(B[axis_of(v2)], L.ψ[2], E[other_axis(v2, vd)], L.center, sτ(v2), rd, L.stencil, adv, L, grid, wgs)
     return nothing
 end
 function pml_e!(L::PlacedPML, f, grid, dt, wgs)
@@ -335,8 +348,8 @@ function pml_e!(L::PlacedPML, f, grid, dt, wgs)
     B, E = (f.Bx, f.By, f.Bz), (f.Ex, f.Ey, f.Ez)
     v1, v2 = pml_components(vd)
     sτ(vc) = b_minus(vc, vd) ? T(dt) : -T(dt)
-    pml_correct!(E[axis_of(v1)], L.ψ[3], B[other_axis(v1, vd)], L.node, sτ(v1), rd, false, true, L, grid, wgs)
-    pml_correct!(E[axis_of(v2)], L.ψ[4], B[other_axis(v2, vd)], L.node, sτ(v2), rd, false, true, L, grid, wgs)
+    pml_correct!(E[axis_of(v1)], L.ψ[3], B[other_axis(v1, vd)], L.node, sτ(v1), rd, Backward(), true, L, grid, wgs)
+    pml_correct!(E[axis_of(v2)], L.ψ[4], B[other_axis(v2, vd)], L.node, sτ(v2), rd, Backward(), true, L, grid, wgs)
     return nothing
 end
 back_b!(L::BackPMLFields, f, grid, h, adv, wgs) = pml_b!(L, f, grid, h, adv, wgs)
@@ -374,9 +387,9 @@ end
 # `initialize!` zeroes them (so step 1's first B half step reads ψ_B = 0, not c·D⁺ E⁰).
 evolved_arrays(L::PlacedPML) = values(L.ψ)
 on_arrays(L::PMLFields{D}, ψ::NTuple{4,Any}) where {D} =
-    PMLFields{D}(L.node, L.center, NamedTuple{keys(L.ψ)}(ψ), L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
+    PMLFields{D}(L.node, L.center, NamedTuple{keys(L.ψ)}(ψ), L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max, L.stencil)
 on_arrays(L::BackPMLFields, ψ::NTuple{4,Any}) =
-    BackPMLFields(L.node, L.center, NamedTuple{keys(L.ψ)}(ψ), L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
+    BackPMLFields(L.node, L.center, NamedTuple{keys(L.ψ)}(ψ), L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max, L.stencil)
 
 "The placed absorbers an open axis can have."
 const OpenAbsorber = Union{LayerFactors,PMLFields}

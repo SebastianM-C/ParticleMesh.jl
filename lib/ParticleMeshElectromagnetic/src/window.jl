@@ -341,7 +341,7 @@ in the lab frame, so its column moves back by `s`; once it is closer than `g + 2
 back edge it is inactive (the step skips it).
 """
 window_antennas(antennas::Tuple, s::Integer) =
-    map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n, a.len, a.hx, a.ht), antennas)
+    map(a -> shift_antenna(a, s), antennas)
 
 # The antennas of step k in a moving window: where the window has their planes at the start of the step.
 placed_antennas(c::WindowClock, antennas::Tuple, k) = window_antennas(antennas, window_shifts(c, k - 1))
@@ -355,9 +355,9 @@ function check_window_antennas(w::WindowFrame, back, antennas::Tuple)
     cb = back_cells(back)
     for a in antennas
         edge = max(Int(a.g), cb)
-        s_off = a.ia - edge - 1                    # the shifts after which it no longer acts outside the layer
+        s_off = a.ia - edge - solver_reach(a.stencil)   # the shifts after which it no longer acts outside the layer
         cb > 0 && s_off <= 0 &&
-            throw(ArgumentError("the antenna's columns $(a.ia - 1) and $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + 1)"))
+            throw(ArgumentError("the antenna's columns $(a.ia - solver_reach(a.stencil)) to $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + solver_reach(a.stencil))"))
         t_off = w.window.start + s_off * w.dx1
         l = a.laser
         pulse_end(l) <= t_off ||
