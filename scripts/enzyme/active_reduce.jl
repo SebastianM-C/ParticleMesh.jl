@@ -37,8 +37,9 @@ const ACTIVE_SEEN = Set{String}()
         return Expr(:new, T, [:(_radd(getfield(a, $i), getfield(b, $i))) for i in 1:fieldcount(T)]...)
     end
     _reduce_adjoint(::Nothing, a) = nothing
-    _reduce_adjoint(b, a::EnzymeCore.Active{<:AbstractFloat}) = sum(b)
-    _reduce_adjoint(b, a::EnzymeCore.Active) = foldl(_radd, Array(b))
+    _reduce_adjoint(b, a::EnzymeCore.Active{T}) where {T<:AbstractFloat} = sum(b)::T
+    # the rule's return type must be inferred: assert it
+    _reduce_adjoint(b, a::EnzymeCore.Active{T}) where {T} = foldl(_radd, Array(b))::T
 
     @inline _store_adjoints!(::Tuple{}, ::Tuple{}, I) = nothing
     @inline function _store_adjoints!(bufs::Tuple, d::Tuple, I)

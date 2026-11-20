@@ -64,8 +64,9 @@ end
 reclaim() = (GC.gc(true); ON_GPU && CUDACore.reclaim())
 
 "The case's start at the four free parameters `θ` (their element type), on this script's backend."
-make_start(θ) = start_of(trapped_problem(trapped_point(θ)...; energy = F(budget(A0E)), ppl = PPL, ny = NY, float = F);
-                         ppl = PPL, ny = NY, backend = backend(), gather = CompensatedGather(; k = 1))
+make_start(θ; ppl = PPL, ny = NY, extend = 0, energy = budget(A0E)) =
+    start_of(trapped_problem(trapped_point(θ)...; energy = F(energy), ppl, ny, float = F, extend);
+             ppl, ny, backend = backend(), gather = CompensatedGather(; k = 1))
 "Duals of the four free parameters with `N` partials, θ_j's tangent the unit vector `j + offset`."
 dual_theta(θ, N, offset) = [ForwardDiff.Dual{TrapTag}(F(θ[j]), ntuple(i -> F(i == j + offset), N)...) for j in eachindex(θ)]
 
@@ -74,10 +75,10 @@ dual_theta(θ, N, offset) = [ForwardDiff.Dual{TrapTag}(F(θ[j]), ntuple(i -> F(i
     i = @index(Global, Linear)
     @inbounds out[i] = slot_trapped(status[i], c1[i], o1[i], u1[i], u2[i], u3[i], w[i], h1, lo, hi, ulo, uhi)
 end
-function summands!(out, s, h1)
+function summands!(out, s, h1, fade, rise)
     T = eltype(s.w)
     summand_kernel!(get_backend(out))(out, s.status, s.cell[1], s.offset[1], s.u[1], s.u[2], s.u[3], s.w, h1,
-                                      T(TCASE.fade[1]), T(TCASE.fade[2]), T(TCASE.rise[1]), T(TCASE.rise[2]); ndrange = length(out))
+                                      T(fade[1]), T(fade[2]), T(rise[1]), T(rise[2]); ndrange = length(out))
     return nothing
 end
 function steps_only!(st, p, first, k)
@@ -87,33 +88,37 @@ function steps_only!(st, p, first, k)
     return nothing
 end
 "k steps from step `first`, then J's summands of the plasma's electrons into `Je` and of the born electrons into `Jb`."
-function steps_J!(Je, Jb, st, p, first, k)
+function steps_J!(Je, Jb, st, p, first, k, fade, rise)
     steps_only!(st, p, first, k)
     h1 = cellsize(st.grid)[1]
-    summands!(Je, st.species[1], h1)
-    summands!(Jb, ionization_electrons(st), h1)
+    summands!(Je, st.species[1], h1, fade, rise)
+    summands!(Jb, ionization_electrons(st), h1, fade, rise)
     return nothing
 end
 area(st) = prod(cellsize(st.grid))
 summand_buffers(st) = (similar(st.species[1].w), similar(ionization_electrons(st).w))
 "J of a state through the summand kernel (the host adds the summands in slot order)."
-function J_of(st)
+function J_of(st; fade = TCASE.fade, rise = TCASE.rise)
     Je, Jb = summand_buffers(st)
     h1 = cellsize(st.grid)[1]
-    summands!(Je, st.species[1], h1)
-    summands!(Jb, ionization_electrons(st), h1)
+    summands!(Je, st.species[1], h1, fade, rise)
+    summands!(Jb, ionization_electrons(st), h1, fade, rise)
     return area(st) * (foldl(+, Array(Je)) + foldl(+, Array(Jb)))
 end
 
-"The reverse pass of `steps_J!` with the summands' adjoints at ones: the state's adjoint (`dst`) and the parameters' (`dp`)."
-function reverse_J(st, p, first, k)
+"""
+The reverse pass of `steps_J!` with the summands' adjoints at `seeds` (the plasma's, the born
+electrons'; ones for J itself): the state's adjoint (`dst`), the parameters' (`dp`) and J of the
+state after the steps (the summands from the augmented forward, unweighted by the seeds).
+"""
+function reverse_J(st, p, first, k; fade = TCASE.fade, rise = TCASE.rise, seeds = (1, 1))
     Je, Jb = summand_buffers(st)
     fill!(Je, 0); fill!(Jb, 0)
     dJe, dJb = similar(Je), similar(Jb)
-    fill!(dJe, 1); fill!(dJb, 1)
+    fill!(dJe, seeds[1]); fill!(dJb, seeds[2])
     dst = Enzyme.make_zero(st)
     res = Enzyme.autodiff(set_runtime_activity(Reverse), steps_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
-                          Active(p), Const(first), Const(k))
+                          Active(p), Const(first), Const(k), Const(fade), Const(rise))
     sync()
     J = area(st) * (foldl(+, Array(Je)) + foldl(+, Array(Jb)))
     return (; dst, dp = res[1][4], J)
@@ -188,7 +193,9 @@ function main_steps()
     mark(@sprintf("primal to step %d %.1f s, Dual{5} %.1f s", kmid, t_mid, t_midd))
     L, Ld = leaves(st), leaves(std)
     common = sort!(collect(intersect(keys(L), keys(Ld))))
-    gap = maximum(k -> Float64(maximum(abs.(ForwardDiff.value.(Ld[k]) .- L[k]); init = zero(F))), common)
+    gaps = Dict(k => Float64(maximum(abs.(ForwardDiff.value.(Ld[k]) .- L[k]); init = zero(F))) for k in common)
+    gap = maximum(values(gaps))
+    println("  arrays whose values differ between the two states: ", [(k, g) for (k, g) in gaps if g > 0])
     println("  primal gap between the Float32 and the Dual state at step $kmid: $gap; ",
             "alive: ", alive_count(st.species[1]), " plasma, ", alive_count(ionization_electrons(st)), " born")
     # the Dual state's tangent: partial 1 a random v on every array, partials 2–5 zero (a fixed state)
@@ -262,13 +269,24 @@ function main_steps()
 end
 
 # ---------------------------------------------------------------- milestone 2
-function main_grad()
-    C = parse(Int, opt("C", "100"))
-    mark("start: ppl $PPL ny $NY a0E $A0E θ $THETA, checkpoints every $C steps")
-    st, p, prob = make_start(F.(THETA))
+"""
+    reverse_run(θ; C, extend, fade, rise, objective, kappa, ppl, ny, energy, verbose) -> NamedTuple
+
+The objective at the free parameters `θ` and its gradient in them by Enzyme's reverse mode: a
+primal run that stores the state before every `C`-th step, the segments reversed from the last
+(the state's adjoint carried between them in one shadow, the parameters' adjoints summed), then
+the adjoint of the start contracted with the tangent of `initialize!` and the parameters'
+adjoints with dp/dθ (a Dual{4} start, no step). `objective` as `trapped2d_opt.jl`'s
+`objective_value` (any, born, plasmacap): the summands' seeds are its derivatives in the two parts
+at the end of the primal run. Returns J, its two parts, the gradient (and its parts from the
+start and from the parameters), the final primal state's `trapped_summary`, the Dual{4} start
+(`std0`, `pd`) for a forward comparison, and the seconds of each phase.
+"""
+function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fade, rise = TCASE.rise, objective = "any", kappa = 0.05,
+                     ppl = PPL, ny = NY, energy = budget(A0E), verbose = true, summary = true)
+    st, p, prob = make_start(F.(θ); ppl, ny, extend, energy)
     nsteps = prob.nsteps
-    s0 = deepcopy(st)
-    # the primal run, saving the state before steps 1, C + 1, 2C + 1, ...
+    s0area = Float64(area(st))
     saved = Any[]
     t_fwd = @elapsed begin
         for k in 1:nsteps
@@ -277,11 +295,16 @@ function main_grad()
         end
         sync()
     end
-    J = trapped_energy(st)
     lost = ionization_lost(st)
-    mark(@sprintf("primal with %d checkpoints %.1f s; J = %.8g; births without a slot %d", length(saved), t_fwd, J, lost))
+    lost == 0 || error("$lost births found no free slot: raise `capacity`")
+    parts = trapped_parts(st; fade, rise)
+    born, plasma = Float64(parts.born), Float64(parts.plasma)
+    J = objective == "any" ? born + plasma : objective == "born" ? born :
+        objective == "plasmacap" ? born + kappa * tanh(plasma / kappa) : error("objective any, born or plasmacap, got $objective")
+    seeds = objective == "any" ? (1, 1) : objective == "born" ? (0, 1) : (sech(plasma / kappa)^2, 1)
+    summ = summary ? trapped_summary(st; fade, rise) : nothing
+    verbose && mark(@sprintf("primal with %d checkpoints %.1f s; J = %.8g (born %.6g, plasma %.6g)", length(saved), t_fwd, J, born, plasma))
     st = nothing; reclaim()
-    # reverse, segment by segment from the last
     dst = nothing
     dps = Any[]
     seg_seconds = Float64[]
@@ -291,43 +314,118 @@ function main_grad()
         k = min(C, nsteps - first + 1)
         sc = saved[i]
         t = @elapsed if dst === nothing
-            r = reverse_J(sc, p, first, k)
+            r = reverse_J(sc, p, first, k; fade, rise, seeds = F.(seeds))
             dst, Jrev = r.dst, r.J
             push!(dps, r.dp)
+            r = nothing
         else
             push!(dps, reverse_steps!(dst, sc, p, first, k))
         end
         push!(seg_seconds, t)
-        saved[i] = nothing
-        i == length(saved) && mark(@sprintf("last segment (steps %d to %d) %.1f s, J from the reverse's forward %.8g", first, first + k - 1, t, Jrev))
-        i % 4 == 0 && (reclaim(); mark(@sprintf("segment %d (steps %d to %d) %.1f s", i, first, first + k - 1, t)))
+        saved[i] = nothing; sc = nothing
+        verbose && i == length(saved) && mark(@sprintf("last segment (steps %d to %d) %.1f s; J from the reverse's forward %.8g", first, first + k - 1, t, Jrev))
+        i % 4 == 0 && (reclaim(); verbose && mark(@sprintf("segment %d (steps %d to %d) %.1f s", i, first, first + k - 1, t)))
     end
-    mark(@sprintf("reverse of %d segments %.1f s", length(seg_seconds), t_rev))
-    # the chain to the four free parameters
-    t_tan = @elapsed (std0, pd, _ = make_start(dual_theta(THETA, 4, 0)))
-    a = Float64(area(s0))
-    g_state = [a * (array_dot(dst, std0, j) + scalar_dot(dst, std0, j)) for j in 1:4]
-    g_params = [a * sum(scalar_dot(dp, pd, j) for dp in dps) for j in 1:4]
-    g = g_state .+ g_params
-    mark(@sprintf("tangent of the start %.1f s", t_tan))
-    # the forward reference: the same Dual{4} run to the end
-    t_dual = @elapsed (run!(std0, pd, nsteps; observer = ()); sync())
-    Jd = trapped_energy(std0)
-    gd = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:4]
-    rel = abs.(g .- gd) ./ abs.(gd)
-    @printf("  J = %.8g (primal), %.8g (Dual{4}); primal %.1f s, Dual{4} %.1f s, reverse %.1f s\n", J, ForwardDiff.value(Jd), t_fwd, t_dual, t_rev)
-    for j in 1:4
-        @printf("    d J/d %-8s reverse %+.8e (start %+.3e, parameters %+.3e)  Dual{4} %+.8e  relative difference %.2e\n",
-                TCASE.names[TCASE.free[j]], g[j], g_state[j], g_params[j], gd[j], rel[j])
-    end
-    println("  kernel arguments with dropped adjoints: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "n/a")
-    write_run("grad", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "eltype" => "Float32", "nsteps" => nsteps,
-                                          "checkpoint_every" => C, "gather" => "CompensatedGather(k = 1)", "mode" => "Reference"),
-                           "J" => Float64(J), "J_dual" => Float64(ForwardDiff.value(Jd)), "J_reverse_forward" => Float64(Jrev),
-                           "gradient_reverse" => g, "gradient_reverse_start" => g_state, "gradient_reverse_params" => g_params,
-                           "gradient_dual4" => gd, "relative_difference" => rel,
-                           "seconds" => Dict("primal_with_checkpoints" => t_fwd, "reverse" => t_rev, "dual4" => t_dual, "start_tangent" => t_tan,
-                                             "segments" => reverse(seg_seconds))))
+    verbose && mark(@sprintf("reverse of %d segments %.1f s", length(seg_seconds), t_rev))
+    t_tan = @elapsed (std0, pd, _ = make_start(dual_theta(θ, 4, 0); ppl, ny, extend, energy))
+    g_state = [s0area * (array_dot(dst, std0, j) + scalar_dot(dst, std0, j)) for j in 1:4]
+    g_params = [s0area * sum(scalar_dot(dp, pd, j) for dp in dps) for j in 1:4]
+    dst = nothing; reclaim()
+    return (; J, born, plasma, J_reverse_forward = Float64(Jrev), gradient = g_state .+ g_params, g_state, g_params, summary = summ,
+            std0, pd, nsteps, checkpoints = length(saved), seconds = (; primal = t_fwd, reverse = t_rev, tangent = t_tan, segments = reverse(seg_seconds)))
 end
 
-COMMAND == "steps" ? main_steps() : COMMAND == "grad" ? main_grad() : error("trapped.jl steps|grad [key=value ...]")
+function main_grad()
+    C = parse(Int, opt("C", "100"))
+    objective = opt("objective", "any")
+    mark("start: ppl $PPL ny $NY a0E $A0E θ $THETA, checkpoints every $C steps, objective $objective")
+    r = reverse_run(THETA; C, objective)
+    g = r.gradient
+    # the forward reference: the same Dual{4} run to the end
+    std0, pd = r.std0, r.pd
+    t_dual = @elapsed (run!(std0, pd, r.nsteps; observer = ()); sync())
+    parts = trapped_parts(std0)
+    Jd = objective == "any" ? parts.born + parts.plasma : objective == "born" ? parts.born : parts.born + 0.05f0 * tanh(parts.plasma / 0.05f0)
+    gd = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:4]
+    rel = abs.(g .- gd) ./ abs.(gd)
+    @printf("  J = %.8g (primal), %.8g (Dual{4}); primal with checkpoints %.1f s, reverse %.1f s, Dual{4} %.1f s\n",
+            r.J, ForwardDiff.value(Jd), r.seconds.primal, r.seconds.reverse, t_dual)
+    for j in 1:4
+        @printf("    dJ/d%-8s reverse %+.8e (start %+.3e, parameters %+.3e)  Dual{4} %+.8e  relative difference %.2e\n",
+                TCASE.names[TCASE.free[j]], g[j], r.g_state[j], r.g_params[j], gd[j], rel[j])
+    end
+    println("  kernel arguments with dropped adjoints: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "n/a")
+    write_run("grad", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "eltype" => "Float32", "nsteps" => r.nsteps,
+                                          "checkpoint_every" => C, "checkpoints" => r.checkpoints, "objective" => objective,
+                                          "gather" => "CompensatedGather(k = 1)", "mode" => "Reference"),
+                           "J" => r.J, "J_born" => r.born, "J_plasma" => r.plasma, "J_dual" => Float64(ForwardDiff.value(Jd)), "J_reverse_forward" => r.J_reverse_forward,
+                           "gradient_reverse" => g, "gradient_reverse_start" => r.g_state, "gradient_reverse_params" => r.g_params,
+                           "gradient_dual4" => gd, "relative_difference" => rel,
+                           "seconds" => Dict("primal_with_checkpoints" => r.seconds.primal, "reverse" => r.seconds.reverse, "dual4" => t_dual,
+                                             "start_tangent" => r.seconds.tangent, "segments" => r.seconds.segments)))
+end
+
+# ---------------------------------------------------------------- milestone 3
+# WP-068's optimization (`scripts/optim/trapped2d_opt.jl`) with the reverse gradient: the same
+# starts, coordinates, stopping rule and point store, each point one `reverse_run`. Runs in an
+# environment with the scripts environment's packages and Enzyme (its manifest is recorded).
+#     trapped.jl opt <dir> [trapped2d_opt.jl's opt keys] C=<checkpoint interval>
+function reverse_point(free; ppl, ny, energy, read = (;), objective = "any", kappa = 0.05, extend = 0, C = 100, kw...)
+    fade = get(read, :fade, TCASE.fade); rise = get(read, :rise, TCASE.rise)
+    t = @elapsed r = reverse_run(collect(Float64, free); C, extend, fade, rise, objective, kappa, ppl, ny, energy, verbose = false)
+    out = Dict{String,Any}(string(k) => v for (k, v) in pairs(r.summary))
+    x = trapped_point(collect(Float64, free))
+    out["objective"] = objective
+    out["J"] = r.J
+    out["free"] = collect(Float64, free)
+    out["x"] = collect(Float64, x)
+    out["z"] = collect(Float64, free) ./ TRAPPED_BOX.scale
+    out["a0"] = a0_for_energy(x[1], x[2]; energy = Float64(energy))
+    out["gradient"] = r.gradient
+    out["gradient_start"] = r.g_state
+    out["gradient_params"] = r.g_params
+    out["seconds"] = t
+    out["seconds_phases"] = Dict("primal" => r.seconds.primal, "reverse" => r.seconds.reverse, "tangent" => r.seconds.tangent)
+    out["eltype"] = string(F)
+    out["ppl"], out["ny"] = ppl, ny
+    out["gather"] = "compensated"
+    out["gradient_mode"] = "enzyme-reverse"
+    out["checkpoint_every"] = C
+    @printf("[%s] point %s: J %.8g, gradient %s, %.1f s (primal %.1f, reverse %.1f)\n", stamp(), string(round.(free; sigdigits = 6)), r.J,
+            string(round.(r.gradient; sigdigits = 6)), t, r.seconds.primal, r.seconds.reverse); flush(stdout)
+    return out
+end
+
+function main_opt()
+    dir = ARGS[2]
+    include(joinpath(REPO, "scripts", "optim", "trapped2d_opt.jl"))
+    C = parse(Int, opt("C", "100"))
+    o, _ = Base.invokelatest(parse_options, filter(a -> !startswith(a, "C="), ARGS[3:end]), OPT_DEFAULTS)
+    o["gradient"] = "enzyme-reverse"; o["checkpoint_every"] = C
+    Base.invokelatest() do
+        cfg = point_config(delete!(copy(o), "gradient"))
+        d = run_manifest("trapped2d-opt-reverse", dir, delete!(delete!(copy(o), "gradient"), "checkpoint_every");
+                         extra_params = Dict{String,Any}("gradient" => "enzyme-reverse", "checkpoint_every" => C))
+        cfgr = (; ppl = cfg.ppl, ny = cfg.ny, energy = cfg.energy, read = cfg.read, objective = cfg.objective, kappa = cfg.kappa, extend = cfg.extend, C)
+        store = PointStore(joinpath(d, "points"); run = free -> reverse_point(free; cfgr...))
+        coords = coords_of(o)
+        starts = start_points(o)
+        names = isempty(o["from"]) ? split(o["starts"], ",") : ["from"]
+        zb = z_of(coords, starts[Symbol(first(names))])
+        base = record!(store, free_of(coords, zb))
+        gb = grad_z(coords, zb, base["gradient"])
+        pgtol = o["pgtol"] * maximum(abs, gb)
+        println("base point: J = $(base["J"]) at $(base["free"]), gradient in z $gb, pgtol $pgtol"); flush(stdout)
+        for name in names
+            sdir = joinpath(d, name)
+            isfile(joinpath(sdir, "result.json")) && (println("start $name: done"); continue)
+            println("start $name from $(starts[Symbol(name)])"); flush(stdout)
+            r = optimize_start(store, starts[Symbol(name)], sdir; maxiters = o["maxiters"], pgtol, coords)
+            println("start $name: J = $(r["J"]) at $(r["free"]) (a₀ $(r["a0"])), $(r["retcode"]) after $(r["iterations"]) iterations, ",
+                    "$(r["points_run"]) points run in $(round(r["seconds"]; digits = 1)) s"); flush(stdout)
+        end
+        println("optimization done: $d")
+    end
+end
+
+COMMAND == "steps" ? main_steps() : COMMAND == "grad" ? main_grad() : COMMAND == "opt" ? main_opt() : error("trapped.jl steps|grad|opt [key=value ...]")

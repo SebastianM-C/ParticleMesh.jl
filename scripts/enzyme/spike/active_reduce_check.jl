@@ -19,7 +19,7 @@ function f!(y, x, a, s)
     return nothing
 end
 n = 1000
-x = CuArray(Float32.(range(-1, 1; length = n)))
+x = CuArray(Float32.(range(-0.5, 1; length = n)))
 y = similar(x); dy = similar(x); fill!(dy, 1)
 a = 0.5f0; s = Coeffs(0.25f0, 2.0f0, Int32(3))
 res = Enzyme.autodiff(Reverse, f!, Const, Duplicated(y, dy), Const(x), Active(a), Active(s))
