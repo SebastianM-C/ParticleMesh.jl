@@ -374,9 +374,12 @@ end
 # tail, six durations ahead of its peak); compared from column 25 on. With a PML of 6 cells on the
 # back edge of both, the same holds, and against free space (a static box with 100 more columns
 # behind and a bare back too far away to be seen) the eight columns behind the layer differ far
-# less than the bare back edge's (T-570 in 3D). Float64, fields only.
-function window_vacuum_3d(back; be = CPU(), extra = 100)
-    prob = window_lwfa_3d(Float64; plasma = false, nsteps = 200)
+# less than the bare back edge's (T-570 in 3D). The case's window starts as the pulse ends, so a
+# third run puts the antenna further forward (x = 30) and starts the window at the pulse's peak
+# (t = 18): the plane moves back 23 columns while it launches, which an antenna that moved with the
+# window would show (the mutation breaker). Float64, fields only.
+function window_vacuum_3d(back; be = CPU(), extra = 100, position = 10, start = 33)
+    prob = window_lwfa_3d(Float64; plasma = false, nsteps = 200, position, start)
     n = prob.cells
     h = prob.length[1] / n[1]
     nums = EMNumerics(; back_absorber = back)
@@ -386,7 +389,7 @@ function window_vacuum_3d(back; be = CPU(), extra = 100)
     twin = static_twin_3d(prob, n[1] + s_end + 8)
     ref = EMState(twin, nums; backend = be)
     initialize!(ref, twin)
-    far = window_lwfa_3d(Float64; plasma = false, nsteps = prob.nsteps, position = 10 + extra * h, cells = (n[1] + s_end + 8 + extra, n[2], n[3]),
+    far = window_lwfa_3d(Float64; plasma = false, nsteps = prob.nsteps, position = position + extra * h, cells = (n[1] + s_end + 8 + extra, n[2], n[3]),
                          start = Inf)
     free = EMState(far, EMNumerics(); backend = be)
     initialize!(free, far)
@@ -430,6 +433,11 @@ function body_T1036(be)
         @test r.worst <= C * eps(Float64)
     end
     @test bare.backdiff > 1e-6                 # the back edge does differ from the twin's interior, so the comparison sees it
+    moving = window_vacuum_3d(nothing; be, position = 30, start = 18)
+    @info "T-1036 the antenna launching while the window moves" moving
+    @test moving.before <= C * eps(Float64)
+    @test moving.worst <= C * eps(Float64)
+    record!("T-1036 moving antenna", Float64, moving.worst / eps(Float64), be)
     record!("T-1036 bare", Float64, bare.worst / eps(Float64), be)
     record!("T-1036 back PML", Float64, layer.worst / eps(Float64), be)
     d = get!(MEASURED, "T-1036 near the back edge against free space", Dict{String,Float64}())
@@ -471,7 +479,7 @@ end
     @test window_plasma_3d(T; start = 1.0) isa EMProblem{3}
     @test_throws ArgumentError EMState(window_plasma_3d(T), EMNumerics(; filter = BinomialFilter(1)))
     @test_throws ArgumentError EMState(window_plasma_3d(T), EMNumerics(; back_absorber = AbsorbingLayer(; cells = 4, strength = 1)))
-    @test_throws ArgumentError EMState(plasma_step_3d(T), EMNumerics(; back_absorber = PML(; cells = 4)))      # no window
+    @test_throws "needs a moving window" EMState(plasma_step_3d(T; cells = (16, 7, 6)), EMNumerics(; back_absorber = PML(; cells = 4)))   # no window
     @test_throws ArgumentError EMState(window_plasma_3d(T; cells = (8, 6, 6)), EMNumerics(; back_absorber = PML(; cells = 4)))   # 2·4 ≥ 8
     # the fewest columns the guards allow leave plasma columns behind the front margin (the 2D check of a too short window needs filter passes)
     @test injection_column(EMState(window_plasma_3d(T; cells = (6, 6, 6)), EMNumerics()).aux.window) == 3

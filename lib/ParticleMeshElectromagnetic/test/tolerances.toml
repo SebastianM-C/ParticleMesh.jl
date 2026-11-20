@@ -1127,10 +1127,10 @@ measured_partial = { "Dual{Float32,3}" = 0.167 }
 status = "proposed; T-475's C and T-1016's"
 
 ["T-1036"]
-quantity = "T-472 in 3D: the vacuum pulse of window_lwfa_3d in the window against its static twin, on every column before the window moves and on columns 25 … n₁ after, relative to the twin's max |E, B| there, with a bare back edge and with a back-edge PML of 6 cells (C); the largest difference on the eight columns behind the back edge (behind the layer) against free space, the PML's over the bare edge's (C_near)"
+quantity = "T-472 in 3D: the vacuum pulse of window_lwfa_3d in the window against its static twin, on every column before the window moves and on columns 25 … n₁ after, relative to the twin's max |E, B| there, with a bare back edge, with a back-edge PML of 6 cells, and (moving_antenna) with the plane at x = 30 and the window starting at the pulse's peak, so that the plane moves back while it launches (C); the largest difference on the eight columns behind the back edge (behind the layer) against free space, the PML's over the bare edge's (C_near)"
 scale = "C: eps(Float64)·max|E, B|; C_near: the ratio itself"
 C = 1000
 C_near = 0.05
-measured = { bare = 140.0, back_PML = 144.0 }
+measured = { bare = 140.0, back_PML = 144.0, moving_antenna = 157.0 }
 measured_near = { bare = 1.84, back_PML = 0.0198 }
 status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72. C_near holds at normal incidence only: at oblique incidence (150°, 90°, 59° to x, in the x–y and x–z planes alike) the physics breaker measured the PML's energy ahead of the back edge at 0.2 to 0.24 of the bare edge's with 6 cells and 0.07 to 0.1 with 10, the 2D back PML's behaviour (T-1030 ties the 3D window to it), unverified in 2D"
