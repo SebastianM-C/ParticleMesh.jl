@@ -2,7 +2,9 @@
     Shape{P}()
 
 B-spline shape function of order `P` (1: cloud in cell, 2: quadratic, the A2 default). The order
-is type-level configuration, so kernels specialize on it.
+is type-level configuration, so kernels specialize on it. Order 0 (nearest grid point) has
+weights and a reach for a gather only: it is the linear shape's lower order along a field
+component's staggered axes in a Galerkin gather (WP-070); no deposition takes it.
 """
 struct Shape{P} end
 const Linear = Shape{1}()
@@ -32,6 +34,11 @@ Weights of a particle at in-cell offset `δ ∈ [0, 1)` of cell `c` on the nodes
 The pairs (order 1, `Node`) and (order 2, `Center`) have a stencil independent of `δ`; the
 other two need `floor` of the offset, which is the only place a `Dual` offset meets an integer.
 """
+# Order 0: the one node nearest to the particle, weight one. On `Center()` it is the cell's own
+# centre for every offset; on `Node()` the nearer cell edge (the right one from δ = 1/2 on).
+@inline shape_weights(::Shape{0}, ::Center, δ::T) where {T} = (Int32(0), (one(T),))
+@inline shape_weights(::Shape{0}, ::Node, δ::T) where {T} = (floor(Int32, δ + one(T) / 2), (one(T),))
+
 @inline function shape_weights(::Shape{1}, ::Node, δ::T) where {T}
     return (Int32(0), (one(T) - δ, δ))
 end
@@ -65,6 +72,8 @@ end
 
 For any offset in `[0, 1)`, the nodes touched by a particle in cell `c` lie in `c+lo:c+hi`.
 """
+stencil_reach(::Shape{0}, ::Center) = (0, 0)
+stencil_reach(::Shape{0}, ::Node) = (0, 1)
 stencil_reach(::Shape{1}, ::Node) = (0, 1)
 stencil_reach(::Shape{1}, ::Center) = (-1, 1)
 stencil_reach(::Shape{2}, ::Center) = (-1, 1)

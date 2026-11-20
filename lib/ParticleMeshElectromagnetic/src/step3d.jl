@@ -32,10 +32,10 @@ numerics' `absorber` is an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) exactly w
 axis of the problem is `:open` (each placed layer also checks its fit on its axis), a
 `back_absorber` that is `nothing` or a [`PML`](@ref), and only with a moving window, a `filter` of zero
 passes and `resort = false` (neither the binomial filter nor the resort is tested at N = 3 yet),
-`gather = nothing` (a [`CompensatedGather`](@ref) sharpens along a laser axis), unless
-`problem.dt` is below the Courant limit of the numerics' solver ([`check_courant`](@ref)), and
-unless with a window every pulse is over before the window passes its antenna or the back edge's
-PML reaches it (as at N = 2, [`check_params`](@ref)).
+`gather = nothing` or `GalerkinGather()` (a [`CompensatedGather`](@ref), alone or in a Galerkin
+gather, is not tested at N = 3), unless `problem.dt` is below the Courant limit of the numerics'
+solver ([`check_courant`](@ref)), and unless with a window every pulse is over before the window
+passes its antenna or the back edge's PML reaches it (as at N = 2, [`check_params`](@ref)).
 """
 function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(), every::Integer = 1, record = RECORD_GROUPS) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -53,8 +53,8 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("filter = $(numerics.filter): the binomial filter is not yet tested at N = 3, so a 3D state takes BinomialFilter(0)"))
     numerics.resort &&
         throw(ArgumentError("resort = true: the sort from the previous order is not yet tested at N = 3, so a 3D state takes resort = false"))
-    numerics.gather === nothing ||
-        throw(ArgumentError("gather = $(numerics.gather): the compensated gather sharpens along a laser axis, which the periodic 3D box has not, so a 3D state reads the grid's fields (gather = nothing)"))
+    (numerics.gather isa CompensatedGather || numerics.gather isa GalerkinGather{CompensatedGather}) &&
+        throw(ArgumentError("gather = $(numerics.gather): the compensated gather is not tested at N = 3, so a 3D state reads the grid's fields (gather = nothing or GalerkinGather())"))
     n = problem.cells
     wgs = numerics.workgroupsize
     grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
