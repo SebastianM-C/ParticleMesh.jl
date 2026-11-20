@@ -32,7 +32,7 @@ PML on the window's back edge, and a 3D window run; Reference mode.
 const CKPT_CASES = (
     ("2D window with the back-edge PML",
      () -> (window_plasma(Float64; cells = (24, 6), nsteps = 24, start = 0, drift = (1 // 2, 0, 0)), EMNumerics(; back_absorber = PML(; cells = 4)))),
-    ("3D window", () -> (window_plasma_3d(Float64; cells = (16, 4, 4), nsteps = 16, start = 0, drift = (1 // 2, 0, 0)), EMNumerics())),
+    ("3D window", () -> (window_plasma_3d(Float64; cells = (16, 6, 6), nsteps = 16, start = 0, drift = (1 // 2, 0, 0)), EMNumerics())),
 )
 
 @testset "T-1112 Revolve's forward schedule with checkpoint_storage: every checkpoint is a step of the uninterrupted run and continues to its end bit for bit, 2D and 3D, device and host slots [A4, WP-080]" begin

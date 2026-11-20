@@ -299,9 +299,13 @@ end
         δ = particle_offset(s, i, Val(3))
         c0 = old_cell_3d(s, i)
         δ0 = old_offset_3d(s, i)
-        fr = ntuple(d -> flux_axis_frame(shape, st[d], c[d], δ[d], c0[d], δ0[d], n[d]), Val(3))
-        sl = ntuple(d -> flux_axis_slopes(shape, st[d], c[d], δ[d], c0[d], δ0[d], n[d]), Val(3))
-        b = ntuple(d -> c[d] + fr[d][1] + g, Val(3))
+        # written out per axis: the staggers are a tuple of distinct types, which an index by a
+        # closure's argument would not infer
+        fr = (flux_axis_frame(shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1]), flux_axis_frame(shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2]),
+              flux_axis_frame(shape, st[3], c[3], δ[3], c0[3], δ0[3], n[3]))
+        sl = (flux_axis_slopes(shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1]), flux_axis_slopes(shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2]),
+              flux_axis_slopes(shape, st[3], c[3], δ[3], c0[3], δ0[3], n[3]))
+        b = (c[1] + fr[1][1] + g, c[2] + fr[2][1] + g, c[3] + fr[3][1] + g)
         Vx, nx, ox = flux_component_pullback_3d(Val(1), Ēx, fr, sl, b, T)
         Vy, ny, oy = flux_component_pullback_3d(Val(2), Ēy, fr, sl, b, T)
         Vz, nz, oz = flux_component_pullback_3d(Val(3), Ēz, fr, sl, b, T)

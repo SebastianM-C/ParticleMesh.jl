@@ -1346,6 +1346,6 @@ status = "proposed"
 ["T-1113"]
 quantity = "Enzyme's gradient through @ad_checkpoint with checkpoint_storage against the plain reverse pass of the same loop of transfers, max over the floating-point evolved arrays"
 scale = "max|plain gradient| over those arrays"
-C = 64
-measured = {}
+C = 16
+measured = { Float64 = 4.4 }
 status = "proposed"
