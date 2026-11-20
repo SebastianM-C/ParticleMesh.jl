@@ -8,7 +8,7 @@
 - L-BFGS-B with the reverse gradient reaches WP-068's born-only optimum from all four starts: J_born = 0.22160 at τ = 7.762 (the floor of the power cap), w = 7.346 to 7.349, focus 110, n = 0.10. WP-068 reached 0.2216 at w = 7.346 to 7.348 with duals. Near the optimum the reverse gradient is rough: d ln J/dz changes by up to 0.44 for Δw = 1.6·10⁻⁵ (`opt/tables.md`), while J is flat there.
 - At WP-065's five points, the Galerkin-compensated gather raises J over the compensated gather by 0.2 to 0.8 % at λ₀/24 and by 0.06 to 0.13 % at λ₀/64. At λ₀/32 it is closer to the finest grid's J at four of the points: 0.01 to 1.2 % below it, against 0.27 to 1.8 %. A Galerkin-compensated run takes 10 to 18 % less time.
 - The two gathers' d ln J/dz differ by up to 0.68 at λ₀/32 and 0.21 at λ₀/48 and /64. With either gather, the density component still moves by up to 0.5 between λ₀/48 and /64 (figure). One λ₀/24 run (n0.085, Galerkin-compensated) is an outlier, with d ln J/dn = 8.1 against 0.97.
-- The reverse pass needs workarounds in the scripts, none in `lib/`. Three are upstream bugs filed as #545, #546 and #547. Two are still to be filed. A group of five was found unnecessary and stays as run. Not measured: Dual{1}, and the memory each method needs on the trapped case (Open issues).
+- The reverse pass needs workarounds in the scripts, none in `lib/`. Upstream bugs are filed as #545, #546, #547 and #551. One, the `copyto!` segfault, is still to be filed. A group of five was found unnecessary and stays as run. Not measured: Dual{1}, and the memory each method needs on the trapped case (Open issues).
 
 | | |
 |---|---|
@@ -63,7 +63,7 @@ The gather campaign's numbers are in `gathergrad.md` and `gathergrad.json`. The 
   2. Device `copyto!` is replaced by a KernelAbstractions copy kernel in the filter, the window shift and the PML shift, because Enzyme segfaults while compiling it. To be filed.
   3. A reverse rule for `sinpi` calls libdevice (#545).
   4. A hand-written antenna rule, because `sincos` gives Enzyme an untyped tape (#547). The laser's adjoint then comes from duals over its ten fields, so its cost grows with the number of laser parameters. A separate work package replaces `sincos`.
-  5. The refill's flag sum is a one-thread kernel, because `sum!` over a view frees its parent under Enzyme. To be filed.
+  5. The refill's flag sum is a one-thread kernel, because `sum!` over a view freed its parent under Enzyme in these runs. A clean reproducer did not show the freeing. It found instead that `sum!` on a CuArray does not compile under Enzyme at all (#551, JuliaGPU/CUDA.jl#3407 upstream). So here it compiled only through `active_reduce.jl`'s replacement of KernelAbstractions' rules, and the freed array is probably a defect of that patch. `lib/` still calls `sum!` in the window and the ionization.
   6. Found unnecessary by the spikes in `scripts/enzyme/spike/`, but they stay as run: the unrolled species loops, the ionization split into four kernels, the skip of a freed array on restore, and two environment flags.
 
 ## Data
