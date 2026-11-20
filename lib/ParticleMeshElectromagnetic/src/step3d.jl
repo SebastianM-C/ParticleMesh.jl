@@ -1,9 +1,10 @@
-# The module at N = 3 (WP-042, WP-072, WP-074, WP-075): the state of a 3D problem. The step,
-# `initialize!`, the kinetic energy, the initial field, the moving window and the field ionization
-# are the methods over N of step.jl, step2d.jl, window.jl and ionization.jl; a 3D problem has no
-# witness bunch, so its field modifiers are the absorbers of its open transverse axes, the PML of a
-# moving window's back edge, the antennas of its lasers (WP-073) and the window's x edges, and
-# `aux` has the window's frame and the dopant's and no witness.
+# The module at N = 3 (WP-042, WP-072, WP-074, WP-075, WP-076): the state of a 3D problem. The
+# step, `initialize!`, the kinetic energy, the initial field, the moving window, the field
+# ionization and the compensated gather are the methods over N of step.jl, step2d.jl, window.jl,
+# ionization.jl and gather.jl; a 3D problem has no witness bunch, so its field modifiers are the
+# absorbers of its open transverse axes, the PML of a moving window's back edge, the antennas of
+# its lasers (WP-073) and the window's x edges, and `aux` has the window's frame and the dopant's
+# and no witness. The compensated gather's stencil acts along x on every transverse line alike.
 
 """
     EMState(problem::EMProblem{3}, numerics; backend = CPU(), every = 1, record = RECORD_GROUPS)
@@ -13,7 +14,9 @@ The state of a 3D problem ([`EMState`](@ref)): the grid of `problem.cells` cells
 [`SpeciesDescription`](@ref) at capacity `prod(cells)·prod(ppc)` with the extras of
 `flux_extras(T, 3)` (the old position per axis, which the push stores; with a moving window
 `(1 + numerics.headroom)` times that capacity), the workspaces, the
-fields of [`field_layout`](@ref)`(Val(3))`, `ρ`, the kinetic-energy chunks `K` (one entry per
+fields of [`field_layout`](@ref)`(Val(3))`, the copy of E and B that the particles read with a
+[`CompensatedGather`](@ref) (`sharpened`, sharpened along x on every transverse line; `nothing`
+without one; WP-076), `ρ`, the kinetic-energy chunks `K` (one entry per
 [`KINETIC_CHUNK`](@ref) slots of each species; none without species), the default
 [`HistoryRecorder`](@ref) for `problem.kmode` and `problem.nsteps` steps (recording every `every`
 steps the groups of `record`), as field modifiers the numerics' absorber placed on each open
@@ -33,11 +36,11 @@ component at a time at N = 3, also used by `Fast()` on an element type without a
 numerics' `absorber` is an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) exactly when a transverse
 axis of the problem is `:open` (each placed layer also checks its fit on its axis), a
 `back_absorber` that is `nothing` or a [`PML`](@ref), and only with a moving window, a `filter` of zero
-passes and `resort = false` (neither the binomial filter nor the resort is tested at N = 3 yet),
-`gather = nothing` or `GalerkinGather()` (a [`CompensatedGather`](@ref), alone or in a Galerkin
-gather, is not tested at N = 3), unless `problem.dt` is below the Courant limit of the numerics'
-solver ([`check_courant`](@ref)), and unless with a window every pulse is over before the window
-passes its antenna or the back edge's PML reaches it (as at N = 2, [`check_params`](@ref)).
+passes and `resort = false` (neither the binomial filter nor the resort is tested at N = 3 yet), unless
+a `gather`'s wavenumber is resolved along x ([`sharpening_beta`](@ref)), unless
+`problem.dt` is below the Courant limit of the numerics' solver ([`check_courant`](@ref)), and
+unless with a window every pulse is over before the window passes its antenna or the back edge's
+PML reaches it (as at N = 2, [`check_params`](@ref)).
 """
 function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(), every::Integer = 1, record = RECORD_GROUPS) where {T}
     numerics.current isa Union{Esirkepov,NoCurrent} ||
@@ -55,12 +58,11 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("filter = $(numerics.filter): the binomial filter is not yet tested at N = 3, so a 3D state takes BinomialFilter(0)"))
     numerics.resort &&
         throw(ArgumentError("resort = true: the sort from the previous order is not yet tested at N = 3, so a 3D state takes resort = false"))
-    (numerics.gather isa CompensatedGather || numerics.gather isa GalerkinGather{CompensatedGather}) &&
-        throw(ArgumentError("gather = $(numerics.gather): the compensated gather is not tested at N = 3, so a 3D state reads the grid's fields (gather = nothing or GalerkinGather())"))
     n = problem.cells
     wgs = numerics.workgroupsize
     grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
+    check_gather(numerics.gather, numerics.shape, grid)
     layers = map(d -> place_absorber(numerics.absorber, grid, problem.dt; axis = d, backend, workgroupsize = wgs,
                                                 solver = numerics.solver), open)
     window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
@@ -82,7 +84,8 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs, every, record)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
            window = window, witness = nothing, ionization = ionization)
-    return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), nothing, field(backend, T, grid),
+    fields = em_fields(backend, T, grid)
+    return EMState(numerics, grid, problem.dt, species, ws, fields, gather_scratch(numerics.gather, fields), field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
                    field_modifiers(layers, back, planes, window), aux, Ref(false))
 end

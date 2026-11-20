@@ -12,7 +12,7 @@ their Courant limit, the relativistic Boris pusher behind a pusher type, the ste
 and the diagnostics. At `N = 3` the module has the 3D3V step (WP-042): the problem
 description, the state, the push, the charge-conserving current, the Yee solver, the initial field
 and the recorder, periodic or open along y and z (WP-072), with the laser antenna of a round Gaussian beam (WP-073) and the
-moving window with its density ramp, its refill and the PML of its back edge (WP-074), the field ionization of a dopant (WP-075), and with no witness, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
+moving window with its density ramp, its refill and the PML of its back edge (WP-074), the field ionization of a dopant (WP-075) and the compensated gather (WP-076), and with no witness, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
 Gauss's law holds to roundoff from the initial `cumsum_periodic!` field onwards. The
 electrostatic cases (Landau damping, two-stream) run as edge cases with no transverse momenta
 or fields, as Smilei runs them.

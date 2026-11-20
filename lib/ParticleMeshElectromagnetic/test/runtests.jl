@@ -18,6 +18,7 @@ include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, 
 include("ionization_cases.jl") # WP-059: the field ionization's problems, after em2d_cases.jl
 include("m4_cases.jl")         # WP-079: the M4 solver's discrete theory, after yee_nd_cases.jl
 include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl and window_cases.jl
+include("gather_cases.jl")     # WP-067, WP-076: the compensated gather's states and sampled modes, gather.jl's and em3d_gather.jl's
 
 # The suite's files in their order; each note says what a file reuses from earlier ones. CI runs
 # them in the groups of groups.toml, in parallel jobs (ParticleMeshCore's test/groups.jl).
@@ -72,7 +73,8 @@ const TEST_FILES = [
     "m4_3d.jl",               # WP-079: T-1094 to T-1097, the M4 solver in the 3D step, after em3d_step.jl, em3d_open.jl and em3d_antenna.jl (their helpers)
     "em3d_window.jl",         # WP-074: T-1030 to T-1038, the moving window of the 3D step, after em3d_step.jl (its helpers and worker)
     "m4_window_3d.jl",        # WP-079: T-1100, the M4 solver in the 3D moving window, after em3d_window.jl (its helpers)
-    "em3d_ionization.jl",     # WP-075: T-1040 to T-1048, the field ionization of the 3D step; its own helpers and worker
+    "em3d_ionization.jl",     # WP-075: T-1040 to T-1048, the field ionization of the 3D step (its shared helpers and worker in em3d_cases.jl)
+    "em3d_gather.jl",         # WP-076: T-1050 to T-1056, the compensated gather of the 3D step
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]

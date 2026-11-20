@@ -1227,6 +1227,38 @@ measured_floor_max = 2.4e-8
 measured_dual = { charge = 8.59e-7, energy = 1.25e-6, charge_primal = 8.4e-7, energy_primal = 1.32e-6 }
 status = "proposed; T-778's and T-779's C"
 
+["T-1050"]
+quantity = "the 3D sharpened copy of a sampled mode along x (k = 1, 2) against (1 + 4β sin²(kΔx/2)) times the mode, every entry and every component (stencil), the same for an oblique mode of the same k_x with k_y, k_z across the box (oblique); the projection of the particles' 3D gather of each component at 8 offsets per cell along x onto the mode against the stencil's transfer times the shape's closed-form lattice mean (gather); on 24 × 6 × 6 cells"
+scale = "eps(T) (mode amplitude 1)"
+C = 8
+measured = { stencil = 2.32, gather = 1.76, oblique = 5.14 }
+status = "proposed; T-960's C"
+
+["T-1051"]
+quantity = "a 3D run with the compensated gather invariant along z or y (a quarter turn about x) against the 2D run with it, after initialize! and after every step: every component on every line of the invariant axis; T-1040's beams in a field with a dopant (16 × 12 cells, periodic, 20 steps) and its window plasma with a doped section (64 steps), Reference mode"
+scale = "as T-1040"
+C = 32
+measured = { Float32 = 0.544, Float64 = 0.544, "Dual{Float32,3}" = 0.544 }
+status = "proposed; T-1040's C"
+
+["T-1052"]
+quantity = "Gauss's law with the ions' charge and the compensated gather in 3D: T-1043's periodic box (C, box) and T-1044's dopant in the window, off nodes 1, 2 and the antenna's two columns, 120 steps (C, window); both modes"
+scale = "as T-1043 (box) and T-1044 (window)"
+C = 1
+measured_box = { Float32 = 0.199, Float64 = 0.287, "Dual{Float32,3}" = 0.229 }
+measured_window = { Float32 = 0.116, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
+status = "proposed; T-1043's and T-1044's C"
+
+["T-1055"]
+quantity = "ForwardDiff through the 3D compensated gather against the finite-difference floor of A7 (fd_scan, Float64, Reference): T-1046's born charge and energy in a₀, rel/floor at the minimising step (C) and the floor (floor_max); the Dual{Float32,3} partials in a₀, the density and the prefactor and the Float32 primal against Float64 (C_dual)"
+scale = "as T-1046"
+C = 4
+floor_max = 1e-6
+C_dual = 1e-5
+measured = { charge = 0.0156, energy = 0.0249 }
+measured_dual = { charge = 8.92e-7, energy = 1.01e-6, charge_primal = 6.59e-7, energy_primal = 9.03e-7 }
+status = "proposed; T-1046's C"
+
 ["T-1080"]
 quantity = "an oblique discrete eigenmode of the M4 scheme (m = 3 at N = 1, (3, −2) at N = 2, (3, −2, 1) at N = 3) in each polarization against the exact M4 relation: largest field error over every E and B component, value and partials"
 scale = "steps (amplitude 1), 200 steps at Δt = 1/2 and 95/100 of the Courant limit"
