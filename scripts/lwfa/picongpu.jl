@@ -98,7 +98,7 @@ window's back at lab x = c(t − start).
 function picongpu_layout(case)
     d = derived(case)
     g = case["grid"]
-    g["transverse"] == "periodic" || error("only a periodic transverse axis is generated for PIConGPU")
+    g["transverse"] in ("periodic", "open") || error("transverse = $(g["transverse"]): PIConGPU's deck is periodic or open")
     HUYGENS >= PIC_ABSORBER + 1 || error("the Huygens surface must clear the absorber")
     j0 = HUYGENS + 1
     devices = Int(get(g, "picongpu_devices", PIC_DEVICES_DEFAULT))
@@ -167,13 +167,16 @@ function picongpu_parameters(case; plasma = true, precision = "Float64")
     s = D["spectrum_ekin"]
     keV = u.energy / PIConGPUDeck.QE_SI / 1e3                # m_e c² in keV, with PIConGPU's constants
     ppc = Int.(P["particles_per_cell"])
-    return (; units = u, precision, plasma, layout = lay, cells = lay.cells, cell, dt = d.dt,
+    return (; units = u, precision, plasma, periodic = case["grid"]["transverse"] == "periodic", layout = lay, cells = lay.cells, cell, dt = d.dt,
               cell_SI = (cell[1] * u.length, cell[2] * u.length, d.dx * u.length), dt_SI = d.dt * u.time,
               steps = d.steps, every = d.every, laser, density = Float64(P["density"]),
               vacuum = Float64(P["vacuum"]), ramp = Float64(P["ramp"]), dx = d.dx,
               lattice = (ppc[2], ppc[1]),                    # numParticlesPerDimension (x, y) = (transverse, longitudinal)
               histogram = (; bins = Int(s[3]), min_keV = Float64(s[1]) * keV, max_keV = Float64(s[2]) * keV))
 end
+
+"The lines of `incidentField.param` that make the Huygens surface contiguous across a periodic transverse axis."
+const PIC_HUYGENS_CONTIGUOUS_LINES = "            namespace profiles\n            {\n                /* the transverse axis is periodic */\n                template<>\n                struct MakePeriodicTransversalHuygensSurfaceContiguous<LwfaLaser>\n                {\n                    static constexpr bool value = true;\n                };\n            } // namespace profiles\n"
 
 """
     picongpu_param_files(case; plasma, precision) -> Dict{String,String}
@@ -427,7 +430,7 @@ function picongpu_param_files(case; plasma = true, precision = "Float64")
                 using ZMin = profiles::None;
                 using ZMax = profiles::None;
                 constexpr int32_t POSITION[3][2] = {
-                    {$HUYGENS, -$HUYGENS}, // x (periodic: the surface spans the axis)
+                    {$HUYGENS, -$HUYGENS}, // x$(p.periodic ? " (periodic: the surface spans the axis)" : " (open: inside the PML)")
                     {$HUYGENS, -$HUYGENS}, // y: the laser's plane at ($HUYGENS + 0.75) cells
                     {$HUYGENS, -$HUYGENS} // z
                 };
@@ -435,6 +438,8 @@ function picongpu_param_files(case; plasma = true, precision = "Float64")
         } // namespace fields
     } // namespace picongpu
     """
+    # an open transverse axis: the Huygens surface ends inside the PML, not across the axis
+    p.periodic || (f["incidentField.param"] = replace(f["incidentField.param"], PIC_HUYGENS_CONTIGUOUS_LINES => ""))
     f["fileOutput.param"] = H * """
     #pragma once
     #include <pmacc/meta/conversion/MakeSeq.hpp>
@@ -482,8 +487,8 @@ for the reader's spectrum), the field energies and (plasma) the histogram.
 function picongpu_arguments(p)
     lay, h = p.layout, p.histogram
     a = ["-d 1 $(lay.devices)", "-r $(lay.devices)", "-g $(p.cells[1]) $(p.cells[2])", "-s $(p.steps)",
-         "--periodic 1 0", "-m", "--windowMovePoint $(PIConGPUDeck.cfloat(lay.move_point))", "--autoAdjustGrid 0",
-         "--fieldAbsorber exponential", "--currentInterpolation none",
+         "--periodic $(p.periodic ? 1 : 0) 0", "-m", "--windowMovePoint $(PIConGPUDeck.cfloat(lay.move_point))", "--autoAdjustGrid 0",
+         "--fieldAbsorber $(p.periodic ? "exponential" : "pml")", "--currentInterpolation none",
          "--openPMD.period $(p.every)", "--openPMD.file simData", "--openPMD.ext h5", "--openPMD.infix NULL",
          "--openPMD.source $(p.plasma ? "species_all,fields_all" : "fields_all")", "--fields_energy.period $(p.every)"]
     p.plasma && push!(a, "--$(PIC_SPECIES)_energyHistogram.period $(p.every)", "--$(PIC_SPECIES)_energyHistogram.filter all",
