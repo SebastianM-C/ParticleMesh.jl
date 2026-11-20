@@ -177,8 +177,9 @@ end
 # weights and kicked momenta) has the same bits, and the steps' fields differ (the plain state's
 # solve starts from the copy). The same for `initialize!`'s half-step kick: the compensated load
 # is the plain load at t − Δt/2 kicked by the module's kernel in the sharpened copy, bit for bit,
-# and not the plain kick. The step writes the copy itself before anything reads it (it starts
-# from NaN), and the observer reads the grid's fields: step 6's history entries are those of the
+# and not the plain kick. The step writes the copy itself before anything reads it, at every step
+# (from NaN before steps 5 and 6, the copy after each is the stencil's of the fields the step
+# started from), and the observer reads the grid's fields: step 6's history entries are those of the
 # plain step from the same state. A compensated run restarted at step 3, and a view of it over
 # copies of its arrays (`state_view`, the harness' path), continue with the uninterrupted run's
 # bits (the copy is scratch, written before it is read). In the moving window the copy's x-guards
@@ -190,16 +191,23 @@ function body_T962(be)
         p = params(prob)
         cg = CompensatedGather()
         st = ion_state(prob; be, gather = cg)
-        run!(st, p, 5)
+        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
+        copy_bits() = map(name -> bits(st.sharpened[name]), GATHER_NAMES)
+        run!(st, p, 4)
+        want = map(name -> (r = similar(st.fields[name]); sharpen_x!(r, st.fields[name], β, st.grid); bits(r)), GATHER_NAMES)
+        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))     # the step writes the copy before anything reads it, at every step
+        step!(st, p, 5)
+        @test copy_bits() == want                  # the copy of the fields step 5 started from
         snap = snapshot(st, 5)
         plain = snap_state(prob, snap, be)          # to step in the sharpened fields
         diag = snap_state(prob, snap, be)           # to step in the grid's own fields
-        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
         for name in GATHER_NAMES
             sharpen_x!(plain.fields[name], st.fields[name], β, st.grid)
         end
-        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))     # the step writes the copy before anything reads it
+        want = map(name -> bits(plain.fields[name]), GATHER_NAMES)
+        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))
         step!(st, p, 6)
+        @test copy_bits() == want                  # and of those step 6 started from
         step!(plain, p, 6)
         step!(diag, p, 6)
         @test particle_bits(plain) == particle_bits(st)

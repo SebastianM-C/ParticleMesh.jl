@@ -224,8 +224,9 @@ snap_state_3d(prob, snap, be) = restore!(EMState(prob, EMNumerics(); backend = b
 # restored into a plain state whose E and B are then the compensated state's copy, and both take
 # step 6 (a birth step): every particle array (the push, the atoms' populations, the births'
 # positions, weights and kicked momenta) has the same bits, and the fields differ. The same for
-# `initialize!`'s half-step kick. The step writes the copy itself before anything reads it (it
-# starts from NaN), and the observer reads the grid's fields. A compensated run restarted at step
+# `initialize!`'s half-step kick. The step writes the copy itself before anything reads it, at
+# every step (from NaN before steps 5 and 6, the copy after each is the stencil's of the fields the
+# step started from), and the observer reads the grid's fields. A compensated run restarted at step
 # 3, and a view of the state over copies of its arrays, continue with the uninterrupted run's bits.
 # In the 3D window the copy's x-guards are zero as the grid's are, and its interior is the stencil's.
 function body_T1053(be)
@@ -235,16 +236,23 @@ function body_T1053(be)
         prob = ion_box_3d(T; levels, density = seeded(T, 1) / 20, ppc = (2, 1, 1), every = 2, nsteps = 8, plasma = true, rows = ((1.1, 2.9), nothing))
         p = params(prob)
         st = ion_state_3d(prob; be, gather = cg)
-        run!(st, p, 5)
+        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
+        copy_bits() = map(name -> bits(st.sharpened[name]), GATHER_NAMES)
+        run!(st, p, 4)
+        want = map(name -> (r = similar(st.fields[name]); sharpen_x!(r, st.fields[name], β, st.grid); bits(r)), GATHER_NAMES)
+        foreach(a -> fill!(a, T(NaN)), values(st.sharpened))
+        step!(st, p, 5)
+        @test copy_bits() == want                  # the copy of the fields step 5 started from
         snap = snapshot(st, 5)
         plain = snap_state_3d(prob, snap, be)
         diag = snap_state_3d(prob, snap, be)
-        β = sharpening_beta(cg, st.numerics.shape, st.grid.dx[1])
         for name in GATHER_NAMES
             sharpen_x!(plain.fields[name], st.fields[name], β, st.grid)
         end
+        want = map(name -> bits(plain.fields[name]), GATHER_NAMES)
         foreach(a -> fill!(a, T(NaN)), values(st.sharpened))
         step!(st, p, 6)
+        @test copy_bits() == want                  # and of those step 6 started from
         step!(plain, p, 6)
         step!(diag, p, 6)
         @test particle_bits_3d(plain) == particle_bits_3d(st)
