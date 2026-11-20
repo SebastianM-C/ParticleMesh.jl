@@ -158,15 +158,32 @@ scalars(x) = scalars!(Dict{String,Any}(), "x", x)
 partial(x::ForwardDiff.Dual, j) = ForwardDiff.partials(x, j)
 partial(x::Real, j) = zero(x)
 
+# An entry with a zero tangent adds nothing, whatever its adjoint: free slots and scratch can hold
+# a non-finite adjoint (from garbage values), and NaN·0 would poison the sum. A non-finite adjoint
+# against a nonzero tangent is a real failure: it is counted and reported (NONFINITE).
+const NONFINITE = Dict{String,Int}()
+function tdot(a, t, path)
+    t == 0 && return 0.0
+    isfinite(a) || (NONFINITE[path] = get(NONFINITE, path, 0) + 1)
+    return a * t
+end
+function adot(A, P, path)
+    bad = Int(sum(.!isfinite.(A) .& (P .!= 0)))
+    bad > 0 && (NONFINITE[path] = get(NONFINITE, path, 0) + bad)
+    # in Float64: a Float32 sum of large products can overflow to ±Inf and give Inf − Inf
+    v = sum(ifelse.(P .== 0, 0.0, Float64.(A) .* Float64.(P)))
+    isfinite(v) || (println("  non-finite contribution of $path: $v (max |adjoint| ", maximum(abs, A), ", max |tangent| ", maximum(abs, P), ")"); NONFINITE[path * " (sum)"] = 1)
+    return v
+end
 "⟨adjoint, tangent j⟩ over the scalars of two structs of the same shape (an adjoint and its Dual twin), by path."
 function scalar_dot(adj, dual, j)
     A, D = scalars(adj), scalars(dual)
-    return sum((Float64(A[k]) * Float64(partial(D[k], j)) for k in intersect(keys(A), keys(D))); init = 0.0)
+    return sum((tdot(Float64(A[k]), Float64(partial(D[k], j)), k) for k in intersect(keys(A), keys(D))); init = 0.0)
 end
 "⟨adjoint, tangent j⟩ over the floating-point arrays of a state's adjoint and a Dual state of the same shape, by path."
 function array_dot(adj, dual, j)
     A, D = leaves(adj), leaves(dual)
-    return sum((Float64(sum(A[k] .* ForwardDiff.partials.(D[k], j))) for k in intersect(keys(A), keys(D)) if eltype(D[k]) <: ForwardDiff.Dual); init = 0.0)
+    return sum((adot(A[k], ForwardDiff.partials.(D[k], j), k) for k in intersect(keys(A), keys(D)) if eltype(D[k]) <: ForwardDiff.Dual); init = 0.0)
 end
 "The same, term by term (for the cancellation)."
 array_terms(adj, dual, j) = [Float64(sum(A .* ForwardDiff.partials.(D, j))) for (A, D) in
@@ -315,17 +332,18 @@ start and from the parameters), the final primal state's `trapped_summary`, the 
 (`std0`, `pd`) for a forward comparison, and the seconds of each phase.
 """
 function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fade, rise = TCASE.rise, objective = "any", kappa = 0.05,
-                     ppl = PPL, ny = NY, energy = budget(A0E), verbose = true, summary = true)
+                     ppl = PPL, ny = NY, energy = budget(A0E), verbose = true, summary = true, ckpt = opt("ckpt", "host"))
     st, p, prob = make_start(F.(θ); ppl, ny, extend, energy)
     nsteps = prob.nsteps
     s0area = Float64(area(st))
-    # the checkpoints in host memory: every array of the state, by path (a state copy is about
-    # 0.3 GiB at λ₀/32, ny = 2, the tape about 0.35 GiB per step: both would not fit the card)
+    # the checkpoints: every array of the state, by path, in host memory (`ckpt=host`, the default)
+    # or on the device (`ckpt=device`: faster restores, but the copies and the segment's tape,
+    # about 0.35 GiB per step at λ₀/32, ny = 2, share the card)
     work = deepcopy(st)
     saved = Any[]
     t_fwd = @elapsed begin
         for k in 1:nsteps
-            (k - 1) % C == 0 && push!(saved, Dict(path => Array(a) for (path, a) in all_arrays(st)))
+            (k - 1) % C == 0 && push!(saved, Dict(path => (ckpt == "device" ? copy(a) : Array(a)) for (path, a) in all_arrays(st)))
             step!(st, p, k; observer = ())
         end
         sync()
@@ -385,7 +403,7 @@ end
 function main_grad()
     C = parse(Int, opt("C", "100"))
     objective = opt("objective", "any")
-    mark("start: ppl $PPL ny $NY a0E $A0E θ $THETA, checkpoints every $C steps, objective $objective")
+    mark("start: ppl $PPL ny $NY a0E $A0E θ $THETA, checkpoints every $C steps in $(opt("ckpt", "host")) memory, objective $objective")
     r = reverse_run(THETA; C, objective)
     g = r.gradient
     # the forward reference: the same Dual{4} run to the end
@@ -403,7 +421,7 @@ function main_grad()
     end
     println("  kernel arguments with dropped adjoints: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "n/a")
     write_run("grad", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "eltype" => "Float32", "nsteps" => r.nsteps,
-                                          "checkpoint_every" => C, "checkpoints" => r.checkpoints, "objective" => objective,
+                                          "checkpoint_every" => C, "checkpoints" => r.checkpoints, "checkpoint_memory" => opt("ckpt", "host"), "objective" => objective,
                                           "gather" => "CompensatedGather(k = 1)", "mode" => "Reference"),
                            "J" => r.J, "J_born" => r.born, "J_plasma" => r.plasma, "J_dual" => Float64(ForwardDiff.value(Jd)), "J_reverse_forward" => r.J_reverse_forward,
                            "gradient_reverse" => g, "gradient_reverse_start" => r.g_state, "gradient_reverse_params" => r.g_params,
@@ -440,6 +458,9 @@ function reverse_point(free; ppl, ny, energy, read = (;), objective = "any", kap
     out["gather"] = "compensated"
     out["gradient_mode"] = "enzyme-reverse"
     out["checkpoint_every"] = C
+    out["nonfinite_adjoints"] = Dict(k => v for (k, v) in NONFINITE)
+    isempty(NONFINITE) || println("  non-finite adjoints against nonzero tangents: ", NONFINITE)
+    empty!(NONFINITE)
     @printf("[%s] point %s: J %.8g, gradient %s, %.1f s (primal %.1f, reverse %.1f)\n", stamp(), string(round.(free; sigdigits = 6)), r.J,
             string(round.(r.gradient; sigdigits = 6)), t, r.seconds.primal, r.seconds.reverse); flush(stdout)
     return out
@@ -453,7 +474,7 @@ function main_opt()
     include(joinpath(REPO, "scripts", "optim", "trapped2d_opt.jl"))
     append!(ARGS, args)
     C = parse(Int, opt("C", "100"))
-    o, _ = Base.invokelatest(parse_options, filter(a -> !startswith(a, "C="), ARGS[3:end]), OPT_DEFAULTS)
+    o, _ = Base.invokelatest(parse_options, filter(a -> !startswith(a, "C=") && !startswith(a, "ckpt="), ARGS[3:end]), OPT_DEFAULTS)
     o["gradient"] = "enzyme-reverse"; o["checkpoint_every"] = C
     Base.invokelatest() do
         cfg = point_config(delete!(copy(o), "gradient"))
