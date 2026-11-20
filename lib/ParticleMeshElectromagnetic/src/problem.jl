@@ -105,7 +105,8 @@ A2), the `seed` of the velocity draws, the diagnostic `kmode`, the uniform backg
 fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
 not differentiable parameters, A3: the addition tests them for zero on the host), and the
 `lasers`, a tuple of [`GaussianLaser`](@ref) or [`ShapedLaser`](@ref) descriptions launched by antenna planes during
-the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
+the steps (empty by default; their parameters may be differentiable, A3; at N = 3 Gaussian lasers
+with a `center` of two coordinates, WP-073), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
 at N = 2 and on axis 2, axis 3 or both at N = 3, an open transverse boundary (WP-027, WP-072), where
 fields leave through the numerics' [`AbsorbingLayer`](@ref) or [`PML`](@ref) (the same on every
@@ -122,8 +123,8 @@ finished its pulse before the window passes it (checked by the state). At N = 2 
 gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
 a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
 without random numbers, its electrons born by weight into a species of their own. At N = 3
-axis 1 is periodic and the transverse axes are periodic or open (WP-072), with no laser, window,
-witness or ionization (WP-042). At N = 1
+axis 1 is periodic and the transverse axes are periodic or open (WP-072), with Gaussian lasers
+(WP-073) and no window, witness or ionization (WP-042). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -133,7 +134,8 @@ any [`EMNumerics`](@ref).
 
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2, three at N = 3), that the cells and the particles per cell are positive, at
-N = 2 and 3 that `kmode` is not the zero mode, that lasers are given only at N = 2, and that the
+N = 2 and 3 that `kmode` is not the zero mode, that the lasers fit the dimension (a `center` of one
+coordinate at N = 2, a [`GaussianLaser`](@ref) with a `center` of two at N = 3, none at N = 1), and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
 together with a `window` and the conditions above at N = 2 (an `ArgumentError` otherwise).
 """
@@ -176,8 +178,14 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
             throw(ArgumentError("species $(d.name): mode $(d.mode) and ppc $(d.ppc) must be $(N == 1 ? "integers" : "$N integers each") for N = $N"))
         all(>(0), d.ppc) || throw(ArgumentError("species $(d.name): ppc = $(d.ppc) must be positive"))
     end
-    isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
+    isempty(lasers) || N >= 2 || throw(ArgumentError("laser antennas are implemented at N = 2 and 3 only"))
     all(is_laser, lasers) || throw(ArgumentError("lasers must be GaussianLaser or ShapedLaser descriptions, got $(map(typeof, lasers))"))
+    for l in lasers
+        N == 3 && !(l isa GaussianLaser) &&
+            throw(ArgumentError("a ShapedLaser's profiles are one-dimensional across the beam, so at N = 3 a laser is a GaussianLaser"))
+        transverse_axes(l) == N - 1 ||
+            throw(ArgumentError("a laser at N = $N takes a center of $(N - 1) coordinate$(N == 3 ? "s (y, z)" : " (y)"), got center = $(l.center)"))
+    end
     boundaries isa Union{Symbol,AbstractString} &&
         throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic, :open and :window per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))

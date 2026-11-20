@@ -412,8 +412,8 @@ end
     # what the step makes of them, spelled out: the antenna of the laser on the state's plane, and the refill's load
     h1 = cellsize(st.grid)[1]
     a1 = Antenna(p.lasers[1], antenna_planes(st)[1])
-    @test a1.laser === p.lasers[1] && (a1.ia, a1.g, a1.n2) == (9, guards(st.grid), 16) && a1.xa === 8 * h1
-    @test a1.dx === cellsize(st.grid) && a1.ly === 16 * cellsize(st.grid)[2] && a1.hx === h1 / 2
+    @test a1.laser === p.lasers[1] && (a1.ia, a1.g, a1.n[2]) == (9, guards(st.grid), 16) && a1.xa === 8 * h1
+    @test a1.dx === cellsize(st.grid) && a1.len[2] === 16 * cellsize(st.grid)[2] && a1.hx === h1 / 2
     @test a1.ht ≈ asin(h1 / prob.dt * sin(prob.dt / 2)) rtol = 4eps()      # the Yee wavenumber's half cell,
     @test a1.ht != a1.hx                                                    # not c·Δx/2
     wl = window_load(st, EMParams(p; seed = 9), 1)

@@ -70,6 +70,15 @@ Parameters enter through the antenna only (A3): `a0`, `waist`, `duration`, `dela
 primal node (`position` is not differentiable). The energy the pulse carries through the plane,
 ∫∫ (E × B)_x dy dt, is about π·a0²·waist·duration/4 per unit length in z ([`laser_energy`](@ref)).
 
+At N = 3 (WP-073) `center = (y_c, z_c)` gives the axis, and the beam is the round paraxial Gaussian
+beam in three dimensions, u = (1 + iξ/z_R)^(−1)·exp(−((y − y_c)² + (z − z_c)²)/(waist²·(1 + iξ/z_R))),
+of Gouy phase −atan(ξ/z_R); the field is E = a0·Re[u·G]·(ŷ cos θ + ẑ sin θ) with G the time factor
+above, so `a0` is again the peak of the paraxial incident field at the focus (the launched beam is
+that field's propagation by the Yee scheme, which departs from the paraxial beam at order k_⊥⁴ and
+by the scheme's dispersion, T-1022). Its energy through the plane is
+π^{3/2}·a0²·waist²·duration/(4√2). A number as `center` is a beam of the 2D plane, a pair one of
+the 3D box, and the problem checks that the laser fits its dimension.
+
 The pulse should start in vacuum: the envelope at t = 0 is exp(−delay²/duration²), so a delay of
 about six durations starts it below Float64 roundoff.
 
@@ -78,7 +87,7 @@ is that of ω₀ = 1, so a plane wave at ω₀ is launched exactly and the rest 
 1/duration wide and wider with chirp, leaks behind the plane and deviates from its prescribed
 profile in proportion. It is meant for narrow-band pulses (`questions/wp-026-antenna.md` §5).
 """
-struct GaussianLaser{T,P,E}
+struct GaussianLaser{T,P,E,C}
     a0::T
     waist::T
     duration::T
@@ -88,18 +97,26 @@ struct GaussianLaser{T,P,E}
     polarization::T
     phase::T
     position::P
-    center::P
+    center::C
     envelope::E
 end
 
-function GaussianLaser(; a0, waist, duration, delay, focus, position, center, chirp = 0, polarization = 0, phase = 0,
-                       envelope::Union{AxisTime,WavefrontTime} = AxisTime())
+function GaussianLaser(; a0, waist, duration, delay, focus, position, center::Union{Real,NTuple{2,Real}}, chirp = 0, polarization = 0,
+                       phase = 0, envelope::Union{AxisTime,WavefrontTime} = AxisTime())
     T = promote_type(typeof(a0), typeof(waist), typeof(duration), typeof(delay), typeof(focus), typeof(chirp),
                      typeof(polarization), typeof(phase))
-    P = promote_type(typeof(position), typeof(center))
-    return GaussianLaser{T,P,typeof(envelope)}(T(a0), T(waist), T(duration), T(delay), T(focus), T(chirp), T(polarization),
-                                               T(phase), P(position), P(center), envelope)
+    P = promote_type(typeof(position), map(typeof, Tuple(center))...)
+    c = center_as(P, center)
+    return GaussianLaser{T,P,typeof(envelope),typeof(c)}(T(a0), T(waist), T(duration), T(delay), T(focus), T(chirp), T(polarization),
+                                                         T(phase), P(position), c, envelope)
 end
+
+# The axis of a laser in the type `P`: a number (y, at N = 2) or a pair (y, z, at N = 3).
+center_as(::Type{P}, c::Real) where {P} = P(c)
+center_as(::Type{P}, c::NTuple{2,Real}) where {P} = map(P, c)
+
+# The number of transverse axes a laser's beam has: 1 (a beam of the 2D plane) or 2 (a round 3D beam).
+transverse_axes(l) = length(Tuple(l.center))
 
 """
     laser_energy(laser::GaussianLaser) -> W
@@ -116,7 +133,7 @@ depends on y through the wavefront, which adds its bandwidth on the curved part:
 ⟨k_y²⟩ = (1 + ξ²/(z_R² + ξ²)·(1/duration² + chirp²·duration²))/waist², ξ = position − focus.
 """
 laser_energy(l::GaussianLaser) = π * l.a0^2 * l.waist * l.duration / 4 * (1 + cos(2 * l.polarization) / (2 * l.waist^2))
-function laser_energy(l::GaussianLaser{<:Any,<:Any,WavefrontTime})
+function laser_energy(l::GaussianLaser{<:Any,<:Any,WavefrontTime,<:Real})
     zR = l.waist^2 / 2
     ξ = l.position - l.focus
     ky2 = (1 + ξ^2 / (zR^2 + ξ^2) * (1 / l.duration^2 + l.chirp^2 * l.duration^2)) / l.waist^2
@@ -127,6 +144,19 @@ end
 # window may pass the plane: six durations after the delay, the envelope below Float64 roundoff.
 pulse_duration(l::GaussianLaser) = l.duration
 pulse_end(l::GaussianLaser) = l.delay + 6 * l.duration
+
+"""
+    laser_energy(laser::GaussianLaser{T,P,E,<:NTuple{2}}) -> W
+
+The energy that the incident field of a round 3D beam (a `center` of two coordinates) carries
+through its plane, ∫∫∫ (E × B)_x dy dz dt = π^{3/2}·a0²·waist²·duration/(4√2), up to the overlap of
+the envelope's spectrum with twice the carrier frequency as at N = 2. The transverse integral of
+|u|² is π·waist²/2 at every ξ, the envelope's as at N = 2; the magnetic field of
+[`laser_field`](@ref) adds ±(⟨k_y²⟩ − ⟨k_z²⟩)/2 and a term in ∂²u/∂y∂z, which vanish over the round
+beam's plane (by its symmetry under y ↔ z and y → −y), for [`AxisTime`](@ref) and
+[`WavefrontTime`](@ref) alike.
+"""
+laser_energy(l::GaussianLaser{<:Any,<:Any,<:Any,<:NTuple{2}}) = π * sqrt(π / 2) * l.a0^2 * l.waist^2 * l.duration / 4
 
 """
     laser_field(laser, ξ, dy, s) -> (e, bp, bs)
@@ -206,13 +236,98 @@ end
 end
 
 """
-    AntennaPlane{T}
+    laser_field(laser, ξ, dy, dz, s) -> (e, bp, bs, byz)
 
-Where a laser's antenna lies on a 2D grid, the part of an [`Antenna`](@ref) that a state holds
+The incident field of the round 3D beam of `laser` (WP-073) at the distance `ξ` from the focal
+plane, the transverse distances `dy`, `dz` from the axis and the time `s` after the envelope peak:
+`e = Re[u·G]`, G = a0·exp(−s²/duration²)·exp(−iφ) as at N = 2 and u the 3D beam of
+[`GaussianLaser`](@ref), and the magnetic amplitudes of a wave along +x with this transverse field,
+to order k_⊥² as at N = 2: `bp = Re[(u − ∂²_y u/2 + ∂²_z u/2)·G]`, `bs = Re[(u + ∂²_y u/2 − ∂²_z u/2)·G]`
+and `byz = Re[∂_y∂_z u·G]`, so that Ey = e·cos θ, Ez = e·sin θ come with Bz = bp·cos θ − byz·sin θ
+and By = byz·cos θ − bs·sin θ (a plane-wave component (k_x, k_y, k_z) of Ey alone has
+Bz/Ey = (k_x² + k_y²)/k_x ≈ 1 + k_y²/2 − k_z²/2 and By/Ey = −k_y·k_z/k_x). With
+[`WavefrontTime`](@ref) the derivatives are those of the whole field, its dependence on y and z
+through σ = s − r²/(2R) included. An isbits device function, generic in the element type.
+"""
+@inline laser_field(l::GaussianLaser, ξ, dy, dz, s) = laser_field(l.envelope, l, ξ, dy, dz, s)
+
+# u″/u of the beam along one transverse axis at the distance x from its axis (q = x²/w²), the
+# 2D formula of AxisTime: (4q/(1 + ia)² − 2/(1 + ia))/w², and u′/u = −2x/(w²(1 + ia)).
+@inline function beam_terms(x, w2, a, d)
+    q = x * x / w2
+    d2 = d * d
+    c2r = (4 * q * (1 - a * a) / d2 - 2 / d) / w2
+    c2i = (2 * a / d - 8 * q * a / d2) / w2
+    pr = -2 * x / (w2 * d)
+    pi_ = 2 * x * a / (w2 * d)
+    return q, c2r, c2i, pr, pi_
+end
+
+# The field and the magnetic amplitudes from the complex coefficients F_yy/F, F_zz/F, F_yz/F.
+@inline function field_3d(env, cφ, sφ, yr, yi, zr, zi, xr, xi)
+    e = env * cφ
+    bp = env * ((1 - yr / 2 + zr / 2) * cφ + (zi - yi) / 2 * sφ)
+    bs = env * ((1 + yr / 2 - zr / 2) * cφ + (yi - zi) / 2 * sφ)
+    byz = env * (xr * cφ + xi * sφ)
+    return e, bp, bs, byz
+end
+
+@inline function laser_field(::AxisTime, l::GaussianLaser, ξ, dy, dz, s)
+    w2 = l.waist * l.waist
+    zR = w2 / 2
+    a = ξ / zR
+    d = 1 + a * a
+    qy, yr, yi, py, piy = beam_terms(dy, w2, a, d)
+    qz, zr, zi, pz, piz = beam_terms(dz, w2, a, d)
+    q = qy + qz
+    # u = (1 + ia)^(−1)·exp(−q·(1 − ia)/d): modulus d^(−1/2)·exp(−q/d), argument q·a/d − atan(a).
+    amp = exp(-q / d) / sqrt(d)
+    ψ = q * a / d - atan(a)
+    # ∂_y∂_z u/u = (u_y/u)(u_z/u), each −2x(1 − ia)/(w²d) = px + i·pix
+    xr = py * pz - piy * piz
+    xi = py * piz + piy * pz
+    r = s / l.duration
+    env = l.a0 * amp * exp(-r * r)
+    sφ, cφ = sincos(s + l.chirp * s * s - l.phase - ψ)
+    return field_3d(env, cφ, sφ, yr, yi, zr, zi, xr, xi)
+end
+
+@inline function laser_field(::WavefrontTime, l::GaussianLaser, ξ, dy, dz, s)
+    w2 = l.waist * l.waist
+    zR = w2 / 2
+    a = ξ / zR
+    d = 1 + a * a
+    q = (dy * dy + dz * dz) / w2
+    amp = exp(-q / d) / sqrt(d)
+    σ = s - q * a / d
+    τ2 = l.duration * l.duration
+    env = l.a0 * amp * exp(-σ * σ / τ2)
+    sφ, cφ = sincos(σ + l.chirp * σ * σ - l.phase + atan(a))
+    # As at N = 2 per axis: p = A′/A = −2x/(w²d), c = ∂(r²/(2R))/∂x = 2xa/(w²d), h = H′/H,
+    # F_xx/F = (p − c·h)² − 2/(w²d) − c′·h + c²·h′ and F_yz/F = (p_y − c_y·h)(p_z − c_z·h) + c_y·c_z·h′.
+    hr = -2 * σ / τ2
+    hi = -(1 + 2 * l.chirp * σ)
+    c1 = 2 * a / (w2 * d)
+    py, pz = -2 * dy / (w2 * d), -2 * dz / (w2 * d)
+    cy, cz = 2 * dy * a / (w2 * d), 2 * dz * a / (w2 * d)
+    gy, gz = py - cy * hr, pz - cz * hr
+    yr = gy * gy - cy * cy * hi * hi - 2 / (w2 * d) - c1 * hr - 2 * cy * cy / τ2
+    yi = -2 * gy * cy * hi - c1 * hi - 2 * l.chirp * cy * cy
+    zr = gz * gz - cz * cz * hi * hi - 2 / (w2 * d) - c1 * hr - 2 * cz * cz / τ2
+    zi = -2 * gz * cz * hi - c1 * hi - 2 * l.chirp * cz * cz
+    xr = gy * gz - cy * cz * hi * hi - 2 * cy * cz / τ2
+    xi = -hi * (gy * cz + gz * cy) - 2 * l.chirp * cy * cz
+    return field_3d(env, cφ, sφ, yr, yi, zr, zi, xr, xi)
+end
+
+"""
+    AntennaPlane{T,N}
+
+Where a laser's antenna lies on a 2D or 3D grid, the part of an [`Antenna`](@ref) that a state holds
 (configuration; the laser itself is a parameter, [`EMParams`](@ref)): the primal column `ia`
-(interior index along axis 1) of the plane, its position `xa = (ia − 1)·Δx`, the cell sizes, the
-guard width, the transverse cells and the box height (for the nearest periodic image of the
-axis), the half cell `hx` from the E plane to the B plane behind it and the time `ht` by which the
+(interior index along axis 1) of the plane, its position `xa = (ia − 1)·Δx`, the cell sizes `dx`, the
+guard width, the cells `n` and the box lengths `len` per axis (the transverse ones for the nearest
+periodic image of the axis), the half cell `hx` from the E plane to the B plane behind it and the time `ht` by which the
 incident wave reaches the B plane earlier: `ht = k·Δx/2` with `k` the Yee wavenumber of ω₀ = 1
 along x, `sin(kΔx/2)/Δx = sin(Δt/2)/Δt`, the phase of the discrete plane wave between the two
 planes (with c·Δx/2 instead, the antenna would leak (k − 1)·Δx/4 of the amplitude). The column is
@@ -220,32 +335,32 @@ the nearest primal node to the laser's `position`, an integer, so the position i
 differentiable parameter (A3) and a laser placed elsewhere needs a new state
 ([`check_params`](@ref) refuses it).
 
-    AntennaPlane(position, grid::PeriodicGrid{2}, dt)
+    AntennaPlane(position, grid::PeriodicGrid{N}, dt)
 
 The plane on the primal column nearest to `position` for the time step `dt` (whose type is the
 element type), which must leave at least the grid's guard width of interior columns on either
 side of the corrected columns `ia − 1` and `ia` (so the corrections never touch an x-guard and
 the plane is not split by the periodic seam; an `ArgumentError` otherwise).
 """
-struct AntennaPlane{T}
+struct AntennaPlane{T,N}
     ia::Int32
     xa::T
-    dx::NTuple{2,T}
+    dx::NTuple{N,T}
     g::Int32
-    n2::Int32
-    ly::T
+    n::NTuple{N,Int32}
+    len::NTuple{N,T}
     hx::T
     ht::T
 end
 
-function AntennaPlane(position, grid::PeriodicGrid{2}, dt::T) where {T}
+function AntennaPlane(position, grid::PeriodicGrid{N}, dt::T) where {N,T}
     n, h, g = ncells(grid), cellsize(grid), guards(grid)
     ia = round(Int, position / h[1]) + 1
     g + 2 <= ia <= n[1] - g ||
         throw(ArgumentError("antenna position $(position) is column $ia; it must lie in columns $(g + 2) to $(n[1] - g) of the $(n[1]) cells, away from the periodic seam"))
     hx = T(h[1]) / 2
     k = asin(T(h[1]) / dt * sin(dt / 2)) / hx
-    return AntennaPlane(Int32(ia), T((ia - 1) * h[1]), T.(h), Int32(g), Int32(n[2]), T(n[2] * h[2]), hx, k * hx)
+    return AntennaPlane(Int32(ia), T((ia - 1) * h[1]), T.(h), Int32(g), Int32.(n), ntuple(d -> T(n[d] * h[d]), Val(N)), hx, k * hx)
 end
 
 # A laser of the parameters belongs on the plane the state built for it: within half a cell of the
@@ -260,44 +375,56 @@ end
 check_profile(::AntennaPlane, ::GaussianLaser) = nothing
 
 """
-    Antenna{L,T}
+    Antenna{L,T,N}
 
 A laser ([`GaussianLaser`](@ref) or [`ShapedLaser`](@ref)) on an [`AntennaPlane`](@ref), isbits for the device: the laser and the
-plane's fields (`ia`, `xa`, `dx`, `g`, `n2`, `ly`, `hx`, `ht`). The step makes it from the
+plane's fields (`ia`, `xa`, `dx`, `g`, `n`, `len`, `hx`, `ht`). The step makes it from the
 parameters' laser and the state's plane, `Antenna(laser, plane)`.
 
-    Antenna(laser, grid::PeriodicGrid{2}, dt)
+    Antenna(laser, grid::PeriodicGrid, dt)
 
 places `laser`, converted to the type of `dt`, on its own plane `AntennaPlane(laser.position, grid, dt)`.
 """
-struct Antenna{L,T}
+struct Antenna{L,T,N}
     laser::L
     ia::Int32
     xa::T
-    dx::NTuple{2,T}
+    dx::NTuple{N,T}
     g::Int32
-    n2::Int32
-    ly::T
+    n::NTuple{N,Int32}
+    len::NTuple{N,T}
     hx::T
     ht::T
 end
 
-Antenna(l, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht)
-Antenna(l, grid::PeriodicGrid{2}, dt::T) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt))
+Antenna(l, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n, a.len, a.hx, a.ht)
+Antenna(l, grid::PeriodicGrid, dt::T) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt))
 
-convert_laser(::Type{T}, l::GaussianLaser) where {T} =
-    GaussianLaser{T,T,typeof(l.envelope)}(T(l.a0), T(l.waist), T(l.duration), T(l.delay), T(l.focus), T(l.chirp), T(l.polarization),
-                                          T(l.phase), T(l.position), T(l.center), l.envelope)
+function convert_laser(::Type{T}, l::GaussianLaser) where {T}
+    c = center_as(T, l.center)
+    return GaussianLaser{T,T,typeof(l.envelope),typeof(c)}(T(l.a0), T(l.waist), T(l.duration), T(l.delay), T(l.focus), T(l.chirp),
+                                                            T(l.polarization), T(l.phase), T(l.position), c, l.envelope)
+end
 
-# The transverse distance from the axis of the row j (any index, guards included) of a field
-# whose rows sit at (j₀ − 1 + s)·Δy, with j₀ the interior row j aliases: the guards get the bits
-# of their interior images, and the nearest periodic image of the axis keeps the profile
-# continuous across the seam.
-@inline function antenna_dy(a::Antenna, j::Int32, s)
+# The transverse distance from the axis (its coordinate `c`) along `axis` of the row j (any index,
+# guards included) of a field whose rows sit at (j₀ − 1 + s)·Δ, with j₀ the interior row j
+# aliases: the guards get the bits of their interior images, and the nearest periodic image of
+# the axis keeps the profile continuous across the seam.
+@inline function antenna_d(a::Antenna, axis, c, j::Int32, s)
     T = typeof(a.xa)
-    j0 = mod(j - a.g - Int32(1), a.n2)
-    dy = (T(j0) + s) * a.dx[2] - a.laser.center
-    return dy - a.ly * round(dy / a.ly)
+    j0 = mod(j - a.g - Int32(1), a.n[axis])
+    dy = (T(j0) + s) * a.dx[axis] - c
+    return dy - a.len[axis] * round(dy / a.len[axis])
+end
+@inline antenna_dy(a::Antenna, j::Int32, s) = antenna_d(a, 2, a.laser.center, j, s)
+
+# The incident field across a periodic axis is that of the nearest image of the beam's axis. Its even
+# terms are continuous where the images meet, at the antipode of the axis, but the cross term ∂_y∂_z u
+# of the 3D B is odd in each offset and changes sign there; a row within Δ/1000 of the antipode takes
+# the mean of the two images, zero, so that moving the axis by whole cells moves the field with it.
+@inline function antipode_weight(a::Antenna, axis, d)
+    T = typeof(a.xa)
+    return ifelse(abs(2 * abs(d) - a.len[axis]) * 1000 < a.dx[axis], zero(T), one(T))
 end
 
 # After the B half step to time t: Bz[ia−1] += c·Ey_inc(x_a, t), By[ia−1] −= c·Ez_inc(x_a, t),
@@ -337,6 +464,52 @@ end
     end
 end
 
+# The kernels at N = 3 (WP-073), one work item per (row, layer) of the plane, guards included. The
+# same four corrections as at N = 2; Ey and Bz sit at (Center(), Node()) across the plane (y, z),
+# Ez and By at (Node(), Center()), and each component of the incident wave is evaluated at its own
+# place: after a B half step to time t, Bz[ia−1] += c·Ey_inc and By[ia−1] −= c·Ez_inc at x_a; after
+# the E step, Ey[ia] += c·Bz_inc and Ez[ia] −= c·By_inc at x_a − Δx/2 a time ht later, with
+# Bz_inc = bp·cos θ − byz·sin θ and By_inc = byz·cos θ − bs·sin θ ([`laser_field`](@ref)).
+@kernel function antenna_b_kernel_3d!(By, Bz, a, c, t)
+    J = @index(Global, Cartesian)
+    j, k = Int32(J[1]), Int32(J[2])
+    T = typeof(c)
+    i = a.g + a.ia - Int32(1)
+    l = a.laser
+    s = t - l.delay
+    ξ = a.xa - l.focus
+    sθ, cθ = sincos(l.polarization)
+    h = one(T) / 2
+    @inbounds begin
+        ey, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T)), s)
+        ez, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h), s)
+        Bz[i, j, k] += c * (ey * cθ)
+        By[i, j, k] -= c * (ez * sθ)
+    end
+end
+
+@kernel function antenna_e_kernel_3d!(Ey, Ez, a, c, t)
+    J = @index(Global, Cartesian)
+    j, k = Int32(J[1]), Int32(J[2])
+    T = typeof(c)
+    i = a.g + a.ia
+    l = a.laser
+    s = t + a.ht - l.delay
+    ξ = a.xa - a.hx - l.focus
+    sθ, cθ = sincos(l.polarization)
+    h = one(T) / 2
+    @inbounds begin
+        dyc, dzn = antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T))
+        dyn, dzc = antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h)
+        _, bp, _, xy = laser_field(l, ξ, dyc, dzn, s)
+        _, _, bs, xz = laser_field(l, ξ, dyn, dzc, s)
+        xy *= antipode_weight(a, 2, dyc) * antipode_weight(a, 3, dzn)
+        xz *= antipode_weight(a, 2, dyn) * antipode_weight(a, 3, dzc)
+        Ey[i, j, k] += c * (bp * cθ - xy * sθ)
+        Ez[i, j, k] += c * (bs * sθ - xz * cθ)
+    end
+end
+
 # An antenna acts while its plane lies in the box: always on a static grid (the constructor checks
 # it), until the moving window has passed it otherwise (`window_antennas`, WP-028).
 active(a::Antenna) = a.ia >= a.g + Int32(2)
@@ -350,8 +523,10 @@ function antenna_b!(as::Tuple, f, h, t, wgs)
     end
     return nothing
 end
-b_source!(a::Antenna{<:GaussianLaser}, f, c, t, wgs) =
+b_source!(a::Antenna{<:GaussianLaser,<:Any,2}, f, c, t, wgs) =
     launcher(antenna_b_kernel!, get_backend(f.Bz), wgs)(f.By, f.Bz, a, c, t; ndrange = size(f.Bz, 2))
+b_source!(a::Antenna{<:GaussianLaser,<:Any,3}, f, c, t, wgs) =
+    launcher(antenna_b_kernel_3d!, get_backend(f.Bz), wgs)(f.By, f.Bz, a, c, t; ndrange = (size(f.Bz, 2), size(f.Bz, 3)))
 
 antenna_e!(::Tuple{}, f, dt, t, wgs) = nothing
 function antenna_e!(as::Tuple, f, dt, t, wgs)
@@ -362,8 +537,10 @@ function antenna_e!(as::Tuple, f, dt, t, wgs)
     end
     return nothing
 end
-e_source!(a::Antenna{<:GaussianLaser}, f, c, t, wgs) =
+e_source!(a::Antenna{<:GaussianLaser,<:Any,2}, f, c, t, wgs) =
     launcher(antenna_e_kernel!, get_backend(f.Ey), wgs)(f.Ey, f.Ez, a, c, t; ndrange = size(f.Ey, 2))
+e_source!(a::Antenna{<:GaussianLaser,<:Any,3}, f, c, t, wgs) =
+    launcher(antenna_e_kernel_3d!, get_backend(f.Ey), wgs)(f.Ey, f.Ez, a, c, t; ndrange = (size(f.Ey, 2), size(f.Ey, 3)))
 
 """
     AntennaPlanes(planes, clock)
