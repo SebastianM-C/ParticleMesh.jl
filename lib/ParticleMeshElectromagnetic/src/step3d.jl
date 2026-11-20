@@ -1,9 +1,9 @@
-# The module at N = 3 (WP-042, WP-072, WP-074): the state of a 3D problem. The step, `initialize!`,
-# the kinetic energy, the initial field and the moving window are the methods over N of step.jl,
-# step2d.jl and window.jl; a 3D problem has no witness bunch or dopant, so its field modifiers are
-# the absorbers of its open transverse axes, the PML of a moving window's back edge, the antennas
-# of its lasers (WP-073) and the window's x edges, and `aux` has the window's frame and none of the
-# other frames.
+# The module at N = 3 (WP-042, WP-072, WP-074, WP-075): the state of a 3D problem. The step,
+# `initialize!`, the kinetic energy, the initial field, the moving window and the field ionization
+# are the methods over N of step.jl, step2d.jl, window.jl and ionization.jl; a 3D problem has no
+# witness bunch, so its field modifiers are the absorbers of its open transverse axes, the PML of a
+# moving window's back edge, the antennas of its lasers (WP-073) and the window's x edges, and
+# `aux` has the window's frame and the dopant's and no witness.
 
 """
     EMState(problem::EMProblem{3}, numerics; backend = CPU(), every = 1, record = RECORD_GROUPS)
@@ -22,7 +22,9 @@ axis 3; none for a periodic box), the back edge's [`BackPMLFields`](@ref) of the
 `back_absorber`, the [`AntennaPlanes`](@ref) of the problem's lasers and the window's
 [`WindowEdges`](@ref), in the order of [`field_modifiers`](@ref), and in `aux` the spectral
 workspace and the potential `φ` of the initial solve, the moving window's [`WindowFrame`](@ref)
-(`window`, `nothing` without one; WP-074), with `witness` and `ionization` `nothing`.
+(`window`, `nothing` without one; WP-074), the [`IonizationFrame`](@ref) of a dopant
+(`ionization`, or `nothing`; WP-075: its electrons are part of `K`, after the species) and
+`witness`, `nothing`.
 
 With the current [`Esirkepov`](@ref)`()` each workspace also holds the patches of the
 `Reference()` flux deposition (`Workspace(species, grid; flux = (shape, ρ's stagger))`, one
@@ -64,6 +66,7 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
     back = numerics.back_absorber === nothing ? nothing : BackPMLFields(numerics.back_absorber, grid, problem.dt; backend, workgroupsize = wgs)
     planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
     window === nothing || check_window_antennas(window, back, map(Antenna, params(problem).lasers, planes))
+    ionization = problem.ionization === nothing ? nothing : IonizationFrame(problem, grid, backend, numerics, window)
     species = map(problem.species) do d
         cap = prod(n) * prod(d.ppc)
         window === nothing || (cap = ceil(Int, (1 + numerics.headroom) * cap))
@@ -73,10 +76,10 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
     # a window refills one column (n₂·n₃ cells) of a species behind its count after each shift's sort
     ws = map((s, d) -> Workspace(s, grid; flux, append = sort_append(numerics, window === nothing ? 0 : n[2] * n[3] * prod(d.ppc)),
                                  bins = sort_bins(numerics, Val(3); window = window !== nothing)), species, problem.species)
-    nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), species; init = 0)
+    nK = sum(s -> cld(capacity(s), KINETIC_CHUNK), (species..., born_species(ionization)...); init = 0)
     recorder = HistoryRecorder(backend, T, grid, problem.length, problem.kmode, problem.nsteps; workgroupsize = wgs, every, record)
     aux = (spectral = SpectralWorkspace(backend, T, grid; workgroupsize = wgs), φ = field(backend, T, grid),
-           window = window, witness = nothing, ionization = nothing)
+           window = window, witness = nothing, ionization = ionization)
     return EMState(numerics, grid, problem.dt, species, ws, em_fields(backend, T, grid), nothing, field(backend, T, grid),
                    KernelAbstractions.zeros(backend, T, nK), recorder, map(species_setup, problem.species),
                    field_modifiers(layers, back, planes, window), aux, Ref(false))
