@@ -2,7 +2,7 @@
     ParticleMeshCoreEnzymeCoreExt
 
 Enzyme's reverse rules for the engine's transfers and sort (WP-077), through EnzymeRules: when
-Enzyme differentiates `deposit!`, `gather!`, `deposit_flux!` (N = 1 and 2), `sort_by_cell!` or
+Enzyme differentiates `deposit!`, `gather!`, `deposit_flux!` (N = 1 to 3), `sort_by_cell!` or
 `resort_by_cell!` in reverse mode, it runs the primal and, in the reverse sweep, the engine's
 hand-written pullbacks (`deposit_pullback!`, `gather_pullback!`, `flux_pullback!`,
 `sort_pullback!`) instead of differentiating the kernels. So Enzyme keeps no tape of the transfer
@@ -27,7 +27,7 @@ using EnzymeCore: Annotation, Const, Duplicated, MixedDuplicated, Active
 using EnzymeCore.EnzymeRules: EnzymeRules, AugmentedReturn, RevConfigWidth, needs_primal, needs_shadow
 
 const SpeciesArg{N} = Union{Const{<:Species{N}},Duplicated{<:Species{N}},MixedDuplicated{<:Species{N}}}
-const FluxSpeciesArg = Union{SpeciesArg{1},SpeciesArg{2}}
+const FluxSpeciesArg = Union{SpeciesArg{1},SpeciesArg{2},SpeciesArg{3}}
 const ArrayArg = Union{Const{<:AbstractArray},Duplicated{<:AbstractArray}}
 
 "The shadow of an annotated argument, `nothing` for a constant one."
@@ -108,7 +108,7 @@ function EnzymeRules.reverse(config::RevConfigWidth{1}, func::Const{typeof(gathe
     return map(no_adjoint, (out, a, s, shape, stagger, grid))
 end
 
-# --- deposit_flux! (N = 1 and 2) ----------------------------------------------------------------
+# --- deposit_flux! (N = 1 to 3) ----------------------------------------------------------------
 
 function EnzymeRules.augmented_primal(config::RevConfigWidth{1}, func::Const{typeof(deposit_flux!)}, ::Type{RT}, mode::Const,
                                       Jx::ArrayArg, Jy::ArrayArg, Jz::ArrayArg, s::FluxSpeciesArg, shape::Const, stagger::Const,
