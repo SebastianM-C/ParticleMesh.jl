@@ -331,7 +331,7 @@ in the lab frame, so its column moves back by `s`; once it is closer than `g + 2
 back edge it is inactive (the step skips it).
 """
 window_antennas(antennas::Tuple, s::Integer) =
-    map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht), antennas)
+    map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n, a.len, a.hx, a.ht), antennas)
 
 # The antennas of step k in a moving window: where the window has their planes at the start of the step.
 placed_antennas(c::WindowClock, antennas::Tuple, k) = window_antennas(antennas, window_shifts(c, k - 1))

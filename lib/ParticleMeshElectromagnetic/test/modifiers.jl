@@ -318,7 +318,7 @@ function body_T753(be)
             @test map(m -> m isa AntennaPlanes, st.modifiers) == map(mp -> mp !== nothing, mps)       # the antennas alone read parameters
             a = only(mps[findfirst(m -> m isa AntennaPlanes, st.modifiers)])
             @test isbits(a) && a.laser === only(p.lasers)
-            @test a === Antenna(only(p.lasers), plane.ia - Int32(window_shifts(st, k - 1)), plane.xa, plane.dx, plane.g, plane.n2, plane.ly, plane.hx, plane.ht)
+            @test a === Antenna(only(p.lasers), plane.ia - Int32(window_shifts(st, k - 1)), plane.xa, plane.dx, plane.g, plane.n, plane.len, plane.hx, plane.ht)
         end
         @test window_shifts(st, kshift - 1) == 0 && window_shifts(st, kshift) == 1
         # other parameters, the same state: the modifier hands on what it is given and has kept nothing
