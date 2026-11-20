@@ -1,0 +1,707 @@
+branch = "runs/wp078-b2-trapped-5090"
+commit = "393c44d16c8037260d4da242afbf4f8d9b1c7c13"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T190236/manifest.toml"
+bytes = 1054
+sha256 = "6c3b982a08d3fe72a702a51dc63451dcf54587c493123f463ad8b12cdb78d0c4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T190236/result.toml"
+bytes = 2157
+sha256 = "d4e4b37f36f2e0ec38f01ab57cbd8c7cf71c28acb6497d995cc3aebb1b0c83bc"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T195221/manifest.toml"
+bytes = 1069
+sha256 = "15a20f0c27ed007868c5348424b32bd7bdcdcda3bbcff215ce034b7b2d3a7cf1"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T195221/result.toml"
+bytes = 2188
+sha256 = "c3c6957d22427c9e665174e3c7a0ca36ebd3c8ca916825fd657dd9cc425a4bbb"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T200058/manifest.toml"
+bytes = 1069
+sha256 = "1c54c6fed8baba4b8f8ae25f31f45e74081fdafdfb7e23b7a443125576420c82"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T200058/result.toml"
+bytes = 1602
+sha256 = "9b546e2fd0c51d6ce5b45e994576bba2ea6cc819ad88da2a8c30a12772ab1330"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T210807/manifest.toml"
+bytes = 1067
+sha256 = "5c64795fa5ab3c4e4a4b647d3ed596ff5c0de197e0b8c5a373de513e323ee6f8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T210807/result.toml"
+bytes = 1603
+sha256 = "27ffb62cb3beca498c99cf0b1039410f9c7022d07508cf8c62c901f5b370b600"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T211647/manifest.toml"
+bytes = 1067
+sha256 = "54175cc06d1b00260068a6586a30e9dd1c37a81c75d0aa295b33777ff0da9162"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T211647/result.toml"
+bytes = 1602
+sha256 = "5bf68d5069e398efea3dcbe6448f68f555f44f92317ebce933210dae19d38c22"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T212640/manifest.toml"
+bytes = 1067
+sha256 = "7868be7c4bcef79c010dd53c84632113e09b5c68ef6076501bac628de8999741"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T212640/result.toml"
+bytes = 3355
+sha256 = "1403d36fdb1c2990c2a2d985166783bd32a7b0e6161d99e0cd1a2736a98eb4fe"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T213656/manifest.toml"
+bytes = 1066
+sha256 = "f82747470b68b64a5368a9d80f5ba1d90e376357c85cbfc08cb173d1014332be"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T213656/result.toml"
+bytes = 5667
+sha256 = "313dea89c768b4f6da2982bd7d22e5fb67b45cce64f6e7865ee3771c32b6b217"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T214627/manifest.toml"
+bytes = 1067
+sha256 = "7b32699795bddc9407acec6826ec5c089d65f77046276fde7d45a4aca130bb8a"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-grad-20261120T214627/result.toml"
+bytes = 1805
+sha256 = "7af402e7fb2655290d14b38794669ff5d0c41a5f85a31ddaac80155a2abfa27d"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-steps-20261120T163522/manifest.toml"
+bytes = 1072
+sha256 = "b376ebb1e7c566d3611bcbd58313df2ceda5dda4c2d2b33380c47899d4bb77d8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-steps-20261120T163522/result.toml"
+bytes = 1357
+sha256 = "78ccec7e6439ec0e0bb54d0d56f3b3850798b7c888fc8f39caa4ada00be4daad"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-steps-20261120T164202/manifest.toml"
+bytes = 1072
+sha256 = "de185e4f6056f33ed426725bd0724a5fe3bdc91e17911443b1b9e2c7811829c4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/enzyme-trapped-steps-20261120T164202/result.toml"
+bytes = 1693
+sha256 = "819436113a8509f4643e1ca69b87131801897c72e3102f59e123ad9ac215b1b9"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20.log"
+bytes = 30869
+sha256 = "5a2cf21af11851d609569e8882d64351d2b7542f51e6b8908eb6e4928f936d4a"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20b.log"
+bytes = 30903
+sha256 = "026dbd97bb36ab564d06385cdfdefe6e1bb8f3f996acf4cf706f78d6e2310d48"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20c.log"
+bytes = 30028
+sha256 = "14f4299fed7d04581e9d67fe33ae50ab66fbf33ff3852089aa38a30ec8abc4eb"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20d.log"
+bytes = 30441
+sha256 = "819f333e4ebe3b2379cea72e3e37d8daf0c7254eedb31a3a0e92ce321c9e841c"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20e.log"
+bytes = 30442
+sha256 = "9b613030b77dc684aadb7f950b7edeb3491d5b30226c3d0ed4b490012d17e807"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20f.log"
+bytes = 132
+sha256 = "86bcae102838dfc5b8627396712b523021a582d75155121dcc29ddc9eca44b7b"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20g.log"
+bytes = 32029
+sha256 = "afd532d2b80fb312b3f1111b4ae23f14bdd190e70569ba7fda5d330ec778e34d"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20h.log"
+bytes = 34351
+sha256 = "851324b89bb6e7003df61f300c7ae9f1926bc02936f27c731fb9580b77c8df5a"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-grad20i.log"
+bytes = 36000
+sha256 = "90481a3a45f186dd525ab45cff8776b4bd98ed73d5359adec476dd40a1ed62a4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-graddev20.log"
+bytes = 36202
+sha256 = "0b37dad924695218e064bc6102ebe5b7827c43a9b524c7bd12a6641e31b3dc96"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-graddev40.log"
+bytes = 36204
+sha256 = "65838edf2075c0cddb6828c9d0f4460074b37e01dfa57c486243e8a214717cb1"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-gradh10.log"
+bytes = 37338
+sha256 = "8b2f60657d15fd21b85e092e91bb9250491fbcca98a3eadd08d8ba57a6bdbf31"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-gradh30.log"
+bytes = 39156
+sha256 = "416987259d6eac1e17a8fe2b4f23cb762cd0a9f5be66796b8ddf2fadb0e5e249"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-gradh40heap1.log"
+bytes = 35374
+sha256 = "1df0ef4416b6d18e98d4c190d471860ed0fd3688c880a772336ccd217ecf52d1"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-gradh40heap4.log"
+bytes = 35753
+sha256 = "8b4a27bc69b6cb88a7e5118a30208d5e3b40dbd85e47c8f2a1526e2b8dfc5ac1"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-gradh5.log"
+bytes = 41986
+sha256 = "08279f1a4ada39110c21b5a8a749f6123639bacdb802105501963cf9e47355d2"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-optborn.log"
+bytes = 100
+sha256 = "affc5e16001bfcb8614d8fa8173b1c5857409f310ab4822db9d7a1a19b91998b"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-optborn2.log"
+bytes = 780
+sha256 = "465bb066eb06b60703f7840bd5d144ad7fba81c605d32f7ea34aa52afc85a091"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-optborn3.log"
+bytes = 16734
+sha256 = "d76ace591eebbce60bd86413c8ca1d11b64633bac079c8be1eefc623654d62f8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-optborn4.log"
+bytes = 9882
+sha256 = "0c2838908a572bb1b5ba490ccda27fc9ab6faaf8d7fbd332b5ea968172afc455"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-optborn5.log"
+bytes = 9188
+sha256 = "153d8406acc85d71f50582511c0b71daf44539bba0f9ec9483953392d4e39da5"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-optborn6.log"
+bytes = 60671
+sha256 = "21f6270b5789feeb018d54578f44f69c1ce15ca9d3944d52b6027e0f17d721b0"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-steps1.log"
+bytes = 11725
+sha256 = "aec288b86a07749a21dd74a15849df66bb06b075d15246426bcbfe9d81f38271"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-steps180.log"
+bytes = 21899
+sha256 = "3c523ce06cca45287d2ec5ec4f9fe92fc6cdb8c6bdffa22a27bea6230af48d3e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/mem-steps180b.log"
+bytes = 22104
+sha256 = "55f56c83f4f77d53237b901e2a39a47486d3685641940fd258905809d41d7d3c"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20.log"
+bytes = 310547
+sha256 = "4e96a990174522ad332f0cf2712bb096dfb1e5a4a0f7143afd4cd03ac864b50e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20b.log"
+bytes = 333612
+sha256 = "cfeab60748431f44d53e440f0636f60e21eb6d24e218a7603719cc68bf5cedc4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20c.log"
+bytes = 42857
+sha256 = "1e94429a88a0aec259584a0a9d64fb745a570ceb8049844b3f0208288ff95fce"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20d.log"
+bytes = 44090
+sha256 = "09643140aae6878956a20840b905cdd1687997e40ef3dae4fdd46cf9bb248d84"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20e.log"
+bytes = 44084
+sha256 = "45b36f9330f0a005187499f1d8e9ac558439d4589d26843fdf07011d07f355e3"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20f.log"
+bytes = 2608
+sha256 = "e13e5f62f0b1e087ba7c0eff475ee814384ab864b345b9a4c9f23e28605cdb79"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20g.log"
+bytes = 43925
+sha256 = "9515a04c75a1f30d51a7ac10e5e535d737d49835e160de4a58898c4838d1113a"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20h.log"
+bytes = 23021
+sha256 = "be789f696125f9b76aaa87cb473956143cd2a2e191292a029f35bfb9b0e11fbc"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-grad20i.log"
+bytes = 23475
+sha256 = "b9a0e065ee20dddfe55f17b771508be9ef4cbfc8112077d4e1733077549ad54e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-graddev20.log"
+bytes = 23513
+sha256 = "5876da88880525042adb7c8bf80cf5d3ca0d19bf313bea83a81935f13bee3db3"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-graddev40.log"
+bytes = 22530
+sha256 = "1978d78240babd4ea52ab775331bd27eb9aeda062e0d2004d2cf0a60108666ca"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-gradh10.log"
+bytes = 25566
+sha256 = "55f292207729d010d4faff8c7657961272d5fd89bf235eabcd4d3a4f05bdbf82"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-gradh30.log"
+bytes = 22882
+sha256 = "98c0833a2d0d2bae0eda8d6c3029ab1e99be6bddd29e696a394cc3b95752c2ef"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-gradh40heap1.log"
+bytes = 22530
+sha256 = "f44a8c286810f811c8a2e89c07b53156b213c47133d612add08c7ccc6f809b1d"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-gradh40heap4.log"
+bytes = 22528
+sha256 = "e1fdbdc60e71457075e0764470947c8eaab0238ce83fe3ca89695d197fbe2beb"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-gradh5.log"
+bytes = 29512
+sha256 = "32153a8009f7e208f118b9b6f12b8feb1aba642eac0edf35aa600c316bee443e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-steps1.log"
+bytes = 11887
+sha256 = "11affca1339e221fd9a1c55bfa15e6c1fe6047e304169fc6f17dc42a8f25e1cd"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-steps180.log"
+bytes = 57468
+sha256 = "d67e015136a54daff31c930b0e5971503e378ae94f4b67f17b2b93d67b692c68"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/run-steps180b.log"
+bytes = 54909
+sha256 = "30f61266e9a9a2e81b049a648b6e74b704f9120cf2e7355bcc20aa629f33474e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/b2/status"
+bytes = 925
+sha256 = "2a5fd80beb0a9c4b02af218a57ae4d36204897c485ad0a65b75beba329e66be5"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/current-all.log"
+bytes = 4072
+sha256 = "9b6a59bcd2a9691112f82971668647775370d9a4d273ca6f89e64c1a083e3829"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/current.log"
+bytes = 2348
+sha256 = "8dbf2b3635fec4e6afb04f637ea6495629322bc381a92096379a16a2a301f87a"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/dep_b.log"
+bytes = 1985
+sha256 = "ee43710f7f66d1341240e13b010d6385ad1f668a8d667b895eb52b9777309272"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/dep_e.log"
+bytes = 1977
+sha256 = "88039668d53c11225c2e81281fc7a961c9635d2da11cc51227f23756e26f7cac"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/edges.log"
+bytes = 1245
+sha256 = "d568f9345f1978433b37cd51f50ef3af888fcdd769ada9de90b76cd125016980"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize-all.log"
+bytes = 4071
+sha256 = "484812711587309cd2d647b3f3d3aa70723c7776ca7658de57af3ae4e7e01742"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize-bound.log"
+bytes = 3095
+sha256 = "c2583d29861029cd386ee7487e0ead187fe1a32a7294aaca1fefd6e2eb920428"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize-electrons.log"
+bytes = 3339
+sha256 = "9bc8aa3bdba19ed935c28ba6cfa7d2df146ac6e41accda27254a99a0d037925b"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize-emitted.log"
+bytes = 2607
+sha256 = "2e1b73e552d25b9dbbe73ce2fcb53840b1f1da416f8f93e0c5121effbec9a3aa"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize-pending.log"
+bytes = 3095
+sha256 = "2c710bde554f17cdc32a5c2e9cc7accaa8a44ede4aec7c8895d7a543e889a2de"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize.log"
+bytes = 4974
+sha256 = "3aa4e55fbadfce9fe48202dc68247c8c1d4154c63bfdac8693bf916fa9ac36dc"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize_k.log"
+bytes = 4073
+sha256 = "6836adb5aeb54ec0c6448c045cbf09746c2ae9a30c60c8e81523fe12fc7cdd4a"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize_nobirth.log"
+bytes = 4898
+sha256 = "78a62a376bd01cabe86728b896c2806b542b240486e37ad1dcefb69995d7bfb8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize_v1.log"
+bytes = 2351
+sha256 = "06756e26001948675f410b426316cb02f581d31b868306d1f787716cc24bc60b"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/ionize_v2.log"
+bytes = 2351
+sha256 = "bf65f0237e2211724aa3b5d60efde6017e704c745aa60d9da31697b30456e422"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/push.log"
+bytes = 3571
+sha256 = "393a5d51be67ee9570e2e3c4a0cab67fe234380d940402b8a274db510aa8c6b2"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/resort_b.log"
+bytes = 885
+sha256 = "fb819bc97422f07eb8704cb390bffaf5afeda36aed95543c19a57e20016848c4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/resort_e.log"
+bytes = 1861
+sha256 = "c339a0c3b78a1e20124d4bffb1ff6c2d5bb965c2c68b4a501856fcd46e1d7eb6"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/retire_open.log"
+bytes = 891
+sha256 = "7805095069ba5da322202ba9e6ccd130d80d3700e226a9523761358ed87f6006"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/retire_x.log"
+bytes = 885
+sha256 = "e145981d2fc48e9c7e4527413d6dc9965fa673dad627362398edd243f0543a53"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/sharpen.log"
+bytes = 2347
+sha256 = "eb99184d3ec2dc389e29b9c661269405ca740e7d4fdf6948fa88055df274a388"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/solve.log"
+bytes = 2350
+sha256 = "68dc6d071ca02cc05fd2960a0f4aa308bb27823568f135e0a932ea051f274c20"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/status"
+bytes = 58
+sha256 = "7c8cbcf9e2ac69dde4b775c9fd915dbb05b21dc5047fa567514c931ed8db9098"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/step-all.log"
+bytes = 25376
+sha256 = "7f410b83731a34b11274dd67b027b54286f36ea88417d6ae520b8899a8f0dcc1"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/step.log"
+bytes = 25378
+sha256 = "64653e28a7034e14f40e2cdc2c58cf81209de7e8bbb7689fe948812d352e109c"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/w_absorbers.log"
+bytes = 2119
+sha256 = "006c68ebfae8e2cedc23f1d989427958fec3ecd15069929fe711473ed13775ca"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/w_fields.log"
+bytes = 1740
+sha256 = "621ab3f8e379b4ae6dd339f7a31cfb4b30c0a831e30f6036905ed64101eb8de8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/w_ionization.log"
+bytes = 10460
+sha256 = "d79e7926f467c3bea051ada6624ce05d2d5a82bf2904a21535a8ff658e0cf148"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/w_load.log"
+bytes = 13352
+sha256 = "c93b12c135aacab65610a9a703a1711bb0c353cac4dd20e027eef2f5c758e320"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/checks/w_species.log"
+bytes = 1863
+sha256 = "b86dc03fafe55cb925cdd6f63e7c3171c9d8b958f00451cdae3d3c323a4d19f1"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/copyto.log"
+bytes = 52211
+sha256 = "5bd272bedd06a8125e4236acef066767c842e0101a2ddd530c6115cc8d8e7c08"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/current-unrolled.log"
+bytes = 10362
+sha256 = "6293f2a41eddadf1b60c691bc6f92682f06343cb764d3aaa7d70e46c394c819b"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/current.log"
+bytes = 10362
+sha256 = "de50cb0ac9603eada264b0e32e4c659daa5e9cd0487dc6ad1cd365bf2b1c7f75"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/dep_b.log"
+bytes = 346
+sha256 = "1094a22a2dae11cac1c042df69dc5d932e625f8876f1a329f80b684b291b04d6"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/dep_e.log"
+bytes = 346
+sha256 = "9af077da96840bc4cd82a1fcc882eea0e353dcd4408334990934a3f2d8b81d61"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/edges.log"
+bytes = 346
+sha256 = "8bbb30012de87db65549d7350aa322e262633fbeca95d2f06dbd0aaee977d3a4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/filter-kacopy.log"
+bytes = 348
+sha256 = "8cf25ce5f213f11fece725a0513fcc2e61bca27a3ae0d5c5aa1119901847e2b6"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/filter.log"
+bytes = 9990
+sha256 = "7aa72a10c6bebdf0d2ec90b114208efe7735a4163403525a9fe597385e4f8db8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/ionize.log"
+bytes = 405
+sha256 = "272154cdd2c7b178526c77da7a4b4267cffa63b2f02468774b0cd3acd80066a3"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/push.log"
+bytes = 2844
+sha256 = "591b6927fb997cad225b8b0d73012a55403f70e8d10ffa981921e459fb38fe68"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/resort_b.log"
+bytes = 353
+sha256 = "d712bd0ffd3eebf755bccfc25e16b9e04a162a57bdfb935074442cf48a87cff4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/resort_e.log"
+bytes = 353
+sha256 = "798b3913fa0b7c0c2df5afb0a9049356850a1881826ed296a131381bebd06c95"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/retire_open.log"
+bytes = 415
+sha256 = "e074d5f9da8cf3042aefcf11a1e47e2d39d4cd0bf3df8c29bf85fb8074f05c83"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/retire_x.log"
+bytes = 411
+sha256 = "cafcc784c60bb4d4b0b28017517c1d5fe4b7d54fc95400a9c3986b1014c95e87"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/sharpen.log"
+bytes = 350
+sha256 = "c9e40589fd79880fa124193e5d63fa797c0471a3ad208a2110548fa0e78da2be"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/solve.log"
+bytes = 347
+sha256 = "df528a455e57763c2c7476e6be3dd00bf35d8e684a747b55075fff51b8b3fc07"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/status"
+bytes = 853
+sha256 = "e82571284c0d4c8fb71f031bec710ad37474ca2682224227daf7618d09ba6cab"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-kacopy.log"
+bytes = 11101
+sha256 = "2e08304e404a1aa00e925f891b33e771620018da71a63d8bb2599414f983dd4e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-p5.log"
+bytes = 17810
+sha256 = "7a581e9342bf6cda0bc3daa172081bf2ad54bd7091d625d6e7e0480f7598df23"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-p6.log"
+bytes = 1239
+sha256 = "a23e7a69693560bb82b042329ac18e9bf62c8da6cf78c5adf7ce448506c8c289"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-p7.log"
+bytes = 1649
+sha256 = "c20ff00efabe269bc192dcd0c18be0211ede8222d44d5171e693834055ece7f8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-p8.log"
+bytes = 33263
+sha256 = "338616a3d277ffd09f39c73bab19d00e2b206d0c61a50d486eb48d4597968322"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-p9.log"
+bytes = 23341
+sha256 = "efa740d2f3aa0c651f3b4c637d54a7d0247b3793794e9498f99b2ab3dc2b6986"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/step-unrolled.log"
+bytes = 10730
+sha256 = "6d6983d2a822480b8393a48c962cc9c70655e1c11f4a414526f7b8d8d32506f7"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/summand.log"
+bytes = 350
+sha256 = "00e5c8a9735990d50128f63b167cb734de389f3224f911a321b10094e021b810"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_absorbers-p5.log"
+bytes = 358
+sha256 = "e4c727b07f882afb5d54307a56040dae2e2f0add46f6180fd104e71d99ffcf24"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_fields-p5.log"
+bytes = 352
+sha256 = "75d14358be446105debdfa97816c328e0f5f543808ff194e6dce737070e8cbb5"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_ionization-p5.log"
+bytes = 14629
+sha256 = "cb55944cf07da548512cd3a937f4f0a4c810b3b6e3b830ec592d31be83629ff3"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_ionization-p6.log"
+bytes = 1239
+sha256 = "a23e7a69693560bb82b042329ac18e9bf62c8da6cf78c5adf7ce448506c8c289"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_ionization-p7.log"
+bytes = 1649
+sha256 = "c20ff00efabe269bc192dcd0c18be0211ede8222d44d5171e693834055ece7f8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_ionization-p8.log"
+bytes = 27827
+sha256 = "5a783c3bde66117c03e3d25eefdc58e0fa20dc6bb62895dd9e07aee1d408fc16"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_ionization-p9.log"
+bytes = 8844
+sha256 = "acd027f459900de08e81fb43d0aa574dffecc24efa0fe962321a39f96a7061c7"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_load-p5.log"
+bytes = 18563
+sha256 = "d6f8ee4e214b836f51ad95ba768eb054380330107ee1f79f423401e0da8fa3a8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_load-p6.log"
+bytes = 1239
+sha256 = "a23e7a69693560bb82b042329ac18e9bf62c8da6cf78c5adf7ce448506c8c289"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_load-p7.log"
+bytes = 1649
+sha256 = "c20ff00efabe269bc192dcd0c18be0211ede8222d44d5171e693834055ece7f8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_load-p8.log"
+bytes = 32777
+sha256 = "78d0c89c62b1b9b0ffddf08ae1168a6a68ec03bd722aaafac0611a57dfb63cc0"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_load-p9.log"
+bytes = 12141
+sha256 = "fb832405e2a0206d4dd89208058998a8d32e8c63456bf6e50875d342bb7ae38e"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/w_species-p5.log"
+bytes = 421
+sha256 = "a5b4af11bf30eb2765870caf425154f8e233a2943471693dac3ef464f624cab7"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-kacopy.log"
+bytes = 10732
+sha256 = "e0fac2439ca117060095a80ff565e0aba78b67e82d485fc602e1593bd93cf2f4"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-p5.log"
+bytes = 17647
+sha256 = "3822e3fab238f621b9ce0314395f1459b727909a1682dcee570abbf60bf1c494"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-p6.log"
+bytes = 1239
+sha256 = "a23e7a69693560bb82b042329ac18e9bf62c8da6cf78c5adf7ce448506c8c289"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-p7.log"
+bytes = 1649
+sha256 = "c20ff00efabe269bc192dcd0c18be0211ede8222d44d5171e693834055ece7f8"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-p8.log"
+bytes = 33091
+sha256 = "8c141492855189d88ccc41d0029c118470061d3072c41f0d37a046582e8bade7"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-p9.log"
+bytes = 20639
+sha256 = "60410821a5a5a75582b0eff40d9df7644aaa2552023e91c4a87eaecc5af624b5"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window-unrolled.log"
+bytes = 10361
+sha256 = "357616dff79af2a6fd8422b621230f93b810938c9c4609cfb2dbdf0e0c2aec92"
+
+[[files]]
+path = "scripts/runs/wp078-b2-trapped-5090/logs/pieces/window.log"
+bytes = 10361
+sha256 = "8bf50fc97be278e8354b45c193b96345c1811b3e190a68710ab92bd8482a5419"
