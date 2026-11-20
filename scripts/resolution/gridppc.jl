@@ -24,7 +24,8 @@
 
 include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 include(joinpath(@__DIR__, "..", "optim", "trapped2d_case.jl"))
-using ParticleMeshElectromagnetic: window_charge!, window_shifts, ionization_state, ionization_electrons, ionization_lost, CompensatedGather
+using ParticleMeshElectromagnetic: window_charge!, window_shifts, ionization_state, ionization_electrons, ionization_lost, CompensatedGather,
+                                   GalerkinGather, M4, Yee
 
 const BACKEND_NAME = let b = filter(a -> a in ("cpu", "cuda"), ARGS)
     isempty(b) ? "cpu" : b[end]
@@ -44,7 +45,8 @@ const GRAD_NAMES = ("duration", "waist", "focus", "density")
 const JOB_DEFAULTS = Dict{String,Any}("ppl" => 16, "ny" => 1, "ppc" => [2, 2], "ion_ppc" => [1, 1], "T" => "f64", "mode" => "reference",
                                       "shape" => 2, "cfl" => 95, "law" => "adk", "every" => 1, "a0E" => 1.9, "x" => collect(TCASE.x0),
                                       "grad" => false, "series" => true, "frames" => 0, "a0_scale" => 1.0, "t_end" => BCASE.t_end,
-                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0, "gather" => "plain", "extend" => 0)
+                                      "dopant_fraction" => TCASE.dopant_fraction, "rep" => 0, "gather" => "plain", "extend" => 0,
+                                      "solver" => "yee")
 
 eltype_named(s) = s == "f64" ? Float64 : s == "f32" ? Float32 : error("element type $s: f64 or f32")
 
@@ -98,13 +100,25 @@ function study_problem(x, a0E; T = Float64, ppl::Integer, ny::Integer = 1, ppc =
 end
 
 """
-The case's numerics (`born_numerics`) with the job's shape order, deposition mode and gather: `plain` reads the grid's fields,
-`compensated` the engine's `CompensatedGather` at the laser wavenumber, which gives back the field the shape removes there.
+The particles' gathers a job may name: `plain` reads the grid's fields, `compensated` the engine's `CompensatedGather` at the
+laser wavenumber (WP-067), which gives back the field the shape removes there, `galerkin` the Galerkin gather (WP-070), each
+component one order lower along its own staggered axis, and `galerkin-compensated` the two together.
 """
-study_numerics(ppl, ny; shape = 2, mode = "reference", gather = "plain") =
+const GATHERS = Dict("plain" => nothing, "compensated" => CompensatedGather(; k = 1), "galerkin" => GalerkinGather(),
+                     "galerkin-compensated" => GalerkinGather(; compensate = CompensatedGather(; k = 1)))
+
+"The field solvers a job may name: `yee`, or `m4`, the low-dispersion solver of WP-079 (Yee's Courant limit, fourth-order dispersion)."
+const SOLVERS = Dict("yee" => Yee(), "m4" => M4())
+
+pick(table, key, what) = haskey(table, key) ? table[key] : error("$what $key: one of $(join(sort(collect(keys(table))), ", "))")
+
+"""
+The case's numerics (`born_numerics`) with the job's shape order, deposition mode, gather (`GATHERS`) and field solver (`SOLVERS`).
+"""
+study_numerics(ppl, ny; shape = 2, mode = "reference", gather = "plain", solver = "yee") =
     EMNumerics(; shape = shape == 2 ? Quadratic : shape == 1 ? Linear : error("shape order $shape: 1 or 2"),
                mode = mode == "reference" ? Reference() : mode == "fast" ? Fast() : error("mode $mode: reference or fast"),
-               gather = gather == "plain" ? nothing : gather == "compensated" ? CompensatedGather(; k = 1) : error("gather $gather: plain or compensated"),
+               gather = pick(GATHERS, gather, "gather"), solver = pick(SOLVERS, solver, "solver"),
                absorber = PML(; cells = BCASE.pml_y * ny), back_absorber = PML(; cells = max(4, round(Int, BCASE.pml_x_wavelengths * ppl))))
 
 "The electron slots a job asks for: the dopant lattice of the whole window (a birth step offers one slot per atom slot) and room for the electrons alive."
@@ -355,13 +369,14 @@ function run_job(job0, dir)
     prob = study_problem(x, T(a0E); T, ppl, ny, ppc = Int.(job["ppc"]), ion_ppc = Int.(job["ion_ppc"]), cfl = Int(job["cfl"]), law = job["law"],
                          every = Int(job["every"]), capacity, t_end = Float64(job["t_end"]), a0_scale = Float64(job["a0_scale"]),
                          dopant_fraction = Float64(job["dopant_fraction"]), extend)
-    numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"], gather = job["gather"])
+    numerics = study_numerics(ppl, ny; shape = Int(job["shape"]), mode = job["mode"], gather = job["gather"], solver = job["solver"])
     t0 = time()
     st = EMState(prob, numerics; backend = BE, record = ())
     p = params(prob)
     initialize!(st, p)
     KernelAbstractions.synchronize(BE)
     seconds_init = time() - t0
+    state_mib = BACKEND_NAME == "cpu" ? mib(Base.summarysize(st)) : nothing
     dt = Float64(value_of(prob.dt))
     series = Dict{String,Any}[]
     nframes = Int(job["frames"])
@@ -399,7 +414,7 @@ function run_job(job0, dir)
     out = Dict{String,Any}(job)
     merge!(out, Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st; fade))))
     merge!(out, Dict{String,Any}("J" => Float64(value_of(J)), "W" => Float64(value_of(W)), "J_born_label" => Float64(value_of(born_energy(st; fade))),
-                                 "seconds" => seconds, "seconds_init" => seconds_init, "gpu_peak_used_mib" => mib(peak[1]),
+                                 "seconds" => seconds, "seconds_init" => seconds_init, "state_mib" => state_mib, "gpu_peak_used_mib" => mib(peak[1]),
                                  "gpu_peak_reserved_mib" => mib(peak[2]), "threads" => Threads.nthreads(), "backend" => BACKEND_NAME, "eltype" => string(eltype(st.fields.Ex)),
                                  "gpu_pool_mib" => gpu_pool_mib(), "cells" => collect(ncells(st.grid)),
                                  "dx" => h[1], "dy" => h[2], "dt" => dt, "nsteps" => prob.nsteps, "capacity" => capacity, "ionization_lost" => lost,
@@ -576,6 +591,33 @@ function campaign_jobs(name)
                 plain!(jobs, jid("cg", "fd", name_, dir, pw, sgn > 0 ? "p" : "m"); cfg..., x, series = false, direction = dir, power = pw, sign = sgn, c...)
             end
         end
+    elseif name in ("v2", "v2-coarse", "v2-fine")
+        # the budget revisited with the features since the first version: the M4 solver (WP-079) against Yee, each with the
+        # grid's fields, the compensated gather and the Galerkin-compensated gather (WP-067, WP-070), on the diagonal grids, and
+        # with Δy = π/4 at every Δx (the transverse cell a 3D run can afford); gradients and the energy budgets with M4
+        jobs_c, jobs_f = Dict{String,Any}[], Dict{String,Any}[]
+        diag = ((16, 1), (24, 2), (32, 2), (48, 3), (64, 4), (96, 6))
+        for (ppl, ny) in diag, solver in ("yee", "m4"), gather in ("plain", "compensated", "galerkin-compensated")
+            ppl == 96 && gather == "plain" && continue
+            plain!(ppl >= 64 ? jobs_f : jobs_c, jid("v2", "r$(ppl)x$(ny)", solver, gather); ppl, ny, solver, gather)
+        end
+        for ppl in (24, 32, 48, 64), solver in ("yee", "m4")
+            plain!(ppl >= 64 ? jobs_f : jobs_c, jid("v2", "r$(ppl)x1", solver, "compensated"); ppl, ny = 1, solver, gather = "compensated")
+        end
+        for ppl in (32, 48)
+            plain!(jobs_c, jid("v2", "r$(ppl)x1", "m4", "galerkin-compensated"); ppl, ny = 1, solver = "m4", gather = "galerkin-compensated")
+        end
+        for (ppl, ny) in ((16, 1), (24, 2), (32, 2), (32, 1), (48, 3)), gather in ("compensated", "galerkin-compensated")
+            push!(jobs_c, Dict{String,Any}("id" => jid("v2", "r$(ppl)x$(ny)", "m4", gather, "grad"), "ppl" => ppl, "ny" => ny, "solver" => "m4",
+                                           "gather" => gather, "grad" => true))
+        end
+        push!(jobs_f, Dict{String,Any}("id" => "v2-r64x4-m4-compensated-grad", "ppl" => 64, "ny" => 4, "solver" => "m4", "gather" => "compensated", "grad" => true))
+        for a0E in (2.175, 2.4), (ppl, ny) in ((16, 1), (32, 2), (48, 3))
+            plain!(jobs_c, jid("v2", "E$a0E", "r$(ppl)x$(ny)", "m4", "compensated"); ppl, ny, a0E, solver = "m4", gather = "compensated")
+            plain!(jobs_c, jid("v2", "E$a0E", "r$(ppl)x$(ny)", "yee", "compensated"); ppl, ny, a0E, solver = "yee", gather = "compensated")
+        end
+        plain!(jobs_c, "v2-r32x2-m4-compensated-f32"; ppl = 32, ny = 2, solver = "m4", gather = "compensated", T = "f32")
+        append!(jobs, name == "v2-coarse" ? jobs_c : name == "v2-fine" ? jobs_f : vcat(jobs_c, jobs_f))
     elseif name == "timing"
         # wall times and device memory for the optimization's planning: the compensated gather in Float32 over the grids, plain and
         # with duals; at λ₀/32 also Float64 and the atomics mode; and the window of WP-068's power cap (3 wavelengths longer) at the
@@ -665,17 +707,20 @@ function run_timed(name, id, dir)
     return out
 end
 
-if length(ARGS) >= 4 && ARGS[1] == "timed"
-    run_timed(ARGS[2], ARGS[3], abspath(ARGS[4]))
-elseif length(ARGS) >= 3 && ARGS[1] == "campaign"
-    run_campaign(ARGS[2], abspath(ARGS[3]))
-elseif length(ARGS) >= 3 && ARGS[1] == "job"
-    job = JSON.parse(ARGS[3])
-    out = run_job(job, abspath(ARGS[2]))
-    open(io -> JSON.print(io, out), joinpath(ARGS[2], job["id"] * ".json"), "w")
-    println(job["id"], ": J = ", out["J"], " in ", round(out["seconds"]; digits = 1), " s")
-elseif length(ARGS) >= 2 && ARGS[1] == "list"
-    js = campaign_jobs(ARGS[2])
-    println(length(js), " jobs")
-    foreach(j -> println(j["id"]), js)
+# run as a script, not when gridppc3d.jl includes this file for its read-outs
+if abspath(PROGRAM_FILE) == @__FILE__
+    if length(ARGS) >= 4 && ARGS[1] == "timed"
+        run_timed(ARGS[2], ARGS[3], abspath(ARGS[4]))
+    elseif length(ARGS) >= 3 && ARGS[1] == "campaign"
+        run_campaign(ARGS[2], abspath(ARGS[3]))
+    elseif length(ARGS) >= 3 && ARGS[1] == "job"
+        job = JSON.parse(ARGS[3])
+        out = run_job(job, abspath(ARGS[2]))
+        open(io -> JSON.print(io, out), joinpath(ARGS[2], job["id"] * ".json"), "w")
+        println(job["id"], ": J = ", out["J"], " in ", round(out["seconds"]; digits = 1), " s")
+    elseif length(ARGS) >= 2 && ARGS[1] == "list"
+        js = campaign_jobs(ARGS[2])
+        println(length(js), " jobs")
+        foreach(j -> println(j["id"]), js)
+    end
 end
