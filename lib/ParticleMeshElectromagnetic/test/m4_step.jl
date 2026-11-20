@@ -394,8 +394,9 @@ end
 # edge's reflection, to its measured fraction (C_back: the layer must be M4's, `back_state` stores
 # the solver's stencil in it). The default window starts after the antenna has finished, so a run
 # with the plane further forward (x = 20) and the window starting at t = 20, while the antenna
-# still emits, checks the shifted antenna (`shift_antenna` keeps M4's stencil and ρ) against the
-# twin, to the same roundoff. T-473: Gauss's law to roundoff across shifts with the laser driving the plasma,
+# still emits, checks the shifted antenna's column against the twin, to the same roundoff. (The
+# twin and the free-space box are window problems too, whose antennas take the same
+# `shift_antenna` at zero shifts, so that it keeps M4's stencil and ρ is T-1093's check.) T-473: Gauss's law to roundoff across shifts with the laser driving the plasma,
 # all three types, both modes, off the columns T-473 excludes.
 @testset "T-1090 the moving window with M4: the vacuum pulse is its static twin's, the back-edge PML absorbs, Gauss's law across shifts [A2, A4, A7, A8, WP-079]" begin
     C = emC("T-472")
