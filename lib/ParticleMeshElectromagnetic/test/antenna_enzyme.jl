@@ -1,11 +1,11 @@
 # WP-083: the laser's device functions call sin and cos, not sincos (#547). T-1141: what that does
 # to the bits inside a kernel. T-1140 (run by gpu.jl on CUDA): Enzyme's
-# reverse mode through a KernelAbstractions kernel that evaluates the antenna's incident field per
-# row, from the laser's parameters in a device array, against ForwardDiff on the CPU.
+# reverse mode through what the antenna's kernels add per row, with the laser's parameters in a
+# device array, against ForwardDiff on the CPU.
 
 using Enzyme: Enzyme
-using ParticleMeshElectromagnetic: GaussianLaser, AxisTime, WavefrontTime, laser_field
-using ParticleMeshElectromagnetic.PulseShapes: GaussianBeam, PupilBeam, GaussianPupil, profile
+using ParticleMeshElectromagnetic: GaussianLaser, ShapedLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, antenna_b_rows, antenna_e_rows
+using ParticleMeshElectromagnetic.PulseShapes: GaussianBeam, PupilBeam, GaussianPupil, GaussianEnvelope
 
 # Inside a kernel the backend's own sin, cos and sincos run (OpenCL's builtins on KernelAbstractions'
 # CPU backend, libdevice on CUDA), and its sincos need not give the bits of its sin and cos: on the
@@ -45,129 +45,125 @@ ulps(a, r) = Float64(abs(big(a) - r) / eps(max(typeof(a)(abs(r)), floatmin(typeo
     end
 end
 
-# The cases of T-1140: what the antenna's kernels evaluate per row, as functions of a tuple of
-# parameters `P` and of the row's transverse position(s) `dj`, at the plane x and the time t.
-struct Laser2D{E}
+# The cases of T-1140: the antenna's own per-row functions (`antenna_b_rows`, `antenna_e_rows`,
+# what its kernels add before the factor c), on an antenna whose laser is built inside the kernel
+# from a tuple of parameters `P` read from a device array, on a fixed plane.
+struct Gauss2D{E,T}
     envelope::E
+    center::T
 end
-struct Laser3D{E}
+struct Gauss3D{E,T}
     envelope::E
+    center::NTuple{2,T}
 end
-struct GaussianProfile end
-struct PupilProfile end
-nparams(::Laser2D) = 8
-nparams(::Laser3D) = 8
-nparams(::GaussianProfile) = 1
-nparams(::PupilProfile) = 4
-ndims_row(::Laser2D) = 1
-ndims_row(::Laser3D) = 2
-ndims_row(::Union{GaussianProfile,PupilProfile}) = 2
-nouts(::Laser2D) = 3
-nouts(::Laser3D) = 4
-nouts(::Union{GaussianProfile,PupilProfile}) = 4
+struct Shaped{L}
+    laser::L        # its a0, delay and phase stay (they reach the kernels through the time factor only)
+end
+# a0, waist, duration, delay, focus, chirp, polarization, phase; the shaped lasers' focus,
+# polarization and profile numbers (GaussianBeam: waist; PupilBeam: na, fill, two aberrations)
+nparams(::Union{Gauss2D,Gauss3D}) = 8
+nparams(c::Shaped) = 2 + (c.laser.profile isa GaussianBeam ? 1 : 4)
 
-# a0, waist, duration, delay, focus, chirp, polarization, phase; the plane at x, the axis at 0
-@inline laser_of(P, env, center) = GaussianLaser{eltype(P),eltype(P),typeof(env),typeof(center)}(P..., zero(eltype(P)), center, env)
-
-# antenna_b_kernel! and antenna_e_kernel!: Bz += c·e·cos θ, Ey += c·bp·cos θ, Ez += c·bs·sin θ
-@inline function rows(c::Laser2D, P, dj, x, t)
-    T = eltype(P)
-    l = laser_of(P, c.envelope, zero(T))
-    e, bp, bs = laser_field(l, x - l.focus, dj[1], t - l.delay)
-    sθ, cθ = sin(l.polarization), cos(l.polarization)
-    return (e * cθ, bp * cθ, bs * sθ)
+laser_of(c::Union{Gauss2D,Gauss3D}, P, ::Type{S}) where {S} =
+    GaussianLaser{eltype(P),S,typeof(c.envelope),typeof(c.center)}(P..., zero(S), c.center, c.envelope)
+@inline shaped_profile(b::GaussianBeam, P) = GaussianBeam{eltype(P)}(P[3])
+@inline function shaped_profile(b::PupilBeam, P)
+    D = eltype(P)
+    return PupilBeam{D,GaussianPupil{D},2}(P[3], GaussianPupil{D}(P[4]), (P[5], P[6]), b.samples)
 end
-# antenna_b_kernel_3d! and antenna_e_kernel_3d!: Ey_inc, Ez_inc, Bz_inc, By_inc
-@inline function rows(c::Laser3D, P, dj, x, t)
-    T = eltype(P)
-    l = laser_of(P, c.envelope, (zero(T), zero(T)))
-    e, bp, bs, byz = laser_field(l, x - l.focus, dj[1], dj[2], t - l.delay)
-    sθ, cθ = sin(l.polarization), cos(l.polarization)
-    return (e * cθ, e * sθ, bp * cθ - byz * sθ, byz * cθ - bs * sθ)
-end
-# the shaped antenna's profiles (shaped_field): U and U″ at ξ = dj[1], y = dj[2]
-@inline profile_rows(u, u2) = (real(u), imag(u), real(u2), imag(u2))
-@inline rows(::GaussianProfile, P, dj, x, t) = profile_rows(profile(GaussianBeam{eltype(P)}(P[1]), dj[1], dj[2])...)
-@inline function rows(::PupilProfile, P, dj, x, t)
-    T = eltype(P)
-    b = PupilBeam{T,GaussianPupil{T},2}(P[1], GaussianPupil{T}(P[2]), (P[3], P[4]), Int32(48))
-    return profile_rows(profile(b, dj[1], dj[2])...)
+function laser_of(c::Shaped, P, ::Type{S}) where {S}
+    l, D = c.laser, eltype(P)
+    b = shaped_profile(l.profile, P)
+    return ShapedLaser{D,S,typeof(b),typeof(l.envelope)}(D(l.a0), D(l.delay), P[1], P[2], D(l.phase), b, l.envelope, l.position, l.center)
 end
 
-@kernel function rows_kernel!(out, @Const(p), @Const(d), c, x, t)
-    j = @index(Global, Linear)
+# the four values the kernels add at the row q (at N = 3 the q-th (row, layer) of the plane, rows
+# first): Bz and By after a B half step to time t, Ey and Ez after the E step
+@inline function antenna_rows(a, ::Union{Gauss2D,Shaped}, q::Int32, nj::Int32, t)
+    T = typeof(a.xa)
+    return (antenna_b_rows(a, q, t, T)..., antenna_e_rows(a, q, t, T)...)
+end
+@inline function antenna_rows(a, ::Gauss3D, q::Int32, nj::Int32, t)
+    T = typeof(a.xa)
+    j, k = (q - Int32(1)) % nj + Int32(1), (q - Int32(1)) ÷ nj + Int32(1)
+    return (antenna_b_rows(a, j, k, t, T)..., antenna_e_rows(a, j, k, t, T)...)
+end
+
+@kernel function rows_kernel!(out, @Const(p), c, plane, t, nj)
+    q = Int32(@index(Global, Linear))
     @inbounds begin
         P = ntuple(k -> p[k], Val(nparams(c)))
-        dj = ntuple(k -> d[k, j], Val(ndims_row(c)))
-        o = rows(c, P, dj, x, t)
-        ntuple(k -> (out[k, j] = o[k]; nothing), Val(nouts(c)))
+        a = Antenna(laser_of(c, P, typeof(plane.xa)), plane)
+        o = antenna_rows(a, c, q, nj, t)
+        ntuple(k -> (out[k, q] = o[k]; nothing), Val(4))
     end
 end
 
-function rows!(out, p, d, c, x, t)
-    rows_kernel!(get_backend(out))(out, p, d, c, x, t; ndrange = size(out, 2))
+function rows!(out, p, c, plane, t, nj)
+    rows_kernel!(get_backend(out))(out, p, c, plane, t, nj; ndrange = size(out, 2))
     return nothing
 end
 
-# The parameters and rows of each case: the laser of the trapped-beam studies' scale (waist 6,
-# duration 8), 10 c/ω₀ before its focus, at a time on the pulse's rising edge, so that every
-# derivative is far from zero; rows across ±2 waists.
-function t1140_case(::Type{T}, c, nrows) where {T}
-    rng = Xoshiro(1140 + nrows)
-    if c isa Union{Laser2D,Laser3D}
-        p = T[1.3, 6, 8, 48, 28, 1 // 50, 3 // 10, 1 // 5]
-        d = T(12) .* (rand(rng, T, ndims_row(c), nrows) .- T(1 // 2)) .* 2
-        return p, d, T(18), T(41)
+# A laser of the trapped-beam studies' scale (waist 6, duration 8), 26 c/ω₀ before its focus, on
+# its rising edge, so that every derivative is far from zero; every row of the plane, guards included.
+function t1140_case(::Type{T}, kind) where {T}
+    p = T[13 // 10, 6, 8, 48, 28, 1 // 50, 3 // 10, 1 // 5]
+    t = T(41)
+    if kind === :gauss3d
+        grid = PeriodicGrid((16, 12, 10), (T(1 // 5), T(3 // 4), T(3 // 4)), 3)
+        plane = AntennaPlane(T(2), grid, T(1 // 10))
+        nj, nk = grid.n[2] + 2 * guards(grid), grid.n[3] + 2 * guards(grid)
+        return Gauss3D(AxisTime(), (T(9 // 2), T(15 // 4))), p, plane, t, Int32(nj), nj * nk
     end
-    p = c isa GaussianProfile ? T[6] : T[1 // 4, 1 // 2, 1 // 10, -1 // 20]
-    d = vcat(T(20) .* (rand(rng, T, 1, nrows) .- T(1 // 2)), T(16) .* (rand(rng, T, 1, nrows) .- T(1 // 2)))
-    return p, d, zero(T), zero(T)
+    grid = PeriodicGrid((32, 24), (T(1 // 5), T(3 // 4)), 3)
+    plane = AntennaPlane(T(2), grid, T(1 // 10))
+    nj = grid.n[2] + 2 * guards(grid)
+    kind === :gauss2d && return Gauss2D(AxisTime(), T(9)), p, plane, t, Int32(nj), nj
+    kind === :wave2d && return Gauss2D(WavefrontTime(), T(9)), p, plane, t, Int32(nj), nj
+    kind === :wave3d && return (c = t1140_case(T, :gauss3d); (Gauss3D(WavefrontTime(), c[1].center), c[2:end]...))
+    profile, q = kind === :gaussbeam ? (GaussianBeam(; waist = T(6)), T[6]) :
+                 (PupilBeam(; na = T(1 // 4), amplitude = GaussianPupil(; fill = T(1 // 2)), aberrations = (T(1 // 10), -T(1 // 20)), samples = 48),
+                  T[1 // 4, 1 // 2, 1 // 10, -1 // 20])
+    l = ShapedLaser(; a0 = T(13 // 10), delay = T(48), focus = T(28), position = T(2), center = T(9), profile,
+                    envelope = GaussianEnvelope(; duration = T(8), chirp = T(1 // 50)), polarization = T(3 // 10), phase = T(1 // 5))
+    g = ParticleMeshElectromagnetic.time_factor(l, t - l.delay)
+    return Shaped(l), vcat(T[28, 3 // 10], q), plane, g, Int32(nj), nj
 end
 
 """
-    t1140_check(be, T, c; nrows = 37) -> (; ratio_p, ratio_d)
+    t1140_check(be, T, kind) -> ratio
 
-Enzyme's reverse mode through `rows_kernel!` on `be`, seeded with a random adjoint w̄ of the output,
-against ForwardDiff on the CPU: the adjoints of the parameters p̄ = Σ_j J_jᵀ w̄_j and of the rows'
-positions d̄_j = J_jᵀ w̄_j, with J_j the row's Jacobian. Each ratio is the largest
-|reverse − forward| / (eps(T)·Σ|J_j|ᵀ|w̄_j|) over the entries (the sum of the magnitudes of the
-terms, so that a cancellation in the sum over rows does not inflate it).
+Enzyme's reverse mode through `rows_kernel!` on `be`, seeded with a random adjoint w̄ of the four
+values of every row, against ForwardDiff on the CPU: the adjoint of the parameters
+p̄ = Σ_q J_qᵀ w̄_q, J_q the row's Jacobian in p. The ratio is the largest |reverse − forward| /
+(eps(T)·Σ_q |J_q|ᵀ|w̄_q|) over the parameters (the sum of the terms' magnitudes, so that a
+cancellation in the sum over rows does not inflate it).
 """
-function t1140_check(be, ::Type{T}, c; nrows = 37) where {T}
-    p, d, x, t = t1140_case(T, c, nrows)
-    w̄ = randn(Xoshiro(41), T, nouts(c), nrows)
+function t1140_check(be, ::Type{T}, kind) where {T}
+    c, p, plane, t, nj, nrows = t1140_case(T, kind)
+    w̄ = randn(Xoshiro(41), T, 4, nrows)
     dev(a) = (b = KernelAbstractions.allocate(be, eltype(a), size(a)); copyto!(b, a); b)
-    out = dev(zeros(T, nouts(c), nrows))
-    pd, dd = dev(p), dev(d)
-    p̄, d̄ = dev(zero(p)), dev(zero(d))
+    out, pd, p̄ = dev(zeros(T, 4, nrows)), dev(p), dev(zero(p))
     Enzyme.autodiff(Enzyme.Reverse, rows!, Enzyme.Const, Enzyme.Duplicated(out, dev(w̄)), Enzyme.Duplicated(pd, p̄),
-                    Enzyme.Duplicated(dd, d̄), Enzyme.Const(c), Enzyme.Const(x), Enzyme.Const(t))
+                    Enzyme.Const(c), Enzyme.Const(plane), Enzyme.Const(t), Enzyme.Const(nj))
     KernelAbstractions.synchronize(be)
-    np, nd = nparams(c), ndims_row(c)
-    gp, sp = zeros(Float64, np), zeros(Float64, np)
-    gd, sd = zeros(Float64, nd, nrows), zeros(Float64, nd, nrows)
-    for j in 1:nrows
-        f(z) = collect(rows(c, Tuple(z[1:np]), Tuple(z[np+1:end]), x, t))
-        J = ForwardDiff.jacobian(f, vcat(p, d[:, j]))
-        g, s = J' * Float64.(w̄[:, j]), abs.(J)' * abs.(Float64.(w̄[:, j]))
-        gp .+= g[1:np]; sp .+= s[1:np]
-        gd[:, j] .= g[np+1:end]; sd[:, j] .= s[np+1:end]
+    g, s = zeros(Float64, length(p)), zeros(Float64, length(p))
+    for q in 1:nrows
+        f(z) = collect(antenna_rows(Antenna(laser_of(c, Tuple(z), T), plane), c, Int32(q), nj, t))
+        J = ForwardDiff.jacobian(f, p)
+        g .+= J' * Float64.(w̄[:, q])
+        s .+= abs.(J)' * abs.(Float64.(w̄[:, q]))
     end
-    ratio(a, g, s) = maximum(abs.(Float64.(Array(a)) .- g) ./ (eps(T) .* max.(s, floatmin(Float64))))
-    return (; ratio_p = ratio(p̄, gp, sp), ratio_d = ratio(d̄, gd, sd), out = Array(out))
+    return maximum(abs.(Float64.(Array(p̄)) .- g) ./ (eps(T) .* max.(s, floatmin(Float64))))
 end
 
-const T1140_CASES = (Laser2D(AxisTime()), Laser2D(WavefrontTime()), Laser3D(AxisTime()), Laser3D(WavefrontTime()),
-                     GaussianProfile(), PupilProfile())
+const T1140_KINDS = (:gauss2d, :wave2d, :gauss3d, :wave3d, :gaussbeam, :pupil)
 
 function body_T1140(be)
     C = emC("T-1140")
-    for T in (Float32, Float64), c in T1140_CASES
-        r = t1140_check(be, T, c)
-        rp = record!("T-1140 $(nameof(typeof(c))) p", T, r.ratio_p, be)
-        rd = record!("T-1140 $(nameof(typeof(c))) d", T, r.ratio_d, be)
-        @info "T-1140 Enzyme reverse against ForwardDiff" T case = c ratio_p = rp ratio_d = rd
-        @test rp <= C
-        @test rd <= C
+    for T in (Float32, Float64), kind in T1140_KINDS
+        r = record!("T-1140 $kind", T, t1140_check(be, T, kind), be)
+        @info "T-1140 Enzyme reverse against ForwardDiff" T kind ratio = r
+        @test r <= C
     end
 end

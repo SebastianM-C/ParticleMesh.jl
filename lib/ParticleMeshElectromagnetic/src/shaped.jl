@@ -112,32 +112,41 @@ end
 # The kernels of antenna.jl with the time factor `g` of the sub-step's time in place of the time.
 @kernel function shaped_b_kernel!(By, Bz, a, c, g)
     j = Int32(@index(Global, Linear))
-    T = typeof(c)
     i = a.g + a.ia - Int32(1)
+    bz, by = antenna_b_rows(a, j, g, typeof(c))
+    @inbounds begin
+        Bz[i, j] += c * bz
+        By[i, j] -= c * by
+    end
+end
+
+# antenna.jl's rows with the time factor `g` in place of the time
+@inline function antenna_b_rows(a::Antenna{<:ShapedLaser}, j::Int32, g, ::Type{T}) where {T}
     l = a.laser
     ξ = a.xa - l.focus
     sθ, cθ = sin(l.polarization), cos(l.polarization)
-    @inbounds begin
-        ec, _, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
-        en, _, _ = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
-        Bz[i, j] += c * (ec * cθ)
-        By[i, j] -= c * (en * sθ)
-    end
+    ec, _, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
+    en, _, _ = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
+    return ec * cθ, en * sθ
 end
 
 @kernel function shaped_e_kernel!(Ey, Ez, a, c, g)
     j = Int32(@index(Global, Linear))
-    T = typeof(c)
     i = a.g + a.ia
+    ey, ez = antenna_e_rows(a, j, g, typeof(c))
+    @inbounds begin
+        Ey[i, j] += c * ey
+        Ez[i, j] += c * ez
+    end
+end
+
+@inline function antenna_e_rows(a::Antenna{<:ShapedLaser}, j::Int32, g, ::Type{T}) where {T}
     l = a.laser
     ξ = a.xa - a.hx - l.focus
     sθ, cθ = sin(l.polarization), cos(l.polarization)
-    @inbounds begin
-        _, bp, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
-        _, _, bs = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
-        Ey[i, j] += c * (bp * cθ)
-        Ez[i, j] += c * (bs * sθ)
-    end
+    _, bp, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
+    _, _, bs = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
+    return bp * cθ, bs * sθ
 end
 
 b_source!(a::Antenna{<:ShapedLaser}, f, c, t, wgs) =
