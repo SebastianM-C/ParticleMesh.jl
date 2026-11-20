@@ -1173,37 +1173,47 @@ quantity = "a 3D run with a dopant invariant along z or y (a quarter turn about 
 scale = "C: as T-953 (eps(T)·k·2(n₁ + n₂)·max of the 2D run's fields or currents); C_weight: eps(T)·Σw·nsteps"
 C = 32
 C_weight = 16
-status = "proposed; T-1030's C"
+measured = { Float32 = 0.642, Float64 = 0.748, "Dual{Float32,3}" = 0.642 }
+measured_weight = { Float32 = 0.0428, Float64 = 0.0428, "Dual{Float32,3}" = 0.171 }
+status = "proposed; T-1030's C; the largest over the box, the open box and the window, both modes (Fast in Float64 only) and both axes"
 
 ["T-1041"]
 quantity = "a 3D dopant in a constant field with all three components, no current: the ADK rate against its closed form at |E| (rate); one ADK level born every 3 steps for 20 steps, the bound population against exp(−W·n·Δt) of the closed-form W (populations), the born electrons' momenta against −E·Δt·(n − k_b + ½) per component (momenta) and weights against the released fraction (weights); a chain of an ADK, a Tong–Lin and an ADK level, 12 steps, against the per-step recurrence of the closed-form rates (chain)"
 scale = "rate: eps(T)·W; the others n·eps(T)·|closed form| (k·eps(T) for the chain after step k)"
 C = 8
-status = "proposed"
+measured = { rate = 0.691, populations = 0.147, momenta = 0.111, weights = 0.149, chain = 0.408 }
+status = "proposed; the largest over the three types of each quantity"
 
 ["T-1042"]
 quantity = "a lattice of 2 × 1 × 3 atoms per cell on 4 rows and 6 layers of a box of unequal sides in a static curl-free field Ex = 0.3 + x/20, Ey = 1/10, Ez = 0.05 + z/4, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x, z))·n·Δt) of the closed-form rate at its own place (C), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) (weights), off the two columns next to the periodic seam of x"
 scale = "n·eps(T) for the populations; n·eps(T)·density/6 for the weights"
 C = 4
+measured = { Float32 = 0.205, Float64 = 0.25, "Dual{Float32,3}" = 0.205 }
+measured_weight = { Float32 = 0.0461, Float64 = 0.0458, "Dual{Float32,3}" = 0.0461 }
 status = "proposed; T-784's C"
 
 ["T-1043"]
 quantity = "Gauss's law with the dopant ions' charge in the 3D box, |Σ_d D⁻_d E_d − (ρ + ρ_ions − mean)|: a thermal plasma with a dopant of an ADK and a Tong–Lin level (two atoms per cell along x on 4 of 6 rows), 20 steps (periodic); a box open along y and z with an absorbing layer of 3 cells, born electrons driven out through the lower y face by Ey = 1/2, on the nodes off the layers, 40 steps (open); both modes"
 scale = "periodic: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1); open: ((n₁ + n₂ + n₃)·max|ρ| + (Σ_d 2/Δ_d)·max|E|)·√(k + 1)"
 C = 1
-status = "proposed; T-773's and T-785's C"
+measured_periodic = { Float32 = 0.274, Float64 = 0.271, "Dual{Float32,3}" = 0.318 }
+measured_open = { Float32 = 0.266, Float64 = 0.446, "Dual{Float32,3}" = 0.253 }
+status = "proposed; T-773's and T-785's C; the largest over both modes"
 
 ["T-1044"]
 quantity = "Gauss's law with the ions' charge across 3D window shifts, Σ D⁻E − (ρ + ρ_ions − ρ₀(s)), off nodes 1, 2 and the antenna's two columns, the round laser ionizing a doped section on 4 × 4 transverse cells, 120 steps, both modes (C); the atoms' weights on a lattice of 2 × 1 × 2 per cell after 0, 90 and 104 steps, and those of a section loaded by the refill alone (1 × 2 × 1 per cell), against the section's profile at the global coordinate, value and partials (C_weight)"
 scale = "as T-473: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1); eps(T)·density over the points per cell for the weights"
 C = 1
 C_weight = 16
-status = "proposed; T-774's C"
+measured = { Float32 = 0.0982, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
+measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17 }
+status = "proposed; T-774's C; the largest over both modes"
 
 ["T-1045"]
 quantity = "Fast against Reference after 100 steps of ion_window_3d, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"
 scale = "eps(Float64)"
 C = 32
+measured = { Float64 = 4.94 }
 status = "proposed; T-775's C"
 
 ["T-1046"]
@@ -1212,4 +1222,7 @@ scale = "C: the measured floor; C_dual: relative (Float32 against Float64, not a
 C = 4
 floor_max = 1e-6
 C_dual = 1e-5
+measured = { charge_a0 = 0.0156, charge_prefactor = 0.0159, energy_a0 = 0.00907, energy_prefactor = 0.00363 }
+measured_floor_max = 2.4e-8
+measured_dual = { charge = 8.59e-7, energy = 1.25e-6, charge_primal = 8.4e-7, energy_primal = 1.32e-6 }
 status = "proposed; T-778's and T-779's C"

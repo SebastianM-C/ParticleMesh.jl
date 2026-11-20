@@ -485,7 +485,7 @@ function body_T1044(be)
         fr = ionization_frame(st)
         nc = Int.(fr.nc)
         nt = nc[2] * nc[3]
-        @test nc[1] == injection_column(window_frame(st)) < 72 && nc[2:3] == [4, 4] && Array(fr.atoms.count)[1] == nc[1] * nt * K
+        @test nc[1] == injection_column(window_frame(st)) < 72 && nc[2:3] == (4, 4) && Array(fr.atoms.count)[1] == nc[1] * nt * K
         slots(c, r) = ((r - 1) * nc[1] + c - 1) * K .+ (1:K)
         prof = (dens, start, stop, ramp)
         ok, werr = ion_lattice_3d(st, 0, ppc, prof)
@@ -512,7 +512,7 @@ function body_T1044(be)
             @test any(x -> any(!iszero, partials(x)), s2.w)
         end
         # a section ahead of the window: only the refill loads it
-        ppc, prof = (1, 2, 1), (dens, start + 22, stop + 21, ramp)
+        ppc, prof = (1, 2, 1), (dens, start + 28, stop + 27, ramp)   # beyond the injection column's 54.2
         pa = ion_window_3d(T; nsteps = 90, density = dens, start = prof[2], stop = prof[3], ramp, plasma = false, cutoff = 8, ppc)
         sa = ion_state_3d(pa; be)
         @test all_zero_3d(ionization_state(sa).w)
