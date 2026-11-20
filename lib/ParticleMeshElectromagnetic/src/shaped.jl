@@ -52,6 +52,8 @@ end
 
 function ShapedLaser(; a0, delay, focus, position, center, profile::TransverseProfile, envelope::TemporalEnvelope,
                      polarization = 0, phase = 0)
+    center isa Real || throw(ArgumentError("a ShapedLaser's profiles are one-dimensional across the beam, so its center is one " *
+                                           "coordinate (a laser of the 2D box); at N = 3 a laser is a GaussianLaser"))
     T = promote_type(typeof(a0), typeof(delay), typeof(focus), typeof(polarization), typeof(phase),
                      map(typeof, parameter_values(profile))..., map(typeof, parameter_values(envelope))...)
     T = T <: Union{Integer,Rational} ? Float64 : T
@@ -102,8 +104,8 @@ end
 @inline laser_field(l::ShapedLaser, ξ, dy, s) = shaped_field(l, ξ, dy, time_factor(l, s))
 
 function check_profile(a::AntennaPlane, l::ShapedLaser)
-    aliasing_period(l.profile) >= 2 * a.ly ||
-        throw(ArgumentError("the laser's profile repeats every $(aliasing_period(l.profile)) along y, less than twice the box height $(a.ly): raise its samples"))
+    aliasing_period(l.profile) >= 2 * a.len[2] ||
+        throw(ArgumentError("the laser's profile repeats every $(aliasing_period(l.profile)) along y, less than twice the box height $(a.len[2]): raise its samples"))
     return nothing
 end
 

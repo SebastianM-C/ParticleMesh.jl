@@ -11,7 +11,7 @@ with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the me
 their Courant limit, the relativistic Boris pusher behind a pusher type, the step composition
 and the diagnostics. At `N = 3` the module has the 3D3V step (WP-042): the problem
 description, the state, the push, the charge-conserving current, the Yee solver, the initial field
-and the recorder, periodic or open along y and z (WP-072), with no laser, window, witness, dopant, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
+and the recorder, periodic or open along y and z (WP-072), with the laser antenna of a round Gaussian beam (WP-073), and with no window, witness, dopant, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
 Gauss's law holds to roundoff from the initial `cumsum_periodic!` field onwards. The
 electrostatic cases (Landau damping, two-stream) run as edge cases with no transverse momenta
 or fields, as Smilei runs them.
@@ -79,6 +79,7 @@ export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPla
 export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export CompensatedGather, sharpening_beta, gather_transfer, sharpen_x!, particle_fields, sharpen_gather!
+export GalerkinGather, GalerkinRead, read_shape, component_shape
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
 export IonizationLevel, ionization_rate, ADKLevel, adk_rate, TongLinLevel, DopantSection, FieldIonization, IonizationParams

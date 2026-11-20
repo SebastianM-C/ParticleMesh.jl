@@ -12,4 +12,5 @@ groups = [
      "launch.jl", "switch.jl", "qa.jl"],
     ["flux3d.jl", "transposes.jl"],
     ["pullbacks.jl"],
+    ["flux_gather.jl"],
 ]

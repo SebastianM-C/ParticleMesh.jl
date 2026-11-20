@@ -510,4 +510,39 @@ quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a ra
 scale = "Σᵢ|yᵢ|·max|x|"
 C = 1
 measured = { Float32 = 0.378, Float64 = 0.378, "Dual{Float32,3}" = 0.401 }
+
+["T-1000"]
+quantity = "per component d, |⟨J_d, E_d⟩ over the interior − Σ_i quantity_d(i)·o_d[i]|, J from deposit_flux! (guards folded), o from gather_flux! (E's guards filled)"
+scale = "max|E_d| · Σ_i |quantity_d(i)| · factor_d · (P + 2)^N, factor_d = Δx_d/Δt in space and 1 out of it (400 particles; N = 1 on 10 cells, N = 2 on 16 × 12, N = 3 on 8 × 7 × 6)"
+C = 1
+measured = { Float32 = 0.0342, Float64 = 0.0362, "Dual{Float32,3}" = 0.182 }
+measured_breaker = 0.63
+measured_device = { "Float32 on CUDABackend" = 0.0389, "Float64 on CUDABackend" = 0.0322, "Dual{Float32,3} on CUDABackend" = 0.227 }
+status = "proposed; measured_device on an RTX 5090 (T-1004, at 0e79437a); measured_breaker is the physics breaker's worst case (Float64, N = 1 on 4 cells, every particle on one node, Reference), over other grids, cell sizes, dt, particle counts, staggers and bins"
+
+["T-1001"]
+quantity = "max over particles of |o_x − (Δx/Δt)·Σ_j E_j·∫ S_{P-1}(X − x_face_j) dX| at N = 1, the integral in closed form on the host"
+scale = "(Δx/Δt)·max|E|·(P + 1)"
+C = 2
+measured = { Float32 = 0.375, Float64 = 0.536 }
 status = "proposed"
+
+["T-1002"]
+quantity = "max over particles and components of |o_C/(Δ_C·Δx_C/Δt) − the energy-conserving gather at the move's midpoint| / max|E_C| (out of space: |o_C − the quadratic gather|), divided by the move ε in cells, at ε = 1e-4 and 1e-5, order 2, Float64"
+C = 1
+measured = { Float64 = 0.19 }
+status = "proposed; the gap is O(ε²) except for particles whose move crosses a kink of the linear shape, O(ε) there; below ε ≈ 1e-5 the roundoff floor eps/ε takes over (physics breaker)"
+
+["T-1005"]
+quantity = "max over particles and in-space components with ρ at Node on their axis of |o_C/(Δ_C·Δx_C/Δt) − gather!(per-axis Galerkin shapes) at the move's midpoint| / max|E_C|, divided by the move ε in cells, at ε = 1e-4 and 1e-5, order 2, Float64"
+C = 1
+measured = { Float64 = 0.19 }
+status = "proposed; T-1002's measure with the engine's per-axis gather! of WP-070 in place of the host closed form"
+
+["T-1003"]
+quantity = "at rest, N = 2, max over particles of |o_z − gather!(Ez)|"
+scale = "max|Ez|"
+C = 4
+measured = { Float32 = 1.71, Float64 = 1.71, "Dual{Float32,3}" = 1.71 }
+measured_device = { "Float32 on CUDABackend" = 1.71, "Float64 on CUDABackend" = 1.14, "Dual{Float32,3} on CUDABackend" = 1.71 }
+status = "proposed; measured_device on an RTX 5090 (T-1004, at 0e79437a)"
