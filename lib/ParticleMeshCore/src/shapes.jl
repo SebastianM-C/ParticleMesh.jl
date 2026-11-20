@@ -61,6 +61,30 @@ end
 end
 
 """
+    shape_slopes(shape, stagger, δ) -> (f::Int32, dw::NTuple{P+1})
+
+The derivatives `∂w[k]/∂δ` of the weights of `shape_weights(shape, stagger, δ)` on the same nodes
+`c + f + k` (the first node `f` is piecewise constant in `δ`): `(-1, 1)` at order 1 and
+`(ξ - 1/2, -2ξ, ξ + 1/2)` at order 2, with `ξ` the argument of the quadratic weights. They sum to
+zero, as the weights sum to one. The hand-written reverse rules read them (WP-077); duals give the
+same numbers through `shape_weights` (T-1060).
+"""
+@inline function shape_slopes(::Shape{1}, s::Stagger, δ::T) where {T}
+    f, _ = shape_weights(Shape{1}(), s, δ)
+    return (f, (-one(T), one(T)))
+end
+
+@inline quadratic_slopes(ξ::T) where {T} = (ξ - one(T) / 2, -2 * ξ, ξ + one(T) / 2)
+
+@inline shape_slopes(::Shape{2}, ::Center, δ::T) where {T} = (Int32(-1), quadratic_slopes(δ - one(T) / 2))
+
+@inline function shape_slopes(::Shape{2}, s::Stagger, δ::T) where {T}
+    u = δ - stagger_offset(s, T)
+    b = floor(Int32, u + one(T) / 2)
+    return (b - Int32(1), quadratic_slopes(u - T(b)))
+end
+
+"""
     stencil_reach(shape, stagger) -> (lo, hi)
 
 For any offset in `[0, 1)`, the nodes touched by a particle in cell `c` lie in `c+lo:c+hi`.

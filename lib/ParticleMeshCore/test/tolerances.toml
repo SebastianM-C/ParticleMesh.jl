@@ -469,6 +469,42 @@ measured = { "Dual{Float32,3}" = 3.13, primal = "bitwise equal to the Float32 ru
 measured_breaker = { "Dual{Float32,3}" = 5.39 }
 status = "proposed; measured_breaker is the physics breaker's denser case (10 × 9 × 8 cells at 40 particles per cell, 28,800 particles)"
 
+["T-1060"]
+quantity = "shape_slopes and flux_axis_slopes against the partials of the weights of a Dual offset, and Σ dw"
+scale = "1"
+C = 2
+measured = { Float64 = 0.0 }
+status = "proposed; the slopes are the duals' partials bit for bit on the CPU"
+
+["T-1061"]
+quantity = "chain rule of deposit_pullback! and gather_pullback!, |⟨x̄, v⟩ - ⟨ȳ, J·v⟩| with J·v from Dual{Float64,1}"
+scale = "Σ|ȳ·J·v| over the output's entries"
+C = 16
+measured = { Float64 = 1.51 }
+status = "proposed"
+
+["T-1062"]
+quantity = "chain rule of flux_pullback! at N = 1 and 2 per input array; C32: the Float32 pullback against the Float64 one"
+scale = "Σ|J̄·J·v| over the three fields; C32: max|x̄| (at least 1) per array"
+C = 16
+C32 = 16
+measured = { Float64 = 1.85, Float32 = 2.09 }
+status = "proposed"
+
+["T-1064"]
+quantity = "chain rule of Enzyme's reverse mode through the rules (deposit_flux!, deposit!, gather!, the sort)"
+scale = "Σ|ȳ·J·v| over the output's entries"
+C = 16
+measured = { Float64 = 0.308 }
+status = "proposed"
+
+["T-1066"]
+quantity = "the pullbacks on CUDA against the CPU, per array: flux_pullback! (N = 1, 2), deposit_pullback!, gather_pullback! (N = 1 to 3)"
+scale = "max|CPU entry| of the array"
+C = 16
+measured = { "Float32 on CUDABackend" = 2.83, "Float64 on CUDABackend" = 3.14 }
+status = "proposed; measured on an RTX 4080 SUPER"
+
 ["T-980"]
 quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a random field x and random signed yᵢ = q·wᵢ, N = 1, 2, 3, Fast and Reference by cells and by NodeBins"
 scale = "Σᵢ|yᵢ|·max|x|"

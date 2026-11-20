@@ -981,6 +981,13 @@ measured = { "Dual{Float32,3}" = 2.46 }
 measured_partial = { "Dual{Float32,3}" = 1.81 }
 status = "proposed; not bitwise (A4)"
 
+["T-1065"]
+quantity = "pullback_quantity! of CurrentY, CurrentZ and KineticEnergy against the partials of the quantity of a Dual{Float64,4} weight and momentum (an electron and an ion), and the current's diagonal derivative at |u| = 3000 and 5000 against BigFloat"
+scale = "max|q̄·∂quantity| + |q̄·quantity|"
+C = 16
+measured = { Float64 = 2.39, Float32 = 1.03 }
+status = "proposed"
+
 # WP-072: the open transverse boundaries of the 3D step (T-1010 to T-1018). Measured on the CPU backend (Julia 1.13.4, 4 threads).
 ["T-1010"]
 quantity = "a 3D run with an open axis (y or z), invariant along a periodic axis, against the 2D open run, after initialize! and after every step: every component on every line of the invariant axis; 30 steps of T-953's beams on 12 × 16 cells open along the plane's second axis, the absorbing layer (4 cells, strength 1) and the PML (4 cells, κ_max = 2, α_max = 0.1)"
