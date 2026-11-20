@@ -1,63 +1,84 @@
-# Spike: Enzyme reverse mode through the 2D step
+# Spike: Enzyme reverse mode through the 2D step on the GPU
+
+Enzyme differentiates steps of the 2D electromagnetic module on CUDA (RTX 5090). The case is Fast mode with one species. Its gradient with respect to the whole state matches ForwardDiff by the chain rule to 5e-15 (relative) in Float64 over 20 steps and 3e-13 over 100. A reverse pass is linear in the step count at CUDA's default 8 MB device heap. It takes 0.74 to 0.96 ms per step up to 262 144 particles, where the plain run is bound by kernel launches, and 10.4 ms per step at 4 194 304 particles. That is 9 to 15 times the plain run, and 0.3 to 3.9 times a Dual pass with 4 partials. Enzyme's first call compiles for 104 to 111 s.
+
+Two engine changes make the cost linear. The gather and the 2D atomic block add are written out with `ntuple`, so Enzyme keeps their per-term values in its fixed-size tape. The 2D atomic adds go through the element's pointer (`atomic_add!` in `lib/ParticleMeshCore/src/flux2d.jl`). Without the changes, Enzyme allocated device memory once per work item and step, and those blocks stayed alive until the reverse sweep. CUDA's device malloc slows as live blocks accumulate, so a reverse pass grew quadratically in the steps. It overflowed the default heap past 16 steps at 720 particles, and failed past 4 steps at 262 144 particles even with a 1 GiB heap.
+
+Not working:
+- the CPU, because KernelAbstractions' CPU backend is POCL (#509);
+- Reference mode without the hand-written rules of WP-077 (#527);
+- two species (#384);
+- Active scalar kernel arguments. These need a patch of KernelAbstractions' Enzyme extension, which also drops their adjoints.
 
 | | |
 |---|---|
 | Work package | WP-050 (goals A0, A3, A7, A8) |
-| Commit of the runs | `31bddb0b4fcfe0aac235ec0ae56d533649777096` (clean tree) |
-| Runs | the nine `enzyme-*` runs in `wp-050-enzyme-spike/`, each a `result.toml` and a `manifest.toml` |
-| Input hashes | SHA-256 of `scripts/enzyme/chain_rule.jl`, `scripts/enzyme/setup.jl`, `lib/ParticleMeshElectromagnetic/test/em2d_cases.jl`, the side environment's `Project.toml`, `Manifest.toml` and its `step2d.jl`, in each manifest |
-| Environment | Julia 1.13.3, 4 threads; side environment: Enzyme 0.13.219 (Enzyme_jll 0.0.307, LLVM.jl 9.13.2, GPUCompiler 2.10.0), KernelAbstractions 0.9.45 CPU backend, AcceleratedKernels 0.5.12, ForwardDiff 1.4.7; Intel Xeon Processor @ 2.10GHz, a 4-core cloud container |
-| Status | measured, not independently reviewed; the timings are single samples on a shared machine |
+| Commit of the runs | `54cecc391b5ad2aa06fa387831934678771039a9` (clean tree) |
+| Runs | the `enzyme-*` runs in `wp-050-enzyme-spike/`, each a `result.toml` and a `manifest.toml` |
+| Input hashes | SHA-256 of `scripts/enzyme/{chain_rule,cost,common}.jl`, `lib/ParticleMeshElectromagnetic/test/em2d_cases.jl`, the test environment's `Project.toml` and the root `Manifest.toml`, in each manifest |
+| Environment | Julia 1.13.4; Enzyme 0.13.221, KernelAbstractions 0.10.8, ForwardDiff 1.4.6 (the root manifest); NVIDIA GeForce RTX 5090, driver 615.71.09, CUDA backend; AMD Ryzen 9 9950X host |
+| Status | measured, not independently reviewed; the cost timings are the median of three runs in one process, the chain-rule timings single runs |
 
-## 1. What blocks Enzyme in the repository
+## Setup
 
-Enzyme cannot be installed next to the engine. Every KernelAbstractions 0.10 release requires LLVM.jl 10 (so do GPUCompiler ≥ 2.20 and UnsafeAtomics 0.4), while Enzyme 0.13.219, the latest release, caps LLVM.jl at 9.13.2, and Enzyme's main branch on 2026-11-09 asks for `LLVM = "9.10"`. `Pkg.add("Enzyme")` in `lib/ParticleMeshElectromagnetic/test` fails to resolve. No test was added, and the package is parked until an Enzyme release accepts LLVM.jl 10 (#385).
+- **Case.** WP-023's `plasma_step_2d`: Esirkepov current, Quadratic shape, Boris pusher, Yee solver, electrons only, Fast mode, `observer = ()`. The default grid is 10 × 8 cells with 3 × 3 particles per cell. The parameter α is the density perturbation amplitude, which enters through the weights (A3). The functional f is the field energy after n steps.
+- **Check** (`scripts/enzyme/chain_rule.jl`). Enzyme's gradient ∇f with respect to every floating-point array of the initialized state, dotted with ForwardDiff's tangent dx/dα, is compared against ForwardDiff's df/dα of the whole run. A second check uses a random tangent on every array. Both must agree within 64·eps(T)·n·c, where c is the cancellation of the per-array contributions. Both compare two AD modes of the same code, so a physics defect would not show; the module's T-tests cover the physics.
+- **Cost** (`scripts/enzyme/cost.jl`). For each step count k, it times k plain steps, the same k steps with α as a `Dual` with 1 and with 4 partials, and Enzyme's reverse pass of the k steps. Each is the median of three runs after compilation. `scripts/enzyme/run_gpu.sh` runs both scripts, and `scripts/enzyme/table.jl` prints the tables below from the runs' `result.toml`.
 
-The spike therefore runs in a side environment that `scripts/enzyme/setup.jl` builds: copies of the two `lib/` packages with KernelAbstractions relaxed to 0.9.45 (the engine uses only `@kernel`, `@index`, `@Const`, `allocate`, `zeros`, `ones` and `get_backend`), and Enzyme, ForwardDiff at pinned versions. KernelAbstractions 0.9.45 still has the EnzymeCore extension with the reverse rules for CPU kernel launches; 0.10 dropped it, so a future Enzyme-on-0.10 needs those rules back.
+KernelAbstractions 0.10's Enzyme extension rejects Active kernel arguments, the scalars such as `dt`, cell sizes and charges; the draft JuliaGPU/KernelAbstractions.jl#979 adds them. The runs load `scripts/enzyme/spike/active_args.jl` (`PM_ENZYME_PATCH`), which passes them as Const. The gradient with respect to the state is unaffected, but a parameter that reaches a kernel only as a scalar argument gets no gradient.
 
-## 2. What else blocks, and the workarounds
+## Results
 
-| Attempt | Outcome |
-|---|---|
-| The whole pipeline inside the gradient, `α ↦ EMState + initialize! + step!` | Enzyme aborts the process in type analysis ("illegal insertion", `TypeTree.h:364`) while compiling `map(problem.species)` in `EMState`. Not reduced; the spike differentiates a prebuilt state instead (#385, item 3). |
-| `step!` on a prebuilt state, one species | works, Fast and Reference mode |
-| `step!` on a prebuilt state, two species | `EnzymeInternalError`, "Illegal address space propagation", on the `for s in st.species` loops over the species tuple. Reduced to an Enzyme-only example: #384. With the loops written as `foreach` (`setup.jl --foreach`: the push loop, `kinetic!` and the `zip(st.species, st.ws)` loops) two species work in Float64 and Float32; with only the push loop rewritten, Float32 still fails in `kinetic!` (found by the physics breaker). |
+| Mode | Steps | T | Seed | α direction, relative | Random direction, relative | c | Verdict | Reverse (s) | Primal (s) | First call (s) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fast | 20 | Float64 | 7 | 5.4e-15 | 2.1e-16 | 4.36 | pass | 0.319 | 0.0020 | 110 |
+| fast | 20 | Float32 | 7 | 3.0e-06 | 2.1e-07 | 4.36 | pass | 0.312 | 0.0013 | 111 |
+| fast | 100 | Float64 | 3 | 2.7e-13 | 1.1e-13 | 21.43 | pass | 0.373 | 0.0084 | 110 |
 
-The rewrite is not in the engine: WP-047 edits the same push loop, and the change belongs with the move into the test suite (#385, item 2).
+| T | Cells | ppc | Particles | Steps | Primal (ms) | Dual{1} (ms) | Dual{4} (ms) | Reverse (ms) | Reverse / primal | Reverse / Dual{4} | Reverse per step (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Float32 | 10×8 | 3×3 | 720 | 1 | 0.07 | 0.10 | 7.03 | 1.26 | 19.3 | 0.18 | 1.256 |
+| Float32 | 10×8 | 3×3 | 720 | 64 | 3.14 | 5.49 | 12.28 | 47.49 | 15.1 | 3.87 | 0.742 |
+| Float64 | 10×8 | 3×3 | 720 | 1 | 0.09 | 0.26 | 0.66 | 1.23 | 13.5 | 1.86 | 1.230 |
+| Float64 | 10×8 | 3×3 | 720 | 64 | 5.24 | 18.74 | 52.68 | 47.79 | 9.1 | 0.91 | 0.747 |
+| Float32 | 64×64 | 3×3 | 36864 | 1 | 0.06 | 0.13 | 0.43 | 1.22 | 20.1 | 2.82 | 1.223 |
+| Float32 | 64×64 | 3×3 | 36864 | 32 | 1.63 | 4.36 | 15.47 | 24.67 | 15.1 | 1.59 | 0.771 |
+| Float32 | 256×256 | 2×2 | 262144 | 1 | 0.09 | 0.25 | 1.79 | 1.34 | 15.2 | 0.75 | 1.343 |
+| Float32 | 256×256 | 2×2 | 262144 | 16 | 1.53 | 3.71 | 34.94 | 15.33 | 10.0 | 0.44 | 0.958 |
+| Float32 | 1024×1024 | 2×2 | 4194304 | 1 | 0.88 | 3.35 | 30.15 | 9.93 | 11.3 | 0.33 | 9.933 |
+| Float32 | 1024×1024 | 2×2 | 4194304 | 8 | 7.83 | 26.30 | 290.99 | 83.26 | 10.6 | 0.29 | 10.407 |
 
-## 3. The check
+First reverse call (compiles), s: Float32 10×8 110; Float64 10×8 111; Float32 64×64 110; Float32 256×256 110; Float32 1024×1024 104
 
-The case is WP-023's `plasma_step_2d` (Esirkepov current, Quadratic shape, Boris, Yee, 10 × 8 cells, 3 × 3 particles per cell; one species is its electrons alone), the parameter α the electrons' density perturbation amplitude (it enters through the weights, A3), the functional f the field energy Σ(Ex² + Ey² + Ez² + Bx² + By² + Bz²) after n steps of the initialized state x.
+At the small sizes the plain run is bound by kernel launches, so its time barely changes from 720 to 262 144 particles. The ratios at those sizes say little about production runs; the 4 194 304-particle case (1024 × 1024 cells, 2 × 2 per cell) is the closest to one.
 
-- **α direction.** Enzyme's gradient ∇f with respect to every floating-point array of x (about 20 000 entries for one species, 36 000 for two), dotted with ForwardDiff's tangent dx/dα of `initialize!`, against ForwardDiff's df/dα of the whole run. The α tangent is zero on Bx, By, Bz, Ez, the offsets and u_z, so this direction does not test the gradient there.
-- **Random direction.** A Dual state with a random tangent v on every array, whose forward derivative must equal ⟨∇f, v⟩. This covers the arrays the α direction leaves untested.
-- **Verdict.** Both within 64·eps(T)·n·c, where c = Σ|c_k|/|Σc_k| is the cancellation of the per-array contributions to the α direction.
+The Float32 10×8 Dual{4} time at one step (7.03 ms) is an outlier of the run, against 0.38 ms at two steps. The earlier run at commit `21d1cc5`, with the unrolled stencils but Atomix's adds, is in this report's commit message. It shows the quadratic growth.
 
-Both checks compare two AD modes of the same code, so they do not see a physics defect: the mutation breaker flipped the sign of the push and dropped Jz, and the identity still held to 0.0. Physics correctness rests on the module's T-tests.
+## Why the reverse pass allocated
 
-## 4. Results
+Enzyme's augmented forward pass of a kernel saves, per work item, the values its reverse needs. Values saved inside a loop go to `malloc`, which on CUDA is the device heap, even when the trip count is a compile-time constant (a CPU probe with a fixed 256-iteration loop still allocated). Values from straight-line code go to the fixed-size tape that KernelAbstractions' extension allocates once per launch. The two changes remove each source of malloc:
+- The gather's loop over the 3 × 3 stencil, and the flux kernel's loops over its blocks of atomic adds, became `ntuple`s.
+- `Atomix.modify!` wraps the add in `GC.@preserve` of the array. On the device the array is a by-value struct, and the preserve spills it to a stack slot that Enzyme moves to the heap (`enzyme_fromstack`). The engine now calls `UnsafeAtomics.modify!` on `pointer(J, i)`. That is the same operation, with the same ordering and scope, without the preserve.
 
-| Mode | Steps | Species | T | Seed | α direction, relative | Random direction, relative | c | Verdict | Repeat bitwise |
-|---|---|---|---|---|---|---|---|---|---|
-| Fast | 1 | 1 | Float64 | 7 | 3.7e-16 | 3.8e-16 | 1.00 | pass | yes |
-| Fast | 1 | 1 | Float32 | 7 | 2.0e-7 | 1.6e-7 | 1.00 | pass | yes |
-| Reference | 20 | 1 | Float64 | 7 | 4.6e-15 | 3.6e-16 | 4.36 | pass | yes |
-| Fast | 100 | 1 | Float64 | 3 | 6.5e-13 | 6.4e-15 | 21.4 | pass | yes |
-| Fast | 100 | 1 | Float32 | 3 | 2.2e-3 | 3.7e-5 | 21.4 | pass | yes |
-| Fast (`--foreach`) | 1 | 2 | Float32 | 7 | 1.0e-7 | 1.1e-7 | 1.00 | pass | yes |
-| Fast (`--foreach`) | 20 | 2 | Float32 | 11 | 1.4e-6 | 8.8e-8 | 1.09 | pass | yes |
-| Reference (`--foreach`) | 20 | 2 | Float64 | 11 | 4.1e-15 | 1.2e-14 | 1.09 | pass | yes |
-| Reference, workgroup 16 | 20 | 1 | Float64 | 7 | 2.1e-15 | 8.4e-16 | 4.36 | pass | **no** |
+With both changes, the 18 kernels of a reverse step contain no device malloc (counted in their LLVM IR on the RTX 5090). On the plain run the same changes made Fast mode 4 to 10 % faster in Float32 on the RTX 5090. Reference mode and the duals were within 2 % (per-change benchmark, single runs, not committed).
 
-Two species without `--foreach` fail as section 2 says (run, not in the table). The error of the α direction grows with the steps and with c: at 100 steps it is 2900·eps in Float64 and 1.8e4·eps in Float32, and the ratio of the two follows eps(T) within a factor of about 6 (physics breaker), which reads as amplified roundoff rather than an AD defect; the random direction stays within 30·eps(T) in Float64. The physics breaker also ran 60 steps (Reference, seed 3), the positive species' amplitude as the parameter with the kinetic energy as the functional (40 steps, two species, seed 5), all within the same bounds.
+## Not shown, and what blocks
 
-**Determinism.** With the default workgroup size (1024 in KernelAbstractions 0.9) each kernel of this case is one workgroup and runs serially, and repeats are bitwise equal. With workgroup size 16 on 4 threads, the reverse pass differs bitwise between two calls in Reference mode too, while the primal does not (#386; likely the adjoint of the gathers, a scatter that Enzyme accumulates with atomics, not checked). Reverse-mode gradients are not yet reference mode in the sense of A4.
+- **CPU.** Enzyme cannot compile POCL's kernels (#509). The owner set the GPU first.
+- **Reference mode.** The sort hangs in `copyto!` from one `CuArray` to another under Enzyme, and the tuple recursion of `permute_all!` crashes Enzyme at compile time. Neither is reduced yet; they need a GPU (#385). WP-077 (#527) replaces the sort and the transfer kernels with hand-written Enzyme rules, and with those Reference mode differentiates on CUDA (its own measurements, not repeated here).
+- **Two species.** The loops over the species tuple fail as #384 says.
+- **Determinism.** The adjoint of the gather is a scatter that Enzyme accumulates with atomics, so the reverse pass is not bitwise reproducible: two calls differed in every chain-rule run (`repeat_bitwise_equal = false`; #386).
+- **Not tried.** The moving window, the antenna, the open boundaries, the PML, the filter, 3D, and checkpointing for long runs. The tape grows linearly with the steps.
 
-**Cost** (single samples after compilation, on a shared 4-core machine; take them as orders of magnitude). Enzyme's first call compiles for 97 to 129 s. One reverse pass costs 20 to 50 primal runs (0.29 s against 6.6 ms at 20 steps; 1.6 s against 61 ms at 100 steps), one Dual pass 1 to 2. The reverse pass gives the gradient with respect to all 20 000 to 36 000 state entries at once, so it pays off beyond a few dozen parameters; for the few parameters of WP-043 and WP-045, ForwardDiff stays cheaper.
+## Where the data is
 
-## 5. Open issues
+`wp-050-enzyme-spike/` holds the result and manifest of each run. The logs and the device-malloc probes stayed on the machine that ran them. The CPU runs of 2026-11-09 (side environment, KernelAbstractions 0.9) are in git history.
 
-- #385: move the check into the test suite once Enzyme accepts LLVM.jl 10; the `foreach` rewrite of the species loops; the unreduced abort when the state is built inside the gradient.
-- #384 (`upstream`): Enzyme's "Illegal address space propagation" on a loop over a homogeneous tuple of structs.
-- #386: the threaded reverse pass is not bitwise reproducible.
-- Not tried: the moving window, the antenna, the open boundaries and the PML, the filter, GPU (KernelAbstractions 0.9's GPU backends with Enzyme), checkpointing for long runs (the reverse pass stores the tape of every step).
+## Open issues
+
+- #385: the Enzyme check in the test suite, which waits for Active kernel arguments in a KernelAbstractions release (JuliaGPU/KernelAbstractions.jl#979); Reference mode; the abort when the state is built inside the gradient.
+- #384 (`upstream`): "Illegal address space propagation" on a loop over a homogeneous tuple of structs.
+- #386: the reverse pass is not bitwise reproducible.
+- #526 (`upstream`): Enzyme heap-allocates a copy of an isbits argument under `GC.@preserve` (reduced on the CPU), the mechanism behind the pointer atomics.
+- #509: Enzyme on POCL.
+- EnzymeAD/Enzyme.jl#2324: an illegal memory access in a GPU reverse pass at larger sizes, the symptom these runs had before the changes; its cause is not identified there.
