@@ -1067,6 +1067,203 @@ function prepare_ion(case_path, tag; codes = ("pm", "smilei", "picongpu"), seeds
     return root
 end
 
+# --- compare ----------------------------------------------------------------------------------
+
+"The measures of `compare_ion`'s table, per species group of an output."
+const ION_MEASURES = ("weight", "J_born", "J_trapped", "fast_weight", "ux_max")
+
+# mean, sample standard deviation, minimum and maximum of numbers
+function ion_stats(v)
+    v = Float64.(v)
+    n = length(v)
+    m = sum(v) / n
+    return Dict{String,Any}("mean" => m, "std" => n > 1 ? sqrt(sum(abs2, v .- m) / (n - 1)) : 0.0, "min" => minimum(v), "max" => maximum(v), "n" => n)
+end
+
+"The groups of runs under `runs` that `compare_ion` compares: ParticleMesh's kinds one each, a Monte Carlo code's seeds together."
+function ion_groups(runs)
+    G = Dict{String,Vector{String}}()
+    for name in sort(readdir(runs))
+        isfile(joinpath(runs, name, "summary.json")) || continue
+        key = replace(name, r"-s\d+$" => "")
+        push!(get!(G, key, String[]), joinpath(runs, name))
+    end
+    return G
+end
+
+"""
+    ion_series(summaries, group, measure) -> (t, mean, min, max)
+
+A measure of the born (`group = "born"`) or plasma electrons against time over the runs of one
+group: per output the mean, minimum and maximum over the seeds (one run: all three the same).
+"""
+function ion_series(S, group, measure)
+    outs = [s["outputs"] for s in S]
+    n = minimum(length, outs)
+    t = Float64[outs[1][k]["t"] for k in 1:n]
+    v = [Float64[haskey(o[k], group) ? Float64(o[k][group][measure]) : NaN for o in outs] for k in 1:n]
+    return t, [sum(x) / length(x) for x in v], minimum.(v), maximum.(v)
+end
+
+"""
+    compare_ion(runs, out) -> Dict
+
+Compare the summaries under `runs` (`prepare_ion`'s directories) and write `comparison.json`,
+the figures with their sidecars, and a manifest into `out`. `final` holds, per group of runs
+(ParticleMesh's kinds, each Monte Carlo code's seeds together), the measures of the born and the
+plasma electrons at the read-out and the dopant's charge states at the output where N⁶⁺ peaks;
+`ratios` the born measures of each ParticleMesh run over each Monte Carlo code's seed mean, with
+the seeds' relative standard deviation next to them; `laser` the largest |E_y| in the window per
+output and group; `seconds` the runtimes as the summaries have them.
+"""
+function compare_ion(runs, out)
+    mkpath(out)
+    G = ion_groups(runs)
+    S = Dict(k => [JSON.parsefile(joinpath(d, "summary.json")) for d in v] for (k, v) in G)
+    case = TOML.parsefile(joinpath(first(first(values(G))), "case.toml"))
+    d = ion_derived(case)
+    final = Dict{String,Any}()
+    for (k, ss) in S
+        e = Dict{String,Any}("runs" => [basename(x) for x in G[k]], "t" => last(ss[1]["outputs"])["t"])
+        for group in ("born", "plasma")
+            haskey(last(ss[1]["outputs"]), group) || continue
+            e[group] = Dict(m => ion_stats([Float64(last(s["outputs"])[group][m]) for s in ss]) for m in ION_MEASURES)
+        end
+        if haskey(last(ss[1]["outputs"]), "charge_states")
+            # the output where N⁶⁺ peaks in the first run: the dopant is in the window and half ionized
+            o1 = ss[1]["outputs"]
+            kpk = argmax([Float64(o["charge_states"][2]) for o in o1])
+            cs = [Float64.(s["outputs"][kpk]["charge_states"]) for s in ss]
+            e["charge_states"] = Dict("t" => o1[kpk]["t"], "names" => [5, 6, 7],
+                                      "populations" => [ion_stats([c[i] for c in cs]) for i in 1:3])
+        end
+        final[k] = e
+    end
+    ratios = Dict{String,Any}()
+    mc = [k for k in keys(final) if !startswith(k, "pm-") && haskey(final[k], "born")]
+    for k in keys(final), ref in mc
+        startswith(k, "pm-") && haskey(final[k], "born") || continue
+        ratios["$k / $ref"] = Dict(m => Dict("ratio" => final[k]["born"][m]["mean"] / final[ref]["born"][m]["mean"],
+                                             "ref_rel_std" => final[ref]["born"][m]["std"] / final[ref]["born"][m]["mean"],
+                                             "ref_seeds" => final[ref]["born"][m]["n"])
+                                   for m in ("weight", "J_born", "J_trapped"))
+    end
+    laser = Dict(k => Dict("t" => Float64[o["t"] for o in ss[1]["outputs"]],
+                           "Ey_absmax" => [ion_stats([Float64(s["outputs"][i]["Ey_absmax"]) for s in ss])["mean"] for i in eachindex(ss[1]["outputs"])])
+                 for (k, ss) in S)
+    result = Dict{String,Any}("case" => case["name"], "dx" => d.dx, "dt" => d.dt, "steps" => d.steps, "groups" => Dict(k => basename.(v) for (k, v) in G),
+                              "final" => final, "ratios" => ratios, "laser" => laser,
+                              "seconds" => Dict(basename(x) => get(JSON.parsefile(joinpath(x, "summary.json")), "seconds", nothing) for v in values(G) for x in v))
+    open(io -> JSON.print(io, result, 2), joinpath(out, "comparison.json"), "w")
+    plot_ion_objectives(out, S)
+    plot_ion_charge_states(out, S)
+    plot_ion_spectra(out, S)
+    plot_ion_phase_space(out, S)
+    plot_ion_wake(out, S, d)
+    write_manifest(out; root = REPO,
+                   extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"],
+                                            "summaries" => Dict(basename(x) => "sha256:" * RunManifest.file_hash(joinpath(x, "summary.json")) for v in values(G) for x in v)))
+    return result
+end
+
+const ION_COLORS = Dict("pm-plasma" => "#1f77b4", "pm-plasma-rates-smilei" => "#9467bd", "pm-plasma-rates-picongpu" => "#17becf",
+                        "pm-plasma-axis" => "#7f7f7f", "smilei-plasma" => "#d62728", "picongpu-plasma" => "#2ca02c")
+const ION_LABELS = Dict("pm-plasma" => "ParticleMesh", "pm-plasma-rates-smilei" => "ParticleMesh, Smilei's rate",
+                        "pm-plasma-rates-picongpu" => "ParticleMesh, PIConGPU's rate", "pm-plasma-axis" => "ParticleMesh, WP-064's pulse",
+                        "smilei-plasma" => "Smilei (seeds)", "picongpu-plasma" => "PIConGPU (seeds)")
+ion_dopant_groups(S) = [k for k in ("pm-plasma", "pm-plasma-rates-smilei", "pm-plasma-rates-picongpu", "pm-plasma-axis", "smilei-plasma", "picongpu-plasma") if haskey(S, k)]
+
+# The born electrons' weight and the two objectives against time; a Monte Carlo code's band spans its seeds.
+function plot_ion_objectives(out, S)
+    fig = Figure(size = (1500, 420))
+    side = Dict{String,Any}()
+    for (col, (m, lab)) in enumerate((("weight", "born electrons (n_c (c/ω₀)²)"), ("J_born", "J_born, WP-064 (mₑc² n_c (c/ω₀)²)"),
+                                      ("J_trapped", "J_trapped, WP-065 (mₑc² n_c (c/ω₀)²)")))
+        ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = lab)
+        for k in ion_dopant_groups(S)
+            t, mean, lo, hi = ion_series(S[k], "born", m)
+            length(S[k]) > 1 && band!(ax, t, lo, hi; color = (ION_COLORS[k], 0.25))
+            lines!(ax, t, mean; color = ION_COLORS[k], label = ION_LABELS[k], linestyle = startswith(k, "pm-") ? :solid : :dash)
+            side["$(m)_$k"] = Dict("t" => t, "mean" => mean, "min" => lo, "max" => hi)
+        end
+        col == 1 && axislegend(ax; position = :lt, labelsize = 11)
+    end
+    save_plot(out, "born_objectives", fig, side)
+end
+
+function plot_ion_charge_states(out, S)
+    fig = Figure(size = (1000, 420))
+    side = Dict{String,Any}()
+    for (col, (i, lab)) in enumerate(((2, "N⁶⁺ in the window"), (3, "N⁷⁺ in the window")))
+        ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = "$lab (n_c (c/ω₀)²)")
+        for k in ion_dopant_groups(S)
+            outs = [s["outputs"] for s in S[k]]
+            t = Float64[o["t"] for o in outs[1]]
+            v = [sum(Float64(o[j]["charge_states"][i]) for o in outs) / length(outs) for j in eachindex(t)]
+            scatterlines!(ax, t, v; color = ION_COLORS[k], label = ION_LABELS[k], markersize = 6)
+            side["$(i + 4)_$k"] = Dict("t" => t, "mean" => v)
+        end
+        col == 1 && axislegend(ax; position = :lt, labelsize = 11)
+    end
+    save_plot(out, "charge_states", fig, side)
+end
+
+function plot_ion_spectra(out, S)
+    k0 = first(ion_dopant_groups(S))
+    edges = Float64.(S[k0][1]["spectrum_edges"])
+    mids = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
+    fig = Figure(size = (900, 420))
+    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "born electrons per bin (n_c (c/ω₀)²)",
+              title = "born electrons ahead of the fade at the read-out (bins of $(round(edges[2] - edges[1]; digits = 3)) mₑc²)")
+    side = Dict{String,Any}("ekin" => mids)
+    for k in ion_dopant_groups(S)
+        h = sum(Float64.(last(s["outputs"])["born"]["spectrum"]) for s in S[k]) ./ length(S[k])
+        stairs!(ax, edges, vcat(h, h[end]); step = :post, color = ION_COLORS[k], label = ION_LABELS[k])
+        side[k] = h
+    end
+    axislegend(ax; position = :lt, labelsize = 11)
+    save_plot(out, "born_spectrum", fig, side)
+end
+
+# The born electrons of the first run of each group at the read-out: window x against u_x.
+function plot_ion_phase_space(out, S)
+    ks = [k for k in ion_dopant_groups(S) if haskey(last(S[k][1]["outputs"]), "born_particles")]
+    fig = Figure(size = (450 * length(ks), 400))
+    side = Dict{String,Any}()
+    for (col, k) in enumerate(ks)
+        p = last(S[k][1]["outputs"])["born_particles"]
+        x, ux, w = Float64.(p["x"]), Float64.(p["ux"]), Float64.(p["w"])
+        ax = Axis(fig[1, col]; xlabel = "window x (c/ω₀)", ylabel = "u_x", title = ION_LABELS[k])
+        keep = w .> 0
+        scatter!(ax, x[keep], ux[keep]; markersize = 2, color = (ION_COLORS[k], 0.5))
+        side[k] = Dict("particles" => count(keep), "x_range" => isempty(x) ? nothing : extrema(x), "ux_range" => isempty(ux) ? nothing : extrema(ux))
+    end
+    save_plot(out, "born_phase_space", fig, side)
+end
+
+# E_x on the axis against box x at three outputs, every code's run without the dopant (one seed: the plasma's load is not random).
+function plot_ion_wake(out, S, d)
+    ks = [k for k in ("pm-plasma-nodopant", "smilei-plasma-nodopant", "picongpu-plasma-nodopant") if haskey(S, k)]
+    isempty(ks) && return
+    n = length(S[ks[1]][1]["outputs"])
+    picks = unique(clamp.((n - 4, n - 2, n), 1, n))
+    fig = Figure(size = (1100, 280 * length(picks)))
+    side = Dict{String,Any}()
+    col = Dict("pm-plasma-nodopant" => "#1f77b4", "smilei-plasma-nodopant" => "#d62728", "picongpu-plasma-nodopant" => "#2ca02c")
+    for (row, j) in enumerate(picks)
+        ax = Axis(fig[row, 1]; xlabel = "x (c/ω₀), box", ylabel = "E_x on the axis", title = "t = $(round(S[ks[1]][1]["outputs"][j]["t"]; digits = 1))")
+        for k in ks
+            o = S[k][1]["outputs"][j]
+            ex = Float64.(o["Ex_axis"])
+            x = ((0:(length(ex) - 1)) .+ Int(o["Ex_m0"]) .- 0.5) .* d.dx
+            lines!(ax, x, ex; color = col[k], label = split(k, "-")[1] == "pm" ? "ParticleMesh" : uppercasefirst(split(k, "-")[1]))
+            side["$(k)_t$(o["step"])"] = Dict("x0" => first(x), "dx" => d.dx, "Ex" => ex)
+        end
+        row == 1 && axislegend(ax; position = :lb)
+    end
+    save_plot(out, "wake_axis", fig, side)
+end
+
 # --- command line ---------------------------------------------------------------------------------
 
 if abspath(PROGRAM_FILE) == @__FILE__
