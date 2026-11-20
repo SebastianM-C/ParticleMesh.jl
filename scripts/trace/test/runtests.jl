@@ -54,6 +54,11 @@ end
         @test any(contains("must not depend on Checkpointing"), errors) == refused
         @test length(errors) == refused
     end
+    # a forbidden package stays forbidden as a weak dependency
+    root = fixture()
+    mkpath(joinpath(root, "lib", "Y"))
+    write(joinpath(root, "lib", "Y", "Project.toml"), "name = \"Y\"\n[weakdeps]\nModelingToolkit = \"961ee093-0014-501f-94e3-6117800e7a78\"\n")
+    @test any(contains("must not depend on ModelingToolkit"), check(root).errors)
 end
 
 @testset "T-004 the repository passes its own check [A0]" begin
