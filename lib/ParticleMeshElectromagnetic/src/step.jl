@@ -317,7 +317,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
     numerics.back_absorber === nothing ||
         throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D)"))
     n = problem.cells
-    grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
+    grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
     species = map(problem.species) do d
         Species(backend, T, n * d.ppc; q = d.charge, m = d.mass, extras = (old_cell = Int32, old_offset = T))

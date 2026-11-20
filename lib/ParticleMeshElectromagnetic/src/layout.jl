@@ -89,10 +89,11 @@ component, as a `NamedTuple` with the same keys; N = 1, 2 and 3.
 em_fields(backend, ::Type{T}, grid::PeriodicGrid{N}) where {T,N} = map(_ -> field(backend, T, grid), field_layout(Val(N)))
 
 """
-    em_guard_width(shape)
+    em_guard_width(shape, solver = Yee())
 
 Guard cells the module's step needs on each side: those of `deposit_flux!` with ρ at
 [`RHO_STAGGER`](@ref) (its old and new stencils together span one node more than one stencil),
-which also cover the gathers and the Yee stencils (one cell).
+which also cover the gathers, and at least those of the solver's stencils (one cell for
+[`Yee`](@ref), two for [`M4`](@ref)).
 """
-em_guard_width(shape::Shape) = max(ParticleMeshCore.flux_guard_width(shape, RHO_STAGGER), 1)
+em_guard_width(shape::Shape, solver = Yee()) = max(ParticleMeshCore.flux_guard_width(shape, RHO_STAGGER), solver_reach(solver))

@@ -16,6 +16,7 @@ include("pml_cases.jl")        # WP-034: the PML's runs and its discrete theory
 include("window_cases.jl")     # WP-028: the moving window's problems
 include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, after window_cases.jl
 include("ionization_cases.jl") # WP-059: the field ionization's problems, after em2d_cases.jl
+include("m4_cases.jl")         # WP-079: the M4 solver's discrete theory, after yee_nd_cases.jl
 include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl
 
 # The suite's files in their order; each note says what a file reuses from earlier ones. CI runs
@@ -23,6 +24,7 @@ include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_ste
 const TEST_FILES = [
     "yee.jl",
     "yee_nd.jl",              # WP-022: T-320 to T-329, the solver in N dimensions
+    "m4.jl",                  # WP-079: T-1080 to T-1084, the M4 solver in N dimensions, after yee_nd.jl (its helpers)
     "em3d.jl",                # WP-042: T-880 to T-883, the layout, the initial field and the recorder at N = 3, after yee_nd.jl (its helpers)
     "boris.jl",
     "pushers.jl",

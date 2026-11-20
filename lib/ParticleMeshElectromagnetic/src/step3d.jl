@@ -49,10 +49,11 @@ function EMState(problem::EMProblem{3,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("gather = $(numerics.gather): the compensated gather sharpens along a laser axis, which the periodic 3D box has not, so a 3D state reads the grid's fields (gather = nothing)"))
     n = problem.cells
     wgs = numerics.workgroupsize
-    grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
+    grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
-    layers = map(d -> place_absorber(numerics.absorber, grid, problem.dt; axis = d, backend, workgroupsize = wgs), open)
-    planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
+    layers = map(d -> place_absorber(numerics.absorber, grid, problem.dt; axis = d, backend, workgroupsize = wgs,
+                                                solver = numerics.solver), open)
+    planes = map(l -> AntennaPlane(l.position, grid, problem.dt, numerics.solver), problem.lasers)
     species = map(d -> Species(backend, T, prod(n) * prod(d.ppc); q = d.charge, m = d.mass, N = 3, extras = flux_extras(T, 3)),
                   problem.species)
     flux = numerics.current isa Esirkepov ? (numerics.shape, rho_stagger(Val(3))) : nothing

@@ -223,14 +223,15 @@ function antenna3d_problem(::Type{T}; ncx = 12, nct = 6, length = (60, 24, 24), 
 end
 
 """
-    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing) -> (; st, prob, A, ip, shots)
+    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, solver = Yee()) -> (; st, prob, A, ip, shots)
 
 [`antenna_run`](@ref) in 3D: `A[q]` the discrete-time Fourier transforms at ω = 1 of Ey and Ez on
 the probe plane nearest to `probes[q]` (interior rows and layers), `shots` the fields after the
 steps in `snaps`.
 """
-function antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, workgroupsize = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber); backend = be)
+function antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, workgroupsize = nothing,
+                       solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber, solver); backend = be)
     initialize!(st, prob)
     p = params(prob)
     (; grid, fields) = st

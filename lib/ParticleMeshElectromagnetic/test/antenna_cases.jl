@@ -30,7 +30,7 @@ function antenna_problem(::Type{T}; ncx = 16, ncy = 8, length = (300, 120), wais
 end
 
 """
-    antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing)
+    antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing, solver = Yee())
         -> (; st, prob, A, ip, shots)
 
 Run `prob` through the module's step. `A[q]` holds the discrete-time Fourier transforms at
@@ -38,8 +38,8 @@ Run `prob` through the module's step. `A[q]` holds the discrete-time Fourier tra
 column `ip[q]` nearest to `probes[q]` (interior rows); `shots` the copies of the fields after the
 steps listed in `snaps`, with their times.
 """
-function antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov()); backend = be)
+function antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing, solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), solver); backend = be)
     initialize!(st, prob)
     p = params(prob)
     (; grid, fields) = st
