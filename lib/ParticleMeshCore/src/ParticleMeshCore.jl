@@ -29,6 +29,7 @@ module ParticleMeshCore
 using KernelAbstractions
 using KernelAbstractions: @kernel, @index, get_backend
 import Atomix
+import UnsafeAtomics
 import Adapt
 import AcceleratedKernels as AK
 
