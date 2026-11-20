@@ -12,7 +12,8 @@
 # periodic; α is the electrons' density perturbation amplitude (through the weights, A3) and the
 # functional f the field energy after the steps, as in `chain_rule.jl`.
 #
-# `check steps=<n> [plain=1]`: the checkpointed reverse pass of n steps; with `plain=1` also the
+# `check steps=<n> [plain=1|0|only]`: the checkpointed reverse pass of n steps (with `plain=only`, the
+# plain reverse pass in its place, checked against the duals alone); with `plain=1` also the
 # plain one (Enzyme's tape of all n steps in device memory), and their difference per array; and
 # the chain rule against a Dual run: ⟨∇f, dx/dα⟩ against df/dα and ⟨∇f, v⟩ against the derivative
 # along a random direction v on every array (both from the same initialized state).
@@ -121,14 +122,23 @@ const CASE_INFO = Dict{String,Any}("dim" => DIM, "eltype" => string(T), "mode" =
 
 function main_check()
     n = parse(Int, opt("steps", "32"))
+    only_plain = opt("plain", "1") == "only"
     do_plain = opt("plain", "1") == "1"
     st0, p = start(T, α0, n)
     CASE_INFO["particles"] = sum(alive_count, st0.species)
     println("check: $(DIM)D $T $MODE cells $CELLS ppc $PPC, $(CASE_INFO["particles"]) particles, $n steps, $NCKPT checkpoints, backend $(backend())")
-    t_ck = @elapsed (dck = checkpointed_gradient(deepcopy(st0), p, n, NCKPT))
-    println(@sprintf("  checkpointed reverse, first call %.1f s", t_ck))
-    G = leaves(dck)
-    res = Dict{String,Any}("first_call_checkpointed" => t_ck)
+    if only_plain
+        # the plain reverse pass alone, checked against the duals below (tells a failure of the step from one of the checkpointed path)
+        t_pl = @elapsed (dpl = reverse_gradient(deepcopy(st0), p, n))
+        println(@sprintf("  plain reverse only, first call %.1f s", t_pl))
+        G = leaves(dpl)
+        res = Dict{String,Any}("first_call_plain" => t_pl, "plain_only" => true)
+    else
+        t_ck = @elapsed (dck = checkpointed_gradient(deepcopy(st0), p, n, NCKPT))
+        println(@sprintf("  checkpointed reverse, first call %.1f s", t_ck))
+        G = leaves(dck)
+        res = Dict{String,Any}("first_call_checkpointed" => t_ck)
+    end
     if do_plain
         t_pl = @elapsed (dpl = reverse_gradient(deepcopy(st0), p, n))
         P = leaves(dpl)
