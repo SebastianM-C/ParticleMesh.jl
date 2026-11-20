@@ -59,7 +59,7 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("a 2D state takes current = Esirkepov() or NoCurrent() in EMNumerics, got $(numerics.current)"))
     n = problem.cells
     wgs = numerics.workgroupsize
-    grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape))
+    grid = PeriodicGrid(n, problem.length ./ n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
     open_y = problem.boundaries[2] === :open
     open_y && !(numerics.absorber isa Union{AbsorbingLayer,PML}) &&
@@ -68,14 +68,16 @@ function EMState(problem::EMProblem{2,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("absorber = $(numerics.absorber) needs an open axis 2 in the problem (boundaries = (:periodic, :open))"))
     open_y && numerics.filter.passes > 0 &&
         throw(ArgumentError("filter = $(numerics.filter) with absorber = $(numerics.absorber): the binomial filter is not yet tested with an open boundary (it wraps J across the open edge), so an open axis 2 takes BinomialFilter(0)"))
-    layers = open_y ? (place_absorber(numerics.absorber, grid, problem.dt; axis = 2, backend, workgroupsize = numerics.workgroupsize),) : ()
+    layers = open_y ? (place_absorber(numerics.absorber, grid, problem.dt; axis = 2, backend, workgroupsize = numerics.workgroupsize,
+                                    solver = numerics.solver),) : ()
     numerics.back_absorber === nothing || numerics.back_absorber isa PML ||
         throw(ArgumentError("back_absorber = $(numerics.back_absorber): the window's back edge takes a PML(...) or nothing"))
     problem.window === nothing && numerics.back_absorber !== nothing &&
         throw(ArgumentError("back_absorber = $(numerics.back_absorber) needs a moving window (boundaries = (:window, ·))"))
     window = problem.window === nothing ? nothing : WindowFrame(problem, grid, backend, numerics.shape, numerics.filter.passes)
-    back = numerics.back_absorber === nothing ? nothing : BackPMLFields(numerics.back_absorber, grid, problem.dt; backend, workgroupsize = wgs)
-    planes = map(l -> AntennaPlane(l.position, grid, problem.dt), problem.lasers)
+    back = numerics.back_absorber === nothing ? nothing : BackPMLFields(numerics.back_absorber, grid, problem.dt; backend, workgroupsize = wgs,
+                                                                                       solver = numerics.solver)
+    planes = map(l -> AntennaPlane(l.position, grid, problem.dt, numerics.solver), problem.lasers)
     window === nothing || check_window_antennas(window, back, map(Antenna, params(problem).lasers, planes))
     witness = problem.witness === nothing ? nothing : WitnessFrame(problem, grid, backend)
     ionization = problem.ionization === nothing ? nothing : IonizationFrame(problem, grid, backend, numerics, window)

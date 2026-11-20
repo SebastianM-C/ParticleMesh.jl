@@ -81,7 +81,7 @@ flux_grid_1d(::Type{T}, shape, st) where {T} = PeriodicGrid(FLUX1D_N, T(1 // 4),
 
 @testset "T-1060 shape and flux-frame slopes are the derivatives of the weights [A2, A7, WP-077]" begin
     C = tolC("T-1060")
-    for shape in SHAPES, st in (Node(), Center()), δ in (0.0, 0.1, 0.25, 0.5, 0.7, prevfloat(1.0))
+    for shape in (Shape{0}(), SHAPES...), st in (Node(), Center()), δ in (0.0, 0.1, 0.25, 0.5, 0.7, prevfloat(1.0))
         f, w = shape_weights(shape, st, Dual{Nothing}(δ, 1.0))
         fs, dw = PMC.shape_slopes(shape, st, δ)
         @test fs == f
@@ -110,7 +110,7 @@ function deposit_cases(::Type{T}) where {T}
             (3, s3, grid3(T, 2), STAGGER_TRIPLES[1:2], (ChargeWeight(),)))
 end
 
-@testset "T-1061 deposit_pullback! and gather_pullback! against duals, N = 1, 2, 3 [A3, A7, WP-077]" begin
+@testset "T-1061 deposit_pullback! and gather_pullback! against duals, N = 1, 2, 3, and the gather with one shape per axis [A3, A7, WP-077]" begin
     C = tolC("T-1061")
     for (N, s, grid, staggers, quantities) in deposit_cases(Float64), shape in SHAPES, st in staggers, quantity in quantities
         ρ̄ = lcg_field(field(backend, Float64, grid), 11)
@@ -144,6 +144,26 @@ end
             rhs, scale = jvp_pair((ō .* alive,), (outD,))
             r = chain_ratio("T-1061", sum(ā .* ȧ) + pair(x̄, v), rhs, scale)
             r <= C || @info "T-1061 gather" N shape st k r
+            @test r <= C
+        end
+    end
+    # one shape per axis, as a Galerkin gather reads (WP-070), order 0 included
+    for (N, s, grid, staggers, _) in deposit_cases(Float64)[2:3],
+        shape in (N == 2 ? ((Shape{0}(), Quadratic), (Linear, Quadratic), (Quadratic, Shape{0}())) : ((Quadratic, Linear, Shape{0}()),)),
+        st in staggers
+        a = lcg_field(field(backend, Float64, grid), 13)
+        ȧ = lcg_field(a, 17)
+        ō = lcg_values(capacity(s), 19)
+        ā = zero(a)
+        x̄ = zero_like(s)
+        gather_pullback!(ā, x̄, copy(ō), a, s, shape, st, grid)
+        alive = [s.status[i] == PMC.ALIVE for i in 1:capacity(s)]
+        for k in 1:N
+            v = direction(s, findfirst(t -> t[1] == "offset$k", float_arrays(s)))
+            outD = gather!(zeros(DP1, capacity(s)), Dual{Nothing}.(a, ȧ), dualize(s, v), shape, st, grid)
+            rhs, scale = jvp_pair((ō .* alive,), (outD,))
+            r = chain_ratio("T-1061", sum(ā .* ȧ) + pair(x̄, v), rhs, scale)
+            r <= C || @info "T-1061 per-axis gather" N shape st k r
             @test r <= C
         end
     end

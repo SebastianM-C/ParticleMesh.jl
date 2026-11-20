@@ -2,8 +2,8 @@
 #
 #     julia +1.13 --project=scripts scripts/enzyme/table.jl <run dir or result.toml>...
 #
-# Prints one Markdown table of the chain-rule runs and one of the cost runs, in the order given;
-# the report pastes them unchanged (reports/README.md).
+# Prints one Markdown table of the chain-rule runs and one of the cost runs (the smallest and the
+# largest step count of each), in the order given; the report pastes them unchanged (reports/README.md).
 
 using TOML, Printf
 
@@ -29,7 +29,7 @@ end
 if !isempty(cost)
     println("| T | Cells | ppc | Particles | Steps | Primal (ms) | Dual{1} (ms) | Dual{4} (ms) | Reverse (ms) | Reverse / primal | Reverse / Dual{4} | Reverse per step (ms) |")
     println("|---|---|---|---|---|---|---|---|---|---|---|---|")
-    for r in cost, row in r["rows"]
+    for r in cost, row in unique([first(r["rows"]), last(r["rows"])])
         c = r["case"]
         head = @sprintf("| %s | %s | %s | %d | %d | %s | %s | %s |", c["eltype"], join(c["cells"], "×"), join(c["ppc"], "×"), c["particles"],
                         row["steps"], ms(row["primal"]), ms(row["dual1"]), ms(row["dual4"]))

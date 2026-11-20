@@ -159,8 +159,8 @@ end
 # through its element's pointer with UnsafeAtomics, the operation `Atomix.@atomic` itself ends in,
 # minus Atomix's `GC.@preserve` of the array: on the GPU that preserve puts the by-value device
 # array on the stack, and Enzyme moves such stack slots to device malloc in the reverse pass of
-# the kernel, once per work item and step (WP-050; the device heap then runs out within a few
-# steps). The kernel's caller holds `J`, so no root is needed. Other arrays go through Atomix.
+# the kernel, once per work item and step (WP-050, #526; the device heap then runs out within a
+# few steps). The kernel's caller holds `J`, so no root is needed. Other arrays go through Atomix.
 @inline function atomic_add!(J::DenseMatrix{T}, x, i1::Int, i2::Int) where {T}
     p = pointer(J, i1 + (i2 - 1) * size(J, 1))
     UnsafeAtomics.modify!(p, +, convert(T, x), UnsafeAtomics.monotonic, UnsafeAtomics.device)

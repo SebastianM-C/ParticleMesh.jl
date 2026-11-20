@@ -459,7 +459,7 @@ end
     # the state: the numerics a 3D state does not take, and a step above the Courant limit
     @test_throws ArgumentError EMState(prob, EMNumerics(; filter = BinomialFilter(1)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; resort = true))
-    @test_throws ArgumentError EMState(prob, EMNumerics(; gather = CompensatedGather()))
+    @test EMState(prob, EMNumerics(; gather = CompensatedGather())).sharpened isa NamedTuple   # WP-076 (T-1056 checks it)
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; back_absorber = PML(; cells = 4)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; current = nothing))

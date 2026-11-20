@@ -34,19 +34,24 @@ end
 as_staggers(st::Stagger) = (st,)
 as_staggers(st::Tuple) = st
 
+"One shape per axis: `shape` on every axis, or the per-axis shapes of a gather as given."
+@inline axis_shapes(shape::Shape, ::Val{N}) where {N} = ntuple(_ -> shape, Val(N))
+@inline axis_shapes(shape::NTuple{N,Shape}, ::Val{N}) where {N} = shape
+
 """
     gather_slopes_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape, stagger::NTuple{N}, g) -> NTuple{N,T}
 
 The derivatives of `gather_at(a, c, δ, shape, stagger, g)` with respect to each offset `δ_d`: the
 field read with the tensor-product weights in which axis `d`'s weights are replaced by their
-`shape_slopes`.
+`shape_slopes`. `shape` is one shape or one per axis, as for `gather_at`.
 """
-@inline function gather_slopes_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape::Shape{P}, stagger::NTuple{N,Stagger},
-                                  g::Int32) where {N,T,P}
-    fw = shape_weights(shape, stagger, δ)
-    dw = ntuple(d -> shape_slopes(shape, stagger[d], δ[d]), Val(N))
+@inline function gather_slopes_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape, stagger::NTuple{N,Stagger},
+                                  g::Int32) where {N,T}
+    sh = axis_shapes(shape, Val(N))
+    fw = map((h, s, x) -> shape_weights(h, s, x), sh, stagger, δ)
+    dw = map((h, s, x) -> shape_slopes(h, s, x), sh, stagger, δ)
     acc = ntuple(_ -> zero(T), Val(N))
-    @inbounds for K in CartesianIndices(ntuple(_ -> Base.OneTo(P + 1), Val(N)))
+    @inbounds for K in CartesianIndices(map(h -> Base.OneTo(order(h) + 1), sh))
         k = Tuple(K)
         v = a[ntuple(d -> c[d] + fw[d][1] + g + Int32(k[d] - 1), Val(N))...]
         t = ntuple(d -> prod(ntuple(e -> e == d ? dw[e][2][k[e]] : fw[e][2][k[e]], Val(N))) * v, Val(N))
@@ -96,7 +101,7 @@ function deposit_pullback!(s̄::Species{N}, ρ̄::AbstractArray, s::Species{N}, 
     return s̄
 end
 
-@kernel function gather_pullback_kernel!(ā, s̄, ō, @Const(a), s, shape::Shape{P}, stagger::NTuple{N,Stagger}, g::Int32) where {N,P}
+@kernel function gather_pullback_kernel!(ā, s̄, ō, @Const(a), s, shape, stagger::NTuple{N,Stagger}, g::Int32) where {N}
     i = @index(Global, Linear)
     @inbounds if s.status[i] == ALIVE
         o = ō[i]
@@ -104,8 +109,9 @@ end
         c = particle_cell(s, i, Val(N))
         δ = particle_offset(s, i, Val(N))
         if !(ā isa Nothing)
-            fw = shape_weights(shape, stagger, δ)
-            for K in CartesianIndices(ntuple(_ -> Base.OneTo(P + 1), Val(N)))
+            sh = axis_shapes(shape, Val(N))
+            fw = map((h, st, x) -> shape_weights(h, st, x), sh, stagger, δ)
+            for K in CartesianIndices(map(h -> Base.OneTo(order(h) + 1), sh))
                 k = Tuple(K)
                 idx = CartesianIndex(ntuple(d -> Int(c[d] + fw[d][1] + g) + k[d] - 1, Val(N)))
                 Atomix.@atomic ā[idx] += o * tensor_weight(fw, k)
@@ -123,9 +129,11 @@ for every alive particle `i` add `ō[i]` times its shape weights into the shadow
 transpose of the gather, a deposit into the guards, by atomics), add `ō[i]` times `a` gathered
 with the shape's slopes into the offsets of the shadow species `s̄`, and zero `ō[i]`, which the
 gather overwrote. Either `ā` or `s̄` may be `nothing` (no adjoint wanted). The atomic adds make
-`ā` depend on their order by roundoff. N = 1, 2 and 3.
+`ā` depend on their order by roundoff. N = 1, 2 and 3; `shape` is one shape or, for N ≥ 2, one per
+axis, as `gather!` takes it (a Galerkin gather, WP-070; `Shape{0}`'s slopes are zero).
 """
-function gather_pullback!(ā, s̄, ō::AbstractVector, a::AbstractArray, s::Species{N}, shape::Shape, stagger, grid::PeriodicGrid{N};
+function gather_pullback!(ā, s̄, ō::AbstractVector, a::AbstractArray, s::Species{N}, shape::Union{Shape,NTuple{N,Shape}}, stagger,
+                          grid::PeriodicGrid{N};
                           workgroupsize = nothing) where {N}
     launcher(gather_pullback_kernel!, get_backend(s), workgroupsize)(ā, s̄, ō, a, s, shape, as_staggers(stagger), Int32(guards(grid));
                                                                     ndrange = capacity(s))

@@ -64,7 +64,7 @@ include("spectral.jl")
 include("flux.jl")
 include("flux2d.jl")
 include("flux3d.jl")
-include("flux_gather.jl")
 include("pullbacks.jl")
+include("flux_gather.jl")
 
 end

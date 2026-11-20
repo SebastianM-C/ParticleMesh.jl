@@ -11,6 +11,6 @@ groups = [
     ["particles.jl", "density_at.jl", "allocations.jl", "determinism.jl", "flux.jl", "flux2d.jl", "resort.jl", "bins.jl", "swap.jl", "input_checks.jl",
      "launch.jl", "switch.jl", "qa.jl"],
     ["flux3d.jl", "transposes.jl"],
-    ["flux_gather.jl"],
     ["pullbacks.jl"],
+    ["flux_gather.jl"],
 ]

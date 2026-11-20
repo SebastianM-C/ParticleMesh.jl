@@ -98,12 +98,13 @@ LayerFactors{D}(nh::V, ch::V, nf::V, cf::V, cells, g, n::NTuple{N,Int}, dt::T) w
 """
     LayerFactors(layer::AbsorbingLayer, grid::PeriodicGrid, dt; axis = 2, backend, workgroupsize = nothing)
 
-Write the damping factors of `layer` on the open `axis` of `grid` (N = 2 or 3) for the step `dt`
+The layer damps the components around every sub-step whatever the solver, so it is the same for
+[`Yee`](@ref) and [`M4`](@ref) (`place_absorber` takes the solver and ignores it). Write the damping factors of `layer` on the open `axis` of `grid` (N = 2 or 3) for the step `dt`
 (whose type is the element type). Throws an `ArgumentError` unless `guards(grid) ≤ layer.cells`
 (so that every guard row is a layer row and the damping visits it with its interior image's
 factor) and `2·cells < n_axis` (interior rows remain between the two layers).
 """
-place_absorber(l::AbsorbingLayer, grid, dt; axis::Integer = 2, backend, workgroupsize = nothing) =
+place_absorber(l::AbsorbingLayer, grid, dt; axis::Integer = 2, backend, workgroupsize = nothing, solver = Yee()) =
     LayerFactors(l, grid, dt; axis, backend, workgroupsize)
 
 function LayerFactors(l::AbsorbingLayer, grid::PeriodicGrid{N}, dt::T; axis::Integer = 2, backend, workgroupsize = nothing) where {N,T}

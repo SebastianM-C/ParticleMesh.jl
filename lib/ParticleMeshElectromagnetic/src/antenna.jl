@@ -333,16 +333,22 @@ along x, `sin(kΔx/2)/Δx = sin(Δt/2)/Δt`, the phase of the discrete plane wav
 planes (with c·Δx/2 instead, the antenna would leak (k − 1)·Δx/4 of the amplitude). The column is
 the nearest primal node to the laser's `position`, an integer, so the position is not a
 differentiable parameter (A3) and a laser placed elsewhere needs a new state
-([`check_params`](@ref) refuses it).
+([`check_params`](@ref) refuses it). `stencil` is the solver's B difference
+([`faraday_stencil`](@ref)): [`YeeStencil`](@ref)`()` for the four corrections above, an
+[`M4Stencil`](@ref) for the M4 solver's (`m4_antenna.jl`), whose wider B difference crosses the
+plane on more columns and rows; then `k` is M4's wavenumber of ω₀ ([`m4_wavenumber`](@ref)) and
+`ρ = sin(Δt/2)·Δx/(Δt·sin(kΔx/2))` the ratio of B to E of its discrete plane wave at ω₀, which
+scales the incident B of the E correction (one for Yee, exactly).
 
-    AntennaPlane(position, grid::PeriodicGrid{N}, dt)
+    AntennaPlane(position, grid::PeriodicGrid{N}, dt, solver = Yee())
 
 The plane on the primal column nearest to `position` for the time step `dt` (whose type is the
-element type), which must leave at least the grid's guard width of interior columns on either
-side of the corrected columns `ia − 1` and `ia` (so the corrections never touch an x-guard and
-the plane is not split by the periodic seam; an `ArgumentError` otherwise).
+element type) and the solver, which must leave at least the grid's guard width of interior
+columns on either side of the corrected columns (`ia − 1` and `ia` for Yee, `ia − 2` to `ia` for
+M4), so the corrections never touch an x-guard and the plane is not split by the periodic seam
+(an `ArgumentError` otherwise).
 """
-struct AntennaPlane{T,N}
+struct AntennaPlane{T,N,S}
     ia::Int32
     xa::T
     dx::NTuple{N,T}
@@ -351,16 +357,28 @@ struct AntennaPlane{T,N}
     len::NTuple{N,T}
     hx::T
     ht::T
+    stencil::S
+    ρ::T
+end
+AntennaPlane(ia, xa::T, dx, g, n, len, hx, ht) where {T} = AntennaPlane(ia, xa, dx, g, n, len, hx, ht, YeeStencil(), one(T))
+
+function AntennaPlane(position, grid::PeriodicGrid{N}, dt::T, solver = Yee()) where {N,T}
+    n, h, g = ncells(grid), cellsize(grid), guards(grid)
+    st = faraday_stencil(solver, grid, dt)
+    r = solver_reach(st)
+    ia = round(Int, position / h[1]) + 1
+    g + 1 + r <= ia <= n[1] - g ||
+        throw(ArgumentError("antenna position $(position) is column $ia; it must lie in columns $(g + 1 + r) to $(n[1] - g) of the $(n[1]) cells, away from the periodic seam"))
+    hx = T(h[1]) / 2
+    k, ρ = plane_wavenumber(st, dt, T(h[1]))
+    return AntennaPlane(Int32(ia), T((ia - 1) * h[1]), T.(h), Int32(g), Int32.(n), ntuple(d -> T(n[d] * h[d]), Val(N)), hx, k * hx, st, ρ)
 end
 
-function AntennaPlane(position, grid::PeriodicGrid{N}, dt::T) where {N,T}
-    n, h, g = ncells(grid), cellsize(grid), guards(grid)
-    ia = round(Int, position / h[1]) + 1
-    g + 2 <= ia <= n[1] - g ||
-        throw(ArgumentError("antenna position $(position) is column $ia; it must lie in columns $(g + 2) to $(n[1] - g) of the $(n[1]) cells, away from the periodic seam"))
-    hx = T(h[1]) / 2
-    k = asin(T(h[1]) / dt * sin(dt / 2)) / hx
-    return AntennaPlane(Int32(ia), T((ia - 1) * h[1]), T.(h), Int32(g), Int32.(n), ntuple(d -> T(n[d] * h[d]), Val(N)), hx, k * hx)
+# The wavenumber of ω₀ = 1 along x in the solver's scheme and the B/E ratio of its plane wave.
+plane_wavenumber(::YeeStencil, dt::T, dx::T) where {T} = (asin(dx / dt * sin(dt / 2)) / (dx / 2), one(T))
+function plane_wavenumber(st::M4Stencil, dt::T, dx::T) where {T}
+    k = m4_wavenumber(dt, dx, st.δ[1])
+    return (k, sin(dt / 2) * dx / (dt * sin(k * dx / 2)))
 end
 
 # A laser of the parameters belongs on the plane the state built for it: within half a cell of the
@@ -385,7 +403,7 @@ parameters' laser and the state's plane, `Antenna(laser, plane)`.
 
 places `laser`, converted to the type of `dt`, on its own plane `AntennaPlane(laser.position, grid, dt)`.
 """
-struct Antenna{L,T,N}
+struct Antenna{L,T,N,S}
     laser::L
     ia::Int32
     xa::T
@@ -395,10 +413,15 @@ struct Antenna{L,T,N}
     len::NTuple{N,T}
     hx::T
     ht::T
+    stencil::S
+    ρ::T
 end
+Antenna(l, ia, xa::T, dx, g, n, len, hx, ht) where {T} = Antenna(l, ia, xa, dx, g, n, len, hx, ht, YeeStencil(), one(T))
 
-Antenna(l, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n, a.len, a.hx, a.ht)
-Antenna(l, grid::PeriodicGrid, dt::T) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt))
+Antenna(l, a::AntennaPlane) = Antenna(l, a.ia, a.xa, a.dx, a.g, a.n, a.len, a.hx, a.ht, a.stencil, a.ρ)
+Antenna(l, grid::PeriodicGrid, dt::T, solver = Yee()) where {T} = Antenna(convert_laser(T, l), AntennaPlane(l.position, grid, dt, solver))
+# The antenna moved back by `s` columns, a moving window's (`window_antennas`).
+shift_antenna(a::Antenna, s) = Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n, a.len, a.hx, a.ht, a.stencil, a.ρ)
 
 function convert_laser(::Type{T}, l::GaussianLaser) where {T}
     c = center_as(T, l.center)
@@ -512,7 +535,7 @@ end
 
 # An antenna acts while its plane lies in the box: always on a static grid (the constructor checks
 # it), until the moving window has passed it otherwise (`window_antennas`, WP-028).
-active(a::Antenna) = a.ia >= a.g + Int32(2)
+active(a::Antenna) = a.ia >= a.g + Int32(1 + solver_reach(a.stencil))
 
 antenna_b!(::Tuple{}, f, h, t, wgs) = nothing
 function antenna_b!(as::Tuple, f, h, t, wgs)
@@ -533,7 +556,7 @@ function antenna_e!(as::Tuple, f, dt, t, wgs)
     for a in as
         active(a) || continue
         T = eltype(f.Ey)
-        e_source!(a, f, T(dt) / a.dx[1], T(t), wgs)
+        e_source!(a, f, T(dt) / a.dx[1] * a.ρ, T(t), wgs)
     end
     return nothing
 end

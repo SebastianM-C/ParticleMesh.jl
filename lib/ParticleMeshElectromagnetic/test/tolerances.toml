@@ -1115,3 +1115,230 @@ C = 8
 measured = { Float32 = 0.727, Float64 = 0.606 }
 measured_shift = { Float32 = 0.540, Float64 = 0.432 }
 status = "proposed; the largest over both envelopes"
+
+# WP-074: the moving window at N = 3 (T-1030 to T-1038). Measured on the CPU backend (Julia 1.13.4, 4 threads).
+["T-1030"]
+quantity = "a 3D window run invariant along z or y (a quarter turn about x) against the 2D window run, after initialize! and after every step: every component on every line of the invariant axis; 64 steps (26 shifts) of a cold plasma drifting along (−0.2, 0.15, −0.1) through a ramp on 24 × 16 cells, the plane's second axis periodic, or open with the PML (4 cells, κ_max = 2, α_max = 0.1) and a back-edge PML (4 cells, α_max = 0.2)"
+scale = "as T-953"
+C = 32
+measured = { Float32 = 0.0922, Float64 = 0.125, "Dual{Float32,3}" = 0.0868 }
+status = "proposed; the largest over both axes, both cases and both modes; T-953's C"
+
+["T-1031"]
+quantity = "a cold plasma at rest in the 3D window, Fast mode: max |ρ − ρ₀(s)| after every step over 48 steps (24 shifts) on 24 × 6 × 6 cells (Reference mode is held bit for bit)"
+scale = "eps(T)·max|ρ|"
+C = 32
+measured = { Float32 = 10.0, Float64 = 7.0, "Dual{Float32,3}" = 0.0 }
+status = "proposed; 4 threads (at 1 thread the atomics' order is fixed); the dual takes the sorted path"
+
+["T-1032"]
+quantity = "Gauss's law Σ D⁻E − (ρ − ρ₀(s)) across 3D window shifts: a round laser driving the plasma (200 steps, 113 shifts), off nodes 1, 2 and the antenna's two columns, and with y, z open (PML) and a back-edge PML of 6 cells off the layers (Float64); a warm plasma (thermal 0.1 c) at rest and drifting at 0.3 c through a ramp, off nodes 1 and 2, 60 steps; both modes"
+scale = "as T-473: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.0982, Float64 = 0.118, "Dual{Float32,3}" = 0.0982 }
+measured_warm = { Float32 = 0.108, Float64 = 0.106, "Dual{Float32,3}" = 0.0983 }
+measured_warm_ramp = { Float32 = 0.144, Float64 = 0.131, "Dual{Float32,3}" = 0.145 }
+status = "proposed; T-473's C"
+
+["T-1034"]
+quantity = "the fields of Fast against Reference after 120 steps of window_lwfa_3d, Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 32
+measured = { Float64 = 4.51 }
+status = "proposed; T-474's C"
+
+["T-1035"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 steps of the 3D window against the ramp length, Float64, Reference (C); Dual{Float32,3} with the ramp length the first partial: the primal of every E and B component against the Float32 run (C_primal) and the partial against the Float64 run's ForwardDiff partial (C_partial; a central difference at a fixed step jumps by 1/δ where a particle retires at the back edge in only one of the two runs)"
+scale = "C: the finite-difference floor (A7); C_primal, C_partial: eps(Float32)·max over the six components·nsteps (as T-955)"
+C = 1
+C_primal = 8
+C_partial = 8
+measured = { Float64 = 0.0151 }
+measured_primal = { "Dual{Float32,3}" = 0.0 }
+measured_partial = { "Dual{Float32,3}" = 0.167 }
+status = "proposed; T-475's C and T-1016's"
+
+["T-1036"]
+quantity = "T-472 in 3D: the vacuum pulse of window_lwfa_3d in the window against its static twin, on every column before the window moves and on columns 25 … n₁ after, relative to the twin's max |E, B| there, with a bare back edge, with a back-edge PML of 6 cells, and (moving_antenna) with the plane at x = 30 and the window starting at the pulse's peak, so that the plane moves back while it launches (C); the largest difference on the eight columns behind the back edge (behind the layer) against free space, the PML's over the bare edge's (C_near)"
+scale = "C: eps(Float64)·max|E, B|; C_near: the ratio itself"
+C = 1000
+C_near = 0.05
+measured = { bare = 140.0, back_PML = 144.0, moving_antenna = 157.0 }
+measured_near = { bare = 1.84, back_PML = 0.0198 }
+status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72. C_near holds at normal incidence only: at oblique incidence (150°, 90°, 59° to x, in the x–y and x–z planes alike) the physics breaker measured the PML's energy ahead of the back edge at 0.2 to 0.24 of the bare edge's with 6 cells and 0.07 to 0.1 with 10, the 2D back PML's behaviour (T-1030 ties the 3D window to it), unverified in 2D"
+
+# WP-075: the field ionization of the 3D step (T-1040 to T-1048). Measured on the CPU backend (Julia 1.13.4, 4 threads).
+["T-1040"]
+quantity = "a 3D run with a dopant invariant along z or y (a quarter turn about x) against the 2D run, after initialize! and after every step: every component on every line of the invariant axis (C); the born electrons' summed weight over 6 against the 2D one at the end (C_weight); two cold beams in E₀ = (0.2, 0.1, 0) on 16 × 12 cells, y periodic or open with the PML, 20 steps, and the window's plasma through a ramp, 64 steps; an ADK and a Tong–Lin level, two atoms per cell along x on 8 rows, born every 2 steps"
+scale = "C: as T-953 (eps(T)·k·2(n₁ + n₂)·max of the 2D run's fields or currents); C_weight: eps(T)·Σw·nsteps"
+C = 32
+C_weight = 16
+measured = { Float32 = 0.642, Float64 = 0.748, "Dual{Float32,3}" = 0.642 }
+measured_weight = { Float32 = 0.0428, Float64 = 0.0428, "Dual{Float32,3}" = 0.171 }
+status = "proposed; T-1030's C; the largest over the box, the open box and the window, both modes (Fast in Float64 only) and both axes"
+
+["T-1041"]
+quantity = "a 3D dopant in a constant field with all three components, no current: the ADK rate against its closed form at |E| (rate); one ADK level born every 3 steps for 20 steps, the bound population against exp(−W·n·Δt) of the closed-form W (populations), the born electrons' momenta against −E·Δt·(n − k_b + ½) per component (momenta) and weights against the released fraction (weights); a chain of an ADK, a Tong–Lin and an ADK level, 12 steps, against the per-step recurrence of the closed-form rates (chain)"
+scale = "rate: eps(T)·W; the others n·eps(T)·|closed form| (k·eps(T) for the chain after step k)"
+C = 8
+measured = { rate = 0.691, populations = 0.147, momenta = 0.111, weights = 0.149, chain = 0.408 }
+status = "proposed; the largest over the three types of each quantity"
+
+["T-1042"]
+quantity = "lattices of 2 × 1 × 3 and 2 × 2 × 3 atoms per cell on 4 rows and 6 layers of a box of unequal sides in a static curl-free field Ex = 0.3 + x/20, Ey = 1/10 (1/10 + y/20 on the second lattice), Ez = 0.05 + z/4, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x, y, z))·n·Δt) of the closed-form rate at its own place (C), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) (weights), off the two columns next to the periodic seam of x"
+scale = "n·eps(T) for the populations; n·eps(T)·density/6 for the weights"
+C = 4
+measured = { Float32 = 0.255, Float64 = 0.281, "Dual{Float32,3}" = 0.255 }
+measured_weight = { Float32 = 0.0571, Float64 = 0.0549, "Dual{Float32,3}" = 0.0571 }
+status = "proposed; T-784's C; the largest over both lattices (1 thread)"
+
+["T-1043"]
+quantity = "Gauss's law with the dopant ions' charge in the 3D box, |Σ_d D⁻_d E_d − (ρ + ρ_ions − mean)|: a thermal plasma with a dopant of an ADK and a Tong–Lin level (two atoms per cell along x on 4 of 6 rows), 20 steps (periodic); a box open along y and z with an absorbing layer of 3 cells, born electrons driven out through the lower y face by Ey = 1/2, on the nodes off the layers, 40 steps (open); both modes"
+scale = "periodic: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1); open: ((n₁ + n₂ + n₃)·max|ρ| + (Σ_d 2/Δ_d)·max|E|)·√(k + 1)"
+C = 1
+measured_periodic = { Float32 = 0.274, Float64 = 0.271, "Dual{Float32,3}" = 0.318 }
+measured_open = { Float32 = 0.266, Float64 = 0.446, "Dual{Float32,3}" = 0.253 }
+status = "proposed; T-773's and T-785's C; the largest over both modes"
+
+["T-1044"]
+quantity = "Gauss's law with the ions' charge across 3D window shifts, Σ D⁻E − (ρ + ρ_ions − ρ₀(s)), off nodes 1, 2 and the antenna's two columns, the round laser ionizing a doped section on 4 × 4 transverse cells, 120 steps, both modes (C); the atoms' weights on a lattice of 2 × 1 × 2 per cell after 0, 90 and 104 steps, and those of a section loaded by the refill alone (1 × 2 × 1 per cell), against the section's profile at the global coordinate, value and partials (C_weight)"
+scale = "as T-473: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1); eps(T)·density over the points per cell for the weights"
+C = 1
+C_weight = 16
+measured = { Float32 = 0.0982, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
+measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17 }
+status = "proposed; T-774's C; the largest over both modes"
+
+["T-1045"]
+quantity = "Fast against Reference after 100 steps of ion_window_3d, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"
+scale = "eps(Float64)"
+C = 32
+measured = { Float64 = 4.94 }
+status = "proposed; T-775's C"
+
+["T-1046"]
+quantity = "ForwardDiff against the finite-difference floor of A7 (fd_scan, Float64, Reference): the born charge and the born electrons' kinetic energy of ion_window_3d_small after 90 steps in a₀ and the level's prefactor: rel/floor at the minimising step (C) and the floor itself (floor_max); the Dual{Float32,3} partials in a₀, the density and the prefactor against the Float64 Jacobian, and the Float32 primal against Float64 (C_dual)"
+scale = "C: the measured floor; C_dual: relative (Float32 against Float64, not a roundoff bound)"
+C = 4
+floor_max = 1e-6
+C_dual = 1e-5
+measured = { charge_a0 = 0.0156, charge_prefactor = 0.0159, energy_a0 = 0.00907, energy_prefactor = 0.00363 }
+measured_floor_max = 2.4e-8
+measured_dual = { charge = 8.59e-7, energy = 1.25e-6, charge_primal = 8.4e-7, energy_primal = 1.32e-6 }
+status = "proposed; T-778's and T-779's C"
+
+["T-1050"]
+quantity = "the 3D sharpened copy of a sampled mode along x (k = 1, 2) against (1 + 4β sin²(kΔx/2)) times the mode, every entry and every component (stencil), the same for an oblique mode of the same k_x with k_y, k_z across the box (oblique); the projection of the particles' 3D gather of each component at 8 offsets per cell along x onto the mode against the stencil's transfer times the shape's closed-form lattice mean (gather); on 24 × 6 × 6 cells"
+scale = "eps(T) (mode amplitude 1)"
+C = 8
+measured = { stencil = 2.32, gather = 1.76, oblique = 5.14 }
+status = "proposed; T-960's C"
+
+["T-1051"]
+quantity = "a 3D run with the compensated gather invariant along z or y (a quarter turn about x) against the 2D run with it, after initialize! and after every step: every component on every line of the invariant axis; T-1040's beams in a field with a dopant (16 × 12 cells, periodic, 20 steps) and its window plasma with a doped section (64 steps), Reference mode"
+scale = "as T-1040"
+C = 32
+measured = { Float32 = 0.544, Float64 = 0.544, "Dual{Float32,3}" = 0.544 }
+status = "proposed; T-1040's C"
+
+["T-1052"]
+quantity = "Gauss's law with the ions' charge and the compensated gather in 3D: T-1043's periodic box (C, box) and T-1044's dopant in the window, off nodes 1, 2 and the antenna's two columns, 120 steps (C, window); both modes"
+scale = "as T-1043 (box) and T-1044 (window)"
+C = 1
+measured_box = { Float32 = 0.199, Float64 = 0.287, "Dual{Float32,3}" = 0.229 }
+measured_window = { Float32 = 0.116, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
+status = "proposed; T-1043's and T-1044's C"
+
+["T-1055"]
+quantity = "ForwardDiff through the 3D compensated gather against the finite-difference floor of A7 (fd_scan, Float64, Reference): T-1046's born charge and energy in a₀, rel/floor at the minimising step (C) and the floor (floor_max); the Dual{Float32,3} partials in a₀, the density and the prefactor and the Float32 primal against Float64 (C_dual)"
+scale = "as T-1046"
+C = 4
+floor_max = 1e-6
+C_dual = 1e-5
+measured = { charge = 0.0156, energy = 0.0249 }
+measured_dual = { charge = 8.92e-7, energy = 1.01e-6, charge_primal = 6.59e-7, energy_primal = 9.03e-7 }
+status = "proposed; T-1046's C"
+
+["T-1080"]
+quantity = "an oblique discrete eigenmode of the M4 scheme (m = 3 at N = 1, (3, −2) at N = 2, (3, −2, 1) at N = 3) in each polarization against the exact M4 relation: largest field error over every E and B component, value and partials"
+scale = "steps (amplitude 1), 200 steps at Δt = 1/2 and 95/100 of the Courant limit"
+C = 0.5
+measured = { Float32 = 0.178, Float64 = 0.16, "Dual{Float32,3}" = 0.178 }
+status = "proposed"
+
+["T-1081"]
+quantity = "the fitted order of M4's phase-velocity error 1 − ω/|k| between 16, 32 and 64 cells per wavelength, Courant number 0.95, along the axis at N = 1 and 2 and on the diagonal at N = 2"
+scale = "|order − 4|"
+order_tol = 0.1
+measured = 0.0077
+status = "proposed"
+
+["T-1082"]
+quantity = "M4's own ∇·B (the divergence with its difference), change after up to 100 steps (C); one step's change of the backward-difference ∇·E plus Δt·∇·J with a prescribed J (C_current); random fields, every part of the duals, 95/100 of the Courant limit"
+scale = "max|B|·Σ_d 2/Δ_d·steps (C); max(|E|, |B|, Δt|J|)·Σ_d 2/Δ_d (C_current)"
+C = 0.5
+C_current = 1
+measured = { C = "0.24 to 0.34 over the types", C_current = "0.30 to 0.54 over the types" }
+status = "proposed"
+
+["T-1083"]
+quantity = "the largest plain field norm Σ(E² + B²) over 4000 steps at 0.99 of the Courant limit relative to the start, random fields (C); relative difference of the measured growth per step at 1.01 from M4's corner eigenvalue (C_growth)"
+scale = "ratio (C); relative (C_growth)"
+C = 10
+C_growth = 1e-10
+measured = { C = 3.42 }
+status = "proposed"
+
+["T-1085"]
+quantity = "relative L² difference of the M4 run's ω₀ transform on the probe columns from M4's angular-spectrum propagation of the incident field (m4_kx), the main beam in three polarizations (C); the same for a plane wave in the A8 matrix (C_plane); the plane wave launched by the Yee antenna in the M4 run (C_naive, a lower bound)"
+scale = "(3/16)·√105/w0⁴ (waist 6, Float64) for C; eps(T)·√steps for C_plane and C_naive"
+C = 1.5
+C_plane = 2
+C_naive = 1000
+measured = { Ey = 1.16, Ez = 0.847, C_plane = { Float64 = 0.473 }, C_naive = { Float64 = 7.4e12 } }
+status = "proposed"
+
+["T-1086"]
+quantity = "energy behind the M4 antenna over the pulse's for a narrow band beam (waist 20, duration 25, Ey and Ez polarized) (C); the same with the Yee antenna in the M4 run over the M4 antenna's (C_naive, a lower bound); the A8 and main runs take T-401's C, C_main and C_linear; the B corrections as an operator, the larger of the scattered region's B and the total region's difference from the full half step, over max|B| (C_operator, eps(T), 2D and 3D); the incident E the corrections read on ia − 1, ia, ia + 1 against the beam written out, over its largest |E| (C_incident, eps(T))"
+scale = "fraction (C); ratio (C_naive)"
+C = 1e-7
+C_naive = 100
+C_operator = 8
+C_incident = 4
+measured = { C_incident = 0.0, Ey = 2.01e-9, Ez = 7.2e-9, naive = { Ey = 4.41e-6, Ez = 4.51e-6 }, small = 0.508, main = 0.288, C_operator = { Float32 = 1.5, Float64 = 0.777, "Dual{Float32,3}" = 1.5, "3D Float64" = 1.9 } }
+status = "proposed"
+
+["T-1088"]
+quantity = "reflection of T-540's slab packets off the PML in the M4 run over the Yee scheme's discrete theory at the same geometry, 8 and 16 cells, 0 to 0.8 rad, TE and TM (C); with Yee's difference in the layer's B corrections, over the M4 layer's (C_naive, a lower bound); the largest field energy over 4000 steps of random fields in an open box with the PML relative to the start (C_long)"
+scale = "ratio"
+C = 1.5
+C_naive = 5
+C_long = 1.1
+measured = { C = 0.905, naive = "7 to 600 times the M4 layer", C_long = 0.66 }
+status = "proposed"
+
+["T-1089"]
+quantity = "M4's ∇·B (Σ_d D̃_d B_d) on the cell centres whose stencil reads no layer row, particles leaving through the PML in 2D (T-1089) and through each absorber on y and z in 3D (T-1097), both modes; Gauss's law takes T-451's and T-1011's C, and T-212's in 1D"
+scale = "(Σ 2/Δ_d)·max|B|·√k"
+C_divB = 2
+measured = { open = "0.12 to 0.19", open_3d = "0.19 to 1.02" }
+status = "proposed"
+
+["T-1090"]
+quantity = "T-570 with M4: the back-edge PML's largest difference from free space on the eight columns behind it over the bare back edge's (C_back), with M4's layer"
+scale = "ratio"
+C_back = 0.0035
+measured = { Float64 = 0.00215 }
+status = "proposed"
+
+["T-1087"]
+quantity = "relative L² difference of the M4 shaped beam's ω₀ transform on the antenna plane's own column from M4's angular-spectrum propagation of its incident field (the probes past the plane take T-906's C and C_leak)"
+scale = "(3/16)·√⟨k_y⁸⟩ over the pupil's angular spectrum"
+C_at_plane = 5
+status = "proposed; measured 3.4 for Ey and 0.91 for Ez in Float64 at 95/100 of the Courant limit, 0.95 for Ey at half the time step"
+
+["T-1100"]
+quantity = "T-1036 and T-1032 with M4 in the 3D window: the vacuum pulse against its static twin (bare, back PML of 6 cells, plane moving back while it launches), the back PML's difference against free space over the bare edge's, and Gauss's law across shifts; the bounds are T-1036's C and C_near and T-1032's C"
+scale = "as T-1036 and T-1032"
+measured = { twin = 196.0, near = 0.0151, gauss = "0.087 to 0.113" }
+status = "proposed"

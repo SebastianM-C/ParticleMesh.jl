@@ -163,7 +163,7 @@ function ionization_on(fr::IonizationFrame, a::Tuple)
     atoms = Species(core.cell, core.offset, core.u, core.w, core.status, core.count, core.q, core.m, extras)
     ne = Val(species_length(fr.electrons))
     electrons, a = species_on(fr.electrons, take(a, ne)), drop(a, ne)
-    return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.row0, fr.nrows, fr.ncols, fr.ppc, a[1], fr.flags),
+    return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.c0, fr.nc, fr.ppc, a[1], fr.flags),
            drop(a, Val(1))
 end
 

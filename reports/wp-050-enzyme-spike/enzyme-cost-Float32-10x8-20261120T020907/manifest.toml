@@ -1,0 +1,22 @@
+commit = "54cecc391b5ad2aa06fa387831934678771039a9"
+backend = "CUDABackend(false, false, false)"
+dirty = "false"
+cuda_heap = "default"
+cpu = "AMD Ryzen 9 9950X 16-Core Processor"
+threads = 32
+args = ["Float32", "10x8", "3x3", "1,2,4,8,16,32,64"]
+patches = "scripts/enzyme/spike/active_args.jl"
+julia = "1.13.4"
+gpu = "NVIDIA GeForce RTX 5090"
+
+[versions]
+Enzyme = "0.13.221"
+ForwardDiff = "1.4.6"
+KernelAbstractions = "0.10.8"
+
+[inputs]
+"scripts/enzyme/common.jl" = "9ca49375f4dc118bd51cd81024c272370a72ee95f9d05c3fba26736ec966decb"
+"scripts/enzyme/cost.jl" = "35a64a54c4963a8d43eb9b3016978206bcd5f37abf9b378d1b0bab058dea52b8"
+"Manifest.toml" = "f05e33b86af55f80b59a872172f6ec9eb58563984c6272a3741eeb2abc3f25db"
+"lib/ParticleMeshElectromagnetic/test/Project.toml" = "6ed8d826a9e1f5321caa9991751517d3b3ca4282a76a7690d05a4b39c42a47d0"
+"lib/ParticleMeshElectromagnetic/test/em2d_cases.jl" = "a0cde521b7e197a09f9d057cc55adb6bb1f7aaf559613f336fc33253feebb510"

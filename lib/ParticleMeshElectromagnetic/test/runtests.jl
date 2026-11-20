@@ -16,13 +16,16 @@ include("pml_cases.jl")        # WP-034: the PML's runs and its discrete theory
 include("window_cases.jl")     # WP-028: the moving window's problems
 include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, after window_cases.jl
 include("ionization_cases.jl") # WP-059: the field ionization's problems, after em2d_cases.jl
-include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl
+include("m4_cases.jl")         # WP-079: the M4 solver's discrete theory, after yee_nd_cases.jl
+include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl and window_cases.jl
+include("gather_cases.jl")     # WP-067, WP-076: the compensated gather's states and sampled modes, gather.jl's and em3d_gather.jl's
 
 # The suite's files in their order; each note says what a file reuses from earlier ones. CI runs
 # them in the groups of groups.toml, in parallel jobs (ParticleMeshCore's test/groups.jl).
 const TEST_FILES = [
     "yee.jl",
     "yee_nd.jl",              # WP-022: T-320 to T-329, the solver in N dimensions
+    "m4.jl",                  # WP-079: T-1080 to T-1084, the M4 solver in N dimensions, after yee_nd.jl (its helpers)
     "em3d.jl",                # WP-042: T-880 to T-883, the layout, the initial field and the recorder at N = 3, after yee_nd.jl (its helpers)
     "boris.jl",
     "pushers.jl",
@@ -46,6 +49,7 @@ const TEST_FILES = [
     "pml.jl",                 # WP-034: T-540 to T-549, after boundaries.jl (its helpers)
     "window.jl",              # WP-028: T-470 to T-479
     "pml_back.jl",            # WP-034: T-570 to T-576, the PML on the window's back edge, after window.jl
+    "m4_step.jl",             # WP-079: T-1085 to T-1093, the M4 solver in the 2D step, after antenna.jl, shaped_antenna.jl and pml_back.jl (their helpers)
     "lwfa_gradient.jl",       # WP-043: T-580 to T-582, a gradient through a small LWFA run, after window.jl
     "witness.jl",             # WP-047: T-640 to T-645, the witness bunch and its mean energy gain, after lwfa_gradient.jl
     "tunables.jl",            # WP-060: T-790 to T-793, the parameters as one vector and as a SciML structure, after lwfa_gradient.jl (its case and T-581's gradient)
@@ -66,6 +70,11 @@ const TEST_FILES = [
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
     "em3d_antenna.jl",        # WP-073: T-1020 to T-1028, the laser antenna of the 3D step, after em3d_step.jl (its helpers and worker)
+    "m4_3d.jl",               # WP-079: T-1094 to T-1097, the M4 solver in the 3D step, after em3d_step.jl, em3d_open.jl and em3d_antenna.jl (their helpers)
+    "em3d_window.jl",         # WP-074: T-1030 to T-1038, the moving window of the 3D step, after em3d_step.jl (its helpers and worker)
+    "m4_window_3d.jl",        # WP-079: T-1100, the M4 solver in the 3D moving window, after em3d_window.jl (its helpers)
+    "em3d_ionization.jl",     # WP-075: T-1040 to T-1048, the field ionization of the 3D step (its shared helpers and worker in em3d_cases.jl)
+    "em3d_gather.jl",         # WP-076: T-1050 to T-1056, the compensated gather of the 3D step
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]
