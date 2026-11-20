@@ -5,7 +5,7 @@ The engine core of ParticleMesh.jl: a periodic grid with guard cells, fixed-capa
 structure-of-arrays species with module-declared extras, B-spline shapes of order 1 and 2,
 gather, the deposition of a module-supplied quantity and the charge-conserving flux
 deposition (Esirkepov), each in a deterministic `Reference` mode and an atomic `Fast` mode,
-the periodic fill/fold pair, a sort by cell, counter-based Philox4x32-10 draws, quiet-start
+the flux deposition's transpose `gather_flux!`, the periodic fill/fold pair, a sort by cell, counter-based Philox4x32-10 draws, quiet-start
 loading with a momentum distribution (a Gaussian in velocity or in momentum, or Maxwell–Jüttner,
 WP-033), the zero-mean periodic prefix sum `cumsum_periodic!`, and the periodic spectral
 inverse of the discrete Laplacian `inverse_laplacian_periodic!` with its forward-difference
@@ -19,8 +19,10 @@ shape only; a fixed size the kernel cannot take is refused with an `ArgumentErro
 `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
 the prefix sum, which is `N = 1` only). At `N = 3` the grid, the fill/fold pair, the quiet start,
 the sort, the gather, the deposition of a quantity, the charge-conserving flux deposition and the
-periodic solve with its gradient are implemented and tested. The contracts are those of
-`docs/plan/architecture-draft.md` §0.7.
+periodic solve with its gradient are implemented and tested. The pullbacks of the transfers and the
+sort (`deposit_pullback!`, `gather_pullback!`, `flux_pullback!` at N = 1 and 2, `sort_pullback!`)
+are hand-written reverse-mode adjoints, which the extension on EnzymeCore registers as Enzyme's
+reverse rules (WP-077). The contracts are those of `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore
 
@@ -40,7 +42,8 @@ export Workspace, sort_by_cell!, resort_by_cell!, forget_order!, deposit!, gathe
 export cumsum_periodic!
 export GaussianVelocity, GaussianMomentum, MaxwellJuttner, draws_momentum
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
-export deposit_flux!, flux_guard_width, flux_extras
+export deposit_flux!, gather_flux!, flux_guard_width, flux_extras
+export pullback_quantity!, deposit_pullback!, gather_pullback!, flux_pullback!, sort_pullback!
 export philox4x32, uniform_open, box_muller
 export load_quiet!, quiet_particle, quiet_particle_2d
 
@@ -61,5 +64,7 @@ include("spectral.jl")
 include("flux.jl")
 include("flux2d.jl")
 include("flux3d.jl")
+include("pullbacks.jl")
+include("flux_gather.jl")
 
 end

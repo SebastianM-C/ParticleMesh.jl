@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -127,6 +127,10 @@ else
                 @test record!("T-946 order", T, worst, GPU) <= tolC("T-944")
             end
         end
+    end
+
+    @testset "T-1004 the flux gather on CUDA: the transpose of deposit_flux! in both modes, zero at rest, the plain gather out of space, launch shapes bitwise [A4, A7, A8, WP-071]" begin
+        rerun_on(GPU, (("T-1000", body_T1000), ("T-1003", body_T1003)))
     end
 
     @testset "T-192 Reference mode of the engine on CUDA is bitwise across reruns and launch shapes [A4, WP-013]" begin
@@ -320,5 +324,57 @@ else
 
     @testset "T-194 Fast and Reference on CUDA agree per node and per face [A4, A7, WP-013]" begin
         rerun_on(GPU, (("T-135", body_T135), ("T-113", body_T113_faces), ("T-265 nodes", body_T265_nodes)))
+    end
+
+    @testset "T-1066 the pullbacks on CUDA against the CPU: flux at N = 1 and 2, deposit and gather at N = 1 to 3, the sort bitwise [A7, A8, WP-077]" begin
+        # The same kernels on both backends: each entry within C·eps(T) of the CPU's, scaled by the
+        # largest entry of its array (a device may contract to FMAs; the gather's adjoint field is
+        # added by atomics in another order).
+        C = tolC("T-1066")
+        close(a, b, T) = record!("T-1066", T, maximum(abs.(Array(a) .- b)) / (eps(T) * max(maximum(abs, b), floatmin(T))), GPU) <= C
+        for T in (Float32, Float64)
+            for shape in SHAPES, st in (Node(), Center())
+                grid = flux_grid_1d(T, shape, st)
+                s = moved_species(T, grid, 300; seed = 9, dead = (40, 41, 250))
+                J̄ = ntuple(k -> T.(lcg_field(field(backend, T, grid), 20 + k)), 3)
+                x̄ = zero_like(s); y = zero_like(s)
+                flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = T(1 // 4), quantity_y = ChargeUy(), quantity_z = ChargeUz())
+                on(GPU, flux_pullback!, y, J̄..., s, shape, st, grid; dt = T(1 // 4), quantity_y = ChargeUy(), quantity_z = ChargeUz())
+                @test all(close(b, a, T) for ((_, a), (_, b)) in zip(float_arrays(x̄), float_arrays(y)))
+            end
+            for shape in SHAPES, st in STAGGER_PAIRS
+                grid = grid2(T, flux_g2(shape, st))
+                s = flux_species_2d(T, grid, 300; seed = 9)
+                J̄ = ntuple(k -> T.(lcg_field(field(backend, T, grid), 30 + k)), 3)
+                x̄ = zero_like(s); y = zero_like(s)
+                flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = T(1 // 4), quantity_z = QZ2)
+                on(GPU, flux_pullback!, y, J̄..., s, shape, st, grid; dt = T(1 // 4), quantity_z = QZ2)
+                @test all(close(b, a, T) for ((_, a), (_, b)) in zip(float_arrays(x̄), float_arrays(y)))
+            end
+            for (N, s, grid, staggers, quantities) in deposit_cases(T), shape in SHAPES, st in staggers
+                ρ̄ = T.(lcg_field(field(backend, T, grid), 11))
+                x̄ = zero_like(s); y = zero_like(s)
+                deposit_pullback!(x̄, ρ̄, s, shape, st, grid; quantity = last(quantities))
+                on(GPU, deposit_pullback!, y, ρ̄, s, shape, st, grid; quantity = last(quantities))
+                @test all(close(b, a, T) for ((_, a), (_, b)) in zip(float_arrays(x̄), float_arrays(y)))
+                a = T.(lcg_field(field(backend, T, grid), 13))
+                ō = T.(lcg_values(capacity(s), 19))
+                ā, x̄, ō1 = zero(a), zero_like(s), copy(ō)
+                āg, y, ō2 = zero(a), zero_like(s), copy(ō)
+                gather_pullback!(ā, x̄, ō1, a, s, shape, st, grid)
+                on(GPU, gather_pullback!, āg, y, ō2, a, s, shape, st, grid)
+                @test close(āg, ā, T) && ō1 == ō2
+                @test all(close(b, a, T) for ((_, a), (_, b)) in zip(float_arrays(x̄), float_arrays(y)))
+            end
+            s = flux_species_2d(T, grid2(T, 2), 300; seed = 5)
+            perm = Int32.(sortperm(lcg_values(capacity(s), 3)))
+            ȳ = zero_like(s)
+            foreach(((k, (_, a)),) -> (a .= T.(lcg_values(length(a), 40 + k))), enumerate(float_arrays(ȳ)))
+            d = todev(GPU, ȳ)
+            sort_pullback!(ȳ, perm)
+            sort_pullback!(d, todev(GPU, perm))
+            KernelAbstractions.synchronize(GPU)
+            @test all(same_bits(Array(b), a) for ((_, a), (_, b)) in zip(float_arrays(ȳ), float_arrays(d)))
+        end
     end
 end

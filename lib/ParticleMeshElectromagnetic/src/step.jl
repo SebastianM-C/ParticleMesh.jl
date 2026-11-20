@@ -22,11 +22,53 @@ struct KineticEnergy end
     end
 end
 
-"E and B of the layout at offset `δ` of cell `c` (one entry per resolved axis; guards filled), each on its own stagger."
+# The pullbacks of the deposited quantities (`ParticleMeshCore.pullback_quantity!`, WP-077): the
+# adjoint of q̄ times the quantity with respect to the weight and the momentum, added at slot i.
+# With γ = √(1 + |u|²), ∂(u_k/γ)/∂u_l = δ_kl/γ − u_k·u_l/γ³ and ∂(γ − 1)/∂u_l = u_l/γ.
+@inline function pullback_current!(s̄, s, i, q̄, ::Val{K}) where {K}
+    @inbounds begin
+        u = (s.u[1][i], s.u[2][i], s.u[3][i])
+        γ = lorentz_factor(u)
+        a = s.q * q̄ / γ                          # ∂(q·w·u_K/γ)/∂w · q̄ / u_K
+        b = s.w[i] * a                           # q·w·q̄/γ
+        c = b * u[K] / (γ * γ)                   # q·w·q̄·u_K/γ³
+        # ∂(u_K/γ)/∂u_K = (1 + Σ_{l≠K} u_l²)/γ³, summed without the cancelling γ² - u_K²
+        o = ntuple(l -> ifelse(l == K, zero(b), u[l] * u[l]), Val(3))
+        d = b * (one(b) + o[1] + o[2] + o[3]) / (γ * γ)
+        s̄.w[i] += a * u[K]
+        s̄.u[1][i] += ifelse(K == 1, d, -c * u[1])
+        s̄.u[2][i] += ifelse(K == 2, d, -c * u[2])
+        s̄.u[3][i] += ifelse(K == 3, d, -c * u[3])
+    end
+    return nothing
+end
+@inline ParticleMeshCore.pullback_quantity!(s̄, ::CurrentY, s, i, q̄) = pullback_current!(s̄, s, i, q̄, Val(2))
+@inline ParticleMeshCore.pullback_quantity!(s̄, ::CurrentZ, s, i, q̄) = pullback_current!(s̄, s, i, q̄, Val(3))
+@inline function ParticleMeshCore.pullback_quantity!(s̄, ::KineticEnergy, s, i, q̄)
+    @inbounds begin
+        u1, u2, u3 = s.u[1][i], s.u[2][i], s.u[3][i]
+        u² = u1 * u1 + u2 * u2 + u3 * u3
+        γ = lorentz_factor(u1, u2, u3)
+        s̄.w[i] += s.m * u² / (γ + 1) * q̄
+        a = s.m * s.w[i] * q̄ / γ
+        s̄.u[1][i] += a * u1
+        s̄.u[2][i] += a * u2
+        s̄.u[3][i] += a * u3
+    end
+    return nothing
+end
+
+"""
+E and B of the layout at offset `δ` of cell `c` (one entry per resolved axis; guards filled), each
+on its own stagger, read with `shape` (a `Shape`, or a [`GalerkinRead`](@ref), which reads each
+component with its [`component_shape`](@ref)).
+"""
 @inline function fields_at(f, c::NTuple{N,Int32}, δ::NTuple{N,Any}, shape, g::Int32) where {N}
     L = gather_layout(Val(N))
-    E = (gather_at(f.Ex, c, δ, shape, L.Ex, g), gather_at(f.Ey, c, δ, shape, L.Ey, g), gather_at(f.Ez, c, δ, shape, L.Ez, g))
-    B = (gather_at(f.Bx, c, δ, shape, L.Bx, g), gather_at(f.By, c, δ, shape, L.By, g), gather_at(f.Bz, c, δ, shape, L.Bz, g))
+    E = (gather_at(f.Ex, c, δ, component_shape(shape, L.Ex), L.Ex, g), gather_at(f.Ey, c, δ, component_shape(shape, L.Ey), L.Ey, g),
+         gather_at(f.Ez, c, δ, component_shape(shape, L.Ez), L.Ez, g))
+    B = (gather_at(f.Bx, c, δ, component_shape(shape, L.Bx), L.Bx, g), gather_at(f.By, c, δ, component_shape(shape, L.By), L.By, g),
+         gather_at(f.Bz, c, δ, component_shape(shape, L.Bz), L.Bz, g))
     return E, B
 end
 
@@ -37,8 +79,10 @@ end
 @inline function fields_at(f, c::NTuple{1,Int32}, δ::NTuple{1,Any}, shape, g::Int32)
     L = FIELD_LAYOUT
     c1, δ1 = c[1], δ[1]
-    E = (gather_at(f.Ex, c1, δ1, shape, L.Ex, g), gather_at(f.Ey, c1, δ1, shape, L.Ey, g), gather_at(f.Ez, c1, δ1, shape, L.Ez, g))
-    B = (gather_at(f.Bx, c1, δ1, shape, L.Bx, g), gather_at(f.By, c1, δ1, shape, L.By, g), gather_at(f.Bz, c1, δ1, shape, L.Bz, g))
+    E = (gather_at(f.Ex, c1, δ1, component_shape(shape, L.Ex), L.Ex, g), gather_at(f.Ey, c1, δ1, component_shape(shape, L.Ey), L.Ey, g),
+         gather_at(f.Ez, c1, δ1, component_shape(shape, L.Ez), L.Ez, g))
+    B = (gather_at(f.Bx, c1, δ1, component_shape(shape, L.Bx), L.Bx, g), gather_at(f.By, c1, δ1, component_shape(shape, L.By), L.By, g),
+         gather_at(f.Bz, c1, δ1, component_shape(shape, L.Bz), L.Bz, g))
     return E, B
 end
 
@@ -566,7 +610,7 @@ function initialize!(st::EMState{N}, p::EMParams; momenta_at::Symbol = :t0, dens
         sharpen_gather!(st)
         pf = particle_fields(st)
         for s in st.species
-            launcher(kick_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g,
+            launcher(kick_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, read_shape(numerics), g,
                                                         -s.q / s.m * st.dt / 4; ndrange = capacity(s))
         end
     end
@@ -705,7 +749,7 @@ function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     ionize!(ionization_frame(st), st, p, k)
     pf = particle_fields(st)
     for s in (deposited_species(st)..., witness_species(st)...)
-        launcher(push_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
+        launcher(push_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, read_shape(numerics), g, s.q / s.m * dt / 2, dt_dx, n;
                                                     ndrange = capacity(s))
     end
     retire_x!(window, st)

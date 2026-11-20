@@ -81,7 +81,7 @@ function incident_dtft(r)
     a = run_antenna(r)
     l = a.laser
     T = typeof(a.xa)
-    n2 = Int(a.n2)
+    n2 = Int(a.n[2])
     dt = r.prob.dt
     sθ, cθ = sincos(l.polarization)
     Ey, Ez = zeros(Complex{T}, n2), zeros(Complex{T}, n2)
@@ -169,7 +169,7 @@ function beam_profile(r; component = :Ey)
     yk = yee_axis(h[1], dt)
     xa = Float64(value_of(a.xa))
     s = component === :Ey ? 0.5 : 0.0
-    m = Int(a.n2)
+    m = Int(a.n[2])
     y = ((1:m) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
     out = []
     for (q, i) in enumerate(r.ip)
@@ -202,7 +202,7 @@ function angular_profile(r; component = :Ey)
     S = dft(getfield(inc, component))
     ky = ky_modes(length(S), h[2])
     s = component === :Ey ? 0.5 : 0.0
-    y = ((1:Int(a.n2)) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
+    y = ((1:Int(a.n[2])) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
     j0 = argmin(abs.(y))
     out = []
     for i in r.ip
@@ -305,7 +305,7 @@ function incident_flux(r)
     sθ, cθ = sincos(l.polarization)
     ξe, ξb = a.xa - l.focus, a.xa - a.hx - l.focus
     Φ = zero(T)
-    for k in 1:r.prob.nsteps, j in 1:Int(a.n2)
+    for k in 1:r.prob.nsteps, j in 1:Int(a.n[2])
         J = Int32(j) + a.g
         t = (k - 1) * dt
         yc, yn = antenna_dy(a, J, one(T) / 2), antenna_dy(a, J, zero(T))
