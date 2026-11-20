@@ -18,15 +18,18 @@ function tables(dirs)
     checks = [(d, r) for (d, r) in runs if !haskey(r, "rows")]
     costs = [(d, r) for (d, r) in runs if haskey(r, "rows")]
     if !isempty(checks)
-        println("| Dim | T | Mode | Particles | Steps | c | Checkpointed vs plain reverse | Host vs device slots | Plain rerun | Chain rule, α (tolerance) | Chain rule, random (tolerance) | Verdict | First call, checkpointed (s) | First call, plain (s) |")
+        println("| Dim | T | Mode | Particles | Steps | c | Checkpointed vs plain reverse (tolerance) | Host vs device slots | Plain rerun | Chain rule, α (tolerance) | Chain rule, random (tolerance) | Verdict | First call, checkpointed (s) | First call, plain (s) |")
         println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
         for (_, r) in checks
             c, x = r["case"], r["result"]
             pd = get(x, "plain_relative_difference", nothing)
             worst = pd === nothing ? nothing : maximum(values(pd))
+            # runs before the plain-reverse tolerance entered the verdict: the same tolerance from their records
+            ptol = get(x, "plain_tolerance", worst === nothing ? nothing :
+                       8 * max(x["plain_rerun"], x["host_vs_device"], eps(Dict("Float64" => Float64, "Float32" => Float32)[c["eltype"]])))
             println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(c["particles"]) | $(c["steps"]) | $(get(x, "plain_only", false) ? "–" : c["checkpoints"]) | ",
-                    "$(fmt(worst)) | $(fmt(get(x, "host_vs_device", nothing))) | $(fmt(get(x, "plain_rerun", nothing))) | $(fmt(x["relative_difference"])) ($(fmt(x["tolerance"]))) | ",
-                    "$(fmt(x["random_relative_difference"])) ($(fmt(get(x, "random_tolerance", x["tolerance"])))) | $(x["verdict"]) | ",
+                    "$(fmt(worst)) ($(fmt(ptol))) | $(fmt(get(x, "host_vs_device", nothing))) | $(fmt(get(x, "plain_rerun", nothing))) | $(fmt(x["relative_difference"])) ($(fmt(x["tolerance"]))) | ",
+                    "$(fmt(x["random_relative_difference"])) ($(fmt(get(x, "random_tolerance", x["tolerance"])))) | $(x["verdict"] == "pass" && (worst === nothing || worst <= ptol) ? "pass" : "FAIL") | ",
                     "$(something(get(x, "first_call_checkpointed", nothing) |> y -> y === nothing ? nothing : @sprintf("%.0f", y), "–")) | ",
                     "$(something(get(x, "first_call_plain", nothing) |> y -> y === nothing ? nothing : @sprintf("%.0f", y), "–")) |")
         end

@@ -158,7 +158,11 @@ function main_check()
         dpl2 = reverse_gradient(deepcopy(st0), p, n)
         res["plain_rerun"] = maximum(k -> Float64(maximum(abs.(Array(leaves(dpl2)[k]) .- Array(P[k])); init = zero(T)) /
                                                   max(maximum(abs, Array(P[k]); init = zero(T)), floatmin(T))), keys(P))
-        println(@sprintf("  host storage against device storage %.2e; plain reverse rerun against itself %.2e", res["host_vs_device"], res["plain_rerun"]))
+        # the checkpointed gradient against the plain one is the check of the checkpointing itself: a
+        # wrong restore moves it by far more than the rounding spread between two plain passes
+        res["plain_tolerance"] = 8 * max(res["plain_rerun"], res["host_vs_device"], Float64(eps(T)))
+        println(@sprintf("  host storage against device storage %.2e; plain reverse rerun against itself %.2e; tolerance %.2e",
+                         res["host_vs_device"], res["plain_rerun"], res["plain_tolerance"]))
     end
     # the chain rule against a Dual run
     D = ForwardDiff.Dual{:α}(α0, one(T))
@@ -186,7 +190,10 @@ function main_check()
     cancelv = sum(k -> Float64(sum(abs.(Array(G[k]) .* Array(V[k])))), common) / abs(adv)
     tol, tolv = 64 * eps(T) * n * max(cancel, 1), 64 * eps(T) * n * max(cancelv, 1)
     rel, relv = abs(ad - fd) / abs(fd), abs(adv - fdv) / abs(fdv)
-    verdict = rel <= tol && relv <= tolv ? "pass" : "FAIL"
+    # the chain-rule tolerance is a loose bound (it lets the gradient's error grow linearly in the steps
+    # and assumes no cancellation of rounding errors between terms); the measured difference is the evidence
+    plain_ok = !haskey(res, "plain_tolerance") || maximum(values(res["plain_relative_difference"])) <= res["plain_tolerance"]
+    verdict = rel <= tol && relv <= tolv && plain_ok ? "pass" : "FAIL"
     println(@sprintf("  chain rule: α direction forward %.10e reverse %.10e relative %.2e tolerance %.2e (cancellation %.1f); random direction forward %.10e reverse %.10e relative %.2e tolerance %.2e (cancellation %.1f): %s",
                      fd, ad, rel, tol, cancel, fdv, adv, relv, tolv, cancelv, verdict))
     merge!(res, Dict("forward" => fd, "reverse" => ad, "relative_difference" => rel, "random_forward" => fdv, "random_reverse" => adv,
