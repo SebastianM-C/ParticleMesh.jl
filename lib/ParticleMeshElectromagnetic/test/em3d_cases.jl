@@ -345,9 +345,10 @@ function static_twin_3d(prob::EMProblem{3,T}, n1) where {T}
                      window = MovingWindow(; start = T(Inf)), profile = prob.profile)
 end
 
-"The initialized state of a 3D window problem, with `back` on the back edge and `absorber` on its open axes."
-function window_state_3d(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, back = nothing, be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber, back_absorber = back); backend = be)
+"The initialized state of a 3D window problem, with `back` on the back edge, `absorber` on its open axes and `solver` the field solver."
+function window_state_3d(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, back = nothing, be = CPU(),
+                         solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber, back_absorber = back, solver); backend = be)
     initialize!(st, prob)
     return st
 end

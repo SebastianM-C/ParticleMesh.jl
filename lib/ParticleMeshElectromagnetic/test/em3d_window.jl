@@ -378,11 +378,11 @@ end
 # third run puts the antenna further forward (x = 30) and starts the window at the pulse's peak
 # (t = 18): the plane moves back 23 columns while it launches, which an antenna that moved with the
 # window would show (the mutation breaker). Float64, fields only.
-function window_vacuum_3d(back; be = CPU(), extra = 100, position = 10, start = 33)
+function window_vacuum_3d(back; be = CPU(), extra = 100, position = 10, start = 33, solver = Yee())
     prob = window_lwfa_3d(Float64; plasma = false, nsteps = 200, position, start)
     n = prob.cells
     h = prob.length[1] / n[1]
-    nums = EMNumerics(; back_absorber = back)
+    nums = EMNumerics(; back_absorber = back, solver)
     win = EMState(prob, nums; backend = be)
     initialize!(win, prob)
     s_end = window_shifts(win, prob.nsteps)
@@ -391,7 +391,7 @@ function window_vacuum_3d(back; be = CPU(), extra = 100, position = 10, start = 
     initialize!(ref, twin)
     far = window_lwfa_3d(Float64; plasma = false, nsteps = prob.nsteps, position = position + extra * h, cells = (n[1] + s_end + 8 + extra, n[2], n[3]),
                          start = Inf)
-    free = EMState(far, EMNumerics(); backend = be)
+    free = EMState(far, EMNumerics(; solver); backend = be)
     initialize!(free, far)
     p, pf = params(prob), params(far)
     g = guards(win.grid)
