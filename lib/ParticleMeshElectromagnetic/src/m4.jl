@@ -17,7 +17,8 @@
 #     A_d = 1 − 2δ_d(1 − cos k_dΔ_d) − Σ_{j ≠ d} 2β_dj(1 − cos k_jΔ_j),
 #
 # so the scheme's exact discrete relation is sin²(ωΔt/2)/Δt² = Σ_d A_d·sin²(k_dΔ_d/2)/Δ_d², which
-# along an axis is ω = k to fourth order in kΔ (Yee's is second order) at every Δt.
+# is ω = |k| to fourth order in kΔ in every direction (δ_d cancels the k_d⁴ terms, and β_dj with
+# β_jd the cross terms k_d²k_j², since β_djΔ_j² + β_jdΔ_d² = Δt²/6; Yee's is second order) at every Δt.
 #
 # Two consequences, both tested (T-1082, T-1083):
 # - ∇·B. The differences D̃_d along different axes commute (shift-invariant operators), so the
@@ -45,8 +46,8 @@ The M4 low-dispersion solver in the mesh-solve slot (WP-079, A10), for N = 1, 2 
 leapfrog and the E update of [`Yee`](@ref), with Faraday's law taking the difference of Lu et al.
 (2020) along each resolved axis, whose coefficients follow the time step (no parameter):
 δ_d = ((Δt/Δ_d)² − 1)/12 on the third difference along d and β_dj = (Δt/Δ_j)²/12 on the
-transverse average over the rows of the other axes. Its discrete dispersion is fourth order along
-the axes at every Δt, its Courant limit is Yee's ([`courant_limit`](@ref)), it keeps Gauss's law
+transverse average over the rows of the other axes. Its discrete dispersion is fourth order in
+every direction at every Δt, its Courant limit is Yee's ([`courant_limit`](@ref)), it keeps Gauss's law
 as Yee does and its own ∇·B (the divergence with its difference) to roundoff, and it needs two
 guard cells. A choice of
 [`EMNumerics`](@ref) (`solver = M4()`); the absorbers, the antennas and the moving window take it

@@ -76,6 +76,9 @@ end
 # B are those of M4's discrete plane wave (E at x_a + mΔx a time m·kΔx later, k M4's wavenumber of
 # ω₀, and B/E M4's ratio ρ), so it is launched exactly, to roundoff, in the A8 matrix; the same run
 # with the Yee antenna (Yee's two corrections, wavenumber and ratio) misses by orders of magnitude.
+# Roundoff holds at this resolution (16 × 8 cells per wavelength); at 8 × 4 and half the Courant
+# number the same measurement gives up to 7·10⁻¹² relative, and Yee's antenna in its own run up to
+# 10⁻⁸ (the PR's physics breaker; the cause of that floor, in both schemes, is not established).
 function body_T1085(be)
     C, Cp, Cn = emC("T-1085"), emC("T-1085", "C_plane"), emC("T-1085", "C_naive")
     if be isa CPU
@@ -216,7 +219,9 @@ end
 # slab packets of T-540 (both polarizations, 8 and 16 cells, 0 to 0.8 rad, PIConGPU's profile)
 # reflect no more than Yee's packets do at the same geometry (their discrete theory, T-540); the
 # same layers with Yee's difference in the B corrections, in the M4 run, reflect 7 to 600 times
-# more. A zero profile is the periodic M4 step bit for bit (TYPES), and random fields in an open
+# more. (Past the test's angles the M4 layer reflects slightly more than Yee's: 1.03 to 1.22 times
+# at 1.1 to 1.2 rad, at reflections of 10⁻⁸ to 10⁻¹⁴, measured by the PR's physics breaker; the
+# tolerance of 1.5 covers that.) A zero profile is the periodic M4 step bit for bit (TYPES), and random fields in an open
 # box with the PML stay bounded over a long run.
 function m4_slab_run(geo, pol; absorber, layer_stencil = nothing, T = Float64)
     prob, num = slab_problem(T, geo; absorber, solver = M4())
