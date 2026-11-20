@@ -73,6 +73,8 @@ the difference along d. Isbits, for the device. `faraday_stencil(M4(), grid, dt)
 struct M4Stencil{N,T}
     δ::NTuple{N,T}
     β::NTuple{N,NTuple{N,T}}
+    # only the parametric constructor: the default `M4Stencil(δ, β)` leaves T unbound at N = 0
+    M4Stencil{N,T}(δ::NTuple{N,T}, β::NTuple{N,NTuple{N,T}}) where {N,T} = new{N,T}(δ, β)
 end
 
 """
