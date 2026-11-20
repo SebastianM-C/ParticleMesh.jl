@@ -1,4 +1,4 @@
-# The convolutional perfectly matched layer of the open transverse axis at N = 2 (WP-034, A2: "PML
+# The convolutional perfectly matched layer of the open transverse axes (WP-034 at N = 2, WP-072 at N = 3; A2: "PML
 # later"): the complex-frequency-shifted stretched-coordinate PML in the recursive-convolution form
 # of Roden and Gedney (2000), with PIConGPU 0.8.0's coefficients and time rule
 # (`fields/absorber/pml/Pml.kernel`).
@@ -117,289 +117,279 @@ stretching's correction of the vacuum difference. A device function.
     return (b, c, inv(κ) - one(T))
 end
 
-# The coefficients per layer row k (1 … 2·cells: interior rows j₀ = k − 1 for k ≤ cells, else
-# n₂ − 2·cells + k − 1) of a stagger sh along y (0 Node(), 1 Center()) and a sub-step τ.
-@inline pml_row(k::Int32, n2::Int32, cells::Int32) = ifelse(k <= cells, k - Int32(1), n2 - Int32(2) * cells + k - Int32(1))
+# --- one layer along one axis, at N = 2 and 3 -------------------------------------------------------
+#
+# A layer lies along one axis d: on an open transverse axis (d = 2, and d = 3 at N = 3) the outer
+# `cells` rows on each side, meeting at the periodic seam (`TwoSided`); on a moving window's back
+# edge (d = 1) its first `cells` columns (`BackSide`). Two components of each field have a curl term
+# with a difference along d, the components c ≠ d: of B_c the term −h·D⁺_d E_o where d is c's first
+# cyclic successor and +h·D⁺_d E_o where it is the second, o the third axis (o ≠ c, d), and of E_c
+# the same with the opposite signs and D⁻_d B_o (`yee.jl`'s curls). Along y at N = 2 that is
+# Bx −D⁺_y Ez, Bz +D⁺_y Ex, Ex +D⁻_y Bz, Ez −D⁻_y Bx (the header's four), along x on the back edge
+# By +D⁺ₓEz, Bz −D⁺ₓEy, Ey −D⁻ₓBz, Ez +D⁻ₓBy, and along z at N = 3 Bx +D⁺_z Ey, By −D⁺_z Ex,
+# Ex −D⁻_z By, Ey +D⁻_z Bx. Each term has its convolution field, of the interior's shape with
+# axis d cut to the layer's rows, and the correction of the header, entry by entry: the same
+# expressions at every N and on every axis, so a layer on y at N = 2 keeps its bits. Across a
+# corner (both transverse axes open at N = 3, or the back edge beside an open axis) each axis
+# corrects its own differences, which is the stretched-coordinate PML's corner: s_y stretches ∂_y
+# and s_z stretches ∂_z, independently.
 
-@kernel function pml_coef_kernel!(b, c, q, sm, km, am, orders::NTuple{3,Int}, sh::Int32, τ, n2::Int32, cells::Int32)
+"How a layer sits along its axis: on both sides of an open axis' periodic seam."
+struct TwoSided end
+"How a layer sits along its axis: on the first columns only, a moving window's back edge."
+struct BackSide end
+
+# The interior row j₀ (0-based) of layer row k: the first `cells` rows and the last `cells` on an open
+# axis of n rows, k − 1 on the back edge. The number of layer rows is `layer_rows`.
+@inline pml_row(k::Int32, n2::Int32, cells::Int32) = ifelse(k <= cells, k - Int32(1), n2 - Int32(2) * cells + k - Int32(1))
+@inline layer_row(::TwoSided, k::Int32, nd::Int32, cells::Int32) = pml_row(k, nd, cells)
+@inline layer_row(::BackSide, k::Int32, nd::Int32, cells::Int32) = k - Int32(1)
+layer_rows(::TwoSided, cells) = 2 * cells
+layer_rows(::BackSide, cells) = cells
+
+# The coefficients per layer row k of a stagger sh along the axis (0 Node(), 1 Center()) and a
+# sub-step τ, the profile at the half row 2j₀ + sh of an axis of nd rows.
+@kernel function pml_coef_kernel!(b, c, q, sm, km, am, orders::NTuple{3,Int}, sh::Int32, τ, nd::Int32, cells::Int32, side)
     k = Int32(@index(Global, Linear))
-    j0 = pml_row(k, n2, cells)
-    σ, κ, α = pml_profile(sm, km, am, orders, Int32(2) * j0 + sh, n2, cells)
+    j0 = layer_row(side, k, nd, cells)
+    σ, κ, α = pml_profile(sm, km, am, orders, Int32(2) * j0 + sh, nd, cells)
     bb, cc, qq = pml_coefficients(σ, κ, α, τ)
     @inbounds b[k] = bb
     @inbounds c[k] = cc
     @inbounds q[k] = qq
 end
 
-"""
-    PMLFields
+"The components (c₁, c₂), ascending, whose curl terms carry a difference along axis d."
+@inline pml_components(::Val{1}) = (Val(2), Val(3))
+@inline pml_components(::Val{2}) = (Val(1), Val(3))
+@inline pml_components(::Val{3}) = (Val(1), Val(2))
+# The third axis o of component c and axis d, and whether B_c's term along d has the minus sign
+# (d is c's first cyclic successor; E_c's term then has the plus sign).
+@inline other_axis(::Val{c}, ::Val{d}) where {c,d} = 6 - c - d
+@inline b_minus(::Val{c}, ::Val{d}) where {c,d} = mod1(c + 1, 3) == d
+const AXIS_LETTERS = (:x, :y, :z)
+# The names of the four convolution fields of a layer along d: B of c₁ and c₂, then E of c₁ and c₂.
+psi_names(d::Integer) = (cs = filter(!=(d), (1, 2, 3)); Tuple(Symbol(F, AXIS_LETTERS[c]) for F in (:B, :E) for c in cs))
 
-The PML placed on a grid by the state: per stagger along y (`node` for E's y-differences,
-`center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row,
-and the convolution fields ψ of the four y-difference terms (`ψBx`,
-`ψBz` on Center() rows, `ψEx`, `ψEz` on Node() rows), each of n₁ columns by 2·cells layer rows
-(the first `cells` interior rows and the last `cells`), zero at t = 0, and a scratch array of
-their size for the moving window's shift. `dt` is the time step the coefficients were made for,
-`sigma_max` the σ_max they use. A [`FieldModifier`](@ref): a correction after each sub-step, with
-no parameter half.
+# Place the profile of `l` along axis d of `grid` for the step `dt` on the side's rows: the
+# coefficient tables per stagger (node, center), σ_max, and the four convolution fields of the
+# interior's shape with axis d cut to the layer's rows, zero, with a scratch of their size.
+function place_layer(l::PML, grid::PeriodicGrid{N}, dt::T, d::Integer, side; backend, workgroupsize = nothing) where {N,T}
+    n, h = ncells(grid), cellsize(grid)
+    sm = pml_sigma_max(l, T(h[d]))
+    orders = (l.order, l.kappa_order, l.alpha_order)
+    rows = layer_rows(side, l.cells)
+    sets = map((0, 1)) do sh
+        v = ntuple(_ -> KernelAbstractions.allocate(backend, T, rows), 3)
+        launcher(pml_coef_kernel!, backend, workgroupsize)(v..., sm, T(l.kappa_max), T(l.alpha_max), orders, Int32(sh), dt, Int32(n[d]),
+                                                           Int32(l.cells), side; ndrange = rows)
+        v
+    end
+    dims = ntuple(a -> a == d ? rows : n[a], Val(N))
+    ψ = NamedTuple{psi_names(d)}(ntuple(_ -> KernelAbstractions.zeros(backend, T, dims), 4))
+    return sets, ψ, KernelAbstractions.zeros(backend, T, dims), sm
+end
+
 """
-struct PMLFields{V,M,T} <: FieldModifier
+    PMLFields{D}
+
+The PML of an open transverse axis `D` placed on a grid by the state (axis 2 at N = 2; axes 2 and
+3 at N = 3, one `PMLFields` each): per stagger along the axis (`node` for E's differences,
+`center` for B's) the coefficients b, c (for one step, τ = Δt) and q = 1/κ − 1 per layer row, and
+`ψ`, the convolution fields of the four terms with a difference along `D`, named by their
+component (along y: `ψ.Bx`, `ψ.Bz` on B's Center() rows, `ψ.Ex`, `ψ.Ez` on E's Node() rows; along
+z: `ψ.Bx`, `ψ.By`, `ψ.Ex`, `ψ.Ey`), each of the interior's shape with axis `D` cut to its 2·cells
+layer rows (the first `cells` interior rows and the last `cells`), zero at t = 0, and a scratch
+array of their size for the moving window's shift. `n` are the interior cells, `dt` the time step
+the coefficients were made for, `sigma_max` the σ_max they use. A [`FieldModifier`](@ref): a
+correction after each sub-step, with no parameter half.
+"""
+struct PMLFields{D,V,P<:NamedTuple,M,N,T} <: FieldModifier
     node::NTuple{3,V}
     center::NTuple{3,V}
-    ψBx::M
-    ψBz::M
-    ψEx::M
-    ψEz::M
+    ψ::P
     scratch::M
     cells::Int
     g::Int
-    n::NTuple{2,Int}
+    n::NTuple{N,Int}
     dt::T
     sigma_max::T
 end
+PMLFields{D}(node::NTuple{3,V}, center, ψ::P, scratch::M, cells, g, n::NTuple{N,Int}, dt::T, sm) where {D,V,P,M,N,T} =
+    PMLFields{D,V,P,M,N,T}(node, center, ψ, scratch, cells, g, n, dt, sm)
 
 """
-    PMLFields(pml::PML, grid::PeriodicGrid{2}, dt; backend, workgroupsize = nothing)
+    PMLFields(pml::PML, grid::PeriodicGrid, dt; axis = 2, backend, workgroupsize = nothing)
 
-Place `pml` on `grid` for the step `dt` (whose type is the element type): write the coefficients
-once and allocate the convolution fields, zero. Throws an `ArgumentError` unless
-`guards(grid) ≤ pml.cells` and `2·cells < n₂` (interior rows remain between the two layers).
+Place `pml` on the open `axis` of `grid` (N = 2 or 3) for the step `dt` (whose type is the element
+type): write the coefficients once and allocate the convolution fields, zero. Throws an
+`ArgumentError` unless `guards(grid) ≤ pml.cells` and `2·cells < n_axis` (interior rows remain
+between the two layers).
 """
-place_absorber(l::PML, grid, dt; backend, workgroupsize = nothing) = PMLFields(l, grid, dt; backend, workgroupsize)
+place_absorber(l::PML, grid, dt; axis::Integer = 2, backend, workgroupsize = nothing) = PMLFields(l, grid, dt; axis, backend, workgroupsize)
 
-function PMLFields(l::PML, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize = nothing) where {T}
-    n, h, g = ncells(grid), cellsize(grid), guards(grid)
+function PMLFields(l::PML, grid::PeriodicGrid{N}, dt::T; axis::Integer = 2, backend, workgroupsize = nothing) where {N,T}
+    n, g = ncells(grid), guards(grid)
+    2 <= axis <= N || throw(ArgumentError("an open axis' PML lies on axis 2 or 3 of the grid, got axis $axis at N = $N"))
     g <= l.cells || throw(ArgumentError("the PML of $(l.cells) cells must be at least as thick as the $g guard cells"))
-    2 * l.cells < n[2] || throw(ArgumentError("two PMLs of $(l.cells) cells leave no interior rows of the $(n[2]) cells along axis 2"))
-    sm = pml_sigma_max(l, T(h[2]))
-    orders = (l.order, l.kappa_order, l.alpha_order)
-    rows = 2 * l.cells
-    sets = map(((sh, τ),) -> begin
-                   v = ntuple(_ -> KernelAbstractions.allocate(backend, T, rows), 3)
-                   launcher(pml_coef_kernel!, backend, workgroupsize)(v..., sm, T(l.kappa_max), T(l.alpha_max), orders, Int32(sh), τ,
-                                                                      Int32(n[2]), Int32(l.cells); ndrange = rows)
-                   v
-               end, ((0, dt), (1, dt)))
-    ψ = ntuple(_ -> KernelAbstractions.zeros(backend, T, n[1], rows), 5)
-    return PMLFields(sets..., ψ..., l.cells, g, n, dt, sm)
+    2 * l.cells < n[axis] ||
+        throw(ArgumentError("two PMLs of $(l.cells) cells leave no interior rows of the $(n[axis]) cells along axis $axis"))
+    sets, ψ, scratch, sm = place_layer(l, grid, dt, axis, TwoSided(); backend, workgroupsize)
+    return PMLFields{axis}(sets..., ψ, scratch, l.cells, g, n, dt, sm)
 end
-
-# One correction: ndrange (n₁, 2·cells), one work item per layer entry of X. With the layer row k
-# at the interior row j₀ (array row j = g + 1 + j₀) and column i (array column g + i), the
-# y-difference D of F at X's stagger (forward from Node() for B, `fwd = true`; backward from
-# Center() for E), then ψ ← bψ + c·D where `adv` (else ψ is read as it is) and
-# X ← X + s·τ·(q·D + ψ), s the curl term's sign.
-@kernel function pml_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rdy, fwd::Bool, adv::Bool, g::Int32,
-                                     n2::Int32, cells::Int32)
-    i, k = @index(Global, NTuple)
-    k32 = Int32(k)
-    ii = Int32(i) + g
-    j = g + Int32(1) + pml_row(k32, n2, cells)
-    @inbounds begin
-        D = ifelse(fwd, F[ii, j + Int32(1)] - F[ii, j], F[ii, j] - F[ii, j - Int32(1)]) * rdy
-        p = ifelse(adv, b[k] * ψ[i, k] + c[k] * D, ψ[i, k])
-        ψ[i, k] = p
-        X[ii, j] += sτ * (q[k] * D + p)
-    end
-end
-
-function pml_correct!(X, ψ, F, coef, sτ, rdy, fwd, adv, L::PMLFields, grid, wgs)
-    launcher(pml_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rdy, fwd, adv, Int32(L.g), Int32(L.n[2]),
-                                                         Int32(L.cells); ndrange = (L.n[1], 2 * L.cells))
-    fill_guards!(X, grid; workgroupsize = wgs)
-    return X
-end
-
-# After a B half step of length h: Bx −= h(q·D⁺_y Ez + ψBx), Bz += h(q·D⁺_y Ex + ψBz), each on its
-# Center() rows, the ψ advanced (`adv`) in the second half step only; after the E step of length Δt:
-# Ex += Δt(q·D⁻_y Bz + ψEx), Ez −= Δt(q·D⁻_y Bx + ψEz) on Node() rows. The guards of E are filled
-# before the B corrections read them and vice versa.
-function pml_b!(L::PMLFields, f, grid, h, adv, wgs)
-    T = eltype(f.Bx)
-    rdy = inv(cellsize(grid)[2])
-    pml_correct!(f.Bx, L.ψBx, f.Ez, L.center, -T(h), rdy, true, adv, L, grid, wgs)
-    pml_correct!(f.Bz, L.ψBz, f.Ex, L.center, T(h), rdy, true, adv, L, grid, wgs)
-    return nothing
-end
-function pml_e!(L::PMLFields, f, grid, dt, wgs)
-    T = eltype(f.Ex)
-    rdy = inv(cellsize(grid)[2])
-    pml_correct!(f.Ex, L.ψEx, f.Bz, L.node, T(dt), rdy, false, true, L, grid, wgs)
-    pml_correct!(f.Ez, L.ψEz, f.Bx, L.node, -T(dt), rdy, false, true, L, grid, wgs)
-    return nothing
-end
-
-# The PML as a field modifier: after each Yee sub-step, its correction of the four y-difference
-# terms in the layer rows (their convolution fields advanced first, B's in the second half step
-# only). With a zero profile (σ = α = 0, κ = 1) the corrections add zero, so the solve is the one
-# without it bit for bit up to the sign of zero (T-544).
-modifier_first(L::PMLFields) = (L,)
-after_substep!(L::PMLFields, mp, f, grid, s::BHalf, wgs) = pml_b!(L, f, grid, s.τ, s.second, wgs)
-after_substep!(L::PMLFields, mp, f, grid, s::EStep, wgs) = pml_e!(L, f, grid, s.τ, wgs)
-
-# The moving window's shift (WP-028) moves E and B one column back; the convolution fields belong
-# to the same points and move with them: ψ[i, k] ← ψ[i + 1, k] on the columns 1 … n₁ − 1, zero on
-# the front column (zero fields ahead of the window). One work item per entry.
-@kernel function pml_shift_kernel!(ψ, @Const(src), n1::Int32)
-    i, k = @index(Global, NTuple)
-    i32 = Int32(i)
-    @inbounds ψ[i, k] = ifelse(i32 < n1, src[min(i32 + Int32(1), n1), k], zero(eltype(ψ)))
-end
-function shift_absorber!(L::PMLFields, wgs)
-    for ψ in (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
-        copyto!(L.scratch, ψ)
-        launcher(pml_shift_kernel!, get_backend(ψ), wgs)(ψ, L.scratch, Int32(L.n[1]); ndrange = size(ψ))
-    end
-    return nothing
-end
-
-retire!(::PMLFields, st) = retire_open!(st)
-
-# The convolution fields are field state, evolved by every step and part of the state's evolved
-# arrays (`evolved`, the harness's partition). A run starts them at zero, with the fields:
-# `initialize!` zeroes them (so step 1's first B half step reads ψ_B = 0, not c·D⁺_y E⁰).
-evolved_arrays(L::PMLFields) = (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
-on_arrays(L::PMLFields, ψ::NTuple{4,Any}) = PMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
-
-# --- the moving window's back edge (WP-034 with WP-028) -------------------------------------------
-#
-# The same PML along x on the window's back edge: its first `cells` columns, the depth counted in
-# integer half columns from the back face (half column p = 2i₀ + sh of interior column i₀, depth
-# d = 2·cells − p, r = d/(2·cells)), one layer only (the front is where the undisturbed outside
-# comes in). Four terms of the 2D curls carry an x-difference: By from D⁺ₓEz (+), Bz from D⁺ₓEy (−)
-# on B's Center() columns, and Ey from D⁻ₓBz (−), Ez from D⁻ₓBy (+) on E's Node() columns. Each has
-# its convolution field on the layer columns, advanced once per step as on the y axis. Behind the
-# layer the window's x-guards stay zero (its field-free outside), so what the layer has not
-# absorbed reflects there and crosses it again. The profile is fixed in the window, which moves at
-# c: a shift moves E, B and the convolution fields one column back together (each ψ belongs to its
-# field's point), so a point deepens by one column in the layer per shift and the last layer column
-# starts from ψ = 0. The x and y corrections of Bz are independent, so the corners take both.
 
 """
     BackPMLFields
 
-The PML of the moving window's back edge placed on a grid (a state's `back_absorber`): per
-stagger along x (`node` for E's x-differences, `center` for B's) the coefficients b, c (τ = Δt)
-and q = 1/κ − 1 per layer column, the convolution fields `ψBy`, `ψBz` (Center() columns) and
-`ψEy`, `ψEz` (Node() columns), each `cells` columns by n₂ rows, zero at t = 0, and a scratch of
-their size for the shift. `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁). A
-[`FieldModifier`](@ref) of a moving-window state, after the open axis' PML in its tuple.
+The PML of the moving window's back edge placed on a grid (a state's `back_absorber`), along axis
+1 on its first `cells` columns: per stagger along x (`node` for E's x-differences, `center` for
+B's) the coefficients b, c (τ = Δt) and q = 1/κ − 1 per layer column, the convolution fields
+`ψ.By`, `ψ.Bz` (Center() columns) and `ψ.Ey`, `ψ.Ez` (Node() columns), each of the interior's
+shape with axis 1 cut to the `cells` layer columns, zero at t = 0, and a scratch of their size for
+the shift. `n`, `dt` and `sigma_max` as in [`PMLFields`](@ref) (σ_max from Δx₁). A
+[`FieldModifier`](@ref) of a moving-window state, after the open axes' PMLs in its tuple.
 """
-struct BackPMLFields{V,M,T} <: FieldModifier
+struct BackPMLFields{V,P<:NamedTuple,M,N,T} <: FieldModifier
     node::NTuple{3,V}
     center::NTuple{3,V}
-    ψBy::M
-    ψBz::M
-    ψEy::M
-    ψEz::M
+    ψ::P
     scratch::M
     cells::Int
     g::Int
-    n::NTuple{2,Int}
+    n::NTuple{N,Int}
     dt::T
     sigma_max::T
 end
 
-@kernel function back_coef_kernel!(b, c, q, sm, km, am, orders::NTuple{3,Int}, sh::Int32, τ, n1::Int32, cells::Int32)
-    k = Int32(@index(Global, Linear))
-    σ, κ, α = pml_profile(sm, km, am, orders, Int32(2) * (k - Int32(1)) + sh, n1, cells)
-    bb, cc, qq = pml_coefficients(σ, κ, α, τ)
-    @inbounds b[k] = bb
-    @inbounds c[k] = cc
-    @inbounds q[k] = qq
-end
-
 """
-    BackPMLFields(pml::PML, grid::PeriodicGrid{2}, dt; backend, workgroupsize = nothing)
+    BackPMLFields(pml::PML, grid::PeriodicGrid, dt; backend, workgroupsize = nothing)
 
-Place `pml` on the back `pml.cells` columns of `grid` for the step `dt`. Throws an `ArgumentError`
-unless `guards(grid) ≤ pml.cells` and `2·cells < n₁` (the profile evaluated at the back reads no
-row of the front).
+Place `pml` on the back `pml.cells` columns of `grid` (N = 2 or 3) for the step `dt`. Throws an
+`ArgumentError` unless `guards(grid) ≤ pml.cells` and `2·cells < n₁` (the profile evaluated at the
+back reads no row of the front).
 """
-function BackPMLFields(l::PML, grid::PeriodicGrid{2}, dt::T; backend, workgroupsize = nothing) where {T}
-    n, h, g = ncells(grid), cellsize(grid), guards(grid)
+function BackPMLFields(l::PML, grid::PeriodicGrid{N}, dt::T; backend, workgroupsize = nothing) where {N,T}
+    n, g = ncells(grid), guards(grid)
     g <= l.cells || throw(ArgumentError("the back-edge PML of $(l.cells) cells must be at least as thick as the $g guard cells"))
     2 * l.cells < n[1] || throw(ArgumentError("a back-edge PML of $(l.cells) cells needs more than $(2 * l.cells) window columns, got $(n[1])"))
-    sm = pml_sigma_max(l, T(h[1]))
-    orders = (l.order, l.kappa_order, l.alpha_order)
-    sets = map((0, 1)) do sh
-        v = ntuple(_ -> KernelAbstractions.allocate(backend, T, l.cells), 3)
-        launcher(back_coef_kernel!, backend, workgroupsize)(v..., sm, T(l.kappa_max), T(l.alpha_max), orders, Int32(sh), dt,
-                                                            Int32(n[1]), Int32(l.cells); ndrange = l.cells)
-        v
-    end
-    ψ = ntuple(_ -> KernelAbstractions.zeros(backend, T, l.cells, n[2]), 5)
-    return BackPMLFields(sets..., ψ..., l.cells, g, n, dt, sm)
+    sets, ψ, scratch, sm = place_layer(l, grid, dt, 1, BackSide(); backend, workgroupsize)
+    return BackPMLFields(sets..., ψ, scratch, l.cells, g, n, dt, sm)
 end
 
-# One correction along x: ndrange (cells, n₂). Layer column k is the interior column i₀ = k − 1
-# (array column g + k) and row j the array row g + j; D the x-difference of F at X's stagger
-# (forward from Node() for B, backward from Center() for E), then ψ ← bψ + c·D where `adv` and
-# X ← X + s·τ·(q·D + ψ).
-@kernel function back_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rdx, fwd::Bool, adv::Bool, g::Int32)
-    k, j = @index(Global, NTuple)
-    ii = g + Int32(k)
-    jj = g + Int32(j)
+"Any placed PML: of an open axis or of the window's back edge."
+const PlacedPML = Union{PMLFields,BackPMLFields}
+pml_axis(::PMLFields{D}) where {D} = Val(D)
+pml_axis(::BackPMLFields) = Val(1)
+pml_side(::PMLFields) = TwoSided()
+pml_side(::BackPMLFields) = BackSide()
+
+# One correction: one work item per layer entry K of X (ψ's index). Along the axis d the layer row
+# k = K[d] is the interior row j₀ = layer_row(k) (array index g + 1 + j₀); along the others the
+# array index is g + K[a]. D the difference of F along d at X's stagger (forward from Node() for B,
+# `fwd = true`; backward from Center() for E), then ψ ← bψ + c·D where `adv` (else ψ is read as it
+# is) and X ← X + s·τ·(q·D + ψ), s the curl term's sign.
+@kernel function pml_correct_kernel!(X, ψ, @Const(F), @Const(b), @Const(c), @Const(q), sτ, rd, fwd::Bool, adv::Bool, g::Int32, nd::Int32,
+                                     cells::Int32, vd::Val{d}, side) where {d}
+    K = @index(Global, Cartesian)
+    vN = Val(length(K))
+    k = Int32(K[d])
+    jd = g + Int32(1) + layer_row(side, k, nd, cells)
+    I = CartesianIndex(ntuple(a -> a == d ? jd : Int32(K[a]) + g, vN))
+    e = unit_step(vd, vN)
     @inbounds begin
-        D = ifelse(fwd, F[ii + Int32(1), jj] - F[ii, jj], F[ii, jj] - F[ii - Int32(1), jj]) * rdx
-        p = ifelse(adv, b[k] * ψ[k, j] + c[k] * D, ψ[k, j])
-        ψ[k, j] = p
-        X[ii, jj] += sτ * (q[k] * D + p)
+        D = ifelse(fwd, F[I + e] - F[I], F[I] - F[I - e]) * rd
+        p = ifelse(adv, b[k] * ψ[K] + c[k] * D, ψ[K])
+        ψ[K] = p
+        X[I] += sτ * (q[k] * D + p)
     end
 end
 
-function back_correct!(X, ψ, F, coef, sτ, rdx, fwd, adv, L::BackPMLFields, grid, wgs)
-    launcher(back_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rdx, fwd, adv, Int32(L.g); ndrange = (L.cells, L.n[2]))
+function pml_correct!(X, ψ, F, coef, sτ, rd, fwd, adv, L::PlacedPML, grid, wgs)
+    vd = pml_axis(L)
+    launcher(pml_correct_kernel!, get_backend(X), wgs)(X, ψ, F, coef..., sτ, rd, fwd, adv, Int32(L.g), Int32(L.n[axis_of(vd)]),
+                                                         Int32(L.cells), vd, pml_side(L); ndrange = size(ψ))
     fill_guards!(X, grid; workgroupsize = wgs)
     return X
 end
+axis_of(::Val{d}) where {d} = d
 
-# After a B half step of length h: By += h(q·D⁺ₓEz + ψBy), Bz −= h(q·D⁺ₓEy + ψBz) on their Center()
-# columns, ψ advanced in the second half step only; after the E step: Ey −= Δt(q·D⁻ₓBz + ψEy),
-# Ez += Δt(q·D⁻ₓBy + ψEz) on Node() columns.
-function back_b!(L::BackPMLFields, f, grid, h, adv, wgs)
-    T = eltype(f.By)
-    rdx = inv(cellsize(grid)[1])
-    back_correct!(f.By, L.ψBy, f.Ez, L.center, T(h), rdx, true, adv, L, grid, wgs)
-    back_correct!(f.Bz, L.ψBz, f.Ey, L.center, -T(h), rdx, true, adv, L, grid, wgs)
+# After a B half step of length h: B_c ± h(q·D⁺_d E_o + ψ) for the two components c of the axis
+# (in ascending order, on their Center() rows along d), the ψ advanced (`adv`) in the second half
+# step only; after the E step of length Δt: E_c ∓ Δt(q·D⁻_d B_o + ψ) on their Node() rows. The
+# guards of E are filled before the B corrections read them and vice versa.
+function pml_b!(L::PlacedPML, f, grid, h, adv, wgs)
+    T = eltype(f.Bx)
+    vd = pml_axis(L)
+    rd = inv(cellsize(grid)[axis_of(vd)])
+    B, E = (f.Bx, f.By, f.Bz), (f.Ex, f.Ey, f.Ez)
+    v1, v2 = pml_components(vd)
+    sτ(vc) = b_minus(vc, vd) ? -T(h) : T(h)
+    pml_correct!(B[axis_of(v1)], L.ψ[1], E[other_axis(v1, vd)], L.center, sτ(v1), rd, true, adv, L, grid, wgs)
+    pml_correct!(B[axis_of(v2)], L.ψ[2], E[other_axis(v2, vd)], L.center, sτ(v2), rd, true, adv, L, grid, wgs)
     return nothing
 end
-function back_e!(L::BackPMLFields, f, grid, dt, wgs)
-    T = eltype(f.Ey)
-    rdx = inv(cellsize(grid)[1])
-    back_correct!(f.Ey, L.ψEy, f.Bz, L.node, -T(dt), rdx, false, true, L, grid, wgs)
-    back_correct!(f.Ez, L.ψEz, f.By, L.node, T(dt), rdx, false, true, L, grid, wgs)
+function pml_e!(L::PlacedPML, f, grid, dt, wgs)
+    T = eltype(f.Ex)
+    vd = pml_axis(L)
+    rd = inv(cellsize(grid)[axis_of(vd)])
+    B, E = (f.Bx, f.By, f.Bz), (f.Ex, f.Ey, f.Ez)
+    v1, v2 = pml_components(vd)
+    sτ(vc) = b_minus(vc, vd) ? T(dt) : -T(dt)
+    pml_correct!(E[axis_of(v1)], L.ψ[3], B[other_axis(v1, vd)], L.node, sτ(v1), rd, false, true, L, grid, wgs)
+    pml_correct!(E[axis_of(v2)], L.ψ[4], B[other_axis(v2, vd)], L.node, sτ(v2), rd, false, true, L, grid, wgs)
     return nothing
 end
+back_b!(L::BackPMLFields, f, grid, h, adv, wgs) = pml_b!(L, f, grid, h, adv, wgs)
+back_e!(L::BackPMLFields, f, grid, dt, wgs) = pml_e!(L, f, grid, dt, wgs)
 
-after_substep!(L::BackPMLFields, mp, f, grid, s::BHalf, wgs) = back_b!(L, f, grid, s.τ, s.second, wgs)
-after_substep!(L::BackPMLFields, mp, f, grid, s::EStep, wgs) = back_e!(L, f, grid, s.τ, wgs)
+# The PML as a field modifier: after each Yee sub-step, its correction of the four terms with a
+# difference along its axis in the layer rows (their convolution fields advanced first, B's in the
+# second half step only). With a zero profile (σ = α = 0, κ = 1) the corrections add zero, so the
+# solve is the one without it bit for bit up to the sign of zero (T-544).
+modifier_first(L::PMLFields) = (L,)
+after_substep!(L::PlacedPML, mp, f, grid, s::BHalf, wgs) = pml_b!(L, f, grid, s.τ, s.second, wgs)
+after_substep!(L::PlacedPML, mp, f, grid, s::EStep, wgs) = pml_e!(L, f, grid, s.τ, wgs)
 
-# The window's shift: ψ[k, j] ← ψ[k + 1, j] on the layer columns 1 … cells − 1, zero on the last
-# (its field point comes from outside the layer, where nothing was convolved).
-@kernel function back_shift_kernel!(ψ, @Const(src), cells::Int32)
-    k, j = @index(Global, NTuple)
-    k32 = Int32(k)
-    @inbounds ψ[k, j] = ifelse(k32 < cells, src[min(k32 + Int32(1), cells), j], zero(eltype(ψ)))
+# The moving window's shift (WP-028) moves E and B one column back; the convolution fields belong
+# to the same points and move with them: ψ[i, …] ← ψ[i + 1, …] on ψ's columns 1 … m₁ − 1, zero on
+# the last (an open axis' layer spans the window's columns, so its last is the front, with zero
+# fields ahead of the window; the back edge's last layer column takes a field point from outside the
+# layer, where nothing was convolved). One work item per entry.
+@kernel function pml_shift_kernel!(ψ, @Const(src), m1::Int32)
+    I = @index(Global, Cartesian)
+    i32 = Int32(I[1])
+    rest = Base.tail(Tuple(I))
+    @inbounds ψ[I] = ifelse(i32 < m1, src[CartesianIndex(min(i32 + Int32(1), m1), rest...)], zero(eltype(ψ)))
 end
-function shift_absorber!(L::BackPMLFields, wgs)
-    for ψ in (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
+function shift_absorber!(L::PlacedPML, wgs)
+    for ψ in values(L.ψ)
         copyto!(L.scratch, ψ)
-        launcher(back_shift_kernel!, get_backend(ψ), wgs)(ψ, L.scratch, Int32(L.cells); ndrange = size(ψ))
+        launcher(pml_shift_kernel!, get_backend(ψ), wgs)(ψ, L.scratch, Int32(size(ψ, 1)); ndrange = size(ψ))
     end
     return nothing
 end
-evolved_arrays(L::BackPMLFields) = (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
-on_arrays(L::BackPMLFields, ψ::NTuple{4,Any}) = BackPMLFields(L.node, L.center, ψ..., L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
+
+# The convolution fields are field state, evolved by every step and part of the state's evolved
+# arrays (`evolved`, the harness's partition). A run starts them at zero, with the fields:
+# `initialize!` zeroes them (so step 1's first B half step reads ψ_B = 0, not c·D⁺ E⁰).
+evolved_arrays(L::PlacedPML) = values(L.ψ)
+on_arrays(L::PMLFields{D}, ψ::NTuple{4,Any}) where {D} =
+    PMLFields{D}(L.node, L.center, NamedTuple{keys(L.ψ)}(ψ), L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
+on_arrays(L::BackPMLFields, ψ::NTuple{4,Any}) =
+    BackPMLFields(L.node, L.center, NamedTuple{keys(L.ψ)}(ψ), L.scratch, L.cells, L.g, L.n, L.dt, L.sigma_max)
 
 "The placed absorbers an open axis can have."
 const OpenAbsorber = Union{LayerFactors,PMLFields}
+"The placed absorber of the open axis `d`."
+const OpenAbsorberOf{d} = Union{LayerFactors{d},PMLFields{d}}
+"The open axis of a placed absorber."
+absorber_axis(::Union{LayerFactors{d},PMLFields{d}}) where {d} = d
 
 """
     reset_convolution!(state) -> state
 
 Zero the evolved arrays of the state's field modifiers: the convolution fields of its PMLs (the
-open axis' and the window's back edge's), and those of any other modifier with state
+open axes' and the window's back edge's), and those of any other modifier with state
 (`reset_absorber!`); nothing without one, and nothing at N = 1. `initialize!` calls it, with the fields it zeroes; no
 step does (the fields are part of what a run evolves, [`evolved`](@ref)), so whoever sets the
 fields of a state that has run by hand, instead of `initialize!` or [`restore!`](@ref), calls it

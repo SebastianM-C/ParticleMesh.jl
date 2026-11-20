@@ -7,7 +7,7 @@
 foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
 
 using ForwardDiff: ForwardDiff, Partials
-using ParticleMeshElectromagnetic: RHO_STAGGER_2D, LayerFactors, retire!, absorb_b!, absorb_e!
+using ParticleMeshElectromagnetic: RHO_STAGGER_2D, LayerFactors, absorb_b!, absorb_e!
 
 # --- T-450 ----------------------------------------------------------------------------------
 

@@ -988,6 +988,39 @@ C = 16
 measured = { Float64 = 2.39, Float32 = 1.03 }
 status = "proposed"
 
+# WP-072: the open transverse boundaries of the 3D step (T-1010 to T-1018). Measured on the CPU backend (Julia 1.13.4, 4 threads).
+["T-1010"]
+quantity = "a 3D run with an open axis (y or z), invariant along a periodic axis, against the 2D open run, after initialize! and after every step: every component on every line of the invariant axis; 30 steps of T-953's beams on 12 × 16 cells open along the plane's second axis, the absorbing layer (4 cells, strength 1) and the PML (4 cells, κ_max = 2, α_max = 0.1)"
+scale = "as T-953"
+C = 32
+measured = { Float32 = 4.66, Float64 = 5.92, "Dual{Float32,3}" = 0.195 }
+status = "proposed; the largest over both absorbers, both open axes and both modes (Fast the larger); T-953's C"
+
+["T-1011"]
+quantity = "Gauss's law residual on the nodes off the layers of y and z (C), ∇·B on the cell centres off them (C_divB), particles leaving through the four open faces, 30 steps, each absorber, both modes"
+scale = "as T-950: (n₁ + n₂ + n₃)·Σ_s max|ρ_s|·√(k + 1); (Σ_d 2/Δ_d)·max|B|·√k"
+C = 2
+C_divB = 2
+measured = { Float32 = 0.229, Float64 = 0.244, "Dual{Float32,3}" = 0.112 }
+measured_divB = { Float32 = 0.539, Float64 = 0.549, "Dual{Float32,3}" = 0.898 }
+status = "proposed; the largest over both absorbers and both modes; T-950's C. On the nodes in the layers the residual is 2·10⁴ (Float32) to 2·10¹³ (Float64) of the scale, with about a third of the particles leaving"
+
+["T-1015"]
+quantity = "a vacuum pulse (B = ∇×(x̂·a), a Gaussian of width 2 cells) at the centre of 8 × 40 × 40 cells open along y and z with 8 cells of each absorber (the layer at strength 4, the PML at κ_max = 2, α_max = 0.1): the field energy on the cells off the layers after 2000 steps relative to its start (fraction), and no growth after step 1000 above twice its value there"
+fraction = 1e-7
+measured = { layer = 5.42e-9, pml = 5.01e-9 }
+measured_at_1000_steps = { layer = 1.67e-8, pml = 1.04e-8 }
+status = "proposed"
+
+["T-1016"]
+quantity = "Dual{Float32,3} through 10 open 3D steps (y and z open, each absorber): the primal of every E and B component and convolution field against the Float32 run (C); the partial ∂/∂(amplitude) against the central difference of Float64 runs at amplitude 1/10 ± 10⁻⁴ (C_partial)"
+scale = "as T-955"
+C = 8
+C_partial = 8
+measured = { layer = 1.39, pml = 0.966 }
+measured_partial = { layer = 1.18, pml = 3.36 }
+status = "proposed; not bitwise (A4); T-955's C"
+
 ["T-985"]
 quantity = "⟨M x, y⟩ − ⟨x, Mᵀ y⟩ for 1 and 25 periodic Yee solves M with one current held, Mᵀ = yee_e!(−Δt/2), J̄ −= Δt·Ē, yee_b_half!(−Δt), yee_e!(−Δt/2) per step; random fields and current, 0.9 of the Courant limit, N = 1, 2, 3"
 scale = "Σₖ ‖(E, B, Δt·J) before forward step k‖·‖(Ē, B̄) before the transposed step of k‖ over the interior (step-aware: rounding of each step reaches the products through that step's adjoint state)"
