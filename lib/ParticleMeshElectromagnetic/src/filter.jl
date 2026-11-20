@@ -30,6 +30,17 @@ struct BinomialFilter
     end
 end
 
+# A copy between two arrays of one backend as a kernel of ours. Enzyme's compiler crashes on
+# `copyto!` between CUDA arrays inside the reverse pass of a step (segfault in its augmented
+# primal, Enzyme 0.13.221; WP-080's 3D step and WP-078's 2D window), and a step that compiles the
+# copy reaches it even when it never runs it, as `binomial!` with no passes does. The same bits.
+@kernel function copy_kernel!(dst, @Const(src))
+    i = @index(Global, Linear)
+    @inbounds dst[i] = src[i]
+end
+device_copy!(dst, src, workgroupsize = nothing) =
+    (launcher(copy_kernel!, get_backend(dst), workgroupsize)(dst, src; ndrange = length(dst)); dst)
+
 # One pass of (1, 2, 1)/4 along the axis of the unit step `e`, at the interior node I0 + g (guards
 # of `src` filled). (l + r) + 2c is symmetric in l and r, so the pass keeps a mirror symmetry of
 # the data bit for bit, maps a constant to itself and an alternating sequence to +0.0 exactly.
@@ -64,7 +75,7 @@ function binomial!(a, scratch, grid::PeriodicGrid{N}, passes::Integer; workgroup
         launch(dst, src, CartesianIndex(ntuple(k -> k == d ? 1 : 0, Val(N))), guards(grid); ndrange = grid.n)
         src, dst = dst, src
     end
-    src === a || copyto!(a, src)            # an odd number of axis passes ends in the scratch (N = 1)
+    src === a || device_copy!(a, src, workgroupsize)   # an odd number of axis passes ends in the scratch (N = 1 and 3)
     fill_guards!(a, grid; workgroupsize)
     zero_x_edges!(edges, a; workgroupsize)
     return a

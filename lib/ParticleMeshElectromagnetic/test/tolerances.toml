@@ -1342,3 +1342,10 @@ quantity = "T-1036 and T-1032 with M4 in the 3D window: the vacuum pulse against
 scale = "as T-1036 and T-1032"
 measured = { twin = 196.0, near = 0.0151, gauss = "0.087 to 0.113" }
 status = "proposed"
+
+["T-1113"]
+quantity = "Enzyme's gradient through @ad_checkpoint with checkpoint_storage against the plain reverse pass of the same loop of transfers, max over the floating-point evolved arrays"
+scale = "max|plain gradient| over those arrays"
+C = 16
+measured = { Float64 = 4.4 }
+status = "proposed"

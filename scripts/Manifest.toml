@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "ac02701b7f338fac8e98354c43cb7eaada3315b3"
+project_hash = "1db2216e61c70e3b3ad7c6a97b77495433baecf8"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1927,11 +1927,13 @@ uuid = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
 version = "0.1.0-DEV"
 
     [deps.ParticleMeshElectromagnetic.extensions]
+    ParticleMeshElectromagneticCheckpointingExt = "Checkpointing"
     ParticleMeshElectromagneticOrdinaryDiffEqCoreExt = ["OrdinaryDiffEqCore", "SciMLBase"]
     ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
     ParticleMeshElectromagneticSciMLStructuresExt = "SciMLStructures"
 
     [deps.ParticleMeshElectromagnetic.weakdeps]
+    Checkpointing = "eb46d486-4f9c-4c3d-b445-a617f2a2f1ca"
     OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
     RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
     SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"

@@ -20,7 +20,7 @@ shape only; a fixed size the kernel cannot take is refused with an `ArgumentErro
 the prefix sum, which is `N = 1` only). At `N = 3` the grid, the fill/fold pair, the quiet start,
 the sort, the gather, the deposition of a quantity, the charge-conserving flux deposition and the
 periodic solve with its gradient are implemented and tested. The pullbacks of the transfers and the
-sort (`deposit_pullback!`, `gather_pullback!`, `flux_pullback!` at N = 1 and 2, `sort_pullback!`)
+sort (`deposit_pullback!`, `gather_pullback!`, `flux_pullback!` at N = 1 to 3, `sort_pullback!`)
 are hand-written reverse-mode adjoints, which the extension on EnzymeCore registers as Enzyme's
 reverse rules (WP-077). The contracts are those of `docs/plan/architecture-draft.md` §0.7.
 """
