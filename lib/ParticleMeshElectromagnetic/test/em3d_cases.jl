@@ -90,13 +90,14 @@ const INV3_DRIFT = (1 // 5, 3 // 20, -1 // 8)
 const INV3_CELLS = (12, 10)
 const INV3_LENGTH = (2, 3 // 2)                    # in π
 
-function beams_plane_2d(::Type{T}; ppc = (3, 3), nsteps = 20, amplitude = one(T) / 20) where {T}
-    L = T.(INV3_LENGTH) .* T(π)
-    h = L ./ INV3_CELLS
+function beams_plane_2d(::Type{T}; ppc = (3, 3), nsteps = 20, amplitude = one(T) / 20, cells = INV3_CELLS,
+                        len = INV3_LENGTH, boundaries = (:periodic, :periodic)) where {T}
+    L = T.(len) .* T(π)
+    h = L ./ cells
     v = T.(INV3_DRIFT)
     sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), (1, 1), ppc, v, zero3(T), 1),
           SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), (1, 1), ppc, .-v, zero3(T), 2))
-    return EMProblem("beams-plane-2d", L, INV3_CELLS, inv3_dt(h), nsteps, sp, 1, (1, 1))
+    return EMProblem("beams-plane-2d", L, cells, inv3_dt(h), nsteps, sp, 1, (1, 1); boundaries)
 end
 
 # The step of both runs: 0.6 of the 3D Courant limit with the invariant axis' cells, which is
@@ -113,24 +114,83 @@ permutation is a rotation, so E, B and J map as vectors with no sign.
 inv3_axes(axis) = ntuple(a -> mod1(a + axis, 3), 3)
 
 """
-    beams_3d(T, axis; ppc, nsteps, amplitude) -> EMProblem{3}
+    beams_3d(T, axis; ppc, nsteps, amplitude, cells, len, boundaries) -> EMProblem{3}
 
 [`beams_plane_2d`](@ref) in 3D, invariant along `axis`: the plane's axes on the 3D axes
 `inv3_axes(axis)`, the drift's components likewise, and the invariant axis with 6 cells (the
-fewest the guards allow) of twice the plane's first cell size and 2 particles per cell.
+fewest the guards allow) of twice the plane's first cell size and 2 particles per cell; the
+plane's `cells`, `len` and `boundaries` as the 2D problem's, the invariant axis periodic.
 """
-function beams_3d(::Type{T}, axis; ppc = (3, 3), nsteps = 20, amplitude = one(T) / 20) where {T}
+function beams_3d(::Type{T}, axis; ppc = (3, 3), nsteps = 20, amplitude = one(T) / 20, cells = INV3_CELLS, len = INV3_LENGTH,
+                  boundaries = (:periodic, :periodic)) where {T}
     σ = inv3_axes(axis)
-    L2 = T.(INV3_LENGTH) .* T(π)
-    h = L2 ./ INV3_CELLS
+    L2 = T.(len) .* T(π)
+    h = L2 ./ cells
     put(x2, x3) = (y = Vector{Any}(undef, 3); y[σ[1]] = x2[1]; y[σ[2]] = x2[2]; y[σ[3]] = x3; Tuple(y))
     box = put(L2, 12h[1])
-    cells = put(INV3_CELLS, 6)
+    n3 = put(cells, 6)
     p3 = put(ppc, 2)
     m = put((1, 1), 0)
     v2 = T.(INV3_DRIFT)
     v = put((v2[1], v2[2]), v2[3])
     sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, T(amplitude), m, p3, v, zero3(T), 1),
           SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), m, p3, .-v, zero3(T), 2))
-    return EMProblem("beams-3d", box, cells, inv3_dt(h), nsteps, sp, 1, m)
+    return EMProblem("beams-3d", box, n3, inv3_dt(h), nsteps, sp, 1, m; boundaries = put(boundaries, :periodic))
+end
+
+# WP-072: the 3D plasma of em3d_open.jl, open along y, z or both, and the bitwise digests that its
+# tests and the worker (em3d_worker.jl, T-1014 at 1 and 4 threads) share.
+
+"""
+    open_plasma_3d(T; boundaries = (:periodic, :open, :open), cells = (6, 14, 12), ppc = (2, 2, 2), nsteps = 30,
+                   amplitude = 1/10, seed = 7) -> EMProblem{3}
+
+`open_plasma_2d`'s two species in 3D: thermal electrons (v_th = 0.1) with the drift
+(0.3, −0.25, 0.2) and the perturbation of mode (1, 1, −1), positive particles of mass 4 drifting
+along (−0.2, 0.3, −0.15) with the mode (1, −1, 1), on a box of 2π × 3π × 3π (three cell sizes
+on the default cells), Δt at 0.9 of the Courant limit, open on the axes `boundaries` says:
+within the 30 steps about a third of the particles leave through the open faces, others cross
+the periodic seams.
+"""
+function open_plasma_3d(::Type{T}; boundaries = (:periodic, :open, :open), cells = (6, 14, 12), ppc = (2, 2, 2), nsteps = 30,
+                        amplitude = one(T) / 10, seed = 7) where {T}
+    L = (2 * T(π), 3 * T(π), 3 * T(π))
+    dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:3))) / 10
+    tenth = one(T) / 10
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), T(amplitude), (1, 1, -1), ppc, (3tenth, -5tenth / 2, 2tenth),
+                              (tenth, tenth, tenth), 1)
+    p = SpeciesDescription{T}(:positive, one(T), 4 * one(T), one(T) / 2, tenth / 2, (1, -1, 1), ppc, (-2tenth, 3tenth, -3tenth / 2),
+                              (tenth / 2, tenth / 2, tenth / 2), 2)
+    return EMProblem("open-plasma-3d", L, cells, T(dt), nsteps, (e, p), seed, (1, 1, -1); boundaries)
+end
+
+"The initialized 3D state of `prob` with the `absorber` on its open axes, in `mode`, with the `Esirkepov()` current."
+function open_state_3d(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU(), shape = Quadratic)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, shape, current = Esirkepov(), absorber); backend = be)
+    initialize!(st, prob)
+    return st
+end
+
+const OPEN3_ABSORBERS = (("layer", AbsorbingLayer(; cells = 4, strength = 1)), ("pml", PML(; cells = 4, kappa_max = 2, alpha_max = 0.1)))
+
+"""
+    open3d_step_digests(; workgroupsize = nothing, be = CPU()) -> Vector{(label, T, digest)}
+
+T-1014: a Reference run of [`open_plasma_3d`](@ref) open on y and z (12 steps, particles
+retired at all four open faces) per element type and absorber (the layer, the PML), one digest
+of every particle array, field, convolution field and history each.
+"""
+function open3d_step_digests(; workgroupsize = nothing, be = CPU())
+    out = Tuple{String,DataType,UInt64}[]
+    for T in TYPES, (label, ab) in OPEN3_ABSORBERS
+        prob = open_plasma_3d(T; nsteps = 12)
+        st = open_state_3d(prob, ab; workgroupsize, be)
+        run!(st, params(prob), prob.nsteps)
+        h = state_digest_3d(st)
+        for a in evolved(st)
+            h = hash(bits(a), h)
+        end
+        push!(out, (label, T, h))
+    end
+    return out
 end
