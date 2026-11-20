@@ -1096,7 +1096,7 @@ status = "proposed; the largest over both axes, both cases and both modes; T-953
 quantity = "a cold plasma at rest in the 3D window, Fast mode: max |ρ − ρ₀(s)| after every step over 48 steps (24 shifts) on 24 × 6 × 6 cells (Reference mode is held bit for bit)"
 scale = "eps(T)·max|ρ|"
 C = 32
-measured = { Float32 = 9.0, Float64 = 6.5, "Dual{Float32,3}" = 0.0 }
+measured = { Float32 = 10.0, Float64 = 7.0, "Dual{Float32,3}" = 0.0 }
 status = "proposed; 4 threads (at 1 thread the atomics' order is fixed); the dual takes the sorted path"
 
 ["T-1032"]
