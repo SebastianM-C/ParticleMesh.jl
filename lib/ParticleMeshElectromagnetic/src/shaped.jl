@@ -116,7 +116,7 @@ end
     i = a.g + a.ia - Int32(1)
     l = a.laser
     ξ = a.xa - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     @inbounds begin
         ec, _, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
         en, _, _ = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
@@ -131,7 +131,7 @@ end
     i = a.g + a.ia
     l = a.laser
     ξ = a.xa - a.hx - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     @inbounds begin
         _, bp, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
         _, _, bs = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)

@@ -179,6 +179,10 @@ through σ included.
 """
 @inline laser_field(l::GaussianLaser, ξ, dy, s) = laser_field(l.envelope, l, ξ, dy, s)
 
+# The laser's functions and the antennas' kernels call sin and cos, never sincos: Enzyme's reverse
+# pass of a KernelAbstractions kernel on a GPU cannot allocate a tape that holds a sincos of an
+# active value (#547, T-1140), and both give the same bits on the CPU (T-1141).
+
 @inline function laser_field(::AxisTime, l::GaussianLaser, ξ, dy, s)
     w0 = l.waist
     w2 = w0 * w0
@@ -195,7 +199,8 @@ through σ included.
     c2i = (2 * a / d - 8 * q * a / d2) / w2
     r = s / l.duration
     env = l.a0 * amp * exp(-r * r)
-    sφ, cφ = sincos(s + l.chirp * s * s - l.phase - ψ)
+    φ = s + l.chirp * s * s - l.phase - ψ
+    sφ, cφ = sin(φ), cos(φ)
     # Re[(1 + β·c₂)·e^{−i(φ − ψ)}] = (1 + β·c2r)·cos + β·c2i·sin.
     e = env * cφ
     bp = env * ((1 - c2r / 2) * cφ - c2i / 2 * sφ)
@@ -215,7 +220,8 @@ end
     σ = s - q * a / d
     τ2 = l.duration * l.duration
     env = l.a0 * amp * exp(-σ * σ / τ2)
-    sφ, cφ = sincos(σ + l.chirp * σ * σ - l.phase + atan(a) / 2)
+    φ = σ + l.chirp * σ * σ - l.phase + atan(a) / 2
+    sφ, cφ = sin(φ), cos(φ)
     # F = a0·A(y)·H(σ) up to a constant phase, H = exp(−σ²/τ² − i(σ + chirp·σ² − phase)), so with
     # p = A′/A, c = ∂(dy²/(2R))/∂y and h = H′/H = hr + i·hi:  ∂²F/∂y² = F·c₂,
     # c₂ = (p − c·h)² + (A″/A − p²) − c′·h + c²·h′,  h′ = −2/τ² − 2i·chirp.
@@ -288,7 +294,8 @@ end
     xi = py * piz + piy * pz
     r = s / l.duration
     env = l.a0 * amp * exp(-r * r)
-    sφ, cφ = sincos(s + l.chirp * s * s - l.phase - ψ)
+    φ = s + l.chirp * s * s - l.phase - ψ
+    sφ, cφ = sin(φ), cos(φ)
     return field_3d(env, cφ, sφ, yr, yi, zr, zi, xr, xi)
 end
 
@@ -302,7 +309,8 @@ end
     σ = s - q * a / d
     τ2 = l.duration * l.duration
     env = l.a0 * amp * exp(-σ * σ / τ2)
-    sφ, cφ = sincos(σ + l.chirp * σ * σ - l.phase + atan(a))
+    φ = σ + l.chirp * σ * σ - l.phase + atan(a)
+    sφ, cφ = sin(φ), cos(φ)
     # As at N = 2 per axis: p = A′/A = −2x/(w²d), c = ∂(r²/(2R))/∂x = 2xa/(w²d), h = H′/H,
     # F_xx/F = (p − c·h)² − 2/(w²d) − c′·h + c²·h′ and F_yz/F = (p_y − c_y·h)(p_z − c_z·h) + c_y·c_z·h′.
     hr = -2 * σ / τ2
@@ -459,7 +467,7 @@ end
     l = a.laser
     s = t - l.delay
     ξ = a.xa - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     @inbounds begin
         ec, _, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
         en, _, _ = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
@@ -478,7 +486,7 @@ end
     l = a.laser
     s = t + a.ht - l.delay
     ξ = a.xa - a.hx - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     @inbounds begin
         _, bp, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
         _, _, bs = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
@@ -501,7 +509,7 @@ end
     l = a.laser
     s = t - l.delay
     ξ = a.xa - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     h = one(T) / 2
     @inbounds begin
         ey, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T)), s)
@@ -519,7 +527,7 @@ end
     l = a.laser
     s = t + a.ht - l.delay
     ξ = a.xa - a.hx - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     h = one(T) / 2
     @inbounds begin
         dyc, dzn = antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T))
