@@ -5,7 +5,7 @@ The engine core of ParticleMesh.jl: a periodic grid with guard cells, fixed-capa
 structure-of-arrays species with module-declared extras, B-spline shapes of order 1 and 2,
 gather, the deposition of a module-supplied quantity and the charge-conserving flux
 deposition (Esirkepov), each in a deterministic `Reference` mode and an atomic `Fast` mode,
-the periodic fill/fold pair, a sort by cell, counter-based Philox4x32-10 draws, quiet-start
+the flux deposition's transpose `gather_flux!`, the periodic fill/fold pair, a sort by cell, counter-based Philox4x32-10 draws, quiet-start
 loading with a momentum distribution (a Gaussian in velocity or in momentum, or Maxwell–Jüttner,
 WP-033), the zero-mean periodic prefix sum `cumsum_periodic!`, and the periodic spectral
 inverse of the discrete Laplacian `inverse_laplacian_periodic!` with its forward-difference
@@ -39,7 +39,7 @@ export Workspace, sort_by_cell!, resort_by_cell!, forget_order!, deposit!, gathe
 export cumsum_periodic!
 export GaussianVelocity, GaussianMomentum, MaxwellJuttner, draws_momentum
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
-export deposit_flux!, flux_guard_width, flux_extras
+export deposit_flux!, gather_flux!, flux_guard_width, flux_extras
 export philox4x32, uniform_open, box_muller
 export load_quiet!, quiet_particle, quiet_particle_2d
 
@@ -60,5 +60,6 @@ include("spectral.jl")
 include("flux.jl")
 include("flux2d.jl")
 include("flux3d.jl")
+include("flux_gather.jl")
 
 end
