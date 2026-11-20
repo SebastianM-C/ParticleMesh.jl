@@ -35,6 +35,7 @@ const TEST_FILES = [
     "momenta.jl",       # WP-033: T-530 to T-536, T-538, the momentum distributions (after engine.jl, whose worker it reads)
     "engine3d.jl",      # WP-042: T-870 to T-875, the engine at N = 3 outside the flux deposition
     "flux3d.jl",        # WP-042: T-940 to T-945 and T-947 to T-949, the flux deposition at N = 3
+    "pullbacks.jl",     # WP-077: T-1060 to T-1064, the pullbacks of the transfers and the sort, and Enzyme through their rules
     "transposes.jl",    # WP-069: T-980, deposit! as the transpose of gather! for every bins choice
     "flux_gather.jl",   # WP-071: T-1000 to T-1003, the flux gather, the transpose of deposit_flux!
     "input_checks.jl",  # T-340 to T-342, T-344, T-345: input checks, the Float32 draw, the Fast() fallback sort (#194, #195, #196, #201)

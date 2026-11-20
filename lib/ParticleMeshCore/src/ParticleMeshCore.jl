@@ -19,8 +19,10 @@ shape only; a fixed size the kernel cannot take is refused with an `ArgumentErro
 `N = 1` and `N = 2` are implemented and tested (`N = 2` on the periodic grid, without
 the prefix sum, which is `N = 1` only). At `N = 3` the grid, the fill/fold pair, the quiet start,
 the sort, the gather, the deposition of a quantity, the charge-conserving flux deposition and the
-periodic solve with its gradient are implemented and tested. The contracts are those of
-`docs/plan/architecture-draft.md` §0.7.
+periodic solve with its gradient are implemented and tested. The pullbacks of the transfers and the
+sort (`deposit_pullback!`, `gather_pullback!`, `flux_pullback!` at N = 1 and 2, `sort_pullback!`)
+are hand-written reverse-mode adjoints, which the extension on EnzymeCore registers as Enzyme's
+reverse rules (WP-077). The contracts are those of `docs/plan/architecture-draft.md` §0.7.
 """
 module ParticleMeshCore
 
@@ -40,6 +42,7 @@ export cumsum_periodic!
 export GaussianVelocity, GaussianMomentum, MaxwellJuttner, draws_momentum
 export SpectralWorkspace, inverse_laplacian_periodic!, gradient_periodic!
 export deposit_flux!, gather_flux!, flux_guard_width, flux_extras
+export pullback_quantity!, deposit_pullback!, gather_pullback!, flux_pullback!, sort_pullback!
 export philox4x32, uniform_open, box_muller
 export load_quiet!, quiet_particle, quiet_particle_2d
 
@@ -60,6 +63,7 @@ include("spectral.jl")
 include("flux.jl")
 include("flux2d.jl")
 include("flux3d.jl")
+include("pullbacks.jl")
 include("flux_gather.jl")
 
 end

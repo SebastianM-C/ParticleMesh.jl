@@ -58,6 +58,7 @@ const TEST_FILES = [
     "ionization.jl",          # WP-059: T-770 to T-779 and T-781 to T-785, the field ionization of a dopant; its own helpers
     "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
+    "quantity_pullbacks.jl",  # WP-077: T-1065, the pullbacks of the module's deposited quantities; its own helpers
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
     "galerkin.jl",            # WP-070: T-991 to T-993 and T-996 to T-998, the Galerkin gather; after gather.jl and ionization.jl (their helpers)
     "galerkin_physics.jl",    # WP-070: T-994, T-995, the 1D cases with the Galerkin gather; after physics.jl (its configurations and runs)
