@@ -131,6 +131,14 @@ function opt_cost_md(dir)
 end
 
 const POINT_ORDER = ("E1.9", "E2.175", "E2.4", "n0.06", "n0.085")
+"""
+Jobs whose gradient is left out of the table and the figure (their J stays), with the reason. The
+WP-078 physics breaker reran this job on the CPU: J agrees to 4·10⁻⁵, but d ln J/dn is 8.12 on the
+GPU in Float32, 30.6 on the CPU in Float32 and 1.07 on the CPU in Float64, so its Float32 gradient
+is rounding, not a measurement.
+"""
+const BAD_GRADIENT = Dict("gg-galerkin-compensated-n0.085-r24x2-f32-cuda" =>
+                          "Float32 gradient not reproducible: d ln J/dn 8.12 (GPU, Float32), 30.6 (CPU, Float32), 1.07 (CPU, Float64)")
 const GATHERS = ("compensated", "galerkin-compensated")
 "The scales of z = x ./ scale of the five parameters (duration, waist, focus, delay, density), `TCASE.scale`."
 const SCALE = (6.0, 10.0, 80.0, 54.0, 0.072)
@@ -147,10 +155,12 @@ function gathergrad_rows(dir)
         for r in grids, g in GATHERS
             j = pick(g, r)
             J = j["J_first_bucket"]
-            lg = [j["gradient"][i] * SCALE[i] / J for i in FREE_IDX]
+            bad = get(BAD_GRADIENT, j["id"], nothing)
+            lg = bad === nothing ? [j["gradient"][i] * SCALE[i] / J for i in FREE_IDX] : nothing
             push!(rows, Dict{String,Any}("point" => p, "gather" => g, "ppl" => r[1], "ny" => r[2], "J" => J,
                                          "J_relative_to_reference" => J / ref["J_first_bucket"] - 1, "gradient" => j["gradient"],
-                                         "dlnJ_dz" => lg, "delay_gradient" => j["gradient"][4], "seconds" => j["seconds"]))
+                                         "dlnJ_dz" => lg, "delay_gradient" => j["gradient"][4], "seconds" => j["seconds"],
+                                         "gradient_left_out" => something(bad, "")))
         end
     end
     return rows, grids, finest
@@ -162,7 +172,7 @@ function gathergrad_md(rows, grids)
     println(io, "|", repeat("---|", 10))
     for p in POINT_ORDER, r in grids
         a, b = (only(x for x in rows if x["point"] == p && x["gather"] == g && (x["ppl"], x["ny"]) == r) for g in GATHERS)
-        lg(x) = join((@sprintf("%.3g", v) for v in x["dlnJ_dz"]), ", ")
+        lg(x) = isempty(x["gradient_left_out"]) ? join((@sprintf("%.3g", v) for v in x["dlnJ_dz"]), ", ") : "left out: " * x["gradient_left_out"]
         @printf(io, "| %s | λ₀/%d, Δy = π/%d | %.5g | %.5g | %.2f %% | %.2f %% | %s | %s | %.0f | %.0f |\n", p, r[1], 4r[2], a["J"], b["J"],
                 100a["J_relative_to_reference"], 100b["J_relative_to_reference"], lg(a), lg(b), a["seconds"], b["seconds"])
     end
@@ -182,7 +192,7 @@ function gathergrad_figure(rows, grids, finest)
             scatterlines!(a1, ppls, [1 + r["J_relative_to_reference"] for r in pr]; color = :black, linestyle = styles[g],
                           label = g)
             for (i, name) in enumerate(FREE)
-                scatterlines!(a2, ppls, [r["dlnJ_dz"][i] for r in pr]; color = colors[i], linestyle = styles[g],
+                scatterlines!(a2, ppls, [r["dlnJ_dz"] === nothing ? NaN : r["dlnJ_dz"][i] for r in pr]; color = colors[i], linestyle = styles[g],
                               label = g == "compensated" ? name : nothing)
             end
         end
