@@ -533,6 +533,12 @@ C = 1
 measured = { Float64 = 0.19 }
 status = "proposed; the gap is O(ε²) except for particles whose move crosses a kink of the linear shape, O(ε) there; below ε ≈ 1e-5 the roundoff floor eps/ε takes over (physics breaker)"
 
+["T-1005"]
+quantity = "max over particles and in-space components with ρ at Node on their axis of |o_C/(Δ_C·Δx_C/Δt) − gather!(per-axis Galerkin shapes) at the move's midpoint| / max|E_C|, divided by the move ε in cells, at ε = 1e-4 and 1e-5, order 2, Float64"
+C = 1
+measured = { Float64 = 0.19 }
+status = "proposed; T-1002's measure with the engine's per-axis gather! of WP-070 in place of the host closed form"
+
 ["T-1003"]
 quantity = "at rest, N = 2, max over particles of |o_z − gather!(Ez)|"
 scale = "max|Ez|"
