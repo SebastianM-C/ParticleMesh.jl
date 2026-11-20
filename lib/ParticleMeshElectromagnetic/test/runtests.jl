@@ -61,6 +61,7 @@ const TEST_FILES = [
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
     "galerkin.jl",            # WP-070: T-991 to T-993 and T-996 to T-998, the Galerkin gather; after gather.jl and ionization.jl (their helpers)
     "galerkin_physics.jl",    # WP-070: T-994, T-995, the 1D cases with the Galerkin gather; after physics.jl (its configurations and runs)
+    "transposes.jl",          # WP-069: T-985 to T-987, the transposed pairs of the step; yee_nd_cases.jl's helpers
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
