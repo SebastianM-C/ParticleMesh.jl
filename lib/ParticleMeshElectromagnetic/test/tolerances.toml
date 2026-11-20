@@ -1060,7 +1060,7 @@ scale = "C: 1/w0⁴; C_flux: Δt² + Δx²"
 C = 2
 C_flux = 0.25
 measured = { AxisTime = 0.602, WavefrontTime = 0.0414, flux = 0.119, AxisTime_y_ne_z = 0.626, flux_y_ne_z = 0.120 }
-status = "proposed; AxisTime's larger value is the envelope's own departure from a solution of the wave equation at order 1/w0⁴, not measured further"
+status = "proposed; AxisTime's larger value is the envelope's own departure from a solution of the wave equation at order 1/w0⁴, not measured further. Unverified beyond the test: the w0⁴ scale is not stable below w0 ≈ 3, where an independent check measured 1.8 at w0 = 2"
 
 ["T-1024"]
 quantity = "Gauss's law residual and ∇·B with the antenna and a drifting electron species, off the antenna's planes and on them after its surface charges, every 10 steps over 25 c/ω₀, both modes"
