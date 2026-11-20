@@ -173,7 +173,9 @@ end
 # kernel launched by hand with `GalerkinRead` and not as with the plain shape: the push (a 2D
 # Fast-mode step of a plasma in random fields, which moves no particle between slots), the
 # ionization's rates (T-962's run from its step-5 snapshot, a step without births), and
-# `initialize!`'s half-step kick.
+# `initialize!`'s half-step kick. And the module's gather `fields_at`, which they all call, reads
+# every component with the table's shapes bit for bit at N = 1, 2 and 3 (the mutation breaker
+# found that a wrong rule inside `fields_at` was otherwise caught by T-996 alone).
 """
 `gather_state`'s 2D problem (24 × 6 cells, one cold species) in Fast mode with `gather`, and its
 parameters: a step that moves no particle between slots for Float32 and Float64.
@@ -262,6 +264,26 @@ end
                  Bx = (hi(P), lo(P), lo(P)), By = (lo(P), hi(P), lo(P)), Bz = (lo(P), lo(P), hi(P)))
         for (N, want) in ((1, want1), (2, want2), (3, want3)), k in GATHER_NAMES
             @test component_shape(r, galerkin_layout(N)[k]) === want[k]
+        end
+        # the module's gather (`fields_at`, what the push, the kick and the ionization call) reads
+        # each component with the shapes of the table, bit for bit, random fields and positions
+        for (N, want) in ((1, want1), (2, want2), (3, want3)), T in (Float32, Float64)
+            rng = Xoshiro(993 + 10N + P)
+            grid = PeriodicGrid(ntuple(_ -> 8, N), ntuple(d -> T(1) / 4 + T(d) / 8, N), em_guard_width(Shape{P}()))
+            g = Int32(guards(grid))
+            f = NamedTuple{GATHER_NAMES}(ntuple(_ -> random_field!(field(CPU(), T, grid), grid, rng, T), 6))
+            L = galerkin_layout(N)
+            same = true
+            for trial in 1:20
+                c = ntuple(_ -> Int32(rand(rng, 1:8)), N)
+                δ = ntuple(_ -> T(rand(rng)), N)
+                E, B = ParticleMeshElectromagnetic.fields_at(f, c, δ, r, g)
+                got = (E..., B...)
+                for (j, k) in enumerate(GATHER_NAMES)
+                    same &= got[j] === galerkin_read(f[k], c, δ, want[k], L[k], g)
+                end
+            end
+            @test same
         end
         @test read_shape(GalerkinGather(), Shape{P}()) === r
         @test read_shape(nothing, Shape{P}()) === Shape{P}() && read_shape(CompensatedGather(), Shape{P}()) === Shape{P}()
