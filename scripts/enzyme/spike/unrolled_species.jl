@@ -89,4 +89,35 @@ using ParticleMeshElectromagnetic
         end
         return nothing
     end
+    # `ramp_factor` (window.jl): Enzyme has no reverse pass of the device's `sinpi` (`__nv_sinpif`);
+    # the same value through `_sinpi`, whose reverse rule (π·cospi) is below
+    @noinline _sinpi(x) = sinpi(x)
+    @inline function ramp_factor(x, vacuum, ramp)
+        t = clamp((x - vacuum) / ramp, zero(x), one(x))
+        s = _sinpi(t / 2)
+        return s * s
+    end
+end
+using Enzyme: EnzymeRules, Const, Active, Duplicated, Annotation
+# inside a rule the device's method overrides do not apply, so the rule calls libdevice itself
+# (what CUDA's own `sinpi` and `cospi` call on the device: the same bits)
+_dsinpi(x::Float32) = ccall("extern __nv_sinpif", llvmcall, Float32, (Float32,), x)
+_dsinpi(x::Float64) = ccall("extern __nv_sinpi", llvmcall, Float64, (Float64,), x)
+_dcospi(x::Float32) = ccall("extern __nv_cospif", llvmcall, Float32, (Float32,), x)
+_dcospi(x::Float64) = ccall("extern __nv_cospi", llvmcall, Float64, (Float64,), x)
+function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig, ::Const{typeof(ParticleMeshElectromagnetic._sinpi)}, ::Type{RT}, x::Annotation) where {RT}
+    y = _dsinpi(x.val)
+    return EnzymeRules.AugmentedReturn(EnzymeRules.needs_primal(config) ? y : nothing, nothing, nothing)
+end
+function EnzymeRules.reverse(config::EnzymeRules.RevConfig, ::Const{typeof(ParticleMeshElectromagnetic._sinpi)}, dret::Active, tape, x::Active)
+    return (dret.val * oftype(x.val, π) * _dcospi(x.val),)
+end
+function EnzymeRules.reverse(config::EnzymeRules.RevConfig, ::Const{typeof(ParticleMeshElectromagnetic._sinpi)}, dret::Type{<:Const}, tape, x::Annotation)
+    return (x isa Active ? zero(x.val) : nothing,)
+end
+function EnzymeRules.forward(config::EnzymeRules.FwdConfig, ::Const{typeof(ParticleMeshElectromagnetic._sinpi)}, ::Type{RT}, x::Annotation) where {RT}
+    y = _dsinpi(x.val)
+    x isa Const && return EnzymeRules.needs_primal(config) ? y : nothing
+    dy = x.dval * oftype(x.val, π) * _dcospi(x.val)
+    return EnzymeRules.needs_primal(config) ? Duplicated(y, dy) : dy
 end
