@@ -1,0 +1,47 @@
+# gpu-run 2026-11-20T03:30:24Z
+# worktree: ~/.julia/dev/ParticleMesh/.claude/worktrees/wp078 (HEAD d535153)
+# command: julia +1.13 --project=scripts scripts/optim/trapped2d.jl campaign gathergrad 24x2,32x2,48x3,64x4 scripts/runs/wp078-gathergrad-4080 float=32 backend=cuda
+# network: off, timeout: 30000s, lock wait: 14400s, log: <depot log>
+# lock acquired after 0s
+40 of 40 jobs to run, 1 at a time with 8 threads each, into scripts/runs/wp078-gathergrad-4080
+done gg-compensated-E1.9-r64x4-f32-cuda in 332.6 s
+done gg-galerkin-compensated-E1.9-r64x4-f32-cuda in 278.5 s
+done gg-compensated-E2.175-r64x4-f32-cuda in 343.5 s
+done gg-galerkin-compensated-E2.175-r64x4-f32-cuda in 285.7 s
+done gg-compensated-E2.4-r64x4-f32-cuda in 351.6 s
+done gg-galerkin-compensated-E2.4-r64x4-f32-cuda in 291.7 s
+done gg-compensated-n0.06-r64x4-f32-cuda in 344.3 s
+done gg-galerkin-compensated-n0.06-r64x4-f32-cuda in 286.6 s
+done gg-compensated-n0.085-r64x4-f32-cuda in 343.3 s
+done gg-galerkin-compensated-n0.085-r64x4-f32-cuda in 285.8 s
+done gg-compensated-E1.9-r48x3-f32-cuda in 154.9 s
+done gg-galerkin-compensated-E1.9-r48x3-f32-cuda in 132.9 s
+done gg-compensated-E2.175-r48x3-f32-cuda in 159.2 s
+done gg-galerkin-compensated-E2.175-r48x3-f32-cuda in 136.2 s
+done gg-compensated-E2.4-r48x3-f32-cuda in 162.2 s
+done gg-galerkin-compensated-E2.4-r48x3-f32-cuda in 138.2 s
+done gg-compensated-n0.06-r48x3-f32-cuda in 159.1 s
+done gg-galerkin-compensated-n0.06-r48x3-f32-cuda in 136.0 s
+done gg-compensated-n0.085-r48x3-f32-cuda in 159.8 s
+done gg-galerkin-compensated-n0.085-r48x3-f32-cuda in 136.5 s
+done gg-compensated-E1.9-r32x2-f32-cuda in 65.7 s
+done gg-galerkin-compensated-E1.9-r32x2-f32-cuda in 59.0 s
+done gg-compensated-E2.175-r32x2-f32-cuda in 67.2 s
+done gg-galerkin-compensated-E2.175-r32x2-f32-cuda in 60.2 s
+done gg-compensated-E2.4-r32x2-f32-cuda in 68.4 s
+done gg-galerkin-compensated-E2.4-r32x2-f32-cuda in 60.9 s
+done gg-compensated-n0.06-r32x2-f32-cuda in 67.2 s
+done gg-galerkin-compensated-n0.06-r32x2-f32-cuda in 60.2 s
+done gg-compensated-n0.085-r32x2-f32-cuda in 67.4 s
+done gg-galerkin-compensated-n0.085-r32x2-f32-cuda in 60.4 s
+done gg-compensated-E1.9-r24x2-f32-cuda in 51.5 s
+done gg-galerkin-compensated-E1.9-r24x2-f32-cuda in 47.1 s
+done gg-compensated-E2.175-r24x2-f32-cuda in 52.2 s
+done gg-galerkin-compensated-E2.175-r24x2-f32-cuda in 48.0 s
+done gg-compensated-E2.4-r24x2-f32-cuda in 53.0 s
+done gg-galerkin-compensated-E2.4-r24x2-f32-cuda in 48.5 s
+done gg-compensated-n0.06-r24x2-f32-cuda in 52.2 s
+done gg-galerkin-compensated-n0.06-r24x2-f32-cuda in 47.9 s
+done gg-compensated-n0.085-r24x2-f32-cuda in 52.3 s
+done gg-galerkin-compensated-n0.085-r24x2-f32-cuda in 48.3 s
+campaign gathergrad done in 5756.5 s: scripts/runs/wp078-gathergrad-4080

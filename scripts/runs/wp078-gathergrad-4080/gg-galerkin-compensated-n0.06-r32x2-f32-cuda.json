@@ -1,0 +1,69 @@
+{
+  "J": 0.17314697802066803,
+  "J_born": 0.17314697802066803,
+  "J_born_label": 0.17428049445152283,
+  "J_first_bucket": 0.17314697802066803,
+  "J_from_4": 0.17316119372844696,
+  "J_plasma": 0.0,
+  "J_rise_2.0_4.0": 0.1738024652004242,
+  "J_rise_4.0_6.0": 0.17244772613048553,
+  "a0": 2.175,
+  "a0E": 2.175,
+  "backend": "cuda",
+  "cells": [
+    448,
+    256
+  ],
+  "dark_energy": 0.0,
+  "dark_weight": 0.0,
+  "eltype": "Float32",
+  "fast_born_window": 0.010511523377235927,
+  "fast_plasma_window": 0.0,
+  "float": 32,
+  "gather": "galerkin-compensated",
+  "gradient": [
+    -0.045293458,
+    0.010630923,
+    0.00916261,
+    -0.056182966,
+    13.605707,
+    1.4034249
+  ],
+  "gradient_born": [
+    -0.045293458,
+    0.010630923,
+    0.00916261,
+    -0.056182966,
+    13.605707,
+    1.4034249
+  ],
+  "gradient_plasma": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "id": "gg-galerkin-compensated-n0.06-r32x2-f32-cuda",
+  "mean_energy_born": 16.210671799343157,
+  "mean_energy_plasma": 0.0,
+  "mode": "grad",
+  "ny": 2,
+  "particles": 521234,
+  "point": "n0.06",
+  "ppl": 32,
+  "seconds": 49.570223263,
+  "threads": 8,
+  "ux_max_born": 23.283954620361328,
+  "ux_max_plasma": 17.305280685424805,
+  "weight_born": 0.010681048889515102,
+  "weight_plasma": 0.0,
+  "x": [
+    6.0,
+    10.0,
+    80.0,
+    54.0,
+    0.06
+  ]
+}
