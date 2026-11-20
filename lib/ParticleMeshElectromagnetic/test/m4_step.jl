@@ -11,7 +11,7 @@
 # shaped_antenna.jl (`shaped_problem`, `pupil_angular_scale`) and pml_back.jl.
 
 using ForwardDiff: ForwardDiff
-using ParticleMeshElectromagnetic: PMLFields, YeeStencil, faraday_stencil, forward_difference, m4_wavenumber, AntennaPlane
+using ParticleMeshElectromagnetic: PMLFields, YeeStencil, faraday_stencil, forward_difference, m4_wavenumber, AntennaPlane, shift_antenna
 
 "The main vacuum beam of antenna.jl (waist 6, duration 8) per polarization, with M4; a snapshot at t = 140."
 const M4_RUNS = Dict{Float64,Any}()
@@ -125,6 +125,9 @@ end
 # stored field plus the corrections leaves the scattered region's B zero and gives the total
 # region the half step of the whole incident field, to roundoff, for both lasers and three
 # polarizations in the A8 matrix; with Yee's corrections the scattered B is 4.6 % of the field's.
+# The operator test takes the incident E from the antenna's own `incident_e`, so the columns it
+# reads are checked apart (`incident_column_error`): on ia − 1, ia and ia + 1 they are the beam
+# written out from its definition, a distance mΔx from the plane and a time m·kΔx later.
 # (Under M4, Bx also reads across the plane: the β terms of D̃_y Ez average Ez over the columns
 # beside, so Bx on ia − 1 and ia is corrected too; Yee needs no Bx correction.)
 function narrowband_leak(pol; solver = M4(), antenna_solver = solver)
@@ -161,7 +164,7 @@ end
             @test any(x -> !iszero(ForwardDiff.partials(x)[3]), Array(r.st.fields.Ey))
         end
     end
-    Co = emC("T-1086", "C_operator")
+    Co, Ci = emC("T-1086", "C_operator"), emC("T-1086", "C_incident")
     for T in TYPES
         cases = Any[(pol, antenna_problem(T; length = (40, 30), waist = 3, duration = 3, position = 8, polarization = pol, tend = 1)) for pol in (0, 3 // 5, π / 2)]
         push!(cases, (:shaped, shaped_problem(T; length = (60, 40), tend = 1)))
@@ -172,6 +175,9 @@ end
             worst = max(r.scattered, r.total) / base_eps(T)
             record!("T-1086 operator", T, worst)
             @test worst <= Co
+            inc = incident_column_error(st, prob, t) / base_eps(T)
+            record!("T-1086 incident columns", T, inc)
+            @test inc <= Ci
             if T === Float64 && label === 0
                 n = tfsf_operator_error(st, prob, t; source_solver = Yee())
                 @info "T-1086 operator" r n
@@ -325,8 +331,9 @@ end
 # (T-543 with M4): Ampère's law is Yee's, so D⁻·E = ρ − ρ̄₀ off the layer to roundoff; M4's
 # divergence Σ_d D̃_d B_d is kept on the centres whose stencil reads no layer row (D̃_y reaches the
 # rows j − 1 to j + 2, the β terms of D̃_x one row across), and is far from roundoff in the layer,
-# which shows the check sees it.
-@testset "T-1089 Gauss's law and M4's ∇·B to roundoff off the PML with particles leaving, all three types, both modes [A2, A7, A8, WP-079]" begin
+# which shows the check sees it. And in 1D (T-212's Landau case with M4, whose x difference is
+# D⁺ + δ_xΔ³): Gauss's law to T-212's roundoff.
+@testset "T-1089 Gauss's law and M4's ∇·B to roundoff off the PML with particles leaving, all three types, both modes, and Gauss's law with M4 in 1D [A2, A7, A8, WP-079]" begin
     C, CB = emC("T-451"), emC("T-1089", "C_divB")
     for T in TYPES, mode in (Reference(), Fast())
         prob, _ = open_plasma_2d(T; amplitude = seeded(T, 1 / 10))
@@ -358,6 +365,25 @@ end
         @test worst <= C
         @test worstB <= CB
     end
+    for T in TYPES, mode in (Reference(), Fast())
+        case = load_case("landau")
+        amplitude = T === D3 ? seeded(T, 0.01) : nothing
+        prob = problem_from_case(case, T; ppc = 64, t_end = 2, amplitude)   # T-212's run, 214 steps
+        st = EMState(prob, with_solver(numerics_from_case(case; mode), M4()))
+        initialize!(st, prob)
+        @test st.numerics.solver isa M4
+        n = ncells(st.grid)
+        p = params(prob)
+        r = gauss_residual(st)
+        worst = r.res / (base_eps(T) * n * r.scale)
+        for k in 1:prob.nsteps
+            step!(st, p, k)
+            r = gauss_residual(st)
+            worst = max(worst, r.res / (base_eps(T) * n * r.scale * sqrt(k)))
+        end
+        record!("T-1089 1D $(nameof(typeof(mode)))", T, worst)
+        @test worst <= emC("T-212")
+    end
 end
 
 # --- T-1090 ---------------------------------------------------------------------------------
@@ -365,7 +391,11 @@ end
 # The moving window with M4. T-472 and T-570: a vacuum pulse in the window is its static twin's
 # before the window moves and, after, past the columns where the back edge's difference has reached
 # (`back_comparison`, columns 25 on), to roundoff, and a PML on the back edge removes the back
-# edge's reflection. T-473: Gauss's law to roundoff across shifts with the laser driving the plasma,
+# edge's reflection, to its measured fraction (C_back: the layer must be M4's, `back_state` stores
+# the solver's stencil in it). The default window starts after the antenna has finished, so a run
+# with the plane further forward (x = 20) and the window starting at t = 20, while the antenna
+# still emits, checks the shifted antenna (`shift_antenna` keeps M4's stencil and ρ) against the
+# twin, to the same roundoff. T-473: Gauss's law to roundoff across shifts with the laser driving the plasma,
 # all three types, both modes, off the columns T-473 excludes.
 @testset "T-1090 the moving window with M4: the vacuum pulse is its static twin's, the back-edge PML absorbs, Gauss's law across shifts [A2, A4, A7, A8, WP-079]" begin
     C = emC("T-472")
@@ -375,12 +405,16 @@ end
     @test pml.shifts > 64
     @test bare.near > 0.05
     @test pml.near < emC("T-570") * bare.near
+    @test pml.near <= emC("T-1090", "C_back") * bare.near
     record!("T-1090 back edge", Float64, pml.near / bare.near)
-    for c in (bare, pml)
+    mid = back_comparison(nothing; solver = M4(), position = 20, start = 20)
+    @info "T-1090 window moving while the antenna emits" before = mid.before far = mid.far shifts = mid.shifts
+    for c in (bare, pml, mid)
         @test c.before <= C * eps(Float64)
         @test c.far <= C * eps(Float64)
     end
     record!("T-1090 twin", Float64, max(bare.far, pml.far, bare.before, pml.before) / eps(Float64))
+    record!("T-1090 twin, antenna emitting", Float64, max(mid.far, mid.before) / eps(Float64))
     Cg = emC("T-473")
     for T in TYPES, mode in (Reference(), Fast())
         prob = window_lwfa(T)
@@ -408,7 +442,8 @@ end
 
 # Reference mode with M4 is bitwise across reruns and launch shapes: the laser–plasma run in the
 # moving window with the back-edge PML (120 steps, past the window's start) and the open plasma
-# with the PML, per element type; and the two modes agree to roundoff in the fields (T-474's
+# with the PML, the 2D plasma with two passes of the current filter and the 1D Landau case with
+# three (T-443's runs), per element type; and the two modes agree to roundoff in the fields (T-474's
 # comparison, Float64).
 function m4_digests(; workgroupsize = nothing, be = CPU())
     out = Tuple{String,DataType,UInt64}[]
@@ -421,6 +456,18 @@ function m4_digests(; workgroupsize = nothing, be = CPU())
         st = open_state(prob, PML(; cells = 4, kappa_max = 2, alpha_max = 0.1); workgroupsize, solver = M4(), be)
         run!(st, params(prob), prob.nsteps)
         push!(out, ("open", T, state_digest_2d(st)))
+        prob = plasma_step_2d(T; nsteps = 20)
+        st = EMState(prob, EMNumerics(; workgroupsize, filter = BinomialFilter(2), solver = M4()); backend = be)
+        initialize!(st, prob)
+        run!(st, params(prob), prob.nsteps)
+        push!(out, ("filtered", T, state_digest_2d(st)))
+        case = load_case("landau")
+        case["numerics"]["filter_passes"] = 3
+        prob = problem_from_case(case, T; ppc = 64, t_end = DETERMINISM_T_END)
+        st = EMState(prob, with_solver(numerics_from_case(case; workgroupsize), M4()); backend = be)
+        initialize!(st, prob)
+        run!(st, params(prob), prob.nsteps)
+        push!(out, ("1d filtered", T, state_digest(st)))
     end
     return out
 end
@@ -472,9 +519,13 @@ end
 
 # --- T-1093 ---------------------------------------------------------------------------------
 
-# Input checks: M4's half step refuses a grid of one guard; the state gives M4 two guards whatever
-# the shape; an antenna plane needs one column more behind it with M4 (its B corrections reach
-# ia − 2), and the window's check of the antennas counts that column; the Courant limit is Yee's.
+# Input checks and the solver carried along: M4's half step refuses a grid of one guard, and the
+# state's grid has the two M4 reads for either shape (the shapes' own guards already give two, so
+# this checks the result, not the solver's term in it); an antenna plane needs one column more
+# behind it with M4 (its B corrections reach ia − 2), and the window's check of the antennas counts
+# that column: a plane at column 14 with a back-edge PML of 12 cells passes with Yee and is refused
+# with M4; the window's shifted antenna and the layers rebuilt on other arrays (`on_arrays`, as a
+# restart does) keep M4's stencil; the Courant limit is Yee's.
 @testset "T-1093 input checks: guards, the antenna's columns and the Courant limit with M4 [A2, A10, WP-079]" begin
     grid1 = PeriodicGrid((8, 8), (0.5, 0.5), 1)
     f = em_fields(CPU(), Float64, grid1)
@@ -491,6 +542,21 @@ end
     @test_throws ArgumentError AntennaPlane(x(g + 2), grid, dt, M4())
     @test AntennaPlane(x(g + 3), grid, dt, M4()).ia == g + 3
     @test courant_limit(M4(), grid) == courant_limit(Yee(), grid)
+    wprob = back_lwfa(Float64; start = 60)
+    @test back_state(wprob; back = PML(; cells = 12)) isa EMState
+    @test_throws ArgumentError back_state(wprob; back = PML(; cells = 12), solver = M4())
+    st = back_state(back_lwfa(Float64); back = PML(; cells = 6), solver = M4())
+    a = Antenna(params(wprob).lasers[1], antenna_planes(st)[1])
+    b = shift_antenna(a, 1)
+    @test a.stencil isa M4Stencil
+    @test b.stencil === a.stencil && b.ρ === a.ρ && b.ia == a.ia - 1
+    ost = open_state(open_plasma_2d(Float64)[1], PML(; cells = 4); solver = M4())
+    layers = [m for m in (st.modifiers..., ost.modifiers...) if m isa Union{PMLFields,BackPMLFields}]
+    @test length(layers) == 2
+    for m in layers
+        @test m.stencil isa M4Stencil
+        @test on_arrays(m, Tuple(values(m.ψ))).stencil === m.stencil
+    end
     prob = antenna_problem(Float64; length = (40, 20), tend = 1, courant = 101 // 100)
     @test_throws ArgumentError EMState(prob, EMNumerics(; solver = M4()))
 end

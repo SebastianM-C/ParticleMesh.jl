@@ -148,3 +148,55 @@ function tfsf_operator_error(st, prob, t; h = st.dt / 2, source_solver = nothing
     d = maximum(c -> Float64(maximum(absmax, B(masked, c)[tot, rows...] .- B(full, c)[tot, rows...])), (:Bx, :By, :Bz))
     return (; scattered = s / scale, total = d / scale)
 end
+
+using ParticleMeshElectromagnetic: antenna_d, laser_field, shaped_field
+
+"""
+    incident_column_error(st, prob, t) -> max relative difference
+
+The incident E that the M4 antenna's B corrections read on the columns ia + m (m = −1, 0, 1),
+against the beam written out here from its definition: the laser's field at x_a + mΔx (its
+distance from the focus shifted by mΔx) a time m·kΔx later, k M4's wavenumber of ω₀
+(`m4_wavenumber`, not the antenna's stored half-step phase), Ey on the rows' centres and Ez on
+their nodes, polarized by cos θ and sin θ. Over every array row (and layer), both components,
+relative to the largest |E| of each column.
+"""
+function incident_column_error(st, prob, t)
+    a = Antenna(only(params(prob).lasers), only(antenna_planes(st)))
+    l = a.laser
+    T = typeof(a.xa)
+    dx, dt = a.dx[1], T(prob.dt)
+    k = m4_wavenumber(dt, dx)
+    src = l isa ShapedLaser ? ntuple(i -> time_factor(l, T(t) - l.delay - T(i - 2) * 2 * a.ht), 3) : T(t)
+    N = length(a.dx)
+    rows = ntuple(d -> 1:Int(a.n[d + 1] + 2 * a.g), N - 1)
+    worst = 0.0
+    for m in -1:1, C in 2:3
+        ξ = a.xa + m * dx - l.focus
+        s = T(t) - l.delay - m * k * dx
+        pol = C == 2 ? cos(l.polarization) : sin(l.polarization)
+        h = one(T) / 2
+        got, ref = T[], T[]
+        for J in CartesianIndices(rows)
+            j = Int32.(Tuple(J))
+            push!(got, incident_e(l, a, src, Int32(m), Val(C), j))
+            e = if N == 3
+                dy = antenna_d(a, 2, l.center[1], j[1], C == 2 ? h : zero(T))
+                dz = antenna_d(a, 3, l.center[2], j[2], C == 3 ? h : zero(T))
+                laser_field(l, ξ, dy, dz, s)[1]
+            elseif l isa ShapedLaser
+                shaped_field(l, ξ, antenna_dy(a, j[1], C == 2 ? h : zero(T)), time_factor(l, s))[1]
+            else
+                laser_field(l, ξ, antenna_dy(a, j[1], C == 2 ? h : zero(T)), s)[1]
+            end
+            push!(ref, e * pol)
+        end
+        scale = maximum(x -> Float64(absmax(x)), ref)
+        scale > 0 && (worst = max(worst, maximum(Float64 ∘ absmax, got .- ref) / scale))
+    end
+    return worst
+end
+
+"`n` with the field solver `solver`, every other choice kept (a case's numerics, which name no solver, run with M4)."
+with_solver(n::EMNumerics, solver) = EMNumerics(n.shape, n.mode, n.pusher, solver, n.workgroupsize, n.current, n.filter, n.absorber,
+                                                n.back_absorber, n.headroom, n.resort, n.node_bins, n.gather)

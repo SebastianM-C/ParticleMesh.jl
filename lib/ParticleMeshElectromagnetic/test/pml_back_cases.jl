@@ -18,7 +18,7 @@ const BACK_CELLS = (72, 16)
 back_lwfa(::Type{T}; kw...) where {T} = window_lwfa(T; position = BACK_POSITION, cells = BACK_CELLS, kw...)
 
 """
-    back_comparison(back; nsteps = 200, extra = 100, position, cells, solver = Yee()) -> (; shifts, before, far, near, history)
+    back_comparison(back; nsteps = 200, extra = 100, position, cells, solver = Yee(), start = 33) -> (; shifts, before, far, near, history)
 
 T-472's vacuum pulse in the window with `back` on its back edge, against two references. Its
 static twin with the same back edge gives `before` (every column, before the window moves) and
@@ -28,8 +28,8 @@ away for its reflection to come back within the run, gives `near`: the largest d
 eight columns behind the layer (cells + 1 … cells + 8), over the whole run. All three are relative
 to the reference's largest field at that step; `history` is `near` per step.
 """
-function back_comparison(back; nsteps = 200, extra = 100, position = BACK_POSITION, cells = BACK_CELLS, solver = Yee())
-    prob = window_lwfa(Float64; plasma = false, nsteps, position, cells)
+function back_comparison(back; nsteps = 200, extra = 100, position = BACK_POSITION, cells = BACK_CELLS, solver = Yee(), start = 33)
+    prob = window_lwfa(Float64; plasma = false, nsteps, position, cells, start)
     n = prob.cells
     h = prob.length[1] / n[1]
     win = back_state(prob; back, solver)

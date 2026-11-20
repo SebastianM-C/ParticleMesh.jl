@@ -106,6 +106,9 @@ end
         worst = max(r.scattered, r.total) / base_eps(T)
         record!("T-1095 operator", T, worst)
         @test worst <= emC("T-1086", "C_operator")
+        inc = incident_column_error(st, prob, t) / base_eps(T)
+        record!("T-1095 incident columns", T, inc)
+        @test inc <= emC("T-1086", "C_incident")
         T === Float64 && @test tfsf_operator_error(st, prob, t; source_solver = Yee()).scattered > 1e-2
     end
     for T in TYPES, θ in (0, 3 // 5)
