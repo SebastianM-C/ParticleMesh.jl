@@ -28,4 +28,6 @@ groups = [
     ["em3d_step.jl", "em3d_window.jl"],
     # the 3D step's field ionization, which reuses no other file
     ["em3d_ionization.jl"],
+    # the 3D step's compensated gather, which reuses no other file
+    ["em3d_gather.jl"],
 ]

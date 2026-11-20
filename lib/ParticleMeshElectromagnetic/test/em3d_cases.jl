@@ -642,3 +642,88 @@ function ion3d_digests(; workgroupsize = nothing, be = CPU(), gather = nothing)
     end
     return out
 end
+
+# --- WP-075's helpers, which em3d_ionization.jl and em3d_gather.jl share -------------------
+
+
+"Start em3d_ion_worker.jl at `nt` threads, its output going to a file; once per suite."
+function start_ion3d_worker(nt)
+    get!(ION3D_WORKERS, nt) do
+        worker = joinpath(@__DIR__, "em3d_ion_worker.jl")
+        out = tempname()
+        cmd = `$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$(dirname(Base.active_project())) $worker`
+        (run(pipeline(cmd; stdout = out, stderr = stderr); wait = false), out)
+    end
+end
+const ION3D_WORKERS = Dict{Int,Tuple{Base.Process,String}}()
+
+"The lines of the ionization worker at `nt` threads that start with `prefix`, after it finished."
+function ion3d_worker_lines(nt, prefix)
+    proc, out = start_ion3d_worker(nt)
+    wait(proc)
+    success(proc) || error("em3d_ion_worker.jl with $nt threads failed: $proc")
+    return filter(startswith(prefix), split(read(out, String), '\n'))
+end
+
+"The alive electrons of a 3D state's ionization, on the host."
+function born_3d(st)
+    e = ionization_electrons(st)
+    alive = Array(e.status) .== ParticleMeshCore.ALIVE
+    pick(a) = Array(a)[alive]
+    return (; n = count(alive), cell = map(pick, e.cell), offset = map(pick, e.offset), u = map(pick, e.u), w = pick(e.w))
+end
+
+"""
+    ion_gauss_3d(st, p, k) -> (; res, bare, scale, escale, ions)
+
+Gauss's law of a 3D state with ionization after step `k`, per interior node: `res`, the residual
+`Σ_d D⁻_d E_d − ρ` with ρ the charge of every particle ([`window_charge!`](@ref): the species and the
+born electrons) plus the dopant ions' ([`ionization_charge!`](@ref)), less the neutralizing
+background (the mean of a periodic box; a window's `window_background!`; none in a box with an
+open axis, whose runs here start without charge); `bare`, the same without the ions; `scale`,
+`(n₁ + n₂ + n₃)·max|ρ|` of the particles; `escale`, the divergence's own roundoff scale
+`(Σ_d 2/Δ_d)·max|E|`; `ions`, the largest ion charge density.
+"""
+function ion_gauss_3d(st, p, k)
+    T = eltype(st.ρ)
+    grid = st.grid
+    be = get_backend(st.ρ)
+    ρ, ρi, ρ0 = field(be, T, grid), field(be, T, grid), field(be, T, grid)
+    window_charge!(ρ, st)
+    ionization_charge!(ρi, st)
+    window = st.aux.window
+    window === nothing || window_background!(ρ0, st, p, window_shifts(st, k))
+    ρ, ρi, ρ0 = Array(ρ), Array(ρi), Array(ρ0)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    I = CartesianIndices(ntuple(d -> (g + 1):(g + n[d]), 3))
+    periodic = window === nothing && st.numerics.absorber === nothing
+    mean(a) = periodic ? sum(a[I]) / prod(n) : zero(T)
+    m, mi = mean(ρ), mean(ρi)
+    E = map(Array, (st.fields.Ex, st.fields.Ey, st.fields.Ez))
+    e = ntuple(d -> CartesianIndex(ntuple(a -> Int(a == d), 3)), 3)
+    div(j) = sum(d -> (E[d][j] - E[d][j - e[d]]) / h[d], 1:3)
+    res = [absmax(div(j) - (ρ[j] - m + ρi[j] - mi - ρ0[j])) for j in I]
+    bare = [absmax(div(j) - (ρ[j] - m - ρ0[j])) for j in I]
+    hv = map(value_of, h)
+    escale = sum(d -> 2 / hv[d], 1:3) * maximum(a -> maximum(absmax, a[I]), E)
+    return (; res, bare, scale = sum(n) * maximum(absmax, ρ[I]), escale, ions = maximum(absmax, ρi[I]))
+end
+
+"The parameters of T-1046: the laser's a₀, the dopant's density, the level's prefactor and the section's start (c/ω₀)."
+const ION3_X0 = (1.0, 0.005, 0.2, 28.0)
+const ION3_NAMES = ("a0", "density", "prefactor", "start")
+
+"""
+The born charge (the electrons' summed weight) and their kinetic energy Σ w·(γ − 1) after 90 steps
+of `ion_window_3d_small` at `x = (a0, density, prefactor, start)`, when no electron has left the window.
+"""
+function ion3d_objectives(x, mode = Reference(); be = CPU(), gather = nothing)
+    T = promote_type(map(typeof, x)...)
+    prob = ion_window_3d_small(T; nsteps = 90, a0 = x[1], density = x[2], prefactor = x[3], start = x[4])
+    st = ion_state_3d(prob; mode, be, gather)
+    run!(st, params(prob), prob.nsteps)
+    el = born_3d(st)
+    ionization_lost(st) == 0 || error("a birth found no slot")
+    γ = sqrt.(1 .+ el.u[1] .^ 2 .+ el.u[2] .^ 2 .+ el.u[3] .^ 2)
+    return [sum(el.w), sum(el.w .* (γ .- 1))]
+end

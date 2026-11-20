@@ -2,57 +2,7 @@
 # The particles read a copy of E and B sharpened along axis 1 by E + β(2E_i − E_{i−1} − E_{i+1}),
 # whose transfer 1 + 4β sin²(kΔx/2) undoes the shape's mean transfer sinc(kΔx/2)^(p+1) at the
 # laser's wavenumber; the mesh solve, the current and the diagnostics keep the grid's fields.
-# The problems with a dopant are ionization_cases.jl's.
-
-using ParticleMeshElectromagnetic: fields_at, kick_kernel!, FIELD_LAYOUT
-
-const GATHER_NAMES = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
-
-"""
-The mean of a B-spline gather of order `p` (0, 1 or 2) over `M` evenly spaced offsets per cell (M even), of a
-sampled mode of wavenumber `k` (x = kΔx/2): the shape's transfer at k and at its aliases
-k + 2πlM/Δx, which those offsets cannot tell from k, Σ_l (sin x/(x + πlM))^(p+1), in closed form
-with Σ_l (z + πl)^−2 = csc²z and Σ_l (z + πl)^−3 = csc²z·cot z (z = x/M). In BigFloat.
-"""
-function gather_lattice_mean(p, x, M)
-    x, z = big(x), big(x) / M
-    p == 0 && return sin(x) / M / sin(z)      # the nearest grid point (WP-070): |(1/M)Σ_m e^(2ix·m/M)|
-    p == 1 && return sin(x)^2 / M^2 / sin(z)^2
-    p == 2 && return sin(x)^3 / M^3 * cos(z) / sin(z)^3
-    error("order $p")
-end
-
-"""
-A state of `N` = 1 or 2 resolved axes, 12 cells per laser wavelength along x over two wavelengths
-(24 cells; at N = 2 six rows of 0.7), a cold species that the test does not push, the `gather`.
-"""
-function gather_state(::Type{T}, N, shape, gather; be = CPU()) where {T}
-    h = 2 * T(π) / 12
-    if N == 1
-        sp = (SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), 1, 4, zero3(T), zero3(T), 1),)
-        prob = EMProblem("gather-1d", 24h, 24, 2h / 5, 4, sp, 1, 1)
-    else
-        sp = (SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), (1, 0), (2, 2), zero3(T), zero3(T), 1),)
-        prob = EMProblem("gather-2d", (24h, 6 * T(7) / 10), (24, 6), 2h / 5, 4, sp, 1, (1, 0))
-    end
-    return EMState(prob, EMNumerics(; shape, gather); backend = be)
-end
-
-"The mode cos(k·x_i + φ) along axis 1 of a field of `grid`, sampled at the interior array index i (x_i = (i − 1)Δx), each partial of a dual its own phase; guards the periodic images."
-function mode_field!(a, grid, k, φ, ::Type{T}) where {T}
-    g, n, h = guards(grid), ncells(grid), Float64(value_of(cellsize(grid)[1]))
-    A = zeros(T, size(a))
-    for I in CartesianIndices(A)
-        i = I[1]
-        g < i <= g + n[1] || continue
-        all(d -> g < I[d] <= g + n[d], 2:ndims(A)) || continue
-        θ = k * (i - g - 1) * h + φ
-        A[I] = T <: Dual ? mkdual(cos(θ), sin(θ), cos(θ + 1) / 2, -sin(θ + 2)) : T(cos(θ))
-    end
-    copyto!(a, A)
-    fill_guards!(a, grid)
-    return a
-end
+# The problems with a dopant are ionization_cases.jl's, the states and sampled modes gather_cases.jl's.
 
 # --- T-960 ----------------------------------------------------------------------------------
 

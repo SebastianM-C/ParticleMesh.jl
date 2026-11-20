@@ -5,39 +5,13 @@
 # behind the electrons' count, and a moving window shifts the atoms and refills the injection
 # column's at their global column. The 2D theory carries over through T-1040: a 3D run that does
 # not vary along y or z is the 2D run. The problems are in em3d_cases.jl (`ion_box_3d`,
-# `ion_window_3d`, the invariant pair `ion_plane_2d`, `ion_inv_3d`); the Reference digests run in
-# a worker of their own (em3d_ion_worker.jl) at 1 and 4 threads.
+# `ion_window_3d`, the invariant pair `ion_plane_2d`, `ion_inv_3d`), and so are the helpers that
+# em3d_gather.jl shares (`born_3d`, `ion_gauss_3d`, `ion3d_objectives`, the worker); the Reference
+# digests run in a worker of their own (em3d_ion_worker.jl) at 1 and 4 threads.
 
 using ParticleMeshElectromagnetic: ionization_frame, injection_column, window_frame, state_view
 
-"Start em3d_ion_worker.jl at `nt` threads, its output going to a file; once per suite."
-function start_ion3d_worker(nt)
-    get!(ION3D_WORKERS, nt) do
-        worker = joinpath(@__DIR__, "em3d_ion_worker.jl")
-        out = tempname()
-        cmd = `$(Base.julia_cmd()) --startup-file=no --threads=$nt --project=$(dirname(Base.active_project())) $worker`
-        (run(pipeline(cmd; stdout = out, stderr = stderr); wait = false), out)
-    end
-end
-const ION3D_WORKERS = Dict{Int,Tuple{Base.Process,String}}()
-
-"The lines of the ionization worker at `nt` threads that start with `prefix`, after it finished."
-function ion3d_worker_lines(nt, prefix)
-    proc, out = start_ion3d_worker(nt)
-    wait(proc)
-    success(proc) || error("em3d_ion_worker.jl with $nt threads failed: $proc")
-    return filter(startswith(prefix), split(read(out, String), '\n'))
-end
-
 haskey(ENV, "PM_NO_ION3D_WORKER") || foreach(start_ion3d_worker, (1, 4))   # beside this file's in-process runs
-
-"The alive electrons of a 3D state's ionization, on the host."
-function born_3d(st)
-    e = ionization_electrons(st)
-    alive = Array(e.status) .== ParticleMeshCore.ALIVE
-    pick(a) = Array(a)[alive]
-    return (; n = count(alive), cell = map(pick, e.cell), offset = map(pick, e.offset), u = map(pick, e.u), w = pick(e.w))
-end
 
 "True when the value and every partial of every entry is zero."
 all_zero_3d(a) = all(x -> absmax(x) == 0, a)
@@ -303,42 +277,6 @@ end
 
 # --- T-1043 ---------------------------------------------------------------------------------
 
-"""
-    ion_gauss_3d(st, p, k) -> (; res, bare, scale, escale, ions)
-
-Gauss's law of a 3D state with ionization after step `k`, per interior node: `res`, the residual
-`Σ_d D⁻_d E_d − ρ` with ρ the charge of every particle ([`window_charge!`](@ref): the species and the
-born electrons) plus the dopant ions' ([`ionization_charge!`](@ref)), less the neutralizing
-background (the mean of a periodic box; a window's `window_background!`; none in a box with an
-open axis, whose runs here start without charge); `bare`, the same without the ions; `scale`,
-`(n₁ + n₂ + n₃)·max|ρ|` of the particles; `escale`, the divergence's own roundoff scale
-`(Σ_d 2/Δ_d)·max|E|`; `ions`, the largest ion charge density.
-"""
-function ion_gauss_3d(st, p, k)
-    T = eltype(st.ρ)
-    grid = st.grid
-    be = get_backend(st.ρ)
-    ρ, ρi, ρ0 = field(be, T, grid), field(be, T, grid), field(be, T, grid)
-    window_charge!(ρ, st)
-    ionization_charge!(ρi, st)
-    window = st.aux.window
-    window === nothing || window_background!(ρ0, st, p, window_shifts(st, k))
-    ρ, ρi, ρ0 = Array(ρ), Array(ρi), Array(ρ0)
-    g, n, h = guards(grid), ncells(grid), cellsize(grid)
-    I = CartesianIndices(ntuple(d -> (g + 1):(g + n[d]), 3))
-    periodic = window === nothing && st.numerics.absorber === nothing
-    mean(a) = periodic ? sum(a[I]) / prod(n) : zero(T)
-    m, mi = mean(ρ), mean(ρi)
-    E = map(Array, (st.fields.Ex, st.fields.Ey, st.fields.Ez))
-    e = ntuple(d -> CartesianIndex(ntuple(a -> Int(a == d), 3)), 3)
-    div(j) = sum(d -> (E[d][j] - E[d][j - e[d]]) / h[d], 1:3)
-    res = [absmax(div(j) - (ρ[j] - m + ρi[j] - mi - ρ0[j])) for j in I]
-    bare = [absmax(div(j) - (ρ[j] - m - ρ0[j])) for j in I]
-    hv = map(value_of, h)
-    escale = sum(d -> 2 / hv[d], 1:3) * maximum(a -> maximum(absmax, a[I]), E)
-    return (; res, bare, scale = sum(n) * maximum(absmax, ρ[I]), escale, ions = maximum(absmax, ρi[I]))
-end
-
 # Gauss's law with ionization in the 3D box, T-773 and T-785 in 3D. An electron is born on top of
 # the immobile ion it leaves, and from then on its current is the charge-conserving one, so
 # Σ D⁻E − ρ stays at roundoff when ρ counts the ions' charge:
@@ -579,25 +517,6 @@ end
 end
 
 # --- T-1046 ---------------------------------------------------------------------------------
-
-"The parameters of T-1046: the laser's a₀, the dopant's density, the level's prefactor and the section's start (c/ω₀)."
-const ION3_X0 = (1.0, 0.005, 0.2, 28.0)
-const ION3_NAMES = ("a0", "density", "prefactor", "start")
-
-"""
-The born charge (the electrons' summed weight) and their kinetic energy Σ w·(γ − 1) after 90 steps
-of `ion_window_3d_small` at `x = (a0, density, prefactor, start)`, when no electron has left the window.
-"""
-function ion3d_objectives(x, mode = Reference(); be = CPU(), gather = nothing)
-    T = promote_type(map(typeof, x)...)
-    prob = ion_window_3d_small(T; nsteps = 90, a0 = x[1], density = x[2], prefactor = x[3], start = x[4])
-    st = ion_state_3d(prob; mode, be, gather)
-    run!(st, params(prob), prob.nsteps)
-    el = born_3d(st)
-    ionization_lost(st) == 0 || error("a birth found no slot")
-    γ = sqrt.(1 .+ el.u[1] .^ 2 .+ el.u[2] .^ 2 .+ el.u[3] .^ 2)
-    return [sum(el.w), sum(el.w .* (γ .- 1))]
-end
 
 # The gradient through the 3D ionization (A7): ForwardDiff of both objectives in a₀ (through the
 # rates in the field at each atom) and the prefactor (through the rates), Float64 Reference, one
