@@ -7,8 +7,8 @@
 #
 # It runs in a fresh worktree of this branch and takes the WP-050 spike's harness from its branch
 # (chain_rule.jl and scripts/enzyme/spike: the patch for Active scalar kernel arguments, KA draft
-# #979, and the unrolled gather and atomic adds), and adds Enzyme to the electromagnetic module's
-# test environment, as that branch does. The worktree is left dirty on purpose; each run's
+# #979, and the unrolled gather and atomic adds), and adds Enzyme and KernelAbstractions 0.10.8 (its
+# Enzyme extension) to the electromagnetic module's test environment, as that branch does. The worktree is left dirty on purpose; each run's
 # manifest says so.
 #
 #     scripts/enzyme/run_rules_bench.sh [spike branch, default claude/project-thread-4mzyoi]
@@ -23,7 +23,7 @@ git checkout FETCH_HEAD -- scripts/enzyme/spike scripts/enzyme/chain_rule.jl scr
 # the unrolled gather and atomic adds as patches: the spike's tip moved them into its engine
 # (21d1cc5), which this branch does not have; 8443716 has the same code as patches
 git checkout 8443716d -- scripts/enzyme/spike/unroll/gather.jl scripts/enzyme/spike/unroll/atomic.jl
-julia +1.13 --startup=no --project=lib/ParticleMeshElectromagnetic/test -e 'using Pkg; Pkg.add(name = "Enzyme", version = "0.13.221")' > "$out/setup.log" 2>&1
+julia +1.13 --startup=no --project=lib/ParticleMeshElectromagnetic/test -e 'using Pkg; Pkg.add([PackageSpec(name = "Enzyme", version = "0.13.221"), PackageSpec(name = "KernelAbstractions", version = "0.10.8")])' > "$out/setup.log" 2>&1
 julia +1.13 --startup=no --project -e 'using Pkg; Pkg.instantiate(workspace = true)' >> "$out/setup.log" 2>&1
 nvidia-smi --query-gpu=name,driver_version --format=csv,noheader > "$out/gpu.txt" 2>&1
 J=(julia +1.13 --startup=no --project=lib/ParticleMeshElectromagnetic/test)
