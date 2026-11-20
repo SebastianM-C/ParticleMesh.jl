@@ -27,33 +27,34 @@ end
     transpose_case(T, N, mode, shape, st; bins, be, maxstep, workgroupsize) -> NamedTuple
 
 One step of the flux tests' species at `N` (400 particles, faces and seams crossed): `deposit_flux!`
-in `mode` (by `bins` where it sorts) into fields of zeros, guards folded, and `gather_flux!` of three
+in `mode` (by `bins` where it sorts; at ρ's stagger `dep_st`, which the control sets to a wrong one) into fields of zeros, guards folded, and `gather_flux!` of three
 fields `E` with filled guards into outputs that hold a sentinel, every engine call on `be`. Also the
 quantity each component deposits per particle, `q·w` in space and the module's quantity out of it,
 and the factor `Δx_d/dt` (in space) or 1 (out of it) that `gather_flux!` puts on the weights.
 """
 function transpose_case(::Type{T}, N, mode, shape, st; bins = CellBins(), be = CPU(), maxstep = 9 / 10, workgroupsize = nothing,
-                        seed = 3) where {T}
+                        seed = 3, dep_st = st) where {T}
     dt = basetype(T)(1 // 4)
+    g = max(maximum(flux_guard_width(shape, st)), maximum(flux_guard_width(shape, dep_st)))
     if N == 1
-        grid = PeriodicGrid(10, basetype(T)(1 // 2), flux_guard_width(shape, st))
+        grid = PeriodicGrid(10, basetype(T)(1 // 2), g)
         s = moved_species(T, grid, 400; seed, maxstep, dead = (40, 41, 300))
         ws = Workspace(s, grid; bins)
         effective_mode(mode, T) isa Reference && on(be, sort_by_cell!, s, grid, ws)
         J = fields3(T, grid)
-        on(be, deposit_flux!, mode, J..., s, shape, st, grid, ws; dt = T(dt), quantity_y = ChargeUy(), quantity_z = ChargeUz())
+        on(be, deposit_flux!, mode, J..., s, shape, dep_st, grid, ws; dt = T(dt), quantity_y = ChargeUy(), quantity_z = ChargeUz())
         quantities = (ChargeWeight(), ChargeUy(), ChargeUz())
         space = (true, false, false)
     elseif N == 2
-        grid = grid2(T, flux_g2(shape, st))
+        grid = grid2(T, g)
         s = flux_species_2d(T, grid, 400; seed, maxstep)
-        J = flux2d(mode, s, shape, st, grid; dt, be, bins)[1:3]
+        J = flux2d(mode, s, shape, dep_st, grid; dt, be, bins)[1:3]
         quantities = (ChargeWeight(), ChargeWeight(), QZ2)
         space = (true, true, false)
     else
-        grid = flux_grid3(T, shape, st)
+        grid = grid3(T, g; n = N3F)
         s = flux_species_3d(T, grid, 400; seed, maxstep)
-        J = flux3d(mode, s, shape, st, grid; dt, be, bins)[1:3]
+        J = flux3d(mode, s, shape, dep_st, grid; dt, be, bins)[1:3]
         quantities = (ChargeWeight(), ChargeWeight(), ChargeWeight())
         space = (true, true, true)
     end
@@ -68,6 +69,19 @@ end
 
 alive_slots(s) = [i for i in 1:capacity(s) if s.status[i] == ParticleMeshCore.ALIVE]
 
+"Per component `d`, `(⟨J_d, E_d⟩ over the interior, Σ_i quantity_d(i)·o_d[i] over the alive particles, scale)`, the scale as in `transpose_mismatch`."
+function transpose_sums(c)
+    (; grid, s, J, E, o, quantities, factor, N, P) = c
+    alive = alive_slots(s)
+    I = interior_indices(grid)
+    return ntuple(3) do d
+        lhs = sum(J[d][k] * E[d][k] for k in I)
+        rhs = sum(quantities[d](s, i) * o[d][i] for i in alive)
+        scale = maximum(absmax, E[d]) * sum(i -> absmax(quantities[d](s, i)), alive) * factor[d] * (P + 2)^N
+        (lhs, rhs, scale)
+    end
+end
+
 """
     transpose_mismatch(c) -> NTuple{3,Float64}
 
@@ -76,17 +90,7 @@ in units of `eps(T)` times the scale `max|E_d| · Σ_i |quantity_d(i)| · factor
 bounds the sum of the absolute terms of either side (a particle's weights on a component are at
 most one per node, on at most `(P + 2)^N` nodes).
 """
-function transpose_mismatch(c)
-    (; grid, s, J, E, o, quantities, factor, N, P, T) = c
-    alive = alive_slots(s)
-    I = interior_indices(grid)
-    return ntuple(3) do d
-        lhs = sum(J[d][k] * E[d][k] for k in I)
-        rhs = sum(quantities[d](s, i) * o[d][i] for i in alive)
-        scale = maximum(absmax, E[d]) * sum(i -> absmax(quantities[d](s, i)), alive) * factor[d] * (P + 2)^N
-        absdiff(lhs, rhs) / (base_eps(T) * scale)
-    end
-end
+transpose_mismatch(c) = map(((l, r, sc),) -> absdiff(l, r) / (base_eps(c.T) * sc), transpose_sums(c))
 
 function body_T1000(be)
     C = tolC("T-1000")
@@ -98,8 +102,16 @@ function body_T1000(be)
             # Dead slots keep what they held.
             @test all(i -> all(o -> same_bits([o[i]], [gval(T, 7.0)]), c.o), (i for i in 1:capacity(c.s) if c.s.status[i] != ParticleMeshCore.ALIVE))
         end
+        # Control, as T-980's: the deposit at another stagger of axis 1 is not the gather's transpose.
+        # Measured against the sum itself, since the roundoff scale is loose and Float32's eps large.
+        lhs, rhs, _ = transpose_sums(transpose_case(T, N, Reference(), shape, st; be, dep_st = flipped_axis1(st)))[1]
+        @test absdiff(lhs, rhs) > absmax(lhs) / 100
     end
 end
+
+"`st` with axis 1's stagger exchanged (Node ↔ Center): a wrong partner for T-1000's control."
+flipped_axis1(st::ParticleMeshCore.Stagger) = st isa Node ? Center() : Node()
+flipped_axis1(st::Tuple) = (flipped_axis1(st[1]), Base.tail(st)...)
 
 @testset "T-1000 gather_flux! is the transpose of deposit_flux! in both modes, N = 1, 2, 3 [A3, A7, A8, WP-071]" begin
     body_T1000(CPU())

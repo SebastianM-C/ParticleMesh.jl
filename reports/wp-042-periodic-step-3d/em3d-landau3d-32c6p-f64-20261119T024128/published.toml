@@ -1,0 +1,42 @@
+branch = "runs/wp042-landau3d"
+commit = "309e4cd2d7e0024e5ba0dfb6cd95eb15ace7d5a1"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/landau3d.json"
+bytes = 64675
+sha256 = "1ff31324010bca5bbd66a901b81408f24a58e51ed147ee457dfa6100a2cb3ca5"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/landau3d.png"
+bytes = 212484
+sha256 = "be626e7da7a43abf71257dfa8a4b4246cd58dfa68bb73c04e51ca7b5abaf6948"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/manifest.toml"
+bytes = 7233
+sha256 = "84881f584084cba4d68f11dc0eb24307a3152cd92430d06fcdfe47d6ff9e0a0e"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/observables.json"
+bytes = 2666
+sha256 = "127631636e52ab202fb495e45c8827e3e98227ce51e453056b147dc1e918fa16"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/seed-20261031/series.json"
+bytes = 163121
+sha256 = "bcfc14110c213e5c75e3f22f4ff504234b3e80a890e60563bf428b398f30d099"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/seed-20262031/series.json"
+bytes = 163268
+sha256 = "91cf6b9099b4aa4764c352529707371af8516d8050c6c4f0587d7ce2c16ca6d9"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/seed-20263031/series.json"
+bytes = 163422
+sha256 = "b972e0b06d5d2ebfa3cbb2213f43a8e0bf33401a4db050565878fa29347422f8"
+
+[[files]]
+path = "scripts/runs/em3d-landau3d-32c6p-f64-20261119T024128/seed-20264031/series.json"
+bytes = 163251
+sha256 = "2fc8b9d7b93302fba364ab8c6dd6a100e969e5924d215c89c7f722af24c4ea09"
