@@ -1238,6 +1238,7 @@ status = "proposed; T-960's C"
 quantity = "a 3D run with the compensated gather invariant along z or y (a quarter turn about x) against the 2D run with it, after initialize! and after every step: every component on every line of the invariant axis; T-1040's beams in a field with a dopant (16 × 12 cells, periodic, 20 steps) and its window plasma with a doped section (64 steps), Reference mode"
 scale = "as T-1040"
 C = 32
+measured = { Float32 = 0.544, Float64 = 0.544, "Dual{Float32,3}" = 0.544 }
 status = "proposed; T-1040's C"
 
 ["T-1052"]
