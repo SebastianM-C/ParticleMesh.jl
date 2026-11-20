@@ -165,8 +165,8 @@ function open_plasma_3d(::Type{T}; boundaries = (:periodic, :open, :open), cells
 end
 
 "The initialized 3D state of `prob` with the `absorber` on its open axes, in `mode`, with the `Esirkepov()` current."
-function open_state_3d(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU(), shape = Quadratic)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, shape, current = Esirkepov(), absorber); backend = be)
+function open_state_3d(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU(), shape = Quadratic, solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, shape, current = Esirkepov(), absorber, solver); backend = be)
     initialize!(st, prob)
     return st
 end
@@ -223,15 +223,17 @@ function antenna3d_problem(::Type{T}; ncx = 12, nct = 6, length = (60, 24, 24), 
 end
 
 """
-    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, solver = Yee()) -> (; st, prob, A, ip, shots)
+    antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, solver = Yee(),
+                  antenna_solver = solver) -> (; st, prob, A, ip, shots)
 
 [`antenna_run`](@ref) in 3D: `A[q]` the discrete-time Fourier transforms at ω = 1 of Ey and Ez on
 the probe plane nearest to `probes[q]` (interior rows and layers), `shots` the fields after the
 steps in `snaps`.
 """
 function antenna3d_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), absorber = nothing, workgroupsize = nothing,
-                       solver = Yee())
+                       solver = Yee(), antenna_solver = solver)
     st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber, solver); backend = be)
+    st = replant_antennas(st, prob, antenna_solver)
     initialize!(st, prob)
     p = params(prob)
     (; grid, fields) = st

@@ -47,8 +47,8 @@ function window_lwfa(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (64, 16)
 end
 
 "The initialized state of a window problem."
-function window_state(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber); backend = be)
+function window_state(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, be = CPU(), solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber, solver); backend = be)
     initialize!(st, prob)
     return st
 end

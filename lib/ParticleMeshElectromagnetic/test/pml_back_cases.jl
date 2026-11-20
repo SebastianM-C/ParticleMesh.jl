@@ -4,8 +4,8 @@
 using ParticleMeshElectromagnetic: pml_profile, pml_sigma_max
 
 "A window state with `back` as the back edge's absorber (and `absorber` on an open y axis)."
-function back_state(prob; back = nothing, mode = Reference(), workgroupsize = nothing, absorber = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom = 1 / 4, back_absorber = back, absorber))
+function back_state(prob; back = nothing, mode = Reference(), workgroupsize = nothing, absorber = nothing, solver = Yee(), be = CPU())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom = 1 / 4, back_absorber = back, absorber, solver); backend = be)
     initialize!(st, prob)
     return st
 end
@@ -18,7 +18,7 @@ const BACK_CELLS = (72, 16)
 back_lwfa(::Type{T}; kw...) where {T} = window_lwfa(T; position = BACK_POSITION, cells = BACK_CELLS, kw...)
 
 """
-    back_comparison(back; nsteps = 200, extra = 100, position, cells) -> (; shifts, before, far, near, history)
+    back_comparison(back; nsteps = 200, extra = 100, position, cells, solver = Yee()) -> (; shifts, before, far, near, history)
 
 T-472's vacuum pulse in the window with `back` on its back edge, against two references. Its
 static twin with the same back edge gives `before` (every column, before the window moves) and
@@ -28,17 +28,17 @@ away for its reflection to come back within the run, gives `near`: the largest d
 eight columns behind the layer (cells + 1 … cells + 8), over the whole run. All three are relative
 to the reference's largest field at that step; `history` is `near` per step.
 """
-function back_comparison(back; nsteps = 200, extra = 100, position = BACK_POSITION, cells = BACK_CELLS)
+function back_comparison(back; nsteps = 200, extra = 100, position = BACK_POSITION, cells = BACK_CELLS, solver = Yee())
     prob = window_lwfa(Float64; plasma = false, nsteps, position, cells)
     n = prob.cells
     h = prob.length[1] / n[1]
-    win = back_state(prob; back)
+    win = back_state(prob; back, solver)
     shifts = window_shifts(win, prob.nsteps)
     twin = static_twin(prob, n[1] + shifts + 8)
-    ref = back_state(twin; back)
+    ref = back_state(twin; back, solver)
     far = window_lwfa(Float64; plasma = false, nsteps, position = position + extra * h,
                       cells = (n[1] + shifts + 8 + extra, n[2]), start = Inf)
-    free = back_state(far)
+    free = back_state(far; solver)
     p, pr, pf = params(prob), params(twin), params(far)      # each state its own problem's laser
     g = guards(win.grid)
     J = (g + 1):(g + n[2])

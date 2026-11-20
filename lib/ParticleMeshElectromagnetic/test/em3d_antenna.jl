@@ -63,15 +63,15 @@ end
 host(v) = value_of.(real.(v)) .+ im .* value_of.(imag.(v))
 
 """
-    angular_error_3d(r; component = :Ey, against = component) -> Vector of (; x, err)
+    angular_error_3d(r; component = :Ey, against = component, kx = yee_kx_3d) -> Vector of (; x, err)
 
 For every probe plane past the antenna: the L² norm of the measured ω = 1 transform of
 `component` minus the Yee angular-spectrum propagation of the incident transform of `component`
 from the plane, relative to the propagated incident transform of `against` (`yee_kx_3d`,
 evanescent modes included), in Float64. With `against ≠ component` it measures a component the
-antenna should not launch.
+antenna should not launch. `kx` is another scheme's relation of `yee_kx_3d`'s signature (`m4_kx`).
 """
-function angular_error_3d(r; component = :Ey, against = component)
+function angular_error_3d(r; component = :Ey, against = component, kx = yee_kx_3d)
     a = run_antenna_3d(r)
     h = Float64.(value_of.(a.dx))
     dt = Float64(value_of(r.prob.dt))
@@ -83,7 +83,7 @@ function angular_error_3d(r; component = :Ey, against = component)
     for (q, i) in enumerate(r.ip)
         x = (i - 1) * h[1]
         x < xa - h[1] / 2 && continue
-        P = [cis(yee_kx_3d(1.0, ky[p], kz[s], h[1], h[2], h[3], dt) * (x - xa)) for p in eachindex(ky), s in eachindex(kz)]
+        P = [cis(kx(1.0, ky[p], kz[s], h[1], h[2], h[3], dt) * (x - xa)) for p in eachindex(ky), s in eachindex(kz)]
         pred, ref = idft2(S .* P), idft2(Sref .* P)
         meas = host(getfield(r.A[q], component))
         push!(out, (; x, err = sqrt(sum(abs2, meas .- pred) / sum(abs2, ref))))
