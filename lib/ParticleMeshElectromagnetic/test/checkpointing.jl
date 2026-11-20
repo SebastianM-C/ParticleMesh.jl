@@ -89,7 +89,11 @@ const CKPT_CASES = (
     sb = CKPT_EXT.EvolvedStorage{StepBody{typeof(st),Nothing},false}(2)
     @test_throws r"restored before it was stored" Checkpointing.load!(StepBody(st, nothing), sb, 1)
     @test CKPT_EXT.body_states(StepBody(st, nothing)) === (st,)
-    @test CKPT_EXT.body_states((a = 1, b = (st, Ref(st)))) === (st, st)
+    @test CKPT_EXT.body_states((a = 1, b = (st, Ref(st)))) === (st,)
+    # a state in an array or nested deep is found too, each state once
+    st2 = EMState(plasma_step_2d(Float64), EMNumerics())
+    @test CKPT_EXT.body_states((x = [st2], y = (a = (b = (c = (d = Ref(st),),),),), z = Any[1.0, st2])) === (st2, st)
+    @test_throws r"more than 32 levels" CKPT_EXT.body_states(foldl((x, _) -> (x,), 1:40; init = st))
 end
 
 # --- T-1113 -------------------------------------------------------------------------------------

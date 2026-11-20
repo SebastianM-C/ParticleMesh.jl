@@ -34,23 +34,40 @@ Base.length(s::EvolvedStorage) = length(s.slots)
 
 ParticleMeshElectromagnetic.checkpoint_storage(; host::Bool = false) = EvolvedStorage{FT,host} where {FT}
 
-# The paths (field indices) from a value of type `T` to the `EMState`s it holds, through fields of
-# structs and tuples, a few levels deep (a closure holds its captured variables as fields; a
-# `Ref` its value). Arrays, modules and types are not entered, nor a state's own fields.
-const STATE_DEPTH = 4
-state_paths(::Type{<:EMState}, path, depth) = (path,)
-function state_paths(::Type{T}, path, depth) where {T}
-    (depth >= STATE_DEPTH || !isconcretetype(T) || !isstructtype(T) || T <: AbstractArray || T <: Module || T <: Type ||
-     T <: AbstractString || T <: Symbol) && return ()
-    return Tuple(Iterators.flatten(state_paths(fieldtype(T, i), (path..., i), depth + 1) for i in 1:fieldcount(T)))
+# The `EMState`s a loop body holds, found by walking its fields (a closure holds its captured
+# variables as fields, a `Ref` or `Core.Box` its value), the entries of the arrays whose element
+# type can be a state, and tuples, depth first in field order, each state once. A state's own
+# fields are not entered, nor arrays of other element types (the device arrays), modules or types.
+# A walk deeper than `STATE_DEPTH` levels is refused rather than cut short, so that no state the
+# body holds goes unsaved.
+const STATE_DEPTH = 32
+function find_states!(out, seen, x, depth)
+    if x isa EMState
+        any(y -> y === x, out) || push!(out, x)
+        return out
+    end
+    (isbits(x) || x isa Union{Module,Type,AbstractString,Symbol}) && return out
+    if ismutable(x)
+        x in seen && return out
+        push!(seen, x)
+    end
+    depth >= STATE_DEPTH &&
+        throw(ArgumentError("checkpoint_storage: the loop body nests its values more than $STATE_DEPTH levels deep, below which it could hold an EMState that would not be saved"))
+    if x isa AbstractArray
+        typeintersect(eltype(x), EMState) === Union{} && return out
+        for k in eachindex(x)
+            isassigned(x, k) && find_states!(out, seen, x[k], depth + 1)
+        end
+        return out
+    end
+    for k in 1:nfields(x)
+        isdefined(x, k) && find_states!(out, seen, getfield(x, k), depth + 1)
+    end
+    return out
 end
 
-"The `EMState`s that `body` holds, in field order (a tuple; empty when it holds none)."
-@generated function body_states(body)
-    paths = state_paths(body, (), 0)
-    gets = [foldl((ex, i) -> :(getfield($ex, $i)), p; init = :body) for p in paths]
-    return :(($(gets...),))
-end
+"The `EMState`s that `body` holds, each once, in the order they are first reached (a tuple; empty when it holds none)."
+body_states(body) = Tuple(find_states!(EMState[], Base.IdSet{Any}(), body, 0))
 
 function states_of(body)
     sts = body_states(body)
