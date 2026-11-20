@@ -1,0 +1,5 @@
+224x128-fast exit 0 158s peak_MiB 11017
+224x128-reference exit 0 178s peak_MiB 13353
+448x256-reference exit 0 179s peak_MiB 22057
+448x256-fast exit 0 159s peak_MiB 24265
+done

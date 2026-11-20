@@ -1,0 +1,35 @@
+[seconds]
+first_reverse_call = 120.730117223
+
+[[rows]]
+dual4 = 0.000733843
+primal = 7.2198e-5
+dual1 = 0.007334209
+steps = 1
+reverse = 0.001304543
+[[rows]]
+dual4 = 0.003027538
+primal = 0.000278372
+dual1 = 0.000568446
+steps = 4
+reverse = 0.003584542
+[[rows]]
+dual4 = 0.013087448
+primal = 0.001016292
+dual1 = 0.002273196
+steps = 16
+reverse = 0.013690821
+[[rows]]
+dual4 = 0.054834329
+primal = 0.00475563
+dual1 = 0.009241716
+steps = 64
+reverse = 0.05435897
+
+[case]
+eltype = "Float32"
+ppc = [2, 2]
+species = 1
+particles = 114688
+mode = "Fast()"
+cells = [224, 128]

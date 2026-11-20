@@ -1,0 +1,21 @@
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+T = Float32, cells (448, 256), ppc (2, 2), 458752 particles, backend CUDABackend(false, false, false); first reverse call (compiles) 141.0 s
+steps    1: primal 0.0002 s, Dual{1} 0.0004 s, Dual{4} 0.0035 s, reverse 0.0016 s (7.0× primal, 1.65 ms per step)
+steps    4: primal 0.0009 s, Dual{1} 0.0014 s, Dual{4} 0.0146 s, reverse 0.0056 s (6.4× primal, 1.40 ms per step)
+steps   16: primal 0.0033 s, Dual{1} 0.0057 s, Dual{4} 0.0648 s, reverse 0.0205 s (6.2× primal, 1.28 ms per step)
+steps   64: primal 0.0133 s, Dual{1} 0.0233 s, Dual{4} 0.2736 s, reverse 0.0941 s (7.1× primal, 1.47 ms per step)
+wrote scripts/runs/enzyme-cost-Float32-448x256-reference-20261120T033942
