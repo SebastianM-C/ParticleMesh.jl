@@ -48,6 +48,7 @@ const A0E = parse(Float64, opt("a0E", "1.9"))
 const THETA = haskey(OPTS, "theta") ? parse.(Float64, split(OPTS["theta"], ",")) : [TCASE.x0[i] for i in TCASE.free]
 const SEED = parse(Int, opt("seed", "7"))
 struct TrapTag end
+const FREED = Set{String}()
 const DualF{N} = ForwardDiff.Dual{TrapTag,F,N}
 
 stamp() = Dates.format(now(UTC), "HH:MM:SS")
@@ -348,7 +349,14 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
         k = min(C, nsteps - first + 1)
         sc = work
         for (path, a) in all_arrays(work)
-            copyto!(a, saved[i][path])
+            haskey(saved[i], path) || continue
+            try
+                copyto!(a, saved[i][path])
+            catch err
+                # a temporary the step frees and allocates again (its state field then holds a freed array)
+                (err isa ArgumentError && occursin("freed", sprint(showerror, err))) || rethrow()
+                path in FREED || (push!(FREED, path); println("  checkpoint restore skips the freed array $path"))
+            end
         end
         t = @elapsed if dst === nothing
             r = reverse_J(sc, p, first, k; fade, rise, seeds = F.(seeds))
@@ -364,7 +372,9 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
         i % 4 == 0 && (reclaim(); verbose && mark(@sprintf("segment %d (steps %d to %d) %.1f s", i, first, first + k - 1, t)))
     end
     verbose && mark(@sprintf("reverse of %d segments %.1f s", length(seg_seconds), t_rev))
-    t_tan = @elapsed (std0, pd, _ = make_start(dual_theta(θ, 4, 0); ppl, ny, extend, energy))
+    t0 = time()
+    std0, pd, _ = make_start(dual_theta(θ, 4, 0); ppl, ny, extend, energy)
+    t_tan = time() - t0
     g_state = [s0area * (array_dot(dst, std0, j) + scalar_dot(dst, std0, j)) for j in 1:4]
     g_params = [s0area * sum(scalar_dot(dp, pd, j) for dp in dps) for j in 1:4]
     dst = nothing; reclaim()
@@ -409,7 +419,9 @@ end
 #     trapped.jl opt <dir> [trapped2d_opt.jl's opt keys] C=<checkpoint interval>
 function reverse_point(free; ppl, ny, energy, read = (;), objective = "any", kappa = 0.05, extend = 0, C = 100, kw...)
     fade = get(read, :fade, TCASE.fade); rise = get(read, :rise, TCASE.rise)
-    t = @elapsed r = reverse_run(collect(Float64, free); C, extend, fade, rise, objective, kappa, ppl, ny, energy, verbose = false)
+    t0 = time()
+    r = reverse_run(collect(Float64, free); C, extend, fade, rise, objective, kappa, ppl, ny, energy, verbose = false)
+    t = time() - t0
     out = Dict{String,Any}(string(k) => v for (k, v) in pairs(r.summary))
     x = trapped_point(collect(Float64, free))
     out["objective"] = objective

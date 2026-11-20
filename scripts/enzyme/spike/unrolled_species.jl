@@ -156,9 +156,32 @@ using ParticleMeshElectromagnetic
             launcher(settle_kernel!, be, wgs)(a, fr.flags; ndrange = capacity(a))
             launcher(unmark_kernel!, be, wgs)(fr.flags; ndrange = capacity(a))
             launcher(bump_count_kernel!, be, wgs)(e.count, Int32(capacity(a)), Int32(capacity(e)); ndrange = 1)
-            sum!(fr.lost, fr.flags; init = false)
+            accumulate_flags!(fr.lost, fr.flags, length(fr.flags))
         end
         return nothing
+    end
+    # `sum!(acc, flags; init = false)` (window.jl's refill, the ionization's births) as one work item
+    # adding in index order: Enzyme's reverse pass of the `sum!` over a view frees the window's
+    # `flags` (the next step's refill then reads a freed array). Integer counts, the same values.
+    @kernel function accumulate_flags_kernel!(acc, @Const(flags), n::Int32)
+        t = acc[1]
+        for i in Int32(1):n
+            @inbounds t += flags[i]
+        end
+        @inbounds acc[1] = t
+    end
+    accumulate_flags!(acc, flags, n) = (accumulate_flags_kernel!(get_backend(acc))(acc, flags, Int32(n); ndrange = 1); acc)
+    function load_window_columns!(s, grid, load, lost, col0, ncol, origin; fast = nothing, flags = nothing, workgroupsize = nothing)
+        n2 = ncells(grid)[2]
+        nnew = ncol * n2 * prod(load.ppc)
+        be = get_backend(s)
+        flags === nothing && (flags = KernelAbstractions.zeros(be, Int32, nnew))
+        launcher(refill_kernel!, be, workgroupsize)(s, flags, s.count, RampedCosine(), load.p, cellsize(grid), load.ppc, Int32(col0),
+                                                    Int32(n2), Int32(origin), load.vdrift, load.vth, load.key,
+                                                    Int32(capacity(s)); ndrange = nnew)
+        launcher(refill_count_kernel!, be, workgroupsize)(s.count, lost, Int32(nnew), Int32(capacity(s)); ndrange = 1)
+        fast === nothing || accumulate_flags!(fast, flags, nnew)
+        return s
     end
     # `ramp_factor` (window.jl): Enzyme has no reverse pass of the device's `sinpi` (`__nv_sinpif`);
     # the same value through `_sinpi`, whose reverse rule (π·cospi) is below
@@ -191,4 +214,84 @@ function EnzymeRules.forward(config::EnzymeRules.FwdConfig, ::Const{typeof(Parti
     x isa Const && return EnzymeRules.needs_primal(config) ? y : nothing
     dy = x.dval * oftype(x.val, π) * _dcospi(x.val)
     return EnzymeRules.needs_primal(config) ? Duplicated(y, dy) : dy
+end
+
+# The antennas' sources (antenna.jl, N = 2) with a hand-written reverse rule: Enzyme cannot type
+# three values of the B source kernel's tape (the laser's profile), so the device array for it
+# fails. A source adds to the fields, so the fields' adjoints pass through; the laser's adjoint is
+# Σ_rows ⟨the rows' field adjoints, ∂source/∂laser⟩, from the same source expression with the
+# laser's ten float fields as duals (`laser_adjoint_kernel!`). The step size and the time get no
+# adjoint (they follow from Δt alone).
+import ForwardDiff
+struct AntTag end
+const ANT_FIELDS = (:a0, :waist, :duration, :delay, :focus, :chirp, :polarization, :phase, :position, :center)
+function dual_laser(l::ParticleMeshElectromagnetic.GaussianLaser{T,P,E,C}) where {T,P,E,C}
+    (P <: Real && C <: Real) || error("the antenna rule handles a scalar position and center (N = 2)")
+    K = length(ANT_FIELDS)
+    D = ForwardDiff.Dual{AntTag,T,K}
+    v = ntuple(i -> D(getfield(l, ANT_FIELDS[i]), ForwardDiff.Partials(ntuple(j -> T(i == j), K))), K)
+    return ParticleMeshElectromagnetic.GaussianLaser{D,D,E,D}(v[1:8]..., v[9], v[10], l.envelope)
+end
+@eval ParticleMeshElectromagnetic begin
+    @kernel function laser_adjoint_kernel!(out, @Const(dA), @Const(dB), a, ld, c, t, ::Val{S}) where {S}
+        j = Int32(@index(Global, Linear))
+        T = typeof(c)
+        l = ld
+        if S === :b
+            i = a.g + a.ia - Int32(1)
+            s = t - l.delay
+            ξ = a.xa - l.focus
+            sθ, cθ = sincos(l.polarization)
+            ec, _, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
+            en, _, _ = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
+            # Bz[i, j] += c·ec·cθ (dA = the adjoint of Bz), By[i, j] −= c·en·sθ (dB of By)
+            @inbounds g = dA[i, j] * (c * (ec * cθ)) - dB[i, j] * (c * (en * sθ))
+        else
+            i = a.g + a.ia
+            s = t + a.ht - l.delay
+            ξ = a.xa - a.hx - l.focus
+            sθ, cθ = sincos(l.polarization)
+            _, bp, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
+            _, _, bs = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
+            # Ey[i, j] += c·bp·cθ (dA of Ey), Ez[i, j] += c·bs·sθ (dB of Ez)
+            @inbounds g = dA[i, j] * (c * (bp * cθ)) + dB[i, j] * (c * (bs * sθ))
+        end
+        for k in 1:size(out, 2)
+            @inbounds out[j, k] = $(ForwardDiff.partials)(g, k)
+        end
+    end
+end
+_shadow(x::Enzyme.Duplicated) = x.dval
+_shadow(x::Enzyme.MixedDuplicated) = x.dval[]
+_shadow(::Enzyme.Const) = nothing
+function antenna_adjoint(a::ParticleMeshElectromagnetic.Antenna, fs, c, t, S)
+    PEMm = ParticleMeshElectromagnetic
+    l = a.laser
+    T = typeof(c)
+    dA, dB = S === :b ? (fs.Bz, fs.By) : (fs.Ey, fs.Ez)
+    nrows = size(dA, 2)
+    out = similar(dA, T, nrows, length(ANT_FIELDS))
+    PEMm.laser_adjoint_kernel!(KernelAbstractions.get_backend(dA))(out, dA, dB, a, dual_laser(l), c, t, Val(S); ndrange = nrows)
+    s = vec(sum(Array(out); dims = 1))
+    dl = typeof(l)(s[1:8]..., s[9], s[10], l.envelope)
+    z = zero(a.xa)
+    return PEMm.Antenna(dl, a.ia, z, map(zero, a.dx), a.g, a.n, map(zero, a.len), z, z)
+end
+for (f, S) in ((:b_source!, :b), (:e_source!, :e))
+    @eval begin
+        function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig, func::Const{typeof(ParticleMeshElectromagnetic.$f)}, ::Type{RT},
+                                              a::Annotation{<:ParticleMeshElectromagnetic.Antenna{<:Any,<:Any,2}}, f::Annotation, c::Annotation, t::Annotation,
+                                              wgs::Annotation) where {RT}
+            ParticleMeshElectromagnetic.$f(a.val, f.val, c.val, t.val, wgs.val)
+            return EnzymeRules.AugmentedReturn(nothing, nothing, nothing)
+        end
+        function EnzymeRules.reverse(config::EnzymeRules.RevConfig, func::Const{typeof(ParticleMeshElectromagnetic.$f)}, ::Type{RT}, tape,
+                                     a::Annotation{<:ParticleMeshElectromagnetic.Antenna{<:Any,<:Any,2}}, f::Annotation, c::Annotation, t::Annotation,
+                                     wgs::Annotation) where {RT}
+            fs = _shadow(f)
+            da = (a isa Active && fs !== nothing) ? antenna_adjoint(a.val, fs, c.val, t.val, $(QuoteNode(S))) :
+                 a isa Active ? Enzyme.make_zero(a.val) : nothing
+            return (da, nothing, c isa Active ? zero(c.val) : nothing, t isa Active ? zero(t.val) : nothing, nothing)
+        end
+    end
 end

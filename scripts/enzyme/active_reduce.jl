@@ -28,6 +28,15 @@ const ALL_OVERWRITTEN = get(ENV, "PM_ENZYME_ALL_OVERWRITTEN", "1") == "1"
     end
     _mixed_as_duplicated(func, a) = a
 
+    # what the reverse kernel must take as changed since the forward one: an Active argument is
+    # passed by value and never changes (taken as changed, Enzyme tapes it, and a laser struct's
+    # tape type then holds `Any`, which a device array cannot)
+    function _modified_between(config, args, ::Val{N}) where {N}
+        ow = overwritten(config)
+        rest = ntuple(i -> Main.ALL_OVERWRITTEN ? !(args[i] isa EnzymeCore.Active) : (ow[i + 1] && !(args[i] isa EnzymeCore.Active)), Val(N))
+        return (Main.ALL_OVERWRITTEN || ow[1], false, rest...)
+    end
+
     # the per-thread adjoint buffer of an Active argument, zeroed
     function _adjoint_buffer(be, a::EnzymeCore.Active, n)
         b = allocate(be, Core.Typeof(a.val), n)
@@ -78,7 +87,7 @@ const ALL_OVERWRITTEN = get(ENV, "PM_ENZYME_ALL_OVERWRITTEN", "1") == "1"
         ndrange, workgroupsize, iterspace, dynamic = launch_config(kernel, ndrange, workgroupsize)
         ctx = _enzyme_mkcontext(kernel, ndrange, workgroupsize, iterspace)
         ctxTy = Core.Typeof(ctx)
-        ModifiedBetween = Val(Main.ALL_OVERWRITTEN ? (true, false, ntuple(_ -> true, Val(N))...) : (overwritten(config)[1], false, overwritten(config)[2:end]...))
+        ModifiedBetween = Val(_modified_between(config, args, Val(N)))
         FT = Const{Core.Typeof(f)}
         Mode = split_mode(config, ModifiedBetween)
         TapeType, subtape, aug_kernel = _create_tape_kernel(kernel, Mode, FT, ctxTy, ndrange, iterspace, args2...)
@@ -94,7 +103,7 @@ const ALL_OVERWRITTEN = get(ENV, "PM_ENZYME_ALL_OVERWRITTEN", "1") == "1"
         f = kernel.f
         be = backend(kernel)
         bufs = map(a -> _adjoint_buffer(be, a, nthreads), args2)
-        ModifiedBetween = Val(Main.ALL_OVERWRITTEN ? (true, false, ntuple(_ -> true, Val(N))...) : (overwritten(config)[1], false, overwritten(config)[2:end]...))
+        ModifiedBetween = Val(_modified_between(config, args, Val(N)))
         Mode = split_mode(config, ModifiedBetween)
         rev_kernel = similar(kernel, rev_active)
         rev_kernel(f, Mode, subtape, Val(tape_type), bufs, args2...; ndrange, workgroupsize)
