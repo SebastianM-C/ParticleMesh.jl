@@ -555,7 +555,7 @@ function ionize!(fr::IonizationFrame, st::EMState, p::EMParams, k::Integer)
     be = get_backend(a)
     birth = k % fr.every == 0
     birth && !sorted_every_step(st, e) && sort_by_cell!(e, grid, fr.electrons_ws; workgroupsize = wgs)
-    launcher(ionize_kernel!, be, wgs)(a, e, fr.flags, e.count, fields, p.ionization.levels, numerics.pusher, numerics.shape,
+    launcher(ionize_kernel!, be, wgs)(a, e, fr.flags, e.count, fields, p.ionization.levels, numerics.pusher, read_shape(numerics),
                                       Int32(guards(grid)), dt, -e.q / e.m * dt / 4, birth, Int32(capacity(e)); ndrange = capacity(a))
     if birth
         launcher(bump_count_kernel!, be, wgs)(e.count, Int32(capacity(a)), Int32(capacity(e)); ndrange = 1)

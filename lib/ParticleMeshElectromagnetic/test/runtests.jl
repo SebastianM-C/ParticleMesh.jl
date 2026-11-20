@@ -59,6 +59,8 @@ const TEST_FILES = [
     "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
+    "galerkin.jl",            # WP-070: T-991 to T-993 and T-996 to T-998, the Galerkin gather; after gather.jl and ionization.jl (their helpers)
+    "galerkin_physics.jl",    # WP-070: T-994, T-995, the 1D cases with the Galerkin gather; after physics.jl (its configurations and runs)
     "transposes.jl",          # WP-069: T-985 to T-987, the transposed pairs of the step; yee_nd_cases.jl's helpers
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
