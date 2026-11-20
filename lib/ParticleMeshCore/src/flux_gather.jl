@@ -18,11 +18,14 @@ guards folded, and `E` with its guards filled,
     Σ_j (Jx[j]·Ex[j] + Jy[j]·Ey[j] + Jz[j]·Ez[j]) = Σ_i (q·w_i)·(Σ_{d in space} o_d[i]) + Σ_i quantity_y(i)·oy[i] + Σ_i quantity_z(i)·oz[i]
 
 (the last two sums at N = 1, the last at N = 2) to roundoff (T-1000). An output in space is the
-power per unit charge: velocity times the field averaged along the move. Divided by the move's
-velocity `Δ_d/dt` it is that average; at N = 1 it is exact, the field read with the shape one order
-lower at the faces and integrated along the move (T-1001), and for every N its limit for a
-vanishing move is the field read with the shape one order lower along the component's own axis
-and the shape itself across it (T-1002), the energy-conserving gather. A particle at rest gives
+power per unit charge: velocity times the field averaged along the move with Esirkepov's weights.
+Divided by the move's velocity `Δ_d/dt` it is that weighted average. At N = 1 it is exactly the
+field read with the shape one order lower at the faces and integrated along the move (T-1001); at
+N ≥ 2 it is that straight-line average only for a move along one axis, and differs from it for an
+oblique move. At order 2 its limit for a vanishing move, at least linear in the move, is the field
+read with the shape one order lower along the component's own axis and the shape itself across it
+(T-1002), the energy-conserving gather; at order 1 the shape one order lower is the discontinuous
+top hat, and the limit holds only away from its jumps. A particle at rest gives
 exactly zero in space (T-1003).
 
 The weights are those of `deposit_flux!`'s `Fast()` path, in the particle's own frame
@@ -33,8 +36,9 @@ mode, and its bits do not depend on the launch shape. It covers the dependence o
 quantity (where parameters enter, A3), not the one on the positions.
 
 Preconditions are `deposit_flux!`'s: the old position in the extras of `flux_extras(T, N)`, a
-move of less than one cell per axis (not detected), at least 3 cells per axis and at least
-`maximum(flux_guard_width(shape, stagger))` guard cells (both checked); the guards of `Ex`, `Ey`,
+move of less than one cell per axis (not detected) and at least
+`maximum(flux_guard_width(shape, stagger))` guard cells (checked; a grid needs at least two guard
+widths of cells per axis, so at least 4); the guards of `Ex`, `Ey`,
 `Ez` filled (`fill_guards!`, the transpose of the fold). Dead slots are left as they are.
 """
 function gather_flux!(ox::AbstractVector, oy::AbstractVector, oz::AbstractVector, Ex::AbstractArray{<:Any,N},
@@ -47,9 +51,7 @@ function gather_flux!(ox::AbstractVector, oy::AbstractVector, oz::AbstractVector
     gw = maximum(flux_guard_width(shape, stagger))
     guards(grid) >= gw ||
         throw(ArgumentError("gather_flux! needs $gw guard cells for this shape and stagger, the grid has $(guards(grid))"))
-    all(>=(3), ncells(grid)) || throw(ArgumentError("gather_flux! needs at least 3 cells per axis"))
-    T = eltype(s)
-    sx = map(h -> T(h) / dt, Tuple(cellsize(grid)))
+    sx = map(h -> h / dt, Tuple(cellsize(grid)))              # as deposit_flux! forms it
     launcher(flux_gather_kernel!, get_backend(s), workgroupsize)(ox, oy, oz, Ex, Ey, Ez, s, shape, stagger, Int32.(Tuple(ncells(grid))),
                                                                 Int32(guards(grid)), sx; ndrange = capacity(s))
     return ox, oy, oz

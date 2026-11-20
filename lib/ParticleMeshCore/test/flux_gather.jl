@@ -122,14 +122,17 @@ pdiff(x, y, n) = mod(x - y + n / 2, n) - n / 2
 soff(::Node) = 0.0
 soff(::Center) = 0.5
 
-"Particle `i`'s old position and its move, in cells along axis `d`, from the extras (the move unwrapped across the seam)."
-function old_and_move(s, i, d, n)
+"Particle `i`'s old cell, old offset and move in cells along axis `d` (`d = 0` at N = 1), from the extras (the move unwrapped across the seam)."
+function old_and_move_parts(s, i, d, n)
     c0, δ0 = d == 0 ? (s.extras.old_cell[i], s.extras.old_offset[i]) :
              (getfield(s.extras, Symbol(:old_cell_, d))[i], getfield(s.extras, Symbol(:old_offset_, d))[i])
     a = max(d, 1)
     e = mod(s.cell[a][i] - c0 + 1, n) - 1
-    return (c0 + Float64(value_of(δ0)), e + Float64(value_of(s.offset[a][i])) - Float64(value_of(δ0)))
+    return (c0, Float64(value_of(δ0)), e + Float64(value_of(s.offset[a][i])) - Float64(value_of(δ0)))
 end
+
+"Particle `i`'s old position (cells) and its move along axis `d`."
+old_and_move(s, i, d, n) = ((c0, δ0, Δ) = old_and_move_parts(s, i, d, n); (c0 + δ0, Δ))
 
 function body_T1001()
     C = tolC("T-1001")
@@ -140,9 +143,9 @@ function body_T1001()
         dt = 0.25
         Emax = maximum(abs, E[1])
         err = maximum(alive_slots(s)) do i
-            X0, Δ = old_and_move(s, i, 0, n)
+            c0, δ0, Δ = old_and_move_parts(s, i, 0, n)
             ref = sum(1:n) do j
-                ξ0 = pdiff(X0, j + soff(st) + 1 / 2, n)
+                ξ0 = pdiff(c0, j, n) + (δ0 - soff(st) - 1 / 2)     # the cell difference wrapped in integers, exact
                 Float64(E[1][g + j]) * (bspline_integral(Val(order(shape) - 1), ξ0 + Δ) - bspline_integral(Val(order(shape) - 1), ξ0))
             end
             abs(Float64(o[1][i]) - h / dt * ref)
