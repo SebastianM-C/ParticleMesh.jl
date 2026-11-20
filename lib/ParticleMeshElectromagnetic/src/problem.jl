@@ -111,7 +111,7 @@ with a `center` of two coordinates, WP-073), and the
 at N = 2 and on axis 2, axis 3 or both at N = 3, an open transverse boundary (WP-027, WP-072), where
 fields leave through the numerics' [`AbsorbingLayer`](@ref) or [`PML`](@ref) (the same on every
 open axis) and particles that cross the box edge are retired, or `:window` on
-axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box moves at c along
+axis 1 at N = 2 and 3 with a [`MovingWindow`](@ref) as `window` (WP-028, WP-074): the box moves at c along
 axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
 [`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
 background of its own profile (so every species' `amplitude` is zero and `E0`, `B0` are zero) and
@@ -123,8 +123,8 @@ finished its pulse before the window passes it (checked by the state). At N = 2 
 gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
 a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
 without random numbers, its electrons born by weight into a species of their own. At N = 3
-axis 1 is periodic and the transverse axes are periodic or open (WP-072), with Gaussian lasers
-(WP-073) and no window, witness or ionization (WP-042). At N = 1
+axis 1 is periodic or the window and the transverse axes are periodic or open (WP-072, WP-074),
+with Gaussian lasers (WP-073) and no witness or ionization (WP-042). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -137,7 +137,7 @@ of each at N = 2, three at N = 3), that the cells and the particles per cell are
 N = 2 and 3 that `kmode` is not the zero mode, that the lasers fit the dimension (a `center` of one
 coordinate at N = 2, a [`GaussianLaser`](@ref) with a `center` of two at N = 3, none at N = 1), and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
-together with a `window` and the conditions above at N = 2 (an `ArgumentError` otherwise).
+together with a `window` and the conditions above at N = 2 and 3 (an `ArgumentError` otherwise).
 """
 struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB,IZ}
     name::String
@@ -194,7 +194,7 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     first(bd) in (:periodic, :window) && all(b -> b in (:periodic, :open), bd[2:end]) ||
         throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), the transverse axes :periodic or :open (an open transverse boundary)"))
     moving = first(bd) === :window
-    moving && N != 2 && throw(ArgumentError("the moving window is implemented at N = 2 only"))
+    moving && N == 1 && throw(ArgumentError("the moving window is implemented at N = 2 and 3 only"))
     moving == (window !== nothing) ||
         throw(ArgumentError("boundaries = $bd with window = $window: a :window axis 1 and a MovingWindow come together"))
     window === nothing || window isa MovingWindow || throw(ArgumentError("window must be a MovingWindow, got $window"))

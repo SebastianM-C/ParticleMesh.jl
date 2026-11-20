@@ -1083,3 +1083,54 @@ C = 8
 measured = { Float32 = 0.727, Float64 = 0.606 }
 measured_shift = { Float32 = 0.540, Float64 = 0.432 }
 status = "proposed; the largest over both envelopes"
+
+# WP-074: the moving window at N = 3 (T-1030 to T-1038). Measured on the CPU backend (Julia 1.13.4, 4 threads).
+["T-1030"]
+quantity = "a 3D window run invariant along z or y (a quarter turn about x) against the 2D window run, after initialize! and after every step: every component on every line of the invariant axis; 64 steps (26 shifts) of a cold plasma drifting along (−0.2, 0.15, −0.1) through a ramp on 24 × 16 cells, the plane's second axis periodic, or open with the PML (4 cells, κ_max = 2, α_max = 0.1) and a back-edge PML (4 cells, α_max = 0.2)"
+scale = "as T-953"
+C = 32
+measured = { Float32 = 0.0922, Float64 = 0.125, "Dual{Float32,3}" = 0.0868 }
+status = "proposed; the largest over both axes, both cases and both modes; T-953's C"
+
+["T-1031"]
+quantity = "a cold plasma at rest in the 3D window, Fast mode: max |ρ − ρ₀(s)| after every step over 48 steps (24 shifts) on 24 × 6 × 6 cells (Reference mode is held bit for bit)"
+scale = "eps(T)·max|ρ|"
+C = 32
+measured = { Float32 = 9.0, Float64 = 6.5, "Dual{Float32,3}" = 0.0 }
+status = "proposed; 4 threads (at 1 thread the atomics' order is fixed); the dual takes the sorted path"
+
+["T-1032"]
+quantity = "Gauss's law Σ D⁻E − (ρ − ρ₀(s)) across 3D window shifts: a round laser driving the plasma (200 steps, 113 shifts), off nodes 1, 2 and the antenna's two columns, and with y, z open (PML) and a back-edge PML of 6 cells off the layers (Float64); a warm plasma (thermal 0.1 c) at rest and drifting at 0.3 c through a ramp, off nodes 1 and 2, 60 steps; both modes"
+scale = "as T-473: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.0982, Float64 = 0.118, "Dual{Float32,3}" = 0.0982 }
+measured_warm = { Float32 = 0.108, Float64 = 0.106, "Dual{Float32,3}" = 0.0983 }
+measured_warm_ramp = { Float32 = 0.144, Float64 = 0.131, "Dual{Float32,3}" = 0.145 }
+status = "proposed; T-473's C"
+
+["T-1034"]
+quantity = "the fields of Fast against Reference after 120 steps of window_lwfa_3d, Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 32
+measured = { Float64 = 4.51 }
+status = "proposed; T-474's C"
+
+["T-1035"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 steps of the 3D window against the ramp length, Float64, Reference (C); Dual{Float32,3} with the ramp length the first partial: the primal of every E and B component against the Float32 run (C_primal) and the partial against the central difference of Float64 runs at L = 4 ± 10⁻³ (C_partial)"
+scale = "C: the finite-difference floor (A7); C_primal, C_partial: eps(Float32)·max over the six components·nsteps (as T-955)"
+C = 1
+C_primal = 8
+C_partial = 8
+measured = { Float64 = 0.0151 }
+measured_primal = { "Dual{Float32,3}" = 0.0 }
+measured_partial = { "Dual{Float32,3}" = 0.295 }
+status = "proposed; T-475's C and T-1016's"
+
+["T-1036"]
+quantity = "T-472 in 3D: the vacuum pulse of window_lwfa_3d in the window against its static twin, on every column before the window moves and on columns 25 … n₁ after, relative to the twin's max |E, B| there, with a bare back edge and with a back-edge PML of 6 cells (C); the largest difference on the eight columns behind the back edge (behind the layer) against free space, the PML's over the bare edge's (C_near)"
+scale = "C: eps(Float64)·max|E, B|; C_near: the ratio itself"
+C = 1000
+C_near = 0.05
+measured = { bare = 140.0, back_PML = 144.0 }
+measured_near = { bare = 1.84, back_PML = 0.0198 }
+status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72"

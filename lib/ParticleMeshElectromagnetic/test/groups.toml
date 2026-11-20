@@ -21,4 +21,6 @@ groups = [
     ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "gather.jl", "transposes.jl"],
     # the 3D step, periodic and open, and its antenna, which reuse no other file
     ["em3d_step.jl", "em3d_open.jl", "em3d_antenna.jl"],
+    # the 3D moving window, with the 3D step whose helpers and worker it reuses
+    ["em3d_step.jl", "em3d_window.jl"],
 ]

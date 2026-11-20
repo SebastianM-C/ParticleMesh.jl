@@ -285,3 +285,206 @@ function antenna3d_step_digests(; workgroupsize = nothing, be = CPU())
     end
     return out
 end
+
+# WP-074: the moving window at N = 3, the runs of em3d_window.jl and the digests its worker shares.
+# After window_cases.jl (`ZERO3`) and the 3D cases above.
+
+"""
+    window_plasma_3d(T; cells = (24, 6, 6), ppc = (2, 2, 2), nsteps = 40, start = 0, vacuum = 4, ramp = 4, drift, thermal,
+                     density = 1, seed = 5, bd = (:periodic, :periodic)) -> EMProblem{3}
+
+[`window_plasma`](@ref) in 3D: one electron species of the [`DensityRamp`](@ref) profile entering a
+moving window through its front, cold and at rest by default, Δx = 1/2 on every axis, Δt at 0.9
+of the Courant limit (the window moves about 0.52 cells per step), y and z periodic or open as
+`bd` says. `ramp` may be a dual (the A3 parameter).
+"""
+function window_plasma_3d(::Type{T}; cells = (24, 6, 6), ppc = (2, 2, 2), nsteps = 40, start = 0, vacuum = 4, ramp = 4,
+                          drift = ZERO3(T), thermal = ZERO3(T), density = one(T), seed = 5, bd = (:periodic, :periodic)) where {T}
+    L = ntuple(d -> T(cells[d]) / 2, 3)
+    dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:3))) / 10
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(density), zero(T), (1, 0, 0), ppc, T.(drift), T.(thermal), 1;
+                              momentum = :gaussian_velocity)
+    return EMProblem("window-plasma-3d", L, cells, T(dt), nsteps, (e,), seed, (1, 0, 0); boundaries = (:window, bd...),
+                     window = MovingWindow(; start = T(start)), profile = DensityRamp(; vacuum = T(vacuum), ramp = ramp isa T ? ramp : T(ramp)))
+end
+
+"""
+    window_lwfa_3d(T; nsteps = 200, a0 = 1, ramp = 8, cells = (72, 12, 12), position = 10, start = 33, plasma = true, laser = true,
+                   bd = (:periodic, :periodic), ppc = (2, 1, 1)) -> EMProblem{3}
+
+[`window_lwfa`](@ref) in 3D: 8 cells per laser wavelength along x (Δx = π/4) and 4 across
+(Δy = Δz = π/2), Δt at 0.95 of the Courant limit; a round [`GaussianLaser`](@ref) (a₀ = 1, waist
+6, duration 3, delay 18, focused on its plane) launched by an antenna at x = `position` (column
+14), which stays in the lab frame, its axis on the box's axis; a cold electron plasma of
+0.02 n_c behind a vacuum of 24 c/ω₀ and a ramp of 8; the window starts at t = 33, before which the
+antenna has finished (six durations after the delay) and after which it is passed only once the
+back edge's PML of up to 6 cells has left it, and the box (56.5 c/ω₀) holds the pulse to ten
+durations ahead of its peak when the window starts (with 60 columns, seven, the front's cut of the
+pulse's tail reaches 3.7·10⁻¹² of the field, T-1036).
+"""
+function window_lwfa_3d(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (72, 12, 12), position = 10, start = 33, plasma = true,
+                        laser = true, bd = (:periodic, :periodic), ppc = (2, 1, 1), seed = 1) where {T}
+    h = (2 * T(π) / 8, 2 * T(π) / 4, 2 * T(π) / 4)
+    dt = T(95) / 100 / sqrt(sum(d -> inv(h[d])^2, 1:3))
+    pulse = GaussianLaser(; a0 = T(a0), waist = T(6), duration = T(3), delay = T(18), focus = T(position), position = T(position),
+                          center = (cells[2] * h[2] / 2, cells[3] * h[3] / 2))
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(2) / 100, zero(T), (1, 0, 0), ppc, ZERO3(T), ZERO3(T), 1)
+    return EMProblem("window-lwfa-3d", ntuple(d -> cells[d] * h[d], 3), cells, dt, nsteps, plasma ? (e,) : (), seed, (1, 0, 0);
+                     lasers = laser ? (pulse,) : (), boundaries = (:window, bd...), window = MovingWindow(; start = T(start)),
+                     profile = DensityRamp(; vacuum = T(24), ramp = ramp isa T ? ramp : T(ramp)))
+end
+
+"A 3D window problem's static twin: the same box with `n1` columns, with a window that never moves."
+function static_twin_3d(prob::EMProblem{3,T}, n1) where {T}
+    h = prob.length[1] / prob.cells[1]
+    return EMProblem("static-twin-3d", (n1 * h, prob.length[2], prob.length[3]), (n1, prob.cells[2], prob.cells[3]), prob.dt, prob.nsteps,
+                     prob.species, prob.seed, prob.kmode; lasers = prob.lasers, boundaries = prob.boundaries,
+                     window = MovingWindow(; start = T(Inf)), profile = prob.profile)
+end
+
+"The initialized state of a 3D window problem, with `back` on the back edge and `absorber` on its open axes."
+function window_state_3d(prob; mode = Reference(), workgroupsize = nothing, headroom = 1 / 4, absorber = nothing, back = nothing, be = CPU())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, headroom, absorber, back_absorber = back); backend = be)
+    initialize!(st, prob)
+    return st
+end
+
+"The alive particles of a 3D species `s` as a sorted vector of (cell₁, cell₂, cell₃, bits of δ₁, δ₂, δ₃, u₁, u₂, u₃, w)."
+function particle_set_3d(s)
+    alive = Array(s.status) .== ParticleMeshCore.ALIVE
+    c = map(a -> Array(a)[alive], s.cell)
+    rest = map(a -> Array(a)[alive], (s.offset..., s.u..., s.w))
+    return sort([(c[1][i], c[2][i], c[3][i], map(a -> components(a[i]), rest)...) for i in eachindex(c[1])])
+end
+
+"The fresh cold load of the 3D window's plasma columns of species 1 at position `s_win`, of the parameters `p` (a scratch species)."
+function fresh_window_load_3d(st, p, s_win)
+    T = eltype(st.ρ)
+    load = (; window_load(st, p, 1)..., vdrift = ZERO3(T), vth = ZERO3(T))
+    sp = st.species[1]
+    be = get_backend(st.ρ)
+    sc = Species(be, T, prod(ncells(st.grid)) * prod(load.ppc); q = sp.q, m = sp.m, N = 3)
+    load_window_columns!(sc, st.grid, load, KernelAbstractions.zeros(be, Int32, 1), 1, injection_column(st.aux.window), s_win)
+    return sc
+end
+
+"""
+    window_gauss_3d(st, p, s) -> (; res, scale)
+
+Gauss's law of the 3D window, `Σ_d D⁻_d E_d − (ρ − ρ₀(s))` with ρ from [`window_charge!`](@ref) and
+the background's ρ₀ from [`window_background!`](@ref), per interior node (an array over the
+n₁ × n₂ × n₃ nodes, absmax over the partials of a dual); `scale = (n₁ + n₂ + n₃)·max|ρ|`.
+"""
+function window_gauss_3d(st, p, s_win)
+    T = eltype(st.ρ)
+    grid = st.grid
+    be = get_backend(st.ρ)
+    ρ, ρ0 = field(be, T, grid), field(be, T, grid)
+    window_charge!(ρ, st)
+    window_background!(ρ0, st, p, s_win)
+    ρ, ρ0 = Array(ρ), Array(ρ0)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    E = map(Array, (st.fields.Ex, st.fields.Ey, st.fields.Ez))
+    e = ntuple(d -> CartesianIndex(ntuple(a -> Int(a == d), 3)), 3)
+    I = CartesianIndices(ntuple(d -> (g + 1):(g + n[d]), 3))
+    res = [absmax(sum(d -> (E[d][j] - E[d][j - e[d]]) / h[d], 1:3) - (ρ[j] - ρ0[j])) for j in I]
+    return (; res, scale = sum(n) * maximum(absmax, ρ[I]))
+end
+
+# The window runs of T-1030: a 2D window problem on a plane and the same problem in 3D, invariant
+# along y or z. A cold plasma drifting backwards and across the plane through a ramp, so that its
+# charge against the background drives fields that vary along both axes of the plane (its
+# particles leave through the back edge and, with `open`, through the plane's open edge).
+const WINDOW_INV_DRIFT = (-1 // 5, 3 // 20, -1 // 10)
+const WINDOW_INV_CELLS = (24, 12)
+
+function window_plane_2d(::Type{T}; open = false, nsteps = 64, ramp = 4) where {T}
+    h = (one(T) / 2, one(T) / 2)
+    L = T.(WINDOW_INV_CELLS) .* h
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), (1, 0), (2, 2), T.(WINDOW_INV_DRIFT), ZERO3(T), 1;
+                              momentum = :gaussian_velocity)
+    return EMProblem("window-plane-2d", L, WINDOW_INV_CELLS, inv3_dt(h), nsteps, (e,), 5, (1, 0); boundaries = (:window, open ? :open : :periodic),
+                     window = MovingWindow(; start = zero(T)), profile = DensityRamp(; vacuum = T(4), ramp = ramp isa T ? ramp : T(ramp)))
+end
+
+"""
+    window_map_3d(axis) -> NamedTuple
+
+The 3D component and sign of each 2D one for a 3D window problem invariant along `axis` (3 or 2),
+the window's axis staying axis 1: the identity for `axis = 3`; for `axis = 2` the rotation by a
+quarter turn about x that takes the plane's y to z, so a 2D vector (v_x, v_y, v_z) is
+(v_x, −v_z, v_y) in 3D (E, B and J alike, a proper rotation).
+"""
+function window_map_3d(axis)
+    axis == 3 && return map(c -> (c, 1), (Ex = :Ex, Ey = :Ey, Ez = :Ez, Bx = :Bx, By = :By, Bz = :Bz, Jx = :Jx, Jy = :Jy, Jz = :Jz))
+    m(F) = ((Symbol(F, :x), 1), (Symbol(F, :z), 1), (Symbol(F, :y), -1))
+    E, B, J = m(:E), m(:B), m(:J)
+    return (Ex = E[1], Ey = E[2], Ez = E[3], Bx = B[1], By = B[2], Bz = B[3], Jx = J[1], Jy = J[2], Jz = J[3])
+end
+
+"[`window_plane_2d`](@ref) in 3D, invariant along `axis` (3 or 2): 6 cells of Δ = 1 and 2 particles per cell along it, the plane on the others."
+function window_inv_3d(::Type{T}, axis; open = false, nsteps = 64, ramp = 4) where {T}
+    h2 = (one(T) / 2, one(T) / 2)
+    v = T.(WINDOW_INV_DRIFT)
+    put(a, b, c) = axis == 3 ? (a, b, c) : (a, c, b)
+    cells = put(WINDOW_INV_CELLS..., 6)
+    L = put(T.(WINDOW_INV_CELLS) .* h2..., T(6))
+    drift = axis == 3 ? v : (v[1], -v[3], v[2])
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), (1, 0, 0), put(2, 2, 2), drift, ZERO3(T), 1;
+                              momentum = :gaussian_velocity)
+    return EMProblem("window-inv-3d", L, cells, inv3_dt(h2), nsteps, (e,), 5, (1, 0, 0);
+                     boundaries = put(:window, open ? :open : :periodic, :periodic),
+                     window = MovingWindow(; start = zero(T)), profile = DensityRamp(; vacuum = T(4), ramp = ramp isa T ? ramp : T(ramp)))
+end
+
+"""
+Largest |3D − 2D| of the window runs over every component and every line along the invariant
+axis, each relative to the largest 2D value of its kind (the fields E, B together; the currents J
+together), with the map and signs of [`window_map_3d`](@ref).
+"""
+function window_invariant_error(s2, s3, axis)
+    g2, g3, n = guards(s2.grid), guards(s3.grid), ncells(s2.grid)
+    m = window_map_3d(axis)
+    plane(c) = Array(getfield(s2.fields, c))[(g2 + 1):(g2 + n[1]), (g2 + 1):(g2 + n[2])]
+    kind(c) = c in (:Jx, :Jy, :Jz) ? :J : :F
+    scale = Dict(k => maximum(c -> Float64(maximum(absmax, plane(c))), filter(c -> kind(c) == k, collect(keys(m)))) for k in (:F, :J))
+    err = 0.0
+    for (c, (c3, sg)) in pairs(m)
+        a2 = plane(c)
+        A3 = Array(getfield(s3.fields, c3))
+        for r in 1:6
+            sl = axis == 3 ? A3[(g3 + 1):(g3 + n[1]), (g3 + 1):(g3 + n[2]), g3 + r] : A3[(g3 + 1):(g3 + n[1]), g3 + r, (g3 + 1):(g3 + n[2])]
+            d = Float64(maximum(absmax, sg .* sl .- a2))
+            err = max(err, iszero(d) ? 0.0 : d / scale[kind(c)])
+        end
+    end
+    return err
+end
+
+"""
+    window3d_step_digests(; workgroupsize = nothing, be = CPU()) -> Vector{(label, T, digest)}
+
+T-1034: Reference runs per element type, one digest of every particle array, field, convolution
+field, counter and history each: the laser of [`window_lwfa_3d`](@ref) into its plasma with y and
+z open (the PML) and a PML on the back edge, 110 steps (35 shifts, the antenna passed), and a warm
+plasma drifting through a ramp (thermal 0.1 c, every refill drawing), 40 steps.
+"""
+function window3d_step_digests(; workgroupsize = nothing, be = CPU())
+    out = Tuple{String,DataType,UInt64}[]
+    pml = PML(; cells = 4, kappa_max = 2, alpha_max = 0.1)
+    for T in TYPES
+        tenth = one(T) / 10
+        runs = (("lwfa", window_lwfa_3d(T; nsteps = 110, bd = (:open, :open)), pml, PML(; cells = 6, alpha_max = 0.2)),
+                ("warm", window_plasma_3d(T; drift = (tenth, tenth / 2, -tenth / 2), thermal = (tenth, tenth, tenth), vacuum = 2), nothing, nothing))
+        for (label, prob, ab, back) in runs
+            st = window_state_3d(prob; workgroupsize, be, absorber = ab, back)
+            run!(st, params(prob), prob.nsteps)
+            h = state_digest_3d(st)
+            for a in evolved(st)
+                h = hash(bits(a), h)
+            end
+            push!(out, (label, T, h))
+        end
+    end
+    return out
+end
