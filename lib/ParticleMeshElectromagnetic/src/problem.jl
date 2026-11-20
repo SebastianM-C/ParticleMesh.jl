@@ -120,11 +120,11 @@ loads draw in velocity); a window that starts later than t = 0 takes only cold s
 rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
 finished its pulse before the window passes it (checked by the state). At N = 2 a `witness`, a
 [`WitnessBunch`](@ref) (WP-047), adds test particles injected during the run whose mean energy
-gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
-a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
-without random numbers, its electrons born by weight into a species of their own. At N = 3
-axis 1 is periodic or the window and the transverse axes are periodic or open (WP-072, WP-074),
-with Gaussian lasers (WP-073) and no witness or ionization (WP-042). At N = 1
+gain is the optimization objective; they change nothing else in the run. At N = 2 and 3 an
+`ionization`, a [`FieldIonization`](@ref) (WP-059, WP-075), adds a dopant on a fixed lattice that
+the fields ionize without random numbers, its electrons born by weight into a species of their
+own. At N = 3 axis 1 is periodic or the window and the transverse axes are periodic or open
+(WP-072, WP-074), with Gaussian lasers (WP-073) and no witness (WP-042). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -137,7 +137,8 @@ of each at N = 2, three at N = 3), that the cells and the particles per cell are
 N = 2 and 3 that `kmode` is not the zero mode, that the lasers fit the dimension (a `center` of one
 coordinate at N = 2, a [`GaussianLaser`](@ref) with a `center` of two at N = 3, none at N = 1), and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
-together with a `window` and the conditions above at N = 2 and 3 (an `ArgumentError` otherwise).
+together with a `window` and the conditions above at N = 2 and 3, and that an `ionization`'s
+lattice has N entries in `ppc` and the `rows` of its N (an `ArgumentError` otherwise).
 """
 struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB,IZ}
     name::String
@@ -220,8 +221,7 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     witness === nothing || N == 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
     wb = witness === nothing ? nothing : witness_as(T, witness)
     ionization === nothing || ionization isa FieldIonization || throw(ArgumentError("ionization must be a FieldIonization, got $ionization"))
-    ionization === nothing || N == 2 || throw(ArgumentError("field ionization is implemented at N = 2 only"))
-    iz = ionization === nothing ? nothing : ionization_as(T, ionization)
+    iz = ionization === nothing ? nothing : ionization_as(T, ionization, Val(N))
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode

@@ -241,7 +241,7 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
   momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
   guards, and at N = 2 and 3 the convolution fields of a PML (in `modifiers`) and in `aux` the
-  window's counters `lost` and `fast`, and at N = 2 the witness bunch's particles and a dopant's atoms, populations and electrons. With the
+  window's counters `lost` and `fast` and a dopant's atoms, populations and electrons, and at N = 2 the witness bunch's particles. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
 - The cache: the kinetic energy buffer `K` for the next observation (at N = 1 the kinetic energy
@@ -261,10 +261,10 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
   of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
-  species' charge and mass, and at N = 2 and 3 in `aux` the [`WindowFrame`](@ref), and at N = 2 the
-  [`WitnessFrame`](@ref) (`nothing` where the problem has none) and of the
-  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity (both `nothing` at
-  N = 3). `aux` is empty at N = 1.
+  species' charge and mass, and at N = 2 and 3 in `aux` the [`WindowFrame`](@ref) and of the
+  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity, and at N = 2 the
+  [`WitnessFrame`](@ref) (each `nothing` where the problem has none; the witness at N = 3). `aux`
+  is empty at N = 1.
 - `modifiers`: the tuple of [`FieldModifier`](@ref)s that the mesh solve walks
   ([`solve_fields!`](@ref)), in the order [`field_modifiers`](@ref) gives them: the placed
   absorber of an open axis (a PML's coefficient tables and convolution fields, or an absorbing
@@ -520,7 +520,7 @@ function check_aux_setup(st::EMState, problem, wrong)
     fr = ionization_frame(st)
     d = problem.ionization
     (d === nothing) == (fr === nothing) || wrong("the ionization")
-    d === nothing || (ionization_placement(d, st.grid, window) == (fr.row0, fr.nrows, fr.ncols, fr.ppc) && d.every == fr.every &&
+    d === nothing || (ionization_placement(d, st.grid, window) == (fr.c0, fr.nc, fr.ppc) && d.every == fr.every &&
                       d.capacity == capacity(fr.electrons) && length(d.levels) == length(fr.atoms.extras) - 2) ||
         wrong("the ionization's lattice, birth cadence, capacity or number of levels")
     return nothing
@@ -670,7 +670,7 @@ Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state
 ([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
 (§0.4). One method for N = 1, 2 and 3, the 1D case being the case of one resolved axis; what a
 problem does not have (a witness bunch, a dopant, a moving window, an open axis, field modifiers: none of
-them at N = 1, no witness or dopant at N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
+them at N = 1, no witness at N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
 the start of the step ([`observe!`](@ref): Eⁿ, Bⁿ and the kinetic energy at n − 1/2 that the
 previous step left in `K`; `nothing` observes nothing); then the module's step order:
 

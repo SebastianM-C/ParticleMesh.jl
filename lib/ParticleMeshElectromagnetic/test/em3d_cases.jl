@@ -313,7 +313,7 @@ end
 
 """
     window_lwfa_3d(T; nsteps = 200, a0 = 1, ramp = 8, cells = (72, 12, 12), position = 10, start = 33, plasma = true, laser = true,
-                   bd = (:periodic, :periodic), ppc = (2, 1, 1)) -> EMProblem{3}
+                   bd = (:periodic, :periodic), ppc = (2, 1, 1), seed = 1, ionization = nothing) -> EMProblem{3}
 
 [`window_lwfa`](@ref) in 3D: 8 cells per laser wavelength along x (Δx = π/4) and 4 across
 (Δy = Δz = π/2), Δt at 0.95 of the Courant limit; a round [`GaussianLaser`](@ref) (a₀ = 1, waist
@@ -323,10 +323,10 @@ end
 antenna has finished (six durations after the delay) and after which it is passed only once the
 back edge's PML of up to 6 cells has left it, and the box (56.5 c/ω₀) holds the pulse to ten
 durations ahead of its peak when the window starts (with 60 columns, seven, the front's cut of the
-pulse's tail reaches 3.7·10⁻¹² of the field, T-1036).
+pulse's tail reaches 3.7·10⁻¹² of the field, T-1036). `ionization` is a [`FieldIonization`](@ref) of the problem (WP-075).
 """
 function window_lwfa_3d(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (72, 12, 12), position = 10, start = 33, plasma = true,
-                        laser = true, bd = (:periodic, :periodic), ppc = (2, 1, 1), seed = 1) where {T}
+                        laser = true, bd = (:periodic, :periodic), ppc = (2, 1, 1), seed = 1, ionization = nothing) where {T}
     h = (2 * T(π) / 8, 2 * T(π) / 4, 2 * T(π) / 4)
     dt = T(95) / 100 / sqrt(sum(d -> inv(h[d])^2, 1:3))
     pulse = GaussianLaser(; a0 = T(a0), waist = T(6), duration = T(3), delay = T(18), focus = T(position), position = T(position),
@@ -334,7 +334,7 @@ function window_lwfa_3d(::Type{T}; nsteps = 200, a0 = 1, ramp = 8, cells = (72, 
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(2) / 100, zero(T), (1, 0, 0), ppc, ZERO3(T), ZERO3(T), 1)
     return EMProblem("window-lwfa-3d", ntuple(d -> cells[d] * h[d], 3), cells, dt, nsteps, plasma ? (e,) : (), seed, (1, 0, 0);
                      lasers = laser ? (pulse,) : (), boundaries = (:window, bd...), window = MovingWindow(; start = T(start)),
-                     profile = DensityRamp(; vacuum = T(24), ramp = ramp isa T ? ramp : T(ramp)))
+                     profile = DensityRamp(; vacuum = T(24), ramp = ramp isa T ? ramp : T(ramp)), ionization)
 end
 
 "A 3D window problem's static twin: the same box with `n1` columns, with a window that never moves."
@@ -489,6 +489,160 @@ function window3d_step_digests(; workgroupsize = nothing, be = CPU())
             end
             push!(out, (label, T, h))
         end
+    end
+    return out
+end
+
+# WP-075: the 3D problems with a dopant (em3d_ionization.jl) and the bitwise digests its tests and
+# the worker (T-1045 at 1 and 4 threads) share. After ionization_cases.jl.
+
+"""
+    ion_box_3d(T; E0, B0, levels, density, ppc, every, rows, section, capacity, nsteps, courant, plasma, box, cells, boundaries) -> EMProblem{3}
+
+`ion_in_E` in 3D: a dopant in a uniform background field on a periodic box of 16 × 6 × 6 cells of
+1/2 (`cells` on the lengths `box`; `boundaries` opens transverse faces), Δt at `courant` (0.9) of
+the Courant limit, `levels` (one ADK level of prefactor 1/2, field 3 and power 1 by default) at
+`density` on `ppc` points per cell of the transverse `rows`, born every `every` steps. Without
+`plasma` the only species has zero density (the prescribed fields of `NoCurrent()` stay `E0`,
+`B0`); with it a thermal electron plasma (density 1, v_th = 0.1, a drift and an oblique
+perturbation of mode (2, 1, 1), 2 × 2 × 2 per cell). `capacity` defaults to one slot per atom and
+birth step, and one birth step more.
+"""
+function ion_box_3d(::Type{T}; E0 = (one(T) / 2, zero(T), zero(T)), B0 = zero3(T), levels = (ADKLevel(one(T) / 2, T(3), one(T)),),
+                    density = one(T) / 100, ppc = (1, 1, 1), every = 1, rows = nothing, section = nothing, capacity = nothing, nsteps = 20,
+                    courant = 9 // 10, plasma = false, box = (8, 3, 3), cells = (16, 6, 6), boundaries = (:periodic, :periodic, :periodic)) where {T}
+    L = T.(box)
+    dt = T(courant) * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:3)))
+    tenth = one(T) / 10
+    e = plasma ? SpeciesDescription{T}(:electron, -one(T), one(T), one(T), tenth, (2, 1, 1), (2, 2, 2), (3tenth, -2tenth, tenth), (tenth, tenth, tenth), 1) :
+        SpeciesDescription{T}(:electron, -one(T), one(T), zero(T), zero(T), (1, 0, 0), (1, 1, 1), zero3(T), zero3(T), 1)
+    cap = capacity === nothing ? prod(cells) * prod(ppc) * (nsteps ÷ every + 2) : capacity
+    ion = FieldIonization(; density, levels, capacity = cap, section, ppc, every, rows)
+    return EMProblem("ion-box-3d", L, cells, dt, nsteps, (e,), 3, (2, 1, 1); E0, B0, ionization = ion, boundaries)
+end
+
+"""
+    ion_window_3d(T; nsteps = 150, a0 = 1, density = 1/200, prefactor = 1/5, start = 28, stop = 34, ramp = 3, every = 2, ppc = (1, 1, 1),
+                  rows, capacity = 16384, plasma = true, cutoff = 64, cells = (72, 12, 12), levels) -> EMProblem{3}
+
+`ion_window` in 3D: [`window_lwfa_3d`](@ref)'s box, round pulse (a₀ = 1, waist 6, duration 3 from
+an antenna at x = 10) and plasma (0.02 n_c behind a vacuum of 24 and a ramp of 8, the window
+moving from t = 33), with a dopant of `density` in the section that rises over `ramp` from `start`
+and falls from `stop`, on the 4 × 4 transverse cells about the axis (`rows`), one level of
+`prefactor`, field 3 and power 1 (`levels` replaces it), born every `every` steps. `a0`, `density`,
+`prefactor` and the section's numbers may be duals; a test problem, too coarse for physics.
+"""
+function ion_window_3d(::Type{T}; nsteps = 150, a0 = 1, density = T(1) / 200, prefactor = T(1) / 5, start = 28, stop = 34, ramp = 3, every = 2,
+                       ppc = (1, 1, 1), rows = ((6.3, 12.5), (6.3, 12.5)), capacity = 16384, plasma = true, cutoff = 64, cells = (72, 12, 12),
+                       levels = (ADKLevel(T(prefactor), T(3), one(T); cutoff = T(cutoff)),)) where {T}
+    ion = FieldIonization(; density = T(density), levels, capacity, ppc, every, rows,
+                          section = DopantSection(; start = T(start), stop = T(stop), ramp = T(ramp)))
+    return window_lwfa_3d(T; nsteps, a0, cells, plasma, ionization = ion)
+end
+
+"`ion_window_3d` on 72 × 8 × 8 cells, the dopant on the 4 × 4 transverse cells about the axis: the cheaper run of the gradient, the restart and the allocation tests."
+ion_window_3d_small(::Type{T}; kw...) where {T} = ion_window_3d(T; cells = (72, 8, 8), rows = ((3.2, 9.4), (3.2, 9.4)), kw...)
+
+"The two levels of the invariant runs, an ADK and a Tong–Lin level, whose rates are of order one at the plasma's fields of about 0.2."
+inv_levels(::Type{T}) where {T} = (ADKLevel(one(T) / 2, T(3) / 5, one(T)), TongLinLevel(one(T) / 2, one(T), T(3) / 2, one(T) / 2))
+
+"""
+    ion_plane_2d(T; window = false, open = false, nsteps) -> EMProblem{2}
+
+The 2D runs of T-1040 with a dopant of [`inv_levels`](@ref) at 0.05 n_c, 2 × 1 per cell on the rows
+whose centres lie in (1.1, 4.9), born every 2 steps. `window = false`: two cold beams drifting along
+±(0.2, 0.15, −0.125) with a perturbation of mode (1, 1) on 16 × 12 cells of 1/2 in the uniform field
+E₀ = (0.2, 0.1, 0), y periodic or open; `window = true`: `window_plane_2d`'s plasma, whose
+charge at the ramp drives the fields, with the dopant in the section from 6 to 14 (ramp 2).
+"""
+function ion_plane_2d(::Type{T}; window = false, open = false, nsteps = window ? 64 : 20) where {T}
+    sec = window ? DopantSection(; start = T(6), stop = T(14), ramp = T(2)) : nothing
+    natoms = 16 * 8 * 2 + 8 * 8 * 2
+    ion = FieldIonization(; density = T(1) / 20, levels = inv_levels(T), capacity = natoms * (nsteps ÷ 2 + 2), ppc = (2, 1), every = 2,
+                          rows = (1.1, 4.9), section = sec)
+    if window
+        p = window_plane_2d(T; open, nsteps)
+        return EMProblem("ion-plane-2d", p.length, p.cells, p.dt, nsteps, p.species, p.seed, p.kmode; boundaries = p.boundaries, window = p.window,
+                         profile = p.profile, ionization = ion)
+    end
+    h = (one(T) / 2, one(T) / 2)
+    cells = (16, 12)
+    L = T.(cells) .* h
+    v = T.(INV3_DRIFT)
+    sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, one(T) / 20, (1, 1), (2, 2), v, zero3(T), 1),
+          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), (1, 1), (2, 2), .-v, zero3(T), 2))
+    return EMProblem("ion-plane-2d", L, cells, inv3_dt(h), nsteps, sp, 1, (1, 1); E0 = (T(1) / 5, T(1) / 10, zero(T)),
+                     boundaries = (:periodic, open ? :open : :periodic), ionization = ion)
+end
+
+"""
+    ion_inv_3d(T, axis; window = false, open = false, nsteps) -> EMProblem{3}
+
+[`ion_plane_2d`](@ref) in 3D, invariant along `axis` (3 or 2; for 2 the plane's y on z, a quarter turn
+about x, as [`window_map_3d`](@ref)): 6 cells of Δ = 1 along it, 2 particles per cell and one atom,
+the dopant's rows on the plane's transverse axis, the drift and E₀ turned with the plane.
+"""
+function ion_inv_3d(::Type{T}, axis; window = false, open = false, nsteps = window ? 64 : 20) where {T}
+    put(a, b, c) = axis == 3 ? (a, b, c) : (a, c, b)
+    turn(v) = axis == 3 ? v : (v[1], -v[3], v[2])
+    sec = window ? DopantSection(; start = T(6), stop = T(14), ramp = T(2)) : nothing
+    natoms = 6 * (16 * 8 * 2 + 8 * 8 * 2)
+    ion = FieldIonization(; density = T(1) / 20, levels = inv_levels(T), capacity = natoms * (nsteps ÷ 2 + 2), ppc = put(2, 1, 1), every = 2,
+                          rows = put(nothing, (1.1, 4.9), nothing)[2:3], section = sec)
+    if window
+        p = window_inv_3d(T, axis; open, nsteps)
+        return EMProblem("ion-inv-3d", p.length, p.cells, p.dt, nsteps, p.species, p.seed, p.kmode; boundaries = p.boundaries, window = p.window,
+                         profile = p.profile, ionization = ion)
+    end
+    h2 = (one(T) / 2, one(T) / 2)
+    cells = put(16, 12, 6)
+    L = put(T(8), T(6), T(6))
+    v = turn(T.(INV3_DRIFT))
+    m = put(1, 1, 0)
+    sp = (SpeciesDescription{T}(:a, -one(T), one(T), one(T) / 2, one(T) / 20, m, put(2, 2, 2), v, zero3(T), 1),
+          SpeciesDescription{T}(:b, -one(T), one(T), one(T) / 2, zero(T), m, put(2, 2, 2), .-v, zero3(T), 2))
+    return EMProblem("ion-inv-3d", L, cells, inv3_dt(h2), nsteps, sp, 1, m; E0 = turn((T(1) / 5, T(1) / 10, zero(T))),
+                     boundaries = put(:periodic, open ? :open : :periodic, :periodic), ionization = ion)
+end
+
+"The initialized 3D state of an ionization problem (`current = NoCurrent()` for prescribed fields; `absorber` on its open axes; `gather` the particles' gather)."
+function ion_state_3d(prob; mode = Reference(), workgroupsize = nothing, current = Esirkepov(), absorber = nothing, be = CPU(), gather = nothing,
+                      headroom = 1 / 4)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current, absorber, gather, headroom); backend = be)
+    initialize!(st, prob)
+    return st
+end
+
+"A hash of the bits of everything a 3D state evolves, of `K` and of the histories."
+function ion_digest_3d(st::EMState{3})
+    h = UInt64(0)
+    for a in (evolved(st)..., st.K, values(st.recorder.hist)...)
+        h = hash(bits(a), h)
+    end
+    return h
+end
+
+"""
+    ion3d_digests(; workgroupsize = nothing, be = CPU(), gather = nothing) -> Vector{(label, T, digest)}
+
+T-1045 (and T-1054 with `gather`): Reference runs per element type, one digest each: the dopant in
+the 3D window (`ion_window_3d`, 110 steps: births, shifts, atoms and electrons leaving through the
+back edge) and a thermal plasma with a dopant of two levels in the box open along y and z
+(the PML), 20 steps.
+"""
+function ion3d_digests(; workgroupsize = nothing, be = CPU(), gather = nothing)
+    out = Tuple{String,DataType,UInt64}[]
+    pml = PML(; cells = 3, kappa_max = 2, alpha_max = 0.1)
+    for T in TYPES
+        w = ion_window_3d(T; nsteps = 110)
+        st = ion_state_3d(w; workgroupsize, be, gather)
+        run!(st, params(w), w.nsteps)
+        push!(out, ("window", T, ion_digest_3d(st)))
+        b = ion_box_3d(T; levels = (ADKLevel(one(T) / 2, T(3), one(T)), TongLinLevel(one(T) / 2, T(4), T(3) / 2, one(T))), density = T(1) / 20,
+                       ppc = (2, 1, 1), every = 2, plasma = true, cells = (16, 10, 10), box = (8, 5, 5), boundaries = (:periodic, :open, :open))
+        sb = ion_state_3d(b; workgroupsize, be, gather, absorber = pml)
+        run!(sb, params(b), b.nsteps)
+        push!(out, ("open", T, ion_digest_3d(sb)))
     end
     return out
 end
