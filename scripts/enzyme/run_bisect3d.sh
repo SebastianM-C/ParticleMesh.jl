@@ -11,7 +11,7 @@ J=(julia +1.13 --startup=no -t 2 --project=lib/ParticleMeshElectromagnetic/test)
 export PM_BACKEND=cuda PM_ENZYME_PATCH="${PM_ENZYME_PATCH:-scripts/enzyme/spike/active_args.jl}"
 echo "# commit $(git rev-parse HEAD), patches $PM_ENZYME_PATCH, started $(date -u +%FT%TZ)" > "$out/summary.txt"
 runs=("$@")
-[ ${#runs[@]} -eq 0 ] && runs=("step dim=2" solve fold kinetic push sort deposit current step_nopush step "step T=Float64 mode=reference")
+[ ${#runs[@]} -eq 0 ] && runs=("step copy=ka" "step dim=2" solve fold kinetic push sort deposit current step_nopush step)
 i=0
 for r in "${runs[@]}"; do
     i=$((i + 1))

@@ -5,12 +5,14 @@
 # each piece in its own process.
 #
 #     PM_BACKEND=cuda PM_ENZYME_PATCH=scripts/enzyme/spike/active_args.jl \
-#       julia +1.13 -t 2 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/bisect3d.jl <piece> [T=Float32|Float64] [mode=fast|reference] [dim=3|2]
+#       julia +1.13 -t 2 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/bisect3d.jl <piece> [T=Float32|Float64] [mode=fast|reference] [dim=3|2] [copy=ka]
 #
 # Pieces: push (gather and push of every species), sort, deposit (the engine's deposit_flux!
 # alone), current (sort, zero, deposit, fold), fold (the guard fold of Jx, Jy, Jz), solve (the
 # Yee solve), kinetic, step (the whole step), step_nopush (the step's pieces without the push).
 
+# copy=ka: also load spike/ka_copy.jl (binomial!'s device copyto! as a kernel)
+any(==("copy=ka"), ARGS) && (ENV["PM_ENZYME_PATCH"] = join(filter(!isempty, [get(ENV, "PM_ENZYME_PATCH", ""), joinpath(@__DIR__, "spike", "ka_copy.jl")]), ';'))
 include(joinpath(@__DIR__, "common.jl"))
 include(joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "test", "em3d_cases.jl"))
 const PME = ParticleMeshElectromagnetic
@@ -86,7 +88,7 @@ end
 prob = case3(T)
 st = initialized(prob, MODE)
 p = params(prob)
-println("bisect: $(DIM)D piece $PIECE $T $MODE, backend $(backend())"); flush(stdout)
+println("bisect: $(DIM)D piece $PIECE $T $MODE $(join(ARGS[2:end], ' ')), backend $(backend())"); flush(stdout)
 E2 = similar(st.fields.Ex); fill!(E2, 0)
 dE2 = similar(E2); fill!(dE2, 1)
 dst = Enzyme.make_zero(st)
@@ -95,4 +97,4 @@ t = @elapsed begin
     sync()
 end
 nz = count(a -> any(!iszero, Array(a)), values(leaves(dst)))
-println("bisect: $(DIM)D piece $PIECE $T $MODE: ok in $(round(t; digits = 1)) s, $nz shadow arrays nonzero")
+println("bisect: $(DIM)D piece $PIECE $T $MODE $(join(ARGS[2:end], ' ')): ok in $(round(t; digits = 1)) s, $nz shadow arrays nonzero")
