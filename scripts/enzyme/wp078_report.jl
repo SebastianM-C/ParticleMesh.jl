@@ -3,10 +3,11 @@
 # trapped2d.jl's `gathergrad` campaign (J and its Dual gradient with the compensated and the
 # Galerkin-compensated gather).
 #
-#     julia +1.13 --project=scripts scripts/enzyme/wp078_report.jl <out dir> <grad run dir> <gathergrad run dir>
+#     julia +1.13 --project=scripts scripts/enzyme/wp078_report.jl <out dir> <grad run dir> <gathergrad run dir> <optimization run dir>
 #
 # <grad run dir> holds the `enzyme-trapped-grad-*` result directories and `logs/b2/` (the run and
-# nvidia-smi logs); <gathergrad run dir> the campaign's `gg-*.json`. Writes `gradient.md`,
+# nvidia-smi logs) and the `enzyme-trapped-steps-*` runs; <gathergrad run dir> the campaign's
+# `gg-*.json`; <optimization run dir> the reverse-mode optimization's `points/`. Writes `gradient.md`,
 # `gradient.json`, `gathergrad.md`, `gathergrad.png` and its sidecar `gathergrad.json` (every number
 # of the tables and the figure) into <out dir>, and prints the two tables. The optimization's table is
 # `scripts/optim/trapped2d_opt.jl report`'s, and the B1 cost table `scripts/enzyme/table.jl`'s.
@@ -17,12 +18,15 @@ using CairoMakie, JSON, TOML, Printf, Statistics
     reverse_seconds(segments) -> (steady, compiling)
 
 The reverse pass's seconds without compilation. The first reverse call of each segment length
-compiles (about 170 s and 260 s on the RTX 5090: the last, shorter segment and the first full
+compiles (about 170 s and 260 s on the RTX 5090: the first full segment and the last, shorter
 one); a segment more than 10 times the median is counted as compiling and replaced by the median.
+Refuses a run in which that leaves fewer than three quarters of the segments, where the median
+could itself be a compile time.
 """
 function reverse_seconds(segments)
     m = median(segments)
     compiling = count(>(10m), segments)
+    compiling <= length(segments) ÷ 4 || error("$compiling of $(length(segments)) segments look like compilation")
     return (; steady = sum(s for s in segments if s <= 10m) + compiling * m, compiling)
 end
 
@@ -57,7 +61,9 @@ function gradient_rows(dir)
         r = TOML.parsefile(joinpath(dir, d, "result.toml"))
         c, s = r["case"], r["seconds"]
         rs = reverse_seconds(s["segments"])
+        heap = parse(Int, TOML.parsefile(joinpath(dir, d, "manifest.toml"))["cuda_heap"])
         push!(rows, Dict{String,Any}("run" => d, "C" => c["checkpoint_every"], "checkpoints" => get(c, "checkpoint_memory", "host"),
+                                     "cuda_heap_gib" => heap / 2^30,
                                      "J" => r["J"], "J_dual" => r["J_dual"], "gradient_reverse" => r["gradient_reverse"],
                                      "gradient_reverse_start" => r["gradient_reverse_start"],
                                      "gradient_reverse_params" => r["gradient_reverse_params"], "gradient_dual4" => r["gradient_dual4"],
@@ -74,19 +80,54 @@ end
 function gradient_md(rows)
     io = IOBuffer()
     d = rows[1]
-    println(io, "| gradient | checkpoints | every C steps | dJ/dτ | dJ/dw | dJ/dfocus | dJ/dn | largest relative difference from Dual{4} | primal with checkpoints (s) | reverse, no compilation (s) | reverse per step (ms) | start tangent (s) | total (s) | card memory in use, peak (GiB) |")
-    println(io, "|", repeat("---|", 14))
+    println(io, "| gradient | checkpoints | every C steps | device heap (GiB) | dJ/dτ | dJ/dw | dJ/dfocus | dJ/dn | largest relative difference from Dual{4} | primal with checkpoints (s) | reverse, no compilation (s) | reverse per step (ms) | primal + reverse (s) | start tangent, first call (s) | card memory in use, peak (GiB) |")
+    println(io, "|", repeat("---|", 15))
     g = d["gradient_dual4"]
-    @printf(io, "| Dual{4} | | | %.6g | %.6g | %.6g | %.6g | | | | | | %.1f | |\n", g..., d["dual4"])
+    @printf(io, "| Dual{4} | | | | %.6g | %.6g | %.6g | %.6g | | | | | %.1f | | |\n", g..., d["dual4"])
     for r in rows
         g = r["gradient_reverse"]
         pk = r["peak_mib"] === nothing ? "" : @sprintf("%.1f", r["peak_mib"] / 1024)
-        total = r["primal_with_checkpoints"] + r["reverse_steady"] + r["start_tangent"]
-        @printf(io, "| reverse | %s | %d | %.6g | %.6g | %.6g | %.6g | %.1e | %.1f | %.1f | %.1f | %.1f | %.1f | %s |\n", r["checkpoints"], r["C"], g...,
-                maximum(r["relative_difference"]), r["primal_with_checkpoints"], r["reverse_steady"], 1e3 * r["reverse_steady"] / r["nsteps"],
-                r["start_tangent"], total, pk)
+        total = r["primal_with_checkpoints"] + r["reverse_steady"]
+        @printf(io, "| reverse | %s | %d | %g | %.6g | %.6g | %.6g | %.6g | %.1e | %.1f | %.1f | %.1f | %.1f | %.1f | %s |\n", r["checkpoints"], r["C"],
+                r["cuda_heap_gib"], g..., maximum(r["relative_difference"]), r["primal_with_checkpoints"], r["reverse_steady"],
+                1e3 * r["reverse_steady"] / r["nsteps"], total, r["start_tangent"], pk)
     end
     return String(take!(io))
+end
+
+"""
+    steps_md(dir) -> String
+
+The primal and the reverse pass per step without checkpoints, from the `trapped.jl steps` runs in
+`dir` (milestone 1: k steps from the state at t = tmid, one autodiff call, compiled beforehand).
+"""
+function steps_md(dir)
+    io = IOBuffer()
+    println(io, "| run | t | steps | primal (ms per step) | reverse (ms per step) | reverse / primal |")
+    println(io, "|---|---|---|---|---|---|")
+    for d in sort(filter(startswith("enzyme-trapped-steps-"), readdir(dir)))
+        r = TOML.parsefile(joinpath(dir, d, "result.toml"))
+        for row in r["rows"]
+            k = row["steps"]
+            @printf(io, "| %s | %g | %d | %.3f | %.2f | %.1f |\n", d, r["case"]["tmid"], k, 1e3 * row["primal_seconds"] / k,
+                    1e3 * row["reverse_seconds"] / k, row["reverse_seconds"] / row["primal_seconds"])
+        end
+    end
+    return String(take!(io))
+end
+
+"""
+    opt_cost_md(dir) -> String
+
+The phases of one gradient inside the optimization's process (compiled once, at its first
+point): the medians over the points of `dir/points/*.json` of their `seconds_phases`.
+"""
+function opt_cost_md(dir)
+    ps = [JSON.parsefile(joinpath(dir, "points", f)) for f in readdir(joinpath(dir, "points")) if endswith(f, ".json")]
+    ph = [p["seconds_phases"] for p in ps if haskey(p, "seconds_phases")]
+    med(k) = median(x[k] for x in ph)
+    return @sprintf("Optimization run %s, %d gradients: median per gradient %.1f s (primal with checkpoints %.2f s, reverse %.1f s, start tangent %.3f s); the window is 3 λ₀ longer than the gradient table's case (`cap=cetal25`).\n",
+                    basename(normpath(dir)), length(ph), median(p["seconds"] for p in ps), med("primal"), med("reverse"), med("tangent"))
 end
 
 const POINT_ORDER = ("E1.9", "E2.175", "E2.4", "n0.06", "n0.085")
@@ -153,10 +194,10 @@ function gathergrad_figure(rows, grids, finest)
     return fig
 end
 
-function main(out, graddir, ggdir)
+function main(out, graddir, ggdir, optdir)
     mkpath(out)
     grows = gradient_rows(graddir)
-    gmd = gradient_md(grows)
+    gmd = gradient_md(grows) * "\n" * steps_md(graddir) * "\n" * opt_cost_md(optdir)
     rows, grids, finest = gathergrad_rows(ggdir)
     ggmd = gathergrad_md(rows, grids)
     fig = gathergrad_figure(rows, grids, finest)
@@ -169,5 +210,5 @@ function main(out, graddir, ggdir)
     print(gmd, "\n", ggmd)
 end
 
-length(ARGS) == 3 || error("usage: wp078_report.jl <out dir> <grad run dir> <gathergrad run dir>")
+length(ARGS) == 4 || error("usage: wp078_report.jl <out dir> <grad run dir> <gathergrad run dir> <optimization run dir>")
 main(ARGS...)

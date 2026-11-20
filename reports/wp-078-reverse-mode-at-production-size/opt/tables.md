@@ -117,4 +117,4 @@ Start `narrow`, every point the solver reported:
 | 31 | 7.762 | 7.348 | 110.0 | 0.1 | 1.945 | 0.2216 | 0.3671 | 0.2878 | -1.86, -0.00403, 2.77, 1.16 | 40.1 |
 | 32 | 7.762 | 7.348 | 110.0 | 0.1 | 1.945 | 0.2216 | 0.3671 | 0.2878 | -1.86, -0.00403, 2.77, 1.16 | 39.9 |
 
-Cost: 87 runs with duals in the four free directions, 4909.0 s in all, median 39.97 s per run (first run, with compilation: 520.1 s).
+Cost: 87 reverse-mode gradients (Enzyme, checkpointed; WP-078), 4909.0 s in all, median 39.97 s per run (first run, with compilation: 520.1 s).

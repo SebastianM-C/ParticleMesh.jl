@@ -109,7 +109,9 @@ function opt_report(out, dir)
         end
     end
     secs = [p["seconds"] for p in values(points)]
-    println(io, "\nCost: ", length(secs), " runs with duals in the four free directions, ", fmt(sum(secs)), " s in all, median ", fmt(Statistics.median(secs)),
+    how = any(p -> get(p, "gradient_mode", "") == "enzyme-reverse", values(points)) ?
+          "reverse-mode gradients (Enzyme, checkpointed; WP-078)" : "runs with duals in the four free directions"
+    println(io, "\nCost: ", length(secs), " ", how, ", ", fmt(sum(secs)), " s in all, median ", fmt(Statistics.median(secs)),
             " s per run (first run, with compilation: ", fmt(maximum(secs)), " s).")
 
     cdir = joinpath(dir, "check")
