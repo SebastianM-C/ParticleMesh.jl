@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "4d3fdff63fea40b4f56aa45b9fdc02a12dab85d7"
+project_hash = "9e72725c6acb360e61946e3c7d31d3df974431f9"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1225,7 +1225,7 @@ uuid = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
 version = "0.1.0-DEV"
 
 [[deps.ParticleMeshCore]]
-deps = ["AcceleratedKernels", "Adapt", "Atomix", "KernelAbstractions"]
+deps = ["AcceleratedKernels", "Adapt", "Atomix", "KernelAbstractions", "UnsafeAtomics"]
 path = "lib/ParticleMeshCore"
 uuid = "5afebaaa-41db-49a8-b96f-38d33e49b288"
 version = "0.1.0-DEV"

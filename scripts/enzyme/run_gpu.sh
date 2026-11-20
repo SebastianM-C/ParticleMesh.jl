@@ -27,7 +27,8 @@ for args in "fast 20 1 Float64 7" "fast 20 1 Float32 7" "fast 100 1 Float64 3"; 
 done
 cases=("$@")
 [ ${#cases[@]} -eq 0 ] && cases=("Float32 10x8 3x3 1,2,4,8,16,32,64" "Float64 10x8 3x3 1,2,4,8,16,32,64"
-                                 "Float32 64x64 3x3 1,2,4,8,16,32" "Float32 256x256 2x2 1,2,4,8,16")
+                                 "Float32 64x64 3x3 1,2,4,8,16,32" "Float32 256x256 2x2 1,2,4,8,16"
+                                 "Float32 1024x1024 2x2 1,2,4,8")
 for c in "${cases[@]}"; do
     run "cost-${c// /-}" "${J[@]}" scripts/enzyme/cost.jl $c
 done
