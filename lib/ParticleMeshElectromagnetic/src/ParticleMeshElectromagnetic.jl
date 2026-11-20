@@ -2,16 +2,16 @@
     ParticleMeshElectromagnetic
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
-`N = 1`, `N = 2` and `N = 3` (1D3V, 2D3V and 3D3V; periodic, and at `N = 2` with an open transverse axis
-through an absorbing layer, WP-027, or a convolutional PML, WP-034, and a moving window along axis 1, WP-028, and a witness bunch of test electrons whose mean energy gain is the
+`N = 1`, `N = 2` and `N = 3` (1D3V, 2D3V and 3D3V; periodic, with open transverse axes (y at `N = 2`, y and z at `N = 3`, WP-072)
+through an absorbing layer, WP-027, or a convolutional PML, WP-034, and at `N = 2` a moving window along axis 1, WP-028, and a witness bunch of test electrons whose mean energy gain is the
 optimization objective, WP-047, and a dopant that the fields ionize by an ADK rate with no random numbers, WP-059), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields at `N = 2` and `N = 3`). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
 their Courant limit, the relativistic Boris pusher behind a pusher type, the step composition
-and the diagnostics. At `N = 3` the module has the periodic 3D3V step (WP-042): the problem
+and the diagnostics. At `N = 3` the module has the 3D3V step (WP-042): the problem
 description, the state, the push, the charge-conserving current, the Yee solver, the initial field
-and the recorder, with no laser, absorber, window, witness, dopant, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
+and the recorder, periodic or open along y and z (WP-072), with no laser, window, witness, dopant, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
 Gauss's law holds to roundoff from the initial `cumsum_periodic!` field onwards. The
 electrostatic cases (Landau damping, two-stream) run as edge cases with no transverse momenta
 or fields, as Smilei runs them.
@@ -63,7 +63,7 @@ using ParticleMeshCore: ALIVE, gather_at, advance, launcher, Stagger, particle_c
 export FIELD_LAYOUT, RHO_STAGGER, field_layout, em_fields, em_guard_width
 export Yee, yee_b_half!, yee_e!, solve_fields!, courant_limit, check_courant
 export FieldModifier, BHalf, EStep, modifier_params, before_substep!, after_substep!, evolved_arrays, on_arrays, field_modifiers
-export open_absorber, back_absorber, antenna_planes, with_modifiers
+export open_absorber, open_absorbers, retire_open!, back_absorber, antenna_planes, with_modifiers
 export Pusher, Boris, Vay, HigueraCary, BorisExactRotation, QuadraticUnitary, push_momentum, push_particle, lorentz_factor
 export lorentz_rhs!, particle_problem, pusher_algorithm
 export CosineProfile, SpeciesDescription, EMProblem, EMNumerics, Esirkepov, NoCurrent, problem_from_case, case_seed, numerics_from_case, momentum_distribution

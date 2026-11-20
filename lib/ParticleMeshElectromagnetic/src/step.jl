@@ -257,8 +257,17 @@ struct EMState{N,T,NU<:EMNumerics,G<:PeriodicGrid{N},SP<:Tuple,WS<:Tuple,F<:Name
     fresh::Base.RefValue{Bool}
 end
 
-"The placed absorber of a state's open axis (a [`LayerFactors`](@ref) or a [`PMLFields`](@ref)), or `nothing`."
-open_absorber(st::EMState) = pick_modifier(OpenAbsorber, st.modifiers)
+"""
+    open_absorber(state, d = 2)
+
+The placed absorber of the state's open axis `d` (a [`LayerFactors`](@ref) or a
+[`PMLFields`](@ref) of that axis), or `nothing` where the axis is not open.
+"""
+open_absorber(st::EMState) = open_absorber(st, Val(2))
+open_absorber(st::EMState, d::Integer) = open_absorber(st, Val(d))
+open_absorber(st::EMState, ::Val{d}) where {d} = pick_open_absorber(st.modifiers, Val(d))
+"The placed absorbers of every open axis of a state, in the order of its tuple of modifiers (`()` for a periodic box)."
+open_absorbers(st::EMState) = pick_modifiers(OpenAbsorber, st.modifiers)
 "The placed PML of a moving window's back edge (a [`BackPMLFields`](@ref)), or `nothing`."
 back_absorber(st::EMState) = pick_modifier(BackPMLFields, st.modifiers)
 "The antenna planes of a state, one [`AntennaPlane`](@ref) per laser; `()` without lasers."
@@ -284,7 +293,8 @@ end
 
 # At most one of each modifier that a state finds by its type (a host check of the tuple's types).
 function check_modifiers(modifiers::Tuple)
-    for (what, M) in (("absorber of the open axis (an absorbing layer or a PML)", OpenAbsorber), ("PML of the window's back edge", BackPMLFields),
+    for (what, M) in (("absorber of the open axis 2 (an absorbing layer or a PML)", OpenAbsorberOf{2}),
+                      ("absorber of the open axis 3 (an absorbing layer or a PML)", OpenAbsorberOf{3}), ("PML of the window's back edge", BackPMLFields),
                       ("AntennaPlanes (it holds every plane)", AntennaPlanes))
         n = count(m -> m isa M, modifiers)
         n <= 1 || throw(ArgumentError("a state has one $what, which it finds by its type; the tuple of modifiers has $n"))
@@ -461,7 +471,9 @@ end
 # axis, the window's frame and the bunch's placement (none of them at N = 1, where no problem has one).
 function check_aux_setup(st::EMState, problem, wrong)
     window = window_frame(st)
-    (last(problem.boundaries) === :open) == (open_absorber(st) !== nothing) || wrong("axis 2 is $(last(problem.boundaries))")
+    for d in 2:length(problem.boundaries)
+        (problem.boundaries[d] === :open) == (open_absorber(st, d) !== nothing) || wrong("axis $d is $(problem.boundaries[d])")
+    end
     (problem.window === nothing ? window === nothing : window !== nothing && window.window == problem.window) ||
         wrong("the moving window $(problem.window)")
     w = witness_frame(st)
@@ -706,7 +718,7 @@ function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     end
     retire_x!(window, st)
     current!(numerics.current, st)
-    retire!(open_absorber(st), st)
+    retire_open!(open_absorbers(st), st)
     solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs)
     advance_window!(window, st, p, k)
     # after the window's shift, which moves, retires and refills particles: once per step, and

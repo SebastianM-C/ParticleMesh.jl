@@ -107,8 +107,9 @@ not differentiable parameters, A3: the addition tests them for zero on the host)
 `lasers`, a tuple of [`GaussianLaser`](@ref) or [`ShapedLaser`](@ref) descriptions launched by antenna planes during
 the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
-at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
-[`AbsorbingLayer`](@ref) or [`PML`](@ref) and particles that cross the box edge are retired, or `:window` on
+at N = 2 and on axis 2, axis 3 or both at N = 3, an open transverse boundary (WP-027, WP-072), where
+fields leave through the numerics' [`AbsorbingLayer`](@ref) or [`PML`](@ref) (the same on every
+open axis) and particles that cross the box edge are retired, or `:window` on
 axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box moves at c along
 axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
 [`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
@@ -121,7 +122,8 @@ finished its pulse before the window passes it (checked by the state). At N = 2 
 gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
 a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
 without random numbers, its electrons born by weight into a species of their own. At N = 3
-the box is periodic on every axis, with no laser, window, witness or ionization (WP-042). At N = 1
+axis 1 is periodic and the transverse axes are periodic or open (WP-072), with no laser, window,
+witness or ionization (WP-042). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -133,8 +135,7 @@ checks that every species has the problem's dimension (an integer `mode` and `pp
 of each at N = 2, three at N = 3), that the cells and the particles per cell are positive, at
 N = 2 and 3 that `kmode` is not the zero mode, that lasers are given only at N = 2, and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
-together with a `window` and the conditions above, every axis `:periodic` at N = 3 (an
-`ArgumentError` otherwise).
+together with a `window` and the conditions above at N = 2 (an `ArgumentError` otherwise).
 """
 struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB,IZ}
     name::String
@@ -182,10 +183,8 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
     length(bd) == N && all(in((:periodic, :open, :window)), bd) ||
         throw(ArgumentError("boundaries = $boundaries: one of :periodic, :open and :window per axis, $N of them"))
-    first(bd) in (:periodic, :window) && last(bd) !== :window ||
-        throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), axis 2 :periodic or :open (the open transverse boundary)"))
-    N == 3 && any(!=(:periodic), bd) &&
-        throw(ArgumentError("boundaries = $bd: at N = 3 every axis is :periodic (open boundaries and the moving window are 2D)"))
+    first(bd) in (:periodic, :window) && all(b -> b in (:periodic, :open), bd[2:end]) ||
+        throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), the transverse axes :periodic or :open (an open transverse boundary)"))
     moving = first(bd) === :window
     moving && N != 2 && throw(ArgumentError("the moving window is implemented at N = 2 only"))
     moving == (window !== nothing) ||
@@ -264,8 +263,9 @@ work-items, as PoCL reported it, #297), and a launch it does not fit stops the s
 N = 1, 2 and 3, or [`NoCurrent`](@ref)`()` at N = 2 and 3 (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
-problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
-then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
+problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) when a transverse axis of the problem is `:open` (at N = 2
+axis 2, at N = 3 axis 2, 3 or both, each open axis getting its own placed layer; required then,
+refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
 with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
 the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
 back), or `nothing`, the window's field-free outside alone; a state refuses it without a

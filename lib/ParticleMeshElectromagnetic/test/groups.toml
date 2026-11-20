@@ -20,8 +20,8 @@ groups = [
     # the field ionization, which reuses no other file, and its levels' rate laws; the transposed pairs;
     # the Galerkin gather (gather.jl's and ionization.jl's helpers)
     ["ionization.jl", "barrier_suppression.jl", "resort_step.jl", "gather.jl", "galerkin.jl", "transposes.jl"],
-    # the periodic 3D step, which reuses no other file
-    ["em3d_step.jl"],
+    # the 3D step, periodic and open, which reuse no other file
+    ["em3d_step.jl", "em3d_open.jl"],
     # the 1D cases with the Galerkin gather, after the 1D cases with today's gather (their runs)
     ["physics.jl", "galerkin_physics.jl"],
 ]
