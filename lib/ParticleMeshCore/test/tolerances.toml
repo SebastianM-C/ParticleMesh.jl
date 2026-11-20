@@ -552,12 +552,12 @@ quantity = "chain rule of flux_pullback! at N = 3 per input array; C32: the Floa
 scale = "Σ|J̄·J·v| over the three fields; C32: max|x̄| (at least 1) per array"
 C = 16
 C32 = 16
-measured = {}
+measured = { Float64 = 0.247, Float32 = 2.39 }
 status = "proposed"
 
 ["T-1111"]
 quantity = "chain rule of Enzyme's reverse mode through the N = 3 flux rule (deposit_flux!, the sort)"
 scale = "Σ|ȳ·J·v| over the output's entries"
 C = 16
-measured = {}
+measured = { Float64 = 0.235 }
 status = "proposed"
