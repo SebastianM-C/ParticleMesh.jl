@@ -24,4 +24,6 @@ groups = [
     ["em3d_step.jl", "em3d_open.jl", "em3d_antenna.jl"],
     # the 1D cases with the Galerkin gather, after the 1D cases with today's gather (their runs)
     ["physics.jl", "galerkin_physics.jl"],
+    # the 3D moving window, with the 3D step whose helpers and worker it reuses
+    ["em3d_step.jl", "em3d_window.jl"],
 ]

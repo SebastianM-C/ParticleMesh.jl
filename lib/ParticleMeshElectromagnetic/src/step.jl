@@ -240,8 +240,8 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
 - Evolved by `initialize!` and `step!`, and nothing else is ([`evolved`](@ref) is the list, as a
   tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
   momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
-  guards, and at N = 2 the convolution fields of a PML (in `modifiers`) and in `aux` the
-  window's counters `lost` and `fast`, the witness bunch's particles and a dopant's atoms, populations and electrons. With the
+  guards, and at N = 2 and 3 the convolution fields of a PML (in `modifiers`) and in `aux` the
+  window's counters `lost` and `fast`, and at N = 2 the witness bunch's particles and a dopant's atoms, populations and electrons. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
 - The cache: the kinetic energy buffer `K` for the next observation (at N = 1 the kinetic energy
@@ -261,9 +261,9 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
   of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
-  species' charge and mass, and at N = 2 in `aux` the [`WindowFrame`](@ref) and the
-  [`WitnessFrame`](@ref) (`nothing` where the problem has none), and of the
-  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity (all three `nothing` at
+  species' charge and mass, and at N = 2 and 3 in `aux` the [`WindowFrame`](@ref), and at N = 2 the
+  [`WitnessFrame`](@ref) (`nothing` where the problem has none) and of the
+  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity (both `nothing` at
   N = 3). `aux` is empty at N = 1.
 - `modifiers`: the tuple of [`FieldModifier`](@ref)s that the mesh solve walks
   ([`solve_fields!`](@ref)), in the order [`field_modifiers`](@ref) gives them: the placed
@@ -359,7 +359,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
     numerics.absorber === nothing || throw(ArgumentError("the 1D box is periodic: EMNumerics takes no absorber at N = 1"))
     numerics.back_absorber === nothing ||
-        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D)"))
+        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D and 3D)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape))
     check_courant(numerics.solver, grid, problem.dt)
@@ -425,7 +425,7 @@ check_momenta_at(m::Symbol) = m in (:t0, :t_minus_half) ? m :
     check_params(state, params) -> params
 
 Whether `params` fit `state` (an `ArgumentError` naming the misfit otherwise): the same element
-type, one [`SpeciesParams`](@ref) per species, and at N = 2 one laser per antenna plane, each
+type, one [`SpeciesParams`](@ref) per species, and at N = 2 and 3 one laser per antenna plane, each
 within half a cell of its plane's column (the column is fixed when the state is built), with a
 moving window every pulse over before the window passes its plane, a witness's parameters exactly
 when the state has a bunch, and a profile only with a window; and what an [`EMProblem`](@ref)
@@ -480,7 +480,7 @@ Whether `state` has the configuration of `problem` (an `ArgumentError` otherwise
 takes from the problem it is built for besides the parameters: the cells and the cell sizes, the
 time step, per species the name, the particles per cell, the Philox stream, the kind of momentum
 distribution, the charge and the mass (as the state holds them, converted to its element type:
-a description in another type than the problem's is the state's own problem), and at N = 2 which
+a description in another type than the problem's is the state's own problem), and at N = 2 and 3 which
 boundaries are open or a window, the
 window's start and the witness bunch's placement, charge and mass; and the diagnostic mode of
 the state's own recorder, whose histories would otherwise be of another mode than the problem's. Called by
@@ -669,8 +669,8 @@ end
 Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state and the parameters
 ([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
 (§0.4). One method for N = 1, 2 and 3, the 1D case being the case of one resolved axis; what a
-problem does not have (a witness bunch, a moving window, an open axis, field modifiers: none of
-them at N = 1 or N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
+problem does not have (a witness bunch, a dopant, a moving window, an open axis, field modifiers: none of
+them at N = 1, no witness or dopant at N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
 the start of the step ([`observe!`](@ref): Eⁿ, Bⁿ and the kinetic energy at n − 1/2 that the
 previous step left in `K`; `nothing` observes nothing); then the module's step order:
 
