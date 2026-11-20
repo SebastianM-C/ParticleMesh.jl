@@ -130,6 +130,18 @@ function reverse_steps!(dst, st, p, first, k)
     return res[1][2]
 end
 
+# every array of a state (any element type), by its path, each once
+all_arrays!(out, path, x::AbstractArray) = (any(y -> y === x, values(out)) || (out[path] = x); out)
+all_arrays!(out, path, x::Union{Tuple,NamedTuple}) = (foreach(k -> all_arrays!(out, "$path.$k", x[k]), keys(x)); out)
+function all_arrays!(out, path, x)
+    (isstructtype(typeof(x)) && !(x isa Module) && !(x isa Type)) || return out
+    for f in fieldnames(typeof(x))
+        isdefined(x, f) && all_arrays!(out, "$path.$f", getfield(x, f))
+    end
+    return out
+end
+all_arrays(x) = all_arrays!(Dict{String,Any}(), "st", x)
+
 # every floating-point scalar of a struct (or a Dual), by its path; arrays are `leaves`'
 scalars!(out, path, x::Union{AbstractFloat,ForwardDiff.Dual}) = (out[path] = x; out)
 scalars!(out, path, x::AbstractArray) = out
@@ -183,6 +195,10 @@ end
 function main_steps()
     tmid = parse(Float64, opt("tmid", "150"))
     ks = parse.(Int, split(opt("ks", "1,4,16"), ","))
+    # the check's functional: J's summand with the trapping weight at 1 for every electron by default
+    # (u_x ≥ -2), so that it is not zero mid-run, where no electron is trapped yet
+    rise = Tuple(parse.(Float64, split(opt("rise", "-3,-2"), ",")))
+    fade = Tuple(parse.(Float64, split(opt("fade", join(TCASE.fade, ",")), ",")))
     mark("start: ppl $PPL ny $NY a0E $A0E θ $THETA, ks $ks")
     st, p, prob = make_start(F.(THETA))
     kmid = round(Int, tmid / Float64(st.dt))
@@ -191,6 +207,21 @@ function main_steps()
     t_mid = @elapsed (steps_only!(st, p, 1, kmid); sync())
     t_midd = @elapsed (steps_only!(std, pd, 1, kmid); sync())
     mark(@sprintf("primal to step %d %.1f s, Dual{5} %.1f s", kmid, t_mid, t_midd))
+    # The two runs differ by step kmid (the Float32 and the Dual kernels compile differently on the
+    # device, and the particles' paths separate): the Dual state takes every array of the Float32
+    # state, its values in the Duals' values
+    A, Ad = all_arrays(st), all_arrays(std)
+    gaps0 = Dict(k => Float64(maximum(abs.(Float64.(ForwardDiff.value.(Ad[k])) .- Float64.(A[k])); init = 0.0))
+                 for k in intersect(keys(A), keys(Ad)) if size(A[k]) == size(Ad[k]) && (eltype(A[k]) <: Real))
+    println("  before the copy, arrays that differ between the separate runs: ", sort([(k, g) for (k, g) in gaps0 if g > 0]; by = x -> -x[2])[1:min(end, 8)])
+    for k in intersect(keys(A), keys(Ad))
+        size(A[k]) == size(Ad[k]) || continue
+        if eltype(Ad[k]) <: ForwardDiff.Dual
+            Ad[k] .= ForwardDiff.Dual{TrapTag}.(A[k], ntuple(_ -> zero(F), 5)...)
+        elseif eltype(Ad[k]) == eltype(A[k])
+            copyto!(Ad[k], A[k])
+        end
+    end
     L, Ld = leaves(st), leaves(std)
     common = sort!(collect(intersect(keys(L), keys(Ld))))
     gaps = Dict(k => Float64(maximum(abs.(ForwardDiff.value.(Ld[k]) .- L[k]); init = zero(F))) for k in common)
@@ -219,12 +250,12 @@ function main_steps()
         try
             if n == 1
                 reclaim(); mark("reverse of $k steps, first call (compiles)")
-                row["first_call_seconds"] = @elapsed reverse_J(deepcopy(st), p, first, k)
+                row["first_call_seconds"] = @elapsed reverse_J(deepcopy(st), p, first, k; fade, rise)
                 mark(@sprintf("first call %.1f s", row["first_call_seconds"]))
             end
             reclaim(); before = devmem(); mark("reverse of $k steps")
             sc0 = deepcopy(st)
-            row["reverse_seconds"] = @elapsed (r = reverse_J(sc0, p, first, k))
+            row["reverse_seconds"] = @elapsed (r = reverse_J(sc0, p, first, k; fade, rise))
             after = devmem()
             mark(@sprintf("reverse of %d steps %.3f s (%.2f ms per step)", k, row["reverse_seconds"], 1e3 * row["reverse_seconds"] / k))
             row["pool_reserved_after_GiB"] = after.reserved
@@ -232,11 +263,11 @@ function main_steps()
             # primal of the same steps
             s1 = deepcopy(st); sync()
             row["primal_seconds"] = @elapsed (steps_only!(s1, p, first, k); sync())
-            J1 = J_of(s1)
+            J1 = J_of(s1; fade, rise)
             # forward: the Dual state
             d1 = deepcopy(std); sync()
             row["dual5_seconds"] = @elapsed (steps_only!(d1, pd, first, k); sync())
-            Jd = J_of(d1)
+            Jd = J_of(d1; fade, rise)
             fwd = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:5]
             a = Float64(area(st))
             terms = a .* array_terms(r.dst, std, 1)
@@ -263,7 +294,7 @@ function main_steps()
         push!(rows, row)
     end
     println("  kernel arguments with dropped adjoints: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "n/a")
-    write_run("steps", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "tmid" => tmid, "kmid" => kmid, "eltype" => "Float32",
+    write_run("steps", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "tmid" => tmid, "kmid" => kmid, "rise" => collect(rise), "fade" => collect(fade), "eltype" => "Float32",
                                            "gather" => "CompensatedGather(k = 1)", "mode" => "Reference", "seed" => SEED),
                             "primal_gap" => gap, "seconds" => Dict("primal_to_mid" => t_mid, "dual5_to_mid" => t_midd), "rows" => rows))
 end
@@ -287,10 +318,13 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
     st, p, prob = make_start(F.(θ); ppl, ny, extend, energy)
     nsteps = prob.nsteps
     s0area = Float64(area(st))
+    # the checkpoints in host memory: every array of the state, by path (a state copy is about
+    # 0.3 GiB at λ₀/32, ny = 2, the tape about 0.35 GiB per step: both would not fit the card)
+    work = deepcopy(st)
     saved = Any[]
     t_fwd = @elapsed begin
         for k in 1:nsteps
-            (k - 1) % C == 0 && push!(saved, deepcopy(st))
+            (k - 1) % C == 0 && push!(saved, Dict(path => Array(a) for (path, a) in all_arrays(st)))
             step!(st, p, k; observer = ())
         end
         sync()
@@ -312,7 +346,10 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
     t_rev = @elapsed for i in length(saved):-1:1
         first = 1 + (i - 1) * C
         k = min(C, nsteps - first + 1)
-        sc = saved[i]
+        sc = work
+        for (path, a) in all_arrays(work)
+            copyto!(a, saved[i][path])
+        end
         t = @elapsed if dst === nothing
             r = reverse_J(sc, p, first, k; fade, rise, seeds = F.(seeds))
             dst, Jrev = r.dst, r.J
@@ -322,7 +359,7 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
             push!(dps, reverse_steps!(dst, sc, p, first, k))
         end
         push!(seg_seconds, t)
-        saved[i] = nothing; sc = nothing
+        saved[i] = nothing
         verbose && i == length(saved) && mark(@sprintf("last segment (steps %d to %d) %.1f s; J from the reverse's forward %.8g", first, first + k - 1, t, Jrev))
         i % 4 == 0 && (reclaim(); verbose && mark(@sprintf("segment %d (steps %d to %d) %.1f s", i, first, first + k - 1, t)))
     end

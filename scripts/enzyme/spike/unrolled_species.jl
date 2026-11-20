@@ -89,6 +89,77 @@ using ParticleMeshElectromagnetic
         end
         return nothing
     end
+    # `ionize!` (ionization.jl) in two kernels: the populations (the ionization kernel with no
+    # birth, whose reverse pass checks against duals), then the births from the stored `pending`
+    # (Enzyme's reverse kernel reads `pending` again after the birth zeroed it, takes the branch
+    # with that value and loses the newborns' adjoints back to the atoms), then a kernel that
+    # moves the born atoms' `pending` into `emitted`. The same bits as ionization.jl.
+    @kernel function birth_kernel!(a, e, flags, @Const(count), f, pusher, shape, g::Int32, qm_h, cap::Int32)
+        # writes nothing it reads: born atoms are marked 2 in `flags` (deferred 1), and
+        # `settle_kernel!` moves their `pending` into `emitted`
+        i = Int32(@index(Global, Linear))
+        mark = Int32(0)
+        @inbounds if a.status[i] == ALIVE
+            T = eltype(a.w)
+            pending = a.extras.pending[i]
+            w = a.w[i] * pending
+            if w > zero(T)
+                slot = count[1] + i
+                if slot <= cap
+                    c = particle_cell(a, i, Val(2))
+                    δ = particle_offset(a, i, Val(2))
+                    E, B = fields_at(f, c, δ, shape, g)
+                    u = push_momentum(pusher, (zero(T), zero(T), zero(T)), E, B, qm_h)
+                    e.cell[1][slot] = c[1]
+                    e.cell[2][slot] = c[2]
+                    e.offset[1][slot] = δ[1]
+                    e.offset[2][slot] = δ[2]
+                    e.u[1][slot] = u[1]
+                    e.u[2][slot] = u[2]
+                    e.u[3][slot] = u[3]
+                    e.w[slot] = w
+                    e.status[slot] = ALIVE
+                    mark = Int32(2)
+                else
+                    mark = Int32(1)
+                end
+            end
+        end
+        @inbounds flags[i] = mark
+    end
+    # the branch reads `flags`, which this kernel leaves alone (the reverse kernel takes the
+    # branch again from memory); `unmark_kernel!` resets the marks afterwards
+    @kernel function settle_kernel!(a, @Const(flags))
+        i = Int32(@index(Global, Linear))
+        @inbounds if flags[i] == Int32(2)
+            a.extras.emitted[i] += a.extras.pending[i]
+            a.extras.pending[i] = zero(eltype(a.w))
+        end
+    end
+    @kernel function unmark_kernel!(flags)
+        i = Int32(@index(Global, Linear))
+        @inbounds flags[i] = Int32(flags[i] == Int32(1))
+    end
+    function ionize!(fr::IonizationFrame, st::EMState, p::EMParams, k::Integer)
+        (; numerics, grid, dt) = st
+        fields = particle_fields(st)
+        wgs = numerics.workgroupsize
+        a, e = fr.atoms, fr.electrons
+        be = get_backend(a)
+        birth = k % fr.every == 0
+        birth && !sorted_every_step(st, e) && sort_by_cell!(e, grid, fr.electrons_ws; workgroupsize = wgs)
+        launcher(ionize_kernel!, be, wgs)(a, e, fr.flags, e.count, fields, p.ionization.levels, numerics.pusher, read_shape(numerics),
+                                          Int32(guards(grid)), dt, -e.q / e.m * dt / 4, false, Int32(capacity(e)); ndrange = capacity(a))
+        if birth
+            launcher(birth_kernel!, be, wgs)(a, e, fr.flags, e.count, fields, numerics.pusher, read_shape(numerics), Int32(guards(grid)),
+                                             -e.q / e.m * dt / 4, Int32(capacity(e)); ndrange = capacity(a))
+            launcher(settle_kernel!, be, wgs)(a, fr.flags; ndrange = capacity(a))
+            launcher(unmark_kernel!, be, wgs)(fr.flags; ndrange = capacity(a))
+            launcher(bump_count_kernel!, be, wgs)(e.count, Int32(capacity(a)), Int32(capacity(e)); ndrange = 1)
+            sum!(fr.lost, fr.flags; init = false)
+        end
+        return nothing
+    end
     # `ramp_factor` (window.jl): Enzyme has no reverse pass of the device's `sinpi` (`__nv_sinpif`);
     # the same value through `_sinpi`, whose reverse rule (π·cospi) is below
     @noinline _sinpi(x) = sinpi(x)

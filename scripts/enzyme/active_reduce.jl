@@ -14,6 +14,13 @@
 using KernelAbstractions, Enzyme
 const KAExt = Base.get_extension(KernelAbstractions, :EnzymeExt)
 const ACTIVE_SEEN = Set{String}()
+# PM_ENZYME_ALL_OVERWRITTEN=1 (the default): every argument of every kernel counts as overwritten
+# between the augmented forward and the reverse kernel, so Enzyme caches every value a reverse
+# kernel needs instead of reading it again from memory a later kernel may have changed (Enzyme's
+# `overwritten` does not see writes into arrays reached through a struct, such as a species, nor
+# writes by later kernels: the ionization's birth slots read the electrons' count, which the next
+# kernel advances)
+const ALL_OVERWRITTEN = get(ENV, "PM_ENZYME_ALL_OVERWRITTEN", "1") == "1"
 @eval KAExt begin
     function _mixed_as_duplicated(func, a::EnzymeCore.MixedDuplicated)
         push!(Main.ACTIVE_SEEN, string(nameof(func.val.f)) * " :: mixed " * string(nameof(typeof(a.val))) * " (scalar adjoints dropped)")
@@ -71,7 +78,7 @@ const ACTIVE_SEEN = Set{String}()
         ndrange, workgroupsize, iterspace, dynamic = launch_config(kernel, ndrange, workgroupsize)
         ctx = _enzyme_mkcontext(kernel, ndrange, workgroupsize, iterspace)
         ctxTy = Core.Typeof(ctx)
-        ModifiedBetween = Val((overwritten(config)[1], false, overwritten(config)[2:end]...))
+        ModifiedBetween = Val(Main.ALL_OVERWRITTEN ? (true, false, ntuple(_ -> true, Val(N))...) : (overwritten(config)[1], false, overwritten(config)[2:end]...))
         FT = Const{Core.Typeof(f)}
         Mode = split_mode(config, ModifiedBetween)
         TapeType, subtape, aug_kernel = _create_tape_kernel(kernel, Mode, FT, ctxTy, ndrange, iterspace, args2...)
@@ -87,11 +94,20 @@ const ACTIVE_SEEN = Set{String}()
         f = kernel.f
         be = backend(kernel)
         bufs = map(a -> _adjoint_buffer(be, a, nthreads), args2)
-        ModifiedBetween = Val((overwritten(config)[1], false, overwritten(config)[2:end]...))
+        ModifiedBetween = Val(Main.ALL_OVERWRITTEN ? (true, false, ntuple(_ -> true, Val(N))...) : (overwritten(config)[1], false, overwritten(config)[2:end]...))
         Mode = split_mode(config, ModifiedBetween)
         rev_kernel = similar(kernel, rev_active)
         rev_kernel(f, Mode, subtape, Val(tape_type), bufs, args2...; ndrange, workgroupsize)
         synchronize(be)
         return map(_reduce_adjoint, bufs, args2)
     end
+end
+
+# PM_ENZYME_NO_CONST=1 (the default): KernelAbstractions' `@Const` as a plain argument. A `@Const`
+# array is read through the read-only (invariant) path, and Enzyme's reverse kernel then reads it
+# again instead of caching the value, which is wrong wherever a later kernel changes the array
+# (the electrons' count after the births, the sharpened fields at the next step). Plain loads, the
+# same bits.
+if get(ENV, "PM_ENZYME_NO_CONST", "1") == "1"
+    @eval KernelAbstractions constify(arg) = arg
 end
