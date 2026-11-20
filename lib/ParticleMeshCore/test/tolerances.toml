@@ -510,6 +510,8 @@ quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a ra
 scale = "Σᵢ|yᵢ|·max|x|"
 C = 1
 measured = { Float32 = 0.378, Float64 = 0.378, "Dual{Float32,3}" = 0.401 }
+measured_device = { "Float32 on CUDABackend" = 0.378, "Float64 on CUDABackend" = 0.432, "Dual{Float32,3} on CUDABackend" = 0.401 }
+status = "proposed; measured_device on an RTX 5090 (T-989, CUDACore 6.5, at 0a62f38)"
 
 ["T-1000"]
 quantity = "per component d, |⟨J_d, E_d⟩ over the interior − Σ_i quantity_d(i)·o_d[i]|, J from deposit_flux! (guards folded), o from gather_flux! (E's guards filled)"
