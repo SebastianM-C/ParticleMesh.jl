@@ -120,7 +120,13 @@ end
 # the fields are linear in a0, a0·∂E/∂a0 = E to roundoff) and for the main beam. A narrow band beam
 # (waist 20, duration 25) leaks far less, and the Yee antenna in the same M4 run leaks a hundred
 # times more and beyond: its two corrections leave B points of the scattered region reading
-# total-field E through M4's wider stencil.
+# total-field E through M4's wider stencil. And the B corrections as an operator
+# (`tfsf_operator_error`, m4_cases.jl): on the antenna's own incident E, one M4 half step of the
+# stored field plus the corrections leaves the scattered region's B zero and gives the total
+# region the half step of the whole incident field, to roundoff, for both lasers and three
+# polarizations in the A8 matrix; with Yee's corrections the scattered B is 4.6 % of the field's.
+# (Under M4, Bx also reads across the plane: the β terms of D̃_y Ez average Ez over the columns
+# beside, so Bx on ia − 1 and ia is corrected too; Yee needs no Bx correction.)
 function narrowband_leak(pol; solver = M4(), antenna_solver = solver)
     # the snapshot at t = 160, the envelope's peak crossing the plane at t = 150: what leaks backward
     # from t = 132 on lies behind x = 180 after wrapping round the periodic box, and the pulse ahead
@@ -153,6 +159,24 @@ end
             @test worst <= Cl
             @test any(x -> !iszero(ForwardDiff.partials(x)[2]), Array(r.st.fields.Ey))
             @test any(x -> !iszero(ForwardDiff.partials(x)[3]), Array(r.st.fields.Ey))
+        end
+    end
+    Co = emC("T-1086", "C_operator")
+    for T in TYPES
+        cases = Any[(pol, antenna_problem(T; length = (40, 30), waist = 3, duration = 3, position = 8, polarization = pol, tend = 1)) for pol in (0, 3 // 5, π / 2)]
+        push!(cases, (:shaped, shaped_problem(T; length = (60, 40), tend = 1)))
+        for (label, prob) in cases
+            st = EMState(prob, EMNumerics(; solver = M4()))
+            t = value_of(prob.lasers[1].delay)
+            r = tfsf_operator_error(st, prob, t)
+            worst = max(r.scattered, r.total) / base_eps(T)
+            record!("T-1086 operator", T, worst)
+            @test worst <= Co
+            if T === Float64 && label === 0
+                n = tfsf_operator_error(st, prob, t; source_solver = Yee())
+                @info "T-1086 operator" r n
+                @test n.scattered > 1e-2
+            end
         end
     end
     for pol in ANTENNA_POLS

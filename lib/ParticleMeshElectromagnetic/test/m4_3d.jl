@@ -92,9 +92,22 @@ end
 # --- T-1095 ---------------------------------------------------------------------------------
 
 # T-1021 with M4: the 3D antenna launches one way, the energy behind the plane within T-1021's
-# fraction, at θ = 0 and 3/5, in the A8 matrix, and the fields are linear in a0 (a0·∂E/∂a0 = E).
-@testset "T-1095 the 3D M4 antenna launches one way and is linear in a0 [A2, A3, A8, WP-079]" begin
+# fraction, at θ = 0 and 3/5, in the A8 matrix, and the fields are linear in a0 (a0·∂E/∂a0 = E);
+# and its B corrections are the M4 half step's TF/SF split to roundoff (T-1086's operator test,
+# here at θ = 3/5 on y ≠ z cells with the axis off the cells' centres), Yee's far from it.
+@testset "T-1095 the 3D M4 antenna launches one way, is linear in a0, and its B corrections are the M4 split to roundoff [A2, A3, A8, WP-079]" begin
     C, Cl = emC("T-1021"), emC("T-1021", "C_linear")
+    for T in TYPES
+        prob = antenna3d_problem(T; length = (20, 12, 10), nct = (6, 5), waist = 3, duration = 3, position = 6, polarization = 3 // 5, tend = 1,
+                                 center = (6.5, 4.0))
+        st = EMState(prob, EMNumerics(; solver = M4()))
+        t = value_of(prob.lasers[1].delay)
+        r = tfsf_operator_error(st, prob, t)
+        worst = max(r.scattered, r.total) / base_eps(T)
+        record!("T-1095 operator", T, worst)
+        @test worst <= emC("T-1086", "C_operator")
+        T === Float64 && @test tfsf_operator_error(st, prob, t; source_solver = Yee()).scattered > 1e-2
+    end
     for T in TYPES, θ in (0, 3 // 5)
         D = T === D3
         a0 = D ? mkdual(1, 1, 0, 0) : one(T)

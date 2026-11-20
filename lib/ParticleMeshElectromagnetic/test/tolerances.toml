@@ -1124,11 +1124,12 @@ measured = { Ey = 1.16, Ez = 0.847, C_plane = { Float64 = 0.473 }, C_naive = { F
 status = "proposed"
 
 ["T-1086"]
-quantity = "energy behind the M4 antenna over the pulse's for a narrow band beam (waist 20, duration 25, Ey and Ez polarized) (C); the same with the Yee antenna in the M4 run over the M4 antenna's (C_naive, a lower bound); the A8 and main runs take T-401's C, C_main and C_linear"
+quantity = "energy behind the M4 antenna over the pulse's for a narrow band beam (waist 20, duration 25, Ey and Ez polarized) (C); the same with the Yee antenna in the M4 run over the M4 antenna's (C_naive, a lower bound); the A8 and main runs take T-401's C, C_main and C_linear; the B corrections as an operator, the larger of the scattered region's B and the total region's difference from the full half step, over max|B| (C_operator, eps(T), 2D and 3D)"
 scale = "fraction (C); ratio (C_naive)"
 C = 1e-7
 C_naive = 100
-measured = { Ey = 2.01e-9, Ez = 7.2e-9, naive = { Ey = 4.41e-6, Ez = 4.51e-6 }, small = 0.508, main = 0.288 }
+C_operator = 8
+measured = { Ey = 2.01e-9, Ez = 7.2e-9, naive = { Ey = 4.41e-6, Ez = 4.51e-6 }, small = 0.508, main = 0.288, C_operator = { Float32 = 1.5, Float64 = 0.777, "Dual{Float32,3}" = 1.5, "3D Float64" = 1.9 } }
 status = "proposed"
 
 ["T-1088"]

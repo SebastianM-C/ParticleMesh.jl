@@ -100,3 +100,51 @@ function m4_kx(ω, ky, kz, dx, dy, dz, dt)
     return imag(kx) < 0 ? conj(kx) : kx
 end
 m4_kx(ω, ky, dx, dy, dt) = m4_kx(ω, ky, 0.0, dx, dy, 1.0, dt)
+
+using ParticleMeshElectromagnetic: incident_e, b_source!, time_factor
+
+"""
+    tfsf_operator_error(st, prob, t; h = Δt/2) -> (; scattered, total)
+
+The M4 antenna's B corrections as an operator, independent of any run (WP-079): put the incident
+E of the state's antenna at the time `t` on the E columns ia − 1, ia and ia + 1 (from the
+antenna's own `incident_e`, every row, guards included), once as it is (`full`) and once with
+the scattered column ia − 1 zeroed (`masked`, what the total-field/scattered-field split stores),
+B = 0. One M4 B half step of `h` on each, and the antenna's B source on `masked`: the scattered
+region's B must then be zero (it sees no incident wave) and the total region's B that of the
+full field. `scattered` and `total` are the largest violations on the interior over the largest
+|B| of the full field (`source_solver` applies the B source of an antenna placed for that
+solver instead, the Yee antenna in an M4 step). This checks every column, row, stagger, coefficient and region flag of
+the B corrections against the solver's own half step; the time of the incident wave enters both
+sides alike, so the plane-wave tests check that.
+"""
+function tfsf_operator_error(st, prob, t; h = st.dt / 2, source_solver = nothing)
+    a = Antenna(only(params(prob).lasers), only(antenna_planes(st)))
+    # the antenna whose B source is applied: the state's, or one placed for `source_solver` (Yee's two corrections in an M4 step)
+    as = source_solver === nothing ? a : Antenna(only(params(prob).lasers), AntennaPlane(only(prob.lasers).position, st.grid, prob.dt, source_solver))
+    T = typeof(a.xa)
+    grid = st.grid
+    g, n = guards(grid), ncells(grid)
+    i0 = Int(a.g + a.ia)
+    l = a.laser
+    src = l isa ShapedLaser ? ntuple(i -> time_factor(l, T(t) - l.delay - T(i - 2) * 2 * a.ht), 3) : T(t)
+    full, masked = em_fields(CPU(), T, grid), em_fields(CPU(), T, grid)
+    for (C, name) in ((2, :Ey), (3, :Ez)), i in (i0 - 1):(i0 + 1)
+        A, M = getfield(full, name), getfield(masked, name)
+        for J in CartesianIndices(Base.tail(size(A)))
+            v = incident_e(l, a, src, Int32(i - i0), Val(C), Int32.(Tuple(J)))
+            A[i, Tuple(J)...] = v
+            i >= i0 && (M[i, Tuple(J)...] = v)
+        end
+    end
+    m4_b_half!(full, grid, T(h), a.stencil)
+    m4_b_half!(masked, grid, T(h), a.stencil)
+    b_source!(as, masked, T(h) / a.dx[1], T(t), nothing)
+    rows = ntuple(d -> (g + 1):(g + n[d + 1]), length(n) - 1)
+    scat, tot = (g + 1):(i0 - 1), i0:(g + n[1])
+    B(f, c) = getfield(f, c)
+    scale = maximum(c -> Float64(maximum(absmax, B(full, c)[(g + 1):(g + n[1]), rows...])), (:Bx, :By, :Bz))
+    s = maximum(c -> Float64(maximum(absmax, B(masked, c)[scat, rows...])), (:Bx, :By, :Bz))
+    d = maximum(c -> Float64(maximum(absmax, B(masked, c)[tot, rows...] .- B(full, c)[tot, rows...])), (:Bx, :By, :Bz))
+    return (; scattered = s / scale, total = d / scale)
+end
