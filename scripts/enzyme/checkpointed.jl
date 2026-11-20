@@ -16,15 +16,17 @@
 # plain reverse pass in its place, checked against the duals alone); with `plain=1` also the
 # plain one (Enzyme's tape of all n steps in device memory), and their difference per array; and
 # the chain rule against a Dual run: ⟨∇f, dx/dα⟩ against df/dα and ⟨∇f, v⟩ against the derivative
-# along a random direction v on every array (both from the same initialized state).
+# along a random direction v on every array (both from the same initialized state), each within
+# 64·eps(T)·n·c, c the direction's condition number Σ|∇f·t| / |⟨∇f, t⟩| over every term.
 #
 # `cost steps=<k1,k2,...> [plain=<kmax>] [dual=<kmax>]`: for each k, the median of three timings
 # (each on a fresh copy of the start state made outside the timing)
 # of the plain run, Dual{1} and Dual{4} passes (one Dual pass gives that many directional
 # derivatives; up to `dual` steps), the plain reverse pass (up to `plain` steps, since its tape
-# grows with k) and the checkpointed one, and each one's peak of device memory in use (the
-# memory pool's `used` bytes sampled every 2 ms from a second thread, from a reclaimed pool; it
-# counts tapes freed but not yet collected, so it is an upper bound). The first call of each
+# grows with k) and the checkpointed one, and each one's peak of device memory in use beyond its
+# input state (the memory pool's `used` bytes sampled every 2 ms from a second thread, from a
+# reclaimed pool; it counts tapes freed but not yet collected, so it is an upper bound; the plain
+# run and the Dual passes allocate nothing, and the Float and Dual states' sizes are recorded). The first call of each
 # reverse pass, which compiles, is timed on its own.
 #
 # Writes result.toml and manifest.toml to scripts/runs/enzyme-checkpointed-<command>-<stamp>/.
@@ -178,14 +180,18 @@ function main_check()
     end
     fdv = Float64(ForwardDiff.partials(run_energy!(stv, pd, n), 1))
     adv = sum(k -> Float64(sum(Array(G[k]) .* Array(V[k]))), common)
-    cancel = sum(abs, values(contrib)) / abs(ad)
-    tol = 64 * eps(T) * n * max(cancel, 1)
+    # each direction's own condition number: Σ|∇f·t| over every term of the dot product against
+    # |⟨∇f, t⟩| (a direction whose terms cancel amplifies the gradient's relative error)
+    cancel = sum(k -> Float64(sum(abs.(Array(G[k]) .* Array(tangent[k])))), common) / abs(ad)
+    cancelv = sum(k -> Float64(sum(abs.(Array(G[k]) .* Array(V[k])))), common) / abs(adv)
+    tol, tolv = 64 * eps(T) * n * max(cancel, 1), 64 * eps(T) * n * max(cancelv, 1)
     rel, relv = abs(ad - fd) / abs(fd), abs(adv - fdv) / abs(fdv)
-    verdict = rel <= tol && relv <= tol ? "pass" : "FAIL"
-    println(@sprintf("  chain rule: α direction forward %.10e reverse %.10e relative %.2e; random direction forward %.10e reverse %.10e relative %.2e; tolerance %.2e (cancellation %.1f): %s",
-                     fd, ad, rel, fdv, adv, relv, tol, cancel, verdict))
+    verdict = rel <= tol && relv <= tolv ? "pass" : "FAIL"
+    println(@sprintf("  chain rule: α direction forward %.10e reverse %.10e relative %.2e tolerance %.2e (cancellation %.1f); random direction forward %.10e reverse %.10e relative %.2e tolerance %.2e (cancellation %.1f): %s",
+                     fd, ad, rel, tol, cancel, fdv, adv, relv, tolv, cancelv, verdict))
     merge!(res, Dict("forward" => fd, "reverse" => ad, "relative_difference" => rel, "random_forward" => fdv, "random_reverse" => adv,
-                     "random_relative_difference" => relv, "tolerance" => tol, "cancellation" => cancel, "verdict" => verdict))
+                     "random_relative_difference" => relv, "tolerance" => tol, "cancellation" => cancel, "random_tolerance" => tolv,
+                     "random_cancellation" => cancelv, "verdict" => verdict))
     println("  kernel arguments whose adjoints the spike patch dropped: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "none (no patch)")
     write_run(Dict("case" => merge(CASE_INFO, Dict{String,Any}("steps" => n)), "result" => res))
 end
@@ -201,6 +207,7 @@ function main_cost()
     dualα(N) = ForwardDiff.Dual{:α}(α0, ntuple(i -> T(i == 1), N)...)
     dual_case(N) = case(typeof(dualα(N)), dualα(N), maximum(ks))
     dual_params = Dict(N => params(dual_case(N)) for N in (1, 4))
+    dual_bytes = Dict(N => (sd = initialized(dual_case(N), MODE); b = state_bytes(sd); sd = nothing; reclaim(); b) for N in (1, 4))
     snap = snapshot_bytes(st0)
     println("cost: $(DIM)D $T $MODE cells $CELLS ppc $PPC, $(CASE_INFO["particles"]) particles, $NCKPT checkpoints, snapshot $(round(snap / 2^20; digits = 1)) MiB, state $(round(state_bytes(st0) / 2^20; digits = 1)) MiB, backend $(backend())")
     run_steps!(st, p, k) = (for i in 1:k; step!(st, p, i; observer = ()); end; nothing)
@@ -251,7 +258,8 @@ function main_cost()
                 haskey(row, "plain_error") ? "; plain failed: " * row["plain_error"] : "", haskey(row, "checkpointed_error") ? "; checkpointed failed: " * row["checkpointed_error"] : "")
         flush(stdout)
     end
-    write_run(Dict("case" => CASE_INFO, "bytes" => Dict("snapshot" => snap, "state" => state_bytes(st0), "plain_reverse_one_step_peak" => m_first_pl),
+    write_run(Dict("case" => CASE_INFO, "bytes" => Dict("snapshot" => snap, "state" => state_bytes(st0), "dual1_state" => dual_bytes[1], "dual4_state" => dual_bytes[4],
+                                    "plain_reverse_one_step_peak" => m_first_pl),
                    "seconds" => Dict("first_call_checkpointed" => t_first_ck, "first_call_plain" => t_first_pl), "rows" => rows))
 end
 

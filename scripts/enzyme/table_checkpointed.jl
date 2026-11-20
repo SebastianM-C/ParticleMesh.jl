@@ -18,15 +18,15 @@ function tables(dirs)
     checks = [(d, r) for (d, r) in runs if !haskey(r, "rows")]
     costs = [(d, r) for (d, r) in runs if haskey(r, "rows")]
     if !isempty(checks)
-        println("| Dim | T | Mode | Particles | Steps | c | Checkpointed vs plain reverse | Host vs device slots | Plain rerun | Chain rule, α | Chain rule, random | Tolerance | Verdict | First call, checkpointed (s) | First call, plain (s) |")
-        println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+        println("| Dim | T | Mode | Particles | Steps | c | Checkpointed vs plain reverse | Host vs device slots | Plain rerun | Chain rule, α (tolerance) | Chain rule, random (tolerance) | Verdict | First call, checkpointed (s) | First call, plain (s) |")
+        println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
         for (_, r) in checks
             c, x = r["case"], r["result"]
             pd = get(x, "plain_relative_difference", nothing)
             worst = pd === nothing ? nothing : maximum(values(pd))
             println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(c["particles"]) | $(c["steps"]) | $(get(x, "plain_only", false) ? "–" : c["checkpoints"]) | ",
-                    "$(fmt(worst)) | $(fmt(get(x, "host_vs_device", nothing))) | $(fmt(get(x, "plain_rerun", nothing))) | $(fmt(x["relative_difference"])) | ",
-                    "$(fmt(x["random_relative_difference"])) | $(fmt(x["tolerance"])) | $(x["verdict"]) | ",
+                    "$(fmt(worst)) | $(fmt(get(x, "host_vs_device", nothing))) | $(fmt(get(x, "plain_rerun", nothing))) | $(fmt(x["relative_difference"])) ($(fmt(x["tolerance"]))) | ",
+                    "$(fmt(x["random_relative_difference"])) ($(fmt(get(x, "random_tolerance", x["tolerance"])))) | $(x["verdict"]) | ",
                     "$(something(get(x, "first_call_checkpointed", nothing) |> y -> y === nothing ? nothing : @sprintf("%.0f", y), "–")) | ",
                     "$(something(get(x, "first_call_plain", nothing) |> y -> y === nothing ? nothing : @sprintf("%.0f", y), "–")) |")
         end
@@ -42,14 +42,14 @@ function tables(dirs)
             per = ck isa Real ? @sprintf("%.2f", 1000ck / row["steps"]) : "–"
             println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(cells(c)) | $(c["particles"]) | $(c["checkpoints"]) | $(row["steps"]) | $(ms(g("primal"))) | $(ms(g("dual1"))) | $(ms(g("dual4"))) | ",
                     "$(ms(g("plain_reverse"))) | $(ms(ck)) | $(ms(g("checkpointed_host"))) | $(ratio(ck, g("dual4"))) | $(ratio(ck, g("plain_reverse"))) | $per | ",
-                    "$(mib(g("dual4_peak"))), $(mib(g("plain_reverse_peak"))), $(mib(g("checkpointed_peak"))) |")
+                    "$(mib(g("plain_reverse_peak"))), $(mib(g("checkpointed_peak"))) |")
         end
         println()
-        println("| Dim | T | Mode | Cells | Particles | State (MiB) | One checkpoint (MiB) | Plain reverse of one step, peak (MiB) | First call, checkpointed (s) | First call, plain (s) |")
-        println("|---|---|---|---|---|---|---|---|---|---|")
+        println("| Dim | T | Mode | Cells | Particles | State (MiB) | Dual{1} state (MiB) | Dual{4} state (MiB) | One checkpoint (MiB) | Plain reverse of one step, peak (MiB) | First call, checkpointed (s) | First call, plain (s) |")
+        println("|---|---|---|---|---|---|---|---|---|---|---|---|")
         for (_, r) in costs
             c, b, s = r["case"], r["bytes"], r["seconds"]
-            println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(cells(c)) | $(c["particles"]) | $(mib(b["state"])) | $(mib(b["snapshot"])) | $(mib(b["plain_reverse_one_step_peak"])) | ",
+            println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(cells(c)) | $(c["particles"]) | $(mib(b["state"])) | $(mib(get(b, "dual1_state", nothing))) | $(mib(get(b, "dual4_state", nothing))) | $(mib(b["snapshot"])) | $(mib(b["plain_reverse_one_step_peak"])) | ",
                     "$(@sprintf("%.0f", s["first_call_checkpointed"])) | $(@sprintf("%.1f", s["first_call_plain"])) |")
         end
     end
