@@ -208,7 +208,8 @@ end
 # terms (drift + thermal·z: the two kernels may contract that sum into one rounding or not, which
 # shows where the terms cancel, measured 51 ulps of |u| in Float64). The ramp length enters through the
 # weights only (A3): with it a dual, the positions carry no partials and the weights exactly the
-# derivative of the profile, against the closed form of ∂/∂L sin²(π(x − x_v)/(2L)).
+# derivative of the profile, against the closed form of ∂/∂L sin²(π(x − x_v)/(2L)). The 3D
+# profile itself, with all three wave numbers set, is checked against its closed form.
 function body_T1033(be)
     for T in TYPES
         ramp = seeded(T, 4)
@@ -256,6 +257,18 @@ function body_T1033(be)
                 dwdL = -(π / 2) * sinpi(t) * t / 4 / 6
                 @test collect(Float64.(Tuple(partials(wt)))) ≈ dwdL .* [1 / 8, 2 / 8, 3 / 8] atol = 1e-6
             end
+        end
+        # the 3D profile with all three wave numbers set, against its closed form in Float64
+        # (vacuum, ramp and plateau points), and bit for bit the static CosineProfile times the ramp
+        pr = (T(3) / 2, T(2) / 5, T(3) / 10, -T(1) / 7, T(1) / 3, T(5), T(4))
+        for x in ((T(2), T(1), T(3)), (T(6), T(-2), T(5)), (T(83) / 10, T(4), T(-7) / 3), (T(11), T(3) / 2, T(9)))
+            ref = Float64(value_of(pr[1])) * (1 + Float64(value_of(pr[2])) * cos(sum(Float64(value_of(pr[d + 2])) * Float64(value_of(x[d])) for d in 1:3)))
+            tt = clamp((Float64(value_of(x[1])) - 5) / 4, 0, 1)
+            ref *= sinpi(tt / 2)^2
+            got = ParticleMeshElectromagnetic.RampedCosine()(x, pr)
+            @test abs(Float64(value_of(got)) - ref) <= 16 * base_eps(T) * 2
+            @test same_bits([got], [ParticleMeshElectromagnetic.CosineProfile()(x, pr[1:5]) *
+                                   ParticleMeshElectromagnetic.ramp_factor(x[1], pr[6], pr[7])])
         end
     end
 end
