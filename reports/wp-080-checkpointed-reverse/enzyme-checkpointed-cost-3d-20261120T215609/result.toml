@@ -1,0 +1,68 @@
+[bytes]
+state = 1010084640
+dual1_state = 2020169288
+plain_reverse_one_step_peak = 7928782552
+dual4_state = 5050423232
+snapshot = 328396900
+
+[seconds]
+first_call_plain = 0.06056682
+first_call_checkpointed = 17.860026179
+
+[[rows]]
+dual1 = 0.042755263
+steps = 2
+checkpointed = 0.1031271
+plain_reverse = 0.079035222
+dual4_peak = 0
+checkpointed_peak = 8257179452
+checkpointed_host_peak = 7928782552
+primal = 0.015561517
+checkpointed_host = 0.17392395
+dual1_peak = 0
+dual4 = 0.208029112
+plain_reverse_peak = 11703342632
+primal_peak = 0
+[[rows]]
+dual1 = 0.171644674
+steps = 8
+checkpointed = 0.417543844
+dual4_peak = 0
+checkpointed_peak = 10227560852
+checkpointed_host_peak = 23892262564
+primal = 0.070585785
+checkpointed_host = 1.12617425
+dual1_peak = 0
+dual4 = 0.839748524
+primal_peak = 0
+[[rows]]
+dual1 = 0.695980501
+steps = 32
+checkpointed = 2.409207066
+dual4_peak = 0
+checkpointed_peak = 21189788096
+checkpointed_host_peak = 23892262564
+primal = 0.446256924
+checkpointed_host = 6.016677737
+dual1_peak = 0
+dual4 = 3.412691141
+primal_peak = 0
+[[rows]]
+checkpointed_host_peak = 18562612896
+primal = 2.76761544
+checkpointed_host = 22.120253221
+checkpointed = 14.412489539
+steps = 128
+primal_peak = 0
+checkpointed_peak = 10555957752
+
+[case]
+eltype = "Float32"
+ppc = [2, 2, 2]
+checkpoints = 8
+species = 1
+particles = 7077888
+mode = "Fast()"
+dim = 3
+cells = [96, 96, 96]
+seed = 7

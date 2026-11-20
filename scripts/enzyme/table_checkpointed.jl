@@ -12,22 +12,30 @@ mib(x) = x isa Real ? @sprintf("%.0f", x / 2^20) : "–"
 ratio(a, b) = a isa Real && b isa Real ? @sprintf("%.2f", a / b) : "–"
 cells(c) = join(c["cells"], "×")
 mode(c) = replace(c["mode"], "()" => "")
+# the GPU and the commit from the run's manifest, so that rows from several machines stay apart
+function machine(d)
+    f = joinpath(d, "manifest.toml")
+    isfile(f) || return "–", "–"
+    m = TOML.parsefile(f)
+    return replace(get(m, "gpu", "–"), "NVIDIA GeForce " => ""), first(get(m, "commit", "–"), 7)
+end
 
 function tables(dirs)
     runs = [(d, TOML.parsefile(joinpath(d, "result.toml"))) for d in dirs]
     checks = [(d, r) for (d, r) in runs if !haskey(r, "rows")]
     costs = [(d, r) for (d, r) in runs if haskey(r, "rows")]
     if !isempty(checks)
-        println("| Dim | T | Mode | Particles | Steps | c | Checkpointed vs plain reverse (tolerance) | Host vs device slots | Plain rerun | Chain rule, α (tolerance) | Chain rule, random (tolerance) | Verdict | First call, checkpointed (s) | First call, plain (s) |")
-        println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
-        for (_, r) in checks
+        println("| GPU | Commit | Dim | T | Mode | Particles | Steps | c | Checkpointed vs plain reverse (tolerance) | Host vs device slots | Plain rerun | Chain rule, α (tolerance) | Chain rule, random (tolerance) | Verdict | First call, checkpointed (s) | First call, plain (s) |")
+        println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+        for (d, r) in checks
             c, x = r["case"], r["result"]
             pd = get(x, "plain_relative_difference", nothing)
             worst = pd === nothing ? nothing : maximum(values(pd))
             # runs before the plain-reverse tolerance entered the verdict: the same tolerance from their records
             ptol = get(x, "plain_tolerance", worst === nothing ? nothing :
                        8 * max(x["plain_rerun"], x["host_vs_device"], eps(Dict("Float64" => Float64, "Float32" => Float32)[c["eltype"]])))
-            println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(c["particles"]) | $(c["steps"]) | $(get(x, "plain_only", false) ? "–" : c["checkpoints"]) | ",
+            gpu, commit = machine(d)
+            println("| $gpu | `$commit` | $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(c["particles"]) | $(c["steps"]) | $(get(x, "plain_only", false) ? "–" : c["checkpoints"]) | ",
                     "$(fmt(worst)) ($(fmt(ptol))) | $(fmt(get(x, "host_vs_device", nothing))) | $(fmt(get(x, "plain_rerun", nothing))) | $(fmt(x["relative_difference"])) ($(fmt(x["tolerance"]))) | ",
                     "$(fmt(x["random_relative_difference"])) ($(fmt(get(x, "random_tolerance", x["tolerance"])))) | $(x["verdict"] == "pass" && (worst === nothing || worst <= ptol) ? "pass" : "FAIL") | ",
                     "$(something(get(x, "first_call_checkpointed", nothing) |> y -> y === nothing ? nothing : @sprintf("%.0f", y), "–")) | ",
@@ -36,14 +44,15 @@ function tables(dirs)
         println()
     end
     if !isempty(costs)
-        println("| Dim | T | Mode | Cells | Particles | c | Steps | Primal (ms) | Dual{1} (ms) | Dual{4} (ms) | Plain reverse (ms) | Checkpointed (ms) | Host slots (ms) | Checkpointed / Dual{4} | Checkpointed / plain reverse | Checkpointed per step (ms) | Peak: Dual{4}, plain reverse, checkpointed (MiB) |")
-        println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
-        for (_, r) in costs, row in r["rows"]
+        println("| GPU | Commit | Dim | T | Mode | Cells | Particles | c | Steps | Primal (ms) | Dual{1} (ms) | Dual{4} (ms) | Plain reverse (ms) | Checkpointed (ms) | Host slots (ms) | Checkpointed / Dual{4} | Checkpointed / plain reverse | Checkpointed per step (ms) | Peak: plain reverse, checkpointed (MiB) |")
+        println("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+        for (d, r) in costs, row in r["rows"]
             c = r["case"]
             g(k) = get(row, k, nothing)
             ck = g("checkpointed")
             per = ck isa Real ? @sprintf("%.2f", 1000ck / row["steps"]) : "–"
-            println("| $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(cells(c)) | $(c["particles"]) | $(c["checkpoints"]) | $(row["steps"]) | $(ms(g("primal"))) | $(ms(g("dual1"))) | $(ms(g("dual4"))) | ",
+            gpu, commit = machine(d)
+            println("| $gpu | `$commit` | $(c["dim"]) | $(c["eltype"]) | $(mode(c)) | $(cells(c)) | $(c["particles"]) | $(c["checkpoints"]) | $(row["steps"]) | $(ms(g("primal"))) | $(ms(g("dual1"))) | $(ms(g("dual4"))) | ",
                     "$(ms(g("plain_reverse"))) | $(ms(ck)) | $(ms(g("checkpointed_host"))) | $(ratio(ck, g("dual4"))) | $(ratio(ck, g("plain_reverse"))) | $per | ",
                     "$(mib(g("plain_reverse_peak"))), $(mib(g("checkpointed_peak"))) |")
         end
