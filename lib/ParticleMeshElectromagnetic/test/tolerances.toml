@@ -1244,3 +1244,9 @@ quantity = "relative L² difference of the M4 shaped beam's ω₀ transform on t
 scale = "(3/16)·√⟨k_y⁸⟩ over the pupil's angular spectrum"
 C_at_plane = 5
 status = "proposed; measured 3.4 for Ey and 0.91 for Ez in Float64 at 95/100 of the Courant limit, 0.95 for Ey at half the time step"
+
+["T-1100"]
+quantity = "T-1036 and T-1032 with M4 in the 3D window: the vacuum pulse against its static twin (bare, back PML of 6 cells, plane moving back while it launches), the back PML's difference against free space over the bare edge's, and Gauss's law across shifts; the bounds are T-1036's C and C_near and T-1032's C"
+scale = "as T-1036 and T-1032"
+measured = { twin = 196.0, near = 0.0151, gauss = "0.087 to 0.113" }
+status = "proposed"
