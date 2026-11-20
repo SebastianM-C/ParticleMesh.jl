@@ -118,7 +118,7 @@ function reverse_J(st, p, first, k; fade = TCASE.fade, rise = TCASE.rise, seeds 
     dJe, dJb = similar(Je), similar(Jb)
     fill!(dJe, seeds[1]); fill!(dJb, seeds[2])
     dst = Enzyme.make_zero(st)
-    res = Enzyme.autodiff(set_runtime_activity(Reverse), steps_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
+    res = Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), steps_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
                           Active(p), Const(first), Const(k), Const(fade), Const(rise))
     sync()
     J = area(st) * (foldl(+, Array(Je)) + foldl(+, Array(Jb)))
@@ -126,7 +126,7 @@ function reverse_J(st, p, first, k; fade = TCASE.fade, rise = TCASE.rise, seeds 
 end
 "The reverse pass of `k` steps from `first` with the adjoint of the state after them in `dst` (overwritten with the adjoint of the state before them); the parameters' adjoint."
 function reverse_steps!(dst, st, p, first, k)
-    res = Enzyme.autodiff(set_runtime_activity(Reverse), steps_only!, Const, Duplicated(st, dst), Active(p), Const(first), Const(k))
+    res = Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), steps_only!, Const, Duplicated(st, dst), Active(p), Const(first), Const(k))
     sync()
     return res[1][2]
 end
@@ -447,7 +447,11 @@ end
 
 function main_opt()
     dir = ARGS[2]
+    # trapped2d_opt.jl runs its own command on ARGS when included: include it with ARGS empty
+    args = copy(ARGS)
+    empty!(ARGS)
     include(joinpath(REPO, "scripts", "optim", "trapped2d_opt.jl"))
+    append!(ARGS, args)
     C = parse(Int, opt("C", "100"))
     o, _ = Base.invokelatest(parse_options, filter(a -> !startswith(a, "C="), ARGS[3:end]), OPT_DEFAULTS)
     o["gradient"] = "enzyme-reverse"; o["checkpoint_every"] = C
