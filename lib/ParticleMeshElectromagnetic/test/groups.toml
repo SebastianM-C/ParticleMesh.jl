@@ -26,4 +26,6 @@ groups = [
     ["physics.jl", "galerkin_physics.jl"],
     # the 3D moving window, with the 3D step whose helpers and worker it reuses
     ["em3d_step.jl", "em3d_window.jl"],
+    # the 3D step's field ionization, which reuses no other file
+    ["em3d_ionization.jl"],
 ]

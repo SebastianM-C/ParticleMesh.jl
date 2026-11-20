@@ -398,7 +398,7 @@ function ion_lattice(st, k, ppc, prof)
     T = eltype(st.ρ)
     fr = ionization_frame(st)
     a = fr.atoms
-    ncols, nrows, K = Int(fr.ncols), Int(fr.nrows), prod(ppc)
+    ncols, nrows, K = Int(fr.nc[1]), Int(fr.nc[2]), prod(ppc)
     dens, start, stop, ramp = prof
     h = cellsize(st.grid)[1]
     sw = window_shifts(st, k)
@@ -406,7 +406,7 @@ function ion_lattice(st, k, ppc, prof)
     δ1 = [(T(kk % ppc[1]) + one(T) / 2) / ppc[1] for kk in 0:(K - 1)]
     δ2 = [(T(kk ÷ ppc[1]) + one(T) / 2) / ppc[2] for kk in 0:(K - 1)]
     ok = all(s.alive) && length(s.w) == ncols * nrows * K
-    ok &= Array(a.cell[1]) == repeat(Int32.(1:ncols); inner = K, outer = nrows) && Array(a.cell[2]) == repeat(Int32.(fr.row0 .+ (0:(nrows - 1))); inner = ncols * K)
+    ok &= Array(a.cell[1]) == repeat(Int32.(1:ncols); inner = K, outer = nrows) && Array(a.cell[2]) == repeat(Int32.(fr.c0[2] .+ (0:(nrows - 1))); inner = ncols * K)
     ok &= Array(a.offset[1]) == repeat(δ1; outer = ncols * nrows) && Array(a.offset[2]) == repeat(δ2; outer = ncols * nrows)
     werr = 0.0
     for c in 1:ncols, kk in 1:K
@@ -450,7 +450,7 @@ function body_T774(be)
         st = ion_state(prob; be)
         p = params(prob)
         fr = ionization_frame(st)
-        ncols, nrows = Int(fr.ncols), Int(fr.nrows)
+        ncols, nrows = Int(fr.nc[1]), Int(fr.nc[2])
         @test ncols == injection_column(window_frame(st)) < 64 && Array(fr.atoms.count)[1] == ncols * nrows * K
         slots(c, r) = ((r - 1) * ncols + c - 1) * K .+ (1:K)
         prof = (dens, start, stop, ramp)
@@ -919,13 +919,21 @@ end
     @test FieldIonization(; ok...) isa FieldIonization{Float64,1}
     @test FieldIonization(; ok..., levels = lv).levels === (lv,)
     @test FieldIonization(; density = 1, levels = (lv, ADKLevel(1.0f0, 2, 3)), capacity = 5).levels isa NTuple{2,ADKLevel{Float64}}
-    for bad in ((; levels = ()), (; levels = (1.0,)), (; density = -1.0), (; density = Inf), (; capacity = 0), (; ppc = (0, 1)), (; ppc = (1, 1, 1)),
-                (; every = 0), (; rows = (2.0, 1.0)), (; rows = (1.0, 1.0)), (; rows = (1.0,)), (; section = (1.0, 2.0, 3.0)))
+    for bad in ((; levels = ()), (; levels = (1.0,)), (; density = -1.0), (; density = Inf), (; capacity = 0), (; ppc = (0, 1)), (; ppc = (1,)), (; ppc = (1, 1, 1, 1)),
+                (; every = 0), (; rows = (2.0, 1.0)), (; rows = (1.0, 1.0)), (; rows = (1.0,)), (; rows = ((1.0, 2.0), 3.0)),
+                (; rows = (nothing, nothing)), (; rows = ((2.0, 1.0), nothing)), (; section = (1.0, 2.0, 3.0)))
         @test_throws ArgumentError FieldIonization(; ok..., bad...)
     end
+    # the description does not know its N: a 2D problem refuses a lattice or rows of N = 3 (WP-075)
+    @test FieldIonization(; ok..., ppc = (1, 2, 3), rows = ((1.0, 2.0), nothing)).ppc === (1, 2, 3)
+    @test_throws ArgumentError ion_in_E(Float64; ppc = (1, 1, 1))
+    @test_throws ArgumentError ion_in_E(Float64; rows = ((1.1, 2.9), nothing))
     @test FieldIonization(; ok..., density = 0).density == 0        # a dopant of no density is a dopant
     prob = ion_in_E(Float64)
     @test prob.ionization isa FieldIonization{Float64,1} && params(prob).ionization isa IonizationParams{Float64,1,Nothing}
+    @test FieldIonization(; ok...).ppc === nothing
+    @test EMProblem(prob.name, prob.length, prob.cells, prob.dt, prob.nsteps, prob.species, prob.seed, prob.kmode;
+                    ionization = FieldIonization(; ok...)).ionization.ppc === (1, 1)      # one point per cell on each axis
     @test ion_in_E(Float32).ionization isa FieldIonization{Float32}
     e1 = SpeciesDescription{Float64}(:electron, -1.0, 1.0, 1.0, 0.0, 1, 4, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)
     @test_throws ArgumentError EMProblem("1d", 8.0, 16, 0.1, 4, (e1,), 1, 2π / 8; ionization = prob.ionization)

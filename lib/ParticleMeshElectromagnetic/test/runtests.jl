@@ -67,6 +67,7 @@ const TEST_FILES = [
     "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
     "em3d_antenna.jl",        # WP-073: T-1020 to T-1028, the laser antenna of the 3D step, after em3d_step.jl (its helpers and worker)
     "em3d_window.jl",         # WP-074: T-1030 to T-1038, the moving window of the 3D step, after em3d_step.jl (its helpers and worker)
+    "em3d_ionization.jl",     # WP-075: T-1040 to T-1048, the field ionization of the 3D step; its own helpers and worker
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]
