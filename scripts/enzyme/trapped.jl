@@ -163,15 +163,17 @@ partial(x::Real, j) = zero(x)
 # against a nonzero tangent is a real failure: it is counted and reported (NONFINITE).
 const NONFINITE = Dict{String,Int}()
 function tdot(a, t, path)
-    t == 0 && return 0.0
+    (t == 0 || a == 0) && return 0.0
     isfinite(a) || (NONFINITE[path] = get(NONFINITE, path, 0) + 1)
     return a * t
 end
 function adot(A, P, path)
-    bad = Int(sum(.!isfinite.(A) .& (P .!= 0)))
+    bad = Int(sum((.!isfinite.(A) .& (P .!= 0)) .| (.!isfinite.(P) .& (A .!= 0))))
     bad > 0 && (NONFINITE[path] = get(NONFINITE, path, 0) + bad)
     # in Float64: a Float32 sum of large products can overflow to ±Inf and give Inf − Inf
-    v = sum(ifelse.(P .== 0, 0.0, Float64.(A) .* Float64.(P)))
+    # an entry with a zero adjoint adds nothing either: uninitialized scratch of the Dual start can
+    # hold NaN partials (the electrons' sort workspace), against a zero adjoint
+    v = sum(ifelse.((P .== 0) .| (A .== 0), 0.0, Float64.(A) .* Float64.(P)))
     isfinite(v) || (println("  non-finite contribution of $path: $v (max |adjoint| ", maximum(abs, A), ", max |tangent| ", maximum(abs, P), ")"); NONFINITE[path * " (sum)"] = 1)
     return v
 end
