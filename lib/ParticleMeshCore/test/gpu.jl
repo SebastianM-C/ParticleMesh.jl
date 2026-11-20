@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892; WP-069, T-989; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -127,6 +127,10 @@ else
                 @test record!("T-946 order", T, worst, GPU) <= tolC("T-944")
             end
         end
+    end
+
+    @testset "T-989 deposit! is the transpose of gather! on CUDA for every bins choice, N = 1, 2, 3, with the CPU's tolerance [A2, A7, A8, WP-069]" begin
+        rerun_on(GPU, (("T-980", body_T980),))
     end
 
     @testset "T-1004 the flux gather on CUDA: the transpose of deposit_flux! in both modes, zero at rest, the plain gather out of space, launch shapes bitwise [A4, A7, A8, WP-071]" begin
