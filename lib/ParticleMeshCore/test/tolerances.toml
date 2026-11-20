@@ -504,3 +504,10 @@ scale = "max|CPU entry| of the array"
 C = 16
 measured = {}
 status = "proposed; not yet run on a GPU"
+
+["T-980"]
+quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a random field x and random signed yᵢ = q·wᵢ, N = 1, 2, 3, Fast and Reference by cells and by NodeBins"
+scale = "Σᵢ|yᵢ|·max|x|"
+C = 1
+measured = { Float32 = 0.378, Float64 = 0.378, "Dual{Float32,3}" = 0.401 }
+status = "proposed"
