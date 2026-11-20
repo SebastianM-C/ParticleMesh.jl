@@ -59,6 +59,7 @@ const TEST_FILES = [
     "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
+    "transposes.jl",          # WP-069: T-985 to T-987, the transposed pairs of the step; yee_nd_cases.jl's helpers
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
