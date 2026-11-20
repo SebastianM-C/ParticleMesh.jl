@@ -10,5 +10,7 @@ groups = [
     ["transfers.jl", "engine.jl", "engine2d.jl", "spectral.jl", "momenta.jl", "engine3d.jl"],
     ["particles.jl", "density_at.jl", "allocations.jl", "determinism.jl", "flux.jl", "flux2d.jl", "resort.jl", "bins.jl", "swap.jl", "input_checks.jl",
      "launch.jl", "switch.jl", "qa.jl"],
-    ["flux3d.jl"],
+    ["flux3d.jl", "transposes.jl"],
+    ["pullbacks.jl"],
+    ["flux_gather.jl"],
 ]

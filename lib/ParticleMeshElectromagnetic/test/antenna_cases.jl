@@ -3,7 +3,7 @@
 # a plasma), recording on the host the discrete-time Fourier transform at ω₀ = 1 of Ey and Ez on
 # a few probe columns, and optionally snapshots of the fields.
 
-using ParticleMeshElectromagnetic: Antenna, antenna_dy, yee_b_half!
+using ParticleMeshElectromagnetic: Antenna, AntennaPlane, AntennaPlanes, antenna_dy, yee_b_half!, with_modifiers
 
 """
     antenna_problem(T; ncx = 16, ncy = 8, length = (300, 120), waist = 6, duration = 8, position = 10, focus = 28,
@@ -30,16 +30,19 @@ function antenna_problem(::Type{T}; ncx = 16, ncy = 8, length = (300, 120), wais
 end
 
 """
-    antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing)
-        -> (; st, prob, A, ip, shots)
+    antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing, solver = Yee(),
+                antenna_solver = solver) -> (; st, prob, A, ip, shots)
 
 Run `prob` through the module's step. `A[q]` holds the discrete-time Fourier transforms at
 ω = 1, `Σ_n E(tₙ)·e^{i tₙ}·Δt` over the times tₙ = nΔt, n = 0…nsteps, of Ey and Ez on the probe
 column `ip[q]` nearest to `probes[q]` (interior rows); `shots` the copies of the fields after the
-steps listed in `snaps`, with their times.
+steps listed in `snaps`, with their times. An `antenna_solver` other than `solver` places the
+antenna planes for that solver instead (WP-079's test of a Yee antenna in an M4 run).
 """
-function antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov()); backend = be)
+function antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU(), workgroupsize = nothing, solver = Yee(),
+                     antenna_solver = solver)
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), solver); backend = be)
+    st = replant_antennas(st, prob, antenna_solver)
     initialize!(st, prob)
     p = params(prob)
     (; grid, fields) = st
@@ -67,6 +70,12 @@ function antenna_run(prob; mode = Reference(), probes = (), snaps = (), be = CPU
     return (; st, prob, A, ip, shots)
 end
 
+"The state `st` of `prob` with its antenna planes placed for `solver` (itself when they already are)."
+replant_antennas(st, prob, solver) = st.numerics.solver === solver ? st :
+    with_modifiers(st, map(m -> m isa AntennaPlanes ?
+                                AntennaPlanes(map(l -> AntennaPlane(l.position, st.grid, prob.dt, solver), prob.lasers), m.clock) : m,
+                           st.modifiers))
+
 "The antenna of a run: the problem's laser on the plane where the state placed it."
 run_antenna(r) = Antenna(only(params(r.prob).lasers), only(antenna_planes(r.st)))
 
@@ -81,7 +90,7 @@ function incident_dtft(r)
     a = run_antenna(r)
     l = a.laser
     T = typeof(a.xa)
-    n2 = Int(a.n2)
+    n2 = Int(a.n[2])
     dt = r.prob.dt
     sθ, cθ = sincos(l.polarization)
     Ey, Ez = zeros(Complex{T}, n2), zeros(Complex{T}, n2)
@@ -127,14 +136,15 @@ function yee_axis(dx, dt; ω = 1.0)
 end
 
 """
-    angular_error(r; component = :Ey) -> Vector of (; x, err)
+    angular_error(r; component = :Ey, kx = yee_kx) -> Vector of (; x, err)
 
 For every probe column at or past the antenna plane: the relative L² difference between the
 measured ω = 1 transform of `component` and the Yee angular-spectrum propagation of the incident
 field's transform from the plane, `Â(x, k_y) = Â_inc(x_a, k_y)·exp(i·k_x(1, k_y)·(x − x_a))`
-([`yee_kx`](@ref), evanescent modes included), in Float64.
+([`yee_kx`](@ref), evanescent modes included; `kx` another scheme's relation of the same
+signature, as `m4_kx`), in Float64.
 """
-function angular_error(r; component = :Ey)
+function angular_error(r; component = :Ey, kx = yee_kx)
     a = run_antenna(r)
     h = Float64.(value_of.(a.dx))
     dt = Float64(value_of(r.prob.dt))
@@ -146,7 +156,7 @@ function angular_error(r; component = :Ey)
     for (q, i) in enumerate(r.ip)
         x = (i - 1) * h[1]
         x < xa - h[1] / 2 && continue
-        pred = idft(S .* [cis(yee_kx(1.0, k, h[1], h[2], dt) * (x - xa)) for k in ky])
+        pred = idft(S .* [cis(kx(1.0, k, h[1], h[2], dt) * (x - xa)) for k in ky])
         meas = value_of.(real.(getfield(r.A[q], component))) .+ im .* value_of.(imag.(getfield(r.A[q], component)))
         push!(out, (; x, err = sqrt(sum(abs2, meas .- pred) / sum(abs2, pred))))
     end
@@ -169,7 +179,7 @@ function beam_profile(r; component = :Ey)
     yk = yee_axis(h[1], dt)
     xa = Float64(value_of(a.xa))
     s = component === :Ey ? 0.5 : 0.0
-    m = Int(a.n2)
+    m = Int(a.n[2])
     y = ((1:m) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
     out = []
     for (q, i) in enumerate(r.ip)
@@ -202,7 +212,7 @@ function angular_profile(r; component = :Ey)
     S = dft(getfield(inc, component))
     ky = ky_modes(length(S), h[2])
     s = component === :Ey ? 0.5 : 0.0
-    y = ((1:Int(a.n2)) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
+    y = ((1:Int(a.n[2])) .- 1 .+ s) .* h[2] .- Float64(a.laser.center)
     j0 = argmin(abs.(y))
     out = []
     for i in r.ip
@@ -305,7 +315,7 @@ function incident_flux(r)
     sθ, cθ = sincos(l.polarization)
     ξe, ξb = a.xa - l.focus, a.xa - a.hx - l.focus
     Φ = zero(T)
-    for k in 1:r.prob.nsteps, j in 1:Int(a.n2)
+    for k in 1:r.prob.nsteps, j in 1:Int(a.n[2])
         J = Int32(j) + a.g
         t = (k - 1) * dt
         yc, yn = antenna_dy(a, J, one(T) / 2), antenna_dy(a, J, zero(T))

@@ -56,7 +56,8 @@ end
     gather!(out, a, species, shape, stagger, grid; workgroupsize = nothing)
 
 `out[i]` = the field `a` (guards filled) at particle `i`, for every alive particle. For N = 2,
-`a` is a matrix and `stagger` an `NTuple{2,Stagger}` (T-264).
+`a` is a matrix and `stagger` an `NTuple{2,Stagger}` (T-264). For N ≥ 2 `shape` may also be one
+shape per axis (the `gather_at` with per-axis shapes).
 """
 function gather!(out::AbstractVector, a::AbstractVector, s::Species{1}, shape::Shape, stagger::Stagger,
                  grid::PeriodicGrid{1}; workgroupsize = nothing)
@@ -186,13 +187,39 @@ end
     gather_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape, stagger::NTuple{N}, g)
 
 The device-level gather on N axes: Σ over the `(P+1)^N` stencil, axis 1 fastest, of the
-tensor-product weight times the field (guards filled).
+tensor-product weight times the field (guards filled), added left to right from zero.
+
+The `(P+1)^N` terms are written out with `ntuple`, not left to a loop: a reverse-mode AD of the
+kernel (Enzyme) then keeps what each term needs in its fixed-size tape, where for a loop it
+allocates device memory per work item and step (WP-050). The sum is the same bits as the loop's.
 """
 @inline function gather_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape::Shape{P}, stagger::NTuple{N,Stagger},
                            g::Int32) where {N,T,P}
     fw = shape_weights(shape, stagger, δ)
+    stencil = CartesianIndices(ntuple(_ -> Base.OneTo(P + 1), Val(N)))
+    terms = ntuple(Val((P + 1)^N)) do L
+        @inline
+        k = Tuple(stencil[L])
+        idx = ntuple(d -> c[d] + fw[d][1] + g + Int32(k[d] - 1), Val(N))
+        @inbounds tensor_weight(fw, k) * a[idx...]
+    end
+    return foldl(+, terms; init = zero(T))
+end
+
+"""
+    gather_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape::NTuple{N,Shape}, stagger::NTuple{N}, g)
+
+The device-level gather on N axes with a shape per axis: axis d reads with `shape[d]` at
+`stagger[d]`, the stencil `(P_1+1) × (P_2+1) × …`, axis 1 fastest, each weight the product of the
+per-axis weights in axis order. With the same shape on every axis it is the gather with that one
+shape, bit for bit (T-990). A Galerkin gather reads a field component one order lower along its
+staggered axes (WP-070).
+"""
+@inline function gather_at(a, c::NTuple{N,Int32}, δ::NTuple{N,T}, shape::NTuple{N,Shape}, stagger::NTuple{N,Stagger},
+                           g::Int32) where {N,T}
+    fw = map((sh, s, x) -> shape_weights(sh, s, x), shape, stagger, δ)
     acc = zero(T)
-    @inbounds for K in CartesianIndices(ntuple(_ -> Base.OneTo(P + 1), Val(N)))
+    @inbounds for K in CartesianIndices(map(sh -> Base.OneTo(order(sh) + 1), shape))
         k = Tuple(K)
         idx = ntuple(d -> c[d] + fw[d][1] + g + Int32(k[d] - 1), Val(N))
         acc += tensor_weight(fw, k) * a[idx...]
@@ -207,7 +234,7 @@ end
     end
 end
 
-function gather!(out::AbstractVector, a::AbstractArray{<:Any,N}, s::Species{N}, shape::Shape, stagger::NTuple{N,Stagger},
+function gather!(out::AbstractVector, a::AbstractArray{<:Any,N}, s::Species{N}, shape::Union{Shape,NTuple{N,Shape}}, stagger::NTuple{N,Stagger},
                  grid::PeriodicGrid{N}; workgroupsize = nothing) where {N}
     launcher(gather_nd_kernel!, get_backend(s), workgroupsize)(out, a, s, shape, stagger, Int32(guards(grid));
                                                               ndrange = capacity(s))

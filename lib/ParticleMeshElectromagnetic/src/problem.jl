@@ -105,11 +105,13 @@ A2), the `seed` of the velocity draws, the diagnostic `kmode`, the uniform backg
 fields at t = 0 (a magnetized plasma, or the prescribed fields of test particles; they are
 not differentiable parameters, A3: the addition tests them for zero on the host), and the
 `lasers`, a tuple of [`GaussianLaser`](@ref) or [`ShapedLaser`](@ref) descriptions launched by antenna planes during
-the steps (N = 2 only, empty by default; their parameters may be differentiable, A3), and the
+the steps (empty by default; their parameters may be differentiable, A3; at N = 3 Gaussian lasers
+with a `center` of two coordinates, WP-073), and the
 `boundaries`, one `Symbol` per axis: `:periodic` (the default on every axis), or `:open` on axis 2
-at N = 2, the open transverse boundary (WP-027), where fields leave through the numerics'
-[`AbsorbingLayer`](@ref) or [`PML`](@ref) and particles that cross the box edge are retired, or `:window` on
-axis 1 at N = 2 with a [`MovingWindow`](@ref) as `window` (WP-028): the box moves at c along
+at N = 2 and on axis 2, axis 3 or both at N = 3, an open transverse boundary (WP-027, WP-072), where
+fields leave through the numerics' [`AbsorbingLayer`](@ref) or [`PML`](@ref) (the same on every
+open axis) and particles that cross the box edge are retired, or `:window` on
+axis 1 at N = 2 and 3 with a [`MovingWindow`](@ref) as `window` (WP-028, WP-074): the box moves at c along
 axis 1, its x edges are not periodic, and the plasma, of the longitudinal `profile` (a
 [`DensityRamp`](@ref), or `nothing` for a uniform one), starts neutral against an immobile
 background of its own profile (so every species' `amplitude` is zero and `E0`, `B0` are zero) and
@@ -118,10 +120,11 @@ loads draw in velocity); a window that starts later than t = 0 takes only cold s
 rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
 finished its pulse before the window passes it (checked by the state). At N = 2 a `witness`, a
 [`WitnessBunch`](@ref) (WP-047), adds test particles injected during the run whose mean energy
-gain is the optimization objective; they change nothing else in the run. At N = 2 an `ionization`,
-a [`FieldIonization`](@ref) (WP-059), adds a dopant on a fixed lattice that the fields ionize
-without random numbers, its electrons born by weight into a species of their own. At N = 3
-the box is periodic on every axis, with no laser, window, witness or ionization (WP-042). At N = 1
+gain is the optimization objective; they change nothing else in the run. At N = 2 and 3 an
+`ionization`, a [`FieldIonization`](@ref) (WP-059, WP-075), adds a dopant on a fixed lattice that
+the fields ionize without random numbers, its electrons born by weight into a species of their
+own. At N = 3 axis 1 is periodic or the window and the transverse axes are periodic or open
+(WP-072, WP-074), with Gaussian lasers (WP-073) and no witness (WP-042). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -131,10 +134,11 @@ any [`EMNumerics`](@ref).
 
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2, three at N = 3), that the cells and the particles per cell are positive, at
-N = 2 and 3 that `kmode` is not the zero mode, that lasers are given only at N = 2, and that the
+N = 2 and 3 that `kmode` is not the zero mode, that the lasers fit the dimension (a `center` of one
+coordinate at N = 2, a [`GaussianLaser`](@ref) with a `center` of two at N = 3, none at N = 1), and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
-together with a `window` and the conditions above, every axis `:periodic` at N = 3 (an
-`ArgumentError` otherwise).
+together with a `window` and the conditions above at N = 2 and 3, and that an `ionization`'s
+lattice has N entries in `ppc` and the `rows` of its N (an `ArgumentError` otherwise).
 """
 struct EMProblem{N,T,S<:Tuple,L,C,K,LZ<:Tuple,BD,W,PR,WB,IZ}
     name::String
@@ -175,19 +179,23 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
             throw(ArgumentError("species $(d.name): mode $(d.mode) and ppc $(d.ppc) must be $(N == 1 ? "integers" : "$N integers each") for N = $N"))
         all(>(0), d.ppc) || throw(ArgumentError("species $(d.name): ppc = $(d.ppc) must be positive"))
     end
-    isempty(lasers) || N == 2 || throw(ArgumentError("laser antennas are implemented at N = 2 only"))
+    isempty(lasers) || N >= 2 || throw(ArgumentError("laser antennas are implemented at N = 2 and 3 only"))
     all(is_laser, lasers) || throw(ArgumentError("lasers must be GaussianLaser or ShapedLaser descriptions, got $(map(typeof, lasers))"))
+    for l in lasers
+        N == 3 && !(l isa GaussianLaser) &&
+            throw(ArgumentError("a ShapedLaser's profiles are one-dimensional across the beam, so at N = 3 a laser is a GaussianLaser"))
+        transverse_axes(l) == N - 1 ||
+            throw(ArgumentError("a laser at N = $N takes a center of $(N - 1) coordinate$(N == 3 ? "s (y, z)" : " (y)"), got center = $(l.center)"))
+    end
     boundaries isa Union{Symbol,AbstractString} &&
         throw(ArgumentError("boundaries = $(repr(boundaries)): one of :periodic, :open and :window per axis, a tuple of $N"))
     bd = boundaries === nothing ? ntuple(_ -> :periodic, N) : Tuple(Symbol.(boundaries))
     length(bd) == N && all(in((:periodic, :open, :window)), bd) ||
         throw(ArgumentError("boundaries = $boundaries: one of :periodic, :open and :window per axis, $N of them"))
-    first(bd) in (:periodic, :window) && last(bd) !== :window ||
-        throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), axis 2 :periodic or :open (the open transverse boundary)"))
-    N == 3 && any(!=(:periodic), bd) &&
-        throw(ArgumentError("boundaries = $bd: at N = 3 every axis is :periodic (open boundaries and the moving window are 2D)"))
+    first(bd) in (:periodic, :window) && all(b -> b in (:periodic, :open), bd[2:end]) ||
+        throw(ArgumentError("boundaries = $bd: axis 1 is :periodic or :window (the moving window), the transverse axes :periodic or :open (an open transverse boundary)"))
     moving = first(bd) === :window
-    moving && N != 2 && throw(ArgumentError("the moving window is implemented at N = 2 only"))
+    moving && N == 1 && throw(ArgumentError("the moving window is implemented at N = 2 and 3 only"))
     moving == (window !== nothing) ||
         throw(ArgumentError("boundaries = $bd with window = $window: a :window axis 1 and a MovingWindow come together"))
     window === nothing || window isa MovingWindow || throw(ArgumentError("window must be a MovingWindow, got $window"))
@@ -213,8 +221,7 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     witness === nothing || N == 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
     wb = witness === nothing ? nothing : witness_as(T, witness)
     ionization === nothing || ionization isa FieldIonization || throw(ArgumentError("ionization must be a FieldIonization, got $ionization"))
-    ionization === nothing || N == 2 || throw(ArgumentError("field ionization is implemented at N = 2 only"))
-    iz = ionization === nothing ? nothing : ionization_as(T, ionization)
+    iz = ionization === nothing ? nothing : ionization_as(T, ionization, Val(N))
     L = N == 1 ? T(box) : T.(box)
     c = N == 1 ? Int(cells) : Int.(Tuple(cells))
     k = N == 1 ? T(kmode) : kmode
@@ -264,8 +271,9 @@ work-items, as PoCL reported it, #297), and a launch it does not fit stops the s
 N = 1, 2 and 3, or [`NoCurrent`](@ref)`()` at N = 2 and 3 (prescribed fields); a state refuses
 any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
-problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) at N = 2 when the problem's axis 2 is `:open` (required
-then, refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
+problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) when a transverse axis of the problem is `:open` (at N = 2
+axis 2, at N = 3 axis 2, 3 or both, each open axis getting its own placed layer; required then,
+refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
 with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
 the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
 back), or `nothing`, the window's field-free outside alone; a state refuses it without a
@@ -286,7 +294,9 @@ current changes at roundoff (another order of summation), deterministic either w
 window's x axis, which is not periodic, the bin is the cell. The ionization's atoms keep cells.
 `gather` is what the particles read: `nothing`, the grid's E and B, or a [`CompensatedGather`](@ref),
 a copy sharpened along axis 1 that undoes the shape's mean loss of field at a wavenumber, the
-laser's by default (WP-067); the mesh solve, the current and the diagnostics read the grid's.
+laser's by default (WP-067), or a [`GalerkinGather`](@ref), each component read one order lower
+along its staggered axes, the transpose of the current deposition, optionally with a compensation
+(WP-070); the mesh solve, the current and the diagnostics read the grid's.
 """
 struct EMNumerics{S<:Shape,M,P<:Pusher,F,W,C,A,K,GA}
     shape::S
@@ -309,8 +319,8 @@ function EMNumerics(; shape = Quadratic, mode = Reference(), pusher = Boris(), s
                     headroom::Real = 1 / 4, resort::Bool = false, node_bins::Bool = true,
                     gather = nothing)
     headroom >= 0 && isfinite(headroom) || throw(ArgumentError("headroom must be finite and ≥ 0, got $headroom"))
-    gather === nothing || gather isa CompensatedGather ||
-        throw(ArgumentError("gather = $gather: a state reads the grid's fields (nothing) or a CompensatedGather(...)"))
+    gather === nothing || gather isa CompensatedGather || gather isa GalerkinGather ||
+        throw(ArgumentError("gather = $gather: a state reads the grid's fields (nothing), a CompensatedGather(...) or a GalerkinGather(...)"))
     return EMNumerics(shape, mode, pusher, solver, workgroupsize, current, filter, absorber, back_absorber, Float64(headroom), resort, node_bins,
                       gather)
 end
@@ -600,7 +610,7 @@ function problem_from_case_2d(case, ::Type{T}, ppc, cells, dt, nsteps, amplitude
 end
 
 """
-    numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing) -> EMNumerics
+    numerics_from_case(case; mode = Reference(), pusher = Boris(), workgroupsize = nothing, gather = nothing) -> EMNumerics
 
 The numerics a case file asks for (either schema): its `shape_order` (1 or 2); the deposition
 must be `"esirkepov"` ([`Esirkepov`](@ref), the engine's `deposit_flux!`); `filter_passes`
@@ -609,10 +619,10 @@ anything else is an `ArgumentError`. With an open boundary in `grid.boundaries`,
 `[numerics.absorbing_layer]` gives the layer's `cells`, `strength` and optional `order`
 ([`AbsorbingLayer`](@ref), WP-027), or the table `[numerics.pml]` the PML's `cells` and optional
 `sigma_max`, `order`, `kappa_max`, `kappa_order`, `alpha_max` and `alpha_order` ([`PML`](@ref),
-WP-034), exactly one of the two; a periodic case must have neither. The mode, the pusher
-and the launch shape are not in the case.
+WP-034), exactly one of the two; a periodic case must have neither. The mode, the pusher,
+the launch shape and the particles' `gather` are not in the case.
 """
-function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing)
+function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Boris(), workgroupsize = nothing, gather = nothing)
     num = case["numerics"]
     getnum(num, "current_deposition", "esirkepov") == "esirkepov" ||
         throw(ArgumentError("current_deposition must be \"esirkepov\""))
@@ -643,5 +653,5 @@ function numerics_from_case(case::AbstractDict; mode = Reference(), pusher = Bor
         has_pml && throw(ArgumentError("[numerics.pml] needs an open boundary"))
     end
     return EMNumerics(; shape, mode, pusher, workgroupsize, current = Esirkepov(), filter = BinomialFilter(passes),
-                      absorber)
+                      absorber, gather)
 end

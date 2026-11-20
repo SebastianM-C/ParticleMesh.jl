@@ -62,10 +62,10 @@ end
 
 "The vacuum problem and the numerics of a reflection run of `geo` in element type `T` (open axis 2)."
 function slab_problem(::Type{T}, geo; nsteps = round(Int, geo.tmeas / geo.dt),
-                      absorber = AbsorbingLayer(; cells = geo.cells, strength = geo.strength, order = geo.order)) where {T}
+                      absorber = AbsorbingLayer(; cells = geo.cells, strength = geo.strength, order = geo.order), solver = Yee()) where {T}
     prob = EMProblem("slab", (T(geo.Lx), T(geo.Ly)), (geo.nx, geo.ny), T(geo.dt), nsteps, (), 1, (1, 1);
                      boundaries = (:periodic, :open))
-    num = EMNumerics(; current = NoCurrent(), absorber)
+    num = EMNumerics(; current = NoCurrent(), absorber, solver)
     return prob, num
 end
 
@@ -84,6 +84,29 @@ end
 yee_omega(geo, ky) = 2 / geo.dt * asin(geo.dt * sqrt(sin(geo.kx * geo.dx / 2)^2 / geo.dx^2 + sin(ky * geo.dy / 2)^2 / geo.dy^2))
 
 """
+    slab_symbols(geo, ky, solver) -> (κx, κy, κ̃x, κ̃y, Ω)
+
+The difference symbols of the mode (k_x, k_y) on the run's grid: Yee's κ_d = 2 sin(k_dΔ_d/2)/Δ_d,
+the solver's B difference κ̃_d (κ_d for Yee, κ_d·A_d for M4, `m4.jl`) and Ω = √(κ·κ̃), so that
+the mode's ω is 2 asin(ΩΔt/2)/Δt.
+"""
+function slab_symbols(geo, ky, solver)
+    κx, κy = 2 * sin(geo.kx * geo.dx / 2) / geo.dx, 2 * sin(ky * geo.dy / 2) / geo.dy
+    if solver isa M4
+        r2x, r2y = (geo.dt / geo.dx)^2, (geo.dt / geo.dy)^2
+        cx, cy = 1 - cos(geo.kx * geo.dx), 1 - cos(ky * geo.dy)
+        Ax = 1 - 2 * (r2x - 1) / 12 * cx - 2 * r2y / 12 * cy
+        Ay = 1 - 2 * (r2y - 1) / 12 * cy - 2 * r2x / 12 * cx
+        κ̃x, κ̃y = κx * Ax, κy * Ay
+    else
+        κ̃x, κ̃y = κx, κy
+    end
+    return (κx, κy, κ̃x, κ̃y, sqrt(κx * κ̃x + κy * κ̃y))
+end
+"The ω of the mode (k_x, k_y) of `solver` on the run's grid (`yee_omega` for Yee)."
+slab_omega(geo, ky, solver) = 2 / geo.dt * asin(geo.dt * slab_symbols(geo, ky, solver)[5] / 2)
+
+"""
     slab_init!(st, geo, pol)
 
 Write the slab packet into the state's fields at t = 0 (polarization `:TE`, Ez with Bx, By, or
@@ -93,7 +116,7 @@ by the solver's own half step, so the state holds Eⁿ, Bⁿ as the step expects
 B^{1/2} = (κ_y, −κ_x)/|κ|·Ez; TM: Bz^{1/2} = Re Σ A·e^{i(k·r − ωΔt/2)}, E = (−κ_y, κ_x)/|κ|·Bz^{1/2}
 taken at t = 0, with κ_d = 2 sin(k_dΔ_d/2)/Δ_d.
 """
-function slab_init!(st, geo, pol)
+function slab_init!(st, geo, pol; solver = Yee())
     (; grid, fields) = st
     T = eltype(st.ρ)
     g, n = guards(grid), ncells(grid)
@@ -112,21 +135,22 @@ function slab_init!(st, geo, pol)
             a[i, j] = real(v)
         end
     end
-    κn(ky) = (κy = 2 * sin(ky * geo.dy / 2) / geo.dy; (κy, hypot(κx, κy)))
-    ph(ky) = cis(-yee_omega(geo, ky) * geo.dt / 2)
+    # with the solver's B difference κ̃ (M4: m4.jl) B^{1/2} = κ̃×E/Ω (TE) and E = −κ×B^{1/2}/Ω (TM), Ω = √(κ·κ̃)
+    ph(ky) = cis(-slab_omega(geo, ky, solver) * geo.dt / 2)
     if pol === :TE
         fill_comp!(host[:Ez], 0, 0, ky -> 1.0)
-        fill_comp!(host[:Bx], 0, 1 / 2, ky -> ((κy, κ) = κn(ky); κy / κ * ph(ky)))
-        fill_comp!(host[:By], 1 / 2, 0, ky -> ((κy, κ) = κn(ky); -κx / κ * ph(ky)))
+        fill_comp!(host[:Bx], 0, 1 / 2, ky -> ((_, _, _, κ̃y, Ω) = slab_symbols(geo, ky, solver); κ̃y / Ω * ph(ky)))
+        fill_comp!(host[:By], 1 / 2, 0, ky -> ((_, _, κ̃x, _, Ω) = slab_symbols(geo, ky, solver); -κ̃x / Ω * ph(ky)))
     else
         fill_comp!(host[:Bz], 1 / 2, 1 / 2, ky -> ph(ky))
-        fill_comp!(host[:Ex], 1 / 2, 0, ky -> ((κy, κ) = κn(ky); -κy / κ))
-        fill_comp!(host[:Ey], 0, 1 / 2, ky -> ((κy, κ) = κn(ky); κx / κ))
+        fill_comp!(host[:Ex], 1 / 2, 0, ky -> ((_, κy, _, _, Ω) = slab_symbols(geo, ky, solver); -κy / Ω))
+        fill_comp!(host[:Ey], 0, 1 / 2, ky -> ((_, _, _, _, Ω) = slab_symbols(geo, ky, solver); κx / Ω))
     end
     for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
         copyto!(getfield(fields, c), T.(host[c]))
     end
-    yee_b_half!(fields, grid, -st.dt / 2)       # B^{1/2} → B⁰ = B^{1/2} + (Δt/2)∇×E⁰
+    # B^{1/2} → B⁰ = B^{1/2} + (Δt/2)∇×E⁰, by the solver's own half step
+    solver isa M4 ? m4_b_half!(fields, grid, -st.dt / 2, faraday_stencil(M4(), grid, st.dt)) : yee_b_half!(fields, grid, -st.dt / 2)
     return st
 end
 
@@ -165,12 +189,12 @@ transmitted packets), `hist` the interior energy every 10 steps when `history`.
 """
 function slab_run(::Type{T}, geo, pol; history = false, be = CPU(), workgroupsize = nothing,
                   absorber = AbsorbingLayer(; cells = geo.cells, strength = geo.strength, order = geo.order),
-                  nsteps = round(Int, geo.tmeas / geo.dt)) where {T}
-    prob, num = slab_problem(T, geo; absorber, nsteps)
-    num = EMNumerics(; current = num.current, absorber = num.absorber, workgroupsize)
+                  nsteps = round(Int, geo.tmeas / geo.dt), solver = Yee()) where {T}
+    prob, num = slab_problem(T, geo; absorber, nsteps, solver)
+    num = EMNumerics(; current = num.current, absorber = num.absorber, workgroupsize, solver)
     st = EMState(prob, num; backend = be)
     initialize!(st, prob)
-    slab_init!(st, geo, pol)
+    slab_init!(st, geo, pol; solver)
     rows = slab_rows(st, geo)
     W0 = slab_energy(st, rows.interior)
     p = params(prob)
@@ -307,8 +331,8 @@ function open_plasma_2d(::Type{T}; cells = (10, 16), ppc = (3, 3), nsteps = 40, 
 end
 
 "The initialized state of `open_plasma_2d` in `mode` with the `Esirkepov()` current."
-function open_state(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU())
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber); backend = be)
+function open_state(prob, absorber; mode = Reference(), workgroupsize = nothing, be = CPU(), solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), absorber, solver); backend = be)
     initialize!(st, prob)
     return st
 end

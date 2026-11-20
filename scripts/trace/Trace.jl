@@ -20,7 +20,9 @@ const TEST_DIRS = ("test", "lib", "scripts", "benchmark")
 # A testset whose name starts with a T- id, then the name, then the tags in brackets.
 const TESTSET_RE = r"@testset\s+\"(T-\d{3,})\s+([^\"\[]*?)\s*(?:\[([^\]\"]*)\])?\s*\""
 # Packages the engine (the root package and lib/) must not depend on (CLAUDE.md).
-const FORBIDDEN = ("ModelingToolkit", "MethodOfLines", "Molly", "Checkpointing")
+const FORBIDDEN = ("ModelingToolkit", "MethodOfLines", "Molly")
+# Packages the engine may take only as weak dependencies, behind an extension (`open-items.md` D).
+const WEAK_ONLY = ("Checkpointing",)
 
 struct Goal
     id::String
@@ -183,7 +185,7 @@ function check_engine_dependencies!(errors, root)
         proj = TOML.parsefile(f)
         for section in ("deps", "weakdeps")
             for name in keys(get(proj, section, Dict()))
-                name in FORBIDDEN &&
+                (name in FORBIDDEN || (section == "deps" && name in WEAK_ONLY)) &&
                     push!(errors, "$(relpath(f, root)): the engine must not depend on $name ($section)")
             end
         end

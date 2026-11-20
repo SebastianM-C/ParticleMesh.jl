@@ -14,12 +14,12 @@ function start_em3d_worker(nt)
 end
 const EM3D_WORKERS = Dict{Int,Tuple{Base.Process,String}}()
 
-"The `EM3DJ` lines of the worker at `nt` threads, after it finished."
-function em3d_worker_lines(nt)
+"The lines of the worker at `nt` threads that start with `prefix` (`EM3DJ`, T-952; `EM3DO`, T-1014), after it finished."
+function em3d_worker_lines(nt, prefix = "EM3DJ ")
     proc, out = start_em3d_worker(nt)
     wait(proc)
     success(proc) || error("em3d_worker.jl with $nt threads failed: $proc")
-    return filter(startswith("EM3DJ "), split(read(out, String), '\n'))
+    return filter(startswith(prefix), split(read(out, String), '\n'))
 end
 
 foreach(start_em3d_worker, (1, 4))     # the workers run beside this file's in-process runs
@@ -452,14 +452,14 @@ end
     @test_throws ArgumentError EMProblem("2d", L, n, prob.dt, 2, sp((1, 0), (1, 1)), 1, (1, 0, 0))                        # a 2D species
     @test_throws ArgumentError EMProblem("ppc0", L, n, prob.dt, 2, sp((1, 0, 0), (1, 0, 1)), 1, (1, 0, 0))                # no particle on an axis
     @test_throws ArgumentError EMProblem("four", (L..., L[1]), (n..., 6), prob.dt, 2, sp((1, 0, 0, 0), (1, 1, 1, 1)), 1, (1, 0, 0, 0))
-    for bd in ((:periodic, :periodic, :open), (:periodic, :open, :periodic), (:window, :periodic, :periodic))
-        @test_throws ArgumentError EMProblem("bd", L, n, prob.dt, 2, sp((1, 0, 0), (1, 1, 1)), 1, (1, 0, 0); boundaries = bd)
+    @test_throws ArgumentError EMProblem("bd", L, n, prob.dt, 2, sp((1, 0, 0), (1, 1, 1)), 1, (1, 0, 0); boundaries = (:window, :periodic, :periodic))
+    for bd in ((:periodic, :periodic, :periodic), (:periodic, :open, :periodic), (:periodic, :periodic, :open), (:periodic, :open, :open))   # WP-072
+        @test EMProblem("bd", L, n, prob.dt, 2, sp((1, 0, 0), (1, 1, 1)), 1, (1, 0, 0); boundaries = bd) isa EMProblem{3}
     end
-    @test EMProblem("bd", L, n, prob.dt, 2, sp((1, 0, 0), (1, 1, 1)), 1, (1, 0, 0); boundaries = (:periodic, :periodic, :periodic)) isa EMProblem{3}
     # the state: the numerics a 3D state does not take, and a step above the Courant limit
     @test_throws ArgumentError EMState(prob, EMNumerics(; filter = BinomialFilter(1)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; resort = true))
-    @test_throws ArgumentError EMState(prob, EMNumerics(; gather = CompensatedGather()))
+    @test EMState(prob, EMNumerics(; gather = CompensatedGather())).sharpened isa NamedTuple   # WP-076 (T-1056 checks it)
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; back_absorber = PML(; cells = 4)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; current = nothing))

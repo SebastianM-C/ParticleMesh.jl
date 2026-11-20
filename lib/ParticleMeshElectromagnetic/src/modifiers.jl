@@ -125,6 +125,19 @@ end
     return i === nothing ? :(nothing) : :(ms[$i])
 end
 
+# The absorber of the open axis `d` in a tuple, or `nothing`: as `pick_modifier`, with the type
+# `OpenAbsorberOf{d}` formed when the method is generated (inference does not fold it in a body).
+@generated function pick_open_absorber(ms::Tuple, ::Val{d}) where {d}
+    i = findfirst(E -> E <: OpenAbsorberOf{d}, fieldtypes(ms))
+    return i === nothing ? :(nothing) : :(ms[$i])
+end
+
+# Every modifier of type `M` in a tuple, in its order, as a tuple: resolved from the tuple's type.
+@generated function pick_modifiers(::Type{M}, ms::Tuple) where {M}
+    idx = findall(E -> E <: M, collect(fieldtypes(ms)))
+    return :(($((:(ms[$i]) for i in idx)...),))
+end
+
 # One sub-step of the solve: the modifiers' `before_substep!`, the solver's update, the modifiers'
 # `after_substep!`.
 function substep!(update!::U, f, grid, s, modifiers, mps, wgs) where {U}
@@ -176,4 +189,29 @@ function solve_fields!(::Yee, f::NamedTuple, grid::PeriodicGrid, dt, modifiers::
 end
 
 solve_fields!(solver::Yee, f::NamedTuple, grid::PeriodicGrid, dt; workgroupsize = nothing) =
+    solve_fields!(solver, f, grid, dt, (), nothing, 1; workgroupsize)
+
+"""
+    solve_fields!(::M4, f, grid, dt; workgroupsize = nothing)
+    solve_fields!(::M4, f, grid, dt, modifiers::Tuple, params, k; workgroupsize = nothing)
+
+The mesh solve of the [`M4`](@ref) solver (WP-079): the Yee solve above, sub-step for sub-step and
+with the same hooks of the modifiers, with each B half step taking M4's difference
+([`m4_b_half!`](@ref)) of the stencil of `dt` ([`faraday_stencil`](@ref)), made once per step.
+In vacuum a mode advances by the ω of sin²(ωΔt/2)/Δt² = Σ_d A_d·sin²(k_dΔ_d/2)/Δ_d² (`m4.jl`,
+T-1080); stable for Δt below [`courant_limit`](@ref), Yee's.
+"""
+function solve_fields!(solver::M4, f::NamedTuple, grid::PeriodicGrid, dt, modifiers::Tuple, p, k::Integer; workgroupsize = nothing)
+    T = eltype(f.Ex)
+    h = T(dt) / 2
+    t = (k - 1) * dt
+    bhalf = M4BHalf(faraday_stencil(solver, grid, T(dt)))
+    mps = resolve_params(modifiers, p, k)
+    substep!(bhalf, f, grid, BHalf(h, t, false), modifiers, mps, workgroupsize)
+    substep!(yee_e!, f, grid, EStep(T(dt), t + h), modifiers, mps, workgroupsize)
+    substep!(bhalf, f, grid, BHalf(h, t + T(dt), true), modifiers, mps, workgroupsize)
+    return f
+end
+
+solve_fields!(solver::M4, f::NamedTuple, grid::PeriodicGrid, dt; workgroupsize = nothing) =
     solve_fields!(solver, f, grid, dt, (), nothing, 1; workgroupsize)

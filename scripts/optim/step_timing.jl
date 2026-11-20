@@ -95,7 +95,7 @@ function timed_step!(st, p, k, times)
             fold_guards!(J, grid; workgroupsize = wgs)
         end
         PME.filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs, edges = window)
-        PME.retire!(PME.open_absorber(st), st)
+        PME.retire_open!(PME.open_absorbers(st), st)
     end
     timed!(() -> PME.solve_fields!(numerics.solver, fields, grid, dt, st.modifiers, p, k; workgroupsize = wgs), times, :fields)
     timed!(() -> PME.advance_window!(window, st, p, k), times, :window)

@@ -143,12 +143,30 @@ end
 # are `:monotonic` (relaxed): nothing reads `J` before the kernel ends, so they need atomicity and
 # no ordering, and Atomix's default sequentially consistent adds stalled the kernel on memory
 # barriers (Nsight Compute on an RTX 5090: 28 barrier stall cycles per issued instruction, the top reason).
+# The `K` adds are written out with `ntuple`, not left to a loop, so that a reverse-mode AD of the
+# kernel (Enzyme) keeps their addresses in its fixed-size tape instead of allocating device memory
+# per work item and step (WP-050); the same adds in the same order.
 @inline function atomic_add_block!(J, v::NTuple{K,Any}, b1::Int, b2::Int, ::Val{M1}) where {K,M1}
-    for k in 1:K
-        @inbounds Atomix.@atomic :monotonic J[CartesianIndex(b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)] += v[k]
+    ntuple(Val(K)) do k
+        @inline
+        @inbounds atomic_add!(J, v[k], b1 + (k - 1) % M1, b2 + (k - 1) ÷ M1)
+        nothing
     end
     return nothing
 end
+
+# `J[i1, i2] += x`, atomic and relaxed. A dense array (`Array` and the GPU device arrays) adds
+# through its element's pointer with UnsafeAtomics, the operation `Atomix.@atomic` itself ends in,
+# minus Atomix's `GC.@preserve` of the array: on the GPU that preserve puts the by-value device
+# array on the stack, and Enzyme moves such stack slots to device malloc in the reverse pass of
+# the kernel, once per work item and step (WP-050, #526; the device heap then runs out within a
+# few steps). The kernel's caller holds `J`, so no root is needed. Other arrays go through Atomix.
+@inline function atomic_add!(J::DenseMatrix{T}, x, i1::Int, i2::Int) where {T}
+    p = pointer(J, i1 + (i2 - 1) * size(J, 1))
+    UnsafeAtomics.modify!(p, +, convert(T, x), UnsafeAtomics.monotonic, UnsafeAtomics.device)
+    return nothing
+end
+Base.@propagate_inbounds atomic_add!(J, x, i1::Int, i2::Int) = (Atomix.@atomic :monotonic J[i1, i2] += x; nothing)
 
 # One work item per particle, in the particle's frame: 2(P + 1)(P + 2) + (P + 2)² atomic adds
 # (40 at order 2, against 108 in the cell's frame).

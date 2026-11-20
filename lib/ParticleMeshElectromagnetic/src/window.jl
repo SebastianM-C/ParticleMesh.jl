@@ -1,9 +1,11 @@
-# The moving window at N = 2 (WP-028, A2, A3, §0.4): the box follows the laser at c along axis 1.
+# The moving window at N = 2 and 3 (WP-028, WP-074; A2, A3, §0.4): the box follows the laser at c along axis 1.
 # The problem says so (`EMProblem(...; boundaries = (:window, ·), window = MovingWindow(; start))`)
 # and gives the plasma a longitudinal profile (`profile = DensityRamp(; vacuum, ramp)`), entering
 # through the weights (A3), in the initial load and in every refill, from the parameters of the
-# step (`EMParams`), not from the state. The grid underneath stays the engine's `PeriodicGrid{2}`; no kernel
-# signature changes (B1). What the window changes:
+# step (`EMParams`), not from the state. The grid underneath stays the engine's `PeriodicGrid{N}`; no kernel
+# signature changes (B1). Every piece below is one method over N: a column is the plane of cells
+# with one index along axis 1 (a row of cells at N = 2, a sheet at N = 3), and what is said of the
+# rows of a 2D column holds for the transverse cells of a 3D one. What the window changes:
 #
 # - Axis 1 is not periodic: what lies beyond the box is the undisturbed outside, zero fields ahead
 #   of the window and nothing simulated behind it. After every Yee sub-step the x-guard columns of
@@ -26,7 +28,7 @@
 #   (memory shift through the scratch ρ; the front column and the x-guards become zero), drops the
 #   particles of the back column, compacts the slots by the sort, and loads the fresh plasma of the
 #   injection column into the free slots behind the alive count (`s.count`, read on the
-#   device): the engine's 2D quiet start (`quiet_particle_2d`) at the global column (that column + s), so
+#   device): the engine's quiet start (`quiet_particle`) at the global column (that column + s), so
 #   its draws and weights are those of a static load of the whole domain (A3, A4). The loaded
 #   momenta are taken as those at the half step (the plasma ahead of the laser sees no field).
 # - The front columns are kept free of fresh plasma: it is loaded on the injection column
@@ -58,7 +60,7 @@
 """
     MovingWindow(; start = 0)
 
-The moving window of an [`EMProblem`](@ref) at N = 2 (WP-028): the box moves at c along axis 1
+The moving window of an [`EMProblem`](@ref) at N = 2 (WP-028) and N = 3 (WP-074): the box moves at c along axis 1
 (the laser's propagation axis) from the time `start` (1/ω₀, A1), by whole cells: after step k it
 has moved `max(0, floor((k·Δt − start)/Δx₁))` cells. The problem's axis 1 boundary is `:window`.
 """
@@ -98,15 +100,18 @@ end
     RampedCosine()
 
 The density profile of a species in a window problem, an isbits callable for the engine's loader:
-`n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x[1] + p[4]·x[2]))·ramp(x[1]; vacuum = p[5], ramp = p[6])`, the
-[`CosineProfile`](@ref) times the [`DensityRamp`](@ref) (a uniform profile has `p[5] = −∞`). The
-parameters enter through the weights (A3).
+`n(x, p) = p[1]·(1 + p[2]·cos(p[3]·x[1] + p[4]·x[2]))·ramp(x[1]; vacuum = p[5], ramp = p[6])` at
+N = 2, the [`CosineProfile`](@ref) times the [`DensityRamp`](@ref) (a uniform profile has
+`p[5] = −∞`), and at N = 3 likewise with `p[5]·x[3]` in the cosine and the ramp's `p[6]`, `p[7]`.
+The parameters enter through the weights (A3).
 """
 struct RampedCosine end
 @inline (::RampedCosine)(x::NTuple{2}, p) = p[1] * (1 + p[2] * cos(p[3] * x[1] + p[4] * x[2])) * ramp_factor(x[1], p[5], p[6])
+@inline (::RampedCosine)(x::NTuple{3}, p) =
+    p[1] * (1 + p[2] * cos(p[3] * x[1] + p[4] * x[2] + p[5] * x[3])) * ramp_factor(x[1], p[6], p[7])
 
 # The loader parameters of a species in a window problem: those of its cosine and the profile's.
-function window_density_params(ps::SpeciesParams{T,2}, r) where {T}
+function window_density_params(ps::SpeciesParams{T}, r) where {T}
     vac, len = r === nothing ? (T(-Inf), one(T)) : (T(r.vacuum), T(r.ramp))
     return (density_params(ps)..., vac, len)
 end
@@ -207,7 +212,7 @@ part. Columns `window_back_band + 1 … n₁` are the ones to read.
 window_back_band(w::WindowFrame) = 3 * (w.n1 - w.inj)
 window_back_band(st::EMState) = window_back_band(window_frame(st))
 
-"The moving window's frame of a state, or `nothing` (at N = 1, and at N = 2 without a window)."
+"The moving window's frame of a state, or `nothing` (at N = 1, and at N = 2 and 3 without a window)."
 window_frame(st::EMState) = haskey(st.aux, :window) ? st.aux.window : nothing
 
 """
@@ -239,16 +244,19 @@ on device data, §0.4). The initial load refuses such a draw instead, with an `A
 """
 window_superluminal(st::EMState) = map(l -> Int(Array(l)[1]), st.aux.window.fast)
 
-function WindowFrame(problem::EMProblem{2,T}, grid, backend, shape, passes::Integer) where {T}
+function WindowFrame(problem::EMProblem{N,T}, grid, backend, shape, passes::Integer) where {N,T}
     n1 = ncells(grid)[1]
     inj = window_injection_column(n1, shape, passes)
     inj >= 2 ||
         throw(ArgumentError("a moving window of $n1 columns leaves no plasma columns for this shape and $passes filter passes: the plasma is loaded up to column n₁ − 1 − $(n1 - 1 - inj), which must be at least 2"))
     lost = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
     fast = map(_ -> KernelAbstractions.zeros(backend, Int32, 1), problem.species)
-    flags = map(d -> KernelAbstractions.zeros(backend, Int32, inj * ncells(grid)[2] * prod(d.ppc)), problem.species)
+    flags = map(d -> KernelAbstractions.zeros(backend, Int32, inj * column_cells(grid) * prod(d.ppc)), problem.species)
     return WindowFrame(problem.window, problem.dt, T(cellsize(grid)[1]), n1, inj, guards(grid), lost, fast, flags)
 end
+
+"The cells of one window column of `grid`: the product of the transverse cells."
+column_cells(grid) = prod(Base.tail(ncells(grid)))
 
 # --- the x edges ------------------------------------------------------------------------------
 
@@ -264,11 +272,13 @@ struct WindowEdges <: FieldModifier
 end
 edges_of(w::WindowFrame) = WindowEdges(w.g)
 
-# Zero the x-guard columns of a field (every row): ndrange (2g, rows), the first g columns and the last g.
+# Zero the x-guard columns of a field (every row, at N = 3 every row and layer): ndrange
+# (2g, the other sizes), the first g columns and the last g.
 @kernel function zero_x_guards_kernel!(a, g::Int32, shift::Int32)
-    i, j = @index(Global, NTuple)
-    c = ifelse(Int32(i) <= g, Int32(i), Int32(i) + shift)
-    @inbounds a[c, j] = zero(eltype(a))
+    I = @index(Global, NTuple)
+    i = Int32(I[1])
+    c = ifelse(i <= g, i, i + shift)
+    @inbounds a[c, Base.tail(I)...] = zero(eltype(a))
 end
 
 """
@@ -282,7 +292,7 @@ zero_x_edges!(::Nothing, a; workgroupsize = nothing) = a
 function zero_x_edges!(w::Union{WindowFrame,WindowEdges}, a; workgroupsize = nothing)
     w.g == 0 && return a
     shift = size(a, 1) - 2w.g
-    launcher(zero_x_guards_kernel!, get_backend(a), workgroupsize)(a, Int32(w.g), Int32(shift); ndrange = (2w.g, size(a, 2)))
+    launcher(zero_x_guards_kernel!, get_backend(a), workgroupsize)(a, Int32(w.g), Int32(shift); ndrange = (2w.g, Base.tail(size(a))...))
     return a
 end
 
@@ -331,7 +341,7 @@ in the lab frame, so its column moves back by `s`; once it is closer than `g + 2
 back edge it is inactive (the step skips it).
 """
 window_antennas(antennas::Tuple, s::Integer) =
-    map(a -> Antenna(a.laser, a.ia - Int32(s), a.xa, a.dx, a.g, a.n2, a.ly, a.hx, a.ht), antennas)
+    map(a -> shift_antenna(a, s), antennas)
 
 # The antennas of step k in a moving window: where the window has their planes at the start of the step.
 placed_antennas(c::WindowClock, antennas::Tuple, k) = window_antennas(antennas, window_shifts(c, k - 1))
@@ -345,9 +355,9 @@ function check_window_antennas(w::WindowFrame, back, antennas::Tuple)
     cb = back_cells(back)
     for a in antennas
         edge = max(Int(a.g), cb)
-        s_off = a.ia - edge - 1                    # the shifts after which it no longer acts outside the layer
+        s_off = a.ia - edge - solver_reach(a.stencil)   # the shifts after which it no longer acts outside the layer
         cb > 0 && s_off <= 0 &&
-            throw(ArgumentError("the antenna's columns $(a.ia - 1) and $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + 1)"))
+            throw(ArgumentError("the antenna's columns $(a.ia - solver_reach(a.stencil)) to $(a.ia) lie inside the back-edge PML of $cb cells; place the plane beyond column $(cb + solver_reach(a.stencil))"))
         t_off = w.window.start + s_off * w.dx1
         l = a.laser
         pulse_end(l) <= t_off ||
@@ -358,19 +368,21 @@ end
 
 # --- the shift and the refill ----------------------------------------------------------------
 
-# One column back: a[i, j] = src[i + 1, j] on the interior columns 1 … n₁ − 1 (array columns
+# One column back: a[i, j…] = src[i + 1, j…] on the interior columns 1 … n₁ − 1 (array columns
 # g + 1 … g + n₁ − 1), zero on the x-guards, and on the front column zero, or (`keep`, Ex) the
-# value it had (the front face's Ex carried along, the header says why); every row, the y-guards
-# included (they stay the images of their interior rows). One work item per entry.
+# value it had (the front face's Ex carried along, the header says why); every row (and layer),
+# the transverse guards included (they stay the images of their interior rows). One work item
+# per entry.
 @kernel function shift_columns_kernel!(a, @Const(src), lo::Int32, hi::Int32, keep::Bool)
-    i, j = @index(Global, NTuple)
-    i32 = Int32(i)
+    I = @index(Global, NTuple)
+    i32 = Int32(I[1])
+    J = Base.tail(I)
     @inbounds if lo <= i32 && i32 < hi
-        a[i, j] = src[i32 + Int32(1), j]
+        a[i32, J...] = src[i32 + Int32(1), J...]
     elseif keep && i32 == hi
-        a[i, j] = src[i, j]
+        a[i32, J...] = src[i32, J...]
     else
-        a[i, j] = zero(eltype(a))
+        a[i32, J...] = zero(eltype(a))
     end
 end
 
@@ -391,31 +403,37 @@ end
     return (γ * v[1], γ * v[2], γ * v[3])
 end
 
+# The transverse cell of the 0-based index t within a column of `nt` transverse cells, axis 2
+# fastest: (c₂,) at N = 2, (c₂, c₃) at N = 3 (1-based).
+@inline column_cell(t::Int32, nt::NTuple{1,Int32}) = (t + Int32(1),)
+@inline column_cell(t::Int32, nt::NTuple{2,Int32}) = (t % nt[1] + Int32(1), t ÷ nt[1] + Int32(1))
+
 # The fresh plasma of the window columns col0 … col0 + ncol − 1 at the window position `origin`
 # (global column = window column + origin), written behind the alive count: work item i is the
-# in-cell index k of the cell (column, row) in the order of the static loader within a column
-# (row by row, k fastest), into slot count[1] + i if that slot exists. Positions and draws are the
-# engine's quiet start at the global cell, the momenta γv of the drawn velocities; a drawn speed
-# that reaches c (or a NaN) is replaced by the drift velocity, and flags[i] says so (1, else 0).
-@kernel function refill_kernel!(s, flags, @Const(count), density, p, dx, ppc::NTuple{2,Int32}, col0::Int32, n2::Int32,
-                                origin::Int32, vdrift, vth, key, cap::Int32)
+# in-cell index k of the cell (column, transverse cell) in the order of the static loader within
+# a column (transverse cell by transverse cell, axis 2 fastest, k fastest of all), into slot
+# count[1] + i if that slot exists. Positions and draws are the engine's quiet start at the global
+# cell, the momenta γv of the drawn velocities; a drawn speed that reaches c (or a NaN) is
+# replaced by the drift velocity, and flags[i] says so (1, else 0). `nt` are the transverse cells.
+@kernel function refill_kernel!(s, flags, @Const(count), density, p, dx, ppc::NTuple{N,Int32}, col0::Int32, nt::NTuple{M,Int32},
+                                origin::Int32, vdrift, vth, key, cap::Int32) where {N,M}
     i = Int32(@index(Global, Linear))
-    K = ppc[1] * ppc[2]
-    cell = (i - Int32(1)) ÷ K                     # 0-based cell index, rows fastest
+    K = Int32(prod(ppc))
+    cell = (i - Int32(1)) ÷ K                     # 0-based cell index, transverse cells fastest
     k = (i - Int32(1)) % K + Int32(1)
-    c2 = cell % n2 + Int32(1)
-    c1 = col0 + cell ÷ n2
+    ncol = Int32(prod(nt))
+    ct = column_cell(cell % ncol, nt)
+    c1 = col0 + cell ÷ ncol
     @inbounds slot = count[1] + i
     fast = false
     if slot <= cap
-        δ, v0, w = quiet_particle_2d(c1 + origin, c2, k, ppc, dx, density, p, vdrift, vth, key)
+        δ, v0, w = quiet_particle((c1 + origin, ct...), k, ppc, dx, density, p, vdrift, vth, key)
         fast = !(v0[1] * v0[1] + v0[2] * v0[2] + v0[3] * v0[3] < one(v0[1]))
         u = velocity_momentum(ifelse(fast, vdrift, v0))
         @inbounds begin
             s.cell[1][slot] = c1
-            s.cell[2][slot] = c2
-            s.offset[1][slot] = δ[1]
-            s.offset[2][slot] = δ[2]
+            ntuple(d -> (@inbounds s.cell[d + 1][slot] = ct[d]; nothing), Val(M))
+            ntuple(d -> (@inbounds s.offset[d][slot] = δ[d]; nothing), Val(N))
             s.u[1][slot] = u[1]
             s.u[2][slot] = u[2]
             s.u[3][slot] = u[3]
@@ -447,12 +465,12 @@ scratch `flags` of at least one entry per fresh particle, allocated when `nothin
 device.
 """
 function load_window_columns!(s, grid, load, lost, col0, ncol, origin; fast = nothing, flags = nothing, workgroupsize = nothing)
-    n2 = ncells(grid)[2]
-    nnew = ncol * n2 * prod(load.ppc)
+    nt = Int32.(Base.tail(ncells(grid)))
+    nnew = ncol * prod(nt) * prod(load.ppc)
     be = get_backend(s)
     flags === nothing && (flags = KernelAbstractions.zeros(be, Int32, nnew))
     launcher(refill_kernel!, be, workgroupsize)(s, flags, s.count, RampedCosine(), load.p, cellsize(grid), load.ppc, Int32(col0),
-                                                Int32(n2), Int32(origin), load.vdrift, load.vth, load.key,
+                                                nt, Int32(origin), load.vdrift, load.vth, load.key,
                                                 Int32(capacity(s)); ndrange = nnew)
     launcher(refill_count_kernel!, be, workgroupsize)(s.count, lost, Int32(nnew), Int32(capacity(s)); ndrange = 1)
     fast === nothing || sum!(fast, view(flags, 1:nnew); init = false)
@@ -481,7 +499,7 @@ function load_window_species!(w::WindowFrame, i, s, grid, wgs, load, name)
 end
 
 """
-    shift_window!(state::EMState{2}, params, s_new) -> state
+    shift_window!(state::EMState, params, s_new) -> state
 
 Move the window of `state` by one cell, to its position after `s_new` shifts: E and B one column back (through the scratch ρ, the
 x-guards and the front column zero but for Ex on the front face, which is carried along), a PML's
@@ -493,7 +511,7 @@ profile at the global column, A3). The kinetic-energy cache `K` is then stale an
 reads it, and another caller uses [`refresh_caches!`](@ref). The window position it moves to is the caller's
 (the count of shifts).
 """
-function shift_window!(st::EMState{2}, p::EMParams, s_new::Integer)
+function shift_window!(st::EMState, p::EMParams, s_new::Integer)
     (; numerics, grid, fields, aux) = st
     w = aux.window
     wgs = numerics.workgroupsize
@@ -536,19 +554,19 @@ end
 # --- diagnostics -------------------------------------------------------------------------------
 
 """
-    window_charge!(ρ, state::EMState{2}) -> ρ
+    window_charge!(ρ, state::EMState) -> ρ
 
 The charge density of the state's particles (the species' and a dopant's electrons; the dopant's
 ions are [`ionization_charge!`](@ref)) on the primal nodes, deposited in the state's mode
 (the species sorted first where the mode needs it), with the window's convention: the x-guards
-dropped (zero outside), the y-guards folded. A diagnostic, outside `step!`.
+dropped (zero outside), the transverse guards folded; at N = 2 and 3. A diagnostic, outside `step!`.
 """
-function window_charge!(ρ, st::EMState{2})
+function window_charge!(ρ, st::EMState{N}) where {N}
     (; numerics, grid) = st
     fill!(ρ, zero(eltype(ρ)))
     for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
         sorts(st, s) && sort_by_cell!(s, grid, ws)
-        deposit!(deposit_mode(st, s), ρ, s, numerics.shape, RHO_STAGGER_2D, grid, ws)
+        deposit!(deposit_mode(st, s), ρ, s, numerics.shape, rho_stagger(Val(N)), grid, ws)
     end
     zero_x_edges!(window_frame(st), ρ)
     fold_guards!(ρ, grid)
@@ -556,16 +574,16 @@ function window_charge!(ρ, st::EMState{2})
 end
 
 """
-    window_background!(ρ₀, state::EMState{2}, params, s) -> ρ₀
+    window_background!(ρ₀, state::EMState, params, s) -> ρ₀
 
 The immobile background's charge density in the window at position `s` (after `s` shifts), with
 the opposite sign: the charge of the cold quiet start of every species, of the parameters'
 densities and profile, on the window's plasma
 columns `1 …` [`injection_column`](@ref) at their global columns, deposited as [`window_charge!`](@ref) deposits. The plasma starts neutral, so
-Gauss's law reads `D⁻·E = ρ − ρ₀(s)` at every step. Allocates scratch species: a diagnostic,
-outside `step!`.
+Gauss's law reads `D⁻·E = ρ − ρ₀(s)` at every step. At N = 2 and 3. Allocates scratch species: a
+diagnostic, outside `step!`.
 """
-function window_background!(ρ0, st::EMState{2}, p::EMParams, s_win::Integer)
+function window_background!(ρ0, st::EMState{N}, p::EMParams, s_win::Integer) where {N}
     (; numerics, grid) = st
     w = st.aux.window
     T = eltype(ρ0)
@@ -574,12 +592,12 @@ function window_background!(ρ0, st::EMState{2}, p::EMParams, s_win::Integer)
     n = ncells(grid)
     for (s, setup, ps) in zip(st.species, st.setup, p.species)
         cold = (; window_load(setup, ps, p)..., vdrift = (zero(T), zero(T), zero(T)), vth = (zero(T), zero(T), zero(T)))
-        sc = Species(be, T, prod(n) * prod(cold.ppc); q = s.q, m = s.m, N = 2)
-        ws = Workspace(sc, grid; bins = sort_bins(numerics, Val(2); window = true))
+        sc = Species(be, T, prod(n) * prod(cold.ppc); q = s.q, m = s.m, N)
+        ws = Workspace(sc, grid; bins = sort_bins(numerics, Val(N); window = true))
         load_window_columns!(sc, grid, cold, KernelAbstractions.zeros(be, Int32, 1), 1, injection_column(w), s_win)
         mode = effective_mode(numerics.mode, T)
         mode isa Reference && sort_by_cell!(sc, grid, ws)
-        deposit!(mode, ρ0, sc, numerics.shape, RHO_STAGGER_2D, grid, ws)
+        deposit!(mode, ρ0, sc, numerics.shape, rho_stagger(Val(N)), grid, ws)
     end
     zero_x_edges!(w, ρ0)
     fold_guards!(ρ0, grid)

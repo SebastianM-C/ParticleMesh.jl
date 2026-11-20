@@ -48,12 +48,15 @@ ionization_arrays(fr::IonizationFrame) = (species_arrays(fr.atoms)..., values(fr
     return :(($(parts...),))
 end
 
-# What a run evolves besides the particles and the fields, in `evolved`'s order: the open axis'
-# absorber's arrays, the window's counters, the arrays of every other modifier in the tuple's
+opens_evolved(::Tuple{}) = ()
+opens_evolved(ls::Tuple) = (evolved_arrays(first(ls))..., opens_evolved(Base.tail(ls))...)
+
+# What a run evolves besides the particles and the fields, in `evolved`'s order: the open axes'
+# absorbers' arrays (in the tuple's order), the window's counters, the arrays of every other modifier in the tuple's
 # order (`evolved_arrays`: the back edge's PML, and any modifier a state was given), the witness
 # bunch, the ionization. The open axis' absorber comes before the counters whatever its place in the tuple: that
 # is the order the list has had since it exists, and no configuration's list moves.
-evolved_aux(st::EMState) = (evolved_arrays(open_absorber(st))..., window_arrays(window_frame(st))...,
+evolved_aux(st::EMState) = (opens_evolved(open_absorbers(st))..., window_arrays(window_frame(st))...,
                             other_evolved(st.modifiers)..., witness_arrays(witness_frame(st))...,
                             ionization_arrays(ionization_frame(st))...)
 
@@ -69,11 +72,12 @@ later sort overwrites; take a fresh `evolved(state)` after a step:
    and the alive count;
 2. the fields of [`field_layout`](@ref), in its order: E and B, and the current J of the last step
    (a step with `Esirkepov()` writes it before reading it; with `NoCurrent()` it is kept as it is);
-3. at N = 2, where the state has them: the four convolution fields of the open axis' PML
-   (`ψBx`, `ψBz`, `ψEx`, `ψEz`); the moving window's counters, per species `lost` and then per
+3. at N = 2 and 3, where the state has them: the four convolution fields of each open axis' PML
+   (`values(ψ)`: along y `ψ.Bx`, `ψ.Bz`, `ψ.Ex`, `ψ.Ez`; along z `ψ.Bx`, `ψ.By`, `ψ.Ex`, `ψ.Ey`;
+   axis 2 before axis 3); the moving window's counters, per species `lost` and then per
    species `fast`; the evolved arrays of every other field modifier in the order of the state's
    tuple ([`evolved_arrays`](@ref): the four convolution fields of the window's back-edge PML,
-   `ψBy`, `ψBz`, `ψEy`, `ψEz`, and those of a modifier the state was given with
+   `ψ.By`, `ψ.Bz`, `ψ.Ey`, `ψ.Ez`, and those of a modifier the state was given with
    [`with_modifiers`](@ref)); the witness bunch's particles, as a species; of a
    [`FieldIonization`](@ref) the atoms as a species, their extras (`pending`, `emitted` and the
    bound population of each level), the electrons as a species and the counter `lost`.
@@ -115,13 +119,22 @@ function modifier_on(m::FieldModifier, a::Tuple)
     return on_arrays(m, take(a, n)), drop(a, n)
 end
 
-# The tuple `ms` over the arrays `a`, consumed in `other_evolved`'s order; the open axis' absorber,
-# whose arrays come earlier in the list, is given (`open`).
-@generated function others_on(ms::NTuple{M,FieldModifier}, open, a::Tuple) where {M}
+# The open axes' absorbers over the first arrays of `a`, in their order, and the arrays left.
+opens_on(::Tuple{}, a::Tuple) = ((), a)
+function opens_on(ls::Tuple, a::Tuple)
+    l, a = modifier_on(first(ls), a)
+    rest, a = opens_on(Base.tail(ls), a)
+    return (l, rest...), a
+end
+
+# The tuple `ms` over the arrays `a`, consumed in `other_evolved`'s order; the open axes' absorbers,
+# whose arrays come earlier in the list, are given (`opens`, in the tuple's order).
+@generated function others_on(ms::NTuple{M,FieldModifier}, opens::Tuple, a::Tuple) where {M}
     body = Expr(:block)
     names = [Symbol(:m_, i) for i in 1:M]
+    j = 0
     for i in 1:M
-        push!(body.args, fieldtype(ms, i) <: OpenAbsorber ? :($(names[i]) = open) : :(($(names[i]), a) = modifier_on(ms[$i], a)))
+        push!(body.args, fieldtype(ms, i) <: OpenAbsorber ? (j += 1; :($(names[i]) = opens[$j])) : :(($(names[i]), a) = modifier_on(ms[$i], a)))
     end
     push!(body.args, :(return ($(names...),), a))
     return body
@@ -150,16 +163,16 @@ function ionization_on(fr::IonizationFrame, a::Tuple)
     atoms = Species(core.cell, core.offset, core.u, core.w, core.status, core.count, core.q, core.m, extras)
     ne = Val(species_length(fr.electrons))
     electrons, a = species_on(fr.electrons, take(a, ne)), drop(a, ne)
-    return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.row0, fr.nrows, fr.ncols, fr.ppc, a[1], fr.flags),
+    return IonizationFrame(atoms, fr.atoms_ws, electrons, fr.electrons_ws, fr.every, fr.c0, fr.nc, fr.ppc, a[1], fr.flags),
            drop(a, Val(1))
 end
 
 # The modifiers and `aux` of `st` over the arrays `a`, which are consumed in `evolved_aux`'s order:
 # every modifier is the same modifier over its part of `a` (`on_arrays`).
 function aux_on(st::EMState, a::Tuple)
-    open, a = modifier_on(open_absorber(st), a)
+    opens, a = opens_on(open_absorbers(st), a)
     window, a = window_on(window_frame(st), a)
-    modifiers, a = others_on(st.modifiers, open, a)
+    modifiers, a = others_on(st.modifiers, opens, a)
     witness, a = witness_on(witness_frame(st), a)
     ionization, a = ionization_on(ionization_frame(st), a)
     return modifiers, aux_with(st.aux, window, witness, ionization), a

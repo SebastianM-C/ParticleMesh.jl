@@ -11,10 +11,19 @@ AcceleratedKernels = "6a4ca0a5-0e36-4168-a932-d9be78d558f1"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+UnsafeAtomics = "013be700-e6cd-48c3-b4a1-df204f14c38f"
+
+[weakdeps]
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+
+[extensions]
+ParticleMeshCoreEnzymeCoreExt = "EnzymeCore"
 
 [compat]
 AcceleratedKernels = "0.5"
 Adapt = "4"
 Atomix = "1"
-KernelAbstractions = "0.10.6"
+EnzymeCore = "0.8.27"
+KernelAbstractions = "0.10.8"
+UnsafeAtomics = "0.4"
 julia = "1.13"

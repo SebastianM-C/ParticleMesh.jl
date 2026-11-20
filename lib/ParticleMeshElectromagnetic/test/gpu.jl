@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-042's 3D step: T-958. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -59,6 +59,65 @@ else
         for wgs in (64, 256)
             @test em3d_step_digests(; workgroupsize = wgs, be = GPU) == first
         end
+    end
+
+    @testset "T-1019 the open 3D step on CUDA passes T-1010 and T-1011 with the CPU's tolerances, and its Reference step is bitwise across reruns and launch shapes [A2, A4, A5, A7, A8, WP-072]" begin
+        rerun_module_on(GPU, (("T-1010", body_T1010), ("T-1011", body_T1011)))
+        first = open3d_step_digests(; be = GPU)
+        @test open3d_step_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test open3d_step_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1029 the 3D antenna on CUDA passes T-1024 and T-1026 with the CPU's tolerances, and its Reference step is bitwise across reruns and launch shapes [A2, A4, A5, A8, WP-073]" begin
+        rerun_module_on(GPU, (("T-1024", body_T1024), ("T-1026", body_T1026)))
+        first = antenna3d_step_digests(; be = GPU)
+        @test antenna3d_step_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test antenna3d_step_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    # WP-079: the M4 solver. T-1085's plane wave (its main beams run on the CPU only), T-1087's shaped
+    # beam and T-1091's bitwise Reference step and Fast–Reference agreement on CUDA, and the M4
+    # window run of T-561 on both backends, differing by roundoff.
+    @testset "T-1098 the M4 2D step on CUDA passes T-1085, T-1087 and T-1091 with the CPU's tolerances, and differs from the CPU's by roundoff [A2, A4, A7, A8, WP-079]" begin
+        rerun_module_on(GPU, (("T-1085", body_T1085), ("T-1087", body_T1087), ("T-1091", body_T1091)))
+        prob = window_lwfa(Float64; nsteps = 120)
+        g, c = window_state(prob; be = GPU, solver = M4()), window_state(prob; solver = M4())
+        run!(g, params(prob), prob.nsteps)
+        run!(c, params(prob), prob.nsteps)
+        names = (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
+        m = maximum(n -> maximum(abs, getfield(c.fields, n)), names)
+        d = maximum(n -> maximum(abs, Array(getfield(g.fields, n)) .- getfield(c.fields, n)), names)
+        @info "T-1098 CPU–CUDA M4 window fields" rel = d / m
+        record!("T-1098", Float64, d / (m * eps(Float64)), GPU)
+        @test d <= emC("T-561") * eps(Float64) * m
+    end
+
+    @testset "T-1099 the M4 3D step on CUDA passes T-1094, T-1096, T-1097 and T-1100 with the CPU's tolerances [A2, A4, A7, A8, WP-079]" begin
+        rerun_module_on(GPU, (("T-1094", body_T1094), ("T-1096", body_T1096), ("T-1097", body_T1097), ("T-1100", body_T1100)))
+    end
+
+    @testset "T-1039 the 3D window on CUDA passes T-1030 to T-1033, T-1035, T-1036 and T-1038 with the CPU's tolerances, and its Reference step is bitwise across reruns and launch shapes [A2, A3, A4, A7, A8, WP-074]" begin
+        rerun_module_on(GPU, (("T-1030", body_T1030), ("T-1031", body_T1031), ("T-1032", body_T1032), ("T-1033", body_T1033),
+                              ("T-1035", body_T1035), ("T-1036", body_T1036), ("T-1038", body_T1038)))
+        first = window3d_step_digests(; be = GPU)
+        @test window3d_step_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test window3d_step_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1049 the 3D ionization on CUDA passes T-1040 to T-1045 with the CPU's tolerances, its Reference step bitwise across reruns and launch shapes (T-1045's body) [A2, A3, A4, A7, A8, WP-075]" begin
+        rerun_module_on(GPU, (("T-1040", body_T1040), ("T-1041", body_T1041), ("T-1042", body_T1042), ("T-1043", body_T1043),
+                              ("T-1044", body_T1044), ("T-1045", body_T1045)))
+    end
+
+    @testset "T-1059 the 3D compensated gather on CUDA passes T-1050 to T-1054 with the CPU's tolerances, its Reference step bitwise across reruns and launch shapes (T-1054's body) [A2, A4, A7, A8, WP-076]" begin
+        rerun_module_on(GPU, (("T-1050", body_T1050), ("T-1051", body_T1051), ("T-1052", body_T1052), ("T-1053", body_T1053),
+                              ("T-1054", body_T1054)))
     end
 
     @testset "T-446 the binomial filter on CUDA passes T-440 to T-442 with the CPU's tolerances, and the filtered Reference step is bitwise across reruns and launch shapes [A2, A4, A7, WP-029]" begin
@@ -130,20 +189,26 @@ else
     # The longer, refined cases the GPU is for: Δx, Δy and Δt divided by r = 2 and 3 (r² times the
     # cells and particles), 600·r steps (WP-044's horizon), read past the back band. The functional
     # here is the log-mean-exp, the soft maximum less log(n)/β: the soft maximum grows with the
-    # number n of columns read, which refining multiplies (the PR's physics breaker). The successive
-    # differences between resolutions shrink, the coarse case's being its discretization error
-    # (measured on the CPU, Float64 duals: density's partial −0.188, −0.228, −0.237). The runs are
+    # number n of columns read, which refining multiplies (the PR's physics breaker). It reads the
+    # window past the same physical width at every resolution, the back band of the coarse case
+    # (`axis_Ex_past`), not past the band's fixed number of cells, whose width shrinks as 1/r: the
+    # three runs then read the same stretch of wake, and the successive differences between
+    # resolutions are the discretization error of one functional (measured on the CPU,
+    # Dual{Float32,3}: density's partial −0.1876, −0.2278, −0.2373). The runs are
     # timed on both backends (r = 1 and 2), after one untimed coarse run per backend that compiles
     # every kernel, the window's included (they start at step 199).
     @testset "T-612 the refined and longer dual gradient case on CUDA converges with resolution [A7, A8, WP-046]" begin
         xd = lwfa_dual_x0()
+        coarse = first(lwfa_gradient_run(xd, Reference(); nsteps = 1))
+        width = window_back_band(coarse) * Float64(value_of(cellsize(coarse.grid)[1]))
         function timed(be, refine)
             nsteps = refine * LWFA_LONG_STEPS
             t = @elapsed begin
                 st, _ = lwfa_gradient_run(xd, Reference(); be, refine, nsteps)
                 KernelAbstractions.synchronize(be)
             end
-            v = axis_Ex(st)
+            v = axis_Ex_past(st, width)
+            @test length(v) == ncells(st.grid)[1] - refine * window_back_band(coarse)    # the coarse band's width at every r
             @test all(iszero, ParticleMeshElectromagnetic.window_lost(st))
             return (lme = soft_maximum(v, LWFA_GRADIENT_BETA) - log(length(v)) / LWFA_GRADIENT_BETA, step = t / nsteps)
         end
@@ -159,10 +224,12 @@ else
         c = map(r -> components(runs[(GPU, r)].lme), (1, 2, 3))
         d12, d23 = abs.(c[2] .- c[1]), abs.(c[3] .- c[2])
         ratio = maximum(d23 ./ d12)
+        monotone = all((c[2] .- c[1]) .* (c[3] .- c[2]) .> 0)    # an oscillation would pass the ratio
         cpu_rel = maximum(abs.(c[2] .- components(runs[(CPU(), 2)].lme)) ./ abs.(c[2]))
-        @info "T-612 resolution convergence, CUDA" c d12 d23 ratio cpu_rel times = m
+        @info "T-612 resolution convergence, CUDA" c d12 d23 ratio monotone cpu_rel times = m
         m["successive difference ratio"], m["r = 2 CPU-CUDA rel"] = ratio, cpu_rel
         @test all(x -> all(isfinite, x) && all(!iszero, x), c)
+        @test monotone
         @test ratio <= emC("T-612")
         @test cpu_rel <= emC("T-611")      # the refined, longer run on CUDA is the CPU's too
     end
@@ -207,6 +274,10 @@ else
 
     @testset "T-969 the compensated gather on CUDA: T-960, T-961 and T-962 with the CPU's assertions [A2, A4, A8, WP-067]" begin
         rerun_module_on(GPU, (("T-960", body_T960), ("T-961", body_T961), ("T-962", body_T962)))
+    end
+
+    @testset "T-999 the Galerkin gather on CUDA: T-993's kernels, T-996 and T-997 with the CPU's assertions [A2, A4, A8, WP-070]" begin
+        rerun_module_on(GPU, (("T-993", body_T993), ("T-996", body_T996), ("T-997", body_T997)))
     end
 
     @testset "T-909 the shaped antenna on CUDA passes T-906 with the CPU's tolerances [A2, A7, A8, WP-066]" begin
