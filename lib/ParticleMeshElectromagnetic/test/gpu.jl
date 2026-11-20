@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-042's 3D step: T-958. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -58,6 +58,15 @@ else
         @test em3d_step_digests(; be = GPU) == first
         for wgs in (64, 256)
             @test em3d_step_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1019 the open 3D step on CUDA passes T-1010 and T-1011 with the CPU's tolerances, and its Reference step is bitwise across reruns and launch shapes [A2, A4, A5, A7, A8, WP-072]" begin
+        rerun_module_on(GPU, (("T-1010", body_T1010), ("T-1011", body_T1011)))
+        first = open3d_step_digests(; be = GPU)
+        @test open3d_step_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test open3d_step_digests(; workgroupsize = wgs, be = GPU) == first
         end
     end
 
@@ -130,20 +139,26 @@ else
     # The longer, refined cases the GPU is for: Δx, Δy and Δt divided by r = 2 and 3 (r² times the
     # cells and particles), 600·r steps (WP-044's horizon), read past the back band. The functional
     # here is the log-mean-exp, the soft maximum less log(n)/β: the soft maximum grows with the
-    # number n of columns read, which refining multiplies (the PR's physics breaker). The successive
-    # differences between resolutions shrink, the coarse case's being its discretization error
-    # (measured on the CPU, Float64 duals: density's partial −0.188, −0.228, −0.237). The runs are
+    # number n of columns read, which refining multiplies (the PR's physics breaker). It reads the
+    # window past the same physical width at every resolution, the back band of the coarse case
+    # (`axis_Ex_past`), not past the band's fixed number of cells, whose width shrinks as 1/r: the
+    # three runs then read the same stretch of wake, and the successive differences between
+    # resolutions are the discretization error of one functional (measured on the CPU,
+    # Dual{Float32,3}: density's partial −0.1876, −0.2278, −0.2373). The runs are
     # timed on both backends (r = 1 and 2), after one untimed coarse run per backend that compiles
     # every kernel, the window's included (they start at step 199).
     @testset "T-612 the refined and longer dual gradient case on CUDA converges with resolution [A7, A8, WP-046]" begin
         xd = lwfa_dual_x0()
+        coarse = first(lwfa_gradient_run(xd, Reference(); nsteps = 1))
+        width = window_back_band(coarse) * Float64(value_of(cellsize(coarse.grid)[1]))
         function timed(be, refine)
             nsteps = refine * LWFA_LONG_STEPS
             t = @elapsed begin
                 st, _ = lwfa_gradient_run(xd, Reference(); be, refine, nsteps)
                 KernelAbstractions.synchronize(be)
             end
-            v = axis_Ex(st)
+            v = axis_Ex_past(st, width)
+            @test length(v) == ncells(st.grid)[1] - refine * window_back_band(coarse)    # the coarse band's width at every r
             @test all(iszero, ParticleMeshElectromagnetic.window_lost(st))
             return (lme = soft_maximum(v, LWFA_GRADIENT_BETA) - log(length(v)) / LWFA_GRADIENT_BETA, step = t / nsteps)
         end
@@ -159,10 +174,12 @@ else
         c = map(r -> components(runs[(GPU, r)].lme), (1, 2, 3))
         d12, d23 = abs.(c[2] .- c[1]), abs.(c[3] .- c[2])
         ratio = maximum(d23 ./ d12)
+        monotone = all((c[2] .- c[1]) .* (c[3] .- c[2]) .> 0)    # an oscillation would pass the ratio
         cpu_rel = maximum(abs.(c[2] .- components(runs[(CPU(), 2)].lme)) ./ abs.(c[2]))
-        @info "T-612 resolution convergence, CUDA" c d12 d23 ratio cpu_rel times = m
+        @info "T-612 resolution convergence, CUDA" c d12 d23 ratio monotone cpu_rel times = m
         m["successive difference ratio"], m["r = 2 CPU-CUDA rel"] = ratio, cpu_rel
         @test all(x -> all(isfinite, x) && all(!iszero, x), c)
+        @test monotone
         @test ratio <= emC("T-612")
         @test cpu_rel <= emC("T-611")      # the refined, longer run on CUDA is the CPU's too
     end

@@ -449,8 +449,9 @@ C_added = 1
 measured = { Float32 = 0.448, Float64 = 0.439 }
 measured_tail = { Float32 = 0.434, Float64 = 0.41, "Dual{Float32,3}" = 0.649 }
 measured_added = { Float32 = 0.251, Float64 = 0.173 }
-measured_device = { "Float32 on CUDABackend" = 0.654, "Float64 on CUDABackend" = 0.467, "added Float32 on CUDABackend" = 0.251, "added Float64 on CUDABackend" = 0.173 }
-status = "proposed; measured_device on an RTX 5090 (T-946). On CUDA, T-946 also holds the device's Reference to the host's sums in the stated order (`reference_by_hand_3d`) per node within C on this scale, guards folded: the device gave none of the host's bits there on an RTX 5090 (all six cases, every component), which T-945 checks bit for bit on the CPU"
+measured_device = { "Float32 on CUDABackend" = 0.654, "Float64 on CUDABackend" = 0.561, "added Float32 on CUDABackend" = 0.251, "added Float64 on CUDABackend" = 0.173 }
+measured_order_device = { "Float32 on CUDABackend" = 0.192, "Float64 on CUDABackend" = 0.191, "Dual{Float32,3} on CUDABackend" = 0.247 }
+status = "proposed; measured_device on an RTX 5090 (T-946), the larger of the runs at 46373e1 and 82c1945; measured_order_device is T-946's device Reference against the host's sums in the stated order on this scale (C), the largest over NodeBins and CellBins, the same at both commits. On CUDA, T-946 also holds the device's Reference to the host's sums in the stated order (`reference_by_hand_3d`) per node within C on this scale, guards folded: the device gave none of the host's bits there on an RTX 5090 (all six cases, every component), which T-945 checks bit for bit on the CPU"
 
 ["T-947"]
 quantity = "ForwardDiff derivative of Σ φ·Jx + Σ ψ·Jy + Σ χ·Jz in the displacement against fd_scan, end points within 1e-7 of a face, an edge or the corner: rel[istar] / floor_rel; and floor_rel itself"
@@ -467,3 +468,10 @@ C = 16
 measured = { "Dual{Float32,3}" = 3.13, primal = "bitwise equal to the Float32 run for both orders, every tested triple and NodeBins" }
 measured_breaker = { "Dual{Float32,3}" = 5.39 }
 status = "proposed; measured_breaker is the physics breaker's denser case (10 × 9 × 8 cells at 40 particles per cell, 28,800 particles)"
+
+["T-980"]
+quantity = "Σᵢ yᵢ·gather(fill x)ᵢ − ⟨fold(deposit(y)), x⟩ for a random field x and random signed yᵢ = q·wᵢ, N = 1, 2, 3, Fast and Reference by cells and by NodeBins"
+scale = "Σᵢ|yᵢ|·max|x|"
+C = 1
+measured = { Float32 = 0.378, Float64 = 0.378, "Dual{Float32,3}" = 0.401 }
+status = "proposed"

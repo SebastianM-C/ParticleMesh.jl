@@ -116,7 +116,7 @@ function pml_step_digests(; workgroupsize = nothing, be = CPU())
         run!(st, params(prob), prob.nsteps)
         L = open_absorber(st)
         h = state_digest_2d(st)
-        for a in (L.ψBx, L.ψBz, L.ψEx, L.ψEz)
+        for a in (L.ψ.Bx, L.ψ.Bz, L.ψ.Ex, L.ψ.Ez)
             h = hash(bits(a), h)
         end
         push!(out, (T, h))

@@ -650,11 +650,12 @@ measured = { Float64 = 0.00331 }
 status = "proposed"
 
 ["T-575"]
-quantity = "random fields in back_lwfa's empty window with PIConGPU's 8-cell back-edge PML, 4000 steps, Float64: in a static window the largest field energy and the final one over those of the same run without the layer, and in a window moving from t = 0 the largest energy over its start after 450 steps; the test asks for at most 1, below 1/2 and below 1/20"
+quantity = "random fields in back_lwfa's empty window with PIConGPU's 8-cell back-edge PML, 4000 steps, Float64: in a static window the largest field energy and the final one over those of the same run without the layer, and in a window moving from t = 0 the largest energy over its start after 450 steps; the test asks for at most C.static_peak, below C.static_end and below C.moving"
 scale = "the run without the layer (static), the initial energy (moving)"
-C = { static_peak = 1, static_end = 0.5, moving = 0.05 }
+C = { static_peak = 0.95, static_end = 0.42, moving = 0.05 }
 measured = { static_peak = 0.894, static_end = 0.391, moving = 0.0305 }
-note = "fixed bounds, not a theory: T-576 pins the layer against its discrete theory, this test only that a long run stays bounded; in the static window α_max > 0 grows a uniform Bz (#357), so the test uses the default α = 0"
+measured_seeds = { static_peak = [0.904, 0.901, 0.894, 0.898, 0.896, 0.892, 0.900, 0.896], static_end = [0.390, 0.373, 0.391, 0.387, 0.396, 0.380, 0.385, 0.381], moving = [0.0147, 0.044, 0.0305, 0.0148, 0.0138, 0.0929, 0.0201, 0.0449] }
+note = "not a theory: T-576 pins the layer against its discrete theory, this test that a long run stays bounded; in the static window α_max > 0 grows a uniform Bz (#357), so the test uses the default α = 0. The test draws seed 3 and is deterministic; the static bounds are the largest of seeds 1 to 8 (measured_seeds, Xoshiro, Float64) with about 5 % above it, so that a slow growth of the static window fails (seeds 9 to 24, the PR's physics breaker: peak up to 0.911, end up to 0.397). static_end holds at 4000 steps only: the end ratio of seed 3 falls with the run, 0.445 at 1000 steps, 0.391 at 4000, 0.336 at 12000. The moving ratio spreads over seeds from 0.014 to 0.093, so its bound stays 0.05: tighter would fail on a change of the random fields alone"
 status = "proposed"
 
 ["T-576"]
@@ -746,11 +747,12 @@ measured = { "RTX 4080 SUPER, 350 steps" = 7.78e-6, "RTX 4080 SUPER, refined, 12
 status = "proposed"
 
 ["T-612"]
-quantity = "the Dual{Float32,3} log-mean-exp of the on-axis E_x past window_back_band (primal and three partials) of the WP-043 case at 600·r steps with Δx, Δy, Δt divided by r = 1, 2, 3, Reference, on CUDA: the largest ratio of the successive differences |c₃ − c₂| / |c₂ − c₁| over the four components"
-scale = "convergence with resolution (below 1 the differences shrink)"
-C = 0.5
-measured = { "RTX 4080 SUPER, Dual{Float32,3}" = 0.287, "CPU, Float64 duals" = 0.28 }
-status = "proposed; the largest ratio is the duration partial's (density 0.23, a₀ 0.19, the primal 0.19)"
+quantity = "the Dual{Float32,3} log-mean-exp of the on-axis E_x past a fixed width, the coarse case's back band (9 cells of Δx at r = 1, 9r at r), (primal and three partials) of the WP-043 case at 600·r steps with Δx, Δy, Δt divided by r = 1, 2, 3, Reference, on CUDA: the largest ratio of the successive differences |c₃ − c₂| / |c₂ − c₁| over the four components"
+scale = "convergence with resolution: an error of order p in Δx gives (2⁻ᵖ − 3⁻ᵖ)/(1 − 2⁻ᵖ), 0.333 at first order and 0.185 at second; C = 0.35 asks for about first order (p ≥ 0.9)"
+C = 0.35
+measured = { "RTX 5090, Dual{Float32,3}" = 0.287, "CPU (Intel Xeon 2.1 GHz), Dual{Float32,3}" = 0.287, "CPU (Intel Xeon 2.1 GHz), Float64 duals" = 0.287, "CPU, Dual{Float32,3}, Fast()" = 0.287 }
+measured_band_cells = { "RTX 4080 SUPER, Dual{Float32,3}" = 0.287, "CPU, Float64 duals" = 0.28, "CPU (Intel Xeon), Dual{Float32,3}" = 0.287 }
+status = "proposed; the largest ratio is the duration partial's (CPU: primal 0.223, a₀ 0.195, density 0.235); measured_band_cells are the earlier functional's, past the refined band's 9 cells at every r. The ratio depends on the width read past (the PR's physics breaker, CPU: 0.276 past twice the band, 0.393 past three times, where the density partial no longer moves one way), so C belongs to this width; the test also asks that every component move the same way from r = 1 to 2 as from 2 to 3. On the RTX 5090 every component moves one way, components 0.223 / 0.195 / 0.287 / 0.235 as on the CPU"
 
 ["T-771"]
 quantity = "one ionization level in a constant prescribed field, 20 steps, born every 3: the atoms' bound population against exp(−W·n·Δt) (measured), their emitted and pending fractions and their sum against 1, the born electrons' momenta against −Ex·Δt·(n − k_b + ½) (measured_momenta) and weights against the released fraction (measured_weights), value and partials; T-776's populations in a full buffer take the same C"
@@ -925,7 +927,8 @@ quantity = "the sharpened copy of a sampled mode against (1 + 4β sin²(kΔx/2))
 scale = "eps(T) (mode amplitude 1)"
 C = 8
 measured = { stencil = 2.32, gather = 1.69 }
-status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU)"
+measured_device = { "stencil on CUDABackend" = 2.32, "gather on CUDABackend" = 1.64 }
+status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU); measured_device is T-969 on an RTX 5090 at 82c1945 (Float64)"
 
 # WP-042: the periodic 3D3V step with the charge-conserving current (T-950 to T-955)
 ["T-950"]
@@ -935,7 +938,9 @@ C = 2
 C_divB = 2
 measured = { Float32 = 0.325, Float64 = 0.347, "Dual{Float32,3}" = 0.167, steps_400 = 0.13, neutral = 0.127 }
 measured_divB = { Float32 = 0.322, Float64 = 0.346, "Dual{Float32,3}" = 0.667, steps_400 = 0.277, neutral = 0.421 }
-status = "proposed; the largest over both modes and orders (CPU), Fast at order 2 the largest (its atomics add in another order each run: on the net-charge scale of before, 0.683 to 1.12 in Float64 over three runs). C is T-360's 2. The species' scale replaces max|ρ| of the net charge, on which the physics breaker's quasi-neutral plasma measured 4.3 to 5.0 (net charge 10⁻³ of each species'); on the species' scale the same runs give 0.14 to 0.36, and its beams at |β| = 0.999 over ions 0.28 to 0.62"
+measured_device = { "Float32 on CUDABackend" = 0.26, "Float64 on CUDABackend" = 0.241, "Dual{Float32,3} on CUDABackend" = 0.163, "steps_400 on CUDABackend" = 0.119, "neutral on CUDABackend" = 0.155 }
+measured_divB_device = { "Float32 on CUDABackend" = 0.375, "Float64 on CUDABackend" = 0.362, "Dual{Float32,3} on CUDABackend" = 0.615, "steps_400 on CUDABackend" = 0.246, "neutral on CUDABackend" = 0.375 }
+status = "proposed; the largest over both modes and orders (CPU); measured_device and measured_divB_device are T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945. Fast at order 2 the largest (its atomics add in another order each run: on the net-charge scale of before, 0.683 to 1.12 in Float64 over three runs). C is T-360's 2. The species' scale replaces max|ρ| of the net charge, on which the physics breaker's quasi-neutral plasma measured 4.3 to 5.0 (net charge 10⁻³ of each species'); on the species' scale the same runs give 0.14 to 0.36, and its beams at |β| = 0.999 over ions 0.28 to 0.62"
 
 ["T-951"]
 quantity = "the Reference and Fast 3D steps: every field and current, and the kinetic-energy history, after k steps (20 steps)"
@@ -943,14 +948,16 @@ scale = "k·√(prod(ppc))·(the largest Reference value of the kind: E and B to
 C = 16
 measured = { Float32 = 4.01, Float64 = 5.26 }
 measured_wider = { ppc_5 = 5.13, cells_16x14x12_ppc_3 = 5.15, order1_ppc_5 = 2.96, steps_100 = 5.01 }
-status = "proposed; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
+measured_device = { "Float32 on CUDABackend" = 4.76, "Float64 on CUDABackend" = 4.76 }
+status = "proposed; measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
 
 ["T-953"]
 quantity = "a 3D run invariant along one axis against the 2D run (its plane mapped cyclically onto the other two axes), after initialize! and after every step: every component on every line of the invariant axis; 20 steps of two cold counter-streaming beams, one perturbed along mode (1, 1)"
 scale = "k·(n₁ + n₂)·√(prod(ppc))·max|2D value of its kind| (E and B together, J together) after k ≥ 1 steps, n and ppc the 2D run's"
 C = 32
 measured = { Float32 = 5.86, Float64 = 7.48, "Dual{Float32,3}" = 0.273 }
-status = "proposed; the largest over the three invariant axes and both modes (Fast the larger)"
+measured_device = { "Float32 on CUDABackend" = 4.02, "Float64 on CUDABackend" = 7.81, "Dual{Float32,3} on CUDABackend" = 0.237 }
+status = "proposed; the largest over the three invariant axes and both modes (Fast the larger); measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945"
 
 ["T-954"]
 quantity = "Landau damping of mode (1, 1, 1) at |k|λ_D = 0.5 at test size (24³ cells, 3 × 3 × 3 electrons per cell, 10 % perturbation, t = 18, seed 20261031): |γ − γ_theory|/γ_theory (rate), |ω − ω_r|/ω_r (frequency), max|Ê − (k̂·Ê)k̂|/max|k̂·Ê| (transverse), γ_theory and ω_r the relativistic linear theory of the loaded distribution (landau_rate_relativistic, Maxwell–Jüttner: 0.14857, 1.4113)"
@@ -960,7 +967,9 @@ transverse = 0.05
 rate_ensemble = 0.17
 rate_ensemble_offset = 0.18
 measured = { rate = 0.2, frequency = -0.0203, transverse = 0.000797, rate_ensemble = 0.231 }
-rate_ensemble_note = "the rate of the ensemble over the four seeds LANDAU3_SEEDS (T-364's rule: the fit of |⟨k̂·Ê⟩_seeds|², the seed mean of the complex coefficient), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. Sixteen seeds at test size (the four, 20265031 to 20268031, and 1 to 8): per-seed rates +0.150 ± 0.100 (mean ± std) of theory, frequencies −0.6 % to −2.9 %, every seed with three to five maxima; +0.185 as one ensemble; the 1820 four-seed subsets +0.182 ± 0.043, from +0.018 to +0.303, every one within the bound. The first eight seeds alone gave subsets of +0.220 ± 0.033 and seeds 1 to 8 alone +0.149 ± 0.030 (the physics breaker), so eight seeds did not pin the offset. The offset falls with resolution: the first eight seeds at 32³ cells (3 × 3 × 3 per cell) give per-seed rates +0.125 ± 0.031 and frequencies −0.3 % to −1.5 %. The check fails for a rate about 10 % too high or 18 % too low (its four seeds give +0.231)"
+measured_device = { "rate on CUDABackend" = 0.2, "frequency on CUDABackend" = -0.0203, "transverse on CUDABackend" = 0.000797, "rate_ensemble on CUDABackend" = 0.231 }
+measured_device_note = "T-958 on an RTX 5090, at 46373e1 and 82c1945: the CPU's values to three digits"
+rate_ensemble_note = "the rate of the ensemble over the four seeds LANDAU3_SEEDS (T-364's rule: the fit of |⟨k̂·Ê⟩_seeds|², the seed mean of the complex coefficient), relative to the same theory, bounded as |rel − rate_ensemble_offset| ≤ rate_ensemble. Sixteen seeds at test size (the four, 20265031 to 20268031, and 1 to 8): per-seed rates +0.150 ± 0.100 (mean ± std) of theory, frequencies −0.6 % to −2.9 %, every seed with three to five maxima; +0.185 as one ensemble; the 1820 four-seed subsets +0.182 ± 0.043, from +0.018 to +0.303, every one within the bound. The first eight seeds alone gave subsets of +0.220 ± 0.033 and seeds 1 to 8 alone +0.149 ± 0.030 (the physics breaker), so eight seeds did not pin the offset. The offset falls with resolution: the first eight seeds at 32³ cells (3 × 3 × 3 per cell) give per-seed rates +0.125 ± 0.031 and frequencies −0.3 % to −1.5 %. The check fails for a rate about 10 % too high or 18 % too low (its four seeds give +0.231). The offset is the 10 % wave's nonlinearity rather than the resolution: at full size (reports/wp-042-periodic-step-3d.md, 6³ per cell) the 10 % wave is 16 %, 13 % and 14 % above theory at 32³, 48³ and 64³, and a 1 % wave is within 2 % of theory at 64³"
 status = "proposed; rate and frequency bound one seed as T-364's, an order check of the rate (one seed's std is 0.10 of theory); rate_ensemble is about four standard deviations of the four-seed subsets of sixteen seeds. Float64 on the CPU only, as T-364 (the four seeds in Float32, run once outside the suite, give the same per-seed and ensemble rates to three digits); no full-size 3D run against theory or another code yet"
 
 ["T-955"]
@@ -971,3 +980,58 @@ C_partial = 8
 measured = { "Dual{Float32,3}" = 2.46 }
 measured_partial = { "Dual{Float32,3}" = 1.81 }
 status = "proposed; not bitwise (A4)"
+
+# WP-072: the open transverse boundaries of the 3D step (T-1010 to T-1018). Measured on the CPU backend (Julia 1.13.4, 4 threads).
+["T-1010"]
+quantity = "a 3D run with an open axis (y or z), invariant along a periodic axis, against the 2D open run, after initialize! and after every step: every component on every line of the invariant axis; 30 steps of T-953's beams on 12 × 16 cells open along the plane's second axis, the absorbing layer (4 cells, strength 1) and the PML (4 cells, κ_max = 2, α_max = 0.1)"
+scale = "as T-953"
+C = 32
+measured = { Float32 = 4.66, Float64 = 5.92, "Dual{Float32,3}" = 0.195 }
+status = "proposed; the largest over both absorbers, both open axes and both modes (Fast the larger); T-953's C"
+
+["T-1011"]
+quantity = "Gauss's law residual on the nodes off the layers of y and z (C), ∇·B on the cell centres off them (C_divB), particles leaving through the four open faces, 30 steps, each absorber, both modes"
+scale = "as T-950: (n₁ + n₂ + n₃)·Σ_s max|ρ_s|·√(k + 1); (Σ_d 2/Δ_d)·max|B|·√k"
+C = 2
+C_divB = 2
+measured = { Float32 = 0.229, Float64 = 0.244, "Dual{Float32,3}" = 0.112 }
+measured_divB = { Float32 = 0.539, Float64 = 0.549, "Dual{Float32,3}" = 0.898 }
+status = "proposed; the largest over both absorbers and both modes; T-950's C. On the nodes in the layers the residual is 2·10⁴ (Float32) to 2·10¹³ (Float64) of the scale, with about a third of the particles leaving"
+
+["T-1015"]
+quantity = "a vacuum pulse (B = ∇×(x̂·a), a Gaussian of width 2 cells) at the centre of 8 × 40 × 40 cells open along y and z with 8 cells of each absorber (the layer at strength 4, the PML at κ_max = 2, α_max = 0.1): the field energy on the cells off the layers after 2000 steps relative to its start (fraction), and no growth after step 1000 above twice its value there"
+fraction = 1e-7
+measured = { layer = 5.42e-9, pml = 5.01e-9 }
+measured_at_1000_steps = { layer = 1.67e-8, pml = 1.04e-8 }
+status = "proposed"
+
+["T-1016"]
+quantity = "Dual{Float32,3} through 10 open 3D steps (y and z open, each absorber): the primal of every E and B component and convolution field against the Float32 run (C); the partial ∂/∂(amplitude) against the central difference of Float64 runs at amplitude 1/10 ± 10⁻⁴ (C_partial)"
+scale = "as T-955"
+C = 8
+C_partial = 8
+measured = { layer = 1.39, pml = 0.966 }
+measured_partial = { layer = 1.18, pml = 3.36 }
+status = "proposed; not bitwise (A4); T-955's C"
+
+["T-985"]
+quantity = "⟨M x, y⟩ − ⟨x, Mᵀ y⟩ for 1 and 25 periodic Yee solves M with one current held, Mᵀ = yee_e!(−Δt/2), J̄ −= Δt·Ē, yee_b_half!(−Δt), yee_e!(−Δt/2) per step; random fields and current, 0.9 of the Courant limit, N = 1, 2, 3"
+scale = "Σₖ ‖(E, B, Δt·J) before forward step k‖·‖(Ē, B̄) before the transposed step of k‖ over the interior (step-aware: rounding of each step reaches the products through that step's adjoint state)"
+C = 1
+measured = { Float32 = 0.127, Float64 = 0.0846, "Dual{Float32,3}" = 0.108 }
+status = "proposed; with the scale ‖x‖·‖y‖ of the first version the physics breaker saw up to 382 at 1000 steps, 275 on a 4-cell grid at 0.999 of the limit and 4.3 at Δx = 50, all roundoff (equal in Float32 and Float64 eps units); the step-aware scale kept those cases within a factor of about 12 of the tested ones"
+
+["T-986"]
+quantity = "Σᵢ,c pᵢ_c·F_c(xᵢ) − Σ_c ⟨x_c, Gᵀ fold(deposit!(p_c at field_layout[c]))⟩, F the six components fields_at reads (plain, and from the compensated gather's sharpened copy G), N = 1, 2, 3"
+scale = "Σᵢ,c|pᵢ_c|·max|x|"
+C = 1
+measured = { Float32 = 0.0521, Float64 = 0.0712, "Dual{Float32,3}" = 0.0726 }
+measured_breaker = { Float32 = 0.319, Float64 = 0.377, "Dual{Float32,3}" = 0.286 }
+status = "proposed; Fast() atomics with threads move the ratio from run to run (0.048 to 0.071 in Float32 and Float64); measured_breaker: 8 more seeds, 50 particles per cell, offsets on cell faces, all particles in one cell, n = 4 or 7, Δx 10⁻³ to 50, CompensatedGather with k up to near π/Δx"
+
+["T-987"]
+quantity = "⟨F x, y⟩ − ⟨x, F y⟩ on the periodic interior for F = sharpen_x! (order 2's β) and binomial! with 1 and 2 passes, N = 1, 2, 3"
+scale = "g·‖x‖·‖y‖ with g the operator's largest gain: 1 + 4β for sharpen_x!, 1 for binomial!"
+C = 1
+measured = { Float32 = 0.183, Float64 = 0.134, "Dual{Float32,3}" = 0.173 }
+status = "proposed; without the gain in the scale the physics breaker saw sharpen_x! reach 2.9 at β = 0.66 (kΔx near π), with it 0.8 or less; binomial! up to 8 passes ≤ 0.58"

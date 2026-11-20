@@ -231,7 +231,7 @@ end
         start = snapshot(used, 0)
         step!(fresh, params(prob), 1)
         run!(used, params(prob), 5)
-        @test any(!iszero, Array(open_absorber(used).ψEx))
+        @test any(!iszero, Array(open_absorber(used).ψ.Ex))
         foreach(copyto!, values(used.fields), values(init))
         step!(used, params(prob), 1)
         @test !same_fields(fresh, used)
@@ -271,19 +271,19 @@ end
             end
         end
     end
-    @test all(iszero, Array(L.ψBx)) && all(iszero, Array(L.ψEx))
-    @test size(L.ψBx) == (ncells(st.grid)[1], 8)
+    @test all(iszero, Array(L.ψ.Bx)) && all(iszero, Array(L.ψ.Ex))
+    @test size(L.ψ.Bx) == (ncells(st.grid)[1], 8)
     # each correction on its own: the B correction changes Bx and Bz on their layer rows and
     # nothing else, advancing ψBx and ψBz only when asked (the second half step), and the E
     # correction changes Ex and Ez only, each advancing its ψ
     foreach(a -> (a .= randn(Xoshiro(11), size(a)); fill_guards!(a, st.grid)), values(st.fields))
     g, n = guards(st.grid), ncells(st.grid)
     inner, rows = (g + 1):(g + n[1]), vcat((g + 1):(g + 4), (g + n[2] - 3):(g + n[2]))
-    for (fn, changed, ψs, adv) in ((pml_b!, (:Bx, :Bz), (:ψBx, :ψBz), false), (pml_b!, (:Bx, :Bz), (:ψBx, :ψBz), true),
-                                   (pml_e!, (:Ex, :Ez), (:ψEx, :ψEz), true))
+    for (fn, changed, ψs, adv) in ((pml_b!, (:Bx, :Bz), (:Bx, :Bz), false), (pml_b!, (:Bx, :Bz), (:Bx, :Bz), true),
+                                   (pml_e!, (:Ex, :Ez), (:Ex, :Ez), true))
         Lc = PMLFields(pml, st.grid, prob.dt; backend = CPU())
-        foreach(c -> (a = getfield(Lc, c); a .= randn(Xoshiro(13), size(a))), (:ψBx, :ψBz, :ψEx, :ψEz))
-        ψ0 = map(c -> copy(getfield(Lc, c)), (ψBx = :ψBx, ψBz = :ψBz, ψEx = :ψEx, ψEz = :ψEz))
+        foreach(c -> (a = getfield(Lc.ψ, c); a .= randn(Xoshiro(13), size(a))), (:Bx, :Bz, :Ex, :Ez))
+        ψ0 = map(c -> copy(getfield(Lc.ψ, c)), (Bx = :Bx, Bz = :Bz, Ex = :Ex, Ez = :Ez))
         f = map(copy, st.fields)
         fn === pml_b! ? fn(Lc, f, st.grid, prob.dt / 2, adv, nothing) : fn(Lc, f, st.grid, prob.dt, nothing)
         for c in keys(f)
@@ -294,7 +294,7 @@ end
             end
         end
         for c in keys(ψ0)
-            @test (getfield(Lc, c) == ψ0[c]) == !(adv && c in ψs)
+            @test (getfield(Lc.ψ, c) == ψ0[c]) == !(adv && c in ψs)
         end
     end
     # PIConGPU's optimum when sigma_max is not given
@@ -357,7 +357,7 @@ end
                 a = Array(getfield(st.fields, c))
                 @test all(x -> partials(x)[1] == value(x) && iszero(partials(x)[2]) && iszero(partials(x)[3]), a)
             end
-            ψ = Array(open_absorber(st).ψEz)
+            ψ = Array(open_absorber(st).ψ.Ez)
             @test all(x -> partials(x)[1] == value(x), ψ)
         end
     end
@@ -453,13 +453,13 @@ end
     # the shift of the convolution fields
     st = window_state(warm(Float64); absorber = PML(; cells = 4, kappa_max = 2, alpha_max = 0.1))
     L = open_absorber(st)
-    foreach(c -> (getfield(L, c) .= randn(Xoshiro(17), size(getfield(L, c)))), (:ψBx, :ψBz, :ψEx, :ψEz))
-    before = map(c -> copy(getfield(L, c)), (:ψBx, :ψBz, :ψEx, :ψEz))
+    foreach(c -> (getfield(L.ψ, c) .= randn(Xoshiro(17), size(getfield(L.ψ, c)))), (:Bx, :Bz, :Ex, :Ez))
+    before = map(c -> copy(getfield(L.ψ, c)), (:Bx, :Bz, :Ex, :Ez))
     PME_shift = ParticleMeshElectromagnetic.shift_absorber!
     PME_shift(L, nothing)
     n1 = ncells(st.grid)[1]
-    for (c, old) in zip((:ψBx, :ψBz, :ψEx, :ψEz), before)
-        new = getfield(L, c)
+    for (c, old) in zip((:Bx, :Bz, :Ex, :Ez), before)
+        new = getfield(L.ψ, c)
         @test new[1:(n1 - 1), :] == old[2:n1, :]
         @test all(iszero, new[n1, :])
     end

@@ -174,7 +174,7 @@ Measured on the CPU backend at 2 threads. Every value is a proposal in `lib/Part
 | T-546 | as T-540, one run in each element type | 0.0166, 4.06, 0.0166 | 10 |
 | T-570 | back-edge difference against free space with 8 cells over the field-free outside's | —, 0.0033, — | 0.01 |
 | T-572 | Gauss's law off the back-edge layer across shifts, T-473's constant | 0.24, 0.24, 0.24 | 1 |
-| T-575 | long run: static peak and end over the bare window's, moving energy after 450 steps, Float64 | —, 0.894 / 0.391 / 0.0305, — | 1 / 0.5 / 0.05 |
+| T-575 | long run: static peak and end over the bare window's, moving energy after 450 steps, Float64 | —, 0.894 / 0.391 / 0.0305, — | 0.95 / 0.42 / 0.05 |
 | T-576 | back edge of a static window, \|R − R_theory\| on T-450's scale, Float64 | —, 0.0089, — | 10 |
 
 The largest T-540 and T-546 ratios are a transmission at the roundoff floor: the profile with κ_max = 80 and α, theory 2·10⁻⁵², measured 3.4·10⁻²⁸. Every R ratio is below 0.01. The suite's other tests are exact or structural:

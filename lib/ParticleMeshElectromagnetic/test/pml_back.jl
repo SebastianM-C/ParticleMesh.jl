@@ -55,7 +55,7 @@ end
     run!(b, params(warm), warm.nsteps)
     @test window_shifts(a, warm.nsteps) > 0
     @test all(c -> bits(Array(getfield(a.fields, c))) == bits(Array(getfield(b.fields, c))), keys(a.fields))
-    @test all(c -> getfield(back_absorber(a), c) == getfield(back_absorber(b), c), (:ψBy, :ψBz, :ψEy, :ψEz))
+    @test all(c -> getfield(back_absorber(a).ψ, c) == getfield(back_absorber(b).ψ, c), (:By, :Bz, :Ey, :Ez))
     @test particle_set(a.species[1]) == particle_set(b.species[1])
     prob = back_lwfa(Float64; nsteps = 4)
     st = back_state(prob; back = PML(; cells = 6, kappa_max = 2, alpha_max = 0.1))
@@ -63,11 +63,11 @@ end
     g, n = guards(st.grid), ncells(st.grid)
     rows, cols = (g + 1):(g + n[2]), (g + 1):(g + 6)
     pml = PML(; cells = 6, kappa_max = 2, alpha_max = 0.1)
-    for (fn, changed, ψs, adv) in ((back_b!, (:By, :Bz), (:ψBy, :ψBz), false), (back_b!, (:By, :Bz), (:ψBy, :ψBz), true),
-                                   (back_e!, (:Ey, :Ez), (:ψEy, :ψEz), true))
+    for (fn, changed, ψs, adv) in ((back_b!, (:By, :Bz), (:By, :Bz), false), (back_b!, (:By, :Bz), (:By, :Bz), true),
+                                   (back_e!, (:Ey, :Ez), (:Ey, :Ez), true))
         L = BackPMLFields(pml, st.grid, prob.dt; backend = CPU())
-        foreach(c -> (getfield(L, c) .= randn(Xoshiro(23), size(getfield(L, c)))), (:ψBy, :ψBz, :ψEy, :ψEz))
-        ψ0 = map(c -> copy(getfield(L, c)), (ψBy = :ψBy, ψBz = :ψBz, ψEy = :ψEy, ψEz = :ψEz))
+        foreach(c -> (getfield(L.ψ, c) .= randn(Xoshiro(23), size(getfield(L.ψ, c)))), (:By, :Bz, :Ey, :Ez))
+        ψ0 = map(c -> copy(getfield(L.ψ, c)), (By = :By, Bz = :Bz, Ey = :Ey, Ez = :Ez))
         f = map(copy, st.fields)
         fn === back_b! ? fn(L, f, st.grid, prob.dt / 2, adv, nothing) : fn(L, f, st.grid, prob.dt, nothing)
         for c in keys(f)
@@ -79,15 +79,15 @@ end
             end
         end
         for c in keys(ψ0)
-            @test (getfield(L, c) == ψ0[c]) == !(adv && c in ψs)
+            @test (getfield(L.ψ, c) == ψ0[c]) == !(adv && c in ψs)
         end
     end
     L = back_absorber(st)
-    foreach(c -> (getfield(L, c) .= randn(Xoshiro(29), size(getfield(L, c)))), (:ψBy, :ψBz, :ψEy, :ψEz))
-    old = map(c -> copy(getfield(L, c)), (:ψBy, :ψBz, :ψEy, :ψEz))
+    foreach(c -> (getfield(L.ψ, c) .= randn(Xoshiro(29), size(getfield(L.ψ, c)))), (:By, :Bz, :Ey, :Ez))
+    old = map(c -> copy(getfield(L.ψ, c)), (:By, :Bz, :Ey, :Ez))
     shift_absorber!(L, nothing)
-    for (c, o) in zip((:ψBy, :ψBz, :ψEy, :ψEz), old)
-        @test getfield(L, c)[1:5, :] == o[2:6, :] && all(iszero, getfield(L, c)[6, :])
+    for (c, o) in zip((:By, :Bz, :Ey, :Ez), old)
+        @test getfield(L.ψ, c)[1:5, :] == o[2:6, :] && all(iszero, getfield(L.ψ, c)[6, :])
     end
     # the convolution fields are part of what a run evolves (WP-056), so no step zeroes them: a state
     # with stale ψ takes another first step than the fresh state, and the fresh state's after
@@ -95,7 +95,7 @@ end
     fresh = back_state(prob; back = pml)
     used = back_state(prob; back = pml)
     start = snapshot(used, 0)
-    stale!() = foreach(c -> (getfield(back_absorber(used), c) .= 1), (:ψBy, :ψBz, :ψEy, :ψEz))
+    stale!() = foreach(c -> (getfield(back_absorber(used).ψ, c) .= 1), (:By, :Bz, :Ey, :Ez))
     same_fields() = all(c -> bits(Array(getfield(fresh.fields, c))) == bits(Array(getfield(used.fields, c))), keys(fresh.fields))
     step!(fresh, params(prob), 1)
     stale!()
@@ -176,7 +176,7 @@ function back_digest(; workgroupsize = nothing)
     run!(st, params(prob), prob.nsteps)
     h = state_digest_2d(st)
     L = back_absorber(st)
-    for a in (L.ψBy, L.ψBz, L.ψEy, L.ψEz)
+    for a in (L.ψ.By, L.ψ.Bz, L.ψ.Ey, L.ψ.Ez)
         h = hash(bits(a), h)
     end
     return h
@@ -192,11 +192,13 @@ end
 # --- T-575 ----------------------------------------------------------------------------------
 
 # A long run: random fields in the empty window with PIConGPU's 8-cell back-edge PML, 4000 steps
-# (the report script runs 12000). In a window that never moves the energy never exceeds that of the
+# (the report script runs 12000). In a window that never moves the energy stays below that of the
 # same run without the layer (whose field-free outside reflects everything, about 1.19 of the start
-# at its largest, the staggered energy of random fields) and ends below half of it; in one that
+# at its largest, the staggered energy of random fields) and ends near 0.39 of it, both bounds about
+# 5 % over the largest of eight seeds, so a slow growth in the layer fails the end ratio; in one that
 # moves from t = 0 everything that does not travel with it leaves through the back edge, and less
-# than 5 % of the energy stays after 450 steps. The bounds are tolerances.toml's, the ratios recorded.
+# than 5 % of the energy stays after 450 steps (the shift alone does that: without the layer the
+# ratio is the same). The bounds are tolerances.toml's, the ratios recorded.
 @testset "T-575 random fields with the back-edge PML stay bounded over 4000 steps, the window static and moving [A2, A7, WP-034]" begin
     bare = back_long_run(nothing; start = Inf, nsteps = 4000)
     still = back_long_run(PML(; cells = 8); start = Inf, nsteps = 4000)
