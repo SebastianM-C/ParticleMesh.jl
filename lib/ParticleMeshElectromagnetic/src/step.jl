@@ -32,10 +32,13 @@ end
         a = s.q * q̄ / γ                          # ∂(q·w·u_K/γ)/∂w · q̄ / u_K
         b = s.w[i] * a                           # q·w·q̄/γ
         c = b * u[K] / (γ * γ)                   # q·w·q̄·u_K/γ³
+        # ∂(u_K/γ)/∂u_K = (1 + Σ_{l≠K} u_l²)/γ³, summed without the cancelling γ² - u_K²
+        o = ntuple(l -> ifelse(l == K, zero(b), u[l] * u[l]), Val(3))
+        d = b * (one(b) + o[1] + o[2] + o[3]) / (γ * γ)
         s̄.w[i] += a * u[K]
-        s̄.u[1][i] += ifelse(K == 1, b, zero(b)) - c * u[1]
-        s̄.u[2][i] += ifelse(K == 2, b, zero(b)) - c * u[2]
-        s̄.u[3][i] += ifelse(K == 3, b, zero(b)) - c * u[3]
+        s̄.u[1][i] += ifelse(K == 1, d, -c * u[1])
+        s̄.u[2][i] += ifelse(K == 2, d, -c * u[2])
+        s̄.u[3][i] += ifelse(K == 3, d, -c * u[3])
     end
     return nothing
 end

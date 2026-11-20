@@ -81,6 +81,12 @@ species `s̄`, for every alive particle `i`, the adjoint of its quantity (`pullb
 times `ρ̄` gathered with the shape's slopes along each axis). `ρ̄` is left as it is: the deposit
 adds into `ρ`. One work item per particle writing its own slots, so the result does not depend on
 the launch shape or the thread count. N = 1, 2 and 3.
+
+Guards: the pullback reads `ρ̄` where `Fast()` (and `Reference()` with `CellBins`) writes. With
+`NodeBins`, a `Reference()` deposit writes some contributions into the guard on the other side,
+the periodic image of the same node, so the pullback is its transpose only for an adjoint that is
+equal on a guard and its image, as the adjoint of [`fold_guards!`](@ref) is (a step folds after
+depositing); a loss that reads the unfolded guards directly gets the cell-bin transpose.
 """
 function deposit_pullback!(s̄::Species{N}, ρ̄::AbstractArray, s::Species{N}, shape::Shape, stagger, grid::PeriodicGrid{N};
                            quantity = ChargeWeight(), workgroupsize = nothing) where {N}
@@ -239,6 +245,12 @@ with their derivatives (`flux_axis_slopes`). The `J̄` are left as they are: the
 One work item per particle writing its own slots. The cells and the old cells are integers and
 take no adjoint; the derivative is that of the stencil within the cells the particle has
 (piecewise smooth in the positions, as the shape functions are).
+
+Guards: the pullback reads `J̄` where `Fast()` (and `Reference()` with `CellBins`) writes. With
+`NodeBins`, a `Reference()` deposit writes some contributions into the guard on the other side,
+the periodic image of the same node, so the pullback is its transpose only for an adjoint that is
+equal on a guard and its image, as the adjoint of [`fold_guards!`](@ref) is (a step folds after
+depositing); a loss that reads the unfolded guards directly gets the cell-bin transpose.
 """
 function flux_pullback!(s̄::Species{1}, J̄x, J̄y, J̄z, s::Species{1}, shape::Shape, stagger::Stagger, grid::PeriodicGrid{1};
                         dt, quantity_y, quantity_z, workgroupsize = nothing)

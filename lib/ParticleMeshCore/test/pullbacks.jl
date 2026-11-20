@@ -149,7 +149,7 @@ end
     end
 end
 
-@testset "T-1062 flux_pullback! against duals at N = 1 and 2, every input array, Float32 against Float64 [A2, A3, A7, WP-077]" begin
+@testset "T-1062 flux_pullback! against duals at N = 1 and 2, every input array, Float32 against Float64, node bins with filled guards [A2, A3, A7, WP-077]" begin
     C = tolC("T-1062")
     C32 = tolC("T-1062", "C32")
     for shape in SHAPES, st in (Node(), Center())
@@ -157,12 +157,12 @@ end
         s = moved_species(Float64, grid, 300; seed = 9, dead = (40, 41, 250))
         J̄ = ntuple(k -> lcg_field(field(backend, Float64, grid), 20 + k), 3)
         x̄ = zero_like(s)
-        flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.25, quantity_y = ChargeUy(), quantity_z = ChargeUz())
+        flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.125, quantity_y = ChargeUy(), quantity_z = ChargeUz())
         for k in eachindex(float_arrays(s))
             v = direction(s, k)
             sD = dualize(s, v)
             JD = ntuple(_ -> field(backend, DP1, grid), 3)
-            deposit_flux!(Fast(), JD..., sD, shape, st, grid, Workspace(sD, grid); dt = DP1(0.25), quantity_y = ChargeUy(), quantity_z = ChargeUz())
+            deposit_flux!(Fast(), JD..., sD, shape, st, grid, Workspace(sD, grid); dt = DP1(0.125), quantity_y = ChargeUy(), quantity_z = ChargeUz())
             rhs, scale = jvp_pair(J̄, JD)
             r = chain_ratio("T-1062", pair(x̄, v), rhs, scale)
             r <= C || @info "T-1062 N = 1" shape st float_arrays(s)[k][1] r
@@ -171,7 +171,7 @@ end
         # Float32: the same pullback within Float32 roundoff of the Float64 one
         s32 = moved_species(Float32, flux_grid_1d(Float32, shape, st), 300; seed = 9, dead = (40, 41, 250))
         x̄32 = zero_like(s32)
-        flux_pullback!(x̄32, map(a -> Float32.(a), J̄)..., s32, shape, st, flux_grid_1d(Float32, shape, st); dt = 0.25f0,
+        flux_pullback!(x̄32, map(a -> Float32.(a), J̄)..., s32, shape, st, flux_grid_1d(Float32, shape, st); dt = 0.125f0,
                        quantity_y = ChargeUy(), quantity_z = ChargeUz())
         for ((_, a32), (_, a64)) in zip(float_arrays(x̄32), float_arrays(x̄))
             @test record!("T-1062 Float32", Float32, maximum(abs.(a32 .- a64)) / (eps(Float32) * max(maximum(abs, a64), 1))) <= C32
@@ -182,11 +182,11 @@ end
         s = flux_species_2d(Float64, grid, 300; seed = 9)
         J̄ = ntuple(k -> lcg_field(field(backend, Float64, grid), 30 + k), 3)
         x̄ = zero_like(s)
-        flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.25, quantity_z = QZ2)
+        flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.125, quantity_z = QZ2)
         for k in eachindex(float_arrays(s))
             v = direction(s, k)
             sD = dualize(s, v)
-            JD = flux2d(Reference(), sD, shape, st, grid)[1:3]
+            JD = flux2d(Reference(), sD, shape, st, grid; dt = 0.125)[1:3]
             rhs, scale = jvp_pair(J̄, JD)
             r = chain_ratio("T-1062", pair(x̄, v), rhs, scale)
             r <= C || @info "T-1062 N = 2" shape st float_arrays(s)[k][1] r
@@ -195,16 +195,35 @@ end
         g32 = grid2(Float32, flux_g2(shape, st))
         s32 = flux_species_2d(Float32, g32, 300; seed = 9)
         x̄32 = zero_like(s32)
-        flux_pullback!(x̄32, map(a -> Float32.(a), J̄)..., s32, shape, st, g32; dt = 0.25f0, quantity_z = QZ2)
+        flux_pullback!(x̄32, map(a -> Float32.(a), J̄)..., s32, shape, st, g32; dt = 0.125f0, quantity_z = QZ2)
         for ((_, a32), (_, a64)) in zip(float_arrays(x̄32), float_arrays(x̄))
             @test record!("T-1062 Float32", Float32, maximum(abs.(a32 .- a64)) / (eps(Float32) * max(maximum(abs, a64), 1))) <= C32
         end
     end
+    # nearest-node bins: a Reference deposit writes some contributions into the guard on the other
+    # side, so the pullback is its transpose for an adjoint equal on a guard and its periodic image,
+    # as fold_guards!'s adjoint (fill_guards!) gives it
+    for (shape, st) in ((Linear, (Center(), Center())), (Quadratic, (Node(), Node())))
+        grid = grid2(Float64, flux_g2(shape, st) + 1)
+        s = flux_species_2d(Float64, grid, 300; seed = 9)
+        J̄ = ntuple(k -> fill_guards!(lcg_field(field(backend, Float64, grid), 30 + k), grid), 3)
+        x̄ = zero_like(s)
+        flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.125, quantity_z = QZ2)
+        for k in eachindex(float_arrays(s))
+            v = direction(s, k)
+            JD = flux2d(Reference(), dualize(s, v), shape, st, grid; dt = 0.125, bins = NodeBins(shape, st))[1:3]
+            rhs, scale = jvp_pair(J̄, JD)
+            r = chain_ratio("T-1062", pair(x̄, v), rhs, scale)
+            r <= C || @info "T-1062 NodeBins" shape st float_arrays(s)[k][1] r
+            @test r <= C
+        end
+    end
 end
 
-@testset "T-1063 sort_pullback! is the inverse permutation of the sort, bitwise [A4, WP-077]" begin
+@testset "T-1063 sort_pullback! is the inverse permutation of the sort, bitwise, Float64 and Float32 [A4, WP-077]" begin
     for (N, s0, grid) in ((1, moved_species(Float64, PeriodicGrid(FLUX1D_N, 0.25, 2), 300; seed = 5, dead = (40, 41)), PeriodicGrid(FLUX1D_N, 0.25, 2)),
-                          (2, flux_species_2d(Float64, grid2(Float64, 2), 300; seed = 5), grid2(Float64, 2))),
+                          (2, flux_species_2d(Float64, grid2(Float64, 2), 300; seed = 5), grid2(Float64, 2)),
+                          (2, flux_species_2d(Float32, grid2(Float32, 2), 300; seed = 5), grid2(Float32, 2))),
         resort in (false, true)
         s = deepcopy(s0)
         ws = Workspace(s, grid; append = resort ? 8 : nothing)
@@ -241,11 +260,16 @@ function flux_loss(mode, s, ws, J, J̄, shape, st, grid, sorts, overwrite)
     sorts && sort_by_cell!(s, grid, ws)
     foreach(a -> fill!(a, 0.0), J)
     deposit_flux!(mode, J..., s, shape, st, grid, ws; dt = 0.25, quantity_z = QZ2)
-    if overwrite                       # the species changes after the deposit: the rule must read its tape
-        s.w .*= 2
-        s.offset[1] .*= 0.5
-    end
+    overwrite && overwrite_species!(s)
     return inner3(J̄, J)
+end
+
+"Change the species after a transfer, as a push does: the rules must read their tape."
+function overwrite_species!(s)
+    s.w .*= 2
+    s.offset[1] .*= 0.5
+    s.u[1] .*= 3
+    return nothing
 end
 
 struct FluxHolder{S,W,T}
@@ -260,10 +284,23 @@ function holder_loss(h, J, J̄, shape, st, grid)
     return inner3(J̄, J)
 end
 
-function deposit_loss(mode, s, ws, ρ, ρ̄, shape, st, grid, quantity)
+function flux_loss_xy(s, ws, Jx, Jy, Jz, J̄, shape, st, grid)
+    fill!(Jx, 0.0)
+    fill!(Jy, 0.0)
+    fill!(Jz, 0.0)
+    deposit_flux!(Fast(), Jx, Jy, Jz, s, shape, st, grid, ws; dt = 0.25, quantity_z = QZ2)
+    acc = 0.0
+    for j in eachindex(Jx)
+        acc += J̄[1][j] * Jx[j] + J̄[2][j] * Jy[j]
+    end
+    return acc
+end
+
+function deposit_loss(mode, s, ws, ρ, ρ̄, shape, st, grid, quantity, overwrite)
     effective_mode(mode, Float64) isa Reference && sort_by_cell!(s, grid, ws)
     fill!(ρ, 0.0)
     deposit!(mode, ρ, s, shape, st, grid, ws; quantity)
+    overwrite && overwrite_species!(s)
     acc = 0.0
     for j in eachindex(ρ)
         acc += ρ̄[j] * ρ[j]
@@ -271,8 +308,12 @@ function deposit_loss(mode, s, ws, ρ, ρ̄, shape, st, grid, quantity)
     return acc
 end
 
-function gather_loss(out, ō, a, s, shape, st, grid)
+function gather_loss(out, ō, a, s, shape, st, grid, overwrite)
     gather!(out, a, s, shape, st, grid)
+    if overwrite                       # the field and the species change after the gather
+        a .*= 2
+        overwrite_species!(s)
+    end
     acc = 0.0
     for i in eachindex(out)
         acc += ō[i] * out[i]
@@ -316,39 +357,61 @@ end
         rhs, scale = jvp_pair(J̄, flux2d(Reference(), dualize(s0, v), shape, st, grid)[1:3])
         @test chain_ratio("T-1064", pair(dh.s, v), rhs, scale) <= C
     end
+    # a constant Jz: its adjoint is zero, so only Jx and Jy reach the species
+    sc = deepcopy(s0)
+    x̄ = zero_like(sc)
+    J = fields3(Float64, grid)
+    autodiff(Reverse, flux_loss_xy, Active, Duplicated(sc, x̄), Const(Workspace(sc, grid; flux = (shape, st))), Duplicated(J[1], zero(J[1])),
+             Duplicated(J[2], zero(J[2])), Const(J[3]), Const(J̄), Const(shape), Const(st), Const(grid))
+    J̄xy = (J̄[1], J̄[2], zero(J̄[3]))
+    for k in eachindex(float_arrays(s0))
+        v = direction(s0, k)
+        rhs, scale = jvp_pair(J̄xy, flux2d(Reference(), dualize(s0, v), shape, st, grid)[1:3])
+        @test chain_ratio("T-1064", pair(x̄, v), rhs, scale) <= C
+    end
     # deposit! and gather! at N = 2, ρ's own stagger
     s0 = flux_species_2d(Float64, grid2(Float64, 2), 300; seed = 5)
     g2 = grid2(Float64, 2)
     ρ̄ = lcg_field(field(backend, Float64, g2), 11)
-    for mode in (Fast(), Reference()), quantity in (ChargeWeight(), ChargeUy2())
+    for mode in (Fast(), Reference()), quantity in (ChargeWeight(), ChargeUy2()), overwrite in (false, true)
         s = deepcopy(s0)
         x̄ = zero_like(s)
         ρ = field(backend, Float64, g2)
         autodiff(Reverse, deposit_loss, Active, Const(mode), Duplicated(s, x̄), Const(Workspace(s, g2)), Duplicated(ρ, zero(ρ)),
-                 Const(ρ̄), Const(shape), Const(st), Const(g2), Const(quantity))
+                 Const(ρ̄), Const(shape), Const(st), Const(g2), Const(quantity), Const(overwrite))
         for k in eachindex(float_arrays(s0))
             v = direction(s0, k)
             sD = dualize(s0, v)
             ρD = deposit!(Fast(), field(backend, DP1, g2), sD, shape, st, g2, Workspace(sD, g2); quantity)
             rhs, scale = jvp_pair((ρ̄,), (ρD,))
             r = chain_ratio("T-1064", pair(x̄, v), rhs, scale)
-            r <= C || @info "T-1064 deposit" mode quantity float_arrays(s0)[k][1] r
+            r <= C || @info "T-1064 deposit" mode quantity overwrite float_arrays(s0)[k][1] r
             @test r <= C
         end
     end
     a = lcg_field(field(backend, Float64, g2), 13)
     ȧ = lcg_field(a, 17)
     ō = lcg_values(capacity(s0), 19)
-    ā = zero(a)
-    x̄ = zero_like(s0)
-    autodiff(Reverse, gather_loss, Active, Duplicated(zeros(capacity(s0)), zeros(capacity(s0))), Const(ō), Duplicated(a, ā),
-             Duplicated(deepcopy(s0), x̄), Const(shape), Const(st), Const(g2))
     alive = [s0.status[i] == PMC.ALIVE for i in 1:capacity(s0)]
-    for d in 1:2
-        v = direction(s0, findfirst(t -> t[1] == "offset$d", float_arrays(s0)))
-        outD = gather!(zeros(DP1, capacity(s0)), Dual{Nothing}.(a, ȧ), dualize(s0, v), shape, st, g2)
-        rhs, scale = jvp_pair((ō .* alive,), (outD,))
-        r = chain_ratio("T-1064", sum(ā .* ȧ) + pair(x̄, v), rhs, scale)
-        @test r <= C
+    for overwrite in (false, true)
+        ā = zero(a)
+        x̄ = zero_like(s0)
+        autodiff(Reverse, gather_loss, Active, Duplicated(zeros(capacity(s0)), zeros(capacity(s0))), Const(ō), Duplicated(copy(a), ā),
+                 Duplicated(deepcopy(s0), x̄), Const(shape), Const(st), Const(g2), Const(overwrite))
+        for d in 1:2
+            v = direction(s0, findfirst(t -> t[1] == "offset$d", float_arrays(s0)))
+            outD = gather!(zeros(DP1, capacity(s0)), Dual{Nothing}.(a, ȧ), dualize(s0, v), shape, st, g2)
+            rhs, scale = jvp_pair((ō .* alive,), (outD,))
+            r = chain_ratio("T-1064", sum(ā .* ȧ) + pair(x̄, v), rhs, scale)
+            r <= C || @info "T-1064 gather" overwrite d r
+            @test r <= C
+        end
     end
+    # a constant species that moves after the gather: the field's adjoint reads the taped positions
+    ā = zero(a)
+    autodiff(Reverse, gather_loss, Active, Duplicated(zeros(capacity(s0)), zeros(capacity(s0))), Const(ō), Duplicated(copy(a), ā),
+             Const(deepcopy(s0)), Const(shape), Const(st), Const(g2), Const(true))
+    āref = zero(a)
+    gather_pullback!(āref, nothing, copy(ō), a, s0, shape, st, g2)
+    @test record!("T-1064", Float64, maximum(abs.(ā .- āref)) / (eps(Float64) * maximum(abs, āref))) <= C
 end

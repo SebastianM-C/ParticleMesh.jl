@@ -90,7 +90,9 @@ function EnzymeRules.augmented_primal(config::RevConfigWidth{1}, func::Const{typ
                                       kw...) where {RT,N}
     ret = func.val(out.val, a.val, s.val, shape.val, stagger.val, grid.val; kw...)
     active = !(out isa Const)
-    stape = active && !(s isa Const) ? species_taped(s) : nothing
+    # the field's adjoint reads the positions, so they are taped for a constant species too (a push
+    # after the gather moves it); the species' adjoint reads the field
+    stape = active && !(s isa Const && a isa Const) ? snapshot(s.val) : nothing
     atape = active && !(s isa Const) ? copy(a.val) : nothing
     return AugmentedReturn(primal_return(config, ret), shadow_return(config, shadow(out)), (atape, stape))
 end
