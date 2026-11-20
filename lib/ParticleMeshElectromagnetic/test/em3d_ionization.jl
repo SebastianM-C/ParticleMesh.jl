@@ -206,58 +206,66 @@ end
 
 # --- T-1042 ---------------------------------------------------------------------------------
 
-# The lattice and the field at the atom's own place, T-784 in 3D. A lattice of 2 × 1 × 3 atoms per
-# cell on the rows y ∈ (1.2, 4.8) and z ∈ (0.5, 2.9) of a box of 16 × 8 × 10 cells of
-# 1/2 × 3/4 × 2/5 (no two axes' spacings or points per cell can be exchanged unnoticed), in a
-# prescribed curl-free field Ex = 0.3 + x/20, Ey = 1/10, Ez = 0.05 + z/4 (each linear along its own
+# The lattice and the field at the atom's own place, T-784 in 3D. Lattices of 2 × 1 × 3 and of
+# 2 × 2 × 3 atoms per cell on the rows y ∈ (1.2, 4.8) and z ∈ (0.5, 2.9) of a box of 16 × 8 × 10
+# cells of 1/2 × 3/4 × 2/5 (no two axes' spacings or points per cell can be exchanged unnoticed),
+# in a prescribed curl-free field Ex = 0.3 + x/20, Ey = 1/10 (and Ey = 1/10 + y/20 on the second
+# lattice, whose atoms sit at several y in a cell), Ez = 0.05 + z/4 (each linear along its own
 # axis, which the quadratic gather reproduces exactly; no current), born every 2 steps, 8 steps:
 # - the atoms are the lattice of the definition in the engine's sorted order (columns fastest,
 #   then rows, then layers, the in-cell index fastest within a cell, x before y before z), each of
-#   the weight density/6, the transverse cells of the rows only;
-# - each atom's bound population is exp(−W·t) of the rate in |E| at its own x and z (off the two
+#   the weight density/K (K the points per cell), the transverse cells of the rows only;
+# - each atom's bound population is exp(−W·t) of the rate in |E| at its own x, y and z (off the two
 #   columns whose stencil reaches across the periodic seam of x), and the populations differ by
 #   more than 0.1 across the lattice;
 # - the fourth birth, in the last step, is one electron per atom in the atoms' order behind the
-#   three births before it, of the weight (density/6)·q⁶·(1 − q²) of its atom's rate, and it started
+#   three births before it, of the weight (density/K)·q⁶·(1 − q²) of its atom's rate, and it started
 #   at its atom on all three axes (its position less the step's displacement u/γ·Δt);
 # - the state's kinetic energy is the born electrons' Σ w·(γ − 1); the ions' charge deposited twice
 #   into one array is the ions' charge once.
 function body_T1042(be)
     C = emC("T-1042")
-    for T in TYPES
+    for T in TYPES, (ppc, slope_y) in (((2, 1, 3), 0), ((2, 2, 3), 1 // 20))
         dens, pref = seeded(T, 1) / 100, seeded(T, 1) / 2
-        n, every, ppc, box, cells = 8, 2, (2, 1, 3), (8, 6, 4), (16, 8, 10)
-        a, sx, Ey0, c, sz = T(3) / 10, T(1) / 20, T(1) / 10, T(1) / 20, T(1) / 4
+        n, every, box, cells = 8, 2, (8, 6, 4), (16, 8, 10)
+        K = prod(ppc)
+        a, sx, Ey0, sy, c, sz = T(3) / 10, T(1) / 20, T(1) / 10, T(slope_y), T(1) / 20, T(1) / 4
         level = ADKLevel(pref, T(3), one(T))
         prob = ion_box_3d(T; E0 = (a, Ey0, c), levels = (level,), density = dens, ppc, every, rows = ((1.2, 4.8), (0.5, 2.9)), nsteps = n, box,
-                          cells, capacity = 16 * 4 * 6 * 6 * 5)
+                          cells, capacity = 16 * 4 * 6 * K * 5)
         st = ion_state_3d(prob; current = NoCurrent(), be)
         g, h, dt = guards(st.grid), cellsize(st.grid), prob.dt
-        Ex, Ez = Array(st.fields.Ex), Array(st.fields.Ez)          # Ex on (Center, Node, Node), Ez on (Node, Node, Center)
+        # Ex on (Center, Node, Node), Ey on (Node, Center, Node), Ez on (Node, Node, Center)
+        Ex, Ey, Ez = Array(st.fields.Ex), Array(st.fields.Ey), Array(st.fields.Ez)
         for i in axes(Ex, 1)
             Ex[i, :, :] .= a + sx * (T(i - g) - one(T) / 2) * h[1]
+        end
+        for j in axes(Ey, 2)
+            Ey[:, j, :] .= Ey0 + sy * (T(j - g) - one(T) / 2) * h[2]
         end
         for k in axes(Ez, 3)
             Ez[:, :, k] .= c + sz * (T(k - g) - one(T) / 2) * h[3]
         end
         copyto!(st.fields.Ex, Ex)
+        copyto!(st.fields.Ey, Ey)
         copyto!(st.fields.Ez, Ez)
-        natoms = 16 * 4 * 6 * 6
+        natoms = 16 * 4 * 6 * K
         hv = map(x -> Float64(value_of(x)), h)
-        pts = [((c1 - 1 + (k1 - 0.5) / 2) * hv[1], (c2 - 0.5) * hv[2], (c3 - 1 + (k3 - 0.5) / 3) * hv[3])
-               for c3 in 2:7 for c2 in 3:6 for c1 in 1:16 for k3 in 1:3 for k1 in 1:2]
+        p1, p2, p3 = ppc
+        pts = [((c1 - 1 + (k1 - 0.5) / p1) * hv[1], (c2 - 1 + (k2 - 0.5) / p2) * hv[2], (c3 - 1 + (k3 - 0.5) / p3) * hv[3])
+               for c3 in 2:7 for c2 in 3:6 for c1 in 1:16 for k3 in 1:p3 for k2 in 1:p2 for k1 in 1:p1]
         s = ionization_state(st)
         @test length(s.x) == natoms == length(pts) && all(s.alive)
         for (d, key) in enumerate((:x, :y, :z))
             @test maximum(i -> abs(Float64(value_of(s[key][i])) - pts[i][d]), 1:natoms) <= 16 * base_eps(T) * box[d]
         end
-        @test all(w -> absdiff(w, dens / 6) <= 2 * base_eps(T) * absmax(dens), s.w)
+        @test all(w -> absdiff(w, dens / K) <= 2 * base_eps(T) * absmax(dens), s.w)
         run!(st, params(prob), n)
         s = ionization_state(st)
-        Ef(x, z) = sqrt((0.3 + x / 20)^2 + 0.01 + (0.05 + z / 4)^2)
-        W = [adk_closed(level, Ef(p[1], p[3])) for p in pts]
+        Ef(x, y, z) = sqrt((0.3 + x / 20)^2 + (0.1 + Float64(slope_y) * y)^2 + (0.05 + z / 4)^2)
+        W = [adk_closed(level, Ef(p...)) for p in pts]
         dts = Float64(value_of(dt))
-        inner = [i for i in 1:natoms if 1 < (i - 1) ÷ 6 % 16 + 1 < 16]
+        inner = [i for i in 1:natoms if 1 < (i - 1) ÷ K % 16 + 1 < 16]
         err = maximum(i -> abs(Float64(value_of(s.bound[1][i])) - exp(-W[i] * dts * n)), inner) / (n * base_eps(T))
         record!("T-1042", T, err, be)
         @test err <= C
@@ -266,8 +274,8 @@ function body_T1042(be)
         @test Array(e.count)[1] == 4 * natoms && born_3d(st).n == 4 * natoms && ionization_lost(st) == 0
         fourth = (3 * natoms + 1):(4 * natoms)
         w4 = Array(e.w)[fourth]
-        d6 = Float64(value_of(dens)) / 6
-        werr = maximum(i -> abs(Float64(value_of(w4[i])) - d6 * exp(-W[i] * dts * 6) * -expm1(-W[i] * dts * 2)), inner) / (n * base_eps(T) * d6)
+        dK = Float64(value_of(dens)) / K
+        werr = maximum(i -> abs(Float64(value_of(w4[i])) - dK * exp(-W[i] * dts * 6) * -expm1(-W[i] * dts * 2)), inner) / (n * base_eps(T) * dK)
         record!("T-1042 weights", T, werr, be)
         @test werr <= C
         u = map(c -> Float64.(value_of.(Array(c)[fourth])), e.u)
@@ -289,7 +297,7 @@ function body_T1042(be)
     end
 end
 
-@testset "T-1042 the 3D dopant's lattice of 2 × 1 × 3 per cell on its rows of y and z, the rate of the field at each atom's own place, electrons born at their atom [A2, A3, A8, WP-075]" begin
+@testset "T-1042 the 3D dopant's lattices of 2 × 1 × 3 and 2 × 2 × 3 per cell on its rows of y and z, the rate of the field at each atom's own place, electrons born at their atom [A2, A3, A8, WP-075]" begin
     body_T1042(CPU())
 end
 
@@ -647,14 +655,17 @@ end
 # status, count and extras), the electrons and the lost-birth counter are in `evolved` once each,
 # so a snapshot of the 3D window run with ionization taken before the first birth, at a birth step
 # and after shifts with electrons leaving, restored into a fresh state, continues with the
-# uninterrupted run's bits; and the bytes four steps with births and shifts allocate do not grow
+# uninterrupted run's bits, as does a view of the state over copies of its arrays, on rows that
+# differ along y and z; and the bytes four steps with births and shifts allocate do not grow
 # with the number of atoms or the electrons' capacity (one thread).
-@testset "T-1047 the 3D atoms, their electrons and the lost-birth counter are evolved state that a restart continues bitwise, and a step's allocation does not grow with the lattice or the buffer [A4, A7, WP-075]" begin
+@testset "T-1047 the 3D atoms, their electrons and the lost-birth counter are evolved state that a restart and a view continue bitwise, and a step's allocation does not grow with the lattice or the buffer [A4, A7, WP-075]" begin
     for T in TYPES
-        prob = ion_window_3d_small(T; nsteps = 110, density = seeded(T, 1) / 200, capacity = 4096)
+        # rows that differ along y and z (c0 and nc of the frame not symmetric in the two axes)
+        prob = ion_window_3d_small(T; nsteps = 110, density = seeded(T, 1) / 200, capacity = 4096, rows = ((3.2, 9.4), (4.6, 8.0)))
         p = params(prob)
         full = ion_state_3d(prob)
         fr = ionization_frame(full)
+        @test fr.c0[2] != fr.c0[3] && fr.nc[2] != fr.nc[3]
         ev = evolved(full)
         mine = (fr.atoms.cell..., fr.atoms.offset..., fr.atoms.w, fr.atoms.status, fr.atoms.count, values(fr.atoms.extras)...,
                 fr.electrons.cell..., fr.electrons.offset..., fr.electrons.u..., fr.electrons.w, fr.electrons.status, fr.electrons.count, fr.lost)
@@ -677,6 +688,13 @@ end
             run!(fresh, p, prob.nsteps - k; first = k + 1)
             @test map(bits, evolved(fresh)) == want
         end
+        # a view of the state over copies of its arrays (the harness' path, as T-777) continues likewise
+        ran = ion_state_3d(prob)
+        run!(ran, p, 56)
+        sv = state_view(ran, map(copy, evolved(ran)))
+        @test ionization_frame(sv).c0 == fr.c0 && ionization_frame(sv).nc == fr.nc
+        run!(sv, p, prob.nsteps - 56; first = 57)
+        @test map(bits, evolved(sv)) == want
     end
     small = ion3d_step_bytes(; ppc = (1, 1, 1), capacity = 8192)
     more_atoms = ion3d_step_bytes(; ppc = (2, 1, 2), capacity = 4 * 8192)
@@ -692,7 +710,7 @@ end
 # --- T-1048 ---------------------------------------------------------------------------------
 
 # What is refused at N = 3 and what a 3D state holds: a lattice of two entries or a single range of
-# rows (the 2D forms), a state asked to run a problem with another lattice, rows, cadence,
+# rows (the 2D forms), a reversed range or one of three entries, a state asked to run a problem with another lattice, rows, cadence,
 # capacity or number of levels, or parameters whose ionization does not fit; the 3D state's
 # atoms, electrons and kinetic-energy chunks, `ionization_state` with z, and parameters with other
 # rates or another density or section, which are the state's to run (A3).
@@ -701,6 +719,8 @@ end
     lv = ADKLevel(0.5, 3.0, 1.0)
     @test_throws ArgumentError ion_box_3d(T; ppc = (1, 1))
     @test_throws ArgumentError ion_box_3d(T; rows = (1.1, 2.9))
+    @test_throws ArgumentError ion_box_3d(T; rows = ((2.9, 1.1), nothing))          # a reversed range
+    @test_throws ArgumentError ion_box_3d(T; rows = (nothing, (1.0, 2.0, 3.0)))     # a range of three entries
     @test ion_box_3d(T; rows = ((1.1, 2.9), nothing)).ionization.rows === ((1.1, 2.9), nothing)
     @test_throws ArgumentError EMState(ion_box_3d(T; rows = ((1.1, 2.9), (5.0, 9.0))), EMNumerics())   # no centre of a z cell in (5, 9) on a box of 3
     prob = ion_box_3d(T; ppc = (2, 1, 1), rows = ((1.1, 2.9), nothing), every = 2)

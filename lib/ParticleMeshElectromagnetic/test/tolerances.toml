@@ -1185,12 +1185,12 @@ measured = { rate = 0.691, populations = 0.147, momenta = 0.111, weights = 0.149
 status = "proposed; the largest over the three types of each quantity"
 
 ["T-1042"]
-quantity = "a lattice of 2 × 1 × 3 atoms per cell on 4 rows and 6 layers of a box of unequal sides in a static curl-free field Ex = 0.3 + x/20, Ey = 1/10, Ez = 0.05 + z/4, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x, z))·n·Δt) of the closed-form rate at its own place (C), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) (weights), off the two columns next to the periodic seam of x"
+quantity = "lattices of 2 × 1 × 3 and 2 × 2 × 3 atoms per cell on 4 rows and 6 layers of a box of unequal sides in a static curl-free field Ex = 0.3 + x/20, Ey = 1/10 (1/10 + y/20 on the second lattice), Ez = 0.05 + z/4, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x, y, z))·n·Δt) of the closed-form rate at its own place (C), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) (weights), off the two columns next to the periodic seam of x"
 scale = "n·eps(T) for the populations; n·eps(T)·density/6 for the weights"
 C = 4
-measured = { Float32 = 0.205, Float64 = 0.25, "Dual{Float32,3}" = 0.205 }
-measured_weight = { Float32 = 0.0461, Float64 = 0.0458, "Dual{Float32,3}" = 0.0461 }
-status = "proposed; T-784's C"
+measured = { Float32 = 0.255, Float64 = 0.281, "Dual{Float32,3}" = 0.255 }
+measured_weight = { Float32 = 0.0571, Float64 = 0.0549, "Dual{Float32,3}" = 0.0571 }
+status = "proposed; T-784's C; the largest over both lattices (1 thread)"
 
 ["T-1043"]
 quantity = "Gauss's law with the dopant ions' charge in the 3D box, |Σ_d D⁻_d E_d − (ρ + ρ_ions − mean)|: a thermal plasma with a dopant of an ADK and a Tong–Lin level (two atoms per cell along x on 4 of 6 rows), 20 steps (periodic); a box open along y and z with an absorbing layer of 3 cells, born electrons driven out through the lower y face by Ey = 1/2, on the nodes off the layers, 40 steps (open); both modes"
