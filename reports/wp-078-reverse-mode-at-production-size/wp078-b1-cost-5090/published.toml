@@ -1,0 +1,87 @@
+branch = "runs/wp078-b1-cost-5090"
+commit = "d5dc43eb5c5dee788cae2d3022181aff7621c41e"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/mem-224x128-fast.log"
+bytes = 10743
+sha256 = "a074c53739906193e2a05db0799f61ddccdb265aa18711ff7ca1864f1f76df1e"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/mem-224x128-reference.log"
+bytes = 12136
+sha256 = "a897a47a85fc08d9d5693e75dc642490a14c7c4bfafd18faf96688f201b3d425"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/mem-448x256-fast.log"
+bytes = 10815
+sha256 = "a5179f770ae4c866de008c092faf990550caed6e45c24de2af59cfb9bda80f30"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/mem-448x256-reference.log"
+bytes = 12208
+sha256 = "86b07fbe30dcfab311e535474696f7ca55780da459e023d235a715d76a6178c0"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/run-224x128-fast.log"
+bytes = 1895
+sha256 = "6c9b70b67ab4a684d9e32e5c23812e717c8b6ee60944cc878566aa7334682b33"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/run-224x128-reference.log"
+bytes = 1899
+sha256 = "516f4a5923806b6571642f943096e710f2931afa89fef8c564bd14c3ac4a3dad"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/run-448x256-fast.log"
+bytes = 1893
+sha256 = "a6ef44954050a392d5e5b2bcc4abe08dffeaae4fcc54e611816f6540be6004ea"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/run-448x256-reference.log"
+bytes = 1896
+sha256 = "84e79fed363115f4bffba688210621ae774cab0d3d8d1c579155b2b26d6e9381"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/b1/status"
+bytes = 175
+sha256 = "30cfa874f0d560554c3c76cdb7c560f374064cebe15db3d40e966d644ca8ba1d"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-224x128-fast-20261120T033344/manifest.toml"
+bytes = 962
+sha256 = "174a25654f3ce3d6bb335fae3a79ab73e9d507b67a72393447e5ea87cf1edc0d"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-224x128-fast-20261120T033344/result.toml"
+bytes = 558
+sha256 = "431a3972e358dea8cadf6b7959aaccc08f441fec39c7bb1ca4957fc6d7707264"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-224x128-reference-20261120T033643/manifest.toml"
+bytes = 967
+sha256 = "f16ed30dd744da366f3ccd3f0a8dec881e7766bdec3a2e983696fe8e5600b937"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-224x128-reference-20261120T033643/result.toml"
+bytes = 566
+sha256 = "14f749821c490b9b4d87e28f526c4bf87f707c13ed7f79db7fd976b28507bc0a"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-448x256-fast-20261120T034221/manifest.toml"
+bytes = 962
+sha256 = "94034ea4bbc5e80051264390c8dacf1b2dc89b52df0ebde6c7ccbd0f3e082172"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-448x256-fast-20261120T034221/result.toml"
+bytes = 561
+sha256 = "c7caf3f4ac6002ffc39aa3f4b2c9cc8abaeab8022ef0d6acacf34cc377400430"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-448x256-reference-20261120T033942/manifest.toml"
+bytes = 967
+sha256 = "073e21fe4587b6e554c5189ea9e40a031eafdbbcf1cdaa85873d3fd4b725e8f8"
+
+[[files]]
+path = "scripts/runs/wp078-b1-cost-5090/enzyme-cost-Float32-448x256-reference-20261120T033942/result.toml"
+bytes = 566
+sha256 = "f66f6f1f68d3460ae58e1bd5d175b70b2eda4559fdd6dc64af457c6f06465b6d"
