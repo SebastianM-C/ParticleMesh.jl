@@ -3,7 +3,7 @@
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
 `N = 1`, `N = 2` and `N = 3` (1D3V, 2D3V and 3D3V; periodic, with open transverse axes (y at `N = 2`, y and z at `N = 3`, WP-072)
-through an absorbing layer, WP-027, or a convolutional PML, WP-034, and at `N = 2` a moving window along axis 1, WP-028, and a witness bunch of test electrons whose mean energy gain is the
+through an absorbing layer, WP-027, or a convolutional PML, WP-034, a moving window along axis 1 at `N = 2`, WP-028, and `N = 3`, WP-074, and at `N = 2` a witness bunch of test electrons whose mean energy gain is the
 optimization objective, WP-047, and a dopant that the fields ionize by an ADK rate with no random numbers, WP-059), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields at `N = 2` and `N = 3`). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
@@ -11,7 +11,8 @@ with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the me
 their Courant limit, the relativistic Boris pusher behind a pusher type, the step composition
 and the diagnostics. At `N = 3` the module has the 3D3V step (WP-042): the problem
 description, the state, the push, the charge-conserving current, the Yee solver, the initial field
-and the recorder, periodic or open along y and z (WP-072), with the laser antenna of a round Gaussian beam (WP-073), and with no window, witness, dopant, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
+and the recorder, periodic or open along y and z (WP-072), with the laser antenna of a round Gaussian beam (WP-073) and the
+moving window with its density ramp, its refill and the PML of its back edge (WP-074), and with no witness, dopant, filter or resort. The current comes from the engine's charge-conserving `deposit_flux!`, so
 Gauss's law holds to roundoff from the initial `cumsum_periodic!` field onwards. The
 electrostatic cases (Landau damping, two-stream) run as edge cases with no transverse momenta
 or fields, as Smilei runs them.
@@ -80,6 +81,7 @@ export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPla
 export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export CompensatedGather, sharpening_beta, gather_transfer, sharpen_x!, particle_fields, sharpen_gather!
+export GalerkinGather, GalerkinRead, read_shape, component_shape
 export AbsorbingLayer, LayerFactors, PML, PMLFields, BackPMLFields
 export WitnessBunch, witness_gains, witness_energy_gain, witness_alive
 export IonizationLevel, ionization_rate, ADKLevel, adk_rate, TongLinLevel, DopantSection, FieldIonization, IonizationParams

@@ -15,13 +15,15 @@
 #             fd (central differences at the points), fdcheck or fdcheck:<point> (the gradient and
 #             central differences at 2⁻⁹ and 2⁻¹³ in the free directions and the budget at E2.175
 #             or the point named), energy (a line in the energy budget, with
-#             duals), density (a line in the density, with duals);
+#             duals), density (a line in the density, with duals), gathers (plain runs at E1.9
+#             and E2.175 with each particle gather of GATHERS, WP-070);
 #       resolutions: ppl×ny pairs, e.g. 16x1,32x2 (Δx = λ₀/ppl, Δy = π/(4·ny));
 #       dir: the run directory (made if missing; by default scripts/runs/optim-trapped2d-<kind>-<stamp>);
 #       jobs=N, threads=M: as PM_JOBS and PM_JOB_THREADS (for a request of scripts/cpu-box.sh, which sets no environment);
 #       float=32 runs every job in Float32 (default 64), backend=cuda on the GPU (default cpu)
 #   julia +1.13 --project=scripts -t 4 scripts/optim/trapped2d.jl job <dir> <job JSON>
 #   julia +1.13 --project=scripts scripts/optim/trapped2d.jl report <out dir> <run dir>...
+#   julia +1.13 --project=scripts scripts/optim/trapped2d.jl report-gathers <out dir> <run dir>...   (the gathers campaign, WP-070)
 #
 # The report writes trapped2d.png + .json (convergence, gradients, finite differences, lines) and
 # tables.md into <out dir>.
@@ -43,6 +45,14 @@ end
 const DIRECTIONS = (TCASE.names..., "a0E")
 "Relative central-difference steps 2^-k of the fd campaign."
 const FD_POWERS = (5, 9, 13, 17)
+"""
+The particles' gathers a job may name (`"gather"`, default `"plain"`): the grid's fields, the
+compensated copy at the laser's wavenumber (WP-067), the Galerkin gather (WP-070) and the two
+together.
+"""
+const GATHERS = Dict("plain" => nothing, "compensated" => CompensatedGather(; k = 1), "galerkin" => GalerkinGather(),
+                     "galerkin-compensated" => GalerkinGather(; compensate = CompensatedGather(; k = 1)))
+
 "The read-out's sensitivity to the weights' edges: J again from the same state with these."
 const RISES = ((2.0, 4.0), (4.0, 6.0))
 
@@ -108,6 +118,10 @@ function campaign_jobs(kind, res)
                 i == 6 ? (a0E += k * a0E * 2.0^-10) : (x[i] += k * x[i] * 2.0^-10)
                 add!(job_id("fine", p.name, DIRECTIONS[i], k, r), a0E, x, ppl, ny, "plain"; point = p.name, direction = i, step = k)
             end
+        elseif kind == "gathers"
+            for p in POINTS[1:2], g in sort(collect(keys(GATHERS)))
+                add!(job_id("gather", g, p.name, r), p.a0E, p.x, ppl, ny, "plain"; point = p.name, gather = g)
+            end
         elseif kind == "energy"
             for a in range(1.8, 2.6; length = 17)
                 add!(job_id("energy", round(a; digits = 3), r), a, collect(TCASE.x0), ppl, ny, "grad")
@@ -117,7 +131,7 @@ function campaign_jobs(kind, res)
                 add!(job_id("density", round(n; digits = 4), r), 2.175, [collect(TCASE.x0)[1:4]; n], ppl, ny, "grad")
             end
         else
-            error("unknown campaign kind $kind: converge, xonly, fine, fd, fdcheck[:<point>], energy or density")
+            error("unknown campaign kind $kind: converge, xonly, fine, fd, fdcheck[:<point>], energy, density or gathers")
         end
     end
     # the longest first, so that the last jobs to finish are short ones
@@ -143,7 +157,8 @@ function run_job(job)
     else
         args, energy = F.(x), F(budget(a0E))
     end
-    t = @elapsed st = trapped_state(args...; energy, ppl, ny, float = F, backend)
+    gather = GATHERS[get(job, "gather", "plain")]
+    t = @elapsed st = trapped_state(args...; energy, ppl, ny, float = F, backend, gather)
     J = trapped_energy(st)
     out = Dict{String,Any}(job)
     merge!(out, Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st))))
@@ -200,7 +215,7 @@ function main_campaign(kind, resarg, dir = nothing)
                               "case" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v isa NamedTuple ? Dict(string(a) => b for (a, b) in pairs(v)) : v) for (k, v) in pairs(BCASE)),
                               "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
                               "pm_jobs" => get(ENV, "PM_JOBS", "1"), "float" => get(ENV, "PM_FLOAT", "64"), "job_backend" => get(ENV, "PM_BACKEND", "cpu"), "pm_job_threads" => get(ENV, "PM_JOB_THREADS", string(Threads.nthreads())))
-    d = run_dir("trapped2d-$kind", @__FILE__; prefix = "optim", work_package = "WP-065", dir,
+    d = run_dir("trapped2d-$kind", @__FILE__; prefix = "optim", work_package = kind == "gathers" ? "WP-070" : "WP-065", dir,
                 backend = be == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                 extra = be == "cuda" ? Dict{String,Any}("gpu" => gpu_name()) : Dict{String,Any}(),
                 extra_inputs = [joinpath(@__DIR__, "trapped2d_case.jl"), joinpath(@__DIR__, "born2d_case.jl"),
@@ -228,6 +243,10 @@ elseif length(ARGS) >= 3 && ARGS[1] == "campaign"
 elseif length(ARGS) >= 3 && ARGS[1] == "report"
     include(joinpath(@__DIR__, "trapped2d_report.jl"))
     report(ARGS[2], ARGS[3:end])
+elseif length(ARGS) >= 3 && ARGS[1] == "report-gathers"
+    include(joinpath(@__DIR__, "trapped2d_report.jl"))
+    include(joinpath(@__DIR__, "gathers_report.jl"))
+    report_gathers(ARGS[2], ARGS[3:end])
 elseif !isempty(ARGS)
-    error("usage: trapped2d.jl campaign <kind> <resolutions> [dir] | job <dir> <job JSON> | report <out dir> <run dir>...")
+    error("usage: trapped2d.jl campaign <kind> <resolutions> [dir] | job <dir> <job JSON> | report <out dir> <run dir>... | report-gathers <out dir> <run dir>...")
 end

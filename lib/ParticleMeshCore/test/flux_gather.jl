@@ -1,4 +1,4 @@
-# WP-071, the flux gather `gather_flux!`, the transpose of `deposit_flux!`: T-1000 to T-1003 (T-1004,
+# WP-071, the flux gather `gather_flux!`, the transpose of `deposit_flux!`: T-1000 to T-1003 and T-1005 (T-1004,
 # its CUDA rerun, is in gpu.jl). The cases are the flux tests' own: the 1D, 2D and 3D species of
 # flux_cases.jl, flux2d_cases.jl and flux3d_cases.jl on their grids, every particle moved by less than
 # a cell, faces and seams crossed.
@@ -292,4 +292,70 @@ end
     E2 = ntuple(_ -> field(backend, Float64, g2), 3)
     @test_throws ArgumentError gather_flux!(ntuple(_ -> zeros(capacity(s2)), 3)..., E2..., s2, Linear, st, g2; dt = 0.25)
     @test gather_flux!(ntuple(_ -> zeros(capacity(s2)), 3)..., E2..., s2, Linear, (st, st), g2; dt = 0.25) isa Tuple
+end
+
+# --- T-1005 (WP-070's cross-test, landed after WP-071) ---------------------------------------------
+
+"""
+    midpoint_species(s, n) -> Species
+
+A copy of the flux tests' species `s` with every alive particle at the midpoint of its move: its
+old cell and offset (the extras) advanced by half the move.
+"""
+function midpoint_species(s, n)
+    N = length(n)
+    m = deepcopy(s)
+    for i in alive_slots(s)
+        if N == 1
+            c0, δ0, Δ = old_and_move_parts(s, i, 0, n[1])
+            m.cell[1][i], m.offset[1][i] = advance(Int32(c0), Float64(δ0), Δ / 2, Int32(n[1]))
+        else
+            p = ntuple(d -> old_and_move_parts(s, i, d, n[d]), N)
+            cn, δn = advance(ntuple(d -> Int32(p[d][1]), N), ntuple(d -> Float64(p[d][2]), N), ntuple(d -> p[d][3] / 2, N), Int32.(n))
+            foreach(d -> (m.cell[d][i] = cn[d]; m.offset[d][i] = δn[d]), 1:N)
+        end
+    end
+    return m
+end
+
+# The flux gather and the Galerkin gather of WP-070 are the same weights for a vanishing move. For
+# order 2, every ρ stagger the flux tests use and every component C in space whose axis has ρ at
+# `Node()` (there the current's face j is the field's `Center()` index j; at a `Center()` ρ the face
+# is the next node, a shift of the array, which T-1002's closed form covers instead), the engine's
+# per-axis `gather!` at the move's midpoint, with the linear shape at `Center()` along C and the
+# quadratic shape at ρ's stagger across it, is (1) T-1002's host closed form `galerkin_point` to
+# roundoff (of a position of up to n cells, which the closed form holds as one number) and (2) the flux gather's o_C/(Δ_C·Δx_C/Δt) to within C·ε at moves ε = 1e-4 and 1e-5.
+@testset "T-1005 for a vanishing move the flux gather of WP-071 reproduces the per-axis gather! of WP-070's Galerkin weights, order 2, N = 1, 2, 3 [A2, A7, WP-070, WP-071]" begin
+    C = tolC("T-1005")
+    worst_gap, worst_point, cases = 0.0, 0.0, 0
+    for N in 1:3, st in gather_staggers(N)
+        sts = st isa Tuple ? st : (st,)
+        for ε in (1e-4, 1e-5)
+            c = nudged_case(N, Quadratic, st, ε)
+            (; grid, s, E, o) = c
+            n = Tuple(ncells(grid))
+            mid = midpoint_species(s, n)
+            for Cc in 1:N
+                sts[Cc] isa Node || continue
+                stc = ntuple(d -> d == Cc ? Center() : sts[d], N)
+                shp = ntuple(d -> d == Cc ? Linear : Quadratic, N)
+                out = zeros(capacity(s))
+                N == 1 ? gather!(out, E[Cc], mid, Linear, Center(), grid) : gather!(out, E[Cc], mid, shp, stc, grid)
+                Emax = maximum(abs, E[Cc])
+                for i in alive_slots(s)
+                    _, _, Δ = old_and_move_parts(s, i, N == 1 ? 0 : Cc, n[Cc])
+                    X = ntuple(d -> ((c0, δ0, Δd) = old_and_move_parts(s, i, N == 1 ? 0 : d, n[d]); c0 + δ0 + Δd / 2), N)
+                    avg = o[Cc][i] / (Δ * Float64(Tuple(cellsize(grid))[Cc]) / 0.25)
+                    worst_point = max(worst_point, abs(out[i] - galerkin_point(E[Cc], grid, X, st, Cc, true)) / (eps(Float64) * Emax * maximum(n)))
+                    worst_gap = max(worst_gap, abs(avg - out[i]) / Emax / ε)
+                end
+                cases += 1
+            end
+        end
+    end
+    record!("T-1005", Float64, worst_gap)
+    @info "T-1005 flux gather against the per-axis Galerkin gather!" worst_gap worst_point cases
+    @test cases > 0
+    @test worst_point <= 4          # the same weights; the closed form takes the position as one number up to n cells
+    @test worst_gap <= C
 end

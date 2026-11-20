@@ -22,11 +22,53 @@ struct KineticEnergy end
     end
 end
 
-"E and B of the layout at offset `δ` of cell `c` (one entry per resolved axis; guards filled), each on its own stagger."
+# The pullbacks of the deposited quantities (`ParticleMeshCore.pullback_quantity!`, WP-077): the
+# adjoint of q̄ times the quantity with respect to the weight and the momentum, added at slot i.
+# With γ = √(1 + |u|²), ∂(u_k/γ)/∂u_l = δ_kl/γ − u_k·u_l/γ³ and ∂(γ − 1)/∂u_l = u_l/γ.
+@inline function pullback_current!(s̄, s, i, q̄, ::Val{K}) where {K}
+    @inbounds begin
+        u = (s.u[1][i], s.u[2][i], s.u[3][i])
+        γ = lorentz_factor(u)
+        a = s.q * q̄ / γ                          # ∂(q·w·u_K/γ)/∂w · q̄ / u_K
+        b = s.w[i] * a                           # q·w·q̄/γ
+        c = b * u[K] / (γ * γ)                   # q·w·q̄·u_K/γ³
+        # ∂(u_K/γ)/∂u_K = (1 + Σ_{l≠K} u_l²)/γ³, summed without the cancelling γ² - u_K²
+        o = ntuple(l -> ifelse(l == K, zero(b), u[l] * u[l]), Val(3))
+        d = b * (one(b) + o[1] + o[2] + o[3]) / (γ * γ)
+        s̄.w[i] += a * u[K]
+        s̄.u[1][i] += ifelse(K == 1, d, -c * u[1])
+        s̄.u[2][i] += ifelse(K == 2, d, -c * u[2])
+        s̄.u[3][i] += ifelse(K == 3, d, -c * u[3])
+    end
+    return nothing
+end
+@inline ParticleMeshCore.pullback_quantity!(s̄, ::CurrentY, s, i, q̄) = pullback_current!(s̄, s, i, q̄, Val(2))
+@inline ParticleMeshCore.pullback_quantity!(s̄, ::CurrentZ, s, i, q̄) = pullback_current!(s̄, s, i, q̄, Val(3))
+@inline function ParticleMeshCore.pullback_quantity!(s̄, ::KineticEnergy, s, i, q̄)
+    @inbounds begin
+        u1, u2, u3 = s.u[1][i], s.u[2][i], s.u[3][i]
+        u² = u1 * u1 + u2 * u2 + u3 * u3
+        γ = lorentz_factor(u1, u2, u3)
+        s̄.w[i] += s.m * u² / (γ + 1) * q̄
+        a = s.m * s.w[i] * q̄ / γ
+        s̄.u[1][i] += a * u1
+        s̄.u[2][i] += a * u2
+        s̄.u[3][i] += a * u3
+    end
+    return nothing
+end
+
+"""
+E and B of the layout at offset `δ` of cell `c` (one entry per resolved axis; guards filled), each
+on its own stagger, read with `shape` (a `Shape`, or a [`GalerkinRead`](@ref), which reads each
+component with its [`component_shape`](@ref)).
+"""
 @inline function fields_at(f, c::NTuple{N,Int32}, δ::NTuple{N,Any}, shape, g::Int32) where {N}
     L = gather_layout(Val(N))
-    E = (gather_at(f.Ex, c, δ, shape, L.Ex, g), gather_at(f.Ey, c, δ, shape, L.Ey, g), gather_at(f.Ez, c, δ, shape, L.Ez, g))
-    B = (gather_at(f.Bx, c, δ, shape, L.Bx, g), gather_at(f.By, c, δ, shape, L.By, g), gather_at(f.Bz, c, δ, shape, L.Bz, g))
+    E = (gather_at(f.Ex, c, δ, component_shape(shape, L.Ex), L.Ex, g), gather_at(f.Ey, c, δ, component_shape(shape, L.Ey), L.Ey, g),
+         gather_at(f.Ez, c, δ, component_shape(shape, L.Ez), L.Ez, g))
+    B = (gather_at(f.Bx, c, δ, component_shape(shape, L.Bx), L.Bx, g), gather_at(f.By, c, δ, component_shape(shape, L.By), L.By, g),
+         gather_at(f.Bz, c, δ, component_shape(shape, L.Bz), L.Bz, g))
     return E, B
 end
 
@@ -37,8 +79,10 @@ end
 @inline function fields_at(f, c::NTuple{1,Int32}, δ::NTuple{1,Any}, shape, g::Int32)
     L = FIELD_LAYOUT
     c1, δ1 = c[1], δ[1]
-    E = (gather_at(f.Ex, c1, δ1, shape, L.Ex, g), gather_at(f.Ey, c1, δ1, shape, L.Ey, g), gather_at(f.Ez, c1, δ1, shape, L.Ez, g))
-    B = (gather_at(f.Bx, c1, δ1, shape, L.Bx, g), gather_at(f.By, c1, δ1, shape, L.By, g), gather_at(f.Bz, c1, δ1, shape, L.Bz, g))
+    E = (gather_at(f.Ex, c1, δ1, component_shape(shape, L.Ex), L.Ex, g), gather_at(f.Ey, c1, δ1, component_shape(shape, L.Ey), L.Ey, g),
+         gather_at(f.Ez, c1, δ1, component_shape(shape, L.Ez), L.Ez, g))
+    B = (gather_at(f.Bx, c1, δ1, component_shape(shape, L.Bx), L.Bx, g), gather_at(f.By, c1, δ1, component_shape(shape, L.By), L.By, g),
+         gather_at(f.Bz, c1, δ1, component_shape(shape, L.Bz), L.Bz, g))
     return E, B
 end
 
@@ -196,8 +240,8 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
 - Evolved by `initialize!` and `step!`, and nothing else is ([`evolved`](@ref) is the list, as a
   tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
   momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
-  guards, and at N = 2 the convolution fields of a PML (in `modifiers`) and in `aux` the
-  window's counters `lost` and `fast`, the witness bunch's particles and a dopant's atoms, populations and electrons. With the
+  guards, and at N = 2 and 3 the convolution fields of a PML (in `modifiers`) and in `aux` the
+  window's counters `lost` and `fast`, and at N = 2 the witness bunch's particles and a dopant's atoms, populations and electrons. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
 - The cache: the kinetic energy buffer `K` for the next observation (at N = 1 the kinetic energy
@@ -217,9 +261,9 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   the cell size is to space: the Courant check, the absorbers' tables, the antenna's half-cell
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
   of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
-  species' charge and mass, and at N = 2 in `aux` the [`WindowFrame`](@ref) and the
-  [`WitnessFrame`](@ref) (`nothing` where the problem has none), and of the
-  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity (all three `nothing` at
+  species' charge and mass, and at N = 2 and 3 in `aux` the [`WindowFrame`](@ref), and at N = 2 the
+  [`WitnessFrame`](@ref) (`nothing` where the problem has none) and of the
+  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity (both `nothing` at
   N = 3). `aux` is empty at N = 1.
 - `modifiers`: the tuple of [`FieldModifier`](@ref)s that the mesh solve walks
   ([`solve_fields!`](@ref)), in the order [`field_modifiers`](@ref) gives them: the placed
@@ -315,7 +359,7 @@ function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(),
         throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
     numerics.absorber === nothing || throw(ArgumentError("the 1D box is periodic: EMNumerics takes no absorber at N = 1"))
     numerics.back_absorber === nothing ||
-        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D)"))
+        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D and 3D)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
@@ -381,7 +425,7 @@ check_momenta_at(m::Symbol) = m in (:t0, :t_minus_half) ? m :
     check_params(state, params) -> params
 
 Whether `params` fit `state` (an `ArgumentError` naming the misfit otherwise): the same element
-type, one [`SpeciesParams`](@ref) per species, and at N = 2 one laser per antenna plane, each
+type, one [`SpeciesParams`](@ref) per species, and at N = 2 and 3 one laser per antenna plane, each
 within half a cell of its plane's column (the column is fixed when the state is built), with a
 moving window every pulse over before the window passes its plane, a witness's parameters exactly
 when the state has a bunch, and a profile only with a window; and what an [`EMProblem`](@ref)
@@ -436,7 +480,7 @@ Whether `state` has the configuration of `problem` (an `ArgumentError` otherwise
 takes from the problem it is built for besides the parameters: the cells and the cell sizes, the
 time step, per species the name, the particles per cell, the Philox stream, the kind of momentum
 distribution, the charge and the mass (as the state holds them, converted to its element type:
-a description in another type than the problem's is the state's own problem), and at N = 2 which
+a description in another type than the problem's is the state's own problem), and at N = 2 and 3 which
 boundaries are open or a window, the
 window's start and the witness bunch's placement, charge and mass; and the diagnostic mode of
 the state's own recorder, whose histories would otherwise be of another mode than the problem's. Called by
@@ -566,7 +610,7 @@ function initialize!(st::EMState{N}, p::EMParams; momenta_at::Symbol = :t0, dens
         sharpen_gather!(st)
         pf = particle_fields(st)
         for s in st.species
-            launcher(kick_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g,
+            launcher(kick_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, read_shape(numerics), g,
                                                         -s.q / s.m * st.dt / 4; ndrange = capacity(s))
         end
     end
@@ -625,8 +669,8 @@ end
 Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state and the parameters
 ([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
 (§0.4). One method for N = 1, 2 and 3, the 1D case being the case of one resolved axis; what a
-problem does not have (a witness bunch, a moving window, an open axis, field modifiers: none of
-them at N = 1 or N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
+problem does not have (a witness bunch, a dopant, a moving window, an open axis, field modifiers: none of
+them at N = 1, no witness or dopant at N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
 the start of the step ([`observe!`](@ref): Eⁿ, Bⁿ and the kinetic energy at n − 1/2 that the
 previous step left in `K`; `nothing` observes nothing); then the module's step order:
 
@@ -705,7 +749,7 @@ function step!(st::EMState, p::EMParams, k::Integer; observer = st.recorder)
     ionize!(ionization_frame(st), st, p, k)
     pf = particle_fields(st)
     for s in (deposited_species(st)..., witness_species(st)...)
-        launcher(push_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, numerics.shape, g, s.q / s.m * dt / 2, dt_dx, n;
+        launcher(push_kernel!, get_backend(s), wgs)(s, pf, numerics.pusher, read_shape(numerics), g, s.q / s.m * dt / 2, dt_dx, n;
                                                     ndrange = capacity(s))
     end
     retire_x!(window, st)

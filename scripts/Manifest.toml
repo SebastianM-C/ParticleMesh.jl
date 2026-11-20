@@ -1959,6 +1959,12 @@ path = "../lib/ParticleMeshCore"
 uuid = "5afebaaa-41db-49a8-b96f-38d33e49b288"
 version = "0.1.0-DEV"
 
+    [deps.ParticleMeshCore.extensions]
+    ParticleMeshCoreEnzymeCoreExt = "EnzymeCore"
+
+    [deps.ParticleMeshCore.weakdeps]
+    EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+
 [[deps.ParticleMeshElectromagnetic]]
 deps = ["Adapt", "KernelAbstractions", "ParticleMeshCore"]
 path = "../lib/ParticleMeshElectromagnetic"

@@ -199,3 +199,78 @@ end
 @testset "T-140 Dual weights: exact partials, primal values bitwise [A3, A4, A8, WP-010]" begin
     body_T140(CPU())
 end
+
+# --- T-990 (WP-070) -------------------------------------------------------------------------
+
+# A gather with one shape per axis, for the Galerkin gather of the electromagnetic module (a field
+# component read one order lower along its staggered axes). Order 0 is the nearest grid point:
+# weight one on the cell's own centre (`Center()`) or on the nearer cell edge (`Node()`). With the
+# same shape on every axis the per-axis gather is the one-shape gather bit for bit, at the 2D and
+# 3D test species' particles (offsets 0 and just below 1 included), every stagger tuple, orders 1
+# and 2, all three types, through `gather_at` and through the kernel of `gather!`. With mixed
+# orders 0, 1 and 2 the gather of a separable field a(i, j[, l]) = f(i)·g(j)[·h(l)] is the product
+# of the 1D gathers of the factors with each axis' shape, to roundoff.
+using ParticleMeshCore: gather_at
+
+function body_T990(be = CPU())
+    worst = 0.0
+    for T in TYPES
+        for (N, mk, sp) in ((2, g -> grid2(T, g), test_species_2d), (3, g -> grid3(T, g), test_species_3d))
+            grid = mk(2)
+            s = sp(T, grid, 40)
+            a = field(backend, T, grid)
+            A = Array(a)
+            for I in eachindex(A)
+                A[I] = seeded(T, sin(0.37 * I + 0.1))
+            end
+            copyto!(a, A)
+            stags = Iterators.product(ntuple(_ -> (Node(), Center()), N)...)
+            hs = s                                   # host arrays (the CPU backend)
+            g = Int32(guards(grid))
+            for P in 1:2, st in stags
+                shape = Shape{P}()
+                o1 = on(be, gather!, fill!(similar(s.w), zero(T)), a, s, shape, st, grid)
+                o2 = on(be, gather!, fill!(similar(s.w), zero(T)), a, s, ntuple(_ -> shape, N), st, grid)
+                @test reinterpret(UInt8, o1) == reinterpret(UInt8, o2)
+                ok = all(1:alive_count(hs)) do i
+                    c = ntuple(d -> hs.cell[d][i], N)
+                    δ = ntuple(d -> hs.offset[d][i], N)
+                    gather_at(A, c, δ, shape, st, g) === gather_at(A, c, δ, ntuple(_ -> shape, N), st, g)
+                end
+                @test ok
+            end
+            # mixed orders on a separable field, Float64 and Float32 only (the products' roundoff)
+            T <: Dual && continue
+            fs = [x -> sin(0.7x + 0.2), x -> cos(0.45x - 0.3), x -> 0.5 + sin(0.3x)]
+            for st in stags, P in Iterators.product(ntuple(_ -> 0:2, N)...)
+                shapes = ntuple(d -> Shape{P[d]}(), N)
+                F = [prod(d -> T(fs[d](I[d])), 1:N) for I in CartesianIndices(A)]
+                for i in 1:alive_count(hs)
+                    c = ntuple(d -> hs.cell[d][i], N)
+                    δ = ntuple(d -> hs.offset[d][i], N)
+                    v = gather_at(F, c, δ, shapes, st, g)
+                    ref = prod(1:N) do d
+                        f1 = [T(fs[d](j)) for j in 1:size(F, d)]
+                        gather_at(f1, c[d], δ[d], shapes[d], st[d], g)
+                    end
+                    err = abs(v - ref) / eps(T)
+                    worst = max(worst, err)
+                    @test err <= 8
+                end
+            end
+        end
+    end
+    @info "T-990 mixed-order gather err/eps" worst
+end
+
+@testset "T-990 the gather with one shape per axis: order 0 the nearest grid point, the same shape on every axis bitwise the one-shape gather, mixed orders the product of the 1D gathers on a separable field [A4, A7, A8, WP-070]" begin
+    for T in (Float32, Float64), δ in (0, 0.25, 0.49, 0.5, 0.75, 0.999)
+        @test shape_weights(Shape{0}(), Center(), T(δ)) === (Int32(0), (one(T),))
+        @test shape_weights(Shape{0}(), Node(), T(δ)) === (Int32(δ >= 0.5), (one(T),))
+        a = T.(collect(1:10))
+        @test gather_at(a, Int32(4), T(δ), Shape{0}(), Center(), Int32(2)) === T(6)                 # centre 4, two guards
+        @test gather_at(a, Int32(4), T(δ), Shape{0}(), Node(), Int32(2)) === T(δ >= 0.5 ? 7 : 6)    # edge 4 or 5
+    end
+    @test ParticleMeshCore.stencil_reach(Shape{0}(), Center()) == (0, 0) && ParticleMeshCore.stencil_reach(Shape{0}(), Node()) == (0, 1)
+    body_T990(CPU())
+end

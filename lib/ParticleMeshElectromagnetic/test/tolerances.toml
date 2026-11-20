@@ -930,6 +930,31 @@ measured = { stencil = 2.32, gather = 1.69 }
 measured_device = { "stencil on CUDABackend" = 2.32, "gather on CUDABackend" = 1.64 }
 status = "proposed; the largest over Float32, Float64 and Dual{Float32,3} (CPU); measured_device is T-969 on an RTX 5090 at 82c1945 (Float64)"
 
+# WP-070, the Galerkin gather.
+
+["T-991"]
+quantity = "⟨J_d, E⟩ − ΣJ_d · E_d(Galerkin weights at the move's centre) for the charge-conserving current of one particle moved symmetrically along axis d (2/32 and 2/1024 of a cell, no knot crossed), random E, N = 1 to 3, orders 1 and 2"
+scale = "eps(T) · |q w| Δx_d/Δt · max|E| (independent of the move)"
+C = 4
+measured = { Float64 = 1.26 }
+status = "proposed; the largest over Float32 and Float64 (CPU)"
+
+["T-992"]
+quantity = "the change of the Galerkin-gathered B over the Yee half step h against −h times the curl of the Galerkin-gathered E (ForwardDiff in the position), 30 points, random E, N = 1 to 3, orders 1 and 2"
+scale = "eps(T)·max|∇×E| over the points"
+C = 16
+measured = { Float64 = 1.53 }
+status = "proposed; the largest over Float32 and Float64 (CPU); today's full-shape gather misses by 0.24 to 0.78 of the curl's size"
+
+["T-994"]
+quantity = "with the Galerkin gather, the largest relative change of the total energy over the run, per case, T-217's measure in T-214's to T-216's configurations; momentum_cold: the largest change of a component of Σ m w u from the start to the end of the cold symmetric cases over Σ m w |u|"
+landau = 5e-7
+two-stream = 1.5e-5
+weibel = 2.5e-5
+momentum_cold = 1e-12
+measured = { landau = 2.22e-7, two-stream = 6.36e-6, weibel = 1.16e-5 }
+status = "proposed; bounds about twice the measured changes (CPU, Float64)"
+
 # WP-042: the periodic 3D3V step with the charge-conserving current (T-950 to T-955)
 ["T-950"]
 quantity = "after every 3D step with the Esirkepov current, two species crossing cells and the seams of every axis, 20 steps, both modes, orders 1 and 2; every tenth of 400 steps at order 2 (Float32, Float64); and 20 steps of a quasi-neutral electron–ion plasma whose net charge is 10⁻³ of each species' (neutral_plasma_3d, Float32, Float64): Gauss's law |Σ_d D⁻_d E_d − (ρ − mean ρ)| (C); |Σ_d D⁺_d B_d| (C_divB)"
@@ -980,6 +1005,13 @@ C_partial = 8
 measured = { "Dual{Float32,3}" = 2.46 }
 measured_partial = { "Dual{Float32,3}" = 1.81 }
 status = "proposed; not bitwise (A4)"
+
+["T-1065"]
+quantity = "pullback_quantity! of CurrentY, CurrentZ and KineticEnergy against the partials of the quantity of a Dual{Float64,4} weight and momentum (an electron and an ion), and the current's diagonal derivative at |u| = 3000 and 5000 against BigFloat"
+scale = "max|q̄·∂quantity| + |q̄·quantity|"
+C = 16
+measured = { Float64 = 2.39, Float32 = 1.03 }
+status = "proposed"
 
 # WP-072: the open transverse boundaries of the 3D step (T-1010 to T-1018). Measured on the CPU backend (Julia 1.13.4, 4 threads).
 ["T-1010"]
@@ -1083,6 +1115,57 @@ C = 8
 measured = { Float32 = 0.727, Float64 = 0.606 }
 measured_shift = { Float32 = 0.540, Float64 = 0.432 }
 status = "proposed; the largest over both envelopes"
+
+# WP-074: the moving window at N = 3 (T-1030 to T-1038). Measured on the CPU backend (Julia 1.13.4, 4 threads).
+["T-1030"]
+quantity = "a 3D window run invariant along z or y (a quarter turn about x) against the 2D window run, after initialize! and after every step: every component on every line of the invariant axis; 64 steps (26 shifts) of a cold plasma drifting along (−0.2, 0.15, −0.1) through a ramp on 24 × 16 cells, the plane's second axis periodic, or open with the PML (4 cells, κ_max = 2, α_max = 0.1) and a back-edge PML (4 cells, α_max = 0.2)"
+scale = "as T-953"
+C = 32
+measured = { Float32 = 0.0922, Float64 = 0.125, "Dual{Float32,3}" = 0.0868 }
+status = "proposed; the largest over both axes, both cases and both modes; T-953's C"
+
+["T-1031"]
+quantity = "a cold plasma at rest in the 3D window, Fast mode: max |ρ − ρ₀(s)| after every step over 48 steps (24 shifts) on 24 × 6 × 6 cells (Reference mode is held bit for bit)"
+scale = "eps(T)·max|ρ|"
+C = 32
+measured = { Float32 = 10.0, Float64 = 7.0, "Dual{Float32,3}" = 0.0 }
+status = "proposed; 4 threads (at 1 thread the atomics' order is fixed); the dual takes the sorted path"
+
+["T-1032"]
+quantity = "Gauss's law Σ D⁻E − (ρ − ρ₀(s)) across 3D window shifts: a round laser driving the plasma (200 steps, 113 shifts), off nodes 1, 2 and the antenna's two columns, and with y, z open (PML) and a back-edge PML of 6 cells off the layers (Float64); a warm plasma (thermal 0.1 c) at rest and drifting at 0.3 c through a ramp, off nodes 1 and 2, 60 steps; both modes"
+scale = "as T-473: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1)"
+C = 1
+measured = { Float32 = 0.0982, Float64 = 0.118, "Dual{Float32,3}" = 0.0982 }
+measured_warm = { Float32 = 0.108, Float64 = 0.106, "Dual{Float32,3}" = 0.0983 }
+measured_warm_ramp = { Float32 = 0.144, Float64 = 0.131, "Dual{Float32,3}" = 0.145 }
+status = "proposed; T-473's C"
+
+["T-1034"]
+quantity = "the fields of Fast against Reference after 120 steps of window_lwfa_3d, Float64"
+scale = "eps(Float64)·max|E, B|"
+C = 32
+measured = { Float64 = 4.51 }
+status = "proposed; T-474's C"
+
+["T-1035"]
+quantity = "|AD − FD|/|AD| at fd_scan's minimising step against its floor, the field energy after 30 steps of the 3D window against the ramp length, Float64, Reference (C); Dual{Float32,3} with the ramp length the first partial: the primal of every E and B component against the Float32 run (C_primal) and the partial against the Float64 run's ForwardDiff partial (C_partial; a central difference at a fixed step jumps by 1/δ where a particle retires at the back edge in only one of the two runs)"
+scale = "C: the finite-difference floor (A7); C_primal, C_partial: eps(Float32)·max over the six components·nsteps (as T-955)"
+C = 1
+C_primal = 8
+C_partial = 8
+measured = { Float64 = 0.0151 }
+measured_primal = { "Dual{Float32,3}" = 0.0 }
+measured_partial = { "Dual{Float32,3}" = 0.167 }
+status = "proposed; T-475's C and T-1016's"
+
+["T-1036"]
+quantity = "T-472 in 3D: the vacuum pulse of window_lwfa_3d in the window against its static twin, on every column before the window moves and on columns 25 … n₁ after, relative to the twin's max |E, B| there, with a bare back edge, with a back-edge PML of 6 cells, and (moving_antenna) with the plane at x = 30 and the window starting at the pulse's peak, so that the plane moves back while it launches (C); the largest difference on the eight columns behind the back edge (behind the layer) against free space, the PML's over the bare edge's (C_near)"
+scale = "C: eps(Float64)·max|E, B|; C_near: the ratio itself"
+C = 1000
+C_near = 0.05
+measured = { bare = 140.0, back_PML = 144.0, moving_antenna = 157.0 }
+measured_near = { bare = 1.84, back_PML = 0.0198 }
+status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72. C_near holds at normal incidence only: at oblique incidence (150°, 90°, 59° to x, in the x–y and x–z planes alike) the physics breaker measured the PML's energy ahead of the back edge at 0.2 to 0.24 of the bare edge's with 6 cells and 0.07 to 0.1 with 10, the 2D back PML's behaviour (T-1030 ties the 3D window to it), unverified in 2D"
 
 ["T-1080"]
 quantity = "an oblique discrete eigenmode of the M4 scheme (m = 3 at N = 1, (3, −2) at N = 2, (3, −2, 1) at N = 3) in each polarization against the exact M4 relation: largest field error over every E and B component, value and partials"

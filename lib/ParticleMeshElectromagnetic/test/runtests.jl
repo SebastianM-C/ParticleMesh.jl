@@ -17,7 +17,7 @@ include("window_cases.jl")     # WP-028: the moving window's problems
 include("pml_back_cases.jl")   # WP-034: the back-edge PML's problems and runs, after window_cases.jl
 include("ionization_cases.jl") # WP-059: the field ionization's problems, after em2d_cases.jl
 include("m4_cases.jl")         # WP-079: the M4 solver's discrete theory, after yee_nd_cases.jl
-include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl
+include("em3d_cases.jl")       # WP-042: the 3D problems and digests of em3d_step.jl and its worker, after em2d_cases.jl and window_cases.jl
 
 # The suite's files in their order; each note says what a file reuses from earlier ones. CI runs
 # them in the groups of groups.toml, in parallel jobs (ParticleMeshCore's test/groups.jl).
@@ -61,12 +61,17 @@ const TEST_FILES = [
     "ionization.jl",          # WP-059: T-770 to T-779 and T-781 to T-785, the field ionization of a dopant; its own helpers
     "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
+    "quantity_pullbacks.jl",  # WP-077: T-1065, the pullbacks of the module's deposited quantities; its own helpers
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)
+    "galerkin.jl",            # WP-070: T-991 to T-993 and T-996 to T-998, the Galerkin gather; after gather.jl and ionization.jl (their helpers)
+    "galerkin_physics.jl",    # WP-070: T-994, T-995, the 1D cases with the Galerkin gather; after physics.jl (its configurations and runs)
     "transposes.jl",          # WP-069: T-985 to T-987, the transposed pairs of the step; yee_nd_cases.jl's helpers
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
     "em3d_antenna.jl",        # WP-073: T-1020 to T-1028, the laser antenna of the 3D step, after em3d_step.jl (its helpers and worker)
     "m4_3d.jl",               # WP-079: T-1094 to T-1097, the M4 solver in the 3D step, after em3d_step.jl, em3d_open.jl and em3d_antenna.jl (their helpers)
+    "em3d_window.jl",         # WP-074: T-1030 to T-1038, the moving window of the 3D step, after em3d_step.jl (its helpers and worker)
+    "m4_window_3d.jl",        # WP-079: T-1100, the M4 solver in the 3D moving window, after em3d_window.jl (its helpers)
     "gpu.jl",                 # WP-013: after physics.jl (T-197 compares its CPU runs); or one line
     "qa.jl",                  # T-372 to T-374: Aqua and JET
 ]
