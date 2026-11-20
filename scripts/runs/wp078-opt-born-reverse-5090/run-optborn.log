@@ -1,0 +1,24 @@
+ERROR: LoadError: unknown option C; the options are a0E, backend, cap, duration_hi, float, from, gather, kappa, maxiters, ny, objective, pgtol, ppl, starts
+Stacktrace:
+  [1] error(s::String)
+    @ Base ./error.jl:44
+  [2] parse_options(args::Vector{String}, defaults::@NamedTuple{ppl::Int64, ny::Int64, float::Int64, backend::String, gather::String, maxiters::Int64, pgtol::Float64, a0E::Float64, starts::String, cap::String, duration_hi::Float64, objective::String, kappa::Float64, from::String})
+    @ Main ~/pm-wp078/scripts/optim/trapped2d_opt.jl:343
+  [3] top-level scope
+    @ ~/pm-wp078/scripts/optim/trapped2d_opt.jl:598
+  [4] include(mapexpr::Function, mod::Module, _path::String)
+    @ Base ./Base.jl:310
+  [5] IncludeInto
+    @ ./Base.jl:311 [inlined]
+  [6] main_opt()
+    @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:450
+  [7] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/trapped.jl:480
+  [8] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+  [9] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [10] _start()
+    @ Base ./client.jl:577
+in expression starting at ~/pm-wp078/scripts/optim/trapped2d_opt.jl:596
+in expression starting at ~/pm-wp078/scripts/enzyme/trapped.jl:480

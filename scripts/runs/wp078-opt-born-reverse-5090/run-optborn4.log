@@ -1,0 +1,294 @@
+WARNING: Detected access to binding `Main.parse_options` in a world prior to its definition world.
+  Julia 1.12 has introduced more strict world age semantics for global bindings.
+  !!! This code may malfunction under Revise.
+  !!! This code will error in future versions of Julia.
+Hint: Add an appropriate `invokelatest` around the access to this binding.
+To make this warning an error, and hence obtain a stack trace, use `julia --depwarn=error`.
+WARNING: Detected access to binding `Main.OPT_DEFAULTS` in a world prior to its definition world.
+  Julia 1.12 has introduced more strict world age semantics for global bindings.
+  !!! This code may malfunction under Revise.
+  !!! This code will error in future versions of Julia.
+Hint: Add an appropriate `invokelatest` around the access to this binding.
+To make this warning an error, and hence obtain a stack trace, use `julia --depwarn=error`.
+base point: J = 0.0017936485819518566 at Any[10.28880784962618, 10.0, 80.0, 0.072], gradient in z [-0.004366437393425196, -0.0017714422641541675, 0.015516059581242542, 0.015542661588300317], pgtol 0.00024285408731719246
+start base: done
+start long from [11.604229248701122, 12.0, 100.0, 0.06]
+  point 1: u = [0.8, 1.2, 1.25, 0.83333]  objective = 0.0003631764848250896  1.2 s
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func26, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func26, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func273, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func273, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2724)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func273, ptr nonnull @di_file2746, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func186, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[19:32:12] point [11.5982, 11.974, 100.15, 0.0602671]: J 0.0003884281, gradient [-0.00041189, -0.000273356, 2.52268e-5, 0.046765], 518.1 s (primal 11.5, reverse 482.8)
+  point 2: u = [0.79923, 1.1974, 1.25188, 0.83704]  objective = 0.00038842810317873955  523.2 s
+[19:32:53] point [11.592, 11.9467, 100.312, 0.0605451]: J 0.00041629997, gradient [NaN, -0.000288409, 2.626e-5, 0.0493327], 40.7 s (primal 6.8, reverse 32.9)
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/IG1Qq/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+ERROR: LoadError: ArgumentError: NaN not allowed to be written in JSON spec; pass `allownan=true` to allow anyway
+Stacktrace:
+  [1] infcheck(x::Float64, allownan::Bool)
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:1049
+  [2] _number(buf::Vector{UInt8}, pos::Int64, x::Float64, opts::JSON.WriteOptions{JSON.JSONWriteStyle}, io::IOStream, bufsize::Int64)
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:1070
+  [3] json!
+    @ ~/.julia/packages/JSON/45LIG/src/write.jl:922 [inlined]
+  [4] (::JSON.WriteClosure{JSON.WriteOptions{JSON.JSONWriteStyle}, true, IOStream})(key::Int64, val::Float64)
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:859
+  [5] applyeach
+    @ ~/.julia/packages/StructUtils/BFAGY/src/StructUtils.jl:822 [inlined]
+  [6] json!(buf::Vector{UInt8}, pos::Int64, x::Vector{Float64}, opts::JSON.WriteOptions{JSON.JSONWriteStyle}, ancestor_stack::Vector{Any}, io::IOStream, ind::Int64, depth::Int64, bufsize::Int64)
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:970
+  [7] (::JSON.WriteClosure{JSON.WriteOptions{JSON.JSONWriteStyle}, false, IOStream})(key::String, val::Vector{Float64})
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:859
+  [8] applyany(st::JSON.JSONWriteStyle, f::JSON.WriteClosure{JSON.WriteOptions{JSON.JSONWriteStyle}, false, IOStream}, key::String, value::Any)
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:169
+  [9] json!(buf::Vector{UInt8}, pos::Int64, x::Dict{String, Any}, opts::JSON.WriteOptions{JSON.JSONWriteStyle}, ancestor_stack::Vector{Any}, io::IOStream, ind::Int64, depth::Int64, bufsize::Int64)
+    @ JSON ~/.julia/packages/JSON/45LIG/src/write.jl:201
+ [10] json!
+    @ ~/.julia/packages/JSON/45LIG/src/write.jl:888 [inlined]
+ [11] #json#107
+    @ ~/.julia/packages/JSON/45LIG/src/write.jl:701 [inlined]
+ [12] json
+    @ ~/.julia/packages/JSON/45LIG/src/write.jl:695 [inlined]
+ [13] print
+    @ ~/.julia/packages/JSON/45LIG/src/JSON.jl:186 [inlined]
+ [14] #record!##0
+    @ ~/pm-wp078/scripts/optim/trapped2d_opt.jl:253 [inlined]
+ [15] open(::var"#record!##0#record!##1"{Dict{String, Any}}, ::String, ::Vararg{String}; kwargs::@Kwargs{})
+    @ Base ./io.jl:429
+ [16] open
+    @ ./io.jl:426 [inlined]
+ [17] record!(store::PointStore, free::Vector{Float64})
+    @ Main ~/pm-wp078/scripts/optim/trapped2d_opt.jl:253
+ [18] (::var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}})(::Float64, ::Vararg{Float64})
+    @ Main ~/pm-wp078/scripts/optim/trapped2d_opt.jl:272
+ [19] (::var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}})(::Float64, ::Vararg{Float64})
+    @ Main ~/pm-wp078/scripts/optim/trapped2d_opt.jl:299
+ [20] macro expansion
+    @ ~/.julia/packages/TimerOutputs/yLvLd/src/macros.jl:205 [inlined]
+ [21] (::var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}})(z::Vector{Float64}, p::@NamedTuple{scale::Vector{Float64}, timer::TimerOutput})
+    @ Main ~/pm-wp078/scripts/optim/problem.jl:38
+ [22] (::OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}})(u::Vector{Float64}, p::@NamedTuple{scale::Vector{Float64}, timer::TimerOutput})
+    @ OptimizationBase ~/.julia/packages/OptimizationBase/Wu9uV/src/utils.jl:15
+ [23] macro expansion
+    @ ./none:-1 [inlined]
+ [24] #invoke_with_despecialized_parameters#38
+    @ ./none:0 [inlined]
+ [25] invoke_with_despecialized_parameters
+    @ ./none:-1 [inlined]
+ [26] OptimizationFunction
+    @ ~/.julia/packages/SciMLBase/Zzjmy/src/scimlfunctions.jl:4932 [inlined]
+ [27] (::OptimizationLBFGSB.var"#27#28"{OptimizationBase.OptimizationCache{LBFGSB, true, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, OptimizationBase.var"#51#52"{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}, DifferentiationInterfaceForwardDiffExt.ForwardDiffGradientPrep{Tuple{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, AutoForwardDiff{nothing, Nothing}, Vector{Float64}, Tuple{DifferentiationInterface.Constant{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}}, ForwardDiff.GradientConfig{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4, Vector{ForwardDiff.Dual{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4}}}, Tuple{Nothing}}, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, AutoForwardDiff{nothing, Nothing}, Type{Vector{Float64}}, Type{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, OptimizationBase.ReInitCache{Vector{Float64}, @NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}, Vector{Float64}, Vector{Float64}, Nothing, Nothing, SciMLBase.ObjSense, Bool, Record, Nothing, OptimizationBase.OptimizationVerbosity{true}}, Base.RefValue{Bool}, Base.RefValue{Int64}})(θ::Vector{Float64})
+    @ OptimizationLBFGSB ~/.julia/packages/OptimizationLBFGSB/E0qJd/src/OptimizationLBFGSB.jl:221
+ [28] (::LBFGSB.L_BFGS_B)(func::OptimizationLBFGSB.var"#27#28"{OptimizationBase.OptimizationCache{LBFGSB, true, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, OptimizationBase.var"#51#52"{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}, DifferentiationInterfaceForwardDiffExt.ForwardDiffGradientPrep{Tuple{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, AutoForwardDiff{nothing, Nothing}, Vector{Float64}, Tuple{DifferentiationInterface.Constant{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}}, ForwardDiff.GradientConfig{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4, Vector{ForwardDiff.Dual{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4}}}, Tuple{Nothing}}, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, AutoForwardDiff{nothing, Nothing}, Type{Vector{Float64}}, Type{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, OptimizationBase.ReInitCache{Vector{Float64}, @NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}, Vector{Float64}, Vector{Float64}, Nothing, Nothing, SciMLBase.ObjSense, Bool, Record, Nothing, OptimizationBase.OptimizationVerbosity{true}}, Base.RefValue{Bool}, Base.RefValue{Int64}}, grad!::OptimizationLBFGSB.var"#29#30"{OptimizationBase.OptimizationCache{LBFGSB, true, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, OptimizationBase.var"#51#52"{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}, DifferentiationInterfaceForwardDiffExt.ForwardDiffGradientPrep{Tuple{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, AutoForwardDiff{nothing, Nothing}, Vector{Float64}, Tuple{DifferentiationInterface.Constant{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}}, ForwardDiff.GradientConfig{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4, Vector{ForwardDiff.Dual{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4}}}, Tuple{Nothing}}, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, AutoForwardDiff{nothing, Nothing}, Type{Vector{Float64}}, Type{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, OptimizationBase.ReInitCache{Vector{Float64}, @NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}, Vector{Float64}, Vector{Float64}, Nothing, Nothing, SciMLBase.ObjSense, Bool, Record, Nothing, OptimizationBase.OptimizationVerbosity{true}}, Base.RefValue{Bool}}, x0::Vector{Float64}, bounds::Matrix{Float64}; m::Int64, factr::Float64, pgtol::Float64, iprint::Int64, maxfun::Int64, maxiter::Int64)
+    @ LBFGSB ~/.julia/packages/LBFGSB/UZibA/src/wrapper.jl:61
+ [29] __solve(cache::OptimizationBase.OptimizationCache{LBFGSB, true, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, OptimizationBase.var"#51#52"{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}, DifferentiationInterfaceForwardDiffExt.ForwardDiffGradientPrep{Tuple{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, AutoForwardDiff{nothing, Nothing}, Vector{Float64}, Tuple{DifferentiationInterface.Constant{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}}, ForwardDiff.GradientConfig{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4, Vector{ForwardDiff.Dual{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4}}}, Tuple{Nothing}}, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, AutoForwardDiff{nothing, Nothing}, Type{Vector{Float64}}, Type{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, OptimizationBase.ReInitCache{Vector{Float64}, @NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}, Vector{Float64}, Vector{Float64}, Nothing, Nothing, SciMLBase.ObjSense, Bool, Record, Nothing, OptimizationBase.OptimizationVerbosity{true}})
+    @ OptimizationLBFGSB ~/.julia/packages/OptimizationLBFGSB/E0qJd/src/OptimizationLBFGSB.jl:263
+ [30] solve!(cache::OptimizationBase.OptimizationCache{LBFGSB, true, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, OptimizationBase.var"#51#52"{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}, DifferentiationInterfaceForwardDiffExt.ForwardDiffGradientPrep{Tuple{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, AutoForwardDiff{nothing, Nothing}, Vector{Float64}, Tuple{DifferentiationInterface.Constant{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}}, ForwardDiff.GradientConfig{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4, Vector{ForwardDiff.Dual{ForwardDiff.Tag{OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Float64}, Float64, 4}}}, Tuple{Nothing}}, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, OptimizationBase.var"#apply_sense##0#apply_sense##1"{OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, AutoForwardDiff{nothing, Nothing}, Type{Vector{Float64}}, Type{@NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, OptimizationBase.ReInitCache{Vector{Float64}, @NamedTuple{scale::Vector{Float64}, timer::TimerOutput}}, Vector{Float64}, Vector{Float64}, Nothing, Nothing, SciMLBase.ObjSense, Bool, Record, Nothing, OptimizationBase.OptimizationVerbosity{true}})
+    @ OptimizationBase ~/.julia/packages/OptimizationBase/Wu9uV/src/solve.jl:253
+ [31] solve_call(::OptimizationProblem{true, OptimizationFunction{true, AutoForwardDiff{nothing, Nothing}, var"#f#168"{var"#195#196"{Coords{PowerCap}, var"#stored_objective##0#stored_objective##1"{PointStore, Vector{Dict{String, Any}}}}}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED_NO_TIME), Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, SciMLBase.FullSpecialize}, Vector{Float64}, @NamedTuple{scale::Vector{Float64}, timer::TimerOutput}, Vector{Float64}, Vector{Float64}, Nothing, Nothing, Nothing, SciMLBase.ObjSense, Nothing, @Kwargs{}}, ::LBFGSB; merge_callbacks::Bool, kwargshandle::Nothing, kwargs::@Kwargs{callback::Record, maxiters::Int64, reltol::Float64})
+    @ OptimizationBase ~/.julia/packages/OptimizationBase/Wu9uV/src/solve.jl:299
+ [32] solve_call
+    @ ~/.julia/packages/OptimizationBase/Wu9uV/src/solve.jl:286 [inlined]
+ [33] #solve_up#8
+    @ ~/.julia/packages/OptimizationBase/Wu9uV/src/solve.jl:282 [inlined]
+ [34] solve_up
+    @ ~/.julia/packages/OptimizationBase/Wu9uV/src/solve.jl:273 [inlined]
+ [35] #solve#2
+    @ ~/.julia/packages/OptimizationBase/Wu9uV/src/solve.jl:74 [inlined]
+ [36] macro expansion
+    @ ./timing.jl:463 [inlined]
+ [37] optimize_start(store::PointStore, start::Vector{Float64}, dir::String; maxiters::Int64, pgtol::Float64, coords::Coords{PowerCap})
+    @ Main ~/pm-wp078/scripts/optim/trapped2d_opt.jl:302
+ [38] (::var"#main_opt##2#main_opt##3"{Dict{String, Any}, Int64, String})()
+    @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:493
+ [39] main_opt()
+    @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:475
+ [40] top-level scope
+    @ ~/pm-wp078/scripts/enzyme/trapped.jl:501
+ [41] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [42] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [43] _start()
+    @ Base ./client.jl:577
+in expression starting at ~/pm-wp078/scripts/enzyme/trapped.jl:501
