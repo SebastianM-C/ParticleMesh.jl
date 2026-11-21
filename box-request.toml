@@ -1,0 +1,9 @@
+timeout = 14400
+category = "crosscode"
+outputs = ["scripts/runs/ion-3d/smilei-plasma-s1"]
+[[steps]]
+kind = "smilei"
+dir = "scripts/runs/ion-3d/smilei-plasma-s1"
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/ionization.jl", "summarize-smilei", "scripts/runs/ion-3d/smilei-plasma-s1"]
