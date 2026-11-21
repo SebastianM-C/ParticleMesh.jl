@@ -2,11 +2,11 @@
 # (`scripts/optim/trapped2d_case.jl`: antenna, moving window, PMLs, field ionization,
 # CompensatedGather, Reference mode), on a GPU, checked against ForwardDiff by the chain rule.
 #
-#     PM_BACKEND=cuda PM_CUDA_HEAP=<bytes> PM_ENZYME_PATCH=scripts/enzyme/active_reduce.jl \
+#     PM_BACKEND=cuda PM_CUDA_HEAP=<bytes> PM_ENZYME_PATCH="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl" \
 #       JULIA_LOAD_PATH=@:<repo>:@stdlib \
 #       julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped.jl <command> [key=value ...]
 #
-# The module's test environment carries Enzyme and CUDACore; the repository's root project is
+# The module's test environment carries Enzyme, CUDA and CUDACore; the repository's root project is
 # stacked behind it for `ParticleMesh` (both resolve through the root manifest). Keys: ppl=32
 # ny=2 (Δx = λ₀/ppl, Δy = π/(4·ny)), a0E=1.9 (the energy budget's a₀ at the base pulse), the point
 # `theta=duration,waist,focus,density` (default the base point), seed=7.
@@ -48,7 +48,6 @@ const A0E = parse(Float64, opt("a0E", "1.9"))
 const THETA = haskey(OPTS, "theta") ? parse.(Float64, split(OPTS["theta"], ",")) : [TCASE.x0[i] for i in TCASE.free]
 const SEED = parse(Int, opt("seed", "7"))
 struct TrapTag end
-const FREED = Set{String}()
 const DualF{N} = ForwardDiff.Dual{TrapTag,F,N}
 
 stamp() = Dates.format(now(UTC), "HH:MM:SS")
@@ -369,14 +368,7 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
         k = min(C, nsteps - first + 1)
         sc = work
         for (path, a) in all_arrays(work)
-            haskey(saved[i], path) || continue
-            try
-                copyto!(a, saved[i][path])
-            catch err
-                # a temporary the step frees and allocates again (its state field then holds a freed array)
-                (err isa ArgumentError && occursin("freed", sprint(showerror, err))) || rethrow()
-                path in FREED || (push!(FREED, path); println("  checkpoint restore skips the freed array $path"))
-            end
+            haskey(saved[i], path) && copyto!(a, saved[i][path])
         end
         t = @elapsed if dst === nothing
             r = reverse_J(sc, p, first, k; fade, rise, seeds = F.(seeds))

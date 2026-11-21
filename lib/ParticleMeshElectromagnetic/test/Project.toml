@@ -1,5 +1,6 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 Checkpointing = "eb46d486-4f9c-4c3d-b445-a617f2a2f1ca"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
@@ -30,6 +31,7 @@ ParticleMeshElectromagnetic = {path = ".."}
 
 [compat]
 Aqua = "0.8"
+CUDA = "6.5"
 CUDACore = "6"
 Checkpointing = "0.13"
 Enzyme = "0.13.221"

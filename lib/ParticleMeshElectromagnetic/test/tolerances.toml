@@ -876,13 +876,15 @@ quantity = "ForwardDiff against the finite-difference floor of A7 (fd_scan, Floa
 scale = "the measured floor; relative for the Dual{Float32,3} comparison (Float32 against Float64 after 110 steps)"
 C = 4
 floor_max = 1e-6
+floor_min = 1e-11
 dual = 1e-5
-measured_charge = { a0 = 0.234, suppression = 0.834 }
-measured_energy = { a0 = 0.0274, suppression = 0.0843 }
-measured_floor_charge = { a0 = 9.43e-11, suppression = 5.55e-11 }
-measured_floor_energy = { a0 = 5.48e-10, suppression = 9.42e-11 }
-measured_dual = { charge = 8.54e-7, energy = 9.52e-7 }
-measured_dual_primal = { charge = 2.08e-7, energy = 9.45e-7 }
+measured_charge = { a0 = 0.0805, suppression = 0.0425 }
+measured_energy = { a0 = 0.0428, suppression = "floor 0; rel 7.94e-12" }
+measured_floor_charge = { a0 = 7.86e-11, suppression = 5.37e-11 }
+measured_floor_energy = { a0 = 5.53e-10, suppression = 0.0 }
+measured_dual = { charge = 6.84e-7, energy = 1.14e-6 }
+measured_dual_primal = { charge = 5.61e-8, energy = 8.40e-7 }
+note_floor_min = "WP-083's sin and cos moved the laser's last bits, and the energy's three quotients in the suppression then agreed exactly (spread 0); floor_min stands in for a zero floor, below the smallest nonzero floor measured (5.37e-11)"
 status = "proposed; T-778's and T-779's bounds"
 
 # WP-042, the module at N = 3 outside the push and the current (12 × 8 × 10 cells of 1/4 × 3/8 × 1/2).
@@ -1342,6 +1344,22 @@ quantity = "T-1036 and T-1032 with M4 in the 3D window: the vacuum pulse against
 scale = "as T-1036 and T-1032"
 measured = { twin = 196.0, near = 0.0151, gauss = "0.087 to 0.113" }
 status = "proposed"
+
+["T-1140"]
+quantity = "Enzyme's reverse mode on CUDA through what the antenna's kernels add per row (antenna_b_rows and antenna_e_rows: 2D and 3D Gaussian lasers with both envelopes, shaped lasers with the Gaussian and pupil profiles), the laser built in the kernel from parameters in a device array, against ForwardDiff's Jacobian on the CPU: the adjoints of the parameters, summed over every row of the plane"
+scale = "Σ_j |J_j|ᵀ|w̄_j|, the sum of the terms' magnitudes (J_j the row's Jacobian, w̄ the output's random adjoint); the device's sin, cos, exp and atan differ from the CPU's by an ulp or two"
+C = 8
+measured_Float32 = { gauss2d = 0.432, wave2d = 0.486, gauss3d = 0.183, wave3d = 0.296, gaussbeam = 0.515, pupil = 2.05 }
+measured_Float64 = { gauss2d = 0.801, wave2d = 1.30, gauss3d = 0.214, wave3d = 0.299, gaussbeam = 0.270, pupil = 0.272 }
+status = "proposed; measured on an RTX 5090 (runs/wp083-cuda-5090), C four times the largest"
+
+["T-1141"]
+quantity = "inside a kernel on the test backend: the largest distance between sin, cos and the backend's sincos (C_apart), and between sin, cos and the exact values (C)"
+scale = "ulps of the value; arguments uniform in ±10³, uniform in ±10⁶ and 10⁻³·randn"
+C = 1
+C_apart = 2
+measured = { Float32 = "apart 1, error 0.88", Float64 = "apart 1, error 0.72" }
+status = "proposed; KernelAbstractions' CPU backend (OpenCL builtins in PoCL), one thread"
 
 ["T-1113"]
 quantity = "Enzyme's gradient through @ad_checkpoint with checkpoint_storage against the plain reverse pass of the same loop of transfers, max over the floating-point evolved arrays"

@@ -465,7 +465,9 @@ const ACROSS = (30.0, 50.0)
     for fade in (BCASE.fade, ACROSS)
         Jd, J = born_energy(std; fade), born_energy(st; fade)
         @test J > 1.0e-4                                                        # the K shell ionizes and the electrons gain energy
-        @test ForwardDiff.value(Jd) == J                                        # the duals do not change the run
+        # the duals do not change the run, to roundoff: inside a kernel ForwardDiff's sin of a dual
+        # calls sincos, which differs from the plain laser's sin and cos in the last bits (WP-083)
+        @test ForwardDiff.value(Jd) ≈ J rtol = 64eps()
         fd_a = (born_energy(sta[1]; fade) - born_energy(sta[2]; fade)) / 2ha
         @test ForwardDiff.partials(Jd)[1] ≈ fd_a rtol = 1.0e-5
         @test ForwardDiff.partials(Jd)[1] > 0
@@ -659,7 +661,7 @@ trapped_small(x...; kw...) = trapped_objective(x...; ppl = 8, t_end = 190.0, cap
     xd = [ForwardDiff.Dual{Nothing}(x0[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5]
     Jd = trapped_small(xd...)
     J = trapped_small(x0...)
-    @test ForwardDiff.value(Jd) === J                                           # the duals do not change the run
+    @test ForwardDiff.value(Jd) ≈ J rtol = 64eps()                              # the duals do not change the run, to roundoff (T-833)
     @test J > 1.0e-4
     st = trapped_state(x0...; ppl = 8, t_end = 190.0, capacity = 60_000, energy = budget(2.2))
     parts = trapped_parts(st; rise = (0.5, 3.0), fade = BCASE.fade)
@@ -871,7 +873,7 @@ end
     store = PointStore(dir; run = free -> run_point(free; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, energy = budget(2.2), read))
     r = optimize_start(store, STARTS.base, joinpath(dir, "base"); maxiters = 1, pgtol = 0.0)
     start = store.records[point_key(STARTS.base)]
-    @test start["J"] === trapped_small(TCASE.x0...)                    # the run with duals gives the plain run's J
+    @test start["J"] ≈ trapped_small(TCASE.x0...) rtol = 64eps()       # the run with duals gives the plain run's J, to roundoff (T-833)
     @test r["J"] > start["J"]
     @test r["iterations"] == 1 && r["points_run"] == length(store.records) >= 2
     # the record's gradient is ForwardDiff's in the free parameters, the delay's derivative left out

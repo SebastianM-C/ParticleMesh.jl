@@ -179,6 +179,10 @@ through σ included.
 """
 @inline laser_field(l::GaussianLaser, ξ, dy, s) = laser_field(l.envelope, l, ξ, dy, s)
 
+# The laser's functions and the antennas' kernels call sin and cos, never sincos: Enzyme's reverse
+# pass of a KernelAbstractions kernel on a GPU cannot allocate a tape that holds a sincos of an
+# active value (#547, T-1140). Inside a kernel the two differ by up to 2 ulp (T-1141).
+
 @inline function laser_field(::AxisTime, l::GaussianLaser, ξ, dy, s)
     w0 = l.waist
     w2 = w0 * w0
@@ -195,7 +199,8 @@ through σ included.
     c2i = (2 * a / d - 8 * q * a / d2) / w2
     r = s / l.duration
     env = l.a0 * amp * exp(-r * r)
-    sφ, cφ = sincos(s + l.chirp * s * s - l.phase - ψ)
+    φ = s + l.chirp * s * s - l.phase - ψ
+    sφ, cφ = sin(φ), cos(φ)
     # Re[(1 + β·c₂)·e^{−i(φ − ψ)}] = (1 + β·c2r)·cos + β·c2i·sin.
     e = env * cφ
     bp = env * ((1 - c2r / 2) * cφ - c2i / 2 * sφ)
@@ -215,7 +220,8 @@ end
     σ = s - q * a / d
     τ2 = l.duration * l.duration
     env = l.a0 * amp * exp(-σ * σ / τ2)
-    sφ, cφ = sincos(σ + l.chirp * σ * σ - l.phase + atan(a) / 2)
+    φ = σ + l.chirp * σ * σ - l.phase + atan(a) / 2
+    sφ, cφ = sin(φ), cos(φ)
     # F = a0·A(y)·H(σ) up to a constant phase, H = exp(−σ²/τ² − i(σ + chirp·σ² − phase)), so with
     # p = A′/A, c = ∂(dy²/(2R))/∂y and h = H′/H = hr + i·hi:  ∂²F/∂y² = F·c₂,
     # c₂ = (p − c·h)² + (A″/A − p²) − c′·h + c²·h′,  h′ = −2/τ² − 2i·chirp.
@@ -288,7 +294,8 @@ end
     xi = py * piz + piy * pz
     r = s / l.duration
     env = l.a0 * amp * exp(-r * r)
-    sφ, cφ = sincos(s + l.chirp * s * s - l.phase - ψ)
+    φ = s + l.chirp * s * s - l.phase - ψ
+    sφ, cφ = sin(φ), cos(φ)
     return field_3d(env, cφ, sφ, yr, yi, zr, zi, xr, xi)
 end
 
@@ -302,7 +309,8 @@ end
     σ = s - q * a / d
     τ2 = l.duration * l.duration
     env = l.a0 * amp * exp(-σ * σ / τ2)
-    sφ, cφ = sincos(σ + l.chirp * σ * σ - l.phase + atan(a))
+    φ = σ + l.chirp * σ * σ - l.phase + atan(a)
+    sφ, cφ = sin(φ), cos(φ)
     # As at N = 2 per axis: p = A′/A = −2x/(w²d), c = ∂(r²/(2R))/∂x = 2xa/(w²d), h = H′/H,
     # F_xx/F = (p − c·h)² − 2/(w²d) − c′·h + c²·h′ and F_yz/F = (p_y − c_y·h)(p_z − c_z·h) + c_y·c_z·h′.
     hr = -2 * σ / τ2
@@ -454,18 +462,24 @@ end
 # c = h/Δx; one work item per row, guards included. Bz rows sit at Center(), By rows at Node().
 @kernel function antenna_b_kernel!(By, Bz, a, c, t)
     j = Int32(@index(Global, Linear))
-    T = typeof(c)
     i = a.g + a.ia - Int32(1)
+    bz, by = antenna_b_rows(a, j, t, typeof(c))
+    @inbounds begin
+        Bz[i, j] += c * bz
+        By[i, j] -= c * by
+    end
+end
+
+# What the kernels add per row j (and layer k at N = 3), before the factor c: one function per
+# kernel, so that a test differentiates exactly what a kernel adds (T-1140). `T` is the type of c.
+@inline function antenna_b_rows(a::Antenna{<:GaussianLaser,<:Any,2}, j::Int32, t, ::Type{T}) where {T}
     l = a.laser
     s = t - l.delay
     ξ = a.xa - l.focus
-    sθ, cθ = sincos(l.polarization)
-    @inbounds begin
-        ec, _, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
-        en, _, _ = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
-        Bz[i, j] += c * (ec * cθ)
-        By[i, j] -= c * (en * sθ)
-    end
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
+    ec, _, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
+    en, _, _ = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
+    return ec * cθ, en * sθ
 end
 
 # After the E step to time t + Δt (the B field of the plane behind at t + Δt/2):
@@ -473,18 +487,22 @@ end
 # By_inc = −bs·sin θ. The incident wave at x_a − Δx/2 is that of x_a a time ht later.
 @kernel function antenna_e_kernel!(Ey, Ez, a, c, t)
     j = Int32(@index(Global, Linear))
-    T = typeof(c)
     i = a.g + a.ia
+    ey, ez = antenna_e_rows(a, j, t, typeof(c))
+    @inbounds begin
+        Ey[i, j] += c * ey
+        Ez[i, j] += c * ez
+    end
+end
+
+@inline function antenna_e_rows(a::Antenna{<:GaussianLaser,<:Any,2}, j::Int32, t, ::Type{T}) where {T}
     l = a.laser
     s = t + a.ht - l.delay
     ξ = a.xa - a.hx - l.focus
-    sθ, cθ = sincos(l.polarization)
-    @inbounds begin
-        _, bp, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
-        _, _, bs = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
-        Ey[i, j] += c * (bp * cθ)
-        Ez[i, j] += c * (bs * sθ)
-    end
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
+    _, bp, _ = laser_field(l, ξ, antenna_dy(a, j, one(T) / 2), s)
+    _, _, bs = laser_field(l, ξ, antenna_dy(a, j, zero(T)), s)
+    return bp * cθ, bs * sθ
 end
 
 # The kernels at N = 3 (WP-073), one work item per (row, layer) of the plane, guards included. The
@@ -496,41 +514,49 @@ end
 @kernel function antenna_b_kernel_3d!(By, Bz, a, c, t)
     J = @index(Global, Cartesian)
     j, k = Int32(J[1]), Int32(J[2])
-    T = typeof(c)
     i = a.g + a.ia - Int32(1)
+    bz, by = antenna_b_rows(a, j, k, t, typeof(c))
+    @inbounds begin
+        Bz[i, j, k] += c * bz
+        By[i, j, k] -= c * by
+    end
+end
+
+@inline function antenna_b_rows(a::Antenna{<:GaussianLaser,<:Any,3}, j::Int32, k::Int32, t, ::Type{T}) where {T}
     l = a.laser
     s = t - l.delay
     ξ = a.xa - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     h = one(T) / 2
-    @inbounds begin
-        ey, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T)), s)
-        ez, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h), s)
-        Bz[i, j, k] += c * (ey * cθ)
-        By[i, j, k] -= c * (ez * sθ)
-    end
+    ey, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T)), s)
+    ez, _, _, _ = laser_field(l, ξ, antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h), s)
+    return ey * cθ, ez * sθ
 end
 
 @kernel function antenna_e_kernel_3d!(Ey, Ez, a, c, t)
     J = @index(Global, Cartesian)
     j, k = Int32(J[1]), Int32(J[2])
-    T = typeof(c)
     i = a.g + a.ia
+    ey, ez = antenna_e_rows(a, j, k, t, typeof(c))
+    @inbounds begin
+        Ey[i, j, k] += c * ey
+        Ez[i, j, k] += c * ez
+    end
+end
+
+@inline function antenna_e_rows(a::Antenna{<:GaussianLaser,<:Any,3}, j::Int32, k::Int32, t, ::Type{T}) where {T}
     l = a.laser
     s = t + a.ht - l.delay
     ξ = a.xa - a.hx - l.focus
-    sθ, cθ = sincos(l.polarization)
+    sθ, cθ = sin(l.polarization), cos(l.polarization)
     h = one(T) / 2
-    @inbounds begin
-        dyc, dzn = antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T))
-        dyn, dzc = antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h)
-        _, bp, _, xy = laser_field(l, ξ, dyc, dzn, s)
-        _, _, bs, xz = laser_field(l, ξ, dyn, dzc, s)
-        xy *= antipode_weight(a, 2, dyc) * antipode_weight(a, 3, dzn)
-        xz *= antipode_weight(a, 2, dyn) * antipode_weight(a, 3, dzc)
-        Ey[i, j, k] += c * (bp * cθ - xy * sθ)
-        Ez[i, j, k] += c * (bs * sθ - xz * cθ)
-    end
+    dyc, dzn = antenna_d(a, 2, l.center[1], j, h), antenna_d(a, 3, l.center[2], k, zero(T))
+    dyn, dzc = antenna_d(a, 2, l.center[1], j, zero(T)), antenna_d(a, 3, l.center[2], k, h)
+    _, bp, _, xy = laser_field(l, ξ, dyc, dzn, s)
+    _, _, bs, xz = laser_field(l, ξ, dyn, dzc, s)
+    xy *= antipode_weight(a, 2, dyc) * antipode_weight(a, 3, dzn)
+    xz *= antipode_weight(a, 2, dyn) * antipode_weight(a, 3, dzc)
+    return bp * cθ - xy * sθ, bs * sθ - xz * cθ
 end
 
 # An antenna acts while its plane lies in the box: always on a static grid (the constructor checks

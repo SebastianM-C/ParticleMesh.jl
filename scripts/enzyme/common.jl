@@ -3,10 +3,13 @@
 using ParticleMeshCore, ParticleMeshElectromagnetic, KernelAbstractions, ForwardDiff, Enzyme
 # PM_ENZYME_PATCH: spike-only patches (`spike/active_args.jl`, `spike/unroll.jl`), a `;`-separated list
 foreach(f -> isempty(f) || include(abspath(f)), split(get(ENV, "PM_ENZYME_PATCH", ""), ';'))
-# PM_BACKEND=cuda runs the state on the GPU (CUDACore of the test environment)
+# PM_BACKEND=cuda runs the state on the GPU (CUDACore of the test environment). The CUDA package is
+# loaded too, so that Enzyme's CUDA extension, with its rules for device copies, loads: CUDACore
+# alone leaves it unloaded and Enzyme cannot differentiate `copyto!` between device arrays (#552).
 const ON_GPU = get(ENV, "PM_BACKEND", "cpu") == "cuda"
 if ON_GPU
-    using CUDACore
+    using CUDA, CUDACore
+    Base.get_extension(Enzyme, :EnzymeCUDAExt) === nothing && error("Enzyme's CUDA extension did not load (#552)")
     CUDACore.allowscalar(false)
     # PM_CUDA_HEAP=<bytes>: Enzyme's dynamic tapes live on the device heap (8 MB by default) from the
     # augmented forward to the reverse kernels, so more than about one step needs a larger heap (Enzyme.jl#2324)
