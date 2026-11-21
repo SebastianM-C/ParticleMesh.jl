@@ -1,0 +1,137 @@
+[warm]
+dual1 = []
+gradient_reverse = [-0.00013152651879428783, -0.0003901670534109222, 4.520937331556601e-5, 0.044490810478464315]
+gradient_reverse_start = [0.0, 0.0, 0.0, 0.003001068979379372]
+J = 0.0003426373586989939
+checkpoint_memory = "host"
+J_reverse_forward = 0.0003426373607566188
+gradient_reverse_params = [-0.00013152651879428783, -0.0003901670534109222, 4.520937331556601e-5, 0.041489741499084944]
+seconds_start_tangents = 12.132010394
+checkpoints = 4
+
+    [warm.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 1146880
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [112, 64, 64]
+    nsteps = 697
+    ion_ppc = [1, 1, 1]
+    dt = 0.43077734112739563
+    ppl = 8
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 64
+    born_slots = 580608
+
+    [warm.primal]
+    seconds = 9.325486271
+    base_bytes = 824346488
+    peak_bytes = 1655602928
+
+    [warm.nonfinite_adjoints]
+
+    [warm.reverse]
+    seconds = 403.256209127
+    base_bytes = 824346488
+    peak_bytes = 11720928340
+
+    [warm.dual4]
+    seconds = 33.992783005
+    J = 0.00034263753332197666
+    base_bytes = 3509474616
+    gradient = [-0.00013152659812476486, -0.00039016612572595477, 4.520947186392732e-5, 0.044490694999694824]
+    relative_difference = [6.03151591845994e-7, 2.3776666046869214e-6, 2.1798166899248983e-6, 2.5955712647789113e-6]
+    peak_bytes = 3544024376
+
+    [warm.bytes]
+    state = 671282032
+    checkpoint = 105461448
+
+[run]
+gradient_reverse = [-0.0004287129874679658, -0.0009269949486754745, 0.0008580455209841742, 0.6364630918939757]
+gradient_reverse_start = [0.0, 0.0, 0.0, 0.01612677690314771]
+J = 0.0036936968099325895
+checkpoint_memory = "host"
+J_reverse_forward = 0.003693696906829358
+gradient_reverse_params = [-0.0004287129874679658, -0.0009269949486754745, 0.0008580455209841742, 0.620336314990828]
+seconds_start_tangents = 3.664648944
+checkpoints = 12
+
+    [[run.dual1]]
+    seconds = 74.400495168
+    J = 0.0036936989054083824
+    parameter = "duration"
+    derivative = -0.0004287074552848935
+    base_bytes = 11001408604
+    relative_difference = 1.2904331389781143e-5
+    reverse = -0.0004287129874679658
+    peak_bytes = 11091065948
+    [[run.dual1]]
+    seconds = 68.136441393
+    J = 0.0036936989054083824
+    parameter = "waist"
+    derivative = -0.0009269638685509562
+    base_bytes = 11001408604
+    relative_difference = 3.3528949264095045e-5
+    reverse = -0.0009269949486754745
+    peak_bytes = 11091065948
+    [[run.dual1]]
+    seconds = 68.213537325
+    J = 0.0036936986725777388
+    parameter = "focus"
+    derivative = 0.0008580437279306352
+    base_bytes = 11001408604
+    relative_difference = 2.0896994880471767e-6
+    reverse = 0.0008580455209841742
+    peak_bytes = 11091065948
+    [[run.dual1]]
+    seconds = 68.213054815
+    J = 0.0036936989054083824
+    parameter = "density"
+    derivative = 0.6364472508430481
+    base_bytes = 11001408604
+    relative_difference = 2.4889809652839387e-5
+    reverse = 0.6364630918939757
+    peak_bytes = 11091065948
+
+    [run.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 9175040
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [224, 128, 128]
+    nsteps = 985
+    ion_ppc = [1, 1, 1]
+    dt = 0.3046056032180786
+    ppl = 16
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 128
+    born_slots = 2032128
+
+    [run.primal]
+    seconds = 27.239646843
+    base_bytes = 5992983892
+    peak_bytes = 12030796456
+
+    [run.nonfinite_adjoints]
+
+    [run.reverse]
+    seconds = 778.280133947
+    base_bytes = 5992983892
+    peak_bytes = 28702856064
+
+    [run.bytes]
+    state = 5008424712
+    checkpoint = 647563976

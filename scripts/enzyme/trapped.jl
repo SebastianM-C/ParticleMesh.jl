@@ -70,17 +70,6 @@ make_start(θ; ppl = PPL, ny = NY, extend = 0, energy = budget(A0E)) =
 "Duals of the four free parameters with `N` partials, θ_j's tangent the unit vector `j + offset`."
 dual_theta(θ, N, offset) = [ForwardDiff.Dual{TrapTag}(F(θ[j]), ntuple(i -> F(i == j + offset), N)...) for j in eachindex(θ)]
 
-# J's summand per slot, into `out` (the slot's weight × kinetic energy × position and trapping weights)
-@kernel function summand_kernel!(out, @Const(status), @Const(c1), @Const(o1), @Const(u1), @Const(u2), @Const(u3), @Const(w), h1, lo, hi, ulo, uhi)
-    i = @index(Global, Linear)
-    @inbounds out[i] = slot_trapped(status[i], c1[i], o1[i], u1[i], u2[i], u3[i], w[i], h1, lo, hi, ulo, uhi)
-end
-function summands!(out, s, h1, fade, rise)
-    T = eltype(s.w)
-    summand_kernel!(get_backend(out))(out, s.status, s.cell[1], s.offset[1], s.u[1], s.u[2], s.u[3], s.w, h1,
-                                      T(fade[1]), T(fade[2]), T(rise[1]), T(rise[2]); ndrange = length(out))
-    return nothing
-end
 function steps_only!(st, p, first, k)
     for i in first:(first + k - 1)
         step!(st, p, i; observer = ())
@@ -130,62 +119,7 @@ function reverse_steps!(dst, st, p, first, k)
     return res[1][2]
 end
 
-# every array of a state (any element type), by its path, each once
-all_arrays!(out, path, x::AbstractArray) = (any(y -> y === x, values(out)) || (out[path] = x); out)
-all_arrays!(out, path, x::Union{Tuple,NamedTuple}) = (foreach(k -> all_arrays!(out, "$path.$k", x[k]), keys(x)); out)
-function all_arrays!(out, path, x)
-    (isstructtype(typeof(x)) && !(x isa Module) && !(x isa Type)) || return out
-    for f in fieldnames(typeof(x))
-        isdefined(x, f) && all_arrays!(out, "$path.$f", getfield(x, f))
-    end
-    return out
-end
-all_arrays(x) = all_arrays!(Dict{String,Any}(), "st", x)
-
-# every floating-point scalar of a struct (or a Dual), by its path; arrays are `leaves`'
-scalars!(out, path, x::Union{AbstractFloat,ForwardDiff.Dual}) = (out[path] = x; out)
-scalars!(out, path, x::AbstractArray) = out
-scalars!(out, path, x::Union{Tuple,NamedTuple}) = (foreach(k -> scalars!(out, "$path.$k", x[k]), keys(x)); out)
-function scalars!(out, path, x)
-    (isstructtype(typeof(x)) && !(x isa Module) && !(x isa Type)) || return out
-    for f in fieldnames(typeof(x))
-        isdefined(x, f) && scalars!(out, "$path.$f", getfield(x, f))
-    end
-    return out
-end
-scalars(x) = scalars!(Dict{String,Any}(), "x", x)
-partial(x::ForwardDiff.Dual, j) = ForwardDiff.partials(x, j)
-partial(x::Real, j) = zero(x)
-
-# An entry with a zero tangent adds nothing, whatever its adjoint: free slots and scratch can hold
-# a non-finite adjoint (from garbage values), and NaN·0 would poison the sum. A non-finite adjoint
-# against a nonzero tangent is a real failure: it is counted and reported (NONFINITE).
-const NONFINITE = Dict{String,Int}()
-function tdot(a, t, path)
-    (t == 0 || a == 0) && return 0.0
-    isfinite(a) || (NONFINITE[path] = get(NONFINITE, path, 0) + 1)
-    return a * t
-end
-function adot(A, P, path)
-    bad = Int(sum((.!isfinite.(A) .& (P .!= 0)) .| (.!isfinite.(P) .& (A .!= 0))))
-    bad > 0 && (NONFINITE[path] = get(NONFINITE, path, 0) + bad)
-    # in Float64: a Float32 sum of large products can overflow to ±Inf and give Inf − Inf
-    # an entry with a zero adjoint adds nothing either: uninitialized scratch of the Dual start can
-    # hold NaN partials (the electrons' sort workspace), against a zero adjoint
-    v = sum(ifelse.((P .== 0) .| (A .== 0), 0.0, Float64.(A) .* Float64.(P)))
-    isfinite(v) || (println("  non-finite contribution of $path: $v (max |adjoint| ", maximum(abs, A), ", max |tangent| ", maximum(abs, P), ")"); NONFINITE[path * " (sum)"] = 1)
-    return v
-end
-"⟨adjoint, tangent j⟩ over the scalars of two structs of the same shape (an adjoint and its Dual twin), by path."
-function scalar_dot(adj, dual, j)
-    A, D = scalars(adj), scalars(dual)
-    return sum((tdot(Float64(A[k]), Float64(partial(D[k], j)), k) for k in intersect(keys(A), keys(D))); init = 0.0)
-end
-"⟨adjoint, tangent j⟩ over the floating-point arrays of a state's adjoint and a Dual state of the same shape, by path."
-function array_dot(adj, dual, j)
-    A, D = leaves(adj), leaves(dual)
-    return sum((adot(A[k], ForwardDiff.partials.(D[k], j), k) for k in intersect(keys(A), keys(D)) if eltype(D[k]) <: ForwardDiff.Dual); init = 0.0)
-end
+include(joinpath(@__DIR__, "contract.jl"))
 "The same, term by term (for the cancellation)."
 array_terms(adj, dual, j) = [Float64(sum(A .* ForwardDiff.partials.(D, j))) for (A, D) in
                              ((leaves(adj)[k], leaves(dual)[k]) for k in intersect(keys(leaves(adj)), keys(leaves(dual))) if eltype(leaves(dual)[k]) <: ForwardDiff.Dual)]
@@ -197,7 +131,7 @@ function write_run(name, result)
     commit = try readchomp(`git -C $REPO rev-parse HEAD`) catch; "unknown" end
     dirty = try !isempty(readchomp(`git -C $REPO status --porcelain --untracked-files=no`)) catch; missing end
     hashfile(f) = bytes2hex(open(sha256, f))
-    inputs = [@__FILE__, joinpath(@__DIR__, "common.jl"), joinpath(@__DIR__, "active_reduce.jl"), joinpath(REPO, "scripts", "optim", "trapped2d_case.jl"),
+    inputs = [@__FILE__, joinpath(@__DIR__, "common.jl"), joinpath(@__DIR__, "contract.jl"), joinpath(@__DIR__, "active_reduce.jl"), joinpath(REPO, "scripts", "optim", "trapped2d_case.jl"),
               joinpath(REPO, "scripts", "optim", "born2d_case.jl"), joinpath(REPO, "Manifest.toml")]
     open(io -> TOML.print(io, Dict(
         "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),
