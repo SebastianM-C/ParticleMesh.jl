@@ -169,3 +169,41 @@ end
     c = JSON.parsefile(joinpath(reports, "wp-081-ionization-three-codes", "compare", "comparison.json"))
     @test occursin(ion_table(c), read(joinpath(reports, "wp-081-ionization-three-codes.md"), String))
 end
+
+@testset "T-1127 the 3D case: ParticleMesh's problem in 3D, Smilei's 3D namelist, and PIConGPU's 2D deck made 3D: DIM3, the 3D step, Δz, the third lattice counts, the dopant's rows along z, one device and open along z [A5, WP-082]" begin
+    case = TOML.parsefile(joinpath(@__DIR__, "..", "cases", "ionization-3d.toml"))
+    d = ion_derived(case)
+    @test d.N == 3 && d.dt == Float64(case["time"]["courant"]) / sqrt(1 / d.dx^2 + 1 / d.dy^2 + 1 / d.dz^2)
+    prob = pm_ion_problem(case)
+    @test prob.cells == (448, 128, 128) && prob.nsteps == d.steps && prob.boundaries == (:window, :open, :open)
+    @test prob.ionization.rows == ((d.yc - d.rows, d.yc + d.rows), (d.zc - d.rows_z, d.zc + d.rows_z)) && prob.ionization.capacity == 16_000_000
+    nl = smilei_ion_namelist(case)
+    @test occursin("geometry = \"3Dcartesian\"", nl) && occursin("regular_number = [4, 4, 4]", nl) && occursin("number_of_patches = [32, 4, 4]", nl)
+    u = reference_units(Float64(case["lambda0_um"]) * 1e-6)
+    f = picongpu_ion_param_files(case; kind = "plasma", seed = 1)
+    @test occursin("#define SIMDIM DIM3", f["dimension.param"])
+    @test occursin("DELTA_T_SI = $(PIConGPUDeck.cfloat(d.dt * u.time));", f["simulation.param"])
+    @test occursin("CELL_DEPTH_SI = $(PIConGPUDeck.cfloat(d.dz * u.length));", f["simulation.param"])
+    @test occursin("mCT::Int<8, 8, 4>", f["memory.param"])
+    @test occursin("QuietParam_N\n", f["particle.param"]) && occursin("mCT::Int<4, 4, 4>", f["particle.param"])
+    @test occursin("AXIS_Z = 64.0;", f["density.param"]) && occursin("rz <= -HALF_ROWS || rz >= HALF_ROWS", f["density.param"])
+    # the 2D case's deck is untouched by the 3D edits
+    f2 = picongpu_ion_param_files(TOML.parsefile(ION_CASE_FILE); kind = "plasma", seed = 1)
+    @test occursin("DIM2", f2["dimension.param"]) && !occursin("AXIS_Z", f2["density.param"])
+    # vacuum and without the dopant: 3D, and nothing of the dopant to edit
+    @test occursin("DIM3", picongpu_ion_param_files(case; kind = "vacuum", seed = 1)["dimension.param"])
+    @test occursin("DIM3", picongpu_ion_param_files(case; kind = "plasma-nodopant", seed = 1)["dimension.param"])
+    p = picongpu_parameters(picongpu_ion_lab(case); plasma = true)
+    args = picongpu_ion_arguments(case, p)
+    @test occursin("-d 1 2 1 ", args) && occursin("-g 128 1104 128 ", args) && occursin("--periodic 0 0 0 ", args)
+    @test picongpu_ion_arguments(TOML.parsefile(ION_CASE_FILE), p) == picongpu_arguments(p)
+    # the 3D case has no measured field ratio, so prepare leaves out the run that needs it
+    root = prepare_ion(joinpath(@__DIR__, "..", "cases", "ionization-3d.toml"), "t1127-$(getpid())"; codes = ("pm", "picongpu"), seeds = 1:1)
+    try
+        names = readdir(root)
+        @test "pm-plasma" in names && !("pm-plasma-rates-picongpu-a0" in names) && "picongpu-plasma-s1" in names
+        @test occursin("-d 1 2 1 ", read(joinpath(root, "picongpu-plasma-s1", "run.sh"), String))
+    finally
+        rm(root; recursive = true)
+    end
+end
