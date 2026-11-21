@@ -227,8 +227,10 @@ function run_job3(job0, dir)
     ppl, nt = Int(job["ppl"]), Int(job["nt"])
     x64, a0E = Float64.(job["x"]), Float64(job["a0E"])
     grad = job["grad"] == true
+    # the parameters with a partial, positions in x (a subset of GRAD_DIRS: fewer partials, a smaller state)
+    gd = Tuple(Int.(get(job, "grad_dirs", collect(GRAD_DIRS))))
     x = if grad
-        ntuple(i -> (q = findfirst(==(i), GRAD_DIRS); q === nothing ? T(x64[i]) : ForwardDiff.Dual{Nothing}(T(x64[i]), ntuple(j -> T(j == q), length(GRAD_DIRS)))), 5)
+        ntuple(i -> (q = findfirst(==(i), gd); q === nothing ? T(x64[i]) : ForwardDiff.Dual{Nothing}(T(x64[i]), ntuple(j -> T(j == q), length(gd)))), 5)
     else
         Tuple(T.(x64))
     end
@@ -291,7 +293,8 @@ function run_job3(job0, dir)
     if grad
         out["gradient"] = Float64.(collect(ForwardDiff.partials(J)))
         out["gradient_born"] = Float64.(collect(ForwardDiff.partials(parts.born)))
-        out["gradient_names"] = collect(GRAD_NAMES)
+        out["gradient_names"] = [GRAD_NAMES[findfirst(==(i), GRAD_DIRS)] for i in gd]
+        out["grad_dirs"] = collect(gd)
     else
         nx = ncells(st.grid)[1]
         stride = max(1, nx ÷ 896)
@@ -367,13 +370,30 @@ function campaign3_jobs(name)
                                (32, [2, 2, 2], "m4"), (48, [2, 1, 1], "m4"))
             push!(jobs, Dict{String,Any}("id" => jid("g3", g(ppl, ppc), sv, "grad"), "ppl" => ppl, "ppc" => ppc, "solver" => sv, "grad" => true, "T" => "f32"))
         end
+    elseif name == "g3b"
+        # the open points of g3 that fit on 32 GB: the transverse cell with Yee, the transverse box, one-partial duals at λ₀/32
+        # (two Dual{1} runs where Dual{4} does not fit), and a smaller electron capacity (g3's held 10 to 15 times the most alive)
+        f = (; T = "f32")
+        push!(jobs, Dict{String,Any}("id" => "g3b-warm-grad1", "ppl" => 8, "rows" => 64, "ppc" => [1, 1, 1], "t_end" => 20.0, "grad" => true, "grad_dirs" => [1], "T" => "f32"))
+        plain!(jobs, "g3b-r16-p2x1x1-yee-nt2"; ppl = 16, nt = 2, ppc = [2, 1, 1], f...)
+        plain!(jobs, "g3b-r16-p1x1x1-yee-nt2"; ppl = 16, nt = 2, ppc = [1, 1, 1], capacity_factor = 0.2, f...)
+        plain!(jobs, "g3b-r16-p1x1x1-m4-nt2"; ppl = 16, nt = 2, ppc = [1, 1, 1], solver = "m4", capacity_factor = 0.2, f...)
+        for sv in ("yee", "m4")
+            plain!(jobs, jid("g3b", "r16-p2x1x1", sv, "rows160"); ppl = 16, rows = 160, ppc = [2, 1, 1], solver = sv, f...)
+            plain!(jobs, jid("g3b", "r32-p2x1x1", sv, "cap02"); ppl = 32, ppc = [2, 1, 1], solver = sv, capacity_factor = 0.2, f...)
+        end
+        for (sv, d, nm) in (("yee", 1, "duration"), ("yee", 5, "density"), ("m4", 1, "duration"))
+            push!(jobs, Dict{String,Any}("id" => jid("g3b", "r32-p2x1x1", sv, "grad1", nm), "ppl" => 32, "ppc" => [2, 1, 1], "solver" => sv, "grad" => true,
+                                         "grad_dirs" => [d], "capacity_factor" => 0.2, "T" => "f32"))
+        end
+        push!(jobs, Dict{String,Any}("id" => "g3b-r16-p2x1x1-yee-grad1-duration", "ppl" => 16, "ppc" => [2, 1, 1], "grad" => true, "grad_dirs" => [1], "T" => "f32"))
     elseif name == "t16"
         # the transverse cell at λ₀/16: Δy = Δz = π/8
         plain!(jobs, "t16-nt2-p2x1x1"; ppl = 16, nt = 2, ppc = [2, 1, 1])
     else
         error("unknown 3D campaign $name")
     end
-    cost(j) = (q = merge(JOB3_DEFAULTS, j); q["ppl"] * (q["ppl"] * q["nt"]^2 + 8) * (q["rows"] / 128)^2 * prod(q["ppc"]) * (q["grad"] == true ? 4 : 1) * q["t_end"])
+    cost(j) = (q = merge(JOB3_DEFAULTS, j); q["ppl"] * (q["ppl"] * q["nt"]^2 + 8) * (q["rows"] / 128)^2 * prod(q["ppc"]) * (q["grad"] == true ? length(get(q, "grad_dirs", GRAD_DIRS)) : 1) * q["t_end"])
     return sort(jobs; by = cost)
 end
 
