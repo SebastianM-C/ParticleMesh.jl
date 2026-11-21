@@ -1,0 +1,31 @@
+branch = "runs/ion3d-smilei-plasma-nodopant"
+request_commit = "7e2b51c60d6e1d7d09722ef180a29a9603a58ae4"
+started = "2026-11-21T08:03:19Z"
+category = "crosscode"
+outputs = ["scripts/runs/ion-3d/smilei-plasma-nodopant"]
+finished = "2026-11-21T08:10:20Z"
+ok = true
+files_returned = 17
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-21T08:03:19Z"
+exit = 0
+seconds = 404
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-21T08:10:03Z"
+exit = 0
+seconds = 16
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"
