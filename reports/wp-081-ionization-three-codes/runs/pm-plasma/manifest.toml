@@ -1,0 +1,19 @@
+backend = "KernelAbstractions CPU"
+case = "ionization-2d"
+code = "ParticleMesh"
+commit = "ef1d04749f014275d3f2d6c437905d492f6309d5"
+cpu = "Intel(R) Xeon(R) Processor @ 2.10GHz"
+dirty = false
+float = "Float64"
+generator = "scripts/lwfa/ionization.jl"
+julia = "1.13.4"
+kind = "plasma"
+run_id = "ion-cloud1/pm-plasma"
+run_seconds = 128.11450505256653
+seed = 1
+threads = 2
+updated = "2026-11-21T04:22:57.797Z"
+
+[inputs]
+"case.toml" = "sha256:0169411f990fb9685d22dbd6c52870b4024e0a3f23fd1643981a328a0066d65b"
+"kind.txt" = "sha256:c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"

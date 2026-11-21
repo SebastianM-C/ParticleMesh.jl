@@ -1,0 +1,47 @@
+branch = "runs/ion-5090-pic"
+commit = "10b351794675bb24495a4af6cacfefbbfaaf5abf"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/arguments.txt"
+bytes = 291
+sha256 = "0cf6ff3938df1eb508ff248928415cb23489ebb1a4a662b99b1f6eb80cba898e"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/build-tail.log"
+bytes = 4926
+sha256 = "4c1dc054a8fc62090ee59b9238d55ac81c03fa5aa906f749d74388179ec129de"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/case.toml"
+bytes = 3607
+sha256 = "0169411f990fb9685d22dbd6c52870b4024e0a3f23fd1643981a328a0066d65b"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/container.txt"
+bytes = 373
+sha256 = "6637f0367795b25efa3801c0b1eb5597585951c4119cfb5d6d75bdd9cab3a112"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/kind.txt"
+bytes = 7
+sha256 = "566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/manifest.toml"
+bytes = 1846
+sha256 = "e2e31139fff2f7168f53308eb937bdfb1ebf19fc29670bf42c92d1f5302a166f"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/picongpu-tail.log"
+bytes = 3409
+sha256 = "da3e9629fd8d7f3455a33378edb93c2420eca3804cf0d83a34dde86968a3db88"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/summary.json"
+bytes = 384908
+sha256 = "88353c378033d5b689afdecb981acec856cd4b02d8b13b8424acd71600fb0c8a"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-vacuum/versions.toml"
+bytes = 253
+sha256 = "5b91a1a9b7fe891da151c71de61c8b920be124c226331386b8afa732e1f81e66"

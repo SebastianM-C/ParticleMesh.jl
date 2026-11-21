@@ -163,3 +163,9 @@ end
     @test "| largest relative rms distance on the axis (%) | ParticleMesh–Smilei | Smilei–PIConGPU |" in lines
     @test "| vacuum, E_y | 0.238 | – |" in lines && "| plasma without the dopant, wake E_x from t = 116 | – | 1.2 |" in lines
 end
+
+@testset "T-1126 the report's tables are what ion_table prints from the comparison committed next to it [A5, A7, WP-081]" begin
+    reports = joinpath(REPO, "reports")
+    c = JSON.parsefile(joinpath(reports, "wp-081-ionization-three-codes", "compare", "comparison.json"))
+    @test occursin(ion_table(c), read(joinpath(reports, "wp-081-ionization-three-codes.md"), String))
+end

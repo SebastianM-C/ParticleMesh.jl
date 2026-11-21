@@ -1,0 +1,28 @@
+case = "ionization-2d"
+commit = "04a2f2d744fcec85bd3a58955bc4a72de74bea20"
+dirty = false
+runs = "scripts/runs/ion-all"
+updated = "2026-11-21T05:22:18.969Z"
+
+[inputs]
+
+[summaries]
+picongpu-plasma-nodopant = "sha256:ea43211282ead8a1b59b89cf08bd0a12eb49ace9b87792a2d22d45ebd34bccdb"
+picongpu-plasma-s1 = "sha256:6dbd900aa08a092d36bc81019aefa4c17f7b35185917a41e4a8f45cf1c1e4034"
+picongpu-plasma-s2 = "sha256:9952020c3584a7fd2e415ec251e7141f678b86c4b73ae45b1b4dcbf2e0ce0e4b"
+picongpu-plasma-s3 = "sha256:2ec727f870acbf167e2138f0e86c04ca7cda3e28045e8f0a845d777a7e364be0"
+picongpu-plasma-s4 = "sha256:bbb5070ca1b12715e95b54f7c17584de8b25e21c377a5050f4691f022ac3285a"
+picongpu-vacuum = "sha256:88353c378033d5b689afdecb981acec856cd4b02d8b13b8424acd71600fb0c8a"
+pm-plasma = "sha256:10c4bd1b86858fad85ab6138a619935453edc5fd100dc44e051570d2d1f7f180"
+pm-plasma-axis = "sha256:082dc01c8b41dbe17aea4af23847d3308a04aba53d50c0f1094784bd20ee4d0e"
+pm-plasma-nodopant = "sha256:6a615599f853af205d50600cc6415eaf7313fb604ce340bf7f380814f6906cbd"
+pm-plasma-rates-picongpu = "sha256:51ee2e19ae6d39fd7544230b41337b5a4c1e32ba6c3ae8dd51b345c6cb3b60c8"
+pm-plasma-rates-picongpu-a0 = "sha256:420bd5595a598bef177aa9a4d704c8f82a4d79da526acdace4a4c7491d407377"
+pm-plasma-rates-smilei = "sha256:bc3f0e307b0413d88eaa666a71fbe6a68de76966dc6323ae20ddceb497aa8c0e"
+pm-vacuum = "sha256:f9c06edad722ee73333874fbbeb6d2eb2677da4eaa380df8d8449c5ebe5cbd26"
+smilei-plasma-nodopant = "sha256:c3f199c50a215c839bb15ea0c844ad705caeef32fa583ba70cac23714541227c"
+smilei-plasma-s1 = "sha256:bc4ac67bcde2bd604ee0a86c32c5067d22b10b50cfe5635df8dcabcc92ca086e"
+smilei-plasma-s2 = "sha256:0d88239ef00cd111b46882a8df859146c4af663598356b54e8dbd49299fdb10e"
+smilei-plasma-s3 = "sha256:14d05f0f065d3c540237668405188cdc8d8ce67f1065dd6eec0df836eefd6bc7"
+smilei-plasma-s4 = "sha256:e6d2f61c765953c726e5f22ceca3e20df0746eebc55ab8b1285611beeacb01d1"
+smilei-vacuum = "sha256:e670ebad8180ccb148446511a646aabd38a9e7f3533a7845d83106322278bbdd"
