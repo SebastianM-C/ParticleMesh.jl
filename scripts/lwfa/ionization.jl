@@ -6,6 +6,7 @@
 #   julia +1.13 --project=scripts scripts/lwfa/ionization.jl summarize-smilei <dir>              # Smilei's diagnostics into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/ionization.jl summarize-picongpu <dir>            # PIConGPU's dumps into the same format
 #   julia +1.13 --project=scripts scripts/lwfa/ionization.jl compare <runs dir> <out dir>        # the comparison, figures and sidecars
+#   julia +1.13 --project=scripts scripts/lwfa/ionization.jl table <comparison.json>             # its table for the report (ion_table)
 #
 # A prepared run has one directory per code, medium and variant: `pm-vacuum`, `pm-plasma`, the
 # ParticleMesh runs with the other codes' rate conventions `pm-plasma-rates-smilei` and
@@ -1106,6 +1107,108 @@ function ion_series(S, group, measure)
 end
 
 """
+    lineout_distance(a, a0, b, b0, region) -> Float64
+
+The relative rms distance of two axis lineouts on the box nodes they share inside `region`
+(a range of m): `a[j]` (j from 0) sits on m = j + a0, `b[j]` on m = j + b0; the rms of a − b
+over the larger of the two rms values, NaN when they share no node or both vanish there.
+"""
+function lineout_distance(a, a0, b, b0, region)
+    lo = max(a0, b0, first(region))
+    hi = min(a0 + length(a) - 1, b0 + length(b) - 1, last(region))
+    hi < lo && return NaN
+    A = Float64[a[m - a0 + 1] for m in lo:hi]
+    B = Float64[b[m - b0 + 1] for m in lo:hi]
+    r = max(sqrt(sum(abs2, A) / length(A)), sqrt(sum(abs2, B) / length(B)))
+    return r == 0 ? NaN : sqrt(sum(abs2, A .- B) / length(A)) / r
+end
+
+"""
+    ion_lineout_distances(S, case) -> Dict
+
+The codes' axis lineouts against each other, pair by pair, in vacuum (E_y) and in the plasma
+without the dopant (E_y and the wake's E_x), seed 1 of each Monte Carlo code: per output the
+`lineout_distance` on ParticleMesh's window less its back PML and as much again, and the largest
+over the outputs, E_y's from t = 50 (the pulse has entered), E_x's from the time the pulse's peak
+reaches the plasma, delay + vacuum − x_a (before it, E_x is the pulse's small longitudinal field).
+"""
+function ion_lineout_distances(S, case)
+    d = ion_derived(case)
+    cut = 2 * Int(case["grid"]["back_pml_cells"])
+    t_wake = Float64(case["laser"]["delay"]) + Float64(case["plasma"]["vacuum"]) - d.xa
+    res = Dict{String,Any}()
+    for (medium, kind) in (("vacuum", "vacuum"), ("plasma", "plasma-nodopant"))
+        codes = [c for c in ("pm", "smilei", "picongpu") if haskey(S, "$c-$kind")]
+        for (i, a) in enumerate(codes), b in codes[(i + 1):end]
+            oa, ob = S["$a-$kind"][1]["outputs"], S["$b-$kind"][1]["outputs"]
+            n = min(length(oa), length(ob))
+            for (field, key, m0) in (("Ey", "Ey_axis", "m0"), ("Ex", "Ex_axis", "Ex_m0"))
+                (medium == "vacuum" && field == "Ex") && continue
+                t, v = Float64[], Float64[]
+                for k in 1:n
+                    Int(oa[k]["step"]) == Int(ob[k]["step"]) || error("$a-$kind and $b-$kind: outputs at different steps")
+                    tk = Float64(oa[k]["t"])
+                    tk < (field == "Ex" ? t_wake : 50.0) && continue
+                    s = pm_window_shifts(case, Int(oa[k]["step"]))
+                    push!(t, tk)
+                    push!(v, lineout_distance(oa[k][key], Int(oa[k][m0]), ob[k][key], Int(ob[k][m0]), (s + cut):(s + d.nx - 1)))
+                end
+                res["$medium $field $a / $b"] = Dict("t" => t, "relrms" => v, "max" => maximum(v))
+            end
+        end
+    end
+    res["t_wake"] = t_wake
+    return res
+end
+
+const ION_TABLE_ROWS = (("pm-plasma", "ParticleMesh"), ("pm-plasma-rates-smilei", "ParticleMesh, Smilei's rate"),
+                        ("pm-plasma-rates-picongpu", "ParticleMesh, PIConGPU's rate"), ("pm-plasma-axis", "ParticleMesh, WP-064's pulse"),
+                        ("smilei-plasma", "Smilei"), ("picongpu-plasma", "PIConGPU"))
+
+"""
+    ion_table(comparison) -> String
+
+The comparison's final results as Markdown: per run (a Monte Carlo code's seeds as mean ± sample
+standard deviation) the born electrons' weight, J_born and J_trapped at the read-out, N⁶⁺ at its
+peak and J_born over each Monte Carlo code's mean; then the largest lineout distances by pair.
+"""
+function ion_table(c)
+    F = c["final"]
+    t = round(F["pm-plasma"]["t"]; digits = 1)
+    mcs = [k for k in ("smilei-plasma", "picongpu-plasma") if haskey(F, k)]
+    fmt(x) = string(round(x; sigdigits = 3))
+    cell(st, scale) = st["n"] > 1 ? "$(fmt(st["mean"] * scale)) ± $(fmt(st["std"] * scale))" : fmt(st["mean"] * scale)
+    io = IOBuffer()
+    head = ["born weight (10⁻³)", "J_born (10⁻²)", "J_trapped (10⁻²)", "N⁶⁺ at its peak (10⁻³)"]
+    append!(head, ["J_born / $(Dict("smilei-plasma" => "Smilei", "picongpu-plasma" => "PIConGPU")[k])" for k in mcs])
+    println(io, "| at t = $t | ", join(head, " | "), " |")
+    println(io, "|---|", repeat("---|", length(head)))
+    for (k, label) in ION_TABLE_ROWS
+        haskey(F, k) || continue
+        e = F[k]
+        n = length(e["runs"])
+        row = [cell(e["born"]["weight"], 1e3), cell(e["born"]["J_born"], 1e2), cell(e["born"]["J_trapped"], 1e2),
+               cell(e["charge_states"]["populations"][2], 1e3)]
+        append!(row, [fmt(e["born"]["J_born"]["mean"] / F[r]["born"]["J_born"]["mean"]) for r in mcs])
+        println(io, "| ", label, n > 1 ? " ($n seeds)" : "", " | ", join(row, " | "), " |")
+    end
+    L = get(c, "lineouts", Dict())
+    if !isempty(L)
+        names = Dict("pm" => "ParticleMesh", "smilei" => "Smilei", "picongpu" => "PIConGPU")
+        pairs = unique([join(split(k)[3:end], " ") for k in keys(L) if k != "t_wake"])
+        order = ["pm / smilei", "pm / picongpu", "smilei / picongpu"]
+        pairs = [p for p in order if p in pairs]
+        println(io)
+        println(io, "| largest relative rms distance on the axis (%) | ", join([join(map(x -> names[x], split(p, " / ")), "–") for p in pairs], " | "), " |")
+        println(io, "|---|", repeat("---|", length(pairs)))
+        for (label, key) in (("vacuum, E_y", "vacuum Ey"), ("plasma without the dopant, E_y", "plasma Ey"), ("plasma without the dopant, wake E_x from t = $(round(Int, L["t_wake"]))", "plasma Ex"))
+            println(io, "| ", label, " | ", join([haskey(L, "$key $p") ? fmt(100 * L["$key $p"]["max"]) : "–" for p in pairs], " | "), " |")
+        end
+    end
+    return String(take!(io))
+end
+
+"""
     compare_ion(runs, out) -> Dict
 
 Compare the summaries under `runs` (`prepare_ion`'s directories) and write `comparison.json`,
@@ -1114,7 +1217,8 @@ the figures with their sidecars, and a manifest into `out`. `final` holds, per g
 plasma electrons at the read-out and the dopant's charge states at the output where N⁶⁺ peaks;
 `ratios` the born measures of each ParticleMesh run over each Monte Carlo code's seed mean, with
 the seeds' relative standard deviation next to them; `laser` the largest |E_y| in the window per
-output and group; `seconds` the runtimes as the summaries have them.
+output and group; `lineouts` the codes' axis lineouts against each other (`ion_lineout_distances`);
+`seconds` the runtimes as the summaries have them.
 """
 function compare_ion(runs, out)
     mkpath(out)
@@ -1152,7 +1256,7 @@ function compare_ion(runs, out)
                            "Ey_absmax" => [ion_stats([Float64(s["outputs"][i]["Ey_absmax"]) for s in ss])["mean"] for i in eachindex(ss[1]["outputs"])])
                  for (k, ss) in S)
     result = Dict{String,Any}("case" => case["name"], "dx" => d.dx, "dt" => d.dt, "steps" => d.steps, "groups" => Dict(k => basename.(v) for (k, v) in G),
-                              "final" => final, "ratios" => ratios, "laser" => laser,
+                              "final" => final, "ratios" => ratios, "laser" => laser, "lineouts" => ion_lineout_distances(S, case),
                               "seconds" => Dict(basename(x) => get(JSON.parsefile(joinpath(x, "summary.json")), "seconds", nothing) for v in values(G) for x in v))
     open(io -> JSON.print(io, result, 2), joinpath(out, "comparison.json"), "w")
     plot_ion_objectives(out, S)
@@ -1281,7 +1385,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
         summarize_picongpu_ion(ARGS[2])
     elseif cmd == "compare"
         compare_ion(ARGS[2], ARGS[3])
+    elseif cmd == "table"
+        print(ion_table(JSON.parsefile(ARGS[2])))
     else
-        error("usage: ionization.jl prepare <case> <tag> [pm|smilei|picongpu …] | run-pm <dir> [cpu|cuda] [Float64|Float32] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out>")
+        error("usage: ionization.jl prepare <case> <tag> [pm|smilei|picongpu …] | run-pm <dir> [cpu|cuda] [Float64|Float32] | summarize-smilei <dir> | summarize-picongpu <dir> | compare <runs> <out> | table <comparison.json>")
     end
 end

@@ -133,3 +133,33 @@ end
     @test all(k -> pm_window_shifts(case, k) == window_shifts(c, k), 0:d.steps)
     @test pm_window_shifts(case, 0) == 0 && pm_window_shifts(case, d.steps) > 0
 end
+
+@testset "T-1125 the comparison's lineout distance and table: lineouts placed on the box nodes they share, a seed group as mean ± sd, each run over each Monte Carlo code's mean [A5, A7, WP-081]" begin
+    f(m) = sin(0.3m) + 0.1m
+    a = [f(m) for m in 5:104]                  # a[j], j from 0, on m = j + 5
+    b = [f(m) for m in 10:139]
+    @test lineout_distance(a, 5, b, 10, 0:200) == 0
+    @test lineout_distance(a, 5, b, 9, 0:200) > 0.01          # one node off
+    @test lineout_distance(a, 5, 1.01 .* b, 10, 0:200) ≈ 0.01 / 1.01 rtol = 1e-12
+    @test isnan(lineout_distance(a, 5, b, 10, 105:120)) && isnan(lineout_distance(zeros(3), 0, zeros(3), 0, 0:2))
+    # only the shared nodes inside the region count: a difference outside it does not
+    b2 = copy(b); b2[1] += 100                 # m = 10
+    @test lineout_distance(a, 5, b2, 10, 11:104) == 0 && lineout_distance(a, 5, b2, 10, 10:104) > 0
+    st(m, s, n) = Dict{String,Any}("mean" => m, "std" => s, "n" => n)
+    run(n, w, j, c6) = Dict{String,Any}("runs" => ["r$i" for i in 1:n], "t" => 299.67,
+                                        "born" => Dict{String,Any}("weight" => st(w, 0.1w, n), "J_born" => st(j, 0.01j, n), "J_trapped" => st(j, 0.0, n)),
+                                        "charge_states" => Dict{String,Any}("populations" => [st(0.5, 0.0, n), st(c6, 1e-5, n), st(0.0, 0.0, n)]))
+    c = Dict{String,Any}("final" => Dict{String,Any}("pm-plasma" => run(1, 3.4e-3, 0.052, 5e-3), "smilei-plasma" => run(4, 3.5e-3, 0.054, 5.1e-3),
+                                                     "picongpu-plasma" => run(2, 3.3e-3, 0.050, 5.3e-3)),
+                         "lineouts" => Dict{String,Any}("t_wake" => 115.6, "vacuum Ey pm / smilei" => Dict("max" => 0.00238),
+                                                        "plasma Ex smilei / picongpu" => Dict("max" => 0.012)))
+    tab = ion_table(c)
+    lines = split(tab, '\n')
+    @test lines[1] == "| at t = 299.7 | born weight (10⁻³) | J_born (10⁻²) | J_trapped (10⁻²) | N⁶⁺ at its peak (10⁻³) | J_born / Smilei | J_born / PIConGPU |"
+    @test "| ParticleMesh | 3.4 | 5.2 | 5.2 | 5.0 | $(round(0.052 / 0.054; sigdigits = 3)) | 1.04 |" in lines
+    @test "| Smilei (4 seeds) | 3.5 ± 0.35 | 5.4 ± 0.054 | 5.4 ± 0.0 | 5.1 ± 0.01 | 1.0 | 1.08 |" in lines
+    @test any(startswith("| PIConGPU (2 seeds) |"), lines) && !any(l -> occursin("Smilei's rate", l), lines)
+    # the pairs that have a distance, in the order ParticleMesh–Smilei, ParticleMesh–PIConGPU, Smilei–PIConGPU
+    @test "| largest relative rms distance on the axis (%) | ParticleMesh–Smilei | Smilei–PIConGPU |" in lines
+    @test "| vacuum, E_y | 0.238 | – |" in lines && "| plasma without the dopant, wake E_x from t = 116 | – | 1.2 |" in lines
+end
