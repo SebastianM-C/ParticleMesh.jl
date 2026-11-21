@@ -160,12 +160,14 @@ function sequence(o; c, host, duals, dual4, primal, label)
     n = prob.nsteps
     v = Float64(volume(st0))
     ckpt_bytes = sum(sizeof, evolved(st0))
+    # the floating-point arrays (what the shadow mirrors) and every array of the state
     state_bytes = sum(sizeof, values(leaves(st0)); init = 0)
+    all_bytes = sum(sizeof, values(all_arrays(st0)); init = 0)
     merge!(res["case"], Dict{String,Any}("nsteps" => n, "cells" => collect(prob.cells), "plasma_slots" => length(st0.species[1].w),
                                          "born_slots" => length(ionization_electrons(st0).w), "dt" => Float64(prob.dt)))
-    res["bytes"] = Dict{String,Any}("state" => state_bytes, "checkpoint" => ckpt_bytes)
+    res["bytes"] = Dict{String,Any}("state_float" => state_bytes, "state_all" => all_bytes, "checkpoint" => ckpt_bytes)
     mark("$label: $(prob.cells) cells, $n steps, $(length(st0.species[1].w)) plasma slots, $(length(ionization_electrons(st0).w)) born slots; " *
-         @sprintf("state %.2f GiB, one checkpoint %.2f GiB, %d checkpoints in %s memory", gib(state_bytes), gib(ckpt_bytes), c, host ? "host" : "device"))
+         @sprintf("state %.2f GiB in floating-point arrays (%.2f GiB in all), one checkpoint %.2f GiB, %d checkpoints in %s memory", gib(state_bytes), gib(all_bytes), gib(ckpt_bytes), c, host ? "host" : "device"))
     if primal
         J, t, peak, base = measured(() -> run_to(deepcopy(st0), p, n))
         res["J"] = Float64(J)
@@ -246,8 +248,10 @@ function write_run(result)
     commit = try readchomp(`git -C $REPO rev-parse HEAD`) catch; "unknown" end
     dirty = try !isempty(readchomp(`git -C $REPO status --porcelain --untracked-files=no`)) catch; missing end
     hashfile(f) = bytes2hex(open(sha256, f))
-    inputs = [@__FILE__, joinpath(@__DIR__, "common.jl"), joinpath(@__DIR__, "contract.jl"), joinpath(@__DIR__, "active_reduce.jl"),
-              joinpath(@__DIR__, "spike", "unrolled_species.jl"), joinpath(REPO, "scripts", "optim", "trapped3d_case.jl"),
+    # the patches the run loaded (PM_ENZYME_PATCH, relative to the repository) are hashed with the rest
+    patches = [isabspath(f) ? f : joinpath(REPO, f) for f in split(get(ENV, "PM_ENZYME_PATCH", ""), ';'; keepempty = false)]
+    inputs = [@__FILE__, joinpath(@__DIR__, "common.jl"), joinpath(@__DIR__, "contract.jl"), patches...,
+              joinpath(REPO, "scripts", "optim", "trapped3d_case.jl"),
               joinpath(REPO, "scripts", "optim", "trapped2d_case.jl"), joinpath(REPO, "scripts", "optim", "born2d_case.jl"),
               Base.active_project(), joinpath(REPO, "Manifest.toml")]
     open(io -> TOML.print(io, Dict(
@@ -279,6 +283,11 @@ function main_grad()
     end
     opt("run", "1") == "1" && (result["run"] = sequence(case_opts(); c, host, duals, dual4, primal, label = "run"))
     write_run(result)
+    # a reverse pass that failed for another reason than the card's memory exits non-zero, so that
+    # run_trapped3d.sh retries it at a 1 GiB device heap (running out of memory is not retried: a
+    # larger heap only takes more of the card)
+    failed = [r["reverse_error"] for r in values(result) if haskey(r, "reverse_error")]
+    any(e -> !occursin("Out of GPU memory", e), failed) && exit(2)
 end
 
 COMMAND == "grad" ? main_grad() : error("trapped3d.jl grad [key=value ...]")

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # WP-084 on CUDA: Enzyme's checkpointed reverse pass through the 3D trapped-beam case
 # (trapped3d.jl), each run its own process (a CUDA error leaves its context unusable), at the
-# default device heap and again at 1 GiB if that fails. nvidia-smi samples the card's memory
-# beside every run.
+# default device heap and again at 1 GiB if that fails: if the process errors, or its reverse pass
+# fails for another reason than running out of the card's memory (trapped3d.jl then exits 2).
+# nvidia-smi samples the card's memory beside every run; `pool used` in the logs is CUDA's memory
+# pool, without the device malloc heap that Enzyme's tapes use, which only these samples show.
 #     scripts/enzyme/run_trapped3d.sh [runs...]
 # A run is trapped3d.jl's arguments as one string ("grad ppl=16 ..."); without any, the list
 # below. Logs and a summary go to scripts/runs/enzyme-trapped3d-gpu-<stamp>/.

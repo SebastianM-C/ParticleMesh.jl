@@ -1,0 +1,15 @@
+# commit 6ce5cfd2f778ab68f0a39bd8851d5619e35580f7, patches scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl;scripts/enzyme/spike/unrolled_current.jl, started 2026-11-21T16:41:55Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 925 MiB
+== 16:41:55 grad run=0 (heap default)
+   exit 0 at 16:50:43
+[16:42:03] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("run" => "0"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[16:42:20] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB, one checkpoint 0.10 GiB, 4 checkpoints in device memory (pool used 0.77 GiB)
+[16:42:31] warm-up: plain run 9.5 s, J = 0.00034263736, peak 1.54 GiB (pool used 1.54 GiB)
+[16:49:47] warm-up: reverse pass 436.3 s (625.9 ms per step), J from its forward sweep 0.00034263736, peak 12.22 GiB (pool used 8.18 GiB)
+    dJ/dduration reverse -1.31526575e-04 (start +0.000e+00, parameters -1.315e-04)
+    dJ/dwaist    reverse -3.90167110e-04 (start +0.000e+00, parameters -3.902e-04)
+    dJ/dfocus    reverse +4.52093698e-05 (start +0.000e+00, parameters +4.521e-05)
+    dJ/ddensity  reverse +4.44908151e-02 (start +3.001e-03, parameters +4.149e-02)
+[16:50:41] warm-up: Dual{4} 34.0 s, peak 3.30 GiB; relative differences [1.74e-7, 2.52e-6, 2.26e-6, 2.7e-6] (pool used 3.30 GiB)
+wrote scripts/runs/enzyme-trapped3d-grad-20261121T165042
+# finished 2026-11-21T16:50:43Z

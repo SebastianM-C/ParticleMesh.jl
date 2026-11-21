@@ -6,8 +6,10 @@
 # checks every checkpoint it stores and the working copy it leaves for the reverse sweep against the
 # uninterrupted run, bit for bit; T-1113 differentiates a loop of the engine's transfers whose
 # reverse rules run on the CPU (WP-077, WP-080: the sort, the gather and the deposition) through
-# `@ad_checkpoint` and checks the gradient against the plain reverse pass of the same loop. The
-# GPU check through the full step is `scripts/enzyme/checkpointed.jl`.
+# `@ad_checkpoint` and checks the gradient against the plain reverse pass of the same loop. T-1150
+# (WP-084) runs Revolve's whole schedule over a small 3D trapped-beam case, its reverse sweep with
+# each step's adjoint replaced by a check of the state it sees. The GPU checks through the full
+# step are `scripts/enzyme/checkpointed.jl` and `scripts/enzyme/trapped3d.jl`.
 
 using Checkpointing: Checkpointing, Revolve, @ad_checkpoint
 using Enzyme: Enzyme, autodiff, Reverse, Active, Const, Duplicated
@@ -18,6 +20,12 @@ const CKPT_EXT = Base.get_extension(ParticleMeshElectromagnetic, :ParticleMeshEl
 evolved_copy(st) = map(Array, evolved(st))
 "Whether two tuples of arrays have the same bits."
 same_arrays(a, b) = length(a) == length(b) && all(map((x, y) -> bits(Array(x)) == bits(Array(y)), a, b))
+
+"A value that no evolved array holds in these runs: NaN, or the largest integer of the type."
+poison(::Type{T}) where {T<:AbstractFloat} = T(NaN)
+poison(::Type{T}) where {T<:Integer} = typemax(T)
+"Overwrites a state's evolved arrays, so that a restore that leaves one out shows even where the run keeps it constant (a counter that stays 0)."
+poison!(st) = foreach(a -> fill!(a, poison(eltype(a))), evolved(st))
 
 struct StepBody{S,P} <: Function
     st::S
@@ -75,6 +83,7 @@ function revolve_forward_check(label, build, host, c)
         # restored into the used state through the storage and continued, it gives the run's end;
         # the restore is restore!'s, which refreshes the caches (marks K current)
         st.fresh[] = false
+        poison!(st)
         Checkpointing.load!(body, scheme.storage, findfirst(x -> x === slot, scheme.storage.slots))
         @test same_arrays(evolved(st), run_bits[k])
         @test st.fresh[]
@@ -87,7 +96,69 @@ function revolve_forward_check(label, build, host, c)
     end
     @test 0 in steps                                               # the first checkpoint is the start
     isempty(steps) || @info "Revolve forward check" label host c steps
-    return (; steps, ref)
+    return (; steps, ref, run_bits)
+end
+
+"""
+Revolve's whole schedule with `c` checkpoints over the run of `build()`'s problem, the reverse sweep
+as `Checkpointing.rev_checkpoint_for` runs it but with each step's adjoint replaced by a check
+(T-1150): the forward schedule, then from the working copy it leaves the u-turns from the last step
+down to the first, the stores (which write slots again that a u-turn freed) and the restores. At
+every u-turn the working copy holds the state before that step of the uninterrupted run
+(`run_bits`), bit for bit, and is then stepped, as the adjoint's own forward sweep steps it; every
+restore, into a state whose evolved arrays were overwritten, gives the stored step. Returns the
+u-turns' steps, the restores' steps (the steps run before the restored state) and whether a slot
+was written again.
+"""
+function revolve_reverse_check(build, host, c, run_bits)
+    prob, num = build()
+    n = prob.nsteps
+    p = params(prob)
+    st = EMState(prob, num)
+    initialize!(st, prob)
+    scheme = Checkpointing.instantiate(StepBody{typeof(st),typeof(p)}, Revolve(c; storage = checkpoint_storage(; host)), n)
+    body, storemap, check = Checkpointing.fwd_checkpoint_for(StepBody(st, p), scheme, 1:n)
+    written = Set(values(storemap))
+    rewritten = false
+    turns, restores, wrong_turns, wrong_restores = Int[], Int[], Int[], Int[]
+    turn!(k) = (push!(turns, k); same_arrays(evolved(body.st), run_bits[k]) || push!(wrong_turns, k); body(k))
+    step = n
+    turn!(step)                                                      # the first u-turn, from the working copy
+    step -= 1
+    while true
+        a = Checkpointing.next_action!(scheme)
+        if a.actionflag == Checkpointing.store
+            check += 1
+            storemap[a.iteration - 1] = check
+            rewritten |= check in written
+            push!(written, check)
+            Checkpointing.save!(scheme.storage, body, check)
+        elseif a.actionflag == Checkpointing.forward
+            for j in a.startiteration:(a.iteration - 1)
+                body(j + 1)
+            end
+        elseif a.actionflag == Checkpointing.uturn
+            turn!(step)
+            step -= 1
+            haskey(storemap, a.iteration - 2) && (delete!(storemap, a.iteration - 2); check -= 1)
+        elseif a.actionflag == Checkpointing.restore
+            # the slot of the state after `iteration` steps (Revolve's keys count from -1)
+            k = a.iteration
+            push!(restores, k)
+            poison!(body.st)
+            Checkpointing.load!(body, scheme.storage, storemap[k - 1])
+            same_arrays(evolved(body.st), run_bits[k + 1]) || push!(wrong_restores, k)
+        elseif a.actionflag == Checkpointing.done
+            break
+        else
+            error("unexpected action $(a.actionflag)")
+        end
+    end
+    isempty(wrong_turns) && isempty(wrong_restores) || @info "Revolve reverse check: states that differ" host c wrong_turns wrong_restores
+    @test isempty(wrong_turns)
+    @test isempty(wrong_restores)
+    @test turns == n:-1:1                                            # every step's adjoint, last first
+    return (; turns, restores, rewritten)
 end
 
 @testset "T-1112 Revolve's forward schedule with checkpoint_storage: every checkpoint is a step of the uninterrupted run and continues to its end bit for bit, 2D and 3D, device and host slots [A4, WP-080]" begin
@@ -122,18 +193,27 @@ function trapped3d_small()
     return prob, EMNumerics(; absorber = PML(; cells = 4), back_absorber = PML(; cells = 4), gather = CompensatedGather(; k = 1))
 end
 
-@testset "T-1150 Revolve's forward schedule with checkpoint_storage over the 3D trapped-beam case: antenna, window, PMLs on the open faces and the back edge, ionization and the compensated gather, every checkpoint continues to the run's end bit for bit [A4, WP-084]" begin
-    for host in (false, true)
-        r = revolve_forward_check("3D trapped-beam case", trapped3d_small, host, 3)
-        # the run does what the case does: the window moves, the pulse ionizes the dopant, and the
-        # checkpoints hold the PMLs' convolution fields beside the particles and the fields
-        st = r.ref
-        @test window_shifts(st, 96) > 0
-        @test alive_count(ionization_electrons(st)) > 0
-        @test length(open_absorbers(st)) == 2 && back_absorber(st) !== nothing
-        @test length(evolved(st)) > length(evolved(EMState(window_lwfa_3d(Float32; nsteps = 1), EMNumerics())))
-        @test length(r.steps) >= 2
-    end
+@testset "T-1150 Revolve's schedule with checkpoint_storage over the 3D trapped-beam case: antenna, window, PMLs on the open faces and the back edge, ionization and the compensated gather; every checkpoint continues to the run's end bit for bit, and the reverse sweep, its adjoints replaced by checks, meets every step of the run bit for bit [A4, WP-084]" begin
+    # the forward schedule into device slots, the whole schedule into host slots (on the CPU both
+    # are Arrays, through the two copy paths)
+    r = revolve_forward_check("3D trapped-beam case", trapped3d_small, false, 3)
+    # the run does what the case does: the window moves, the pulse ionizes the dopant, and the
+    # checkpoints hold the PMLs' convolution fields beside the particles and the fields
+    st = r.ref
+    @test window_shifts(st, 96) > 0
+    @test alive_count(ionization_electrons(st)) > 0
+    @test length(open_absorbers(st)) == 2 && back_absorber(st) !== nothing
+    @test length(evolved(st)) > length(evolved(EMState(window_lwfa_3d(Float32; nsteps = 1), EMNumerics())))
+    @test length(r.steps) >= 2
+    # the counters that stay 0 in this run are evolved too (the window's, the births without a slot)
+    ev = evolved(st)
+    wf, fr = ParticleMeshElectromagnetic.window_frame(st), ParticleMeshElectromagnetic.ionization_frame(st)
+    counters = (wf.lost..., wf.fast..., fr.lost)
+    @test all(x -> any(y -> y === x, ev), counters)
+    rv = revolve_reverse_check(trapped3d_small, true, 3, r.run_bits)
+    @test rv.rewritten                                               # the reverse sweep wrote slots again
+    @test any(isodd, rv.restores) && any(iseven, rv.restores)
+    @info "T-1150 reverse schedule" restored_steps = sort(unique(rv.restores)) turns = length(rv.turns)
 end
 
 # --- T-1113 -------------------------------------------------------------------------------------

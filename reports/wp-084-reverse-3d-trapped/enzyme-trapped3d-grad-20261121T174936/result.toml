@@ -1,0 +1,99 @@
+[warm]
+dual1 = []
+gradient_reverse = [-0.0001315266315944737, -0.0003901670534109222, 4.52093697905602e-5, 0.04449081108936051]
+gradient_reverse_start = [0.0, 0.0, 0.0, 0.003001069590275569]
+J = 0.0003426373586989939
+checkpoint_memory = "host"
+J_reverse_forward = 0.0003426373607566188
+gradient_reverse_params = [-0.0001315266315944737, -0.0003901670534109222, 4.52093697905602e-5, 0.041489741499084944]
+seconds_start_tangents = 12.162386467
+checkpoints = 4
+
+    [warm.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 1146880
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [112, 64, 64]
+    nsteps = 697
+    ion_ppc = [1, 1, 1]
+    dt = 0.43077734112739563
+    ppl = 8
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 64
+    born_slots = 580608
+
+    [warm.primal]
+    seconds = 9.3376422
+    base_bytes = 824346488
+    peak_bytes = 1655602928
+
+    [warm.nonfinite_adjoints]
+
+    [warm.reverse]
+    seconds = 402.651421428
+    base_bytes = 824346488
+    peak_bytes = 11720928340
+
+    [warm.dual4]
+    seconds = 33.918254291
+    J = 0.00034263753332197666
+    base_bytes = 3509474616
+    gradient = [-0.00013152659812476486, -0.00039016612572595477, 4.520947186392732e-5, 0.044490694999694824]
+    relative_difference = [2.544710294854997e-7, 2.3776666046869214e-6, 2.257787205012757e-6, 2.6093021402967185e-6]
+    peak_bytes = 3544024376
+
+    [warm.bytes]
+    state = 671282032
+    checkpoint = 105461448
+
+[run]
+checkpoints = 12
+J = 0.0027650336269289255
+reverse_error = """Out of GPU memory trying to allocate 3.418 GiB\nEffective GPU memory usage: 99.96% (31.432 GiB/31.445 GiB)\nMemory pool usage: 24.253 GiB (27.469 GiB reserved)\nLibrary handles: 0 active, 0 reusable (released at reclaim)\n"""
+checkpoint_memory = "host"
+
+    [run.bytes]
+    state = 10302554640
+    checkpoint = 1434300616
+
+    [run.primal]
+    seconds = 95.59009676
+    base_bytes = 12537029736
+    peak_bytes = 25177651408
+
+    [[run.dual1]]
+    seconds = 249.616844356
+    J = 0.0027650324627757072
+    parameter = "duration"
+    derivative = 0.00039176581776700914
+    base_bytes = 22839584376
+    relative_difference = nan
+    reverse = nan
+    peak_bytes = 23046768248
+
+    [run.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 18350080
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [448, 128, 128]
+    nsteps = 1706
+    ion_ppc = [1, 1, 1]
+    dt = 0.17586413025856018
+    ppl = 32
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 128
+    born_slots = 7547904
