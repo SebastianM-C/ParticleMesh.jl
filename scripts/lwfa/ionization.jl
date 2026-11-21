@@ -58,7 +58,7 @@
 #   with the position weight `fade`) and WP-065 (every electron with u_x weighted by `rise`), and
 #   the born electrons' kinetic-energy spectrum.
 
-include(joinpath(@__DIR__, "lwfa.jl"))
+isdefined(@__MODULE__, :smilei_namelist) || include(joinpath(@__DIR__, "lwfa.jl"))     # once, when the tests have it already
 include(joinpath(REPO, "scripts", "ionization", "atomic.jl"))
 using SpecialFunctions: gamma
 using ParticleMeshElectromagnetic: ionization_state, ionization_electrons, ionization_lost, ionization_frame, window_back_band
