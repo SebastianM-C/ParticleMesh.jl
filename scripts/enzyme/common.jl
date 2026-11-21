@@ -4,6 +4,7 @@ using ParticleMeshCore, ParticleMeshElectromagnetic, KernelAbstractions, Forward
 # PM_LOAD_CUDA=1: the CUDA package as well, before the patches (a stacked environment provides it),
 # so that Enzyme's CUDA extension loads with its device-copy rules (#552); CUDACore alone leaves it unloaded
 get(ENV, "PM_LOAD_CUDA", "0") == "1" && @eval using CUDA
+println("CUDA package loaded: ", isdefined(Main, :CUDA), "; Enzyme's CUDA extension: ", Base.get_extension(Enzyme, :EnzymeCUDAExt) !== nothing)
 # PM_ENZYME_PATCH: spike-only patches (`spike/active_args.jl`, `spike/unroll.jl`), a `;`-separated list
 foreach(f -> isempty(f) || include(abspath(f)), split(get(ENV, "PM_ENZYME_PATCH", ""), ';'))
 # PM_BACKEND=cuda runs the state on the GPU (CUDACore of the test environment)
