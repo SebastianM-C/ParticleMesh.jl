@@ -12,6 +12,9 @@
 # in n_c·mₑc²·(c/ω₀)³, the 2D sum of `trapped2d_case.jl` with the cell's volume for its area.
 # The construction is the one of the grid-and-particle study's 3D driver (`gridppc3d.jl`), with its
 # defaults for the GPU: Float32, 2 × 1 × 1 plasma electrons per cell, the compensated gather, Yee.
+# The same problem bit for bit in Float64; in Float32 the energy budget rounds differently (here
+# the Float64 budget rounded once, there the budget of Float32(1.9)), so a₀ differs by an ulp at
+# most points of the box and the Dual problems' partials of a₀ differ in their last bits.
 isdefined(@__MODULE__, :TCASE) || include(joinpath(@__DIR__, "trapped2d_case.jl"))
 using ParticleMeshElectromagnetic: CompensatedGather, Yee, ionization_electrons
 using ParticleMeshElectromagnetic.ParticleMeshCore: cellsize

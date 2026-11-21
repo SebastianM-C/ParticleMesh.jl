@@ -59,6 +59,7 @@
   - The start state's part is nonzero only for the density, at 1.61·10⁻². The density enters the start through the weights. The other three parameters enter only through the antenna, so they are in `p`.
 - The J of the reverse pass's own forward sweep equals the plain run's to Float32 rounding: 0.0036936969 against 0.0036936968.
 - Two reverse passes of the same warm-up case differ by up to 5·10⁻⁷ relative. The Reference mode's bits do not carry over to the reverse pass, whose adjoint accumulation is atomic.
+- The Dual runs' value of J differs from the plain run's by a few Float32 ulps (0.0036936989 against 0.0036936968 at λ₀/16). On the CPU the fields of a Dual{1} and a plain run part at the first step, at 10⁻⁴² while the antenna's emission is still subnormal (the physics breaker, below). The cause is not found; A4 does not ask Dual and Float32 runs for the same bits.
 - The λ₀/16 differences against Dual{1} are about ten times those of the warm-up box against Dual{4}. That is consistent with Float32 accumulation over 1.4 times the steps and 16 times the particles, but it has not been shown.
 
 ### Cost
@@ -93,10 +94,13 @@
   - a slot that is not written again on reuse;
   - a restore that skips the last array;
   - the compensated gather's copy refreshed only on odd steps.
+- The physics breaker built the case next to the grid study's 3D case (`gridppc3d.jl`) on the same engine at ppl = 8, rows = 64. The problems, the 64 evolved arrays through step 395 and J agree bit for bit in Float32 at the base point and through step 93 in Float64. In Float32 the energy budget rounds differently in the two files, so a₀ differs by an ulp at 68 % of 2000 random points of the box and the Dual{4} problems' partials of a₀ differ in their last bits; the case file says so. `pulse_energy3` equals the antenna's `laser_energy` (relative 0 in Float64) and a numerical integral of the antenna's field over its plane to 2.1·10⁻⁶.
+- T-1150's forward check also passes with 2, 5 and 9 checkpoints, over 192 steps, in Float64, and in Fast mode on one thread; on four threads Fast mode is not reproducible and the check says so.
 - The reverse pass itself runs only on CUDA, so no CPU test differentiates the step: Enzyme fails on PoCL (#509). The GPU evidence is the runs above.
 
 ## Open issues
 
 - λ₀/32 does not fit on a 32 GB card. Two things could make it fit, neither tried: Revolve's working copy holding only the evolved arrays instead of a `deepcopy` of the body, and a smaller one-step tape. Another option is a larger card.
 - The reverse step costs 28.6 plain steps here, against 10.6 in the periodic case. The breakdown is not measured.
+- In 3D, a₀ ∝ 1/(w√τ) at fixed energy, so the optimizer box of the 2D case spans a₀ from 1.1 to 3.9 here (1.3 to 3.0 in 2D). The box and the born electrons' capacity were sized for 2D and are not yet checked for 3D.
 - The `current!` patch is script-only. The engine's `current!` keeps its `for` loops, and the same unrolling would close #384 for the 3D step.
