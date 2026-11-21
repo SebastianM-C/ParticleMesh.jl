@@ -29,8 +29,9 @@ GaussianBeam(; waist) = (T = shape_eltype(waist); GaussianBeam{T}(T(waist)))
     # U = (1 + ia)^(−1/2)·exp(−q·(1 − ia)/d): modulus d^(−1/4)·exp(−q/d), argument q·a/d − atan(a)/2;
     # U″ = U·c₂ with c₂ = (4q/(1 + ia)² − 2/(1 + ia))/w².
     m = exp(-q / d) / sqrt(sqrt(d))
+    # sin and cos, not sincos, which Enzyme cannot reverse in a GPU kernel (antenna.jl)
     ψ = q * a / d - atan(a) / 2
-    sψ, cψ = sin_cos(ψ)
+    sψ, cψ = sin(ψ), cos(ψ)
     d2 = d * d
     c2r = (4 * q * (1 - a * a) / d2 - 2 / d) / w2
     c2i = (2 * a / d - 8 * q * a / d2) / w2
@@ -158,7 +159,7 @@ end
         a = pupil_amplitude(b.amplitude, ρ)
         κ = -b.na * ρ
         ϕ = twoπ * wavefront(b, ρ) + κ * y - κ * κ * ξ / 2
-        sn, cs = sin_cos(ϕ)
+        sn, cs = sin(ϕ), cos(ϕ)
         ur += a * cs
         ui += a * sn
         dr -= a * κ * κ * cs

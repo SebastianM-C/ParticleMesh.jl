@@ -13,7 +13,6 @@ ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"
 
 [weakdeps]
 Checkpointing = "eb46d486-4f9c-4c3d-b445-a617f2a2f1ca"
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -21,7 +20,6 @@ SciMLStructures = "53ae85a6-f571-4167-b2af-e1d143709226"
 
 [extensions]
 ParticleMeshElectromagneticCheckpointingExt = "Checkpointing"
-ParticleMeshElectromagneticForwardDiffExt = "ForwardDiff"
 ParticleMeshElectromagneticOrdinaryDiffEqCoreExt = ["OrdinaryDiffEqCore", "SciMLBase"]
 ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
 ParticleMeshElectromagneticSciMLStructuresExt = "SciMLStructures"
@@ -32,7 +30,6 @@ ParticleMeshCore = {path = "../ParticleMeshCore"}
 [compat]
 Adapt = "4"
 Checkpointing = "0.13"
-ForwardDiff = "1"
 KernelAbstractions = "0.10.8"
 OrdinaryDiffEqCore = "4"
 ParticleMeshCore = "0.1"

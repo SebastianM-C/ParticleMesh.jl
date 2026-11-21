@@ -736,8 +736,8 @@ status = "proposed"
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case on the CPU (primal and the partials in a₀, duration, density), Reference, against the values pinned here: largest relative difference"
 scale = "relative; a Reference run is bitwise on one backend (A4), C leaves room for another CPU's code generation"
 C = 1e-6
-pinned = [0.102090195, 0.08922719, 0.0069649597, 0.6515869]
-status = "proposed; pinned again with WP-083's sin and cos in the laser, whose last bits moved the values by up to 6.0e-6 (the density partial; roundoff over the run, as WP-041's nearest-node bins' 6.8e-6 and the factored flux stencil's 1.6e-6 before)"
+pinned = [0.1020901, 0.089227244, 0.0069649583, 0.65158296]
+status = "proposed; pinned again with WP-041's nearest-node bins (the cell on the window's x axis), whose summation order moved them by up to 6.8e-6 (the density partial; roundoff over the run, as the factored flux stencil's 1.6e-6 before)"
 
 ["T-611"]
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case (primal and the partials in a₀, duration, density), Reference, on CUDA against the CPU: largest relative difference"

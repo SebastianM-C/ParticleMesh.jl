@@ -1,11 +1,11 @@
 # WP-083: the laser's device functions call sin and cos, not sincos (#547). T-1141: what that does
-# to the bits inside a kernel. T-1142: a dual laser keeps the plain one's bits. T-1140 (run by
-# gpu.jl on CUDA): Enzyme's reverse mode through what the antenna's kernels add per row, with the
-# laser's parameters in a device array, against ForwardDiff on the CPU.
+# to the bits inside a kernel. T-1140 (run by gpu.jl on CUDA): Enzyme's reverse mode through what
+# the antenna's kernels add per row, with the laser's parameters in a device array, against
+# ForwardDiff on the CPU.
 
 using Enzyme: Enzyme
 using ParticleMeshElectromagnetic: GaussianLaser, ShapedLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, antenna_b_rows, antenna_e_rows
-using ParticleMeshElectromagnetic.PulseShapes: sin_cos, GaussianBeam, PupilBeam, GaussianPupil, GaussianEnvelope
+using ParticleMeshElectromagnetic.PulseShapes: GaussianBeam, PupilBeam, GaussianPupil, GaussianEnvelope
 
 # Inside a kernel the backend's own sin, cos and sincos run (OpenCL's builtins on KernelAbstractions'
 # CPU backend, libdevice on CUDA), and its sincos need not give the bits of its sin and cos: on the
@@ -20,11 +20,6 @@ using ParticleMeshElectromagnetic.PulseShapes: sin_cos, GaussianBeam, PupilBeam,
         s2[i] = sin(v)
         c2[i] = cos(v)
     end
-end
-
-@kernel function sin_cos_kernel!(s, c, @Const(x))
-    i = @index(Global, Linear)
-    @inbounds s[i], c[i] = sin_cos(x[i])
 end
 
 "Distance of `a` from the exact value `r` in ulps of `r` (of the type of `a`)."
@@ -171,38 +166,4 @@ function body_T1140(be)
         @info "T-1140 Enzyme reverse against ForwardDiff" T kind ratio = r
         @test r <= C
     end
-end
-
-# ForwardDiff's sin and cos of a dual call sincos, which inside a kernel need not give the bits of
-# the separate calls (T-1141); the package's ForwardDiff extension gives `sin_cos` of a dual the
-# value of the two calls, so a dual run of the laser keeps the plain run's bits (A8; T-833 asserts
-# it of a whole ionization run). Here what the antenna's kernels add per row, for every case of
-# T-1140 on the test backend, with the laser's parameters Dual{Float32,3} seeded in three of them,
-# against the same kernel in Float32: the values bit for bit, and the partials nonzero.
-@testset "T-1142 a dual laser's per-row antenna values in a kernel are the Float32 laser's bit for bit [A4, A8, WP-083]" begin
-    for kind in T1140_KINDS
-        c, p, plane, t, nj, nrows = t1140_case(Float32, kind)
-        pd = [mkdual(p[k], k == 1, k == 2, k == length(p)) for k in eachindex(p)]
-        dev(a) = (b = KernelAbstractions.allocate(backend, eltype(a), size(a)); copyto!(b, a); b)
-        outF, outD = dev(zeros(Float32, 4, nrows)), dev(zeros(D3, 4, nrows))
-        rows!(outF, dev(p), c, plane, t, nj)
-        rows!(outD, dev(pd), c, plane, t, nj)
-        KernelAbstractions.synchronize(backend)
-        outF, outD = Array(outF), Array(outD)
-        @test all(i -> value(outD[i]) === outF[i], eachindex(outF, outD))
-        @test all(isfinite, map(x -> sum(abs, partials(x)), outD)) && any(x -> !iszero(partials(x)), outD)
-    end
-    # and `sin_cos` alone, against the derivative of the separate calls, in a kernel
-    x = Float32(2000) .* rand(Xoshiro(1144), Float32, 4_000) .- Float32(1000)
-    xd = KernelAbstractions.allocate(backend, D3, length(x)); copyto!(xd, mkdual.(x, 1, 0, 0))
-    s, c = similar(xd), similar(xd)
-    sin_cos_kernel!(backend)(s, c, xd; ndrange = length(x))
-    KernelAbstractions.synchronize(backend)
-    xf = KernelAbstractions.allocate(backend, Float32, length(x)); copyto!(xf, x)
-    s1, c1, s2, c2 = (similar(xf) for _ in 1:4)
-    sincos_pair_kernel!(backend)(s1, c1, s2, c2, xf; ndrange = length(x))
-    KernelAbstractions.synchronize(backend)
-    s, c, s2, c2 = Array.((s, c, s2, c2))
-    @test all(i -> value(s[i]) === s2[i] && value(c[i]) === c2[i], eachindex(x))
-    @test all(i -> partials(s[i])[1] === c2[i] && partials(c[i])[1] === -s2[i], eachindex(x))
 end

@@ -3,8 +3,10 @@
 #     git fetch origin claude/project-thread-xjh4di
 #     git worktree add --detach <worktree> origin/claude/project-thread-xjh4di
 # Usage: run_gpu.sh <worktree> <out dir>. Runs T-1140 and T-1141, then Enzyme's reverse through the
-# trapped-beam case's step! (antenna, window, PMLs, ionization) against duals, with WP-078's patches
-# but without its antenna rule (removed from spike/unrolled_species.jl on this branch).
+# trapped-beam case's step! (antenna, window, PMLs, ionization) against duals, with the CUDA package
+# loaded (Enzyme's CUDA extension) and only active_reduce.jl, the refill's flag sum and the sinpi
+# rule left of WP-078's patches: no antenna rule, copy kernels, unrolled loops, four-kernel
+# ionization or freed-array skip. Needs the card to itself (nvidia-smi first).
 set -u
 W=$1; OUT=$2
 mkdir -p "$OUT"
