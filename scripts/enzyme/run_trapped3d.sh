@@ -17,8 +17,9 @@ export JULIA_LOAD_PATH="@:$(pwd):@stdlib"
   nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv,noheader; } > "$out/summary.txt"
 runs=("$@")
 [ ${#runs[@]} -eq 0 ] && runs=(
-    "grad ppl=16 dual=1,2,3,4 dual4=1 c=40"
-    "grad ppl=32 dual=1,2,3,4 dual4=0 c=60")
+    "grad ppl=16 dual=1,2,3,4 dual4=1 c=12"
+    "grad ppl=32 dual=1,2,3,4 dual4=0 c=12 host=1"
+    "grad ppl=32 dual=1 dual4=0 c=12 host=1 cap=0.2 ppc=1x1x1")
 i=0
 for r in "${runs[@]}"; do
     i=$((i + 1))

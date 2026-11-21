@@ -15,12 +15,12 @@
 #
 # Keys: the case `ppl=16 nt=1 rows=128 ppc=2x1x1 ion_ppc=1x1x1 cap=1` (the born electrons' capacity
 # factor, `trapped3d_capacity`) `t_end=300 a0E=1.9 theta=duration,waist,focus,density` (default the
-# base point); the reverse pass `c=<checkpoints>` (default 40) `host=0|1` (checkpoints on the device
+# base point); the reverse pass `c=<checkpoints>` (default 12) `host=0|1` (checkpoints on the device
 # or in host memory); the comparison `dual=1,2,3,4` (the parameters whose Dual{1} run is made, by
 # position; `dual=` for none) `dual4=0|1` (one Dual{4} run as well); `primal=1|0` (a plain run for
 # its time and memory); `warm=1|0` (first the whole sequence on a small box of the same types, so
 # that the timed calls do not compile; its own gradient check against Dual{4} is reported too;
-# `warm_t_end=150`).
+# `warm_t_end=300`).
 #
 # What `grad` does, in this order, each phase timed and its peak of device memory recorded:
 #
@@ -53,12 +53,14 @@ struct Trap3Tag end
 
 """
 The case's sizes from the keys; `warm` for the small box of the warm-up: the same types, 8 cells per
-λ₀ and 48 transverse cells of π/4 (the 12-cell PMLs and the dopant's tube fit), to t = 150, past the
-window's start (108) and through the dopant's section, so that every kernel of the run compiles.
+λ₀ and 64 transverse cells of π/4 (the 12-cell PMLs leave the dopant's tube and the waist free),
+the whole run to t = 300 (past the window's start at 108 and through the dopant's section, so that
+every kernel of the run compiles, and with electrons born and trapped, so that its gradient check
+against Dual{4} means something).
 """
 function case_opts(; warm = false)
-    warm && return (; ppl = 8, nt = 1, rows = 48, ppc = parse_tuple(opt("ppc", "2x1x1")), ion_ppc = parse_tuple(opt("ion_ppc", "1x1x1")),
-                    cap = 1.0, t_end = parse(Float64, opt("warm_t_end", "150")), a0E = parse(Float64, opt("a0E", "1.9")))
+    warm && return (; ppl = 8, nt = 1, rows = 64, ppc = parse_tuple(opt("ppc", "2x1x1")), ion_ppc = parse_tuple(opt("ion_ppc", "1x1x1")),
+                    cap = 1.0, t_end = parse(Float64, opt("warm_t_end", "300")), a0E = parse(Float64, opt("a0E", "1.9")))
     return (; ppl = parse(Int, opt("ppl", "16")), nt = parse(Int, opt("nt", "1")), rows = parse(Int, opt("rows", "128")),
             ppc = parse_tuple(opt("ppc", "2x1x1")), ion_ppc = parse_tuple(opt("ion_ppc", "1x1x1")), cap = parse(Float64, opt("cap", "1")),
             t_end = parse(Float64, opt("t_end", "300")), a0E = parse(Float64, opt("a0E", "1.9")))
@@ -168,38 +170,50 @@ function sequence(o; c, host, duals, dual4, primal, label)
         res["primal"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: plain run %.1f s, J = %.8g, peak %.2f GiB", label, t, J, gib(peak)))
     end
-    # the reverse pass on a copy (the start is kept for its tangent's paths below)
-    r, t, peak, base = measured(() -> reverse_run(deepcopy(st0), p, n; c, host))
-    res["J_reverse_forward"] = r.J
-    res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
-    mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
-    dst, dp = r.dst, r.dp
-    r = nothing
-    st0 = nothing
-    reclaim()
-    # the gradient: the start's adjoint with the tangent of initialize! per parameter, and the parameters' with dp/dθ
-    pd = params(trapped3d_problem(trapped_point(dual_theta(THETA, 4))...; ppl = o.ppl, nt = o.nt, rows = o.rows, ppc = o.ppc, ion_ppc = o.ion_ppc,
-                                  capacity = trapped3d_capacity(o.ppl; o.nt, o.ion_ppc, factor = o.cap), t_end = o.t_end, energy = F(budget3(o.a0E)), float = F))
-    g_params = [v * scalar_dot(dp, pd, j) for j in 1:4]
-    g_state = zeros(4)
-    t_tan = @elapsed for j in 1:4
-        sd, _, _ = start3(dual1_theta(THETA, j), o)
-        g_state[j] = v * (array_dot(dst, sd, 1) + scalar_dot(dst, sd, 1))
-        sd = nothing; reclaim()
+    # the reverse pass on a copy; a failure (the device memory, most likely) is recorded and the duals still run
+    g = fill(NaN, 4)
+    try
+        r, t, peak, base = measured(() -> reverse_run(deepcopy(st0), p, n; c, host))
+        res["J_reverse_forward"] = r.J
+        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
+        mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
+        dst, dp = r.dst, r.dp
+        r = nothing
+        st0 = nothing
+        reclaim()
+        # the gradient: the start's adjoint with the tangent of initialize! per parameter, and the parameters' with dp/dθ
+        pd = params(trapped3d_problem(trapped_point(dual_theta(THETA, 4))...; ppl = o.ppl, nt = o.nt, rows = o.rows, ppc = o.ppc, ion_ppc = o.ion_ppc,
+                                      capacity = trapped3d_capacity(o.ppl; o.nt, o.ion_ppc, factor = o.cap), t_end = o.t_end, energy = F(budget3(o.a0E)), float = F))
+        g_params = [v * scalar_dot(dp, pd, j) for j in 1:4]
+        g_state = zeros(4)
+        t_tan = @elapsed for j in 1:4
+            sd, _, _ = start3(dual1_theta(THETA, j), o)
+            g_state[j] = v * (array_dot(dst, sd, 1) + scalar_dot(dst, sd, 1))
+            sd = nothing; reclaim()
+        end
+        g .= g_state .+ g_params
+        res["gradient_reverse"] = g; res["gradient_reverse_start"] = g_state; res["gradient_reverse_params"] = g_params
+        res["seconds_start_tangents"] = t_tan
+        res["nonfinite_adjoints"] = Dict(k => v for (k, v) in NONFINITE); empty!(NONFINITE)
+        for j in 1:4
+            @printf("    dJ/d%-8s reverse %+.8e (start %+.3e, parameters %+.3e)\n", PNAMES[j], g[j], g_state[j], g_params[j])
+        end
+        dst = nothing; reclaim()
+    catch e
+        res["reverse_error"] = sprint(showerror, e)[1:min(end, 3000)]
+        mark("$label: reverse pass FAILED: " * res["reverse_error"][1:min(end, 600)])
+        st0 = nothing; reclaim()
     end
-    g = g_state .+ g_params
-    res["gradient_reverse"] = g; res["gradient_reverse_start"] = g_state; res["gradient_reverse_params"] = g_params
-    res["seconds_start_tangents"] = t_tan
-    res["nonfinite_adjoints"] = Dict(k => v for (k, v) in NONFINITE); empty!(NONFINITE)
-    for j in 1:4
-        @printf("    dJ/d%-8s reverse %+.8e (start %+.3e, parameters %+.3e)\n", PNAMES[j], g[j], g_state[j], g_params[j])
-    end
-    dst = nothing; reclaim()
     # the duals
     rows = Dict{String,Any}[]
     for j in duals
         sd, pdj, _ = start3(dual1_theta(THETA, j), o)
-        Jd, t, peak, base = measured(() -> run_to(sd, pdj, n))
+        Jd, t, peak, base = try
+            measured(() -> run_to(sd, pdj, n))
+        catch e
+            push!(rows, Dict{String,Any}("parameter" => PNAMES[j], "error" => sprint(showerror, e)[1:min(end, 2000)]))
+            mark("$label: Dual{1} in $(PNAMES[j]) FAILED"); sd = nothing; reclaim(); continue
+        end
         d = Float64(ForwardDiff.partials(Jd, 1))
         rel = abs(g[j] - d) / abs(d)
         push!(rows, Dict{String,Any}("parameter" => PNAMES[j], "J" => Float64(ForwardDiff.value(Jd)), "derivative" => d, "reverse" => g[j],
@@ -245,7 +259,7 @@ end
 
 function main_grad()
     Threads.nthreads() >= 2 || @warn "run with -t 2: the device memory is sampled from a second thread"
-    c = parse(Int, opt("c", "40"))
+    c = parse(Int, opt("c", "12"))
     host = opt("host", "0") == "1"
     duals = parse_list(opt("dual", "1,2,3,4"))
     dual4 = opt("dual4", "0") == "1"
