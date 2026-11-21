@@ -1,0 +1,71 @@
+[03:51:52] start: ppl 32 ny 2 a0E 1.9 θ [6.0, 10.0, 80.0, 0.072], ks [1, 4, 16] (pool used 0.00 GiB, reserved 0.00 GiB)
+[03:52:10] states made; 1799 steps to t_end, mid-run step 300 (t = 50.05180835723877) (pool used 1.17 GiB, reserved 1.19 GiB)
+[03:52:20] primal to step 300 3.5 s, Dual{5} 6.2 s (pool used 1.17 GiB, reserved 1.19 GiB)
+  before the copy, arrays that differ between the separate runs: [("st.species.1.data.x.offset.1", 2.2649765014648438e-6), ("st.ws.1.spare.x.offset.1", 2.2649765014648438e-6), ("st.ws.1.spare.x.extras.old_offset_1", 1.996755599975586e-6), ("st.species.1.data.x.extras.old_offset_1", 1.996755599975586e-6), ("st.species.1.data.x.offset.2", 1.341104507446289e-6), ("st.ws.1.spare.x.offset.2", 1.341104507446289e-6), ("st.ws.1.spare.x.extras.old_offset_2", 1.1920928955078125e-6), ("st.species.1.data.x.extras.old_offset_2", 1.1920928955078125e-6)]
+  arrays whose values differ between the two states: Tuple{String, Float64}[]
+  primal gap between the Float32 and the Dual state at step 300: 0.0; alive: 455680 plasma, 0 born
+  scalars of the Dual state with a tangent: String[]
+[03:52:26] reverse of 1 steps, first call (compiles) (pool used 1.32 GiB, reserved 1.62 GiB)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception124)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func13, ptr nonnull @di_file146, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception124)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func135, ptr nonnull @di_file146, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func1865, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func1865, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[03:56:23] first call 236.9 s (pool used 2.01 GiB, reserved 2.03 GiB)
+[03:56:23] reverse of 1 steps (pool used 1.32 GiB, reserved 2.03 GiB)
+[03:56:23] reverse of 1 steps 0.008 s (8.40 ms per step) (pool used 2.04 GiB, reserved 2.06 GiB)
+  k = 1: J 0 (reverse's forward) 0 (primal) 0 (dual); reverse 0.008 s, primal 0.0008 s, Dual{5} 0.0063 s
+    random v   forward +1.22997585e-08 reverse +1.22997936e-08 relative difference 2.85e-06
+    duration   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    waist      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    focus      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    density    forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    cancellation of ⟨∇J, v⟩ over the arrays 1.0
+[03:56:28] reverse of 4 steps (pool used 1.17 GiB, reserved 5.38 GiB)
+[03:56:28] reverse of 4 steps 0.028 s (7.02 ms per step) (pool used 2.84 GiB, reserved 5.38 GiB)
+  k = 4: J 0 (reverse's forward) 0 (primal) 0 (dual); reverse 0.028 s, primal 0.0032 s, Dual{5} 0.0248 s
+    random v   forward -2.40765505e-08 reverse -2.40764933e-08 relative difference 2.38e-06
+    duration   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    waist      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    focus      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    density    forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    cancellation of ⟨∇J, v⟩ over the arrays 1.0
+[03:56:28] reverse of 16 steps (pool used 1.17 GiB, reserved 6.16 GiB)
+[03:56:28] reverse of 16 steps 0.113 s (7.06 ms per step) (pool used 6.66 GiB, reserved 6.69 GiB)
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+  k = 16: J 0 (reverse's forward) 0 (primal) 0 (dual); reverse 0.113 s, primal 0.0126 s, Dual{5} 0.1005 s
+    random v   forward +3.03765944e-07 reverse +3.03690622e-07 relative difference 2.48e-04
+    duration   forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    waist      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    focus      forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    density    forward +0.00000000e+00 reverse +0.00000000e+00 relative difference 0.00e+00
+    cancellation of ⟨∇J, v⟩ over the arrays 1.0
+  kernel arguments with dropped adjoints: ["gpu_ionize_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_push_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_retire_kernel! :: mixed Species (scalar adjoints dropped)", "gpu_retire_x_kernel! :: mixed Species (scalar adjoints dropped)"]
+wrote scripts/runs/enzyme-trapped-steps-20261121T035629

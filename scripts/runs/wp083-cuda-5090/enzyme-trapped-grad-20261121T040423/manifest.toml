@@ -1,0 +1,24 @@
+commit = "e52e8ee53e9cad309ced0d67f9a4ce59fe62cd07"
+backend = "CUDABackend(false, false, false)"
+dirty = "false"
+cuda_heap = "1073741824"
+cpu = "AMD Ryzen 9 9950X 16-Core Processor"
+threads = 32
+args = ["grad", "C=20", "ckpt=device"]
+work_package = "WP-078"
+patches = "scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl"
+julia = "1.13.4"
+gpu = "NVIDIA GeForce RTX 5090"
+
+[versions]
+Enzyme = "0.13.221"
+ForwardDiff = "1.4.6"
+KernelAbstractions = "0.10.8"
+
+[inputs]
+"scripts/enzyme/trapped.jl" = "5749cfb4c146a969543ca749a4a62af6d4dbc2d3c6cdd945725cd689161b3c02"
+"scripts/enzyme/common.jl" = "4702d96d795b727454dfe0193470a7e65928f4087ec5d3e0ab2a379fc3bbb741"
+"scripts/optim/born2d_case.jl" = "ebb13d12f3c67ac85bfca2170dcd4dbf4e257313a3d56bd8ae20def52dab4463"
+"scripts/optim/trapped2d_case.jl" = "f90819fe49c4b8b27510864ab734c754fc3c1d394a04c7b11556e3169509cb39"
+"scripts/enzyme/active_reduce.jl" = "37cf9f65d0beb5f8e7eef22e51b4adb5bdab168fb091318075ac27e5619d8a49"
+"Manifest.toml" = "629d54927287c0adcea0a6cbfda41f23385187a8e97b7bc48e769de9b99390c0"

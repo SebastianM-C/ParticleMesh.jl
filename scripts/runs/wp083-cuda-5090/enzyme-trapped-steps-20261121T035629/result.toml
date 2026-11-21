@@ -1,0 +1,63 @@
+primal_gap = 0.0
+
+[seconds]
+primal_to_mid = 3.51592103
+dual5_to_mid = 6.151646064
+
+[[rows]]
+J_primal = 0.0
+pool_reserved_before_GiB = 2.03125
+primal_seconds = 0.000836285
+steps = 1
+relative_difference = [2.8513685983861002e-6, 0.0, 0.0, 0.0, 0.0]
+J = 0.0
+forward = [1.2299758544997985e-8, 0.0, 0.0, 0.0, 0.0]
+reverse_seconds = 0.00839735
+J_dual = 0.0
+dual5_seconds = 0.006264972
+reverse = [1.2299793616143268e-8, 0.0, 0.0, 0.0, 0.0]
+pool_reserved_after_GiB = 2.0625
+cancellation_v = 1.0
+first_call_seconds = 236.884805874
+[[rows]]
+J_primal = 0.0
+pool_reserved_before_GiB = 5.375
+primal_seconds = 0.003187872
+steps = 4
+relative_difference = [2.3770738901888333e-6, 0.0, 0.0, 0.0, 0.0]
+J = 0.0
+forward = [-2.407655053104918e-8, 0.0, 0.0, 0.0, 0.0]
+reverse_seconds = 0.028081613
+J_dual = 0.0
+reverse = [-2.4076493299309546e-8, 0.0, 0.0, 0.0, 0.0]
+dual5_seconds = 0.024750287
+pool_reserved_after_GiB = 5.375
+cancellation_v = 1.0
+[[rows]]
+J_primal = 0.0
+pool_reserved_before_GiB = 6.15625
+primal_seconds = 0.01259021
+steps = 16
+relative_difference = [0.0002479608290431934, 0.0, 0.0, 0.0, 0.0]
+J = 0.0
+forward = [3.03765943954204e-7, 0.0, 0.0, 0.0, 0.0]
+reverse_seconds = 0.112897171
+J_dual = 0.0
+reverse = [3.03690621898906e-7, 0.0, 0.0, 0.0, 0.0]
+dual5_seconds = 0.100487987
+pool_reserved_after_GiB = 6.6875
+cancellation_v = 1.0
+
+[case]
+tmid = 50.0
+fade = [12.0, 24.0]
+theta = [6.0, 10.0, 80.0, 0.072]
+ny = 2
+ppl = 32
+rise = [-3.0, -2.0]
+a0E = 1.9
+seed = 7
+kmid = 300
+mode = "Reference"
+eltype = "Float32"
+gather = "CompensatedGather(k = 1)"

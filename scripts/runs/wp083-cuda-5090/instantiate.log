@@ -1,0 +1,13 @@
+Precompiling packages...
+   2.6 s  ✓ ParticleMeshCore
+   3.2 s  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+   1.2 s  ✓ ParticleMesh
+   1.2 s  ✓ ParticleMeshCore → ParticleMeshCoreEnzymeCoreExt
+   3.8 s  ✓ RecursiveArrayTools → RecursiveArrayToolsCUDAExt
+   3.8 s  ✓ DiffEqBase → DiffEqBaseCUDAExt
+   2.4 s  ✓ ParticleMeshElectromagnetic
+   1.1 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticSciMLStructuresExt
+   1.4 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticSciMLExt
+   1.4 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticOrdinaryDiffEqCoreExt
+   1.6 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticCheckpointingExt
+  11 dependencies successfully precompiled in 7 seconds. 286 already precompiled.
