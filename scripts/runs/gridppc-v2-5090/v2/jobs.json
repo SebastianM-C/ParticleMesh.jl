@@ -1,0 +1,502 @@
+[
+ {
+  "gather": "plain",
+  "id": "v2-r16x1-yee-plain",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r16x1-yee-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r16x1-yee-galerkin-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r16x1-m4-plain",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r16x1-m4-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r16x1-m4-galerkin-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.175,
+  "gather": "compensated",
+  "id": "v2-E2.175-r16x1-m4-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.175,
+  "gather": "compensated",
+  "id": "v2-E2.175-r16x1-yee-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "a0E": 2.4,
+  "gather": "compensated",
+  "id": "v2-E2.4-r16x1-m4-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.4,
+  "gather": "compensated",
+  "id": "v2-E2.4-r16x1-yee-compensated",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r24x1-yee-compensated",
+  "ny": 1,
+  "ppl": 24,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r24x1-m4-compensated",
+  "ny": 1,
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r32x1-yee-compensated",
+  "ny": 1,
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r32x1-m4-compensated",
+  "ny": 1,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r32x1-m4-galerkin-compensated",
+  "ny": 1,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "grad": true,
+  "id": "v2-r16x1-m4-compensated-grad",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "grad": true,
+  "id": "v2-r16x1-m4-galerkin-compensated-grad",
+  "ny": 1,
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r24x2-yee-plain",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r24x2-yee-compensated",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "yee"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r24x2-yee-galerkin-compensated",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "yee"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r24x2-m4-plain",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r24x2-m4-compensated",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r24x2-m4-galerkin-compensated",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r32x2-yee-plain",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r32x2-yee-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r32x2-yee-galerkin-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r32x2-m4-plain",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r32x2-m4-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r32x2-m4-galerkin-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.175,
+  "gather": "compensated",
+  "id": "v2-E2.175-r32x2-m4-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.175,
+  "gather": "compensated",
+  "id": "v2-E2.175-r32x2-yee-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "a0E": 2.4,
+  "gather": "compensated",
+  "id": "v2-E2.4-r32x2-m4-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.4,
+  "gather": "compensated",
+  "id": "v2-E2.4-r32x2-yee-compensated",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "gather": "compensated",
+  "id": "v2-r32x2-m4-compensated-f32",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r48x1-yee-compensated",
+  "ny": 1,
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r48x1-m4-compensated",
+  "ny": 1,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r48x1-m4-galerkin-compensated",
+  "ny": 1,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "grad": true,
+  "id": "v2-r32x1-m4-compensated-grad",
+  "ny": 1,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "grad": true,
+  "id": "v2-r32x1-m4-galerkin-compensated-grad",
+  "ny": 1,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r64x1-yee-compensated",
+  "ny": 1,
+  "ppl": 64,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r64x1-m4-compensated",
+  "ny": 1,
+  "ppl": 64,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "grad": true,
+  "id": "v2-r24x2-m4-compensated-grad",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "grad": true,
+  "id": "v2-r24x2-m4-galerkin-compensated-grad",
+  "ny": 2,
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r48x3-yee-plain",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r48x3-yee-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r48x3-yee-galerkin-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r48x3-m4-plain",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r48x3-m4-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r48x3-m4-galerkin-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.175,
+  "gather": "compensated",
+  "id": "v2-E2.175-r48x3-m4-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.175,
+  "gather": "compensated",
+  "id": "v2-E2.175-r48x3-yee-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "a0E": 2.4,
+  "gather": "compensated",
+  "id": "v2-E2.4-r48x3-m4-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "a0E": 2.4,
+  "gather": "compensated",
+  "id": "v2-E2.4-r48x3-yee-compensated",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "grad": true,
+  "id": "v2-r32x2-m4-compensated-grad",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "grad": true,
+  "id": "v2-r32x2-m4-galerkin-compensated-grad",
+  "ny": 2,
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r64x4-yee-plain",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r64x4-yee-compensated",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "yee"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r64x4-yee-galerkin-compensated",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "yee"
+ },
+ {
+  "gather": "plain",
+  "id": "v2-r64x4-m4-plain",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r64x4-m4-compensated",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r64x4-m4-galerkin-compensated",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "grad": true,
+  "id": "v2-r48x3-m4-compensated-grad",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "grad": true,
+  "id": "v2-r48x3-m4-galerkin-compensated-grad",
+  "ny": 3,
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r96x6-yee-compensated",
+  "ny": 6,
+  "ppl": 96,
+  "solver": "yee"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r96x6-yee-galerkin-compensated",
+  "ny": 6,
+  "ppl": 96,
+  "solver": "yee"
+ },
+ {
+  "gather": "compensated",
+  "id": "v2-r96x6-m4-compensated",
+  "ny": 6,
+  "ppl": 96,
+  "solver": "m4"
+ },
+ {
+  "gather": "galerkin-compensated",
+  "id": "v2-r96x6-m4-galerkin-compensated",
+  "ny": 6,
+  "ppl": 96,
+  "solver": "m4"
+ },
+ {
+  "gather": "compensated",
+  "grad": true,
+  "id": "v2-r64x4-m4-compensated-grad",
+  "ny": 4,
+  "ppl": 64,
+  "solver": "m4"
+ }
+]
