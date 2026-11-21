@@ -4,14 +4,15 @@
 # Checkpointing.jl's Revolve and the engine's `checkpoint_storage` (WP-080), checked against
 # forward-mode duals with one partial per parameter, with the time and the device memory of each.
 #
-#     PM_BACKEND=cuda PM_ENZYME_PATCH="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl" \
+#     PM_BACKEND=cuda PM_ENZYME_PATCH="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl;scripts/enzyme/spike/unrolled_current.jl" \
 #       JULIA_LOAD_PATH=@:<repo>:@stdlib \
 #       julia +1.13 -t 2 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped3d.jl grad [key=value ...]
 #
 # The module's test environment carries Enzyme, Checkpointing, CUDA and CUDACore; the repository's
-# root project is stacked behind it for `ParticleMesh`. The two patches are WP-078's that WP-083
-# kept: Active kernel arguments with their adjoints (#546) and the one-thread flag sum and the
-# sinpi rule (#551, #545). A second thread samples the device memory.
+# root project is stacked behind it for `ParticleMesh`. The patches: WP-078's two that WP-083 kept,
+# Active kernel arguments with their adjoints (#546) and the one-thread flag sum and the sinpi rule
+# (#551, #545), and `current!` with its species loops unrolled, without which Enzyme's type analysis
+# of the 3D step fails (#384). A second thread samples the device memory.
 #
 # Keys: the case `ppl=16 nt=1 rows=128 ppc=2x1x1 ion_ppc=1x1x1 cap=1` (the born electrons' capacity
 # factor, `trapped3d_capacity`) `t_end=300 a0E=1.9 theta=duration,waist,focus,density` (default the

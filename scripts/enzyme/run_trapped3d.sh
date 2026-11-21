@@ -11,7 +11,7 @@ cd "$(dirname "$0")/../.."
 out="scripts/runs/enzyme-trapped3d-gpu-$(date -u +%Y%m%dT%H%M%S)"
 mkdir -p "$out"
 J=(julia +1.13 --startup=no -t 2 --project=lib/ParticleMeshElectromagnetic/test)
-export PM_BACKEND=cuda PM_ENZYME_PATCH="${PM_ENZYME_PATCH:-scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl}"
+export PM_BACKEND=cuda PM_ENZYME_PATCH="${PM_ENZYME_PATCH:-scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl;scripts/enzyme/spike/unrolled_current.jl}"
 export JULIA_LOAD_PATH="@:$(pwd):@stdlib"
 { echo "# commit $(git rev-parse HEAD), patches $PM_ENZYME_PATCH, started $(date -u +%FT%TZ)"
   nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv,noheader; } > "$out/summary.txt"
