@@ -1348,8 +1348,10 @@ status = "proposed"
 ["T-1140"]
 quantity = "Enzyme's reverse mode on CUDA through what the antenna's kernels add per row (antenna_b_rows and antenna_e_rows: 2D and 3D Gaussian lasers with both envelopes, shaped lasers with the Gaussian and pupil profiles), the laser built in the kernel from parameters in a device array, against ForwardDiff's Jacobian on the CPU: the adjoints of the parameters, summed over every row of the plane"
 scale = "Σ_j |J_j|ᵀ|w̄_j|, the sum of the terms' magnitudes (J_j the row's Jacobian, w̄ the output's random adjoint); the device's sin, cos, exp and atan differ from the CPU's by an ulp or two"
-C = 64
-status = "proposed; not yet measured on CUDA"
+C = 8
+measured_Float32 = { gauss2d = 0.432, wave2d = 0.486, gauss3d = 0.183, wave3d = 0.296, gaussbeam = 0.515, pupil = 2.05 }
+measured_Float64 = { gauss2d = 0.801, wave2d = 1.30, gauss3d = 0.214, wave3d = 0.299, gaussbeam = 0.270, pupil = 0.272 }
+status = "proposed; measured on an RTX 5090 (runs/wp083-cuda-5090), C four times the largest"
 
 ["T-1141"]
 quantity = "inside a kernel on the test backend: the largest distance between sin, cos and the backend's sincos (C_apart), and between sin, cos and the exact values (C)"
