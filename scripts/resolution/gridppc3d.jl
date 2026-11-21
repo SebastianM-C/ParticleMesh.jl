@@ -333,6 +333,37 @@ function campaign3_jobs(name)
     elseif name == "c48"
         plain!(jobs, "c48-p2x1x1"; ppl = 48, ppc = [2, 1, 1])
         plain!(jobs, "c48-p2x1x1-m4"; ppl = 48, ppc = [2, 1, 1], solver = "m4")
+    elseif name == "g3"
+        # the GPU campaign, in Float32: compiling jobs first (8 cells per λ₀, a short run of each variant), then the grids along x
+        # with 2 × 2 × 2 and 2 × 1 × 1 particles per cell, the two solvers, the gathers, the transverse cell and box, the frames of
+        # two runs for the page, and the gradient with duals where it fits on the card
+        f = (; T = "f32")
+        g(ppl, ppc) = "r$(ppl)-p$(tag(ppc))"
+        for (sv, ga) in (("yee", "compensated"), ("m4", "compensated"), ("yee", "plain"), ("yee", "galerkin-compensated"), ("m4", "galerkin-compensated"))
+            plain!(jobs, jid("g3", "warm", sv, ga); ppl = 8, rows = 64, ppc = [1, 1, 1], t_end = 20.0, solver = sv, gather = ga, series = false, f...)
+        end
+        push!(jobs, Dict{String,Any}("id" => "g3-warm-grad", "ppl" => 8, "rows" => 64, "ppc" => [1, 1, 1], "t_end" => 20.0, "grad" => true, "T" => "f32"))
+        for (ppl, ppcs) in ((16, ([1, 1, 1], [2, 1, 1], [2, 2, 2], [3, 3, 3])), (24, ([2, 1, 1], [2, 2, 2])), (32, ([1, 1, 1], [2, 1, 1], [2, 2, 2])),
+                            (48, ([2, 1, 1], [2, 2, 2])), (64, ([2, 1, 1], [2, 2, 2])), (96, ([2, 1, 1],)))
+            for ppc in ppcs, sv in ("yee", "m4")
+                (ppc == [1, 1, 1] || ppc == [3, 3, 3]) && sv == "m4" && continue
+                plain!(jobs, jid("g3", g(ppl, ppc), sv); ppl, ppc, solver = sv, f...)
+            end
+        end
+        for ppl in (16, 32, 48), ga in ("plain", "galerkin-compensated")
+            plain!(jobs, jid("g3", g(ppl, [2, 1, 1]), "m4", ga); ppl, ppc = [2, 1, 1], solver = "m4", gather = ga, f...)
+        end
+        plain!(jobs, "g3-r16-p2x2x2-yee-rows96"; ppl = 16, rows = 96, f...)
+        plain!(jobs, "g3-r32-p2x1x1-m4-rows96"; ppl = 32, rows = 96, ppc = [2, 1, 1], solver = "m4", f...)
+        for ppl in (16, 32)
+            plain!(jobs, jid("g3", g(ppl, [2, 1, 1]), "m4", "nt2"); ppl, nt = 2, ppc = [2, 1, 1], solver = "m4", f...)
+        end
+        plain!(jobs, "g3-r16-p2x2x2-yee-frames"; ppl = 16, frames = 30, f...)
+        plain!(jobs, "g3-r32-p2x1x1-m4-frames"; ppl = 32, ppc = [2, 1, 1], solver = "m4", frames = 30, f...)
+        for (ppl, ppc, sv) in ((16, [2, 1, 1], "yee"), (16, [2, 2, 2], "yee"), (24, [2, 1, 1], "m4"), (32, [2, 1, 1], "m4"), (32, [2, 1, 1], "yee"),
+                               (32, [2, 2, 2], "m4"), (48, [2, 1, 1], "m4"))
+            push!(jobs, Dict{String,Any}("id" => jid("g3", g(ppl, ppc), sv, "grad"), "ppl" => ppl, "ppc" => ppc, "solver" => sv, "grad" => true, "T" => "f32"))
+        end
     elseif name == "t16"
         # the transverse cell at λ₀/16: Δy = Δz = π/8
         plain!(jobs, "t16-nt2-p2x1x1"; ppl = 16, nt = 2, ppc = [2, 1, 1])

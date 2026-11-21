@@ -630,6 +630,14 @@ function campaign_jobs(name)
         plain!(jobs, "timing-r32x2-f32-fast"; ppl = 32, ny = 2, T = "f32", mode = "fast", c...)
         pair!(jobs, "timing-r32x2-f32-ext3-capstart"; ppl = 32, ny = 2, T = "f32", extend = 3, x = [10.29, 10.0, 80.0, 54.0, 0.072], c...)
         pair!(jobs, "timing-r32x2-f32-ext3-capbest"; ppl = 32, ny = 2, T = "f32", extend = 3, x = [8.235, 6.472, 110.0, 54.0, 0.1], c...)
+    elseif name == "timing2"
+        # the timing campaign again for the solvers and gathers of v2, Float32, plain and with duals, one process per job
+        c = (; series = false, T = "f32")
+        for (ppl, ny) in ((16, 1), (24, 2), (32, 2), (32, 1), (48, 3), (64, 4)), (solver, gather) in (("yee", "compensated"), ("m4", "compensated"),
+                                                                                                    ("m4", "galerkin-compensated"))
+            pair!(jobs, jid("timing2", "r$(ppl)x$(ny)", solver, gather); ppl, ny, solver, gather, c...)
+        end
+        plain!(jobs, "timing2-r32x2-m4-compensated-fast"; ppl = 32, ny = 2, solver = "m4", gather = "compensated", mode = "fast", c...)
     elseif name == "frames"
         for (ppl, ny) in ((16, 1), (32, 2), (64, 4))
             plain!(jobs, jid("frames", "r$(ppl)x$(ny)"); ppl, ny, frames = 60)
