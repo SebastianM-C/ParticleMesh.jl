@@ -1,0 +1,581 @@
+[
+ {
+  "T": "f32",
+  "gather": "compensated",
+  "id": "g3-warm-yee-compensated",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 8,
+  "rows": 64,
+  "series": false,
+  "solver": "yee",
+  "t_end": 20.0
+ },
+ {
+  "T": "f32",
+  "gather": "compensated",
+  "id": "g3-warm-m4-compensated",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 8,
+  "rows": 64,
+  "series": false,
+  "solver": "m4",
+  "t_end": 20.0
+ },
+ {
+  "T": "f32",
+  "gather": "plain",
+  "id": "g3-warm-yee-plain",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 8,
+  "rows": 64,
+  "series": false,
+  "solver": "yee",
+  "t_end": 20.0
+ },
+ {
+  "T": "f32",
+  "gather": "galerkin-compensated",
+  "id": "g3-warm-yee-galerkin-compensated",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 8,
+  "rows": 64,
+  "series": false,
+  "solver": "yee",
+  "t_end": 20.0
+ },
+ {
+  "T": "f32",
+  "gather": "galerkin-compensated",
+  "id": "g3-warm-m4-galerkin-compensated",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 8,
+  "rows": 64,
+  "series": false,
+  "solver": "m4",
+  "t_end": 20.0
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-warm-grad",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 8,
+  "rows": 64,
+  "t_end": 20.0
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p1x1x1-yee",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p2x1x1-yee",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p2x1x1-m4",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "gather": "plain",
+  "id": "g3-r16-p2x1x1-m4-plain",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "gather": "galerkin-compensated",
+  "id": "g3-r16-p2x1x1-m4-galerkin-compensated",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p1x1x1-yee",
+  "ppc": [
+   1,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p2x1x1-m4-rows96",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "rows": 96,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r24-p2x1x1-yee",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 24,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r24-p2x1x1-m4",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p2x2x2-yee-rows96",
+  "ppl": 16,
+  "rows": 96
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p2x1x1-m4-nt2",
+  "nt": 2,
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p2x1x1-yee",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p2x1x1-m4",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "gather": "plain",
+  "id": "g3-r32-p2x1x1-m4-plain",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "gather": "galerkin-compensated",
+  "id": "g3-r32-p2x1x1-m4-galerkin-compensated",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "frames": 30,
+  "id": "g3-r32-p2x1x1-m4-frames",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p2x2x2-yee",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p2x2x2-m4",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 16,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "frames": 30,
+  "id": "g3-r16-p2x2x2-yee-frames",
+  "ppl": 16
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r16-p2x1x1-yee-grad",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r48-p2x1x1-yee",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r48-p2x1x1-m4",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "gather": "plain",
+  "id": "g3-r48-p2x1x1-m4-plain",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "gather": "galerkin-compensated",
+  "id": "g3-r48-p2x1x1-m4-galerkin-compensated",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r24-p2x2x2-yee",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 24,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r24-p2x2x2-m4",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r24-p2x1x1-m4-grad",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 24,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p2x1x1-m4-nt2",
+  "nt": 2,
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r64-p2x1x1-yee",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 64,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r64-p2x1x1-m4",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 64,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p2x2x2-yee",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r32-p2x2x2-m4",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r32-p2x1x1-m4-grad",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r32-p2x1x1-yee-grad",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 32,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r16-p3x3x3-yee",
+  "ppc": [
+   3,
+   3,
+   3
+  ],
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r16-p2x2x2-yee-grad",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 16,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r96-p2x1x1-yee",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 96,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r96-p2x1x1-m4",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 96,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r48-p2x2x2-yee",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 48,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r48-p2x2x2-m4",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r48-p2x1x1-m4-grad",
+  "ppc": [
+   2,
+   1,
+   1
+  ],
+  "ppl": 48,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r64-p2x2x2-yee",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 64,
+  "solver": "yee"
+ },
+ {
+  "T": "f32",
+  "id": "g3-r64-p2x2x2-m4",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 64,
+  "solver": "m4"
+ },
+ {
+  "T": "f32",
+  "grad": true,
+  "id": "g3-r32-p2x2x2-m4-grad",
+  "ppc": [
+   2,
+   2,
+   2
+  ],
+  "ppl": 32,
+  "solver": "m4"
+ }
+]

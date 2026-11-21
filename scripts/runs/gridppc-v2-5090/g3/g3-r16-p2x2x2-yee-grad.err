@@ -1,0 +1,52 @@
+Out of GPU memory trying to allocate 8.545 GiB
+Effective GPU memory usage: 99.94% (31.426 GiB/31.445 GiB)
+Memory pool usage: 26.898 GiB (27.531 GiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+
+Stacktrace:
+  [1] _pool_alloc
+    @ ~/.julia/packages/CUDACore/gfTex/src/resources/backends.jl:72 [inlined]
+  [2] macro expansion
+    @ ~/.julia/packages/CUDACore/gfTex/src/resources/backends.jl:30 [inlined]
+  [3] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [4] pool_alloc
+    @ ~/.julia/packages/CUDACore/gfTex/src/resources/backends.jl:29 [inlined]
+  [5] (::CUDACore.var"#894#895"{CUDACore.DeviceMemory, Int64})()
+    @ CUDACore ~/.julia/packages/CUDACore/gfTex/src/array.jl:96
+  [6] cached_alloc(f::CUDACore.var"#894#895"{CUDACore.DeviceMemory, Int64}, key::Tuple{UnionAll, CUDACore.CuDevice, DataType, Int64})
+    @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/alloc_cache.jl:36
+  [7] CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 2, CUDACore.DeviceMemory}(::UndefInitializer, dims::Tuple{Int64, Int64})
+    @ CUDACore ~/.julia/packages/CUDACore/gfTex/src/array.jl:95
+  [8] allocate
+    @ ~/.julia/packages/CUDACore/gfTex/src/CUDAKernels.jl:32 [inlined]
+  [9] #zeros#42
+    @ ~/.julia/packages/KernelInterface/RL7rX/src/host.jl:417 [inlined]
+ [10] zeros
+    @ ~/.julia/packages/KernelInterface/RL7rX/src/host.jl:416 [inlined]
+ [11] zeros
+    @ ~/.julia/packages/KernelInterface/RL7rX/src/host.jl:415 [inlined]
+ [12] Workspace(s::Species{3, ForwardDiff.Dual{Nothing, Float32, 4}, CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{UInt8, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_2::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_3::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_2::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_3::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}}}}}, grid::PeriodicGrid{3, ForwardDiff.Dual{Nothing, Float32, 4}}; flux::Tuple{Shape{2}, Tuple{Node, Node, Node}}, flux_layout::ParticleMeshCore.CellMajor, append::Nothing, bins::NodeBins{Shape{2}, Tuple{Center, Node, Node}}, key_sort::AcceleratedKernels.RadixSort, swap::Bool)
+    @ ParticleMeshCore ~/pm-gridppc-v2/lib/ParticleMeshCore/src/sort.jl:98
+ [13] (::ParticleMeshElectromagnetic.var"#165#166"{EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}, Tuple{Shape{2}, Tuple{Node, Node, Node}}, WindowFrame{MovingWindow{ForwardDiff.Dual{Nothing, Float32, 4}}, ForwardDiff.Dual{Nothing, Float32, 4}, Tuple{CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}}, Tuple{CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}}}, PeriodicGrid{3, ForwardDiff.Dual{Nothing, Float32, 4}}, Tuple{Int64, Int64, Int64}})(s::Species{3, ForwardDiff.Dual{Nothing, Float32, 4}, CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{UInt8, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_2::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_3::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, CUDACore.CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CUDACore.CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_2::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}, old_offset_3::CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}}}}}, d::SpeciesDescription{ForwardDiff.Dual{Nothing, Float32, 4}, Tuple{Int64, Int64, Int64}})
+    @ ParticleMeshElectromagnetic ~/pm-gridppc-v2/lib/ParticleMeshElectromagnetic/src/step3d.jl:81
+ [14] map
+    @ ./tuple.jl:381 [inlined]
+ [15] EMState(problem::EMProblem{3, ForwardDiff.Dual{Nothing, Float32, 4}, Tuple{SpeciesDescription{ForwardDiff.Dual{Nothing, Float32, 4}, Tuple{Int64, Int64, Int64}}}, Tuple{ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}}, Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64, Int64}, Tuple{GaussianLaser{ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}, AxisTime, Tuple{ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}}}}, Tuple{Symbol, Symbol, Symbol}, MovingWindow{ForwardDiff.Dual{Nothing, Float32, 4}}, DensityRamp{ForwardDiff.Dual{Nothing, Float32, 4}}, Nothing, FieldIonization{ForwardDiff.Dual{Nothing, Float32, 4}, 2, DopantSection{ForwardDiff.Dual{Nothing, Float32, 4}}, Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{ADKLevel{ForwardDiff.Dual{Nothing, Float32, 4}}, ADKLevel{ForwardDiff.Dual{Nothing, Float32, 4}}}, Tuple{Int64, Int64, Int64}}}, numerics::EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}; backend::CUDABackend, every::Int64, record::Tuple{})
+    @ ParticleMeshElectromagnetic ~/pm-gridppc-v2/lib/ParticleMeshElectromagnetic/src/step3d.jl:81
+ [16] run_job3(job0::Dict{String, Any}, dir::String)
+    @ Main ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:241
+ [17] run_campaign3(name::SubString{String}, dir::String)
+    @ Main ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:401
+ [18] #162
+    @ ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:419 [inlined]
+ [19] foreach(f::var"#162#163", itr::Vector{SubString{String}})
+    @ Base ./abstractarray.jl:3212
+ [20] top-level scope
+    @ ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:419
+ [21] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [22] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [23] _start()
+    @ Base ./client.jl:577

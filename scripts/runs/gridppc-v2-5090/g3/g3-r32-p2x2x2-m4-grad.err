@@ -1,0 +1,60 @@
+Out of GPU memory trying to allocate 1.367 GiB
+Effective GPU memory usage: 99.94% (31.426 GiB/31.445 GiB)
+Memory pool usage: 26.370 GiB (27.531 GiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+
+Stacktrace:
+  [1] _pool_alloc
+    @ ~/.julia/packages/CUDACore/gfTex/src/resources/backends.jl:72 [inlined]
+  [2] macro expansion
+    @ ~/.julia/packages/CUDACore/gfTex/src/resources/backends.jl:30 [inlined]
+  [3] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [4] pool_alloc
+    @ ~/.julia/packages/CUDACore/gfTex/src/resources/backends.jl:29 [inlined]
+  [5] (::CUDACore.var"#894#895"{CUDACore.DeviceMemory, Int64})()
+    @ CUDACore ~/.julia/packages/CUDACore/gfTex/src/array.jl:96
+  [6] cached_alloc(f::CUDACore.var"#894#895"{CUDACore.DeviceMemory, Int64}, key::Tuple{UnionAll, CUDACore.CuDevice, DataType, Int64})
+    @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/alloc_cache.jl:36
+  [7] CUDACore.CuArray{ForwardDiff.Dual{Nothing, Float32, 4}, 1, CUDACore.DeviceMemory}(::UndefInitializer, dims::Tuple{Int64})
+    @ CUDACore ~/.julia/packages/CUDACore/gfTex/src/array.jl:95
+  [8] allocate
+    @ ~/.julia/packages/CUDACore/gfTex/src/CUDAKernels.jl:32 [inlined]
+  [9] #zeros#42
+    @ ~/.julia/packages/KernelInterface/RL7rX/src/host.jl:417 [inlined]
+ [10] zeros
+    @ ~/.julia/packages/KernelInterface/RL7rX/src/host.jl:416 [inlined]
+ [11] zeros
+    @ ~/.julia/packages/KernelInterface/RL7rX/src/host.jl:415 [inlined]
+ [12] zT
+    @ ~/pm-gridppc-v2/lib/ParticleMeshCore/src/species.jl:113 [inlined]
+ [13] #22
+    @ ~/pm-gridppc-v2/lib/ParticleMeshCore/src/species.jl:116 [inlined]
+ [14] ntuple
+    @ ./ntuple.jl:19 [inlined]
+ [15] Species(backend::CUDABackend, ::Type{ForwardDiff.Dual{Nothing, Float32, 4}}, cap::Int64; q::ForwardDiff.Dual{Nothing, Float32, 4}, m::ForwardDiff.Dual{Nothing, Float32, 4}, N::Int64, extras::@NamedTuple{old_cell_1::DataType, old_cell_2::DataType, old_cell_3::DataType, old_offset_1::DataType, old_offset_2::DataType, old_offset_3::DataType})
+    @ ParticleMeshCore ~/pm-gridppc-v2/lib/ParticleMeshCore/src/species.jl:116
+ [16] Species
+    @ ~/pm-gridppc-v2/lib/ParticleMeshCore/src/species.jl:112 [inlined]
+ [17] #163
+    @ ~/pm-gridppc-v2/lib/ParticleMeshElectromagnetic/src/step3d.jl:77 [inlined]
+ [18] map
+    @ ./tuple.jl:354 [inlined]
+ [19] EMState(problem::EMProblem{3, ForwardDiff.Dual{Nothing, Float32, 4}, Tuple{SpeciesDescription{ForwardDiff.Dual{Nothing, Float32, 4}, Tuple{Int64, Int64, Int64}}}, Tuple{ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}}, Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64, Int64}, Tuple{GaussianLaser{ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}, AxisTime, Tuple{ForwardDiff.Dual{Nothing, Float32, 4}, ForwardDiff.Dual{Nothing, Float32, 4}}}}, Tuple{Symbol, Symbol, Symbol}, MovingWindow{ForwardDiff.Dual{Nothing, Float32, 4}}, DensityRamp{ForwardDiff.Dual{Nothing, Float32, 4}}, Nothing, FieldIonization{ForwardDiff.Dual{Nothing, Float32, 4}, 2, DopantSection{ForwardDiff.Dual{Nothing, Float32, 4}}, Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{ADKLevel{ForwardDiff.Dual{Nothing, Float32, 4}}, ADKLevel{ForwardDiff.Dual{Nothing, Float32, 4}}}, Tuple{Int64, Int64, Int64}}}, numerics::EMNumerics{Shape{2}, Reference, Boris, M4, Nothing, Esirkepov, PML, PML, CompensatedGather}; backend::CUDABackend, every::Int64, record::Tuple{})
+    @ ParticleMeshElectromagnetic ~/pm-gridppc-v2/lib/ParticleMeshElectromagnetic/src/step3d.jl:74
+ [20] run_job3(job0::Dict{String, Any}, dir::String)
+    @ Main ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:241
+ [21] run_campaign3(name::SubString{String}, dir::String)
+    @ Main ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:401
+ [22] #162
+    @ ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:419 [inlined]
+ [23] foreach(f::var"#162#163", itr::Vector{SubString{String}})
+    @ Base ./abstractarray.jl:3212
+ [24] top-level scope
+    @ ~/pm-gridppc-v2/scripts/resolution/gridppc3d.jl:419
+ [25] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [26] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [27] _start()
+    @ Base ./client.jl:577
