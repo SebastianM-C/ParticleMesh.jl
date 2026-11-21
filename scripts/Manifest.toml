@@ -1928,12 +1928,14 @@ version = "0.1.0-DEV"
 
     [deps.ParticleMeshElectromagnetic.extensions]
     ParticleMeshElectromagneticCheckpointingExt = "Checkpointing"
+    ParticleMeshElectromagneticForwardDiffExt = "ForwardDiff"
     ParticleMeshElectromagneticOrdinaryDiffEqCoreExt = ["OrdinaryDiffEqCore", "SciMLBase"]
     ParticleMeshElectromagneticSciMLExt = ["SciMLBase", "RecursiveArrayTools"]
     ParticleMeshElectromagneticSciMLStructuresExt = "SciMLStructures"
 
     [deps.ParticleMeshElectromagnetic.weakdeps]
     Checkpointing = "eb46d486-4f9c-4c3d-b445-a617f2a2f1ca"
+    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
     OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
     RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
     SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"

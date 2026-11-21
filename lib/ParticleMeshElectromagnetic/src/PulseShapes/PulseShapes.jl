@@ -37,6 +37,18 @@ export TransverseProfile, GaussianBeam, PupilBeam, PupilAmplitude, GaussianPupil
 export profile, pupil_amplitude, wavefront, legendre, profile_moments, aliasing_period
 export parameter_names, parameter_values, with_parameter_values, convert_eltype
 
+"""
+    sin_cos(x) -> (sin(x), cos(x))
+
+The sine and the cosine as two calls, never `sincos`, for the profiles here and for the antenna's
+kernels: Enzyme's reverse pass of a KernelAbstractions kernel on a GPU cannot allocate a tape that
+holds a `sincos` of an active value, and inside a kernel the backend's `sincos` and its separate
+`sin` and `cos` differ in the last bits. ForwardDiff's `sin` of a dual calls `sincos`, so the
+package's ForwardDiff extension gives a dual the value of two calls too, and a dual run keeps the
+bits of the plain one.
+"""
+@inline sin_cos(x) = (sin(x), cos(x))
+
 include("envelopes.jl")
 include("beams.jl")
 include("parameters.jl")

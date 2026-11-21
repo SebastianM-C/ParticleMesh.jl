@@ -124,7 +124,7 @@ end
 @inline function antenna_b_rows(a::Antenna{<:ShapedLaser}, j::Int32, g, ::Type{T}) where {T}
     l = a.laser
     ξ = a.xa - l.focus
-    sθ, cθ = sin(l.polarization), cos(l.polarization)
+    sθ, cθ = sin_cos(l.polarization)
     ec, _, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
     en, _, _ = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
     return ec * cθ, en * sθ
@@ -143,7 +143,7 @@ end
 @inline function antenna_e_rows(a::Antenna{<:ShapedLaser}, j::Int32, g, ::Type{T}) where {T}
     l = a.laser
     ξ = a.xa - a.hx - l.focus
-    sθ, cθ = sin(l.polarization), cos(l.polarization)
+    sθ, cθ = sin_cos(l.polarization)
     _, bp, _ = shaped_field(l, ξ, antenna_dy(a, j, one(T) / 2), g)
     _, _, bs = shaped_field(l, ξ, antenna_dy(a, j, zero(T)), g)
     return bp * cθ, bs * sθ

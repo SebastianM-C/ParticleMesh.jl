@@ -373,7 +373,10 @@ end
         get!(MEASURED, "T-825 rel/floor, $name", Dict{String,Float64}())[BSI_NAMES[i]] = ratio
         get!(MEASURED, "T-825 floor, $name", Dict{String,Float64}())[BSI_NAMES[i]] = r.floor_rel
         @test isfinite(ad[o, i]) && ad[o, i] != 0
-        @test r.rel[r.istar] <= emC("T-825") * r.floor_rel
+        # Three neighbouring quotients can agree to the last bit, a spread of zero that says
+        # nothing about the noise: the floor is then held at floor_min, below every nonzero floor
+        # measured here.
+        @test r.rel[r.istar] <= emC("T-825") * max(r.floor_rel, emC("T-825", "floor_min"))
         @test r.floor_rel <= emC("T-825", "floor_max")
     end
     @test ad[1, 2] < 0 && ad[1, 1] > 0

@@ -92,7 +92,7 @@ export MovingWindow, DensityRamp, WindowFrame, WindowEdges, WindowClock, window_
 include("PulseShapes/PulseShapes.jl")
 using .PulseShapes: PulseShapes, TemporalEnvelope, GaussianEnvelope, SpectralEnvelope, TransverseProfile, GaussianBeam, PupilBeam,
                     GaussianPupil, SuperGaussianPupil, UniformPupil, envelope, envelope_extent, envelope_energy, profile,
-                    profile_moments, aliasing_period, parameter_names, parameter_values, with_parameter_values, convert_eltype
+                    profile_moments, aliasing_period, parameter_names, parameter_values, with_parameter_values, convert_eltype, sin_cos
 
 include("layout.jl")
 include("yee.jl")
