@@ -1,0 +1,31 @@
+branch = "runs/ion3d-smilei-plasma-s3"
+request_commit = "3d9d3b505a4563ebb098064a57761970e768214e"
+started = "2026-11-21T08:19:15Z"
+category = "crosscode"
+outputs = ["scripts/runs/ion-3d/smilei-plasma-s3"]
+finished = "2026-11-21T08:27:59Z"
+ok = true
+files_returned = 22
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "smilei"
+class = "compute"
+start = "2026-11-21T08:19:15Z"
+exit = 0
+seconds = 507
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-21T08:27:42Z"
+exit = 0
+seconds = 17
+
+[image]
+name = "localhost/particlemesh-smilei:e4f0148b8952fc87"
+id = "faf32c6a5426b30f3ff81fe6ed8ff6f4e3ff10a5d53b4427151374b56ed6159d"
