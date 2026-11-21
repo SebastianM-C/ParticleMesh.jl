@@ -1023,7 +1023,9 @@ function summarize_picongpu_ion(dir)
     offset_reading = nothing
     files = picongpu_dump_files(dir)
     last_it = maximum(it for (_, its) in files for it in its)
+    unreadable = Int[]
     for (path, its) in files, it in its
+      try
       h5open(path, "r") do f
         data = f["data"]
         mp = rstrip(haskey(HDF5.attributes(f), "meshesPath") ? read_attribute(f, "meshesPath") : "meshes/", '/')
@@ -1085,7 +1087,15 @@ function summarize_picongpu_ion(dir)
             push!(outs, out)
         end
       end
+      catch e
+        # an output whose HDF5 metadata PIConGPU left broken (the 3D vacuum deck's outputs before the window
+        # moves, on an RTX 5090) is left out and listed; the comparison pairs the codes' outputs by step
+        e isa HDF5.API.H5Error || rethrow()
+        push!(unreadable, it)
+        @warn "PIConGPU output $it in $path is unreadable, left out" exception = (e, catch_backtrace())
+      end
     end
+    isempty(outs) && error("no readable PIConGPU output in $dir")
     secs = try
         lines = readlines(joinpath(dir, "container.txt"))
         stamp(q) = DateTime(first(filter(l -> startswith(l, q), lines))[length(q) + 1:end][1:23], "yyyy-mm-ddTHH:MM:SS.sss")
@@ -1096,7 +1106,8 @@ function summarize_picongpu_ion(dir)
     seed = tryparse(Int, something(match(r"-s(\d+)$", basename(dir)), (captures = ["1"],)).captures[1])
     open(io -> JSON.print(io, Dict{String,Any}("code" => "PIConGPU", "kind" => kind, "rates" => "picongpu", "seed" => seed, "outputs" => outs,
                                                "seconds" => secs, "nsteps" => d.steps, "spectrum_edges" => ion_spectrum_edges(case),
-                                               "position_offset" => offset_reading, "window_cells" => lay.window)),
+                                               "position_offset" => offset_reading, "window_cells" => lay.window,
+                                               "unreadable_outputs" => unreadable)),
          joinpath(dir, "summary.json"), "w")
     return dir
 end
@@ -1222,16 +1233,18 @@ function ion_lineout_distances(S, case)
         codes = [c for c in ("pm", "smilei", "picongpu") if haskey(S, "$c-$kind")]
         for (i, a) in enumerate(codes), b in codes[(i + 1):end]
             oa, ob = S["$a-$kind"][1]["outputs"], S["$b-$kind"][1]["outputs"]
-            n = min(length(oa), length(ob))
+            # outputs paired by step: a code may lack some (`summarize_picongpu_ion`'s unreadable outputs)
+            byb = Dict(Int(o["step"]) => o for o in ob)
+            pairs = [(x, byb[Int(x["step"])]) for x in oa if haskey(byb, Int(x["step"]))]
+            isempty(pairs) && error("$a-$kind and $b-$kind: no output at a common step")
             for (field, key, m0) in (("Ey", "Ey_axis", "m0"), ("Ex", "Ex_axis", "Ex_m0"))
                 (medium == "vacuum" && field == "Ex") && continue
                 t, v = Float64[], Float64[]
-                for k in 1:n
-                    Int(oa[k]["step"]) == Int(ob[k]["step"]) || error("$a-$kind and $b-$kind: outputs at different steps")
-                    tk = Float64(oa[k]["t"])
+                for (xa, xb) in pairs
+                    tk = Float64(xa["t"])
                     tk < (field == "Ex" ? t_wake : 50.0) && continue
-                    s = pm_window_shifts(case, Int(oa[k]["step"]))
-                    r = lineout_distance(oa[k][key], Int(oa[k][m0]), ob[k][key], Int(ob[k][m0]), (s + cut):(s + d.nx - 1))
+                    s = pm_window_shifts(case, Int(xa["step"]))
+                    r = lineout_distance(xa[key], Int(xa[m0]), xb[key], Int(xb[m0]), (s + cut):(s + d.nx - 1))
                     isnan(r) && continue                      # no shared node, or no field on either
                     push!(t, tk)
                     push!(v, r)

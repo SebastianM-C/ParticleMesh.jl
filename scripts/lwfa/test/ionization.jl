@@ -208,6 +208,18 @@ end
         h5open(f -> foreach(it -> (f["data/$it/x"] = [it]), (284, 0, 142)), joinpath(o, "simData.h5"), "w")
         @test picongpu_dump_files(dir) == [joinpath(o, "simData.h5") => [0, 142, 284]]
     end
+    # the comparison pairs the codes' outputs by step, so a code that lacks some (an unreadable PIConGPU output) is
+    # compared at the steps both have
+    c2 = TOML.parsefile(ION_CASE_FILE)
+    d2 = ion_derived(c2)
+    lineout(st, scale) = (m0 = pm_window_shifts(c2, st);
+                          Dict{String,Any}("step" => st, "t" => st * d2.dt, "m0" => m0, "Ey_axis" => [scale * sin(0.3 * (j + m0)) for j in 0:(d2.nx + 20)]))
+    steps = [k * d2.every for k in 0:12]
+    S = Dict("pm-vacuum" => [Dict("outputs" => [lineout(st, 1.0) for st in steps])],
+             "picongpu-vacuum" => [Dict("outputs" => [lineout(st, 1.01) for st in steps[6:end]])])
+    r = ion_lineout_distances(S, c2)["vacuum Ey pm / picongpu"]
+    @test r["t"] == [st * d2.dt for st in steps[6:end] if st * d2.dt >= 50]
+    @test all(x -> isapprox(x, 0.01 / 1.01; rtol = 1e-12), r["relrms"])
     @test picongpu_ion_arguments(TOML.parsefile(ION_CASE_FILE), p) == picongpu_arguments(p)
     # the 3D case has no measured field ratio, so prepare leaves out the run that needs it
     root = prepare_ion(joinpath(@__DIR__, "..", "cases", "ionization-3d.toml"), "t1127-$(getpid())"; codes = ("pm", "picongpu"), seeds = 1:1)
