@@ -1,0 +1,26 @@
+r1-base start 00:03:58 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1747679, setup/bin/picongpu, 15280 MiB;1747680, setup/bin/picongpu, 15280 MiB; free: 644 MiB
+r1-base exit 0 704s peak_MiB 31556
+r2-nocopy start 00:15:42 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1751457, ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/julia, 4212 MiB; free: 27055 MiB
+r2-nocopy exit 0 714s peak_MiB 30190
+r3-nocopy-noflagsum start 00:27:36 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1751457, ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/julia, 8020 MiB; free: 23247 MiB
+r3-nocopy-noflagsum exit 1 658s peak_MiB 32174
+r0-nocuda-base start 00:38:34 others: 60044, /usr/bin/kwin_wayland, 64 MiB; free: 31275 MiB
+r0-nocuda-base exit 0 613s peak_MiB 23189
+queue1-done
+r4-nounroll start 00:50:23 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1760748, smilei, 742 MiB; free: 30525 MiB
+r4-nounroll exit 0 799s peak_MiB 32182
+r5-noionize4 start 01:03:42 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1760748, smilei, 742 MiB;1763205, ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/julia, 15120 MiB; free: 15400 MiB
+r5-noionize4 exit 0 881s peak_MiB 32198
+r6-nofreedskip start 01:18:24 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1760748, smilei, 790 MiB;1763205, ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/julia, 18480 MiB; free: 11992 MiB
+r6-nofreedskip exit 1 357s peak_MiB 32184
+r7-minimal start 01:24:21 others: 60044, /usr/bin/kwin_wayland, 64 MiB;1763205, ~/.julia/juliaup/julia-1.13.4+0.x64.linux.gnu/bin/julia, 29360 MiB; free: 1907 MiB
+r7-minimal exit 1 306s peak_MiB 31720
+queue2-done
+r6b-nofreedskip start 01:40:33 others: 60044, /usr/bin/kwin_wayland, 64 MiB; free: 31275 MiB
+r6b-nofreedskip exit 0 628s peak_MiB 23189
+r7b-minimal start 01:51:01 others: 60044, /usr/bin/kwin_wayland, 64 MiB; free: 31275 MiB
+r7b-minimal exit 0 535s peak_MiB 22709
+queue3-done
+r8-minimal-device start 02:02:45 others: 60044, /usr/bin/kwin_wayland, 64 MiB; free: 31275 MiB
+r8-minimal-device exit 0 528s peak_MiB 32181
+r8-done

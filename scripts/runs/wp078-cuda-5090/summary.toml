@@ -1,0 +1,121 @@
+# WP-078 CUDA follow-up: the trapped-beam reverse gradient (E1.9, λ0/32, ny 2, Float32, RTX 5090,
+# C = 20) with Enzyme's CUDA extension loaded (CUDA 6.5.0 next to CUDACore 6.5.0) and the
+# spike patch's workarounds switched off one at a time (PM_WA_OFF). Always on: active_reduce.jl
+# (#546), the sinpi rule (#545), the antenna rules (#547). Code: claude/project-thread-kjjfr2-gpu
+# a9b2508 (main 97bdc83 + the switches). Times in seconds once compiled (the two compiled segments
+# excluded); "shared" runs had another job on the card (logs/status), their times are suspect.
+[[run]]
+name = "R0"
+dir = "enzyme-trapped-grad-20261121T004846"
+cuda = false
+off = ""
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.44e-4
+primal = 11.0
+reverse = 17.9
+shared = false
+[[run]]
+name = "R1"
+dir = "enzyme-trapped-grad-20261121T001541"
+cuda = true
+off = ""
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.40e-4
+primal = 11.1
+reverse = 41.3
+shared = true
+[[run]]
+name = "R2"
+dir = "enzyme-trapped-grad-20261121T002735"
+cuda = true
+off = "copy"
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.42e-4
+primal = 12.6
+reverse = 58.6
+shared = true
+[[run]]
+name = "R3"
+dir = ""
+log = "logs/run-r3-nocopy-noflagsum.log"
+cuda = true
+off = "copy,flagsum"
+ckpt = "host"
+result = "fail: Attempt to use freed data (the window's refill flags, after the reverse of sum!)"
+shared = true
+[[run]]
+name = "R4"
+dir = "enzyme-trapped-grad-20261121T010341"
+cuda = true
+off = "copy,unroll"
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.43e-4
+primal = 11.1
+reverse = 238.6
+shared = true
+[[run]]
+name = "R5"
+dir = "enzyme-trapped-grad-20261121T011822"
+cuda = true
+off = "copy,ionize4"
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.43e-4
+primal = 13.0
+reverse = 239.2
+shared = true
+[[run]]
+name = "R6"
+dir = ""
+log = "logs/run-r6-nofreedskip.log"
+cuda = true
+off = "copy,freedskip"
+ckpt = "host"
+result = "inconclusive: CUDA error 701 at the refill kernel's augmented forward with 12 GB free (shared card); rerun as R6b"
+shared = true
+[[run]]
+name = "R7"
+dir = ""
+log = "logs/run-r7-minimal.log"
+cuda = true
+off = "copy,unroll,ionize4,freedskip"
+ckpt = "host"
+result = "inconclusive: CUDA error 701 with 1.9 GB free (shared card); rerun as R7b"
+shared = true
+[[run]]
+name = "R6b"
+dir = "enzyme-trapped-grad-20261121T015059"
+cuda = true
+off = "copy,freedskip"
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.40e-4
+primal = 11.2
+reverse = 16.9
+shared = false
+[[run]]
+name = "R7b"
+dir = "enzyme-trapped-grad-20261121T015955"
+cuda = true
+off = "copy,unroll,ionize4,freedskip"
+ckpt = "host"
+result = "pass"
+max_rel_vs_dual4 = 1.49e-4
+primal = 10.5
+reverse = 16.7
+shared = false
+[[run]]
+name = "R8"
+dir = "enzyme-trapped-grad-20261121T021132"
+cuda = true
+off = "copy,unroll,ionize4,freedskip"
+ckpt = "device"
+result = "pass"
+max_rel_vs_dual4 = 1.43e-4
+primal = 6.4
+reverse = 18.4
+shared = false
