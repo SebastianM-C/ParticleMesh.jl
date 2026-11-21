@@ -20,7 +20,8 @@
 # position; `dual=` for none) `dual4=0|1` (one Dual{4} run as well); `primal=1|0` (a plain run for
 # its time and memory); `warm=1|0` (first the whole sequence on a small box of the same types, so
 # that the timed calls do not compile; its own gradient check against Dual{4} is reported too;
-# `warm_t_end=300`).
+# `warm_t_end=300`); `run=0` stops after the warm-up; `strict_aliasing=0` turns off Enzyme's strict
+# aliasing in its type analysis.
 #
 # What `grad` does, in this order, each phase timed and its peak of device memory recorded:
 #
@@ -170,16 +171,18 @@ function sequence(o; c, host, duals, dual4, primal, label)
         res["primal"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: plain run %.1f s, J = %.8g, peak %.2f GiB", label, t, J, gib(peak)))
     end
-    # the reverse pass on a copy; a failure (the device memory, most likely) is recorded and the duals still run
+    # the reverse pass on the start itself (a copy would hold one state more; the Dual starts below
+    # are built afresh); a failure is recorded and the duals still run
     g = fill(NaN, 4)
     try
-        r, t, peak, base = measured(() -> reverse_run(deepcopy(st0), p, n; c, host))
+        sref = Ref{Any}(st0)
+        st0 = nothing
+        r, t, peak, base = measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; c, host)))
         res["J_reverse_forward"] = r.J
         res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
         dst, dp = r.dst, r.dp
         r = nothing
-        st0 = nothing
         reclaim()
         # the gradient: the start's adjoint with the tangent of initialize! per parameter, and the parameters' with dp/dθ
         pd = params(trapped3d_problem(trapped_point(dual_theta(THETA, 4))...; ppl = o.ppl, nt = o.nt, rows = o.rows, ppc = o.ppc, ion_ppc = o.ion_ppc,
@@ -202,7 +205,7 @@ function sequence(o; c, host, duals, dual4, primal, label)
     catch e
         res["reverse_error"] = sprint(showerror, e)[1:min(end, 3000)]
         mark("$label: reverse pass FAILED: " * res["reverse_error"][1:min(end, 600)])
-        st0 = nothing; reclaim()
+        reclaim()
     end
     # the duals
     rows = Dict{String,Any}[]
@@ -266,12 +269,14 @@ function main_grad()
     primal = opt("primal", "1") == "1"
     mark("start: θ $THETA, keys $OPTS, backend $(backend())")
     result = Dict{String,Any}()
+    # strict_aliasing=0: Enzyme's type analysis without strict aliasing (its advice on an IllegalTypeAnalysisException)
+    opt("strict_aliasing", "1") == "0" && Enzyme.API.strictAliasing!(false)
     if opt("warm", "1") == "1"
         # the small box compiles every kernel and every reverse pass the run takes (the same types); its gradient is checked against Dual{4}
         w = sequence(case_opts(; warm = true); c = 4, host, duals = Int[], dual4 = true, primal = true, label = "warm-up")
         result["warm"] = w
     end
-    result["run"] = sequence(case_opts(); c, host, duals, dual4, primal, label = "run")
+    opt("run", "1") == "1" && (result["run"] = sequence(case_opts(); c, host, duals, dual4, primal, label = "run"))
     write_run(result)
 end
 
