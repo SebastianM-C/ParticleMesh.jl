@@ -35,52 +35,64 @@ const CKPT_CASES = (
     ("3D window", () -> (window_plasma_3d(Float64; cells = (16, 6, 6), nsteps = 16, start = 0, drift = (1 // 2, 0, 0)), EMNumerics())),
 )
 
+"""
+Revolve's forward schedule with `c` checkpoints over the run of `build()`'s problem and numerics,
+against the uninterrupted run (T-1112, T-1150): the schedule ends on the run's last state, its working
+copy is the state before the last step, every checkpoint holds the evolved arrays of a step of the
+run and, restored, continues to the run's end bit for bit. Returns the checkpoints' steps and the
+uninterrupted run's last state.
+"""
+function revolve_forward_check(label, build, host, c)
+    prob, num = build()
+    n = prob.nsteps
+    p = params(prob)
+    ref = EMState(prob, num)
+    initialize!(ref, prob)
+    run_bits = [evolved_copy(ref)]
+    for k in 1:n
+        step!(ref, p, k; observer = ())
+        push!(run_bits, evolved_copy(ref))
+    end
+    @test window_shifts(ref, n) > 0
+    st = EMState(prob, num)
+    initialize!(st, prob)
+    body = StepBody(st, p)
+    scheme = Checkpointing.instantiate(typeof(body), Revolve(c; storage = checkpoint_storage(; host)), n)
+    last, _, stored = Checkpointing.fwd_checkpoint_for(body, scheme, 1:n)
+    @test same_arrays(evolved(st), run_bits[end])                  # the forward schedule ends on the run's last state
+    @test same_arrays(evolved(last.st), run_bits[n])               # the reverse sweep's working copy is the state before the last step
+    slots = filter(!isnothing, scheme.storage.slots)
+    @test length(slots) == stored >= 1
+    steps = Int[]
+    for slot in slots
+        arrays = only(slot)
+        @test sum(sizeof, arrays) == sum(sizeof, evolved(st))      # the evolved arrays, nothing more
+        @test all(a -> a isa Array, arrays) || !host
+        k = findfirst(b -> same_arrays(arrays, b), run_bits)
+        @test k !== nothing
+        k === nothing && continue
+        push!(steps, k - 1)
+        # restored into the used state through the storage and continued, it gives the run's end;
+        # the restore is restore!'s, which refreshes the caches (marks K current)
+        st.fresh[] = false
+        Checkpointing.load!(body, scheme.storage, findfirst(x -> x === slot, scheme.storage.slots))
+        @test same_arrays(evolved(st), run_bits[k])
+        @test st.fresh[]
+        for j in k:n
+            step!(st, p, j; observer = ())
+        end
+        d = findall(map((x, y) -> bits(Array(x)) != bits(Array(y)), evolved(st), run_bits[end]))
+        isempty(d) || @info "Revolve forward check: the continued run differs" label host c k d
+        @test isempty(d)
+    end
+    @test 0 in steps                                               # the first checkpoint is the start
+    isempty(steps) || @info "Revolve forward check" label host c steps
+    return (; steps, ref)
+end
+
 @testset "T-1112 Revolve's forward schedule with checkpoint_storage: every checkpoint is a step of the uninterrupted run and continues to its end bit for bit, 2D and 3D, device and host slots [A4, WP-080]" begin
     for (label, build) in CKPT_CASES, host in (false, true), c in (2, 4)
-        prob, num = build()
-        n = prob.nsteps
-        p = params(prob)
-        ref = EMState(prob, num)
-        initialize!(ref, prob)
-        run_bits = [evolved_copy(ref)]
-        for k in 1:n
-            step!(ref, p, k; observer = ())
-            push!(run_bits, evolved_copy(ref))
-        end
-        @test window_shifts(ref, n) > 0
-        st = EMState(prob, num)
-        initialize!(st, prob)
-        body = StepBody(st, p)
-        scheme = Checkpointing.instantiate(typeof(body), Revolve(c; storage = checkpoint_storage(; host)), n)
-        last, _, stored = Checkpointing.fwd_checkpoint_for(body, scheme, 1:n)
-        @test same_arrays(evolved(st), run_bits[end])                  # the forward schedule ends on the run's last state
-        @test same_arrays(evolved(last.st), run_bits[n])               # the reverse sweep's working copy is the state before the last step
-        slots = filter(!isnothing, scheme.storage.slots)
-        @test length(slots) == stored >= 1
-        steps = Int[]
-        for slot in slots
-            arrays = only(slot)
-            @test sum(sizeof, arrays) == sum(sizeof, evolved(st))      # the evolved arrays, nothing more
-            @test all(a -> a isa Array, arrays) || !host
-            k = findfirst(b -> same_arrays(arrays, b), run_bits)
-            @test k !== nothing
-            k === nothing && continue
-            push!(steps, k - 1)
-            # restored into the used state through the storage and continued, it gives the run's end;
-            # the restore is restore!'s, which refreshes the caches (marks K current)
-            st.fresh[] = false
-            Checkpointing.load!(body, scheme.storage, findfirst(x -> x === slot, scheme.storage.slots))
-            @test same_arrays(evolved(st), run_bits[k])
-            @test st.fresh[]
-            for j in k:n
-                step!(st, p, j; observer = ())
-            end
-            d = findall(map((x, y) -> bits(Array(x)) != bits(Array(y)), evolved(st), run_bits[end]))
-            isempty(d) || @info "T-1112 continued run differs" label host c k d
-            @test isempty(d)
-        end
-        @test 0 in steps                                               # the first checkpoint is the start
-        isempty(steps) || @info "T-1112" label host c steps
+        revolve_forward_check(label, build, host, c)
     end
     # a body without a state and a slot never stored are refused
     st = EMState(plasma_step_2d(Float64), EMNumerics())
@@ -94,6 +106,34 @@ const CKPT_CASES = (
     st2 = EMState(plasma_step_2d(Float64), EMNumerics())
     @test CKPT_EXT.body_states((x = [st2], y = (a = (b = (c = (d = Ref(st),),),),), z = Any[1.0, st2])) === (st2, st)
     @test_throws r"more than 32 levels" CKPT_EXT.body_states(foldl((x, _) -> (x,), 1:40; init = st))
+end
+
+"""
+T-1150's case: the 3D trapped-beam case of WP-084 (`scripts/optim/trapped3d_case.jl`) in small, in
+Float32: [`window_lwfa_3d`](@ref)'s window with its antenna, open along y and z with 4-cell PMLs
+there and on the window's back edge, a dopant section that the pulse ionizes while the window
+moves, and the particles reading the fields through the compensated gather.
+"""
+function trapped3d_small()
+    T = Float32
+    ion = FieldIonization(; density = T(1) / 200, levels = (ADKLevel(T(1) / 5, T(3), one(T); cutoff = T(64)),), capacity = 8192, ppc = (1, 1, 1),
+                          every = 1, rows = ((9.4, 15.8), (9.4, 15.8)), section = DopantSection(; start = T(28), stop = T(34), ramp = T(3)))
+    prob = window_lwfa_3d(T; nsteps = 96, cells = (72, 16, 16), bd = (:open, :open), ionization = ion)
+    return prob, EMNumerics(; absorber = PML(; cells = 4), back_absorber = PML(; cells = 4), gather = CompensatedGather(; k = 1))
+end
+
+@testset "T-1150 Revolve's forward schedule with checkpoint_storage over the 3D trapped-beam case: antenna, window, PMLs on the open faces and the back edge, ionization and the compensated gather, every checkpoint continues to the run's end bit for bit [A4, WP-084]" begin
+    for host in (false, true)
+        r = revolve_forward_check("3D trapped-beam case", trapped3d_small, host, 3)
+        # the run does what the case does: the window moves, the pulse ionizes the dopant, and the
+        # checkpoints hold the PMLs' convolution fields beside the particles and the fields
+        st = r.ref
+        @test window_shifts(st, 96) > 0
+        @test alive_count(ionization_electrons(st)) > 0
+        @test length(open_absorbers(st)) == 2 && back_absorber(st) !== nothing
+        @test length(evolved(st)) > length(evolved(EMState(window_lwfa_3d(Float32; nsteps = 1), EMNumerics())))
+        @test length(r.steps) >= 2
+    end
 end
 
 # --- T-1113 -------------------------------------------------------------------------------------
