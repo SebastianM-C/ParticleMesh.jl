@@ -1,0 +1,15 @@
+case = "ionization-3d"
+code = "Smilei v5.1"
+commit = "361a0a3bec322c7ddd689735a8fbf2564f64d6a7"
+dirty = false
+generator = "scripts/lwfa/ionization.jl"
+kind = "plasma"
+run_id = "ion-3d/smilei-plasma-s4"
+seed = 4
+updated = "2026-11-21T07:45:31.492Z"
+
+[inputs]
+"case.toml" = "sha256:7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+"kind.txt" = "sha256:c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
+"namelist.py" = "sha256:155b40e7455584479c2dd37de400c9bf358fd04753e389b9baa5083bef681d13"
+"run.sh" = "sha256:1ed3947ee3fb15cd0650516458ac714be62a03da800b16d451534ff23c962d7f"
