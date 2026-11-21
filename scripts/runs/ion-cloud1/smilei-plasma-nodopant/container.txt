@@ -1,0 +1,5 @@
+# smilei binary: /tmp/claude-0/smilei/src/smilei
+# threads: 2, cpus: 2
+# cpu model: Intel(R) Xeon(R) Processor @ 2.10GHz
+# start: 2026-11-21T04:21:48.016678953Z
+# end: 2026-11-21T04:22:10.625435338Z
