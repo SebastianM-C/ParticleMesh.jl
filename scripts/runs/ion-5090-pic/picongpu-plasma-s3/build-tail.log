@@ -1,0 +1,80 @@
+[ 71%] Building CUDA object CMakeFiles/picongpu.dir/plugins/EnergyFields.x.cpp.o
+[ 73%] Building CUDA object CMakeFiles/picongpu.dir/plugins/PhaseSpace/PhaseSpace.x.cpp.o
+[ 71%] Building CUDA object CMakeFiles/picongpu.dir/plugins/CountParticles.x.cpp.o
+[ 86%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/CurrentDeposition.x.cpp.o
+[ 86%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/Collision.x.cpp.o
+[ 82%] Building CUDA object CMakeFiles/picongpu.dir/plugins/openPMD/openPMDWriter.x.cpp.o
+[ 82%] Building CUDA object CMakeFiles/picongpu.dir/plugins/radiation/Radiation.x.cpp.o
+[ 89%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/IterationStart.x.cpp.o
+[ 86%] Building CUDA object CMakeFiles/picongpu.dir/plugins/particleCalorimeter/ParticleCalorimeter.x.cpp.o
+[ 89%] Building CUDA object CMakeFiles/picongpu.dir/plugins/transitionRadiation/TransitionRadiation.x.cpp.o
+[ 90%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/AtomicPhysics.x.cpp.o
+[ 92%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticleBoundaries.x.cpp.o
+[ 93%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticleInit.x.cpp.o
+[ 94%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticleIonization.x.cpp.o
+[ 96%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/ParticlePush.x.cpp.o
+[ 97%] Building CUDA object CMakeFiles/picongpu.dir/simulation/stage/SynchrotronRadiation.x.cpp.o
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/opt/picongpu/include/picongpu/../picongpu/plugins/common/openPMDDefaultExtension.hpp(48): warning #177-D: variable "getADIOSExtension" was declared but never referenced
+              auto getADIOSExtension = []()
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 98%] Building CUDA object CMakeFiles/picongpu.dir/versionFormat.x.cpp.o
+[100%] Linking CXX executable picongpu
+[100%] Built target picongpu
+Install the project...
+-- Install configuration: "Release"
+-- Installing: /run-dir/setup/bin/cuda_memtest
+-- Set non-toolchain portion of runtime path of "/run-dir/setup/bin/cuda_memtest" to "$ORIGIN"
+-- Installing: /run-dir/setup/bin/mpiInfo
+-- Set non-toolchain portion of runtime path of "/run-dir/setup/bin/mpiInfo" to "$ORIGIN:/usr/lib/x86_64-linux-gnu/openmpi/lib"
+-- Installing: /run-dir/setup/bin/picongpu
+-- Set non-toolchain portion of runtime path of "/run-dir/setup/bin/picongpu" to "$ORIGIN:/opt/openPMD-api/lib:/usr/lib/x86_64-linux-gnu/openmpi/lib:/usr/local/cuda-12.9/targets/x86_64-linux/lib"
+-- Up-to-date: /run-dir/setup/bin
+-- Installing: /run-dir/setup/bin/cuda_memtest.sh
+-- Installing: /run-dir/setup/bin/egetopt
+-- Installing: /run-dir/setup/bin/pic-build
+-- Installing: /run-dir/setup/bin/pic-compile
+-- Installing: /run-dir/setup/bin/pic-configure
+-- Installing: /run-dir/setup/bin/pic-create
+-- Installing: /run-dir/setup/bin/pic-edit
+-- Installing: /run-dir/setup/bin/picongpu-completion.bash
+-- Installing: /run-dir/setup/bin/tbg
+/run-dir/setup

@@ -1,0 +1,1 @@
+-d 1 2 -r 2 -g 128 1104 -s 1656 --periodic 0 0 -m --windowMovePoint 0.9882246376811594 --autoAdjustGrid 0 --fieldAbsorber pml --currentInterpolation none --openPMD.period 138 --openPMD.file simData --openPMD.ext h5 --openPMD.infix NULL --openPMD.source fields_all --fields_energy.period 138

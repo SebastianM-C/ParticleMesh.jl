@@ -1,0 +1,28 @@
+case = "ionization-2d"
+code = "PIConGPU 0.8.0"
+commit = "4b0279d35a614b2142e75cbc4f36d6dcfe5ea699"
+dirty = false
+generator = "scripts/lwfa/ionization.jl"
+kind = "plasma"
+run_id = "ion-5090/picongpu-plasma-s1"
+seed = 1
+updated = "2026-11-21T03:43:49.085Z"
+
+[inputs]
+"arguments.txt" = "sha256:be1f257710d788096906273e6db1863a66bde89e9f413b9660fd231b6b56c757"
+"case.toml" = "sha256:0169411f990fb9685d22dbd6c52870b4024e0a3f23fd1643981a328a0066d65b"
+"kind.txt" = "sha256:c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
+"params/density.param" = "sha256:c1278d656783b4535e79af97dc049d18ca2118ab6c516d9b4ac27ed58ca33090"
+"params/dimension.param" = "sha256:f0e05a64589a784fecfa6111605788fb69b1a1c24ac126386db3473c4e82cf3b"
+"params/fieldSolver.param" = "sha256:3e827b377ec741f4c5864a1531df9d17ccd5a892e67c52c6a872b1b5e16f4a34"
+"params/fileOutput.param" = "sha256:c894b63d8203e717cfa73d0091792de64c598778817ee9b4b5ef96cfcb7529da"
+"params/incidentField.param" = "sha256:7bd531b0ed468dd8a97998d39bb0a2276f00e26a5126a0448ee0d0d9430543b2"
+"params/memory.param" = "sha256:4c34310fcc3e57f35b76a3d31a6f31e840055133d3ee5d10eebeffeec577ddab"
+"params/particle.param" = "sha256:157ad97ddb116a08f8ec5d77bde99245ef85e3c7e50aaae47811756299f4bad3"
+"params/precision.param" = "sha256:9a4474f1b481cbc591762c6f1e805bb4bd2cca5a9d2e1bdb25c9b7124690f71b"
+"params/random.param" = "sha256:63b6ac4ed05acba0dc0dd93f6429df0434d44bd3f979842f98f6d74e7fa6fe34"
+"params/simulation.param" = "sha256:5e03b6f60094b9eb003525463f6f1adb28943a3e05bf0e78f65f7957e7205373"
+"params/species.param" = "sha256:d6b228e0ddc6b15b9eeba13f0c48e859affee96d7e15c54a9df5d4731980677a"
+"params/speciesDefinition.param" = "sha256:7c777c9ae996bd1e2163ec34d714ee7c05a01054bcc033c2795496b09bddf637"
+"params/speciesInitialization.param" = "sha256:6f7b27d97f6b61f4df4645388ab662c518d37ec79c51917a6f02db7573cd3793"
+"run.sh" = "sha256:9250a92827d0b0b6b8e88eb2ef593c37b074113f83173ac7faca228308385c5d"

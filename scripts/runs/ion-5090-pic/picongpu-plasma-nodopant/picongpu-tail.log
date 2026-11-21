@@ -1,0 +1,48 @@
+PIConGPUVerbose PHYSICS(1) | Sliding Window is ON
+PIConGPUVerbose PHYSICS(1) | used Random Number Generator: RNGProvider2XorMin seed: 1
+PIConGPUVerbose PHYSICS(1) | Field solver condition: c * dt <= 1.05263 ? (c * dt = 1)
+PIConGPUVerbose PHYSICS(1) | Incident field "GaussianPulse_with_GaussianPulse" numerical dispersion: v_phase = 0.999757 * c
+PIConGPUVerbose PHYSICS(1) | Resolving plasma oscillations?
+   Estimates are based on DensityRatio to BASE_DENSITY of each species
+   (see: density.param, speciesDefinition.param).
+   It does not cover other forms of initialization
+PIConGPUVerbose PHYSICS(1) | species e: omega_p * dt <= 0.1 ? (omega_p * dt = 0.180963)
+PIConGPUVerbose PHYSICS(1) | macro particles per device: 282624
+PIConGPUVerbose PHYSICS(1) | typical macro particle weighting: 27218.1
+PIConGPUVerbose PHYSICS(1) | sim.unit.speed() 2.99792e+08
+PIConGPUVerbose PHYSICS(1) | sim.unit.time() 7.68561e-17
+PIConGPUVerbose PHYSICS(1) | sim.unit.length() 2.30409e-08
+PIConGPUVerbose PHYSICS(1) | sim.unit.mass() 2.4794e-26
+PIConGPUVerbose PHYSICS(1) | sim.unit.charge() 4.36082e-15
+PIConGPUVerbose PHYSICS(1) | sim.unit.eField() 2.21779e+13
+PIConGPUVerbose PHYSICS(1) | sim.unit.bField() 73977.6
+PIConGPUVerbose PHYSICS(1) | sim.unit.energy() 2.22838e-09
+PIConGPUVerbose PHYSICS(1) | Resolving Debye length for species "e"?
+PIConGPUVerbose PHYSICS(1) | Estimate used momentum variance in 1552 supercells with at least 10 macroparticles each
+PIConGPUVerbose PHYSICS(1) | 1552 (100 %) supercells had local Debye length estimate not resolved by a single cell
+PIConGPUVerbose PHYSICS(1) | Estimated weighted average temperature 0 keV and corresponding Debye length 0 m.
+   The grid has 0 cells per average Debye length
+initialization time:  3sec 513msec = 3.513 sec
+  0 % =        0 | time elapsed:             2sec 552msec | avg time per step:   0msec
+  4 % =       82 | time elapsed:             2sec 826msec | avg time per step:   3msec
+  9 % =      164 | time elapsed:             3sec 553msec | avg time per step:   2msec
+ 14 % =      246 | time elapsed:             3sec 746msec | avg time per step:   2msec
+ 19 % =      328 | time elapsed:             4sec 472msec | avg time per step:   2msec
+ 24 % =      410 | time elapsed:             4sec 664msec | avg time per step:   2msec
+ 29 % =      492 | time elapsed:             5sec 390msec | avg time per step:   2msec
+ 34 % =      574 | time elapsed:             6sec 117msec | avg time per step:   2msec
+ 39 % =      656 | time elapsed:             6sec 318msec | avg time per step:   2msec
+ 44 % =      738 | time elapsed:             7sec  62msec | avg time per step:   2msec
+ 49 % =      820 | time elapsed:             7sec 277msec | avg time per step:   2msec
+ 54 % =      902 | time elapsed:             8sec  45msec | avg time per step:   2msec
+ 59 % =      984 | time elapsed:             8sec 816msec | avg time per step:   2msec
+ 64 % =     1066 | time elapsed:             9sec  62msec | avg time per step:   3msec
+ 69 % =     1148 | time elapsed:             9sec 851msec | avg time per step:   3msec
+ 74 % =     1230 | time elapsed:            10sec  89msec | avg time per step:   2msec
+ 79 % =     1312 | time elapsed:            10sec 851msec | avg time per step:   2msec
+ 84 % =     1394 | time elapsed:            11sec 614msec | avg time per step:   2msec
+ 89 % =     1476 | time elapsed:            11sec 842msec | avg time per step:   2msec
+ 94 % =     1558 | time elapsed:            12sec 621msec | avg time per step:   2msec
+ 99 % =     1640 | time elapsed:            12sec 876msec | avg time per step:   3msec
+calculation  simulation time: 13sec 461msec = 13.461 sec
+full simulation time: 17sec 777msec = 17.777 sec
