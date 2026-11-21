@@ -1,0 +1,11 @@
+# commit 6ce5cfd2f778ab68f0a39bd8851d5619e35580f7, patches scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl;scripts/enzyme/spike/unrolled_current.jl, started 2026-11-21T16:25:29Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 5832 MiB
+== 16:25:29 grad run=0 (heap default)
+   exit 1 at 16:25:50
+[16:25:38] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("run" => "0"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+ERROR: LoadError: Out of GPU memory trying to allocate 4.430 MiB
+== 16:25:50 grad run=0 (heap 1073741824)
+   exit 1 at 16:26:10
+[16:25:59] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("run" => "0"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+ERROR: LoadError: Out of GPU memory trying to allocate 4.430 MiB
+# finished 2026-11-21T16:26:10Z

@@ -1,0 +1,9 @@
+# commit 6ce5cfd2f778ab68f0a39bd8851d5619e35580f7, patches scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl, started 2026-11-21T16:25:39Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 32052 MiB
+== 16:25:39 grad run=0 strict_aliasing=0 (heap default)
+   exit 1 at 16:25:50
+ERROR: LoadError: Out of GPU memory
+== 16:25:50 grad run=0 strict_aliasing=0 (heap 1073741824)
+   exit 1 at 16:25:54
+ERROR: LoadError: Out of GPU memory
+# finished 2026-11-21T16:25:54Z

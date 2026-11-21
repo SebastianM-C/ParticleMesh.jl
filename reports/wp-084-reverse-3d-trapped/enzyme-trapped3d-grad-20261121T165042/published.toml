@@ -1,0 +1,12 @@
+branch = "runs/wp084-5090"
+commit = "1c16efd87de69c170910cc9c04e9deca6562f6e0"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-grad-20261121T165042/manifest.toml"
+bytes = 1554
+sha256 = "fbedcfbb18b8c2f6705eb90133e5c448ac8cc7c9a5450ad9aa687a6d0c3c49ad"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-grad-20261121T165042/result.toml"
+bytes = 1543
+sha256 = "82467c767c4748477e304b77e648877fc32ee59e367a85be111470de5dd327b6"

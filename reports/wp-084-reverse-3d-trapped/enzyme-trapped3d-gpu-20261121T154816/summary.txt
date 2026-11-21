@@ -1,0 +1,7 @@
+# commit 09e2193c4e17375fbc2cd5214d69d163bf850f26, patches scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl, started 2026-11-21T15:48:16Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 31548 MiB
+== 15:48:16 grad ppl=16 dual=1,2,3,4 dual4=1 c=12 (heap default)
+   exit 1 at 15:48:37
+[15:48:25] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "1", "ppl" => "16", "dual" => "1,2,3,4", "c" => "12"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+ERROR: LoadError: Out of GPU memory trying to allocate 4.430 MiB
+== 15:48:37 grad ppl=16 dual=1,2,3,4 dual4=1 c=12 (heap 1073741824)

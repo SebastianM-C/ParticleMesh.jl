@@ -1,0 +1,47 @@
+branch = "runs/wp084-5090"
+commit = "1c16efd87de69c170910cc9c04e9deca6562f6e0"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/01-grad-ppl=16-dual=1,2,3,4-dual4=0-c=12-host=1-default.log"
+bytes = 24831
+sha256 = "2e67619d76560c0e9874e27b25376809d9aa88ef8675e4bc5773a06a85285297"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/01-grad-ppl=16-dual=1,2,3,4-dual4=0-c=12-host=1-default.nvsmi.csv"
+bytes = 64235
+sha256 = "a349a440d5db409164d8d0dfe96d5360a8222df035edd6311903ac5296871a5c"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/02-grad-ppl=16-dual=-dual4=0-c=6-host=0-primal=0-default.log"
+bytes = 23913
+sha256 = "c4904df6531dbe3f4167cca6d638bf9417bffc9d4861ca727a1779b4bd8ea96e"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/02-grad-ppl=16-dual=-dual4=0-c=6-host=0-primal=0-default.nvsmi.csv"
+bytes = 29264
+sha256 = "7888c3d942d0ebfeb3ab4c9ee1ed8432ba48b0f031a559b56dcb726aad97ed41"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/03-grad-ppl=32-dual=1-dual4=0-c=12-host=1-default.log"
+bytes = 24147
+sha256 = "de33137e6504548f3529b5180d05419db9fff78d617eea990a087591d35557be"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/03-grad-ppl=32-dual=1-dual4=0-c=12-host=1-default.nvsmi.csv"
+bytes = 47271
+sha256 = "9e06d87e52255a1b485ecdae24947e985b16a9eac4803c97d71185bd6cab5e02"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/04-grad-ppl=32-dual=1-dual4=0-c=12-host=1-cap=0.2-ppc=1x1x1-default.log"
+bytes = 24171
+sha256 = "c05a1614014dee30b13bb31959c3e66a756430fcabb5eb727c2f3ef89089b744"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/04-grad-ppl=32-dual=1-dual4=0-c=12-host=1-cap=0.2-ppc=1x1x1-default.nvsmi.csv"
+bytes = 45415
+sha256 = "a23165bb79277536c4465dd1271731ad1b271f8588fd626b77991aecc5aaeaec"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261121T165114/summary.txt"
+bytes = 7907
+sha256 = "effb8cfb48c3bae3c422b1764c7219ca2c05e2c30a64f71681ea589796fca4ff"
