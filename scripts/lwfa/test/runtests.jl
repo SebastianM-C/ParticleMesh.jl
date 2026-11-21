@@ -1855,3 +1855,6 @@ end
         @test occursin(distances_table_of(joinpath(reports, data)), read(joinpath(reports, report), String))
     end
 end
+
+# the ionization case (WP-081)
+include(joinpath(@__DIR__, "ionization.jl"))

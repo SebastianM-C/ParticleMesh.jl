@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892; WP-069, T-989; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -129,6 +129,10 @@ else
         end
     end
 
+    @testset "T-989 deposit! is the transpose of gather! on CUDA for every bins choice, N = 1, 2, 3, with the CPU's tolerance [A2, A7, A8, WP-069]" begin
+        rerun_on(GPU, (("T-980", body_T980),))
+    end
+
     @testset "T-1004 the flux gather on CUDA: the transpose of deposit_flux! in both modes, zero at rest, the plain gather out of space, launch shapes bitwise [A4, A7, A8, WP-071]" begin
         rerun_on(GPU, (("T-1000", body_T1000), ("T-1003", body_T1003)))
     end
@@ -204,8 +208,11 @@ else
         # GPU merge sort launches one merge-pass kernel per doubling of the run length
         # (`merge_sort.jl`, AcceleratedKernels 0.5), so its host bookkeeping grows as log₂ of the
         # capacity while its device scratch is the workspace's; it is held to about 1 KiB per
-        # doubling. The rest of the step is held constant at 64 and 512 particles per cell (at 8
-        # per cell the second CUDA run measured 592 host bytes fewer, a step not yet explained).
+        # doubling. The rest of the step's host bytes are held to the reference row's plus 1 KiB:
+        # on every CUDA card measured so far one row or another of a group, at random, reads 144 to
+        # 592 bytes below the others (#435), a constant that follows neither the particle count nor
+        # the grid, while an allocation per particle or per cell would add far more than 1 KiB at
+        # 512 particles per cell or on the larger grid.
         function proxy(T, N, ncell, ppc)
             if N == 1
                 grid = PeriodicGrid(ncell, basetype(T)(1 // 2), flux_guard_width(Quadratic, Center()))
@@ -250,7 +257,7 @@ else
             refcap = sizes[1]^N * 64
             for (ncell, ppc, b) in rows
                 @test b.dev <= ref.dev && b.sort_dev <= ref.sort_dev
-                @test b.host <= ref.host
+                @test b.host <= ref.host + 1024
                 doublings = log2(ncell^N * ppc / refcap)
                 @test b.sort_host <= ref.sort_host + 1024 * (doublings + 1)
             end

@@ -1021,7 +1021,8 @@ quantity = "a 3D run with an open axis (y or z), invariant along a periodic axis
 scale = "as T-953"
 C = 32
 measured = { Float32 = 4.66, Float64 = 5.92, "Dual{Float32,3}" = 0.195 }
-status = "proposed; the largest over both absorbers, both open axes and both modes (Fast the larger); T-953's C"
+measured_device = { "Float32 on CUDABackend" = 3.42, "Float64 on CUDABackend" = 5.32, "Dual{Float32,3} on CUDABackend" = 0.257 }
+status = "proposed; the largest over both absorbers, both open axes and both modes (Fast the larger); T-953's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1011"]
 quantity = "Gauss's law residual on the nodes off the layers of y and z (C), ∇·B on the cell centres off them (C_divB), particles leaving through the four open faces, 30 steps, each absorber, both modes"
@@ -1030,7 +1031,9 @@ C = 2
 C_divB = 2
 measured = { Float32 = 0.229, Float64 = 0.244, "Dual{Float32,3}" = 0.112 }
 measured_divB = { Float32 = 0.539, Float64 = 0.549, "Dual{Float32,3}" = 0.898 }
-status = "proposed; the largest over both absorbers and both modes; T-950's C. On the nodes in the layers the residual is 2·10⁴ (Float32) to 2·10¹³ (Float64) of the scale, with about a third of the particles leaving"
+measured_device = { "Float32 on CUDABackend" = 0.185, "Float64 on CUDABackend" = 0.134, "Dual{Float32,3} on CUDABackend" = 0.0978 }
+measured_device_divB = { "Float32 on CUDABackend" = 0.421, "Float64 on CUDABackend" = 0.446, "Dual{Float32,3} on CUDABackend" = 0.984 }
+status = "proposed; the largest over both absorbers and both modes; T-950's C. On the nodes in the layers the residual is 2·10⁴ (Float32) to 2·10¹³ (Float64) of the scale, with about a third of the particles leaving; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1015"]
 quantity = "a vacuum pulse (B = ∇×(x̂·a), a Gaussian of width 2 cells) at the centre of 8 × 40 × 40 cells open along y and z with 8 cells of each absorber (the layer at strength 4, the PML at κ_max = 2, α_max = 0.1): the field energy on the cells off the layers after 2000 steps relative to its start (fraction), and no growth after step 1000 above twice its value there"
@@ -1116,7 +1119,9 @@ scale = "eps(T)·max|component|·√nsteps"
 C = 8
 measured = { Float32 = 0.727, Float64 = 0.606 }
 measured_shift = { Float32 = 0.540, Float64 = 0.432 }
-status = "proposed; the largest over both envelopes"
+measured_device = { "Float32 on CUDABackend" = 0.548, "Float64 on CUDABackend" = 0.606 }
+measured_device_shift = { "Float32 on CUDABackend" = 0.494, "Float64 on CUDABackend" = 0.37 }
+status = "proposed; the largest over both envelopes; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 # WP-074: the moving window at N = 3 (T-1030 to T-1038). Measured on the CPU backend (Julia 1.13.4, 4 threads).
 ["T-1030"]
@@ -1124,14 +1129,16 @@ quantity = "a 3D window run invariant along z or y (a quarter turn about x) agai
 scale = "as T-953"
 C = 32
 measured = { Float32 = 0.0922, Float64 = 0.125, "Dual{Float32,3}" = 0.0868 }
-status = "proposed; the largest over both axes, both cases and both modes; T-953's C"
+measured_device = { "Float32 on CUDABackend" = 0.0998, "Float64 on CUDABackend" = 0.109, "Dual{Float32,3} on CUDABackend" = 0.0868 }
+status = "proposed; the largest over both axes, both cases and both modes; T-953's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1031"]
 quantity = "a cold plasma at rest in the 3D window, Fast mode: max |ρ − ρ₀(s)| after every step over 48 steps (24 shifts) on 24 × 6 × 6 cells (Reference mode is held bit for bit)"
 scale = "eps(T)·max|ρ|"
 C = 32
 measured = { Float32 = 10.0, Float64 = 7.0, "Dual{Float32,3}" = 0.0 }
-status = "proposed; 4 threads (at 1 thread the atomics' order is fixed); the dual takes the sorted path"
+measured_device = { "Float32 on CUDABackend" = 2.5, "Float64 on CUDABackend" = 3.0 }
+status = "proposed; 4 threads (at 1 thread the atomics' order is fixed); the dual takes the sorted path; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1032"]
 quantity = "Gauss's law Σ D⁻E − (ρ − ρ₀(s)) across 3D window shifts: a round laser driving the plasma (200 steps, 113 shifts), off nodes 1, 2 and the antenna's two columns, and with y, z open (PML) and a back-edge PML of 6 cells off the layers (Float64); a warm plasma (thermal 0.1 c) at rest and drifting at 0.3 c through a ramp, off nodes 1 and 2, 60 steps; both modes"
@@ -1140,7 +1147,10 @@ C = 1
 measured = { Float32 = 0.0982, Float64 = 0.118, "Dual{Float32,3}" = 0.0982 }
 measured_warm = { Float32 = 0.108, Float64 = 0.106, "Dual{Float32,3}" = 0.0983 }
 measured_warm_ramp = { Float32 = 0.144, Float64 = 0.131, "Dual{Float32,3}" = 0.145 }
-status = "proposed; T-473's C"
+measured_device = { "Float32 on CUDABackend" = 0.101, "Float64 on CUDABackend" = 0.105, "Dual{Float32,3} on CUDABackend" = 0.0895 }
+measured_device_warm = { "Float32 on CUDABackend" = 0.0988, "Float64 on CUDABackend" = 0.117, "Dual{Float32,3} on CUDABackend" = 0.0988 }
+measured_device_warm_ramp = { "Float32 on CUDABackend" = 0.153, "Float64 on CUDABackend" = 0.13, "Dual{Float32,3} on CUDABackend" = 0.146 }
+status = "proposed; T-473's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1034"]
 quantity = "the fields of Fast against Reference after 120 steps of window_lwfa_3d, Float64"
@@ -1158,7 +1168,10 @@ C_partial = 8
 measured = { Float64 = 0.0151 }
 measured_primal = { "Dual{Float32,3}" = 0.0 }
 measured_partial = { "Dual{Float32,3}" = 0.167 }
-status = "proposed; T-475's C and T-1016's"
+measured_device = { "Float64 on CUDABackend" = 0.00423 }
+measured_device_primal = { "Dual{Float32,3} on CUDABackend" = 0.176 }
+measured_device_partial = { "Dual{Float32,3} on CUDABackend" = 0.425 }
+status = "proposed; T-475's C and T-1016's; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1036"]
 quantity = "T-472 in 3D: the vacuum pulse of window_lwfa_3d in the window against its static twin, on every column before the window moves and on columns 25 … n₁ after, relative to the twin's max |E, B| there, with a bare back edge, with a back-edge PML of 6 cells, and (moving_antenna) with the plane at x = 30 and the window starting at the pulse's peak, so that the plane moves back while it launches (C); the largest difference on the eight columns behind the back edge (behind the layer) against free space, the PML's over the bare edge's (C_near)"
@@ -1167,7 +1180,8 @@ C = 1000
 C_near = 0.05
 measured = { bare = 140.0, back_PML = 144.0, moving_antenna = 157.0 }
 measured_near = { bare = 1.84, back_PML = 0.0198 }
-status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72. C_near holds at normal incidence only: at oblique incidence (150°, 90°, 59° to x, in the x–y and x–z planes alike) the physics breaker measured the PML's energy ahead of the back edge at 0.2 to 0.24 of the bare edge's with 6 cells and 0.07 to 0.1 with 10, the 2D back PML's behaviour (T-1030 ties the 3D window to it), unverified in 2D"
+measured_device = { bare = 99.0, back_PML = 98.2, moving_antenna = 137.0 }
+status = "proposed; T-472's C. With 60 columns (seven pulse durations ahead of the peak when the window starts) the front's cut of the pulse's tail reaches 1.7·10⁴ eps on the front columns, so the case has 72. C_near holds at normal incidence only: at oblique incidence (150°, 90°, 59° to x, in the x–y and x–z planes alike) the physics breaker measured the PML's energy ahead of the back edge at 0.2 to 0.24 of the bare edge's with 6 cells and 0.07 to 0.1 with 10, the 2D back PML's behaviour (T-1030 ties the 3D window to it), unverified in 2D; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 # WP-075: the field ionization of the 3D step (T-1040 to T-1048). Measured on the CPU backend (Julia 1.13.4, 4 threads).
 ["T-1040"]
@@ -1177,14 +1191,17 @@ C = 32
 C_weight = 16
 measured = { Float32 = 0.642, Float64 = 0.748, "Dual{Float32,3}" = 0.642 }
 measured_weight = { Float32 = 0.0428, Float64 = 0.0428, "Dual{Float32,3}" = 0.171 }
-status = "proposed; T-1030's C; the largest over the box, the open box and the window, both modes (Fast in Float64 only) and both axes"
+measured_device = { "Float32 on CUDABackend" = 0.494, "Float64 on CUDABackend" = 0.692, "Dual{Float32,3} on CUDABackend" = 0.494 }
+measured_device_weight = { "Float32 on CUDABackend" = 0.0855, "Float64 on CUDABackend" = 0.0428, "Dual{Float32,3} on CUDABackend" = 0.0855 }
+status = "proposed; T-1030's C; the largest over the box, the open box and the window, both modes (Fast in Float64 only) and both axes; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1041"]
 quantity = "a 3D dopant in a constant field with all three components, no current: the ADK rate against its closed form at |E| (rate); one ADK level born every 3 steps for 20 steps, the bound population against exp(−W·n·Δt) of the closed-form W (populations), the born electrons' momenta against −E·Δt·(n − k_b + ½) per component (momenta) and weights against the released fraction (weights); a chain of an ADK, a Tong–Lin and an ADK level, 12 steps, against the per-step recurrence of the closed-form rates (chain)"
 scale = "rate: eps(T)·W; the others n·eps(T)·|closed form| (k·eps(T) for the chain after step k)"
 C = 8
 measured = { rate = 0.691, populations = 0.147, momenta = 0.111, weights = 0.149, chain = 0.408 }
-status = "proposed; the largest over the three types of each quantity"
+measured_device = { rate = 0.691, populations = 0.147, momenta = 0.111, weights = 0.12, chain = 0.592 }
+status = "proposed; the largest over the three types of each quantity; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1042"]
 quantity = "lattices of 2 × 1 × 3 and 2 × 2 × 3 atoms per cell on 4 rows and 6 layers of a box of unequal sides in a static curl-free field Ex = 0.3 + x/20, Ey = 1/10 (1/10 + y/20 on the second lattice), Ez = 0.05 + z/4, 8 steps, born every 2: each atom's bound population against exp(−W(|E|(x, y, z))·n·Δt) of the closed-form rate at its own place (C), and the fourth birth's weights against (density/6)·q⁶·(1 − q²) (weights), off the two columns next to the periodic seam of x"
@@ -1192,7 +1209,9 @@ scale = "n·eps(T) for the populations; n·eps(T)·density/6 for the weights"
 C = 4
 measured = { Float32 = 0.255, Float64 = 0.281, "Dual{Float32,3}" = 0.255 }
 measured_weight = { Float32 = 0.0571, Float64 = 0.0549, "Dual{Float32,3}" = 0.0571 }
-status = "proposed; T-784's C; the largest over both lattices (1 thread)"
+measured_device = { "Float32 on CUDABackend" = 0.382, "Float64 on CUDABackend" = 0.281, "Dual{Float32,3} on CUDABackend" = 0.382 }
+measured_device_weight = { "Float32 on CUDABackend" = 0.0783, "Float64 on CUDABackend" = 0.0549, "Dual{Float32,3} on CUDABackend" = 0.0783 }
+status = "proposed; T-784's C; the largest over both lattices (1 thread); measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1043"]
 quantity = "Gauss's law with the dopant ions' charge in the 3D box, |Σ_d D⁻_d E_d − (ρ + ρ_ions − mean)|: a thermal plasma with a dopant of an ADK and a Tong–Lin level (two atoms per cell along x on 4 of 6 rows), 20 steps (periodic); a box open along y and z with an absorbing layer of 3 cells, born electrons driven out through the lower y face by Ey = 1/2, on the nodes off the layers, 40 steps (open); both modes"
@@ -1200,7 +1219,9 @@ scale = "periodic: (n₁ + n₂ + n₃)·max|ρ|·√(k + 1); open: ((n₁ + n�
 C = 1
 measured_periodic = { Float32 = 0.274, Float64 = 0.271, "Dual{Float32,3}" = 0.318 }
 measured_open = { Float32 = 0.266, Float64 = 0.446, "Dual{Float32,3}" = 0.253 }
-status = "proposed; T-773's and T-785's C; the largest over both modes"
+measured_device_periodic = { "Float32 on CUDABackend" = 0.261, "Float64 on CUDABackend" = 0.287, "Dual{Float32,3} on CUDABackend" = 0.323 }
+measured_device_open = { "Float32 on CUDABackend" = 0.336, "Float64 on CUDABackend" = 0.287, "Dual{Float32,3} on CUDABackend" = 0.329 }
+status = "proposed; T-773's and T-785's C; the largest over both modes; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1044"]
 quantity = "Gauss's law with the ions' charge across 3D window shifts, Σ D⁻E − (ρ + ρ_ions − ρ₀(s)), off nodes 1, 2 and the antenna's two columns, the round laser ionizing a doped section on 4 × 4 transverse cells, 120 steps, both modes (C); the atoms' weights on a lattice of 2 × 1 × 2 per cell after 0, 90 and 104 steps, and those of a section loaded by the refill alone (1 × 2 × 1 per cell), against the section's profile at the global coordinate, value and partials (C_weight)"
@@ -1209,14 +1230,17 @@ C = 1
 C_weight = 16
 measured = { Float32 = 0.0982, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
 measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17 }
-status = "proposed; T-774's C; the largest over both modes"
+measured_device = { "Float32 on CUDABackend" = 0.101, "Float64 on CUDABackend" = 0.105, "Dual{Float32,3} on CUDABackend" = 0.0895 }
+measured_device_weight = { "Float32 on CUDABackend" = 7.42, "Float64 on CUDABackend" = 7.42, "Dual{Float32,3} on CUDABackend" = 7.42 }
+status = "proposed; T-774's C; the largest over both modes; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1045"]
 quantity = "Fast against Reference after 100 steps of ion_window_3d, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"
 scale = "eps(Float64)"
 C = 32
 measured = { Float64 = 4.94 }
-status = "proposed; T-775's C"
+measured_device = { "Float64 on CUDABackend" = 4.73 }
+status = "proposed; T-775's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1046"]
 quantity = "ForwardDiff against the finite-difference floor of A7 (fd_scan, Float64, Reference): the born charge and the born electrons' kinetic energy of ion_window_3d_small after 90 steps in a₀ and the level's prefactor: rel/floor at the minimising step (C) and the floor itself (floor_max); the Dual{Float32,3} partials in a₀, the density and the prefactor against the Float64 Jacobian, and the Float32 primal against Float64 (C_dual)"
@@ -1234,14 +1258,16 @@ quantity = "the 3D sharpened copy of a sampled mode along x (k = 1, 2) against (
 scale = "eps(T) (mode amplitude 1)"
 C = 8
 measured = { stencil = 2.32, gather = 1.76, oblique = 5.14 }
-status = "proposed; T-960's C"
+measured_device = { stencil = 2.32, gather = 1.78, oblique = 5.14 }
+status = "proposed; T-960's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1051"]
 quantity = "a 3D run with the compensated gather invariant along z or y (a quarter turn about x) against the 2D run with it, after initialize! and after every step: every component on every line of the invariant axis; T-1040's beams in a field with a dopant (16 × 12 cells, periodic, 20 steps) and its window plasma with a doped section (64 steps), Reference mode"
 scale = "as T-1040"
 C = 32
 measured = { Float32 = 0.544, Float64 = 0.544, "Dual{Float32,3}" = 0.544 }
-status = "proposed; T-1040's C"
+measured_device = { "Float32 on CUDABackend" = 0.488, "Float64 on CUDABackend" = 0.63, "Dual{Float32,3} on CUDABackend" = 0.494 }
+status = "proposed; T-1040's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1052"]
 quantity = "Gauss's law with the ions' charge and the compensated gather in 3D: T-1043's periodic box (C, box) and T-1044's dopant in the window, off nodes 1, 2 and the antenna's two columns, 120 steps (C, window); both modes"
@@ -1249,7 +1275,9 @@ scale = "as T-1043 (box) and T-1044 (window)"
 C = 1
 measured_box = { Float32 = 0.199, Float64 = 0.287, "Dual{Float32,3}" = 0.229 }
 measured_window = { Float32 = 0.116, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
-status = "proposed; T-1043's and T-1044's C"
+measured_device_box = { "Float32 on CUDABackend" = 0.231, "Float64 on CUDABackend" = 0.25, "Dual{Float32,3} on CUDABackend" = 0.249 }
+measured_device_window = { "Float32 on CUDABackend" = 0.0998, "Float64 on CUDABackend" = 0.0955, "Dual{Float32,3} on CUDABackend" = 0.0895 }
+status = "proposed; T-1043's and T-1044's C; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
 
 ["T-1055"]
 quantity = "ForwardDiff through the 3D compensated gather against the finite-difference floor of A7 (fd_scan, Float64, Reference): T-1046's born charge and energy in a₀, rel/floor at the minimising step (C) and the floor (floor_max); the Dual{Float32,3} partials in a₀, the density and the prefactor and the Float32 primal against Float64 (C_dual)"

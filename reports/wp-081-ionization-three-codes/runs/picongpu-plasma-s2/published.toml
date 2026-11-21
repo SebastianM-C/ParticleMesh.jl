@@ -1,0 +1,47 @@
+branch = "runs/ion-5090-pic"
+commit = "10b351794675bb24495a4af6cacfefbbfaaf5abf"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/arguments.txt"
+bytes = 481
+sha256 = "be1f257710d788096906273e6db1863a66bde89e9f413b9660fd231b6b56c757"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/build-tail.log"
+bytes = 4926
+sha256 = "112152336169e85c387302f890c4337beb580b6a798f596e570da6fd88c55e9b"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/case.toml"
+bytes = 3607
+sha256 = "0169411f990fb9685d22dbd6c52870b4024e0a3f23fd1643981a328a0066d65b"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/container.txt"
+bytes = 373
+sha256 = "297f4fb1871df6cdcb0c4619f4330e74a120df9c2cc986f2e29b78234043cebf"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/kind.txt"
+bytes = 7
+sha256 = "c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/manifest.toml"
+bytes = 1947
+sha256 = "77754cd20f36b4585dfd4fd777b832fb18269877bd79b2c7b873bb3d7130b753"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/picongpu-tail.log"
+bytes = 3534
+sha256 = "cc522a636ad7755d6fff30652f0654108161fefc22b170fb3ca4ca8e294e9362"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/summary.json"
+bytes = 928084
+sha256 = "9952020c3584a7fd2e415ec251e7141f678b86c4b73ae45b1b4dcbf2e0ce0e4b"
+
+[[files]]
+path = "scripts/runs/ion-5090-pic/picongpu-plasma-s2/versions.toml"
+bytes = 253
+sha256 = "5b91a1a9b7fe891da151c71de61c8b920be124c226331386b8afa732e1f81e66"
