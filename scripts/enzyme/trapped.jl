@@ -206,6 +206,8 @@ function write_run(name, result)
         "gpu" => ON_GPU ? CUDACore.name(CUDACore.device()) : "none", "patches" => get(ENV, "PM_ENZYME_PATCH", ""),
         "workarounds_off" => get(ENV, "PM_WA_OFF", ""), "cuda_loaded" => get(ENV, "PM_LOAD_CUDA", "0"),
         "cuda_version" => isdefined(Main, :CUDA) ? string(pkgversion(Main.CUDA)) : "not loaded",
+        # what else ran on the card when the run started (the caller's nvidia-smi, PM_GPU_OTHERS): timings of a shared card are suspect
+        "gpu_other_processes" => get(ENV, "PM_GPU_OTHERS", "not recorded"), "gpu_free_at_start" => get(ENV, "PM_GPU_FREE", "not recorded"),
         "cuda_heap" => get(ENV, "PM_CUDA_HEAP", "default"), "work_package" => "WP-078",
         "versions" => Dict(string(m) => string(pkgversion(m)) for m in (Enzyme, ForwardDiff, KernelAbstractions)),
         "inputs" => Dict(relpath(f, REPO) => hashfile(f) for f in inputs if isfile(f)))), joinpath(out, "manifest.toml"), "w")
