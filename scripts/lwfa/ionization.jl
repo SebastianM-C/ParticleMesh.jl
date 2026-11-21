@@ -1368,7 +1368,7 @@ function plot_ion_wake(out, S, d)
             o = S[k][1]["outputs"][j]
             ex = Float64.(o["Ex_axis"])
             x = ((0:(length(ex) - 1)) .+ Int(o["Ex_m0"]) .- 0.5) .* d.dx
-            lines!(ax, x, ex; color = col[k], label = split(k, "-")[1] == "pm" ? "ParticleMesh" : uppercasefirst(split(k, "-")[1]))
+            lines!(ax, x, ex; color = col[k], label = Dict("pm" => "ParticleMesh", "smilei" => "Smilei", "picongpu" => "PIConGPU")[split(k, "-")[1]])
             side["$(k)_t$(o["step"])"] = Dict("x0" => first(x), "dx" => d.dx, "Ex" => ex)
         end
         row == 1 && axislegend(ax; position = :lb)
