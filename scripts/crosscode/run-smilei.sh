@@ -20,7 +20,8 @@ if [ $# -ge 2 ]; then
   image=$2
 else
   cd "$repo/scripts/crosscode/containers"
-  hash=$( { echo smilei.Containerfile; find smilei -type f 2>/dev/null; } | LC_ALL=C sort | xargs cat | sha256sum | cut -c1-16)
+  # the README's hash; `|| true` because find fails under pipefail when there is no smilei/ directory
+  hash=$( { echo smilei.Containerfile; find smilei -type f 2>/dev/null || true; } | LC_ALL=C sort | xargs cat | sha256sum | cut -c1-16)
   image=particlemesh-smilei:$hash
   cd - > /dev/null
 fi
