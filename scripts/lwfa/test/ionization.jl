@@ -196,6 +196,18 @@ end
     p = picongpu_parameters(picongpu_ion_lab(case); plasma = true)
     args = picongpu_ion_arguments(case, p)
     @test occursin("-d 1 2 1 ", args) && occursin("-g 128 1104 128 ", args) && occursin("--periodic 0 0 0 ", args)
+    @test occursin("--openPMD.infix _%06T ", args) && !occursin("infix NULL", args)
+    # the reader finds the 2D deck's one file and the 3D deck's one file per output, in order of iteration
+    mktempdir() do dir
+        o = mkpath(joinpath(dir, "openPMD"))
+        for it in (1704, 0, 142)
+            h5open(f -> (f["data/$it/x"] = [it]), joinpath(o, "simData_$(lpad(it, 6, '0')).h5"), "w")
+        end
+        write(joinpath(o, "simData_000142.h5.tmp"), "")
+        @test picongpu_dump_files(dir) == [joinpath(o, "simData_$(lpad(it, 6, '0')).h5") => [it] for it in (0, 142, 1704)]
+        h5open(f -> foreach(it -> (f["data/$it/x"] = [it]), (284, 0, 142)), joinpath(o, "simData.h5"), "w")
+        @test picongpu_dump_files(dir) == [joinpath(o, "simData.h5") => [0, 142, 284]]
+    end
     @test picongpu_ion_arguments(TOML.parsefile(ION_CASE_FILE), p) == picongpu_arguments(p)
     # the 3D case has no measured field ratio, so prepare leaves out the run that needs it
     root = prepare_ion(joinpath(@__DIR__, "..", "cases", "ionization-3d.toml"), "t1127-$(getpid())"; codes = ("pm", "picongpu"), seeds = 1:1)

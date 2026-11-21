@@ -934,7 +934,10 @@ function picongpu_ion_arguments(case, p)
     ion_derived(case).N == 2 && return a
     lay = p.layout
     for (old, new) in ("-d 1 $(lay.devices) " => "-d 1 $(lay.devices) 1 ", "-g $(p.cells[1]) $(p.cells[2]) " => "-g $(p.cells[1]) $(p.cells[2]) $(ion_derived(case).nz) ",
-                       "--periodic 0 0 " => "--periodic 0 0 0 ")
+                       "--periodic 0 0 " => "--periodic 0 0 0 ",
+                       # one file per output, so a rank killed at shutdown costs at most the last one (a 3D run hung in the
+                       # close of its single file once, which left all of that file's outputs unreadable)
+                       "--openPMD.infix NULL " => "--openPMD.infix _%06T ")
         occursin(old, a) || error("PIConGPU's arguments: no \"$old\" to make 3D")
         a = replace(a, old => new)
     end
@@ -992,6 +995,22 @@ function picongpu_ion_particles(sp, case, u, shift)
     return (; x, u = (comp("y"), comp("x"), comp("z")), w, bound = be)
 end
 
+"""
+    picongpu_dump_files(dir) -> Vector{Pair{String,Vector{Int}}}
+
+PIConGPU's openPMD files in `dir/openPMD`, each with its iterations in order: the one file
+`simData.h5` of the 2D deck (`--openPMD.infix NULL`), or the 3D deck's one file per output,
+`simData_<iteration>.h5` (`picongpu_ion_arguments`), ordered by iteration.
+"""
+function picongpu_dump_files(dir)
+    o = joinpath(dir, "openPMD")
+    single = joinpath(o, "simData.h5")
+    isfile(single) && return [single => sort(h5open(f -> [parse(Int, k) for k in keys(f["data"])], single, "r"))]
+    per = sort([(parse(Int, m.captures[1]), joinpath(o, n)) for n in readdir(o) for m in (match(r"^simData_(\d+)\.h5$", n),) if m !== nothing])
+    isempty(per) && error("no openPMD files in $o")
+    return [path => [it] for (it, path) in per]
+end
+
 "Read PIConGPU's dumps of the ionization case in `dir` into the summary format of `pm_ion_output`."
 function summarize_picongpu_ion(dir)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
@@ -1002,13 +1021,14 @@ function summarize_picongpu_ion(dir)
     u = reference_units(Float64(case["lambda0_um"]) * 1e-6)
     outs = Any[]
     offset_reading = nothing
-    h5open(joinpath(dir, "openPMD", "simData.h5"), "r") do f
+    files = picongpu_dump_files(dir)
+    last_it = maximum(it for (_, its) in files for it in its)
+    for (path, its) in files, it in its
+      h5open(path, "r") do f
         data = f["data"]
         mp = rstrip(haskey(HDF5.attributes(f), "meshesPath") ? read_attribute(f, "meshesPath") : "meshes/", '/')
         pp = rstrip(pic_attribute(f, "particlesPath", "particles/"), '/')
-        keys_sorted = sort(collect(keys(data)); by = k -> parse(Int, k))
-        for key in keys_sorted
-            it = parse(Int, key)
+        let key = string(it)
             E = data[key][mp]["E"]
             labels = collect(String, read_attribute(E, "axisLabels"))
             labels == (d.N == 2 ? ["y", "x"] : ["z", "y", "x"]) || error("iteration $it: axisLabels $labels for a $(d.N)D case")
@@ -1045,7 +1065,7 @@ function summarize_picongpu_ion(dir)
                     q = picongpu_ion_particles(g[sp], case, u, shift)
                     k = inwin(q.x)
                     out[name] = electron_measures(q.x[k] .- spm * d.dx, map(a -> a[k], q.u), q.w[k], case, 1.0)
-                    if sp == PIC_BORN && key == last(keys_sorted)
+                    if sp == PIC_BORN && it == last_it
                         out["born_particles"] = Dict("x" => q.x[k] .- spm * d.dx, "ux" => q.u[1][k], "w" => q.w[k])
                     end
                 end
@@ -1064,6 +1084,7 @@ function summarize_picongpu_ion(dir)
             end
             push!(outs, out)
         end
+      end
     end
     secs = try
         lines = readlines(joinpath(dir, "container.txt"))
