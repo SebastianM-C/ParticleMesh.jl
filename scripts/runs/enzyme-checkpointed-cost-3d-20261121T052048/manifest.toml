@@ -1,0 +1,24 @@
+commit = "72a0cd44b9926478f9a975bde48f528beadc8389"
+backend = "CUDABackend(false, false, false)"
+dirty = "false"
+cpu = "AMD Ryzen 9 9950X 16-Core Processor"
+threads = 2
+args = ["cost", "dim=3", "T=Float32", "mode=reference", "cells=224x128x128", "ppc=2x1x1", "steps=2,8,32", "plain=2", "dual=32", "c=8"]
+work_package = "WP-080"
+patches = "scripts/enzyme/spike/active_args.jl"
+julia = "1.13.4"
+gpu = "NVIDIA GeForce RTX 5090"
+
+[versions]
+Enzyme = "0.13.221"
+ForwardDiff = "1.4.6"
+KernelAbstractions = "0.10.8"
+Checkpointing = "0.13.0"
+
+[inputs]
+"scripts/enzyme/common.jl" = "9ca49375f4dc118bd51cd81024c272370a72ee95f9d05c3fba26736ec966decb"
+"scripts/enzyme/checkpointed.jl" = "38ef7db7688a73d7ac465e24a10b684a18e1e2c4b57d4dbb82478d1d106f3526"
+"lib/ParticleMeshElectromagnetic/test/em3d_cases.jl" = "eb784f97cb49a59caa86f3454aecad84cb6153f6f6481c85706e16d34cb540bd"
+"Manifest.toml" = "c3d07a8af81eed050b83a5ddf61faedb77c56337e348ec6a692da44051206422"
+"lib/ParticleMeshElectromagnetic/test/Project.toml" = "c5ccbc33d8d8f49506da1f0e791e4e7beaea4ba2f1e08873d500c924d9a0318b"
+"lib/ParticleMeshElectromagnetic/test/em2d_cases.jl" = "a0cde521b7e197a09f9d057cc55adb6bb1f7aaf559613f336fc33253feebb510"

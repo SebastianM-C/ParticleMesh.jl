@@ -1,0 +1,14 @@
+# commit 72a0cd44b9926478f9a975bde48f528beadc8389, patches scripts/enzyme/spike/active_args.jl, started 2026-11-21T05:13:37Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB
+== 05:13:37 cost dim=3 T=Float32 mode=reference cells=224x128x128 ppc=2x1x1 steps=2,8,32 plain=2 dual=32 c=8
+   exit 0 at 05:20:49
+cost: 3D Float32 Reference() cells (224, 128, 128) ppc (2, 1, 1), 7340032 particles, 8 checkpoints, snapshot 428.8 MiB, state 2219.4 MiB, backend CUDABackend(false, false, false)
+  first calls (compile): checkpointed 16.5 s, plain 0.1 s; plain reverse of 1 step 10451.8 MiB peak
+  steps 2: primal 0.0253 s (0 MiB), Dual{1} 0.0737 s (0 MiB), Dual{4} 0.2990 s (0 MiB), plain reverse 0.0974 s (12971 MiB), checkpointed 0.1308 s (15602 MiB), host checkpoints 0.2055 s (15684 MiB)
+  steps 8: primal 0.0999 s (0 MiB), Dual{1} 0.2956 s (0 MiB), Dual{4} 1.2073 s (0 MiB), plain reverse -, checkpointed 1.0926 s (18175 MiB), host checkpoints 1.7373 s (21011 MiB)
+  steps 32: primal 0.4019 s (0 MiB), Dual{1} 1.1873 s (0 MiB), Dual{4} 4.8816 s (0 MiB), plain reverse -, checkpointed 4.2664 s (18604 MiB), host checkpoints 4.6284 s (20500 MiB)
+wrote scripts/runs/enzyme-checkpointed-cost-3d-20261121T052048
+== 05:20:49 cost dim=3 T=Float32 mode=reference cells=448x128x128 ppc=2x1x1 steps=2,8,32 plain=2 dual=32 c=8
+   exit 1 at 05:21:28
+ERROR: LoadError: Out of GPU memory
+# finished 2026-11-21T05:21:28Z

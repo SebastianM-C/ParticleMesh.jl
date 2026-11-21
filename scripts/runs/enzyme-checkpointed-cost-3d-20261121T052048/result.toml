@@ -1,0 +1,60 @@
+[bytes]
+state = 2327213472
+dual1_state = 4654426952
+plain_reverse_one_step_peak = 10959557720
+dual4_state = 11636067392
+snapshot = 449616996
+
+[seconds]
+first_call_plain = 0.064050789
+first_call_checkpointed = 16.450067599
+
+[[rows]]
+dual1 = 0.073650886
+steps = 2
+checkpointed = 0.1308337
+plain_reverse = 0.09743183
+dual4_peak = 0
+checkpointed_peak = 16359999612
+checkpointed_host_peak = 16446204956
+primal = 0.025272576
+checkpointed_host = 0.205519897
+dual1_peak = 0
+dual4 = 0.299039015
+plain_reverse_peak = 13601538216
+primal_peak = 0
+[[rows]]
+dual1 = 0.295558098
+steps = 8
+checkpointed = 1.092570853
+dual4_peak = 0
+checkpointed_peak = 19057701588
+checkpointed_host_peak = 22031969312
+primal = 0.099871776
+checkpointed_host = 1.737296862
+dual1_peak = 0
+dual4 = 1.207262507
+primal_peak = 0
+[[rows]]
+dual1 = 1.187320874
+steps = 32
+checkpointed = 4.266415722
+dual4_peak = 0
+checkpointed_peak = 19507318584
+checkpointed_host_peak = 21496146972
+primal = 0.401929713
+checkpointed_host = 4.628364614
+dual1_peak = 0
+dual4 = 4.881626714
+primal_peak = 0
+
+[case]
+eltype = "Float32"
+ppc = [2, 1, 1]
+checkpoints = 8
+species = 1
+particles = 7340032
+mode = "Reference()"
+dim = 3
+cells = [224, 128, 128]
+seed = 7
