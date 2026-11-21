@@ -31,7 +31,10 @@ const JOB3_DEFAULTS = Dict{String,Any}("ppl" => 16, "nt" => 1, "rows" => 128, "p
                                        "frames" => 0, "t_end" => BCASE.t_end, "capacity_factor" => 1.0)
 
 "The energy of the 3D case's round pulse (`laser_energy` of a beam with a centre of two coordinates)."
-pulse_energy3(a0, duration, waist) = π * sqrt(π / 2) * a0^2 * waist^2 * duration / 4
+function pulse_energy3(a0, duration, waist)
+    p = oftype(float(a0 * waist * duration), π)   # π in the arguments' own type, so that Float32 and its duals stay so
+    return p * sqrt(p / 2) * a0^2 * waist^2 * duration / 4
+end
 
 "The 3D energy budget: the pulse's energy at a₀ = `a0E` and the case's base duration and waist."
 budget3(a0E = TCASE.a0_energy) = pulse_energy3(a0E, TCASE.x0[1], TCASE.x0[2])
