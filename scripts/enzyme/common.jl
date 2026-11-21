@@ -1,6 +1,9 @@
 # WP-050: what the Enzyme scripts share (chain_rule.jl, cost.jl): the GPU switch, the WP-023
 # case, the state, the differentiated function and the state's floating-point arrays.
 using ParticleMeshCore, ParticleMeshElectromagnetic, KernelAbstractions, ForwardDiff, Enzyme
+# PM_LOAD_CUDA=1: the CUDA package as well, before the patches (a stacked environment provides it),
+# so that Enzyme's CUDA extension loads with its device-copy rules (#552); CUDACore alone leaves it unloaded
+get(ENV, "PM_LOAD_CUDA", "0") == "1" && @eval using CUDA
 # PM_ENZYME_PATCH: spike-only patches (`spike/active_args.jl`, `spike/unroll.jl`), a `;`-separated list
 foreach(f -> isempty(f) || include(abspath(f)), split(get(ENV, "PM_ENZYME_PATCH", ""), ';'))
 # PM_BACKEND=cuda runs the state on the GPU (CUDACore of the test environment)

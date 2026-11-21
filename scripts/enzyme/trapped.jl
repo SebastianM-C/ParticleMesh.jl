@@ -204,6 +204,8 @@ function write_run(name, result)
         "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),
         "cpu" => Sys.cpu_info()[1].model, "args" => ARGS, "backend" => string(backend()),
         "gpu" => ON_GPU ? CUDACore.name(CUDACore.device()) : "none", "patches" => get(ENV, "PM_ENZYME_PATCH", ""),
+        "workarounds_off" => get(ENV, "PM_WA_OFF", ""), "cuda_loaded" => get(ENV, "PM_LOAD_CUDA", "0"),
+        "cuda_version" => isdefined(Main, :CUDA) ? string(pkgversion(Main.CUDA)) : "not loaded",
         "cuda_heap" => get(ENV, "PM_CUDA_HEAP", "default"), "work_package" => "WP-078",
         "versions" => Dict(string(m) => string(pkgversion(m)) for m in (Enzyme, ForwardDiff, KernelAbstractions)),
         "inputs" => Dict(relpath(f, REPO) => hashfile(f) for f in inputs if isfile(f)))), joinpath(out, "manifest.toml"), "w")
@@ -374,7 +376,8 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
                 copyto!(a, saved[i][path])
             catch err
                 # a temporary the step frees and allocates again (its state field then holds a freed array)
-                (err isa ArgumentError && occursin("freed", sprint(showerror, err))) || rethrow()
+                # PM_WA_OFF containing `freedskip`: no skipping, the error stands
+                (err isa ArgumentError && occursin("freed", sprint(showerror, err)) && !occursin("freedskip", get(ENV, "PM_WA_OFF", ""))) || rethrow()
                 path in FREED || (push!(FREED, path); println("  checkpoint restore skips the freed array $path"))
             end
         end
