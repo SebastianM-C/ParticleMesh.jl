@@ -1,0 +1,71 @@
+# The ionization-injection case of WP-064 and WP-065 (`scripts/optim/born2d_case.jl`, `BCASE`, at
+# a₀ = 1.9), run in ParticleMesh, Smilei and PIConGPU (WP-081, `scripts/lwfa/ionization.jl`).
+#
+# Units of A1 throughout: lengths c/ω₀, times 1/ω₀, densities n_c, fields mₑcω₀/e. Unlike
+# `lwfa-2d.toml`, x is the box coordinate of born2d_case.jl: x = 0 at the back of ParticleMesh's
+# window at t = 0, the antenna plane `antenna_cells` columns into it. Smilei's xmin is x = 0;
+# PIConGPU's Huygens plane sits a quarter cell behind the antenna plane (scripts/lwfa/picongpu.jl).
+
+schema = "lwfa-ionization-1"
+name = "ionization-2d"
+description = "2D Cartesian ionization injection (WP-064/065): a0 = 1.9, w0 = 10, tau = 6 (1/e field), n0 = 0.072 n_c behind a 64 vacuum and a 40 sin² ramp, N⁵⁺ → N⁷⁺ dopant at 1 % in x = 108–132, dx = λ0/32, dy = π/4, moving window from t = 108, open (PML) in y"
+lambda0_um = 0.8
+
+[grid]
+dx = 0.19634954084936207          # λ₀/32 = 2π/32
+dy = 0.7853981633974483           # π/4 = 4·dx
+cells = [448, 128]                # 14 λ₀ × 100.5 c/ω₀; multiples of 8 (PIConGPU's supercell)
+antenna_cells = 12                # the antenna plane at x = 2.356 (born_problem: max(12, 192 ÷ ppl) cells of λ₀/32)
+transverse = "open"               # ParticleMesh: PML; Smilei: Silver–Müller; PIConGPU: its PML
+pml_cells = 12                    # the transverse PML in ParticleMesh and PIConGPU
+back_pml_cells = 8                # ParticleMesh's PML at the window's back (a quarter wavelength)
+smilei_patches = [32, 4]          # 14 × 32 cells per patch
+picongpu_devices = 2
+
+[time]
+courant = 0.95                    # dt = courant / sqrt(1/dx² + 1/dy²) = 0.181
+t_end = 300.0                     # the read-out time of WP-064 and WP-065, rounded to the outputs: every = round(ceil(t_end/dt)/outputs)
+outputs = 12                      # outputs every `every` = 138 steps, the last at step 1656 (t = 299.7) the read-out
+
+[laser]
+a0 = 1.9
+waist = 10.0
+duration = 6.0                    # 1/e half width of the field envelope
+delay = 54.0                      # envelope peak on the antenna plane
+focus = 80.0                      # box x of the focus
+polarization = "y"
+envelope = "wavefront"            # along the curved wavefront, as Smilei and PIConGPU launch it; ParticleMesh's run `plasma-axis` has
+                                  # WP-064's AxisTime pulse
+
+[window]
+start = 108.0
+
+[plasma]
+density = 0.072
+vacuum = 64.0
+ramp = 40.0                       # sin² up-ramp from x = 64 to 104
+particles_per_cell = [2, 2]
+seed = 1
+
+[dopant]
+element = "N"
+charge = 5                        # loaded as N⁵⁺: the L shell is ionized by the pulse's foot, its electrons are in the plasma's density
+levels = [6, 7]                   # the K shell, N⁵⁺ → N⁶⁺ → N⁷⁺
+density = 0.00072                 # 1 % of the plasma's
+section = [108.0, 132.0, 4.0]     # start, stop, ramp: the DopantSection of born2d_case.jl
+half_rows = 18                    # the dopant covers the 36 rows around the axis
+cutoff = 24.0                     # ParticleMesh's ADK cutoff in field/(3E)
+particles_per_cell = [1, 1]       # ParticleMesh's macro-atoms (expected-value ionization, no random numbers)
+mc_particles_per_cell = [16, 16]  # Smilei and PIConGPU (Monte Carlo ionization)
+
+[diagnostics]
+fade = [12.0, 24.0]               # born2d_case.jl's position weight in window x
+rise = [3.0, 5.0]                 # trapped2d_case.jl's trapping weight in u_x
+u_fast = 5.0
+spectrum_ekin = [0.0, 40.0, 200]  # born-electron kinetic-energy histogram, mₑc²
+
+[comparison]
+# PIConGPU's launched pulse over ParticleMesh's: the peak of |E_y|'s envelope in the two vacuum runs where
+# the pulse crosses the dopant (t = 150 and 175: 0.9928 and 0.9941; runs ion-cloud1 and ion-5090-pic).
+# ParticleMesh's run `plasma-rates-picongpu-a0` takes PIConGPU's rate and a₀ times this ratio.
+picongpu_field_ratio = 0.9935
