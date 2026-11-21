@@ -1,0 +1,11 @@
+# commit 6ce5cfd2f778ab68f0a39bd8851d5619e35580f7, patches scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl, started 2026-11-21T16:42:05Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 1431 MiB
+== 16:42:05 grad run=0 strict_aliasing=0 (heap default)
+   exit 0 at 16:49:17
+[16:42:14] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("strict_aliasing" => "0", "run" => "0"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[16:42:30] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB, one checkpoint 0.10 GiB, 4 checkpoints in device memory (pool used 0.77 GiB)
+[16:42:41] warm-up: plain run 9.6 s, J = 0.00034263736, peak 1.54 GiB (pool used 1.54 GiB)
+[16:48:27] warm-up: reverse pass FAILED: EnzymeNoTypeError: Enzyme cannot statically prove the type of a value being differentiated and risks a correctness error if it gets it wrong.
+[16:49:15] warm-up: Dual{4} 40.1 s, peak 3.30 GiB; relative differences [NaN, NaN, NaN, NaN] (pool used 3.30 GiB)
+wrote scripts/runs/enzyme-trapped3d-grad-20261121T164915
+# finished 2026-11-21T16:49:17Z

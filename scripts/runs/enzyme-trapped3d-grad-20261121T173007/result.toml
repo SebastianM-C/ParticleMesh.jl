@@ -1,0 +1,84 @@
+[warm]
+dual1 = []
+gradient_reverse = [-0.00013152657519438076, -0.0003901671098110151, 4.52093697905602e-5, 0.044490807580043486]
+gradient_reverse_start = [0.0, 0.0, 0.0, 0.0030010696905644874]
+J = 0.0003426373586989939
+checkpoint_memory = "device"
+J_reverse_forward = 0.0003426373607566188
+gradient_reverse_params = [-0.00013152657519438076, -0.0003901671098110151, 4.52093697905602e-5, 0.041489737889478996]
+seconds_start_tangents = 12.208232599
+checkpoints = 4
+
+    [warm.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 1146880
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [112, 64, 64]
+    nsteps = 697
+    ion_ppc = [1, 1, 1]
+    dt = 0.43077734112739563
+    ppl = 8
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 64
+    born_slots = 580608
+
+    [warm.primal]
+    seconds = 9.351337098
+    base_bytes = 824346488
+    peak_bytes = 1655602928
+
+    [warm.nonfinite_adjoints]
+
+    [warm.reverse]
+    seconds = 399.227725033
+    base_bytes = 824346488
+    peak_bytes = 12089330788
+
+    [warm.dual4]
+    seconds = 33.792249092
+    J = 0.00034263753332197666
+    base_bytes = 3509474616
+    gradient = [-0.00013152659812476486, -0.00039016612572595477, 4.520947186392732e-5, 0.044490694999694824]
+    relative_difference = [1.7434028118024713e-7, 2.522220652848708e-6, 2.257787205012757e-6, 2.5304245901820494e-6]
+    peak_bytes = 3544024376
+
+    [warm.bytes]
+    state = 671282032
+    checkpoint = 105461448
+
+[run]
+checkpoints = 6
+reverse_error = """Out of GPU memory trying to allocate 35.000 MiB\nEffective GPU memory usage: 99.96% (31.432 GiB/31.445 GiB)\nMemory pool usage: 27.438 GiB (27.469 GiB reserved)\nLibrary handles: 0 active, 0 reusable (released at reclaim)\n"""
+checkpoint_memory = "device"
+dual1 = []
+
+    [run.bytes]
+    state = 5008424712
+    checkpoint = 647563976
+
+    [run.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 9175040
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [224, 128, 128]
+    nsteps = 985
+    ion_ppc = [1, 1, 1]
+    dt = 0.3046056032180786
+    ppl = 16
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 128
+    born_slots = 2032128

@@ -1,0 +1,64 @@
+[16:25:38] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("run" => "0"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+ERROR: LoadError: Out of GPU memory trying to allocate 4.430 MiB
+Effective GPU memory usage: 99.93% (31.423 GiB/31.445 GiB)
+Memory pool usage: 60.597 MiB (64.000 MiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+
+Stacktrace:
+  [1] _pool_alloc
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:72 [inlined]
+  [2] macro expansion
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:30 [inlined]
+  [3] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [4] pool_alloc
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:29 [inlined]
+  [5] (::CUDACore.var"#893#894"{CUDACore.DeviceMemory, Int64})()
+    @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:96
+  [6] cached_alloc(f::CUDACore.var"#893#894"{CUDACore.DeviceMemory, Int64}, key::Tuple{UnionAll, CuDevice, DataType, Int64})
+    @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/alloc_cache.jl:36
+  [7] CuArray
+    @ ~/.julia/packages/CUDACore/UHVBW/src/array.jl:95 [inlined]
+  [8] allocate
+    @ ~/.julia/packages/CUDACore/UHVBW/src/CUDAKernels.jl:31 [inlined]
+  [9] allocate_scratch
+    @ ~/.julia/packages/AcceleratedKernels/heLhw/src/workspace.jl:146 [inlined]
+ [10] #allocate_scratch##0
+    @ ~/.julia/packages/AcceleratedKernels/heLhw/src/workspace.jl:144 [inlined]
+ [11] map
+    @ ./tuple.jl:354 [inlined]
+ [12] map
+    @ ./namedtuple.jl:263 [inlined]
+ [13] allocate_scratch
+    @ ~/.julia/packages/AcceleratedKernels/heLhw/src/workspace.jl:144 [inlined]
+ [14] allocate_scratch(backend::CUDABackend, p::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.MergeSort, @NamedTuple{temp::AcceleratedKernels.Scratch{Int64, 1}}})
+    @ AcceleratedKernels ~/.julia/packages/AcceleratedKernels/heLhw/src/workspace.jl:145
+ [15] workspace(op::Function, args::CuArray{Int64, 1, CUDACore.DeviceMemory}; kwargs::@Kwargs{alg::AcceleratedKernels.Auto})
+    @ AcceleratedKernels ~/.julia/packages/AcceleratedKernels/heLhw/src/workspace.jl:141
+ [16] workspace
+    @ ~/.julia/packages/AcceleratedKernels/heLhw/src/workspace.jl:139 [inlined]
+ [17] Workspace(s::Species{3, Float32, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}}, grid::PeriodicGrid{3, Float32}; flux::Tuple{Shape{2}, Tuple{Node, Node, Node}}, flux_layout::ParticleMeshCore.CellMajor, append::Nothing, bins::NodeBins{Shape{2}, Tuple{Center, Node, Node}}, key_sort::AcceleratedKernels.Auto, swap::Bool)
+    @ ParticleMeshCore ~/pm-wp084/lib/ParticleMeshCore/src/sort.jl:86
+ [18] ParticleMeshElectromagnetic.IonizationFrame(problem::EMProblem{3, Float32, Tuple{SpeciesDescription{Float32, Tuple{Int64, Int64, Int64}}}, Tuple{Float32, Float32, Float32}, Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64, Int64}, Tuple{GaussianLaser{Float32, Float32, AxisTime, Tuple{Float32, Float32}}}, Tuple{Symbol, Symbol, Symbol}, MovingWindow{Float32}, DensityRamp{Float32}, Nothing, FieldIonization{Float32, 2, DopantSection{Float32}, Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{ADKLevel{Float32}, ADKLevel{Float32}}, Tuple{Int64, Int64, Int64}}}, grid::PeriodicGrid{3, Float32}, backend::CUDABackend, numerics::EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}, window::WindowFrame{MovingWindow{Float32}, Float32, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}}, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}}})
+    @ ParticleMeshElectromagnetic ~/pm-wp084/lib/ParticleMeshElectromagnetic/src/ionization.jl:437
+ [19] EMState(problem::EMProblem{3, Float32, Tuple{SpeciesDescription{Float32, Tuple{Int64, Int64, Int64}}}, Tuple{Float32, Float32, Float32}, Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64, Int64}, Tuple{GaussianLaser{Float32, Float32, AxisTime, Tuple{Float32, Float32}}}, Tuple{Symbol, Symbol, Symbol}, MovingWindow{Float32}, DensityRamp{Float32}, Nothing, FieldIonization{Float32, 2, DopantSection{Float32}, Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{ADKLevel{Float32}, ADKLevel{Float32}}, Tuple{Int64, Int64, Int64}}}, numerics::EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}; backend::CUDABackend, every::Int64, record::Tuple{})
+    @ ParticleMeshElectromagnetic ~/pm-wp084/lib/ParticleMeshElectromagnetic/src/step3d.jl:73
+ [20] trapped3d_start(free::Vector{Float32}; backend::CUDABackend, ppl::Int64, nt::Int64, solver::Yee, gather::CompensatedGather, kw::@Kwargs{rows::Int64, ppc::Tuple{Int64, Int64, Int64}, ion_ppc::Tuple{Int64, Int64, Int64}, capacity::Int64, t_end::Float64, energy::Float32, float::DataType})
+    @ Main ~/pm-wp084/scripts/optim/trapped3d_case.jl:105
+ [21] trapped3d_start
+    @ ~/pm-wp084/scripts/optim/trapped3d_case.jl:103 [inlined]
+ [22] start3
+    @ ~/pm-wp084/scripts/enzyme/trapped3d.jl:104 [inlined]
+ [23] sequence(o::@NamedTuple{ppl::Int64, nt::Int64, rows::Int64, ppc::Tuple{Int64, Int64, Int64}, ion_ppc::Tuple{Int64, Int64, Int64}, cap::Float64, t_end::Float64, a0E::Float64}; c::Int64, host::Bool, duals::Vector{Int64}, dual4::Bool, primal::Bool, label::String)
+    @ Main ~/pm-wp084/scripts/enzyme/trapped3d.jl:158
+ [24] main_grad()
+    @ Main ~/pm-wp084/scripts/enzyme/trapped3d.jl:276
+ [25] top-level scope
+    @ ~/pm-wp084/scripts/enzyme/trapped3d.jl:283
+ [26] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [27] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [28] _start()
+    @ Base ./client.jl:577
+in expression starting at ~/pm-wp084/scripts/enzyme/trapped3d.jl:283

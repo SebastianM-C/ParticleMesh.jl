@@ -1,0 +1,10 @@
+[16:15:50] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "0", "ppl" => "32", "dual" => "1,2,3,4", "c" => "12", "host" => "1"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[16:16:06] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB, one checkpoint 0.10 GiB, 4 checkpoints in host memory (pool used 0.77 GiB)
+[16:16:17] warm-up: plain run 9.4 s, J = 0.00034263736, peak 1.54 GiB (pool used 1.54 GiB)
+[16:25:11] warm-up: reverse pass FAILED: IllegalTypeAnalysisException: Enzyme compilation failed due to illegal type analysis.
+ This usually indicates the use of a Union type, which is not fully supported with Enzyme.API.strictAliasing set to true [the default].
+ Ideally, remove the union (which will also make your code faster), or try setting Enzyme.API.strictAliasing!(false) before any autodiff call.
+ To toggle more information for debugging (needed for bug reports), set Enzyme.Compiler.VERBOSE_ERRORS[] = true (default false)
+Failure within method:
+
+current!(::Esirkepov, ::EMState{3, Float32, EMNumerics{Shape{2}, Reference, Boris,  (pool used 2.99 GiB)

@@ -1,0 +1,43 @@
+[warm]
+checkpoints = 4
+J = 0.0003426373586989939
+reverse_error = """EnzymeNoTypeError: Enzyme cannot statically prove the type of a value being differentiated and risks a correctness error if it gets it wrong.\n Generally this shouldn't occur as Enzyme records type information from julia, but may be expected if you, for example, copy untyped data.\n or alternatively emit very large sized registers that exceed the maximum size of Enzyme's type analysis. If it seems reasonable to differentiate\n this code, open an issue! If the cause of the error is too large of a register, you can request Enzyme increase the size (https://enzyme.mit.edu/julia/dev/api/#Enzyme.API.maxtypeoffset!-Tuple{Any})\n or depth (https://enzyme.mit.edu/julia/dev/api/#Enzyme.API.maxtypedepth!-Tuple{Any}) of its type analysis.\n Alternatively, you can tell Enzyme to take its best guess from context with (https://enzyme.mit.edu/julia/dev/api/#Enzyme.API.looseTypeAnalysis!-Tuple{Any})\n All of these settings are global configurations that need to be set immediately after loading Enzyme, before any differentiation occurs.\n To toggle more information for debugging (needed for bug reports), set Enzyme.Compiler.VERBOSE_ERRORS[] = true (default false)\nFailure within method:\n\nvar\"#step!#122\"(::Tuple{}, ::typeof(step!), ::EMState{3, Float32, EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}, PeriodicGrid{3, Float32}, Tuple{Species{3, Float32, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}}}, Tuple{Workspace{CuArray{Int64, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, AcceleratedKernels.Workspace{AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.RadixSort, @NamedTuple{temp::AcceleratedKernels.Scratch{Int64, 1}, hist::AcceleratedKernels.Scratch{UInt32, 1}, scan::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.ScanPrefixes, @NamedTuple{prefixes::AcceleratedKernels.Scratch{UInt32, 1}}}, key_range::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.BlockReduce, @NamedTuple{partials::AcceleratedKernels.S"""
+checkpoint_memory = "device"
+dual1 = []
+
+    [warm.dual4]
+    seconds = 40.096429398
+    J = 0.00034263753332197666
+    base_bytes = 3509474616
+    gradient = [-0.00013152659812476486, -0.00039016612572595477, 4.520947186392732e-5, 0.044490694999694824]
+    relative_difference = [nan, nan, nan, nan]
+    peak_bytes = 3544024376
+
+    [warm.bytes]
+    state = 671282032
+    checkpoint = 105461448
+
+    [warm.primal]
+    seconds = 9.622460407
+    base_bytes = 824346488
+    peak_bytes = 1655602928
+
+    [warm.case]
+    nt = 1
+    theta = [6.0, 10.0, 80.0, 0.072]
+    plasma_slots = 1146880
+    capacity_factor = 1.0
+    mode = "Reference"
+    cells = [112, 64, 64]
+    nsteps = 697
+    ion_ppc = [1, 1, 1]
+    dt = 0.43077734112739563
+    ppl = 8
+    ppc = [2, 1, 1]
+    eltype = "Float32"
+    gather = "CompensatedGather(k = 1)"
+    a0E = 1.9
+    t_end = 300.0
+    solver = "Yee"
+    rows = 64
+    born_slots = 580608

@@ -1,0 +1,24 @@
+[15:50:22] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "1", "ppl" => "16", "dual" => "1,2,3,4", "c" => "12"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[15:50:37] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB, one checkpoint 0.10 GiB, 4 checkpoints in device memory (pool used 0.77 GiB)
+[15:50:48] warm-up: plain run 9.4 s, J = 0.00034263736, peak 1.54 GiB (pool used 1.54 GiB)
+[16:01:32] warm-up: reverse pass FAILED: IllegalTypeAnalysisException: Enzyme compilation failed due to illegal type analysis.
+ This usually indicates the use of a Union type, which is not fully supported with Enzyme.API.strictAliasing set to true [the default].
+ Ideally, remove the union (which will also make your code faster), or try setting Enzyme.API.strictAliasing!(false) before any autodiff call.
+ To toggle more information for debugging (needed for bug reports), set Enzyme.Compiler.VERBOSE_ERRORS[] = true (default false)
+Failure within method:
+
+current!(::Esirkepov, ::EMState{3, Float32, EMNumerics{Shape{2}, Reference, Boris,  (pool used 3.38 GiB)
+[16:02:13] warm-up: Dual{4} 34.0 s, peak 3.30 GiB; relative differences [NaN, NaN, NaN, NaN] (pool used 3.30 GiB)
+[16:02:14] run: (224, 128, 128) cells, 985 steps, 9175040 plasma slots, 2032128 born slots; state 4.66 GiB, one checkpoint 0.60 GiB, 12 checkpoints in device memory (pool used 5.58 GiB)
+[16:02:42] run: plain run 27.2 s, J = 0.0036936968, peak 11.20 GiB (pool used 11.20 GiB)
+[16:07:02] run: reverse pass FAILED: Out of GPU memory trying to allocate 1.709 GiB
+Effective GPU memory usage: 99.94% (31.424 GiB/31.445 GiB)
+Memory pool usage: 27.019 GiB (27.531 GiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+ (pool used 27.02 GiB)
+[16:08:23] run: Dual{1} in duration 74.3 s, dJ/dduration -4.28707455e-04, reverse +NaN, relative difference NaN, peak 10.33 GiB (pool used 10.33 GiB)
+[16:09:32] run: Dual{1} in waist 68.0 s, dJ/dwaist -9.26963869e-04, reverse +NaN, relative difference NaN, peak 10.33 GiB (pool used 10.33 GiB)
+[16:10:41] run: Dual{1} in focus 68.0 s, dJ/dfocus +8.58043728e-04, reverse +NaN, relative difference NaN, peak 10.33 GiB (pool used 10.33 GiB)
+[16:11:50] run: Dual{1} in density 68.0 s, dJ/ddensity +6.36447251e-01, reverse +NaN, relative difference NaN, peak 10.33 GiB (pool used 10.33 GiB)
+[16:15:39] run: Dual{4} 227.4 s, peak 24.45 GiB; relative differences [NaN, NaN, NaN, NaN] (pool used 24.45 GiB)
+wrote scripts/runs/enzyme-trapped3d-grad-20261121T161539
