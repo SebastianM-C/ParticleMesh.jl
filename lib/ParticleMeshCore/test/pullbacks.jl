@@ -435,3 +435,76 @@ end
     gather_pullback!(āref, nothing, copy(ō), a, s0, shape, st, g2)
     @test record!("T-1064", Float64, maximum(abs.(ā .- āref)) / (eps(Float64) * maximum(abs, āref))) <= C
 end
+
+# WP-080: the flux pullback at N = 3 and Enzyme through its rule (T-1110, T-1111)
+
+@testset "T-1110 flux_pullback! against duals at N = 3, every input array, both orders and four stagger triples, Float32 against Float64 [A2, A3, A7, WP-080]" begin
+    C = tolC("T-1110")
+    C32 = tolC("T-1110", "C32")
+    for shape in SHAPES, st in FLUX3D_TRIPLES
+        grid = flux_grid3(Float64, shape, st)
+        s = flux_species_3d(Float64, grid, 200; seed = 9)
+        J̄ = ntuple(k -> lcg_field(field(backend, Float64, grid), 40 + k), 3)
+        x̄ = zero_like(s)
+        flux_pullback!(x̄, J̄..., s, shape, st, grid; dt = 0.125)
+        # it adds to the adjoint it is given (in a step the push's and the gather's are there first)
+        x̄1 = zero_like(s)
+        foreach(((_, a),) -> fill!(a, 1.0), float_arrays(x̄1))
+        flux_pullback!(x̄1, J̄..., s, shape, st, grid; dt = 0.125)
+        for ((_, a1), (_, a0)) in zip(float_arrays(x̄1), float_arrays(x̄))
+            @test maximum(abs.((a1 .- 1) .- a0)) <= 4 * eps(Float64) * (1 + maximum(abs, a0))
+        end
+        for k in eachindex(float_arrays(s))
+            v = direction(s, k)
+            JD = flux3d(Reference(), dualize(s, v), shape, st, grid; dt = 0.125)[1:3]
+            rhs, scale = jvp_pair(J̄, JD)
+            r = chain_ratio("T-1110", pair(x̄, v), rhs, scale)
+            r <= C || @info "T-1110" shape st float_arrays(s)[k][1] r
+            @test r <= C
+        end
+        g32 = flux_grid3(Float32, shape, st)
+        s32 = flux_species_3d(Float32, g32, 200; seed = 9)
+        x̄32 = zero_like(s32)
+        flux_pullback!(x̄32, map(a -> Float32.(a), J̄)..., s32, shape, st, g32; dt = 0.125f0)
+        for ((_, a32), (_, a64)) in zip(float_arrays(x̄32), float_arrays(x̄))
+            @test record!("T-1110 Float32", Float32, maximum(abs.(a32 .- a64)) / (eps(Float32) * max(maximum(abs, a64), 1))) <= C32
+        end
+    end
+    grid = flux_grid3(Float64, Quadratic, NODES3)
+    s = flux_species_3d(Float64, grid, 20)
+    J̄ = fields3(Float64, grid)
+    @test_throws ArgumentError flux_pullback!(zero_like(s), J̄..., s, Quadratic, NODES3, grid; dt = 0.125, quantity_z = ChargeWeight())
+end
+
+function flux_loss_3d(mode, s, ws, J, J̄, shape, st, grid, overwrite)
+    effective_mode(mode, Float64) isa Reference && sort_by_cell!(s, grid, ws)
+    foreach(a -> fill!(a, 0.0), J)
+    deposit_flux!(mode, J..., s, shape, st, grid, ws; dt = 0.25)
+    overwrite && overwrite_species!(s)
+    return inner3(J̄, J)
+end
+
+@testset "T-1111 Enzyme's reverse mode through the N = 3 flux rule in both modes, with the sort [A4, A7, WP-080]" begin
+    C = tolC("T-1111")
+    for (shape, st) in ((Quadratic, NODES3), (Linear, (Center(), Node(), Center())))
+        grid = flux_grid3(Float64, shape, st)
+        s0 = flux_species_3d(Float64, grid, 200; seed = 11)
+        J̄ = ntuple(k -> lcg_field(field(backend, Float64, grid), 50 + k), 3)
+        for mode in (Fast(), Reference()), overwrite in (false, true)
+            s = deepcopy(s0)
+            ws = Workspace(s, grid; flux = (shape, st))
+            J = fields3(Float64, grid)
+            x̄ = zero_like(s)
+            autodiff(Reverse, flux_loss_3d, Active, Const(mode), Duplicated(s, x̄), Const(ws), Duplicated(J, map(zero, J)), Const(J̄),
+                     Const(shape), Const(st), Const(grid), Const(overwrite))
+            for k in eachindex(float_arrays(s0))
+                v = direction(s0, k)
+                JD = flux3d(Reference(), dualize(s0, v), shape, st, grid)[1:3]
+                rhs, scale = jvp_pair(J̄, JD)
+                r = chain_ratio("T-1111", pair(x̄, v), rhs, scale)
+                r <= C || @info "T-1111" shape st mode overwrite float_arrays(s0)[k][1] r
+                @test r <= C
+            end
+        end
+    end
+end

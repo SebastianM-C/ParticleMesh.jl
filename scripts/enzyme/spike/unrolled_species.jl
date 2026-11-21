@@ -215,4 +215,3 @@ function EnzymeRules.forward(config::EnzymeRules.FwdConfig, ::Const{typeof(Parti
     dy = x.dval * oftype(x.val, π) * _dcospi(x.val)
     return EnzymeRules.needs_primal(config) ? Duplicated(y, dy) : dy
 end
-

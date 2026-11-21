@@ -76,6 +76,7 @@ export HistoryRecorder, observe!, RECORD_GROUPS, recorded_steps, reads_kinetic
 export CurrentY, CurrentZ, KineticEnergy
 export histories, field_energy, kinetic_energy_history, total_energy_history, mode_amplitude_history
 export evolved, EMSnapshot, snapshot, restore!, save_snapshot, load_snapshot
+export checkpoint_storage
 export state_partition, remake_reload, harness_state
 export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPlanes, laser_energy, laser_field
 export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
@@ -115,6 +116,7 @@ include("witness.jl")
 include("ionization.jl")
 include("tunables.jl")
 include("restart.jl")
+include("checkpointing.jl")
 include("diagnostics.jl")
 include("harness.jl")
 

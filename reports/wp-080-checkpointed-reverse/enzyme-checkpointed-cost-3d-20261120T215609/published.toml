@@ -1,0 +1,12 @@
+branch = "runs/wp080-gpu-20261120T2239"
+commit = "f92a526dff73e642a0aff6898086f98090947470"
+
+[[files]]
+path = "scripts/runs/enzyme-checkpointed-cost-3d-20261120T215609/manifest.toml"
+bytes = 1188
+sha256 = "904a4177666e7a11511b4d95275587bef3f78bc432b2dbb57091e2c6bc71eb45"
+
+[[files]]
+path = "scripts/runs/enzyme-checkpointed-cost-3d-20261120T215609/result.toml"
+bytes = 1370
+sha256 = "31943df3079a16de678f2d350ce9ac19ccde521d4d1639b5808e40317521b0d8"

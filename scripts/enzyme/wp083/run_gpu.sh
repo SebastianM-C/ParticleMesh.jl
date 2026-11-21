@@ -1,32 +1,33 @@
 #!/usr/bin/env bash
-# WP-083 on a GPU, in two worktrees prepared by prepare.sh (git steps, outside any sandbox):
-#   A = this branch (claude/project-thread-xjh4di): T-1140 and T-1141 only.
-#   B = WP-078's study branch (claude/project-thread-kjjfr2-gpu) with this branch's sincos change
-#       applied, its antenna reverse rule left out: Enzyme's reverse through the trapped-beam case's
-#       step! (antenna, window, PMLs, ionization) against duals.
-# Usage: run_gpu.sh <worktree A> <worktree B> <out dir>; through scripts/gpu-lock.sh on a shared GPU.
+# WP-083 on a GPU, in a worktree of this branch (claude/project-thread-xjh4di), made beforehand:
+#     git fetch origin claude/project-thread-xjh4di
+#     git worktree add --detach <worktree> origin/claude/project-thread-xjh4di
+# Usage: run_gpu.sh <worktree> <out dir>. Runs T-1140 and T-1141, then Enzyme's reverse through the
+# trapped-beam case's step! (antenna, window, PMLs, ionization) against duals, with WP-078's patches
+# but without its antenna rule (removed from spike/unrolled_species.jl on this branch).
 set -u
-A=$1; B=$2; OUT=$3
+W=$1; OUT=$2
 mkdir -p "$OUT"
 stamp() { date -u +%H:%M:%S; }
-echo "[$(stamp)] A: instantiate"
-(cd "$A" && julia +1.13 --project -e 'using Pkg; Pkg.instantiate(workspace = true)') > "$OUT/a-instantiate.log" 2>&1
-echo "[$(stamp)] A: T-1140"
-(cd "$A" && PM_TEST_GPU=1 julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/wp083/t1140_gpu.jl) > "$OUT/t1140.log" 2>&1
-echo "[$(stamp)] A: exit $?"
-echo "[$(stamp)] B: instantiate"
-(cd "$B" && julia +1.13 --project -e 'using Pkg; Pkg.instantiate(workspace = true)') > "$OUT/b-instantiate.log" 2>&1
-P="scripts/enzyme/active_reduce.jl;$A/scripts/enzyme/wp083/unrolled_species_noantenna.jl"
-run_b() {
+cd "$W"
+git rev-parse HEAD > "$OUT/commit.txt"
+nvidia-smi > "$OUT/nvidia-smi-start.txt" 2>&1
+echo "[$(stamp)] instantiate"
+julia +1.13 --project -e 'using Pkg; Pkg.instantiate(workspace = true)' > "$OUT/instantiate.log" 2>&1
+echo "[$(stamp)] T-1140"
+PM_TEST_GPU=1 julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/wp083/t1140_gpu.jl > "$OUT/t1140.log" 2>&1
+echo "[$(stamp)] T-1140 exit $?"
+P="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl"
+run_t() {
     local name=$1; shift
-    echo "[$(stamp)] B: $name"
-    (cd "$B" && PM_BACKEND=cuda PM_CUDA_HEAP=1073741824 PM_ENZYME_PATCH="$P" JULIA_LOAD_PATH="@:$B:@stdlib" \
-        timeout 5400 julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped.jl "$@") > "$OUT/$name.log" 2>&1
-    echo "[$(stamp)] B: $name exit $?"
+    echo "[$(stamp)] trapped: $name"
+    PM_BACKEND=cuda PM_CUDA_HEAP=1073741824 PM_ENZYME_PATCH="$P" JULIA_LOAD_PATH="@:$W:@stdlib" \
+        timeout 5400 julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped.jl "$@" > "$OUT/$name.log" 2>&1
+    echo "[$(stamp)] trapped: $name exit $?"
 }
 # while the antenna emits (the pulse's peak crosses the plane near t = 54): 1, 4 and 16 steps (#548: ≤ 20)
-run_b steps-t50 steps tmid=50 ks=1,4,16
-# the whole run's gradient in the four free parameters, segments of 20 steps, against Dual{4}
-run_b grad-c20 grad C=20 ckpt=device
-(cd "$B" && ls -d scripts/runs/enzyme-trapped-* 2>/dev/null | tail -2 | xargs -I{} cp -r {} "$OUT/")
+run_t steps-t50 steps tmid=50 ks=1,4,16
+# the whole run's gradient in the four free parameters, segments of 20 steps, device checkpoints, against Dual{4}
+run_t grad-c20 grad C=20 ckpt=device
+cp -r scripts/runs/enzyme-trapped-* "$OUT/" 2>/dev/null
 echo "[$(stamp)] done"

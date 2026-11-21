@@ -30,4 +30,6 @@ groups = [
     ["em3d_ionization.jl"],
     # the 3D step's compensated gather, which reuses no other file
     ["em3d_gather.jl"],
+    # checkpointed reverse mode through Checkpointing.jl, which reuses no other file
+    ["checkpointing.jl"],
 ]

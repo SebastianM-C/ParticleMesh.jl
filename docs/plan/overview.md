@@ -28,7 +28,7 @@ The full text is in `docs/goals/` (A0 to A10) and in `factory-and-observability.
 
 A0 Aims · A1 Units and normalization · A2 Baseline numerical scheme · A3 How parameters enter the simulation · A4 Determinism policy · A5 Canonical benchmark cases with numbers · A6 Repository and environment · A7 Acceptance criteria and budgets per work package · A8 Element type is a user-level choice · A9 Scope: a generic particle–mesh framework · A10 Problem description separated from numerical implementation · factory settings: F1 Package environments · F2 Dependencies · F3 Results, plots and reports · F4 Merge policy.
 
-Derived design choices without a goal id (2D Cartesian first with the envelope model instead of quasi-3D RZ, ForwardDiff first with about three parameters, the KernelAbstractions core, no Checkpointing.jl, saved workflows as the production line with Managed Agents as a bounded track) are in `architecture-draft.md` (constraints, §3), `open-items.md` D and `factory-and-observability.md` §4.
+Derived design choices without a goal id (2D Cartesian first with the envelope model instead of quasi-3D RZ, ForwardDiff first with about three parameters, the KernelAbstractions core, Checkpointing.jl only as a weak dependency, saved workflows as the production line with Managed Agents as a bounded track) are in `architecture-draft.md` (constraints, §3), `open-items.md` D and `factory-and-observability.md` §4.
 
 ## 3. Design decisions still open, by when they bite
 

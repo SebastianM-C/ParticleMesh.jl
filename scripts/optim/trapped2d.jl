@@ -16,7 +16,8 @@
 #             central differences at 2⁻⁹ and 2⁻¹³ in the free directions and the budget at E2.175
 #             or the point named), energy (a line in the energy budget, with
 #             duals), density (a line in the density, with duals), gathers (plain runs at E1.9
-#             and E2.175 with each particle gather of GATHERS, WP-070);
+#             and E2.175 with each particle gather of GATHERS, WP-070), gathergrad (the five points
+#             with duals, with the compensated and the Galerkin-compensated gather, WP-078);
 #       resolutions: ppl×ny pairs, e.g. 16x1,32x2 (Δx = λ₀/ppl, Δy = π/(4·ny));
 #       dir: the run directory (made if missing; by default scripts/runs/optim-trapped2d-<kind>-<stamp>);
 #       jobs=N, threads=M: as PM_JOBS and PM_JOB_THREADS (for a request of scripts/cpu-box.sh, which sets no environment);
@@ -122,6 +123,10 @@ function campaign_jobs(kind, res)
             for p in POINTS[1:2], g in sort(collect(keys(GATHERS)))
                 add!(job_id("gather", g, p.name, r), p.a0E, p.x, ppl, ny, "plain"; point = p.name, gather = g)
             end
+        elseif kind == "gathergrad"
+            for p in POINTS, g in ("compensated", "galerkin-compensated")
+                add!(job_id("gg", g, p.name, r), p.a0E, p.x, ppl, ny, "grad"; point = p.name, gather = g)
+            end
         elseif kind == "energy"
             for a in range(1.8, 2.6; length = 17)
                 add!(job_id("energy", round(a; digits = 3), r), a, collect(TCASE.x0), ppl, ny, "grad")
@@ -131,7 +136,7 @@ function campaign_jobs(kind, res)
                 add!(job_id("density", round(n; digits = 4), r), 2.175, [collect(TCASE.x0)[1:4]; n], ppl, ny, "grad")
             end
         else
-            error("unknown campaign kind $kind: converge, xonly, fine, fd, fdcheck[:<point>], energy, density or gathers")
+            error("unknown campaign kind $kind: converge, xonly, fine, fd, fdcheck[:<point>], energy, density, gathers or gathergrad")
         end
     end
     # the longest first, so that the last jobs to finish are short ones
@@ -215,7 +220,7 @@ function main_campaign(kind, resarg, dir = nothing)
                               "case" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v isa NamedTuple ? Dict(string(a) => b for (a, b) in pairs(v)) : v) for (k, v) in pairs(BCASE)),
                               "trapped" => Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(TCASE)),
                               "pm_jobs" => get(ENV, "PM_JOBS", "1"), "float" => get(ENV, "PM_FLOAT", "64"), "job_backend" => get(ENV, "PM_BACKEND", "cpu"), "pm_job_threads" => get(ENV, "PM_JOB_THREADS", string(Threads.nthreads())))
-    d = run_dir("trapped2d-$kind", @__FILE__; prefix = "optim", work_package = kind == "gathers" ? "WP-070" : "WP-065", dir,
+    d = run_dir("trapped2d-$kind", @__FILE__; prefix = "optim", work_package = kind == "gathers" ? "WP-070" : kind == "gathergrad" ? "WP-078" : "WP-065", dir,
                 backend = be == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                 extra = be == "cuda" ? Dict{String,Any}("gpu" => gpu_name()) : Dict{String,Any}(),
                 extra_inputs = [joinpath(@__DIR__, "trapped2d_case.jl"), joinpath(@__DIR__, "born2d_case.jl"),

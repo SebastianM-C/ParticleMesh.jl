@@ -1,6 +1,7 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
+Checkpointing = "eb46d486-4f9c-4c3d-b445-a617f2a2f1ca"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
@@ -30,10 +31,11 @@ ParticleMeshElectromagnetic = {path = ".."}
 [compat]
 Aqua = "0.8"
 CUDACore = "6"
+Checkpointing = "0.13"
 Enzyme = "0.13.221"
 ForwardDiff = "1"
 JET = "0.13"
-KernelAbstractions = "0.10.6"
+KernelAbstractions = "0.10.8"
 Mendeleev = "1"
 OrdinaryDiffEqCore = "4"
 OrdinaryDiffEqFunctionMap = "2"

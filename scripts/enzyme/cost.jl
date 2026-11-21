@@ -1,11 +1,12 @@
 # WP-050: what one Enzyme gradient costs on the GPU, against the plain run and dual numbers.
 #
 #     PM_BACKEND=cuda PM_ENZYME_PATCH=scripts/enzyme/spike/active_args.jl \
-#       julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/cost.jl [T] [cells] [ppc] [steps]
+#       julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/cost.jl [T] [cells] [ppc] [steps] [mode]
 #
 # `T` Float64 or Float32 (default Float32), `cells` and `ppc` as `NxM` (default 10x8 and 3x3, the
 # WP-023 case; its electrons only), `steps` a comma-separated list of step counts (default
-# 1,2,4,8,16,32). Fast() mode, `observer = ()`. For each step count k, once compiled, the median of
+# 1,2,4,8,16,32), `mode` fast or reference (default fast; the hand-written rules of WP-077 make
+# Reference() differentiable, WP-078), `observer = ()`. For each step count k, once compiled, the median of
 # three timings of: the plain run of k steps, a Dual run with 1 and with 4 partials (the same k
 # steps with α as a dual number: one Dual pass gives that many directional derivatives), and
 # Enzyme's reverse pass of the same k steps (the gradient with respect to every floating-point
@@ -22,15 +23,16 @@ parse_pair(s) = Tuple(parse.(Int, split(s, 'x')))
 const CELLS = parse_pair(get(ARGS, 2, "10x8"))
 const PPC = parse_pair(get(ARGS, 3, "3x3"))
 const STEPS = parse.(Int, split(get(ARGS, 4, "1,2,4,8,16,32"), ','))
+const MODE = Dict("fast" => Fast(), "reference" => Reference())[get(ARGS, 5, "fast")]
 const α0 = T(1) / 10
 
 case(S, α) = problem(S, α; nsteps = maximum(STEPS), cells = CELLS, ppc = PPC)
 prob = case(T, α0)
 p = params(prob)
-st0 = initialized(prob, Fast())
+st0 = initialized(prob, MODE)
 nparticles = sum(alive_count, st0.species)
 dual(N) = ForwardDiff.Dual{:α}(α0, ntuple(i -> T(i == 1), N)...)
-std0 = Dict(N => initialized(case(typeof(dual(N)), dual(N)), Fast()) for N in (1, 4))
+std0 = Dict(N => initialized(case(typeof(dual(N)), dual(N)), MODE) for N in (1, 4))
 pd = Dict(N => params(case(typeof(dual(N)), dual(N))) for N in (1, 4))
 
 run_steps!(st, p, k) = (for i in 1:k; step!(st, p, i; observer = ()); end; sync(); st)
@@ -72,10 +74,10 @@ for k in STEPS
 end
 
 stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
-out = joinpath(REPO, "scripts", "runs", "enzyme-cost-$T-$(join(CELLS, 'x'))-$stamp")
+out = joinpath(REPO, "scripts", "runs", "enzyme-cost-$T-$(join(CELLS, 'x'))-$(get(ARGS, 5, "fast"))-$stamp")
 mkpath(out)
 open(io -> TOML.print(io, Dict("case" => Dict("eltype" => string(T), "cells" => collect(CELLS), "ppc" => collect(PPC), "particles" => nparticles,
-                                               "mode" => "Fast", "species" => 1),
+                                               "mode" => string(MODE), "species" => 1),
                                "seconds" => Dict("first_reverse_call" => t_compile), "rows" => rows)), joinpath(out, "result.toml"), "w")
 commit = try readchomp(`git -C $REPO rev-parse HEAD`) catch; "unknown" end
 dirty = try !isempty(readchomp(`git -C $REPO status --porcelain --untracked-files=no`)) catch; missing end

@@ -1356,3 +1356,10 @@ C = 1
 C_apart = 2
 measured = { Float32 = "apart 1, error 0.88", Float64 = "apart 1, error 0.72" }
 status = "proposed; KernelAbstractions' CPU backend (OpenCL builtins in PoCL), one thread"
+
+["T-1113"]
+quantity = "Enzyme's gradient through @ad_checkpoint with checkpoint_storage against the plain reverse pass of the same loop of transfers, max over the floating-point evolved arrays"
+scale = "max|plain gradient| over those arrays"
+C = 16
+measured = { Float64 = 4.4 }
+status = "proposed"

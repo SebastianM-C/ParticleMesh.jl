@@ -45,6 +45,22 @@ end
     @test length(errors) == 6
 end
 
+@testset "T-1114 Checkpointing is refused as an engine dependency and accepted as a weak one [A9, WP-080]" begin
+    for (section, refused) in (("deps", true), ("weakdeps", false))
+        root = fixture()
+        mkpath(joinpath(root, "lib", "Y"))
+        write(joinpath(root, "lib", "Y", "Project.toml"), "name = \"Y\"\n[$section]\nCheckpointing = \"eb46d486-4f9c-4c3d-b445-a617f2a2f1ca\"\n")
+        errors = check(root).errors
+        @test any(contains("must not depend on Checkpointing"), errors) == refused
+        @test length(errors) == refused
+    end
+    # a forbidden package stays forbidden as a weak dependency
+    root = fixture()
+    mkpath(joinpath(root, "lib", "Y"))
+    write(joinpath(root, "lib", "Y", "Project.toml"), "name = \"Y\"\n[weakdeps]\nModelingToolkit = \"961ee093-0014-501f-94e3-6117800e7a78\"\n")
+    @test any(contains("must not depend on ModelingToolkit"), check(root).errors)
+end
+
 @testset "T-004 the repository passes its own check [A0]" begin
     r = check(ROOT)
     @test isempty(r.errors)

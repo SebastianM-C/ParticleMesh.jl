@@ -1,5 +1,5 @@
 # The pullbacks of the transfers (WP-077): the reverse-mode adjoints of `deposit!`, `gather!`,
-# `deposit_flux!` (N = 1 and 2) and the sort, written by hand as plain kernels. Each adds the adjoint
+# `deposit_flux!` (N = 1 to 3) and the sort, written by hand as plain kernels. Each adds the adjoint
 # of its transfer into a shadow species (and, for the gather, a shadow field), from the adjoint of
 # what the transfer wrote. The extension on EnzymeCore registers them as Enzyme's reverse rules,
 # so that Enzyme runs these kernels instead of differentiating the transfers' own kernels.
@@ -239,11 +239,93 @@ end
     end
 end
 
+"`Σ_{k1,k2,k3} u[k1]·v[k2]·w[k3]·a[b1 + k1 - 1, b2 + k2 - 1, b3 + k3 - 1]`, each row of axis 1 summed first, then each plane of axes 1 and 2."
+@inline function lin3(u::NTuple{M1,Any}, v::NTuple{M2,Any}, w::NTuple{M3,Any}, a, b::NTuple{3,Int32}, ::Type{T}) where {M1,M2,M3,T}
+    acc = zero(T)
+    @inbounds for k3 in 1:M3
+        plane = zero(T)
+        for k2 in 1:M2
+            row = zero(T)
+            for k1 in 1:M1
+                row += u[k1] * a[b[1] + Int32(k1 - 1), b[2] + Int32(k2 - 1), b[3] + Int32(k3 - 1)]
+            end
+            plane += v[k2] * row
+        end
+        acc += w[k3] * plane
+    end
+    return acc
+end
+
+# The vectors of component C's own axis (`x`) and of its two other axes `a < b` (`y`, `z`), in
+# axis order, for `lin3`.
+@inline in_axis_order(::Val{1}, x, y, z) = (x, y, z)
+@inline in_axis_order(::Val{2}, x, y, z) = (y, x, z)
+@inline in_axis_order(::Val{3}, x, y, z) = (y, z, x)
+
+"`lin3` of the vectors `x` on component C's own axis and `y`, `z` on its other two axes `a < b`."
+@inline lin3c(vC::Val, x, y, z, a, b, ::Type{T}) where {T} = lin3(in_axis_order(vC, x, y, z)..., a, b, T)
+
+# Component C of the 3D flux, with `a < b` its other axes, is J_C = k_C·P_C ⊗ (A_a ⊗ A_b + ΔS_a ⊗ ΔS_b/12)
+# with k_C = -(q·w·sx_C) and P_C the prefix sums of ΔS_C (flux3d.jl). With `G` its adjoint read on
+# the particle's frame, this returns ⟨G, P_C ⊗ (…)⟩ and its derivatives with respect to the new
+# offsets (`n`, in axis order) and the old ones (`o`): along the component's own axis ∂P_C is the
+# prefix sum of dWn (of -dWo), across it ∂A = dW/2 and ∂ΔS = ±dW, as at N = 2.
+@inline function flux_component_pullback_3d(vC::Val{C}, G, fr, sl, b::NTuple{3,Int32}, ::Type{T}) where {C,T}
+    a_, b_ = transverse_axes(vC)
+    (_, Wo_c, Wn_c), (_, Wo_a, Wn_a), (_, Wo_b, Wn_b) = fr[C], fr[a_], fr[b_]
+    (dWo_c, dWn_c), (dWo_a, dWn_a), (dWo_b, dWn_b) = sl[C], sl[a_], sl[b_]
+    P = front_prefix(map(-, Wn_c, Wo_c))
+    Aa, Ab = map((x, y) -> (x + y) / 2, Wo_a, Wn_a), map((x, y) -> (x + y) / 2, Wo_b, Wn_b)
+    Da, Db = map(-, Wn_a, Wo_a), map(-, Wn_b, Wo_b)
+    V = lin3c(vC, P, Aa, Ab, G, b, T) + lin3c(vC, P, Da, Db, G, b, T) / 12
+    dPn, dPo = front_prefix(dWn_c), front_prefix(dWo_c)
+    nC = lin3c(vC, dPn, Aa, Ab, G, b, T) + lin3c(vC, dPn, Da, Db, G, b, T) / 12
+    oC = -(lin3c(vC, dPo, Aa, Ab, G, b, T) + lin3c(vC, dPo, Da, Db, G, b, T) / 12)
+    na = lin3c(vC, P, halve(dWn_a), Ab, G, b, T) + lin3c(vC, P, dWn_a, Db, G, b, T) / 12
+    oa = lin3c(vC, P, halve(dWo_a), Ab, G, b, T) - lin3c(vC, P, dWo_a, Db, G, b, T) / 12
+    nb = lin3c(vC, P, Aa, halve(dWn_b), G, b, T) + lin3c(vC, P, Da, dWn_b, G, b, T) / 12
+    ob = lin3c(vC, P, Aa, halve(dWo_b), G, b, T) - lin3c(vC, P, Da, dWo_b, G, b, T) / 12
+    n = ntuple(d -> d == C ? nC : d == a_ ? na : nb, Val(3))
+    o = ntuple(d -> d == C ? oC : d == a_ ? oa : ob, Val(3))
+    return V, n, o
+end
+
+# N = 3, in the particle's frame: every component in space, J_C = -(q·w·sx_C)·P_C ⊗ (A_a ⊗ A_b + ΔS_a ⊗ ΔS_b/12).
+@kernel function flux_pullback_3d_kernel!(s̄, @Const(Ēx), @Const(Ēy), @Const(Ēz), s, shape, st, n::NTuple{3,Int32}, g::Int32, sx)
+    i = @index(Global, Linear)
+    @inbounds if s.status[i] == ALIVE
+        T = eltype(s.w)
+        c = particle_cell(s, i, Val(3))
+        δ = particle_offset(s, i, Val(3))
+        c0 = old_cell_3d(s, i)
+        δ0 = old_offset_3d(s, i)
+        # written out per axis: the staggers are a tuple of distinct types, which an index by a
+        # closure's argument would not infer
+        fr = (flux_axis_frame(shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1]), flux_axis_frame(shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2]),
+              flux_axis_frame(shape, st[3], c[3], δ[3], c0[3], δ0[3], n[3]))
+        sl = (flux_axis_slopes(shape, st[1], c[1], δ[1], c0[1], δ0[1], n[1]), flux_axis_slopes(shape, st[2], c[2], δ[2], c0[2], δ0[2], n[2]),
+              flux_axis_slopes(shape, st[3], c[3], δ[3], c0[3], δ0[3], n[3]))
+        b = (c[1] + fr[1][1] + g, c[2] + fr[2][1] + g, c[3] + fr[3][1] + g)
+        Vx, nx, ox = flux_component_pullback_3d(Val(1), Ēx, fr, sl, b, T)
+        Vy, ny, oy = flux_component_pullback_3d(Val(2), Ēy, fr, sl, b, T)
+        Vz, nz, oz = flux_component_pullback_3d(Val(3), Ēz, fr, sl, b, T)
+        qw = s.q * s.w[i]
+        kx, ky, kz = -(qw * sx[1]), -(qw * sx[2]), -(qw * sx[3])
+        s̄.w[i] += s.q * (-(sx[1] * Vx) - sx[2] * Vy - sx[3] * Vz)
+        s̄.offset[1][i] += kx * nx[1] + ky * ny[1] + kz * nz[1]
+        s̄.offset[2][i] += kx * nx[2] + ky * ny[2] + kz * nz[2]
+        s̄.offset[3][i] += kx * nx[3] + ky * ny[3] + kz * nz[3]
+        s̄.extras.old_offset_1[i] += kx * ox[1] + ky * oy[1] + kz * oz[1]
+        s̄.extras.old_offset_2[i] += kx * ox[2] + ky * oy[2] + kz * oz[2]
+        s̄.extras.old_offset_3[i] += kx * ox[3] + ky * oy[3] + kz * oz[3]
+    end
+end
+
 """
     flux_pullback!(s̄, J̄x, J̄y, J̄z, species, shape, stagger, grid; dt, quantity_z, quantity_y, workgroupsize = nothing)
 
 The pullback of `deposit_flux!(mode, Jx, Jy, Jz, species, shape, stagger, grid, ws; dt, quantity_y,
-quantity_z)` at N = 1 and N = 2, in either mode: with `J̄x`, `J̄y`, `J̄z` the adjoints of the three
+quantity_z)` at N = 1, 2 and 3, in either mode: with `J̄x`, `J̄y`, `J̄z` the adjoints of the three
 fields (guards included), add into the shadow species `s̄`, for every alive particle, the adjoints
 of its weight, of the deposited transverse quantities (through `pullback_quantity!`; `quantity_y`
 at N = 1 only), of its current offsets and of its old offsets (`s̄`'s extras of `flux_extras`).
@@ -259,6 +341,10 @@ Guards: the pullback reads `J̄` where `Fast()` (and `Reference()` with `CellBin
 the periodic image of the same node, so the pullback is its transpose only for an adjoint that is
 equal on a guard and its image, as the adjoint of [`fold_guards!`](@ref) is (a step folds after
 depositing); a loss that reads the unfolded guards directly gets the cell-bin transpose.
+
+At N = 3 every component is in space, so no quantity is deposited (`quantity_y` and `quantity_z`
+must be `NoQuantity()`, as `deposit_flux!` requires), and `planes`, the 3D Reference path's split
+of a bin's frame, takes no part: the pullback reads `J̄` per particle.
 """
 function flux_pullback!(s̄::Species{1}, J̄x, J̄y, J̄z, s::Species{1}, shape::Shape, stagger::Stagger, grid::PeriodicGrid{1};
                         dt, quantity_y, quantity_z, workgroupsize = nothing)
@@ -278,6 +364,16 @@ function flux_pullback!(s̄::Species{2}, J̄x, J̄y, J̄z, s::Species{2}, shape:
     sx = map(h -> h / dt, cellsize(grid))
     launcher(flux_pullback_2d_kernel!, get_backend(s), workgroupsize)(s̄, J̄x, J̄y, J̄z, s, shape, stagger, Int32.(ncells(grid)),
                                                                      Int32(guards(grid)), sx, quantity_z; ndrange = capacity(s))
+    return s̄
+end
+
+function flux_pullback!(s̄::Species{3}, J̄x, J̄y, J̄z, s::Species{3}, shape::Shape, stagger::NTuple{3,Stagger}, grid::PeriodicGrid{3};
+                        dt, quantity_y = NoQuantity(), quantity_z = NoQuantity(), planes = nothing, workgroupsize = nothing)
+    quantity_y isa NoQuantity && quantity_z isa NoQuantity ||
+        throw(ArgumentError("deposit_flux! at N = 3 takes no quantity_y or quantity_z: every component is in space"))
+    sx = map(h -> h / dt, cellsize(grid))                     # as deposit_flux! forms it
+    launcher(flux_pullback_3d_kernel!, get_backend(s), workgroupsize)(s̄, J̄x, J̄y, J̄z, s, shape, stagger, Int32.(Tuple(ncells(grid))),
+                                                                     Int32(guards(grid)), sx; ndrange = capacity(s))
     return s̄
 end
 

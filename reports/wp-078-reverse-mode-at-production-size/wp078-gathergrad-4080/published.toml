@@ -1,0 +1,417 @@
+branch = "runs/wp078-gathergrad-4080"
+commit = "5f26a4deeba5105fe90abb94bf38429f3e4c6729"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/campaign.log"
+bytes = 2775
+sha256 = "a555b42bfde9427c72cb4db762823547c9675ebefefda4413d6cb64973eee5ca"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r24x2-f32-cuda.json"
+bytes = 1346
+sha256 = "b1ab139099ffd5951ec2689beb761b0a558da65b4650ffdd908d7841355475cd"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r24x2-f32-cuda.log"
+bytes = 71
+sha256 = "a799dc6f7cc9c639263c592bb7ff715506d1f2ea15f27c0d3534bea941a06925"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r32x2-f32-cuda.json"
+bytes = 1342
+sha256 = "eab50bf849b63b197e50bb2ce35a4fde7243d8f1507b4c34c1336251b8199045"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r32x2-f32-cuda.log"
+bytes = 71
+sha256 = "91bae6ec65621fdb8042e224e2c60cc82e719fc59b98a2d7b8b808c61f2f78c0"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r48x3-f32-cuda.json"
+bytes = 1350
+sha256 = "8f1192557279f9d579090186ea7d7f60c66b370deaf3cd1d17c064ce3e7b0ad3"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r48x3-f32-cuda.log"
+bytes = 72
+sha256 = "2bee299ac242e6571851df625bc1b68ce24720ca05999a2a2a1bddd84bb5aac9"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r64x4-f32-cuda.json"
+bytes = 1346
+sha256 = "a71c266f52036fe4a51e3132dde1879ba99c8ce8f8f4272f9f02973949dd7bff"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E1.9-r64x4-f32-cuda.log"
+bytes = 71
+sha256 = "07b9da3f9d8f6ccaa5a96983033b94502a1dfb0c68c117f8bbdd8049fb81e17a"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r24x2-f32-cuda.json"
+bytes = 1370
+sha256 = "82470d64988d32fae3714a9b3a58034b04d1278900819c352aeb0951bb4fceec"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r24x2-f32-cuda.log"
+bytes = 72
+sha256 = "90edf154871358f63cc7c46215e020b971b2537590acbc37bbd35b4c9ac3c0fc"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r32x2-f32-cuda.json"
+bytes = 1315
+sha256 = "13be0f3a41a5405414cb2310d099768926f3f2a5aac94afa15e052e814dac4aa"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r32x2-f32-cuda.log"
+bytes = 72
+sha256 = "5bd35ac699b843289c576097f65bb72b6946e0b32bcefa58596c7a893a35248d"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r48x3-f32-cuda.json"
+bytes = 1312
+sha256 = "df8c4a9ee1fc57c0c32333d1aefe17a804b9985f51a7efeab86d3cb6a64b29c8"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r48x3-f32-cuda.log"
+bytes = 72
+sha256 = "884805f2c9f312edfa1962b80abb581cab3f50e3d06c629a4884ee180fe67617"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r64x4-f32-cuda.json"
+bytes = 1318
+sha256 = "f7bf3cce698bfaf24d506869d26c33021f169efcd41021215540d59fb27f0346"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.175-r64x4-f32-cuda.log"
+bytes = 72
+sha256 = "bf5b4a5edd2df53f62e8957e089cbcbec4524b15de868fda4184851f9fcdb75b"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r24x2-f32-cuda.json"
+bytes = 1347
+sha256 = "5e0861cecebeab2034123e4aaa7a054785b80967715401710120eeff4ce5e22c"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r24x2-f32-cuda.log"
+bytes = 69
+sha256 = "ad151967de0fd82bc183ebe431fe6ed687c2c3ddcec18421a21e4dce005cbcb4"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r32x2-f32-cuda.json"
+bytes = 1340
+sha256 = "10e1f08544d47144fa93d9ca217072a336316ab044f4fb84af7c7df72a8dc707"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r32x2-f32-cuda.log"
+bytes = 69
+sha256 = "733b412e32b56c8f0c21e910769deaee6563b8ca25d71ebdf71afc8ff6453406"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r48x3-f32-cuda.json"
+bytes = 1343
+sha256 = "e4aa4be12f48182efecd2ac49ad0a4c3a007fe9857c312cb8f746dd22c7f8e26"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r48x3-f32-cuda.log"
+bytes = 69
+sha256 = "d264e7eef7461530441eed7ebb7ba2b0f96d89da48fa741c4052793472945833"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r64x4-f32-cuda.json"
+bytes = 1345
+sha256 = "551f69db075e6178363f94ef2129b3ee3c435accba5c6b217020e7892bc18348"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-E2.4-r64x4-f32-cuda.log"
+bytes = 70
+sha256 = "cdfdbc829768453f7707e6fc59ecb711137139dfdbba6ca3ad02f83c5908a22e"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r24x2-f32-cuda.json"
+bytes = 1319
+sha256 = "237413b8e23300ed207bb37fda146c0071c3696e6a66d42189bd76ed09bddc8e"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r24x2-f32-cuda.log"
+bytes = 71
+sha256 = "57d4d611239e2841a6a5a21dab8281bf9ec28515423601f973edd4b6e2cb2676"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r32x2-f32-cuda.json"
+bytes = 1313
+sha256 = "ae2f08a67fe4d51cf06601c035993f062702e475cb3aef1aa1269dcae1b3fc0c"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r32x2-f32-cuda.log"
+bytes = 71
+sha256 = "25e676c57439bf04e86a9a3c6571522dc5387ee3586bf625146b589df246fe90"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r48x3-f32-cuda.json"
+bytes = 1315
+sha256 = "ed17bca1dff66e956294a9390f50f6f3ecda81bef1d7c279275fe8561969cfaf"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r48x3-f32-cuda.log"
+bytes = 72
+sha256 = "4f8026e4fb4cf8583bd7c13daf52574250d9482503ec7e19389109eb943778aa"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r64x4-f32-cuda.json"
+bytes = 1317
+sha256 = "1282bb12d6b68256eb1c0d0561e5176b585fddfcecb0def94c89e600b1667b44"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.06-r64x4-f32-cuda.log"
+bytes = 72
+sha256 = "df612d9c3b2b48b64a3ae42966e90e8fa630570a1f27162fd45aeee96add793d"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r24x2-f32-cuda.json"
+bytes = 1361
+sha256 = "20b86f6ad5aa48b5213a0fa674c87c214d49ae09212c81e0cd522b946b04b4f3"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r24x2-f32-cuda.log"
+bytes = 72
+sha256 = "9ad9ff6224e526ec3a514025e96f4819130686bfba2d6db994875843a5e37a67"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r32x2-f32-cuda.json"
+bytes = 1362
+sha256 = "a6d7ec4a9a1a7f97bc181d1fc7c18dac5567bca49c8f6e3c6784412e43b1a7f3"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r32x2-f32-cuda.log"
+bytes = 71
+sha256 = "8a8e821a6cb7015ccad28dcb2ee4f38d250c1036e3475d566f15e752521428f0"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r48x3-f32-cuda.json"
+bytes = 1353
+sha256 = "58a925b47aab979b05104741d914a11a1a9be8ecdb2548d0173ed1c38caf360f"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r48x3-f32-cuda.log"
+bytes = 72
+sha256 = "17205dd9fc0973d2be438d47a6ab2d75cbd35342d48f5f6fabe28b1d78e4c01b"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r64x4-f32-cuda.json"
+bytes = 1365
+sha256 = "c01772b43710f29ac9831b4243dfdac8df5cee78564027e4ba76206d87fcb961"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-compensated-n0.085-r64x4-f32-cuda.log"
+bytes = 73
+sha256 = "446a5565a6b65ecdad173383db20bd71663ee7dd3446dfe72426ecfe747b9dd9"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r24x2-f32-cuda.json"
+bytes = 1363
+sha256 = "56cd07680a5873c1439f71eb6f22dc54d7229d570b74203a6a0c78b00cd96934"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r24x2-f32-cuda.log"
+bytes = 80
+sha256 = "691c29d01563ac4c9d5bab74dd27eda196d734dbf870a5369d8e14a24f52d5b3"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r32x2-f32-cuda.json"
+bytes = 1363
+sha256 = "4a24a41e0e934b4ea8fa9d31c76193f4bca9e99e3c4b0c938df6c4917859a39b"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r32x2-f32-cuda.log"
+bytes = 80
+sha256 = "84bc6977c1b8a45a8ce711bc97d81f9764380ce687140e17d6e1f4dd9b134339"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r48x3-f32-cuda.json"
+bytes = 1364
+sha256 = "6dc5b3213250425f1af981ffc46458f130d7ca15db75411361057e06dcbcc065"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r48x3-f32-cuda.log"
+bytes = 81
+sha256 = "ab11854176a5fdd9ae31ca87e8928d8a66062d50f6c3991d6e83220f72df8289"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r64x4-f32-cuda.json"
+bytes = 1359
+sha256 = "23c9de4452da4f13e54d805117f9c5f2aed0ca2c0b66eb11694b18c90f1dc0d4"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E1.9-r64x4-f32-cuda.log"
+bytes = 80
+sha256 = "cba8ac9eb0ecd2d8126f5820c477003b9102037fa4b6175a305a8b3afc563fd2"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r24x2-f32-cuda.json"
+bytes = 1383
+sha256 = "c5b402f03d6a3d486c0015c34e4d3713f5e240b95c587a5a51549be2906b8105"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r24x2-f32-cuda.log"
+bytes = 81
+sha256 = "980447f75534fe58a78230f6e2f74ad6f2821c0ec0308b0d22c8eaae1452fc98"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r32x2-f32-cuda.json"
+bytes = 1336
+sha256 = "c487e64bf0dff83f48c9a8d5a1a58825bca731266616f80b6e4174062d4da4a5"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r32x2-f32-cuda.log"
+bytes = 81
+sha256 = "1ad0c1cc430ccba2889b8369c78992eeee6e779756b75bbef078a5212417b61f"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r48x3-f32-cuda.json"
+bytes = 1334
+sha256 = "340ffc2f4242a15aa96722f58b54d8c6df27284f0502b4089077e30f263672d4"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r48x3-f32-cuda.log"
+bytes = 82
+sha256 = "84f2c4640d32e9a3b81aa68929893394aed17035cfee2da9e7499ce35ebc6bf9"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r64x4-f32-cuda.json"
+bytes = 1331
+sha256 = "f8564d7f3040409202f8dc4e832f0065b2b6f27dbc7e010c859801d91090a26f"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.175-r64x4-f32-cuda.log"
+bytes = 82
+sha256 = "af1417f5bf276a8e3a57e560038f5c58d93f7019b61a445d89558aeb190cda61"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r24x2-f32-cuda.json"
+bytes = 1354
+sha256 = "42a79f0e9c9712547811f0ec24b94ca1c2140f6afa90686d46145f2d7adced48"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r24x2-f32-cuda.log"
+bytes = 78
+sha256 = "5b5c1afea353983753a5b8f46b01686afaf112861c9778b4b250c5a76202a60c"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r32x2-f32-cuda.json"
+bytes = 1362
+sha256 = "c238ae51f152d958d721410710e349593714cc32f3e4047928d8cbc8a6434877"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r32x2-f32-cuda.log"
+bytes = 78
+sha256 = "13c6d1982b4eb80f341726c1454d972837ca1a133109a830d5296d7b43d45bff"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r48x3-f32-cuda.json"
+bytes = 1360
+sha256 = "1f2e39d71aa68d183fee915539ec0a908bedb0f00f412afa88cbe2c9e9a241fa"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r48x3-f32-cuda.log"
+bytes = 78
+sha256 = "f9850a6d8cf59e180582a60796e69033753ac75e4de319290ddb90382fec8329"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r64x4-f32-cuda.json"
+bytes = 1355
+sha256 = "ed378fc21f5c397fa7ee1ee4187147b204d6d524b14e103ea5eea08f10b56157"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-E2.4-r64x4-f32-cuda.log"
+bytes = 78
+sha256 = "27dcda4fe7f7339cf2367e7398ac6bc61df37433ef31ac1f47ea81f895c4baee"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r24x2-f32-cuda.json"
+bytes = 1329
+sha256 = "1b396fa8447403b950657409971d4230e3d3acdedd7f1afa72ac4b31c39303b0"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r24x2-f32-cuda.log"
+bytes = 79
+sha256 = "bd0e0fc298708765bba65a9a8ad3101555c2394990196777c46ec8b10fc63c48"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r32x2-f32-cuda.json"
+bytes = 1336
+sha256 = "020ce7de3b708ea3de33b20c6b41f957cdd7d335d839a1ce4d44feebd6203bb3"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r32x2-f32-cuda.log"
+bytes = 80
+sha256 = "5ed751b16a61910311f26af517f1cf0c3017f3a6fac8c3da7d948b1a39d84cb3"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r48x3-f32-cuda.json"
+bytes = 1340
+sha256 = "9d7dba94a87f381db15587c4ebc4a52715b9a2cb6d218c3d93aec3e6fce77726"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r48x3-f32-cuda.log"
+bytes = 81
+sha256 = "07425b6408ce28c3c205a8005c3e0c185fb682487ee9179474e841cce285e31b"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r64x4-f32-cuda.json"
+bytes = 1337
+sha256 = "27e25b8248f153a7e858c4c95a2a5d12838df9aca2b87d24caf6fe8d3eaf5682"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.06-r64x4-f32-cuda.log"
+bytes = 81
+sha256 = "6b9071e6534d2cd2c0738b2f84885baf2803e1c329f8572ab4b5733eb935f9d5"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r24x2-f32-cuda.json"
+bytes = 1367
+sha256 = "5130c2dd2322d28b384aec20e84e161bc89f76444c1ca0d2f9ea7b8c84347110"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r24x2-f32-cuda.log"
+bytes = 81
+sha256 = "3bb3ac44f36b447415b1116a9b3248b3421db9e3631bd764b13ea64c194aedde"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r32x2-f32-cuda.json"
+bytes = 1375
+sha256 = "693dc7143c259be348adff1e70d0a69cdec2deabb435bbee6ee63cee790efe07"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r32x2-f32-cuda.log"
+bytes = 81
+sha256 = "242ce756ee7be23450c7bad24ae90dcfd74c93e5ab51b2d31dc234d67c0ad811"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r48x3-f32-cuda.json"
+bytes = 1377
+sha256 = "134b724fc4b82654fbf60bca2164459795c8292996c2cc0fb05240306600ab23"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r48x3-f32-cuda.log"
+bytes = 82
+sha256 = "17d5b6583fe4c50735c63c1fbc370c7ab73bf61a66dd9f0bef9dc3ffbdb430da"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r64x4-f32-cuda.json"
+bytes = 1382
+sha256 = "921f28fd281a1a219cddba33e9a5090553cb962a64baf04826d0020f98d03f7c"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/gg-galerkin-compensated-n0.085-r64x4-f32-cuda.log"
+bytes = 82
+sha256 = "fc5ace3611d1d3d95ab61ec90f11d4b746a59df983be5eaf4ac3b374c55ac652"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/jobs.json"
+bytes = 11962
+sha256 = "d16f87067b28e893cf0d2ae338d9fd3fca74cae37191ef542afa2dc564793116"
+
+[[files]]
+path = "scripts/runs/wp078-gathergrad-4080/manifest.toml"
+bytes = 7860
+sha256 = "f579429a82ae499988b50e34223e1a95b2fdf8ae554fe5775f52681308139f83"
