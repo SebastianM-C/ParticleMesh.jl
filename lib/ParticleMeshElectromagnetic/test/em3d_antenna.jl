@@ -60,7 +60,7 @@ function yee_kx_3d(ω, ky, kz, dx, dy, dz, dt)
     return imag(kx) < 0 ? conj(kx) : kx
 end
 
-host(v) = value_of.(real.(v)) .+ im .* value_of.(imag.(v))
+complex_host(v) = value_of.(real.(v)) .+ im .* value_of.(imag.(v))
 
 """
     angular_error_3d(r; component = :Ey, against = component, kx = yee_kx_3d) -> Vector of (; x, err)
@@ -75,7 +75,7 @@ function angular_error_3d(r; component = :Ey, against = component, kx = yee_kx_3
     a = run_antenna_3d(r)
     h = Float64.(value_of.(a.dx))
     dt = Float64(value_of(r.prob.dt))
-    inc = map(host, incident_dtft_3d(r))
+    inc = map(complex_host, incident_dtft_3d(r))
     S, Sref = dft2(getfield(inc, component)), dft2(getfield(inc, against))
     ky, kz = ky_modes(size(S, 1), h[2]), ky_modes(size(S, 2), h[3])
     xa = Float64(value_of(a.xa))
@@ -85,7 +85,7 @@ function angular_error_3d(r; component = :Ey, against = component, kx = yee_kx_3
         x < xa - h[1] / 2 && continue
         P = [cis(kx(1.0, ky[p], kz[s], h[1], h[2], h[3], dt) * (x - xa)) for p in eachindex(ky), s in eachindex(kz)]
         pred, ref = idft2(S .* P), idft2(Sref .* P)
-        meas = host(getfield(r.A[q], component))
+        meas = complex_host(getfield(r.A[q], component))
         push!(out, (; x, err = sqrt(sum(abs2, meas .- pred) / sum(abs2, ref))))
     end
     return out
@@ -351,7 +351,7 @@ function antenna_divergences_3d(st, p, nk, dt)
     T = eltype(st.ρ)
     a = Antenna(only(p.lasers), only(antenna_planes(st)))
     l = a.laser
-    ρd = field(CPU(), T, grid)
+    ρd = fill!(similar(st.ρ), zero(T))                  # on the state's backend, as the species
     for (s, ws) in zip(st.species, st.ws)
         deposit!(numerics.mode, ρd, s, numerics.shape, (Node(), Node(), Node()), grid, ws)
     end
