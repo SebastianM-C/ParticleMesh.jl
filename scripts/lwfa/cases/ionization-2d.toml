@@ -63,3 +63,9 @@ fade = [12.0, 24.0]               # born2d_case.jl's position weight in window x
 rise = [3.0, 5.0]                 # trapped2d_case.jl's trapping weight in u_x
 u_fast = 5.0
 spectrum_ekin = [0.0, 40.0, 200]  # born-electron kinetic-energy histogram, mₑc²
+
+[comparison]
+# PIConGPU's launched pulse over ParticleMesh's: the peak of |E_y|'s envelope in the two vacuum runs where
+# the pulse crosses the dopant (t = 150 and 175: 0.9928 and 0.9941; runs ion-cloud1 and ion-5090-pic).
+# ParticleMesh's run `plasma-rates-picongpu-a0` takes PIConGPU's rate and a₀ times this ratio.
+picongpu_field_ratio = 0.9935
