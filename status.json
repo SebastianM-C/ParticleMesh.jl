@@ -1,0 +1,16 @@
+{
+ "keeper": {
+  "box": "pm-cpu-27",
+  "evicted": {
+   "at": "2026-11-21T09:09:12Z",
+   "location": "FIN-03",
+   "name": "pm-cpu-27",
+   "parked": true,
+   "volume": "2557c145-0feb-46a2-87fc-4d086c50677f"
+  },
+  "last_seen_running": "2026-11-21T09:09:11Z",
+  "mode": "on-demand",
+  "since": "2026-11-21T07:48:45Z"
+ },
+ "state": "no box (parked, or being replaced)"
+}
