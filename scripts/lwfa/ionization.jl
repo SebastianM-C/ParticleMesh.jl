@@ -1365,9 +1365,9 @@ function compare_ion(runs, out)
                               "final" => final, "ratios" => ratios, "laser" => laser, "lineouts" => ion_lineout_distances(S, case),
                               "seconds" => Dict(basename(x) => get(JSON.parsefile(joinpath(x, "summary.json")), "seconds", nothing) for v in values(G) for x in v))
     open(io -> JSON.print(io, result, 2), joinpath(out, "comparison.json"), "w")
-    plot_ion_objectives(out, S)
-    plot_ion_charge_states(out, S)
-    plot_ion_spectra(out, S)
+    plot_ion_objectives(out, S; N = d.N)
+    plot_ion_charge_states(out, S; N = d.N)
+    plot_ion_spectra(out, S; N = d.N)
     plot_ion_phase_space(out, S)
     plot_ion_wake(out, S, d)
     write_manifest(out; root = REPO,
@@ -1388,12 +1388,15 @@ ion_dopant_groups(S) = [k for k in ("pm-plasma", "pm-plasma-rates-smilei", "pm-p
                                     "pm-plasma-rates-picongpu-a0", "pm-plasma-axis",
                                     "smilei-plasma", "picongpu-plasma") if haskey(S, k)]
 
+"The measure a weight is counted in: an area in 2D (per unit depth), a volume in 3D."
+ion_measure_unit(N) = N == 2 ? "(c/ω₀)²" : "(c/ω₀)³"
+
 # The born electrons' weight and the two objectives against time; a Monte Carlo code's band spans its seeds.
-function plot_ion_objectives(out, S)
+function plot_ion_objectives(out, S; N = 2)
     fig = Figure(size = (1500, 420))
     side = Dict{String,Any}()
-    for (col, (m, lab)) in enumerate((("weight", "born electrons (n_c (c/ω₀)²)"), ("J_born", "J_born, WP-064 (mₑc² n_c (c/ω₀)²)"),
-                                      ("J_trapped", "J_trapped, WP-065 (mₑc² n_c (c/ω₀)²)")))
+    for (col, (m, lab)) in enumerate((("weight", "born electrons (n_c $(ion_measure_unit(N)))"), ("J_born", "J_born, WP-064 (mₑc² n_c $(ion_measure_unit(N)))"),
+                                      ("J_trapped", "J_trapped, WP-065 (mₑc² n_c $(ion_measure_unit(N)))")))
         ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = lab)
         for k in ion_dopant_groups(S)
             t, mean, lo, hi = ion_series(S[k], "born", m)
@@ -1406,11 +1409,11 @@ function plot_ion_objectives(out, S)
     save_plot(out, "born_objectives", fig, side)
 end
 
-function plot_ion_charge_states(out, S)
+function plot_ion_charge_states(out, S; N = 2)
     fig = Figure(size = (1000, 420))
     side = Dict{String,Any}()
     for (col, (i, lab)) in enumerate(((2, "N⁶⁺ in the window"), (3, "N⁷⁺ in the window")))
-        ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = "$lab (n_c (c/ω₀)²)")
+        ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = "$lab (n_c $(ion_measure_unit(N)))")
         for k in ion_dopant_groups(S)
             outs = [s["outputs"] for s in S[k]]
             t = Float64[o["t"] for o in outs[1]]
@@ -1423,12 +1426,12 @@ function plot_ion_charge_states(out, S)
     save_plot(out, "charge_states", fig, side)
 end
 
-function plot_ion_spectra(out, S)
+function plot_ion_spectra(out, S; N = 2)
     k0 = first(ion_dopant_groups(S))
     edges = Float64.(S[k0][1]["spectrum_edges"])
     mids = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
     fig = Figure(size = (900, 420))
-    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "born electrons per bin (n_c (c/ω₀)²)",
+    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "born electrons per bin (n_c $(ion_measure_unit(N)))",
               title = "born electrons ahead of the fade at the read-out (bins of $(round(edges[2] - edges[1]; digits = 3)) mₑc²)")
     side = Dict{String,Any}("ekin" => mids)
     for k in ion_dopant_groups(S)
