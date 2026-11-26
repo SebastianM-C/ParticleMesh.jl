@@ -1,12 +1,18 @@
+backend = "KernelAbstractions CPU"
 case = "ionization-3d"
 code = "ParticleMesh"
-commit = "3677708737e3fbd200728a949e0553a588b456f6"
+commit = "681f27b772247c21e196cd00d0598e8fd251e19d"
+cpu = "AMD EPYC 9655 96-Core Processor"
 dirty = false
+float = "Float32"
 generator = "scripts/lwfa/ionization.jl"
+julia = "1.13.3"
 kind = "plasma-rates-picongpu-a0"
 run_id = "ion-3d-a0/pm-plasma-rates-picongpu-a0"
+run_seconds = 4941.181007146835
 seed = 1
-updated = "2026-11-26T09:17:16.257Z"
+threads = 16
+updated = "2026-11-26T13:46:33.790Z"
 
 [inputs]
 "case.toml" = "sha256:74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"

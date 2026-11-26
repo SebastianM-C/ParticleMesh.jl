@@ -1,0 +1,20 @@
+branch = "runs/ion3d-pm-plasma-rates-picongpu-a0"
+request_commit = "681f27b772247c21e196cd00d0598e8fd251e19d"
+started = "2026-11-26T12:19:48Z"
+category = "crosscode"
+outputs = ["scripts/runs/ion-3d-a0/pm-plasma-rates-picongpu-a0"]
+finished = "2026-11-26T13:46:34Z"
+ok = true
+files_returned = 4
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-26T12:19:48Z"
+exit = 0
+seconds = 5206
