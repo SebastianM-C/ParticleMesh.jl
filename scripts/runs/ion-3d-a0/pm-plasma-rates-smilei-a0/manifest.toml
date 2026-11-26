@@ -1,0 +1,20 @@
+backend = "CUDABackend"
+case = "ionization-3d"
+code = "ParticleMesh"
+commit = "3677708737e3fbd200728a949e0553a588b456f6"
+cpu = "AMD Ryzen 9 9950X 16-Core Processor"
+dirty = false
+float = "Float32"
+generator = "scripts/lwfa/ionization.jl"
+gpu = "NVIDIA GeForce RTX 5090"
+julia = "1.13.4"
+kind = "plasma-rates-smilei-a0"
+run_id = "ion-3d-a0/pm-plasma-rates-smilei-a0"
+run_seconds = 92.36586499214172
+seed = 1
+threads = 32
+updated = "2026-11-26T11:19:53.173Z"
+
+[inputs]
+"case.toml" = "sha256:74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"
+"kind.txt" = "sha256:8187c8b02ccdb0a7b987f253dd0cafe21abbd17509ca92973fa131d06a01944e"
