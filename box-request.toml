@@ -1,0 +1,6 @@
+timeout = 21600
+category = "crosscode"
+outputs = ["scripts/runs/ion-3d-a0/pm-plasma-rates-smilei"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/ionization.jl", "run-pm", "scripts/runs/ion-3d-a0/pm-plasma-rates-smilei", "cpu", "Float32"]

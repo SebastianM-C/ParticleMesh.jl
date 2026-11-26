@@ -1,0 +1,13 @@
+case = "ionization-3d"
+code = "ParticleMesh"
+commit = "3677708737e3fbd200728a949e0553a588b456f6"
+dirty = false
+generator = "scripts/lwfa/ionization.jl"
+kind = "plasma-rates-smilei"
+run_id = "ion-3d-a0/pm-plasma-rates-smilei"
+seed = 1
+updated = "2026-11-26T09:17:16.236Z"
+
+[inputs]
+"case.toml" = "sha256:74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"
+"kind.txt" = "sha256:c5b411cade63bc342b70128dd1e5ef604192a992e0bc7b1ef581f9728a604b21"
