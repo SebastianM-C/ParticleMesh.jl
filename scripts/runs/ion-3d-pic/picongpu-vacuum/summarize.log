@@ -1,0 +1,195 @@
+┌ Warning: PIConGPU output 0 in scripts/runs/ion-3d-pic/picongpu-vacuum/openPMD/simData_000000.h5 is unreadable, left out
+│   exception =
+│    HDF5.API.H5Error: Error opening object /data/0/fields
+│    libhdf5 Stacktrace:
+│      [1] H5O__chunk_deserialize: Object header/Unable to load metadata into cache
+│          message not aligned
+│       ⋮
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/api/error.jl:18 [inlined]
+│      [2] h5o_open(loc_id::HDF5.Group, pathname::SubString{String}, lapl_id::Int64)
+│        @ HDF5.API ~/.julia/packages/HDF5/Xsdf5/src/api/functions.jl:2586
+│      [3] open_object
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/objects.jl:37 [inlined]
+│      [4] getindex(parent::HDF5.Group, path::SubString{String}; pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:77
+│      [5] getindex(parent::HDF5.Group, path::SubString{String})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:74
+│      [6] (::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64})(f::HDF5.File)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1034
+│      [7] (::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File})()
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:101
+│      [8] task_local_storage(body::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File}, key::Symbol, val::HDF5.HDF5Context)
+│        @ Base ./task.jl:298
+│      [9] h5open(::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, ::String, ::Vararg{String}; context::HDF5.HDF5Context, pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:96
+│     [10] h5open(::Function, ::String, ::String)
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:94
+│     [11] summarize_picongpu_ion(dir::String)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1029
+│     [12] top-level scope
+│        @ ~/pm-reruns/scripts/lwfa/ionization.jl:1488
+│     [13] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [14] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [15] _start()
+│        @ Base ./client.jl:577
+└ @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1095
+┌ Warning: PIConGPU output 142 in scripts/runs/ion-3d-pic/picongpu-vacuum/openPMD/simData_000142.h5 is unreadable, left out
+│   exception =
+│    HDF5.API.H5Error: Error opening object /data/142/fields
+│    libhdf5 Stacktrace:
+│      [1] H5O__chunk_deserialize: Object header/Unable to load metadata into cache
+│          message not aligned
+│       ⋮
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/api/error.jl:18 [inlined]
+│      [2] h5o_open(loc_id::HDF5.Group, pathname::SubString{String}, lapl_id::Int64)
+│        @ HDF5.API ~/.julia/packages/HDF5/Xsdf5/src/api/functions.jl:2586
+│      [3] open_object
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/objects.jl:37 [inlined]
+│      [4] getindex(parent::HDF5.Group, path::SubString{String}; pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:77
+│      [5] getindex(parent::HDF5.Group, path::SubString{String})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:74
+│      [6] (::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64})(f::HDF5.File)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1034
+│      [7] (::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File})()
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:101
+│      [8] task_local_storage(body::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File}, key::Symbol, val::HDF5.HDF5Context)
+│        @ Base ./task.jl:298
+│      [9] h5open(::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, ::String, ::Vararg{String}; context::HDF5.HDF5Context, pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:96
+│     [10] h5open(::Function, ::String, ::String)
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:94
+│     [11] summarize_picongpu_ion(dir::String)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1029
+│     [12] top-level scope
+│        @ ~/pm-reruns/scripts/lwfa/ionization.jl:1488
+│     [13] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [14] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [15] _start()
+│        @ Base ./client.jl:577
+└ @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1095
+┌ Warning: PIConGPU output 284 in scripts/runs/ion-3d-pic/picongpu-vacuum/openPMD/simData_000284.h5 is unreadable, left out
+│   exception =
+│    HDF5.API.H5Error: Error opening object /data/284/fields
+│    libhdf5 Stacktrace:
+│      [1] H5O__chunk_deserialize: Object header/Unable to load metadata into cache
+│          message not aligned
+│       ⋮
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/api/error.jl:18 [inlined]
+│      [2] h5o_open(loc_id::HDF5.Group, pathname::SubString{String}, lapl_id::Int64)
+│        @ HDF5.API ~/.julia/packages/HDF5/Xsdf5/src/api/functions.jl:2586
+│      [3] open_object
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/objects.jl:37 [inlined]
+│      [4] getindex(parent::HDF5.Group, path::SubString{String}; pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:77
+│      [5] getindex(parent::HDF5.Group, path::SubString{String})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:74
+│      [6] (::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64})(f::HDF5.File)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1034
+│      [7] (::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File})()
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:101
+│      [8] task_local_storage(body::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File}, key::Symbol, val::HDF5.HDF5Context)
+│        @ Base ./task.jl:298
+│      [9] h5open(::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, ::String, ::Vararg{String}; context::HDF5.HDF5Context, pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:96
+│     [10] h5open(::Function, ::String, ::String)
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:94
+│     [11] summarize_picongpu_ion(dir::String)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1029
+│     [12] top-level scope
+│        @ ~/pm-reruns/scripts/lwfa/ionization.jl:1488
+│     [13] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [14] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [15] _start()
+│        @ Base ./client.jl:577
+└ @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1095
+┌ Warning: PIConGPU output 426 in scripts/runs/ion-3d-pic/picongpu-vacuum/openPMD/simData_000426.h5 is unreadable, left out
+│   exception =
+│    HDF5.API.H5Error: Error opening object /data/426/fields
+│    libhdf5 Stacktrace:
+│      [1] H5O__chunk_deserialize: Object header/Unable to load metadata into cache
+│          message not aligned
+│       ⋮
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/api/error.jl:18 [inlined]
+│      [2] h5o_open(loc_id::HDF5.Group, pathname::SubString{String}, lapl_id::Int64)
+│        @ HDF5.API ~/.julia/packages/HDF5/Xsdf5/src/api/functions.jl:2586
+│      [3] open_object
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/objects.jl:37 [inlined]
+│      [4] getindex(parent::HDF5.Group, path::SubString{String}; pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:77
+│      [5] getindex(parent::HDF5.Group, path::SubString{String})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:74
+│      [6] (::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64})(f::HDF5.File)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1034
+│      [7] (::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File})()
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:101
+│      [8] task_local_storage(body::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File}, key::Symbol, val::HDF5.HDF5Context)
+│        @ Base ./task.jl:298
+│      [9] h5open(::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, ::String, ::Vararg{String}; context::HDF5.HDF5Context, pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:96
+│     [10] h5open(::Function, ::String, ::String)
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:94
+│     [11] summarize_picongpu_ion(dir::String)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1029
+│     [12] top-level scope
+│        @ ~/pm-reruns/scripts/lwfa/ionization.jl:1488
+│     [13] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [14] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [15] _start()
+│        @ Base ./client.jl:577
+└ @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1095
+┌ Warning: PIConGPU output 568 in scripts/runs/ion-3d-pic/picongpu-vacuum/openPMD/simData_000568.h5 is unreadable, left out
+│   exception =
+│    HDF5.API.H5Error: Error opening object /data/568/fields
+│    libhdf5 Stacktrace:
+│      [1] H5O__chunk_deserialize: Object header/Unable to load metadata into cache
+│          message not aligned
+│       ⋮
+│    Stacktrace:
+│      [1] macro expansion
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/api/error.jl:18 [inlined]
+│      [2] h5o_open(loc_id::HDF5.Group, pathname::SubString{String}, lapl_id::Int64)
+│        @ HDF5.API ~/.julia/packages/HDF5/Xsdf5/src/api/functions.jl:2586
+│      [3] open_object
+│        @ ~/.julia/packages/HDF5/Xsdf5/src/objects.jl:37 [inlined]
+│      [4] getindex(parent::HDF5.Group, path::SubString{String}; pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:77
+│      [5] getindex(parent::HDF5.Group, path::SubString{String})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/highlevel.jl:74
+│      [6] (::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64})(f::HDF5.File)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1034
+│      [7] (::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File})()
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:101
+│      [8] task_local_storage(body::HDF5.var"#21#22"{HDF5.HDF5Context, @Kwargs{}, var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, HDF5.File}, key::Symbol, val::HDF5.HDF5Context)
+│        @ Base ./task.jl:298
+│      [9] h5open(::var"#summarize_picongpu_ion##2#summarize_picongpu_ion##3"{Int64, Vector{Any}, @NamedTuple{lambda0::Float64, omega0::Float64, time::Float64, length::Float64, density::Float64, efield::Float64, bfield::Float64, energy::Float64}, Bool, Bool, @NamedTuple{j0::Int64, devices::Int64, local_y::Int64, window::Int64, cells::Tuple{Int64, Int64}, lag::Int64, start_cell::Int64, move_point::Float64}, Dict{String, Any}, @NamedTuple{N::Int64, h::Tuple{Float64, Float64, Float64}, dx::Float64, dy::Float64, dz::Float64, nx::Int64, ny::Int64, nz::Int64, cells::Tuple{Int64, Int64, Int64}, na::Int64, xa::Float64, dt::Float64, steps::Int64, every::Int64, outputs::Vector{Int64}, yc::Float64, zc::Float64, jaxis::Int64, kaxis::Int64, rows::Float64, rows_z::Float64}, Dict{String, Any}, Int64}, ::String, ::Vararg{String}; context::HDF5.HDF5Context, pv::@Kwargs{})
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:96
+│     [10] h5open(::Function, ::String, ::String)
+│        @ HDF5 ~/.julia/packages/HDF5/Xsdf5/src/file.jl:94
+│     [11] summarize_picongpu_ion(dir::String)
+│        @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1029
+│     [12] top-level scope
+│        @ ~/pm-reruns/scripts/lwfa/ionization.jl:1488
+│     [13] include(mod::Module, _path::String)
+│        @ Base ./Base.jl:309
+│     [14] exec_options(opts::Base.JLOptions)
+│        @ Base ./client.jl:344
+│     [15] _start()
+│        @ Base ./client.jl:577
+└ @ Main ~/pm-reruns/scripts/lwfa/ionization.jl:1095

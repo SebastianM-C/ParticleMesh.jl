@@ -1,0 +1,9 @@
+# picongpu: 0.8.0 6bb3470ee16dd5a3a93f24c85b111be3b8440d22, backend cuda:120
+# gpu: unknown
+# cpus: 32
+# cpu model: AMD Ryzen 9 9950X 16-Core Processor
+# compile start: 2026-11-21T15:57:23.419239058Z
+# compile end: 2026-11-21T15:58:43.347213754Z
+# gpu at run: NVIDIA GeForce RTX 5090, 615.71.09
+# start: 2026-11-21T16:32:02.237024675Z
+# end: 2026-11-21T16:33:51.825488025Z
