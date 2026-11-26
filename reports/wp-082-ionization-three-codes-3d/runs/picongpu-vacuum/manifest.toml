@@ -1,0 +1,27 @@
+case = "ionization-3d"
+code = "PIConGPU 0.8.0"
+commit = "11b4926623bf01f988a838550dfae813d8878bb1"
+dirty = false
+generator = "scripts/lwfa/ionization.jl"
+kind = "vacuum"
+run_id = "ion-3d-pic/picongpu-vacuum"
+seed = 1
+updated = "2026-11-21T15:53:14.549Z"
+
+[inputs]
+"arguments.txt" = "sha256:61ec9043d6fff2f1e6b3b0498f5c09056c87b128adac521d71d69f89ac51a038"
+"case.toml" = "sha256:7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+"kind.txt" = "sha256:566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+"params/density.param" = "sha256:f8f56ef06a5066483216e81bc0e6e268135241a8ee1b36709d93c43e3d585b1a"
+"params/dimension.param" = "sha256:fd3da3e70f0cdf2434a980af5b38b40ba4b7edf22800b550dd6e65a77c2c29fc"
+"params/fieldSolver.param" = "sha256:3b399f6c8a4899067a1bce84ae66c05a2520ef31b1813212d6ba894dca6fddfd"
+"params/fileOutput.param" = "sha256:fd4395a03e47df3ab232b7aad91930445ed881dce8fc362ad65bf767db3ffe07"
+"params/incidentField.param" = "sha256:a284138f3d9a4efab415060d1289cc51ff62b274fbe62213d150b2790bfde26b"
+"params/memory.param" = "sha256:13f024b8e7a6c6b244844db4a00b0a3df595280ec7c5862c86b75bd01df9bbe4"
+"params/particle.param" = "sha256:cdf20508dbf56655cfe83e34036c37db9bc397ca287cb65a2eaac6798027fbf1"
+"params/precision.param" = "sha256:fad606fbadd3b85076f92ac84a0feea1f7b27568ae8dc1eace3c5cfd2b84fe20"
+"params/simulation.param" = "sha256:467d24a27fdd54ec31b2c382348b1f748e1e6ab8415bddf268e6248f4dd45c16"
+"params/species.param" = "sha256:1f6ff0c36476867223153fdfe3fd2f6870bfdcc3c1a90a9740a128dea8f7d6f1"
+"params/speciesDefinition.param" = "sha256:023391bf2fffc6c2d7d5cc4583b06defd4e9999c4c8d4b1d1036c5a8f94769a9"
+"params/speciesInitialization.param" = "sha256:30b9390f92ecbe1ec4c3e219d66bf5d7045aa97de3ca663016155966f79ebe36"
+"run.sh" = "sha256:e4ed57740ee327e7cf707b5f340dda7c75ee6054b461de348dbd987f38e3f881"

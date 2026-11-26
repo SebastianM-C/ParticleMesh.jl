@@ -1,0 +1,112 @@
+branch = "runs/ion3d-smilei-plasma-s3"
+commit = "3f70367ca3691ddc2c0c4b83b79edc94c0371d6d"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/Fields0.h5"
+bytes = 1558976
+sha256 = "903c670bb576d12cbfde2a10c7a1a2c9d0ea45eebef321a263ff3bb70de14b7f"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning0.h5"
+bytes = 7616
+sha256 = "328610d825c3b625ceb9cbcec18459349db04ea0d216e4e6c00948db7bba337d"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning1.h5"
+bytes = 14916816
+sha256 = "19b9ad14fa5b6363a612f8f1fd15b700b1e837f1fbe90ef7f97fc3166e2f8a0e"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning2.h5"
+bytes = 14916824
+sha256 = "d1a85fff9288b7e1bc599e9b68418fc589f0382e2418e73afd10fdd27540ac96"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning3.h5"
+bytes = 28176
+sha256 = "a322b12fb60cab0b4101e333a624b4fbfc613c032f4b4d1b623729eb61179c42"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning4.h5"
+bytes = 14916816
+sha256 = "bd1303dcb996a91912303d7caa13fd52fadfdac6ef061703ad77b5485ef313df"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning5.h5"
+bytes = 14916824
+sha256 = "4d2fc126204b98bd155216677436140276df116f110066474dd79b0fb110f511"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/ParticleBinning6.h5"
+bytes = 28176
+sha256 = "eee6b0d7097ffcb9094e9ccf42522de9a3305a5de890e339b25080df27ffde6f"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/TrackParticlesDisordered_born.h5"
+bytes = 179336
+sha256 = "a450c454a8136d885c78f771ee13f8b1e668c7c500fb821adfd1f6407565d4e4"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/container.txt"
+bytes = 186
+sha256 = "10de6f4e8f392554b3010a0fef025c1f5d053fe726bb5006a8522515327c51b5"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/info.shelf.db"
+bytes = 20480
+sha256 = "33eb16d72020abd2076e7325a338c61a38b8bf6efac65aac8f69a79525aec82d"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/kind.txt"
+bytes = 7
+sha256 = "c13b688d1b0efda817626def7b3bd7d2970c84bbef6f8885b69b9c63e9f820eb"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/manifest.toml"
+bytes = 608
+sha256 = "9b99f88584af6fddc6d95460381f91c9a858325e41c7c7401e471a922fe93468"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/namelist.py"
+bytes = 4854
+sha256 = "f5d73bfac024ebbe3c19df38a7baae9857672a88f8a8a89b80c1ad528352255a"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/patch_load.txt"
+bytes = 36
+sha256 = "573b5198ff3c50ff331814f73359b3b0fd007d8058a9247697b17adcecd7fd47"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/profil.txt"
+bytes = 4872
+sha256 = "06d29e2030f6aff39351cc0e5f2036ddabd2913ed2870d80786afe7ea17a5671"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/run.sh"
+bytes = 751
+sha256 = "1ed3947ee3fb15cd0650516458ac714be62a03da800b16d451534ff23c962d7f"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/scalars.txt"
+bytes = 28710
+sha256 = "5e73acccf232139928bcf67c79eebe1291af2c2ad3741fce5988c121eed17d80"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/smilei.log"
+bytes = 10768
+sha256 = "716f0d9bdbed46a959a03f7fe284fd71900705b88a6af0783f76aade3fbfd42c"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/smilei.py"
+bytes = 69971
+sha256 = "12b6971c5b41859bbf4344f5a4b205dfdd4ee26b5a27c3a3c645fa57cf30f584"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-s3/summary.json"
+bytes = 550452
+sha256 = "3f820a40fa8b76cc0a0ec9993e8da7b5f76735f2d4676704431d5eb824eacc00"

@@ -1,0 +1,22 @@
+branch = "runs/ion3d-pm-plasma-rates-smilei-a0"
+commit = "cc49795293ba1d93ebcdf04e22c611c4f6a12673"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-smilei-a0/case.toml"
+bytes = 4617
+sha256 = "74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-smilei-a0/kind.txt"
+bytes = 23
+sha256 = "8187c8b02ccdb0a7b987f253dd0cafe21abbd17509ca92973fa131d06a01944e"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-smilei-a0/manifest.toml"
+bytes = 617
+sha256 = "3b8d26181942cee45cb5d1cffa0ff9f6b861c819167c014f4bf0d384f511dca1"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-smilei-a0/summary.json"
+bytes = 9527724
+sha256 = "2788f6a18ffef550ddd9d767a9cd1409bfb167de4f35cf771698cc7646306618"

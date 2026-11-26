@@ -1232,7 +1232,7 @@ measured = { Float32 = 0.0982, Float64 = 0.111, "Dual{Float32,3}" = 0.0982 }
 measured_weight = { Float32 = 1.17, Float64 = 0.989, "Dual{Float32,3}" = 1.17 }
 measured_device = { "Float32 on CUDABackend" = 0.101, "Float64 on CUDABackend" = 0.105, "Dual{Float32,3} on CUDABackend" = 0.0895 }
 measured_device_weight = { "Float32 on CUDABackend" = 7.42, "Float64 on CUDABackend" = 7.42, "Dual{Float32,3} on CUDABackend" = 7.42 }
-status = "proposed; T-774's C; the largest over both modes; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38)"
+status = "proposed; T-774's C; the largest over both modes; measured_device on an RTX 5090 (CUDACore 6.5, at 0a62f38); the device's weight error is about 6 times the CPU's and the same in units of eps(T) for every element type, so it scales with the precision; its cause is not yet known (an element-by-element comparison of the CPU and CUDA section weights on one lattice would show it)"
 
 ["T-1045"]
 quantity = "Fast against Reference after 100 steps of ion_window_3d, Float64: the fields relative to max|E, B|, and the atoms' emitted fractions (absolute, of order one)"

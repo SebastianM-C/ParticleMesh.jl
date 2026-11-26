@@ -1,0 +1,19 @@
+backend = "KernelAbstractions CPU"
+case = "ionization-3d"
+code = "ParticleMesh"
+commit = "74b4077dae7ab568e712190281781853f1462151"
+cpu = "AMD EPYC 9655 96-Core Processor"
+dirty = false
+float = "Float32"
+generator = "scripts/lwfa/ionization.jl"
+julia = "1.13.3"
+kind = "plasma-rates-smilei-a0"
+run_id = "ion-3d-a0/pm-plasma-rates-smilei-a0"
+run_seconds = 4985.793965101242
+seed = 1
+threads = 16
+updated = "2026-11-26T12:19:45.764Z"
+
+[inputs]
+"case.toml" = "sha256:74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"
+"kind.txt" = "sha256:8187c8b02ccdb0a7b987f253dd0cafe21abbd17509ca92973fa131d06a01944e"

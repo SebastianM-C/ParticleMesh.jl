@@ -172,7 +172,8 @@ function pm_ion_problem(case; T = Float64, plasma = true, dopant = true, rates =
                           polarization = T(polarization_angle(case)), envelope)
     ppc = Tuple(Int.(P["particles_per_cell"]))
     length(ppc) == N || error("plasma.particles_per_cell needs $N entries, got $ppc")
-    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(P["density"]), zero(T), (1, 0), ppc, z3, z3, 1)
+    kmode = ntuple(i -> i == 1 ? 1 : 0, N)
+    e = SpeciesDescription{T}(:electron, -one(T), one(T), T(P["density"]), zero(T), kmode, ppc, z3, z3, 1)
     ion = nothing
     if plasma && dopant
         rows = (d.yc - d.rows, d.yc + d.rows)
@@ -185,7 +186,7 @@ function pm_ion_problem(case; T = Float64, plasma = true, dopant = true, rates =
     h = T.(d.h)
     box = ntuple(i -> d.cells[i] * h[i], N)
     boundaries = N == 2 ? (:window, :open) : (:window, :open, :open)
-    return EMProblem(String(case["name"]), box, d.cells, T(d.dt), d.steps, plasma ? (e,) : (), Int(P["seed"]), (1, 0);
+    return EMProblem(String(case["name"]), box, d.cells, T(d.dt), d.steps, plasma ? (e,) : (), Int(P["seed"]), kmode;
                      lasers = (pulse,), boundaries, window = MovingWindow(; start = T(case["window"]["start"])),
                      profile = DensityRamp(; vacuum = T(P["vacuum"]), ramp = T(P["ramp"])), ionization = ion)
 end
@@ -301,10 +302,11 @@ function run_pm_ion(dir; backend = CPU(), float = Float64)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
     kind = strip(read(joinpath(dir, "kind.txt"), String))
     plasma = kind != "vacuum"
-    rates = kind == "plasma-rates-picongpu-a0" ? "picongpu" :
+    fieldof = match(r"^plasma-rates-(smilei|picongpu)-a0$", kind)
+    rates = fieldof !== nothing ? String(fieldof.captures[1]) :
             startswith(kind, "plasma-rates-") ? String(kind[(length("plasma-rates-") + 1):end]) : "pm"
-    if kind == "plasma-rates-picongpu-a0"          # PIConGPU's rate and its launched peak field (the case's [comparison])
-        case["laser"]["a0"] = Float64(case["laser"]["a0"]) * Float64(case["comparison"]["picongpu_field_ratio"])
+    if fieldof !== nothing                         # that code's rate and its launched peak field (the case's [comparison])
+        case["laser"]["a0"] = Float64(case["laser"]["a0"]) * Float64(case["comparison"]["$(rates)_field_ratio"])
     end
     envelope = kind == "plasma-axis" ? AxisTime() : laser_envelope(case)
     prob = pm_ion_problem(case; T = float, plasma, dopant = kind != "plasma-nodopant", rates, envelope)
@@ -687,11 +689,11 @@ at box x − x_a. The window's back is at lab c(t − start) in that deck; at `s
 that it is at box c(t − start), ParticleMesh's. PIConGPU delays the window's motion by at most
 its own length (`--windowMovePoint` in [0, 1]), so the lab window is lengthened at the front to
 the cells the light front crosses before the window moves; the plasma ahead of ParticleMesh's
-window front is reached by nothing that is compared.
+window front is reached by nothing that is compared. A 3D case gives its (x, y) plane, and
+`picongpu_ion_3d!` adds the third axis to the deck.
 """
 function picongpu_ion_lab(case)
     d = ion_derived(case)
-    d.N == 2 || error("the PIConGPU deck of the ionization case is 2D")
     g, L, P = case["grid"], case["laser"], case["plasma"]
     start = Float64(case["window"]["start"]) + d.xa
     j0 = HUYGENS + 1
@@ -705,7 +707,7 @@ function picongpu_ion_lab(case)
         "time" => Dict{String,Any}("courant" => case["time"]["courant"], "steps" => d.steps, "fields_every" => d.every),
         "laser" => laser, "window" => Dict{String,Any}("start" => start),
         "plasma" => Dict{String,Any}("density" => P["density"], "vacuum" => Float64(P["vacuum"]) - d.xa, "ramp" => P["ramp"],
-                                     "particles_per_cell" => P["particles_per_cell"], "seed" => P["seed"]),
+                                     "particles_per_cell" => P["particles_per_cell"][1:2], "seed" => P["seed"]),
         "diagnostics" => Dict{String,Any}("spectrum_ekin" => case["diagnostics"]["spectrum_ekin"], "map_stride" => [1, 1], "map_outputs" => Int[]))
 end
 
@@ -723,9 +725,10 @@ ionization current. The seed of the random numbers is the run's.
 """
 function picongpu_ion_param_files(case; kind, seed)
     lab = picongpu_ion_lab(case)
+    d0 = ion_derived(case)
     plasma, dopant = kind != "vacuum", kind ∉ ("vacuum", "plasma-nodopant")
     f = picongpu_param_files(lab; plasma)
-    plasma || return f
+    plasma || return d0.N == 3 ? picongpu_ion_3d!(f, case) : f
     d, D = ion_derived(case), case["dopant"]
     D["element"] == "N" && Int(D["charge"]) == 5 && Int.(D["levels"]) == [6, 7] || error("the PIConGPU deck loads N⁵⁺ and ionizes the K shell")
     p = picongpu_parameters(lab; plasma)
@@ -889,7 +892,57 @@ function picongpu_ion_param_files(case; kind, seed)
         } // namespace random
     } // namespace picongpu
     """
+    return d.N == 3 ? picongpu_ion_3d!(f, case) : f
+end
+
+"""
+    picongpu_ion_3d!(files, case) -> files
+
+The 2D deck of a 3D case's (x, y) plane made 3D: `SIMDIM` DIM3, the 3D time step (the 2D deck's
+Δt has no 1/Δz² term) and the cell depth Δz, supercells of 8 × 8 × 4, the quiet lattices with the
+case's third count (the plasma's `particles_per_cell[3]`, the dopant's `mc_particles_per_cell[3]`),
+and the dopant's rows bounded along z as along x, PIConGPU's z being the case's z. Every edit
+must find its line.
+"""
+function picongpu_ion_3d!(f, case)
+    d, D, P = ion_derived(case), case["dopant"], case["plasma"]
+    u = reference_units(Float64(case["lambda0_um"]) * 1e-6)
+    cf = PIConGPUDeck.cfloat
+    function edit!(name, pat, new)
+        haskey(f, name) || return
+        occursin(pat, f[name]) || error("$name: no line matching $pat to make the deck 3D")
+        f[name] = replace(f[name], pat => new)
+    end
+    edit!("dimension.param", "#define SIMDIM DIM2", "#define SIMDIM DIM3")
+    edit!("simulation.param", r"DELTA_T_SI = [^;]*;", "DELTA_T_SI = $(cf(d.dt * u.time));")
+    edit!("simulation.param", r"CELL_DEPTH_SI = [^;]*;", "CELL_DEPTH_SI = $(cf(d.dz * u.length));")
+    edit!("memory.param", "mCT::Int<$PIC_SUPERCELL, $PIC_SUPERCELL, 1>", "mCT::Int<$PIC_SUPERCELL, $PIC_SUPERCELL, 4>")
+    ppc, mc = Int.(P["particles_per_cell"]), Int.(D["mc_particles_per_cell"])
+    edit!("simulation.param", r"TYPICAL_PARTICLES_PER_CELL = \d+u;", "TYPICAL_PARTICLES_PER_CELL = $(prod(ppc))u;")
+    edit!("particle.param", "mCT::Int<$(ppc[2]), $(ppc[1]), 1>", "mCT::Int<$(ppc[2]), $(ppc[1]), $(ppc[3])>")
+    occursin("ProfileFunctor_$PIC_DOPANT", get(f, "density.param", "")) || return f      # no dopant: the rest is the dopant's
+    edit!("particle.param", "mCT::Int<$(mc[2]), $(mc[1]), 1>", "mCT::Int<$(mc[2]), $(mc[1]), $(mc[3])>")
+    edit!("density.param", r"\n( *)constexpr float_64 HALF_ROWS",
+          SubstitutionString("\n\\1constexpr float_64 AXIS_Z = $(cf(d.nz / 2));\n\\1constexpr float_64 HALF_ROWS"))
+    edit!("density.param", r"\n( *)if\(r <= -HALF_ROWS \|\| r >= HALF_ROWS\)",
+          SubstitutionString("\n\\1const float_64 rz = position_SI.z() / cellSize_SI.z() - AXIS_Z;\n\\1if(r <= -HALF_ROWS || r >= HALF_ROWS || rz <= -HALF_ROWS || rz >= HALF_ROWS)"))
     return f
+end
+
+"The command line of a 3D case: one device along z, the cells along z, open along z (`picongpu_arguments` writes the 2D one)."
+function picongpu_ion_arguments(case, p)
+    a = picongpu_arguments(p)
+    ion_derived(case).N == 2 && return a
+    lay = p.layout
+    for (old, new) in ("-d 1 $(lay.devices) " => "-d 1 $(lay.devices) 1 ", "-g $(p.cells[1]) $(p.cells[2]) " => "-g $(p.cells[1]) $(p.cells[2]) $(ion_derived(case).nz) ",
+                       "--periodic 0 0 " => "--periodic 0 0 0 ",
+                       # one file per output, so a rank killed at shutdown costs at most the last one (a 3D run hung in the
+                       # close of its single file once, which left all of that file's outputs unreadable)
+                       "--openPMD.infix NULL " => "--openPMD.infix _%06T ")
+        occursin(old, a) || error("PIConGPU's arguments: no \"$old\" to make 3D")
+        a = replace(a, old => new)
+    end
+    return a
 end
 
 "Write a PIConGPU directory of the ionization case into `dir` (params/, run.sh); the input files for the manifest."
@@ -901,9 +954,12 @@ function prepare_picongpu_ion(dir, case; kind, seed, tag)
     for (n, text) in files
         write(joinpath(dir, "params", n), text)
     end
-    write(joinpath(dir, "run.sh"), picongpu_run_script(p))
+    args = picongpu_ion_arguments(case, p)
+    sh = picongpu_run_script(p)
+    occursin(picongpu_arguments(p), sh) || error("run.sh does not hold PIConGPU's arguments")
+    write(joinpath(dir, "run.sh"), replace(sh, picongpu_arguments(p) => args))
     chmod(joinpath(dir, "run.sh"), 0o755)
-    write(joinpath(dir, "arguments.txt"), picongpu_arguments(p) * "\n")
+    write(joinpath(dir, "arguments.txt"), args * "\n")
     return ["run.sh", "arguments.txt", ("params/" .* sort(collect(keys(files))))...]
 end
 
@@ -920,8 +976,8 @@ end
 
 The particles of one species of a PIConGPU dump in the ionization case's terms: box x, the
 momenta (u_x, u_y, u_z) along the case's axes (PIConGPU's y, x, z), the weight in the units of A1
-(real particles over n_c (c/ω₀)² per unit depth, the depth being Δx) and, for the dopant, the
-bound electrons. `shift` turns `positionOffset` into the total cell (`picongpu_electrons`).
+(real particles over n_c (c/ω₀)² per unit depth, the depth being Δx, in 2D; over n_c (c/ω₀)³ in
+3D) and, for the dopant, the bound electrons. `shift` turns `positionOffset` into the total cell (`picongpu_electrons`).
 """
 function picongpu_ion_particles(sp, case, u, shift)
     d, lab = ion_derived(case), picongpu_ion_lab(case)
@@ -935,9 +991,25 @@ function picongpu_ion_particles(sp, case, u, shift)
     c = pic_record(off) .* (Float64(pic_attribute(off, "unitSI", cellsize)) / cellsize) .+
         pic_record(pos) .* (Float64(pic_attribute(pos, "unitSI", cellsize)) / cellsize)
     x = (c .+ (shift - lay.j0)) .* d.dx .+ d.xa
-    w = wr ./ (u.density * u.length^2 * cellsize)
+    w = d.N == 2 ? wr ./ (u.density * u.length^2 * cellsize) : wr ./ (u.density * u.length^3)
     be = haskey(sp, "boundElectrons") ? pic_record(sp["boundElectrons"]) : nothing
     return (; x, u = (comp("y"), comp("x"), comp("z")), w, bound = be)
+end
+
+"""
+    picongpu_dump_files(dir) -> Vector{Pair{String,Vector{Int}}}
+
+PIConGPU's openPMD files in `dir/openPMD`, each with its iterations in order: the one file
+`simData.h5` of the 2D deck (`--openPMD.infix NULL`), or the 3D deck's one file per output,
+`simData_<iteration>.h5` (`picongpu_ion_arguments`), ordered by iteration.
+"""
+function picongpu_dump_files(dir)
+    o = joinpath(dir, "openPMD")
+    single = joinpath(o, "simData.h5")
+    isfile(single) && return [single => sort(h5open(f -> [parse(Int, k) for k in keys(f["data"])], single, "r"))]
+    per = sort([(parse(Int, m.captures[1]), joinpath(o, n)) for n in readdir(o) for m in (match(r"^simData_(\d+)\.h5$", n),) if m !== nothing])
+    isempty(per) && error("no openPMD files in $o")
+    return [path => [it] for (it, path) in per]
 end
 
 "Read PIConGPU's dumps of the ionization case in `dir` into the summary format of `pm_ion_output`."
@@ -950,27 +1022,33 @@ function summarize_picongpu_ion(dir)
     u = reference_units(Float64(case["lambda0_um"]) * 1e-6)
     outs = Any[]
     offset_reading = nothing
-    h5open(joinpath(dir, "openPMD", "simData.h5"), "r") do f
+    files = picongpu_dump_files(dir)
+    last_it = maximum(it for (_, its) in files for it in its)
+    unreadable = Int[]
+    for (path, its) in files, it in its
+      try
+      h5open(path, "r") do f
         data = f["data"]
         mp = rstrip(haskey(HDF5.attributes(f), "meshesPath") ? read_attribute(f, "meshesPath") : "meshes/", '/')
         pp = rstrip(pic_attribute(f, "particlesPath", "particles/"), '/')
-        keys_sorted = sort(collect(keys(data)); by = k -> parse(Int, k))
-        for key in keys_sorted
-            it = parse(Int, key)
+        let key = string(it)
             E = data[key][mp]["E"]
             labels = collect(String, read_attribute(E, "axisLabels"))
-            labels == ["y", "x"] || error("iteration $it: axisLabels $labels, expected [y, x]")
+            labels == (d.N == 2 ? ["y", "x"] : ["z", "y", "x"]) || error("iteration $it: axisLabels $labels for a $(d.N)D case")
             off = Float64.(read_attribute(E, "gridGlobalOffset")) .* Float64(read_attribute(E, "gridUnitSI")) ./ u.length
-            jw = round(Int, off[1] / d.dx)
-            abs(jw * d.dx - off[1]) <= 1e-6 * d.dx || error("iteration $it: gridGlobalOffset $(off[1]) is not a whole number of cells")
-            component(c) = permutedims(Float64.(read(E[c])) .* (Float64(read_attribute(E[c], "unitSI")) / u.efield))
+            oy = off[findfirst(==("y"), labels)]
+            jw = round(Int, oy / d.dx)
+            abs(jw * d.dx - oy) <= 1e-6 * d.dx || error("iteration $it: gridGlobalOffset $oy is not a whole number of cells")
+            # HDF5.jl reads C order reversed, PIConGPU's (x, y[, z]); the case's (x, y[, z]) swaps the first two
+            component(c) = permutedims(Float64.(read(E[c])) .* (Float64(read_attribute(E[c], "unitSI")) / u.efield), d.N == 2 ? (2, 1) : (2, 1, 3))
             Ex, Ey = component("y"), component("x")
             m0 = jw - lay.j0 + d.na                            # the window's node j (from 0) ↔ box m = j + m0
-            ja = d.jaxis + 1
+            ja, ka = d.jaxis + 1, d.kaxis + 1
             spm = pm_window_shifts(case, it)
-            ey = (Ey[:, ja - 1] .+ Ey[:, ja]) ./ 2
+            ex = d.N == 2 ? Ex[:, ja] : Ex[:, ja, ka]
+            ey = d.N == 2 ? (Ey[:, ja - 1] .+ Ey[:, ja]) ./ 2 : (Ey[:, ja - 1, ka] .+ Ey[:, ja, ka]) ./ 2
             out = Dict{String,Any}("step" => it, "t" => it * d.dt, "window_offset" => jw, "m0" => m0, "pm_shifts" => spm,
-                                   "Ex_axis" => Ex[:, ja], "Ex_m0" => m0 + 1, "Ey_axis" => ey, "Ey_absmax" => maximum(abs, Ey))
+                                   "Ex_axis" => ex, "Ex_m0" => m0 + 1, "Ey_axis" => ey, "Ey_absmax" => maximum(abs, Ey))
             out["Ey_envelope"] = running_envelope(ey, round(Int, π / d.dx))
             if plasma
                 g = data[key][pp]
@@ -990,7 +1068,7 @@ function summarize_picongpu_ion(dir)
                     q = picongpu_ion_particles(g[sp], case, u, shift)
                     k = inwin(q.x)
                     out[name] = electron_measures(q.x[k] .- spm * d.dx, map(a -> a[k], q.u), q.w[k], case, 1.0)
-                    if sp == PIC_BORN && key == last(keys_sorted)
+                    if sp == PIC_BORN && it == last_it
                         out["born_particles"] = Dict("x" => q.x[k] .- spm * d.dx, "ux" => q.u[1][k], "w" => q.w[k])
                     end
                 end
@@ -1009,7 +1087,16 @@ function summarize_picongpu_ion(dir)
             end
             push!(outs, out)
         end
+      end
+      catch e
+        # an output whose HDF5 metadata PIConGPU left broken (the 3D vacuum deck's outputs before the window
+        # moves, on an RTX 5090) is left out and listed; the comparison pairs the codes' outputs by step
+        e isa HDF5.API.H5Error || rethrow()
+        push!(unreadable, it)
+        @warn "PIConGPU output $it in $path is unreadable, left out" exception = (e, catch_backtrace())
+      end
     end
+    isempty(outs) && error("no readable PIConGPU output in $dir")
     secs = try
         lines = readlines(joinpath(dir, "container.txt"))
         stamp(q) = DateTime(first(filter(l -> startswith(l, q), lines))[length(q) + 1:end][1:23], "yyyy-mm-ddTHH:MM:SS.sss")
@@ -1020,15 +1107,23 @@ function summarize_picongpu_ion(dir)
     seed = tryparse(Int, something(match(r"-s(\d+)$", basename(dir)), (captures = ["1"],)).captures[1])
     open(io -> JSON.print(io, Dict{String,Any}("code" => "PIConGPU", "kind" => kind, "rates" => "picongpu", "seed" => seed, "outputs" => outs,
                                                "seconds" => secs, "nsteps" => d.steps, "spectrum_edges" => ion_spectrum_edges(case),
-                                               "position_offset" => offset_reading, "window_cells" => lay.window)),
+                                               "position_offset" => offset_reading, "window_cells" => lay.window,
+                                               "unreadable_outputs" => unreadable)),
          joinpath(dir, "summary.json"), "w")
     return dir
 end
 
 # --- prepare --------------------------------------------------------------------------------------
 
-"The ParticleMesh kinds of a prepared run: the case, the other codes' rate conventions, PIConGPU's rate with its launched peak field, WP-064's pulse, no dopant."
-const PM_ION_KINDS = ("vacuum", "plasma", "plasma-rates-smilei", "plasma-rates-picongpu", "plasma-rates-picongpu-a0", "plasma-axis", "plasma-nodopant")
+"The ParticleMesh kinds of a prepared run: the case, the other codes' rate conventions, each with that code's launched peak field, WP-064's pulse, no dopant."
+const PM_ION_KINDS = ("vacuum", "plasma", "plasma-rates-smilei", "plasma-rates-picongpu", "plasma-rates-smilei-a0", "plasma-rates-picongpu-a0", "plasma-axis",
+                      "plasma-nodopant")
+
+"Whether the case can run `kind`: a run at another code's peak field needs the ratio the vacuum runs measured (the case's [comparison])."
+function ion_kind_available(case, kind)
+    m = match(r"^plasma-rates-(smilei|picongpu)-a0$", kind)
+    return m === nothing || haskey(get(case, "comparison", Dict()), "$(m.captures[1])_field_ratio")
+end
 
 """
     prepare_ion(case_path, tag; codes = ("pm", "smilei", "picongpu"), seeds = 1:4) -> root
@@ -1062,7 +1157,7 @@ function prepare_ion(case_path, tag; codes = ("pm", "smilei", "picongpu"), seeds
                                                 "case" => case["name"], "kind" => kind, "seed" => seed, "generator" => "scripts/lwfa/ionization.jl"))
         push!(dirs, dir)
     end
-    "pm" in codes && foreach(k -> make("pm-$k", k, "pm"), PM_ION_KINDS)
+    "pm" in codes && foreach(k -> make("pm-$k", k, "pm"), [k for k in PM_ION_KINDS if ion_kind_available(case, k)])
     for code in ("smilei", "picongpu")
         code in codes || continue
         make("$code-vacuum", "vacuum", code)
@@ -1145,19 +1240,23 @@ function ion_lineout_distances(S, case)
         codes = [c for c in ("pm", "smilei", "picongpu") if haskey(S, "$c-$kind")]
         for (i, a) in enumerate(codes), b in codes[(i + 1):end]
             oa, ob = S["$a-$kind"][1]["outputs"], S["$b-$kind"][1]["outputs"]
-            n = min(length(oa), length(ob))
+            # outputs paired by step: a code may lack some (`summarize_picongpu_ion`'s unreadable outputs)
+            byb = Dict(Int(o["step"]) => o for o in ob)
+            pairs = [(x, byb[Int(x["step"])]) for x in oa if haskey(byb, Int(x["step"]))]
+            isempty(pairs) && error("$a-$kind and $b-$kind: no output at a common step")
             for (field, key, m0) in (("Ey", "Ey_axis", "m0"), ("Ex", "Ex_axis", "Ex_m0"))
                 (medium == "vacuum" && field == "Ex") && continue
                 t, v = Float64[], Float64[]
-                for k in 1:n
-                    Int(oa[k]["step"]) == Int(ob[k]["step"]) || error("$a-$kind and $b-$kind: outputs at different steps")
-                    tk = Float64(oa[k]["t"])
+                for (xa, xb) in pairs
+                    tk = Float64(xa["t"])
                     tk < (field == "Ex" ? t_wake : 50.0) && continue
-                    s = pm_window_shifts(case, Int(oa[k]["step"]))
+                    s = pm_window_shifts(case, Int(xa["step"]))
+                    r = lineout_distance(xa[key], Int(xa[m0]), xb[key], Int(xb[m0]), (s + cut):(s + d.nx - 1))
+                    isnan(r) && continue                      # no shared node, or no field on either
                     push!(t, tk)
-                    push!(v, lineout_distance(oa[k][key], Int(oa[k][m0]), ob[k][key], Int(ob[k][m0]), (s + cut):(s + d.nx - 1)))
+                    push!(v, r)
                 end
-                res["$medium $field $a / $b"] = Dict("t" => t, "relrms" => v, "max" => maximum(v))
+                res["$medium $field $a / $b"] = Dict("t" => t, "relrms" => v, "max" => isempty(v) ? nothing : maximum(v))
             end
         end
     end
@@ -1166,6 +1265,7 @@ function ion_lineout_distances(S, case)
 end
 
 const ION_TABLE_ROWS = (("pm-plasma", "ParticleMesh"), ("pm-plasma-rates-smilei", "ParticleMesh, Smilei's rate"),
+                        ("pm-plasma-rates-smilei-a0", "ParticleMesh, Smilei's rate and peak field"),
                         ("pm-plasma-rates-picongpu", "ParticleMesh, PIConGPU's rate"),
                         ("pm-plasma-rates-picongpu-a0", "ParticleMesh, PIConGPU's rate and peak field"), ("pm-plasma-axis", "ParticleMesh, WP-064's pulse"),
                         ("smilei-plasma", "Smilei"), ("picongpu-plasma", "PIConGPU"))
@@ -1207,7 +1307,7 @@ function ion_table(c)
         println(io, "| largest relative rms distance on the axis (%) | ", join([join(map(x -> names[x], split(p, " / ")), "–") for p in pairs], " | "), " |")
         println(io, "|---|", repeat("---|", length(pairs)))
         for (label, key) in (("vacuum, E_y", "vacuum Ey"), ("plasma without the dopant, E_y", "plasma Ey"), ("plasma without the dopant, wake E_x from t = $(round(Int, L["t_wake"]))", "plasma Ex"))
-            println(io, "| ", label, " | ", join([haskey(L, "$key $p") ? fmt(100 * L["$key $p"]["max"]) : "–" for p in pairs], " | "), " |")
+            println(io, "| ", label, " | ", join([haskey(L, "$key $p") && L["$key $p"]["max"] !== nothing ? fmt(100 * L["$key $p"]["max"]) : "–" for p in pairs], " | "), " |")
         end
     end
     return String(take!(io))
@@ -1252,8 +1352,9 @@ function compare_ion(runs, out)
     mc = [k for k in keys(final) if !startswith(k, "pm-") && haskey(final[k], "born")]
     for k in keys(final), ref in mc
         startswith(k, "pm-") && haskey(final[k], "born") || continue
-        ratios["$k / $ref"] = Dict(m => Dict("ratio" => final[k]["born"][m]["mean"] / final[ref]["born"][m]["mean"],
-                                             "ref_rel_std" => final[ref]["born"][m]["std"] / final[ref]["born"][m]["mean"],
+        q(a, b) = b == 0 ? nothing : a / b               # nothing when the reference has no born electrons
+        ratios["$k / $ref"] = Dict(m => Dict("ratio" => q(final[k]["born"][m]["mean"], final[ref]["born"][m]["mean"]),
+                                             "ref_rel_std" => q(final[ref]["born"][m]["std"], final[ref]["born"][m]["mean"]),
                                              "ref_seeds" => final[ref]["born"][m]["n"])
                                    for m in ("weight", "J_born", "J_trapped"))
     end
@@ -1264,9 +1365,9 @@ function compare_ion(runs, out)
                               "final" => final, "ratios" => ratios, "laser" => laser, "lineouts" => ion_lineout_distances(S, case),
                               "seconds" => Dict(basename(x) => get(JSON.parsefile(joinpath(x, "summary.json")), "seconds", nothing) for v in values(G) for x in v))
     open(io -> JSON.print(io, result, 2), joinpath(out, "comparison.json"), "w")
-    plot_ion_objectives(out, S)
-    plot_ion_charge_states(out, S)
-    plot_ion_spectra(out, S)
+    plot_ion_objectives(out, S; N = d.N)
+    plot_ion_charge_states(out, S; N = d.N)
+    plot_ion_spectra(out, S; N = d.N)
     plot_ion_phase_space(out, S)
     plot_ion_wake(out, S, d)
     write_manifest(out; root = REPO,
@@ -1276,21 +1377,26 @@ function compare_ion(runs, out)
 end
 
 const ION_COLORS = Dict("pm-plasma" => "#1f77b4", "pm-plasma-rates-smilei" => "#9467bd", "pm-plasma-rates-picongpu" => "#17becf",
-                        "pm-plasma-rates-picongpu-a0" => "#bcbd22",
+                        "pm-plasma-rates-picongpu-a0" => "#bcbd22", "pm-plasma-rates-smilei-a0" => "#e377c2",
                         "pm-plasma-axis" => "#7f7f7f", "smilei-plasma" => "#d62728", "picongpu-plasma" => "#2ca02c")
 const ION_LABELS = Dict("pm-plasma" => "ParticleMesh", "pm-plasma-rates-smilei" => "ParticleMesh, Smilei's rate",
                         "pm-plasma-rates-picongpu" => "ParticleMesh, PIConGPU's rate", "pm-plasma-axis" => "ParticleMesh, WP-064's pulse",
                         "pm-plasma-rates-picongpu-a0" => "ParticleMesh, PIConGPU's rate and peak field",
+                        "pm-plasma-rates-smilei-a0" => "ParticleMesh, Smilei's rate and peak field",
                         "smilei-plasma" => "Smilei (seeds)", "picongpu-plasma" => "PIConGPU (seeds)")
-ion_dopant_groups(S) = [k for k in ("pm-plasma", "pm-plasma-rates-smilei", "pm-plasma-rates-picongpu", "pm-plasma-rates-picongpu-a0", "pm-plasma-axis",
+ion_dopant_groups(S) = [k for k in ("pm-plasma", "pm-plasma-rates-smilei", "pm-plasma-rates-smilei-a0", "pm-plasma-rates-picongpu",
+                                    "pm-plasma-rates-picongpu-a0", "pm-plasma-axis",
                                     "smilei-plasma", "picongpu-plasma") if haskey(S, k)]
 
+"The measure a weight is counted in: an area in 2D (per unit depth), a volume in 3D."
+ion_measure_unit(N) = N == 2 ? "(c/ω₀)²" : "(c/ω₀)³"
+
 # The born electrons' weight and the two objectives against time; a Monte Carlo code's band spans its seeds.
-function plot_ion_objectives(out, S)
+function plot_ion_objectives(out, S; N = 2)
     fig = Figure(size = (1500, 420))
     side = Dict{String,Any}()
-    for (col, (m, lab)) in enumerate((("weight", "born electrons (n_c (c/ω₀)²)"), ("J_born", "J_born, WP-064 (mₑc² n_c (c/ω₀)²)"),
-                                      ("J_trapped", "J_trapped, WP-065 (mₑc² n_c (c/ω₀)²)")))
+    for (col, (m, lab)) in enumerate((("weight", "born electrons (n_c $(ion_measure_unit(N)))"), ("J_born", "J_born, WP-064 (mₑc² n_c $(ion_measure_unit(N)))"),
+                                      ("J_trapped", "J_trapped, WP-065 (mₑc² n_c $(ion_measure_unit(N)))")))
         ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = lab)
         for k in ion_dopant_groups(S)
             t, mean, lo, hi = ion_series(S[k], "born", m)
@@ -1303,11 +1409,11 @@ function plot_ion_objectives(out, S)
     save_plot(out, "born_objectives", fig, side)
 end
 
-function plot_ion_charge_states(out, S)
+function plot_ion_charge_states(out, S; N = 2)
     fig = Figure(size = (1000, 420))
     side = Dict{String,Any}()
     for (col, (i, lab)) in enumerate(((2, "N⁶⁺ in the window"), (3, "N⁷⁺ in the window")))
-        ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = "$lab (n_c (c/ω₀)²)")
+        ax = Axis(fig[1, col]; xlabel = "t (1/ω₀)", ylabel = "$lab (n_c $(ion_measure_unit(N)))")
         for k in ion_dopant_groups(S)
             outs = [s["outputs"] for s in S[k]]
             t = Float64[o["t"] for o in outs[1]]
@@ -1320,12 +1426,12 @@ function plot_ion_charge_states(out, S)
     save_plot(out, "charge_states", fig, side)
 end
 
-function plot_ion_spectra(out, S)
+function plot_ion_spectra(out, S; N = 2)
     k0 = first(ion_dopant_groups(S))
     edges = Float64.(S[k0][1]["spectrum_edges"])
     mids = (edges[1:(end - 1)] .+ edges[2:end]) ./ 2
     fig = Figure(size = (900, 420))
-    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "born electrons per bin (n_c (c/ω₀)²)",
+    ax = Axis(fig[1, 1]; xlabel = "E_kin (mₑc²)", ylabel = "born electrons per bin (n_c $(ion_measure_unit(N)))",
               title = "born electrons ahead of the fade at the read-out (bins of $(round(edges[2] - edges[1]; digits = 3)) mₑc²)")
     side = Dict{String,Any}("ekin" => mids)
     for k in ion_dopant_groups(S)
@@ -1339,7 +1445,9 @@ end
 
 # The born electrons of the first run of each group at the read-out: window x against u_x.
 function plot_ion_phase_space(out, S)
-    ks = [k for k in ion_dopant_groups(S) if haskey(last(S[k][1]["outputs"]), "born_particles")]
+    ks = [k for k in ion_dopant_groups(S) if haskey(last(S[k][1]["outputs"]), "born_particles") &&
+                                             any(>(0), Float64.(last(S[k][1]["outputs"])["born_particles"]["w"]))]
+    isempty(ks) && return nothing                           # no run kept a born electron
     fig = Figure(size = (450 * length(ks), 400))
     side = Dict{String,Any}()
     for (col, k) in enumerate(ks)
