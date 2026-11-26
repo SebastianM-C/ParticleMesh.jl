@@ -1,0 +1,142 @@
+branch = "runs/ion3d-5090"
+commit = "03f89bf247684555d630ae6e29cb69a29ed9c2aa"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/arguments.txt"
+bytes = 300
+sha256 = "61ec9043d6fff2f1e6b3b0498f5c09056c87b128adac521d71d69f89ac51a038"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/build.log"
+bytes = 17084
+sha256 = "b0932df618d3973883ec89948d7a989c8a4453b952fe3f9b7a73a6a111a5ced9"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/build.out"
+bytes = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/build.sh"
+bytes = 963
+sha256 = "60da286e74218eda483770e261ab3785ba002184418e13a29eae8c2dc9ae77d7"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/container.txt"
+bytes = 373
+sha256 = "3f4771522889821160c373b10d70249d98c1192fc31a292d1bbb7493f5e4fac7"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/fields_energy.dat"
+bytes = 1294
+sha256 = "7f8de34b1c0caa9c97579278a6508a4fcf526248efc05edd47e1b78259554451"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/gpu-run.out"
+bytes = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/gpu-run.sh"
+bytes = 918
+sha256 = "1f4aa1ee10fbbe997ceea05a8b9871c06a0c7ec3a0bb02ab66169238e2220023"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/kind.txt"
+bytes = 7
+sha256 = "566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/manifest.toml"
+bytes = 1848
+sha256 = "22121c30cd66d19ca1f7fbde51a30f1a07273335d84fbdaccfe1fa080ae679a0"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/density.param"
+bytes = 1332
+sha256 = "f8f56ef06a5066483216e81bc0e6e268135241a8ee1b36709d93c43e3d585b1a"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/dimension.param"
+bytes = 279
+sha256 = "fd3da3e70f0cdf2434a980af5b38b40ba4b7edf22800b550dd6e65a77c2c29fc"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/fieldSolver.param"
+bytes = 368
+sha256 = "3b399f6c8a4899067a1bce84ae66c05a2520ef31b1813212d6ba894dca6fddfd"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/fileOutput.param"
+bytes = 1095
+sha256 = "fd4395a03e47df3ab232b7aad91930445ed881dce8fc362ad65bf767db3ffe07"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/incidentField.param"
+bytes = 3179
+sha256 = "a284138f3d9a4efab415060d1289cc51ff62b274fbe62213d150b2790bfde26b"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/memory.param"
+bytes = 1429
+sha256 = "13f024b8e7a6c6b244844db4a00b0a3df595280ec7c5862c86b75bd01df9bbe4"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/particle.param"
+bytes = 948
+sha256 = "cdf20508dbf56655cfe83e34036c37db9bc397ca287cb65a2eaac6798027fbf1"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/precision.param"
+bytes = 513
+sha256 = "fad606fbadd3b85076f92ac84a0feea1f7b27568ae8dc1eace3c5cfd2b84fe20"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/simulation.param"
+bytes = 758
+sha256 = "467d24a27fdd54ec31b2c382348b1f748e1e6ab8415bddf268e6248f4dd45c16"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/species.param"
+bytes = 830
+sha256 = "1f6ff0c36476867223153fdfe3fd2f6870bfdcc3c1a90a9740a128dea8f7d6f1"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/speciesDefinition.param"
+bytes = 1210
+sha256 = "023391bf2fffc6c2d7d5cc4583b06defd4e9999c4c8d4b1d1036c5a8f94769a9"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/params/speciesInitialization.param"
+bytes = 420
+sha256 = "30b9390f92ecbe1ec4c3e219d66bf5d7045aa97de3ca663016155966f79ebe36"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/picongpu.log"
+bytes = 3409
+sha256 = "52a2276eb60b6ca0aeae1ac91e8d478be18478cd93be26314bde33ab65c8395d"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/run.sh"
+bytes = 1491
+sha256 = "e4ed57740ee327e7cf707b5f340dda7c75ee6054b461de348dbd987f38e3f881"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/summarize.log"
+bytes = 26371
+sha256 = "8ead15088f01db862f85064e7043ab7766f1cf366ad8fb43647756b16d31013a"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/summary.json"
+bytes = 289760
+sha256 = "2e035dfc64a39dc6597ed0207fc1dbe967fbd7fa2b27f43d6437fa6cfcf3dbd7"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-vacuum/versions.toml"
+bytes = 253
+sha256 = "5b91a1a9b7fe891da151c71de61c8b920be124c226331386b8afa732e1f81e66"

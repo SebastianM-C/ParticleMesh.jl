@@ -235,3 +235,9 @@ end
         rm(root; recursive = true)
     end
 end
+
+@testset "T-1128 the 3D report's tables are what ion_table prints from the comparison committed next to it [A5, A7, WP-082]" begin
+    reports = joinpath(REPO, "reports")
+    c = JSON.parsefile(joinpath(reports, "wp-082-ionization-three-codes-3d", "compare", "comparison.json"))
+    @test occursin(ion_table(c), read(joinpath(reports, "wp-082-ionization-three-codes-3d.md"), String))
+end

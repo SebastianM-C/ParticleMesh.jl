@@ -1,0 +1,27 @@
+branch = "runs/ion3d-5090-a0"
+commit = "509cf7e1e42a9c79a6b19eb679bc533656cb9471"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-picongpu-a0/case.toml"
+bytes = 4617
+sha256 = "74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-picongpu-a0/kind.txt"
+bytes = 25
+sha256 = "d70188183c930914c81570cba7aae4a4829861de55915a900a3f8be0f0739a57"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-picongpu-a0/manifest.toml"
+bytes = 646
+sha256 = "d0dd461f3c84fbc9de20e6e88304c813704990d94bb9f71a4819866774f0db81"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-picongpu-a0/run.log"
+bytes = 689
+sha256 = "9cceea5722cd42e7bd49fd9c67fffb2f5ee434fe8cb2130d5a0e0c1f7e4d071c"
+
+[[files]]
+path = "scripts/runs/ion-3d-a0/pm-plasma-rates-picongpu-a0/summary.json"
+bytes = 8643970
+sha256 = "40eef32db342a121211866cdb7d77b18ed9795604682d6f113700b2aa24a8951"

@@ -1,0 +1,72 @@
+branch = "runs/ion3d-smilei-vacuum"
+commit = "f5f5c1b4fd8fb6a3e21a02875fb51b7aa7ec25e6"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/Fields0.h5"
+bytes = 1558976
+sha256 = "b5b652310615b416beaa634be2f8ad05abfffc3c8cc89b1aa44fe5673847a6e2"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/container.txt"
+bytes = 186
+sha256 = "8b6fd8082221774548fb5306a596f3759fb2d9b5450743a5de6ed126b78ac83a"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/info.shelf.db"
+bytes = 16384
+sha256 = "5adc78e89343afbe2ea8ff61ed794236beb1b7c909becff7a94dd44cdc595b03"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/kind.txt"
+bytes = 7
+sha256 = "566d9bd35e2f79b76b157dee01ededebe69b468227e71ded4ce4c9f062216987"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/manifest.toml"
+bytes = 605
+sha256 = "1c74555d6026dc0b70770f429a8a5fb1720fe6a856e0122dd15d155c8359c287"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/namelist.py"
+bytes = 1371
+sha256 = "dc84e0932277d2a8d5b684b765c62a35823627d09dd54dd3a4c5fb9b1e3b8149"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/patch_load.txt"
+bytes = 36
+sha256 = "573b5198ff3c50ff331814f73359b3b0fd007d8058a9247697b17adcecd7fd47"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/profil.txt"
+bytes = 4164
+sha256 = "b4889ae1de40d1298566dd8359130336877dee76d6f0828e126c410ec83c6c52"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/run.sh"
+bytes = 751
+sha256 = "1ed3947ee3fb15cd0650516458ac714be62a03da800b16d451534ff23c962d7f"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/scalars.txt"
+bytes = 23825
+sha256 = "268f4814c20d1f907a5e000177b1fc85d89c1c0768d2d9edbd1f004adc95ec5d"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/smilei.log"
+bytes = 7715
+sha256 = "7e50622d90ba85c5262999550ae00781e81cb88afaf264164ae1783ca566e7bf"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/smilei.py"
+bytes = 66488
+sha256 = "13c890ad5ca138edf78c3bdec3fe567fa111b4d9d81c5771600d4fbdc73ba0d1"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-vacuum/summary.json"
+bytes = 332156
+sha256 = "87a68d3dac244d0adfcd35dbff10361d0f77837a79a278020f36cfa0ceeececa"

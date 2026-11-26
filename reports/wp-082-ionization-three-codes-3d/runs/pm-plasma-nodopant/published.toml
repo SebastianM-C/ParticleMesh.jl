@@ -1,0 +1,27 @@
+branch = "runs/ion3d-5090"
+commit = "03f89bf247684555d630ae6e29cb69a29ed9c2aa"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-nodopant/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-nodopant/kind.txt"
+bytes = 16
+sha256 = "1309bc02f2620507ccc3e923b5ee12a534d9ad64933ecfc74ffd257c5dcb510b"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-nodopant/manifest.toml"
+bytes = 625
+sha256 = "7ce0c4c54724d244c833355b68b50033642613ea6ce1e5d520853625daca37b8"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-nodopant/run.log"
+bytes = 580
+sha256 = "47c36dd72e52afee433e701ed7e4100a9af2117bef6108cc6a6d66eae6d17010"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-nodopant/summary.json"
+bytes = 198368
+sha256 = "0af0f60a5d387f325b9b0bfa03ad6210131027c47685c0ed269ff182385f3101"

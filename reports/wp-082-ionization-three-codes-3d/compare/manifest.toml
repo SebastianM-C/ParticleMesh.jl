@@ -1,0 +1,29 @@
+case = "ionization-3d"
+commit = "6946e79296b3c2ca5d7a85c6290fa5e8e7da6158"
+dirty = false
+runs = "scripts/runs/ion-3d-all"
+updated = "2026-11-26T13:38:52.628Z"
+
+[inputs]
+
+[summaries]
+picongpu-plasma-nodopant = "sha256:0cceda0084ecd173022931bba78d375bf64eab9666a2b20a9b78043e396e66f0"
+picongpu-plasma-s1 = "sha256:1ebe178e94b88a4a8c65a288fabc3010ec61fa81a7732da985f28dfb791ab4f5"
+picongpu-plasma-s2 = "sha256:48cdd38d32b9d1056c2ae0c4475aff85050a26d545cdb2d9a83fe88d53428804"
+picongpu-plasma-s3 = "sha256:f2ae45f191d87113fe14f8fba1ba79eeb2ba08faaa54ce06503da5571233111e"
+picongpu-plasma-s4 = "sha256:1c0f5db805d6b8a734656afadb7bf49a01098aaa6e6766341d8aeddae5c38766"
+picongpu-vacuum = "sha256:2e035dfc64a39dc6597ed0207fc1dbe967fbd7fa2b27f43d6437fa6cfcf3dbd7"
+pm-plasma = "sha256:8ed1c4b80ff6265a31fccb78fb40aa4259f751d1a307cc55a76ec8615f7b73b0"
+pm-plasma-axis = "sha256:b390b3d0a6cbc1615f3afe4bcdaf651408b5dc82dfc9f96e52f4b22dab8b1d17"
+pm-plasma-nodopant = "sha256:0af0f60a5d387f325b9b0bfa03ad6210131027c47685c0ed269ff182385f3101"
+pm-plasma-rates-picongpu = "sha256:90c02b6afb54bdf686294df098c498dedd435ff27267494cbef406fa8aefa823"
+pm-plasma-rates-picongpu-a0 = "sha256:40eef32db342a121211866cdb7d77b18ed9795604682d6f113700b2aa24a8951"
+pm-plasma-rates-smilei = "sha256:02a24912a0c34eaf4f471247a5b3cca0ac2642620c7c9e9e2fa0838d10969d96"
+pm-plasma-rates-smilei-a0 = "sha256:2eb10312a99ee6b549f307cdf2efa42e8df585f1375c6a2377f90b9157b5e1d7"
+pm-vacuum = "sha256:8d7489480c5a54d5c54a5fb85484f990a791e4c89869801380d54aa785bd1361"
+smilei-plasma-nodopant = "sha256:9cd6e61b4d1f725828a10c5e30690d15736af284f13e90f4736afdbda41f9470"
+smilei-plasma-s1 = "sha256:d3df059be3619d2958bacf550ab4dd6458deaf8e2dbad89f73d32bddadc3c3a6"
+smilei-plasma-s2 = "sha256:2a6e9e073af4e1be4d9f203784bbf5b19dac9b49e1cd4466bad8e452d0f44713"
+smilei-plasma-s3 = "sha256:3f820a40fa8b76cc0a0ec9993e8da7b5f76735f2d4676704431d5eb824eacc00"
+smilei-plasma-s4 = "sha256:1efc7053cd08508cf5c5682e195501d112099e09ae54f2d240453f5ccc5485ea"
+smilei-vacuum = "sha256:87a68d3dac244d0adfcd35dbff10361d0f77837a79a278020f36cfa0ceeececa"

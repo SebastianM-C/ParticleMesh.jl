@@ -1,0 +1,152 @@
+branch = "runs/ion3d-5090"
+commit = "03f89bf247684555d630ae6e29cb69a29ed9c2aa"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/arguments.txt"
+bytes = 490
+sha256 = "8286743fbddeb0e9be9f40ce88ef1edd98d54b35183c4ea7bf2401e32afff09b"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/build.log"
+bytes = 17084
+sha256 = "6f87b07eb8d234a9f03663b45f15487cf4a6eeeb8c524e4ffe18fff96860f16e"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/build.out"
+bytes = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/build.sh"
+bytes = 1584
+sha256 = "9798ab765a39659e97e13426bd37a3c9f0b33895d1062f35d5063c08735c9d27"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/container.txt"
+bytes = 373
+sha256 = "2defcf24dbe943c5e844ec5661c654c67dc585e5f8129c6a462b6c7a1ca8e0b2"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/e_energyHistogram_all.dat"
+bytes = 59670
+sha256 = "2d977f4b045e160d1ab73783123263bbec8a7bf38b143ea21932d120af345ed2"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/fields_energy.dat"
+bytes = 1293
+sha256 = "62d5fcd24c5a06aa4e9ddc962c07468e32d661d14ce8c9122937d3fc91400479"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/gpu-run.out"
+bytes = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/gpu-run.sh"
+bytes = 1108
+sha256 = "493c9f200a737a34b3e2f8fb61b0c9b9a435e0d646555c370afaa755c87428e8"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/kind.txt"
+bytes = 16
+sha256 = "1309bc02f2620507ccc3e923b5ee12a534d9ad64933ecfc74ffd257c5dcb510b"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/manifest.toml"
+bytes = 1964
+sha256 = "1dafe132e3350ef2d54cb3acf60b40f8b0e2fce5dd4198e90ccd213eac95e8d8"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/density.param"
+bytes = 2857
+sha256 = "fdcfdb61c2beca67095c66db8c77b074431c71e7a7438be03f72938b7ce672db"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/dimension.param"
+bytes = 279
+sha256 = "19f41d4faf7ad52132ddb7c7b5f50ddd627b6776674462051f731f102af96c09"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/fieldSolver.param"
+bytes = 368
+sha256 = "da9982e8765e78d57496209e07c01efc4b46e98850bf3f081dc02987cc528d1c"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/fileOutput.param"
+bytes = 1100
+sha256 = "a8279c05ce4c99b221893dcb27abd0a42c5c6c9a3bde4d913df357361c45e58f"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/incidentField.param"
+bytes = 3179
+sha256 = "96b30994396c3a00c8d7685035606f34e9ec169d9451e2dc6e6f703890b353e4"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/memory.param"
+bytes = 1429
+sha256 = "229071497566bce751e19205cb75ce526a39e1ecfc1c23247d917ccca9a54ae0"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/particle.param"
+bytes = 1191
+sha256 = "63906352cbbdf7ce44ea290578a40e951adb36d3aa398354a56ee8a4483c7f8b"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/precision.param"
+bytes = 513
+sha256 = "3041371207f2efa05a85e243f73e9099a338206eee5e28028452edaed3c32852"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/random.param"
+bytes = 509
+sha256 = "1f0e12a2c85cc1bcd98b7db57726c0d000c5381de00fb547953f7043b1a26eb6"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/simulation.param"
+bytes = 758
+sha256 = "b04d88a5ed3facd86c1156bfe64b43a216b3115968b045c08f5f098c62b9ef27"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/species.param"
+bytes = 830
+sha256 = "3bd5f176cc5322930cf3f261a8caca5e9b2cd9e580f233267776eb4e6d1283e1"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/speciesDefinition.param"
+bytes = 2169
+sha256 = "5022f659666ef9ff4c75804a5427d972ee880cb4178b0e719fd0a2d9eaf87602"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/params/speciesInitialization.param"
+bytes = 503
+sha256 = "d654753e682fd6c4b33bff8e12ee395c4cdf9752ce89ccde44119f62e9c58c0b"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/picongpu.log"
+bytes = 3717
+sha256 = "45a11bd9a733a79cdf3bc33807fe9a010c8db44a694f4de806fc06429abc24e6"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/run.sh"
+bytes = 2302
+sha256 = "346aca74ff8e3b502afbb0a29387e0d119d85d679c62ceef45e4b11d70880e00"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/summarize.log"
+bytes = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/summary.json"
+bytes = 399688
+sha256 = "0cceda0084ecd173022931bba78d375bf64eab9666a2b20a9b78043e396e66f0"
+
+[[files]]
+path = "scripts/runs/ion-3d-pic/picongpu-plasma-nodopant/versions.toml"
+bytes = 253
+sha256 = "5b91a1a9b7fe891da151c71de61c8b920be124c226331386b8afa732e1f81e66"

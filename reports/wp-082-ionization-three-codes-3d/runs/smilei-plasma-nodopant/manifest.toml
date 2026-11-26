@@ -1,0 +1,15 @@
+case = "ionization-3d"
+code = "Smilei v5.1"
+commit = "361a0a3bec322c7ddd689735a8fbf2564f64d6a7"
+dirty = false
+generator = "scripts/lwfa/ionization.jl"
+kind = "plasma-nodopant"
+run_id = "ion-3d/smilei-plasma-nodopant"
+seed = 1
+updated = "2026-11-21T07:45:31.444Z"
+
+[inputs]
+"case.toml" = "sha256:7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+"kind.txt" = "sha256:1309bc02f2620507ccc3e923b5ee12a534d9ad64933ecfc74ffd257c5dcb510b"
+"namelist.py" = "sha256:d02b69ed3447e51ed019890b40bb886f7707245f13ca351c559d8792321d6de5"
+"run.sh" = "sha256:1ed3947ee3fb15cd0650516458ac714be62a03da800b16d451534ff23c962d7f"

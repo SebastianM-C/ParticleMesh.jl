@@ -1,0 +1,27 @@
+branch = "runs/ion3d-5090"
+commit = "03f89bf247684555d630ae6e29cb69a29ed9c2aa"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-axis/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-axis/kind.txt"
+bytes = 12
+sha256 = "20912b861ad4d86c4d895d8c0c00c5e41ebdaef881d895bc61b0f49dbb480ca2"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-axis/manifest.toml"
+bytes = 617
+sha256 = "d3caac99edf36d84aeb81bd41d0e5019e35e0e234aaf7e9887a52fd47464319d"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-axis/run.log"
+bytes = 533
+sha256 = "9ea98c75b5e171a1a8c6b6c2197ef3835d2681fba32b4626dae064ba4fe033ae"
+
+[[files]]
+path = "scripts/runs/ion-3d/pm-plasma-axis/summary.json"
+bytes = 5652537
+sha256 = "b390b3d0a6cbc1615f3afe4bcdaf651408b5dc82dfc9f96e52f4b22dab8b1d17"

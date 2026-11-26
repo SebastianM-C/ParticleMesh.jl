@@ -1,0 +1,87 @@
+branch = "runs/ion3d-smilei-plasma-nodopant"
+commit = "e254a57dc3c0be5f9004abe4754772654b9771e9"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/Fields0.h5"
+bytes = 1558976
+sha256 = "9f4c9c669cbc2f9b5a986487896ce08c09f12a633146bfcce61d804917649c24"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/ParticleBinning0.h5"
+bytes = 14916816
+sha256 = "f53328e1d04c9020ab264942e3b6920f984e0eb271e6db22ae13c3a7802994bc"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/ParticleBinning1.h5"
+bytes = 14916824
+sha256 = "457808a49f3a0aa350af2ea3b0f99cea647fdaa1493773777338bfcdf6e3bf34"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/ParticleBinning2.h5"
+bytes = 28176
+sha256 = "8f04307b947988bd94453c6f15e4fd4beb24e078aa48a6f8fe8a6444afb75850"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/case.toml"
+bytes = 4181
+sha256 = "7b4291b8742e45aefb3cf36c428d4be5941c10a0c07a27f10bff3fb85ce349dc"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/container.txt"
+bytes = 186
+sha256 = "088dc34aa19d9b37e107c434fa03e5e95e7794dbb5b1c034f0f90c0f19de0a45"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/info.shelf.db"
+bytes = 20480
+sha256 = "da4af786678488f261413680cce36df26596bea2d84cbb99c2bbd74472ea4299"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/kind.txt"
+bytes = 16
+sha256 = "1309bc02f2620507ccc3e923b5ee12a534d9ad64933ecfc74ffd257c5dcb510b"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/manifest.toml"
+bytes = 623
+sha256 = "d4fbff1b15da46ed81743cf4c92049ede9dbc0c9d93e6bffa02bde5cb61d1531"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/namelist.py"
+bytes = 3119
+sha256 = "d02b69ed3447e51ed019890b40bb886f7707245f13ca351c559d8792321d6de5"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/patch_load.txt"
+bytes = 36
+sha256 = "573b5198ff3c50ff331814f73359b3b0fd007d8058a9247697b17adcecd7fd47"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/profil.txt"
+bytes = 4872
+sha256 = "5829eaf4562ba405bcec000c17157303a345e24e864b943aa0b5cdcb02172e91"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/run.sh"
+bytes = 751
+sha256 = "1ed3947ee3fb15cd0650516458ac714be62a03da800b16d451534ff23c962d7f"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/scalars.txt"
+bytes = 25460
+sha256 = "61ac7484b6c3e7ac1a60dd6fb9c19b94f7584f71dca0e00940a138226a789ca3"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/smilei.log"
+bytes = 8987
+sha256 = "c89cb224966799f7b21f343c930011c3ce69e79968ab9fe476268ba3e3c6fe2a"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/smilei.py"
+bytes = 68236
+sha256 = "98a733d685c5e89867bb77e425ab21a3e44eeed43ffe5cebf012e6beb8df19e3"
+
+[[files]]
+path = "scripts/runs/ion-3d/smilei-plasma-nodopant/summary.json"
+bytes = 337393
+sha256 = "9cd6e61b4d1f725828a10c5e30690d15736af284f13e90f4736afdbda41f9470"
