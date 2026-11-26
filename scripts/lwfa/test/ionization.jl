@@ -197,6 +197,10 @@ end
     args = picongpu_ion_arguments(case, p)
     @test occursin("-d 1 2 1 ", args) && occursin("-g 128 1104 128 ", args) && occursin("--periodic 0 0 0 ", args)
     @test occursin("--openPMD.infix _%06T ", args) && !occursin("infix NULL", args)
+    # a run at another code's launched peak field exists where the case holds that code's measured ratio
+    c2d = TOML.parsefile(ION_CASE_FILE)
+    @test ion_kind_available(case, "plasma-rates-smilei-a0") && ion_kind_available(case, "plasma-rates-picongpu-a0")
+    @test !ion_kind_available(c2d, "plasma-rates-smilei-a0") && ion_kind_available(c2d, "plasma-rates-picongpu-a0") && ion_kind_available(c2d, "plasma")
     # the reader finds the 2D deck's one file and the 3D deck's one file per output, in order of iteration
     mktempdir() do dir
         o = mkpath(joinpath(dir, "openPMD"))
@@ -225,7 +229,7 @@ end
     root = prepare_ion(joinpath(@__DIR__, "..", "cases", "ionization-3d.toml"), "t1127-$(getpid())"; codes = ("pm", "picongpu"), seeds = 1:1)
     try
         names = readdir(root)
-        @test "pm-plasma" in names && !("pm-plasma-rates-picongpu-a0" in names) && "picongpu-plasma-s1" in names
+        @test "pm-plasma" in names && ("pm-plasma-rates-picongpu-a0" in names) && ("pm-plasma-rates-smilei-a0" in names) && "picongpu-plasma-s1" in names
         @test occursin("-d 1 2 1 ", read(joinpath(root, "picongpu-plasma-s1", "run.sh"), String))
     finally
         rm(root; recursive = true)

@@ -302,10 +302,11 @@ function run_pm_ion(dir; backend = CPU(), float = Float64)
     case = TOML.parsefile(joinpath(dir, "case.toml"))
     kind = strip(read(joinpath(dir, "kind.txt"), String))
     plasma = kind != "vacuum"
-    rates = kind == "plasma-rates-picongpu-a0" ? "picongpu" :
+    fieldof = match(r"^plasma-rates-(smilei|picongpu)-a0$", kind)
+    rates = fieldof !== nothing ? String(fieldof.captures[1]) :
             startswith(kind, "plasma-rates-") ? String(kind[(length("plasma-rates-") + 1):end]) : "pm"
-    if kind == "plasma-rates-picongpu-a0"          # PIConGPU's rate and its launched peak field (the case's [comparison])
-        case["laser"]["a0"] = Float64(case["laser"]["a0"]) * Float64(case["comparison"]["picongpu_field_ratio"])
+    if fieldof !== nothing                         # that code's rate and its launched peak field (the case's [comparison])
+        case["laser"]["a0"] = Float64(case["laser"]["a0"]) * Float64(case["comparison"]["$(rates)_field_ratio"])
     end
     envelope = kind == "plasma-axis" ? AxisTime() : laser_envelope(case)
     prob = pm_ion_problem(case; T = float, plasma, dopant = kind != "plasma-nodopant", rates, envelope)
@@ -1114,8 +1115,15 @@ end
 
 # --- prepare --------------------------------------------------------------------------------------
 
-"The ParticleMesh kinds of a prepared run: the case, the other codes' rate conventions, PIConGPU's rate with its launched peak field, WP-064's pulse, no dopant."
-const PM_ION_KINDS = ("vacuum", "plasma", "plasma-rates-smilei", "plasma-rates-picongpu", "plasma-rates-picongpu-a0", "plasma-axis", "plasma-nodopant")
+"The ParticleMesh kinds of a prepared run: the case, the other codes' rate conventions, each with that code's launched peak field, WP-064's pulse, no dopant."
+const PM_ION_KINDS = ("vacuum", "plasma", "plasma-rates-smilei", "plasma-rates-picongpu", "plasma-rates-smilei-a0", "plasma-rates-picongpu-a0", "plasma-axis",
+                      "plasma-nodopant")
+
+"Whether the case can run `kind`: a run at another code's peak field needs the ratio the vacuum runs measured (the case's [comparison])."
+function ion_kind_available(case, kind)
+    m = match(r"^plasma-rates-(smilei|picongpu)-a0$", kind)
+    return m === nothing || haskey(get(case, "comparison", Dict()), "$(m.captures[1])_field_ratio")
+end
 
 """
     prepare_ion(case_path, tag; codes = ("pm", "smilei", "picongpu"), seeds = 1:4) -> root
@@ -1149,8 +1157,7 @@ function prepare_ion(case_path, tag; codes = ("pm", "smilei", "picongpu"), seeds
                                                 "case" => case["name"], "kind" => kind, "seed" => seed, "generator" => "scripts/lwfa/ionization.jl"))
         push!(dirs, dir)
     end
-    # the run at PIConGPU's peak field needs the ratio a pair of vacuum runs measured (the case's [comparison])
-    "pm" in codes && foreach(k -> make("pm-$k", k, "pm"), [k for k in PM_ION_KINDS if k != "plasma-rates-picongpu-a0" || haskey(case, "comparison")])
+    "pm" in codes && foreach(k -> make("pm-$k", k, "pm"), [k for k in PM_ION_KINDS if ion_kind_available(case, k)])
     for code in ("smilei", "picongpu")
         code in codes || continue
         make("$code-vacuum", "vacuum", code)
@@ -1258,6 +1265,7 @@ function ion_lineout_distances(S, case)
 end
 
 const ION_TABLE_ROWS = (("pm-plasma", "ParticleMesh"), ("pm-plasma-rates-smilei", "ParticleMesh, Smilei's rate"),
+                        ("pm-plasma-rates-smilei-a0", "ParticleMesh, Smilei's rate and peak field"),
                         ("pm-plasma-rates-picongpu", "ParticleMesh, PIConGPU's rate"),
                         ("pm-plasma-rates-picongpu-a0", "ParticleMesh, PIConGPU's rate and peak field"), ("pm-plasma-axis", "ParticleMesh, WP-064's pulse"),
                         ("smilei-plasma", "Smilei"), ("picongpu-plasma", "PIConGPU"))
@@ -1369,13 +1377,15 @@ function compare_ion(runs, out)
 end
 
 const ION_COLORS = Dict("pm-plasma" => "#1f77b4", "pm-plasma-rates-smilei" => "#9467bd", "pm-plasma-rates-picongpu" => "#17becf",
-                        "pm-plasma-rates-picongpu-a0" => "#bcbd22",
+                        "pm-plasma-rates-picongpu-a0" => "#bcbd22", "pm-plasma-rates-smilei-a0" => "#e377c2",
                         "pm-plasma-axis" => "#7f7f7f", "smilei-plasma" => "#d62728", "picongpu-plasma" => "#2ca02c")
 const ION_LABELS = Dict("pm-plasma" => "ParticleMesh", "pm-plasma-rates-smilei" => "ParticleMesh, Smilei's rate",
                         "pm-plasma-rates-picongpu" => "ParticleMesh, PIConGPU's rate", "pm-plasma-axis" => "ParticleMesh, WP-064's pulse",
                         "pm-plasma-rates-picongpu-a0" => "ParticleMesh, PIConGPU's rate and peak field",
+                        "pm-plasma-rates-smilei-a0" => "ParticleMesh, Smilei's rate and peak field",
                         "smilei-plasma" => "Smilei (seeds)", "picongpu-plasma" => "PIConGPU (seeds)")
-ion_dopant_groups(S) = [k for k in ("pm-plasma", "pm-plasma-rates-smilei", "pm-plasma-rates-picongpu", "pm-plasma-rates-picongpu-a0", "pm-plasma-axis",
+ion_dopant_groups(S) = [k for k in ("pm-plasma", "pm-plasma-rates-smilei", "pm-plasma-rates-smilei-a0", "pm-plasma-rates-picongpu",
+                                    "pm-plasma-rates-picongpu-a0", "pm-plasma-axis",
                                     "smilei-plasma", "picongpu-plasma") if haskey(S, k)]
 
 # The born electrons' weight and the two objectives against time; a Monte Carlo code's band spans its seeds.
