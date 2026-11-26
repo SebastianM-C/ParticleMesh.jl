@@ -1,0 +1,241 @@
+## step 0 (julia): exit 0 after 5259s
+pm pm-plasma-rates-smilei: step 142 of 1704, 405.2 s
+pm pm-plasma-rates-smilei: step 284 of 1704, 781.7 s
+pm pm-plasma-rates-smilei: step 426 of 1704, 1184.5 s
+pm pm-plasma-rates-smilei: step 568 of 1704, 1593.0 s
+pm pm-plasma-rates-smilei: step 710 of 1704, 1983.1 s
+pm pm-plasma-rates-smilei: step 852 of 1704, 2414.5 s
+pm pm-plasma-rates-smilei: step 994 of 1704, 2849.8 s
+pm pm-plasma-rates-smilei: step 1136 of 1704, 3273.8 s
+pm pm-plasma-rates-smilei: step 1278 of 1704, 3692.6 s
+pm pm-plasma-rates-smilei: step 1420 of 1704, 4134.2 s
+pm pm-plasma-rates-smilei: step 1562 of 1704, 4575.5 s
+pm pm-plasma-rates-smilei: step 1704 of 1704, 4997.0 s
+┌ Warning: downloading texture atlas failed, need to re-create from scratch.
+│   exception =
+│    RequestError: Could not resolve host: github.com while requesting https://github.com/MakieOrg/Makie.jl/releases/download/v0.21.0/v7_texture_atlas_2048_64.bin
+│    Stacktrace:
+│       [1] perform_request!(response::Base.RefValue{Union{Downloads.RequestError, Downloads.Response}}, easy::Downloads.Curl.Easy, url::String, input::IO, output::IO, method::Nothing, headers::Vector{Pair{String, String}}, timeout::Float64, progress::Union{Nothing, Function}, verbose::Bool, debug::Union{Nothing, Function}, throw::Bool, downloader::Downloads.Downloader, interrupt::Union{Nothing, Base.Event}, have_input::Bool, have_output::Bool, input_size::Int64)
+│         @ Downloads ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:517
+│       [2] #17
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:396 [inlined]
+│       [3] with_handle(f::Downloads.var"#17#18"{IOStream, Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Nothing, Bool, Nothing, Bool, Nothing, String, Base.RefValue{Union{Downloads.RequestError, Downloads.Response}}, Int64, Bool, Bool, Downloads.Downloader}, handle::Downloads.Curl.Easy)
+│         @ Downloads.Curl ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Curl/Curl.jl:154
+│       [4] #15
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:395 [inlined]
+│       [5] arg_write(f::Downloads.var"#15#16"{Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Nothing, Bool, Nothing, Bool, Nothing, String, Base.RefValue{Union{Downloads.RequestError, Downloads.Response}}, Int64, Bool, Bool, Downloads.Downloader}, arg::IOStream)
+│         @ ArgTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:134
+│       [6] #13
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:394 [inlined]
+│       [7] arg_read
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:76 [inlined]
+│       [8] request(url::String; input::Nothing, output::IOStream, method::Nothing, headers::Vector{Pair{String, String}}, timeout::Float64, progress::Nothing, verbose::Bool, debug::Nothing, throw::Bool, downloader::Nothing, interrupt::Nothing)
+│         @ Downloads ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:393
+│       [9] request
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:355 [inlined]
+│      [10] #7
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:273 [inlined]
+│      [11] open(f::Downloads.var"#7#8"{Nothing, Vector{Pair{String, String}}, Float64, Nothing, Bool, Nothing, Nothing, String, Base.RefValue{Downloads.Response}}, args::String; kwargs::@Kwargs{write::Bool, lock::Bool})
+│         @ Base ./io.jl:429
+│      [12] open_nolock(::Function, ::Vararg{Any}; kws::@Kwargs{write::Bool})
+│         @ ArgTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:35
+│      [13] open_nolock
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:35 [inlined]
+│      [14] arg_write(f::Function, arg::String)
+│         @ ArgTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:103
+│      [15] #download#5
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:272 [inlined]
+│      [16] download
+│         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:252 [inlined]
+│      [17] cached_load(resolution::Int64, pix_per_glyph::Int64)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:152
+│      [18] #get_texture_atlas##0
+│         @ ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:141 [inlined]
+│      [19] get!(default::Makie.var"#get_texture_atlas##0#get_texture_atlas##1"{Int64, Int64}, h::Dict{Tuple{Int64, Int64}, Makie.TextureAtlas}, key::Tuple{Int64, Int64})
+│         @ Base ./dict.jl:460
+│     ┌[20] get_texture_atlas
+│     │   @ ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:140 [inlined]
+│     ╰──── repeated 2 times
+│      [22] register_text_computations!(attr::ComputePipeline.ComputeGraph)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/basic_recipes/text.jl:373
+│      [23] calculated_attributes!
+│         @ ~/depot/packages/Makie/XC3jV/src/basic_recipes/text.jl:441 [inlined]
+│      [24] connect_plot!(parent::Makie.Scene, plot::Makie.Text{Tuple{Vector{GeometryBasics.Point{2, Float32}}}})
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/compute-plots.jl:875
+│      [25] plot!(scene::Makie.Scene, plot::Makie.Text{Tuple{Vector{GeometryBasics.Point{2, Float32}}}})
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/interfaces.jl:213
+│      [26] _create_plot!(F::Function, attributes::Dict{Symbol, Any}, scene::Makie.Scene, args::Observables.Observable{GeometryBasics.Point{2, Float32}})
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/figureplotting.jl:552
+│      [27] text!(::Makie.Scene, ::Vararg{Any}; kw::@Kwargs{text::Observables.Observable{Any}, fontsize::Observables.Observable{Any}, color::Observables.Observable{Any}, visible::Observables.Observable{Any}, align::Observables.Observable{Tuple{Symbol, Symbol}}, rotation::Observables.Observable{Float32}, font::Observables.Observable{Any}, markerspace::Symbol, inspectable::Bool})
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/recipes.jl:571
+│      [28] Makie.LineAxis(parent::Makie.Scene, attrs::Makie.Attributes)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/lineaxis.jl:410
+│      [29] Makie.LineAxis(parent::Makie.Scene; kwargs...)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/lineaxis.jl:3
+│      [30] LineAxis
+│         @ ~/depot/packages/Makie/XC3jV/src/makielayout/lineaxis.jl:1 [inlined]
+│      [31] initialize_block!(ax::Makie.Axis; palette::Nothing)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks/axis.jl:346
+│      [32] initialize_block!(ax::Makie.Axis)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks/axis.jl:154
+│      [33] _block(T::Type{Makie.Axis}, fig_or_scene::Makie.Figure, args::Vector{Any}, kwdict::Dict{Symbol, Any}, bbox::Nothing; kwdict_complete::Bool)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:405
+│      [34] _block
+│         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:321 [inlined]
+│      [35] #_block#1678
+│         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:266 [inlined]
+│      [36] _block(::Type{Makie.Axis}, ::Makie.Figure)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:265
+│      [37] _block(::Type{Makie.Axis}, ::GridLayoutBase.GridPosition; kwargs::@Kwargs{})
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:260
+│      [38] _block
+│         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:251 [inlined]
+│      [39] #_#1676
+│         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:242 [inlined]
+│      [40] Makie.Axis(args::GridLayoutBase.GridPosition)
+│         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:241
+│      [41] top-level scope
+│         @ ~/depot/packages/Makie/XC3jV/src/precompiles.jl:23
+│      [42] macro expansion
+│         @ ~/depot/packages/PrecompileTools/nfDyG/src/workloads.jl:113 [inlined]
+│      [43] macro expansion
+│         @ ~/depot/packages/Makie/XC3jV/src/precompiles.jl:27 [inlined]
+│      [44] include(mapexpr::Function, mod::Module, _path::String)
+│         @ Base ./Base.jl:310
+│      [45] top-level scope
+│         @ ~/depot/packages/Makie/XC3jV/src/Makie.jl:456
+│      [46] include(mod::Module, _path::String)
+│         @ Base ./Base.jl:309
+│      [47] include_package_for_output(pkg::Base.PkgId, input::String, depot_path::Vector{String}, dl_load_path::Vector{String}, load_path::Vector{String}, concrete_deps::Vector{Pair{Base.PkgId, UInt128}}, source::Nothing, preresolved::Vector{Pair{Base.PkgId, String}})
+│         @ Base ./loading.jl:3229
+│      [48] top-level scope
+│         @ stdin:5
+│      [49] eval(m::Module, e::Any)
+│         @ Core ./boot.jl:489
+│      [50] include_string(mapexpr::typeof(identity), mod::Module, code::String, filename::String)
+│         @ Base ./loading.jl:3064
+│      [51] include_string
+│         @ ./loading.jl:3074 [inlined]
+│      [52] exec_options(opts::Base.JLOptions)
+│         @ Base ./client.jl:342
+│      [53] _start()
+│         @ Base ./client.jl:577
+└ @ Makie ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:154
+┌ Warning: Makie is caching fonts, this may take a while. This should usually not happen, unless you're getting your own texture atlas or are without internet!
+└ @ Makie ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:166
+
+  1 dependency had output during precompilation:
+┌ Makie
+│  ┌ Warning: downloading texture atlas failed, need to re-create from scratch.
+│  │   exception =
+│  │    RequestError: Could not resolve host: github.com while requesting https://github.com/MakieOrg/Makie.jl/releases/download/v0.21.0/v7_texture_atlas_2048_64.bin
+│  │    Stacktrace:
+│  │       [1] perform_request!(response::Base.RefValue{Union{Downloads.RequestError, Downloads.Response}}, easy::Downloads.Curl.Easy, url::String, input::IO, output::IO, method::Nothing, headers::Vector{Pair{String, String}}, timeout::Float64, progress::Union{Nothing, Function}, verbose::Bool, debug::Union{Nothing, Function}, throw::Bool, downloader::Downloads.Downloader, interrupt::Union{Nothing, Base.Event}, have_input::Bool, have_output::Bool, input_size::Int64)
+│  │         @ Downloads ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:517
+│  │       [2] #17
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:396 [inlined]
+│  │       [3] with_handle(f::Downloads.var"#17#18"{IOStream, Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Nothing, Bool, Nothing, Bool, Nothing, String, Base.RefValue{Union{Downloads.RequestError, Downloads.Response}}, Int64, Bool, Bool, Downloads.Downloader}, handle::Downloads.Curl.Easy)
+│  │         @ Downloads.Curl ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Curl/Curl.jl:154
+│  │       [4] #15
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:395 [inlined]
+│  │       [5] arg_write(f::Downloads.var"#15#16"{Base.DevNull, Nothing, Vector{Pair{String, String}}, Float64, Nothing, Bool, Nothing, Bool, Nothing, String, Base.RefValue{Union{Downloads.RequestError, Downloads.Response}}, Int64, Bool, Bool, Downloads.Downloader}, arg::IOStream)
+│  │         @ ArgTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:134
+│  │       [6] #13
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:394 [inlined]
+│  │       [7] arg_read
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:76 [inlined]
+│  │       [8] request(url::String; input::Nothing, output::IOStream, method::Nothing, headers::Vector{Pair{String, String}}, timeout::Float64, progress::Nothing, verbose::Bool, debug::Nothing, throw::Bool, downloader::Nothing, interrupt::Nothing)
+│  │         @ Downloads ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:393
+│  │       [9] request
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:355 [inlined]
+│  │      [10] #7
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:273 [inlined]
+│  │      [11] open(f::Downloads.var"#7#8"{Nothing, Vector{Pair{String, String}}, Float64, Nothing, Bool, Nothing, Nothing, String, Base.RefValue{Downloads.Response}}, args::String; kwargs::@Kwargs{write::Bool, lock::Bool})
+│  │         @ Base ./io.jl:429
+│  │      [12] open_nolock(::Function, ::Vararg{Any}; kws::@Kwargs{write::Bool})
+│  │         @ ArgTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:35
+│  │      [13] open_nolock
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:35 [inlined]
+│  │      [14] arg_write(f::Function, arg::String)
+│  │         @ ArgTools ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/ArgTools/src/ArgTools.jl:103
+│  │      [15] #download#5
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:272 [inlined]
+│  │      [16] download
+│  │         @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Downloads/src/Downloads.jl:252 [inlined]
+│  │      [17] cached_load(resolution::Int64, pix_per_glyph::Int64)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:152
+│  │      [18] #get_texture_atlas##0
+│  │         @ ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:141 [inlined]
+│  │      [19] get!(default::Makie.var"#get_texture_atlas##0#get_texture_atlas##1"{Int64, Int64}, h::Dict{Tuple{Int64, Int64}, Makie.TextureAtlas}, key::Tuple{Int64, Int64})
+│  │         @ Base ./dict.jl:460
+│  │     ┌[20] get_texture_atlas
+│  │     │   @ ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:140 [inlined]
+│  │     ╰──── repeated 2 times
+│  │      [22] register_text_computations!(attr::ComputePipeline.ComputeGraph)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/basic_recipes/text.jl:373
+│  │      [23] calculated_attributes!
+│  │         @ ~/depot/packages/Makie/XC3jV/src/basic_recipes/text.jl:441 [inlined]
+│  │      [24] connect_plot!(parent::Makie.Scene, plot::Makie.Text{Tuple{Vector{GeometryBasics.Point{2, Float32}}}})
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/compute-plots.jl:875
+│  │      [25] plot!(scene::Makie.Scene, plot::Makie.Text{Tuple{Vector{GeometryBasics.Point{2, Float32}}}})
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/interfaces.jl:213
+│  │      [26] _create_plot!(F::Function, attributes::Dict{Symbol, Any}, scene::Makie.Scene, args::Observables.Observable{GeometryBasics.Point{2, Float32}})
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/figureplotting.jl:552
+│  │      [27] text!(::Makie.Scene, ::Vararg{Any}; kw::@Kwargs{text::Observables.Observable{Any}, fontsize::Observables.Observable{Any}, color::Observables.Observable{Any}, visible::Observables.Observable{Any}, align::Observables.Observable{Tuple{Symbol, Symbol}}, rotation::Observables.Observable{Float32}, font::Observables.Observable{Any}, markerspace::Symbol, inspectable::Bool})
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/recipes.jl:571
+│  │      [28] Makie.LineAxis(parent::Makie.Scene, attrs::Makie.Attributes)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/lineaxis.jl:410
+│  │      [29] Makie.LineAxis(parent::Makie.Scene; kwargs...)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/lineaxis.jl:3
+│  │      [30] LineAxis
+│  │         @ ~/depot/packages/Makie/XC3jV/src/makielayout/lineaxis.jl:1 [inlined]
+│  │      [31] initialize_block!(ax::Makie.Axis; palette::Nothing)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks/axis.jl:346
+│  │      [32] initialize_block!(ax::Makie.Axis)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks/axis.jl:154
+│  │      [33] _block(T::Type{Makie.Axis}, fig_or_scene::Makie.Figure, args::Vector{Any}, kwdict::Dict{Symbol, Any}, bbox::Nothing; kwdict_complete::Bool)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:405
+│  │      [34] _block
+│  │         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:321 [inlined]
+│  │      [35] #_block#1678
+│  │         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:266 [inlined]
+│  │      [36] _block(::Type{Makie.Axis}, ::Makie.Figure)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:265
+│  │      [37] _block(::Type{Makie.Axis}, ::GridLayoutBase.GridPosition; kwargs::@Kwargs{})
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:260
+│  │      [38] _block
+│  │         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:251 [inlined]
+│  │      [39] #_#1676
+│  │         @ ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:242 [inlined]
+│  │      [40] Makie.Axis(args::GridLayoutBase.GridPosition)
+│  │         @ Makie ~/depot/packages/Makie/XC3jV/src/makielayout/blocks.jl:241
+│  │      [41] top-level scope
+│  │         @ ~/depot/packages/Makie/XC3jV/src/precompiles.jl:23
+│  │      [42] macro expansion
+│  │         @ ~/depot/packages/PrecompileTools/nfDyG/src/workloads.jl:113 [inlined]
+│  │      [43] macro expansion
+│  │         @ ~/depot/packages/Makie/XC3jV/src/precompiles.jl:27 [inlined]
+│  │      [44] include(mapexpr::Function, mod::Module, _path::String)
+│  │         @ Base ./Base.jl:310
+│  │      [45] top-level scope
+│  │         @ ~/depot/packages/Makie/XC3jV/src/Makie.jl:456
+│  │      [46] include(mod::Module, _path::String)
+│  │         @ Base ./Base.jl:309
+│  │      [47] include_package_for_output(pkg::Base.PkgId, input::String, depot_path::Vector{String}, dl_load_path::Vector{String}, load_path::Vector{String}, concrete_deps::Vector{Pair{Base.PkgId, UInt128}}, source::Nothing, preresolved::Vector{Pair{Base.PkgId, String}})
+│  │         @ Base ./loading.jl:3229
+│  │      [48] top-level scope
+│  │         @ stdin:5
+│  │      [49] eval(m::Module, e::Any)
+│  │         @ Core ./boot.jl:489
+│  │      [50] include_string(mapexpr::typeof(identity), mod::Module, code::String, filename::String)
+│  │         @ Base ./loading.jl:3064
+│  │      [51] include_string
+│  │         @ ./loading.jl:3074 [inlined]
+│  │      [52] exec_options(opts::Base.JLOptions)
+│  │         @ Base ./client.jl:342
+│  │      [53] _start()
+│  │         @ Base ./client.jl:577
+│  └ @ Makie ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:154
+│  ┌ Warning: Makie is caching fonts, this may take a while. This should usually not happen, unless you're getting your own texture atlas or are without internet!
+│  └ @ Makie ~/depot/packages/Makie/XC3jV/src/utilities/texture_atlas.jl:166
+└  

@@ -1,0 +1,20 @@
+branch = "runs/ion3d-pm-plasma-rates-smilei"
+request_commit = "45a9e126bdf8c17a2228e25669087b0ea33ed764"
+started = "2026-11-26T13:46:37Z"
+category = "crosscode"
+outputs = ["scripts/runs/ion-3d-a0/pm-plasma-rates-smilei"]
+finished = "2026-11-26T15:14:16Z"
+ok = true
+files_returned = 4
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-26T13:46:37Z"
+exit = 0
+seconds = 5259
