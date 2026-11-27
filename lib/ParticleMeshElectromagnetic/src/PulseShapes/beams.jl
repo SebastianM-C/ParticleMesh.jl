@@ -39,7 +39,7 @@ GaussianBeam(; waist) = (T = shape_eltype(waist); GaussianBeam{T}(T(waist)))
     return Complex(ur, ui), Complex(ur * c2r - ui * c2i, ur * c2i + ui * c2r)
 end
 
-"The near-field amplitude across the lens: [`pupil_amplitude`](@ref)`(p, ρ)`, ρ ∈ [−1, 1] the pupil coordinate."
+"The near-field amplitude across the lens: [`pupil_amplitude`](@ref)`(p, ρ)`, ρ the pupil coordinate, ∈ [−1, 1] across the slab pupil of a [`PupilBeam`](@ref) and the radius ∈ [0, 1] of the round one of a [`ZernikeBeam`](@ref)."
 abstract type PupilAmplitude end
 
 """
