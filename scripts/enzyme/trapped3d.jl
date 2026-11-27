@@ -62,7 +62,7 @@ const F = Float32
 struct Trap3Tag end
 # stable=1 (the default, with active_reduce.jl loaded): the sharpened fields count as not
 # overwritten within each of the reverse sweep's per-step Enzyme calls (the patch says why)
-const STABLE_FIELDS = opt("stable", "1") == "1" && isdefined(Main, :stable_within_call!)
+const USE_STABLE = opt("stable", "1") == "1" && isdefined(Main, :stable_within_call!)
 
 """
 The case's sizes from the keys; `warm` for the small box of the warm-up: the same types, 8 cells per
@@ -158,7 +158,7 @@ function reverse_run(st, p, n; c, host, body = :step, fade = TCASE.fade, rise = 
     scheme = Revolve(c; storage = checkpoint_storage(; host))
     # each Enzyme call of Revolve's reverse sweep covers one step: the sharpened copy is stable
     # within it (active_reduce.jl), and its kernels re-read the fields instead of taping them
-    stable = STABLE_FIELDS && st.sharpened !== nothing
+    stable = USE_STABLE && st.sharpened !== nothing
     stable && Main.stable_within_call!(st.sharpened)
     try
         Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), run_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
@@ -202,7 +202,11 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         mark(@sprintf("%s: plain run %.1f s, J = %.8g, peak %.2f GiB", label, t, J, gib(peak)))
     end
     # the Dual{1} runs first, each from a start of its own, so that a failed reverse pass leaves
-    # them a clean card; their derivatives are compared with the reverse pass's gradient below
+    # them a clean card; their derivatives are compared with the reverse pass's gradient below. The
+    # start is dropped meanwhile (at λ₀/32 a Dual{1} state does not fit beside it) and built again
+    # for the reverse pass, with the same bits (Reference mode, counter-based draws; A4).
+    st0 = nothing
+    reclaim()
     rows = Dict{String,Any}[]
     for j in duals
         row = Dict{String,Any}("parameter" => PNAMES[j])
@@ -220,15 +224,14 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         push!(rows, row)
         reclaim()
     end
-    # the reverse pass on the start itself (a copy would hold one state more; the Dual starts are
-    # built afresh); a failure is recorded with its backtrace
+    # the reverse pass on a start of its own, handed over without another reference to it (a copy
+    # would hold one state more); a failure is recorded with its backtrace
     g = fill(NaN, 4)
     try
-        sref = Ref{Any}(st0)
-        st0 = nothing
+        sref = Ref{Any}(first(start3(F.(THETA), o)))
         r, t, peak, base = measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; c, host, body)))
         res["J_reverse_forward"] = r.J
-        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base, "stable_fields" => STABLE_FIELDS)
+        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base, "stable_fields" => USE_STABLE)
         mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
         dst, dp = r.dst, r.dp
         r = nothing
