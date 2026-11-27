@@ -1,0 +1,1 @@
+The frames of scripts/lwfa/animate3d.jl for the README animation, run on the CPU box.

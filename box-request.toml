@@ -1,0 +1,6 @@
+timeout = 14400
+category = "physics"
+outputs = ["scripts/runs/lwfa3d-anim"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/lwfa/animate3d.jl", "run", "scripts/lwfa/cases/ionization-3d.toml", "scripts/runs/lwfa3d-anim", "cpu", "12", "fast"]
