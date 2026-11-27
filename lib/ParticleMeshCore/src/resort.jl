@@ -328,11 +328,13 @@ order and at any place. Nothing else may write the arrays in between: whoever do
 arrays copied in from elsewhere) calls [`forget_order!`](@ref) on the workspace, and the next
 sort is the full one.
 
-`check = true` detects a broken precondition: before the gather it also runs the full sort's key
-sort on the arrays as they stand and throws an `ArgumentError` unless the permutation, the
-segment bounds and the count are the full sort's (#475). The species is then as it came (its
+`check = true` detects a broken precondition that changes the result: before the gather it also
+runs the full sort's key sort on the arrays as they stand and throws an `ArgumentError` unless
+the permutation, the segment bounds and the count are the full sort's (#475); a break that still
+gives the full sort's result (any move on an axis of 3 cells, say) passes. The species is then as it came (its
 arrays not moved, its count put back), the workspace has forgotten its order ([`forget_order!`](@ref)), and the next sort of the species
-with it is the full one. A debug
+with it is the full one; the workspace's scratch (`ws.perm`, `ws.key`) holds the rejected sort
+until then. A debug
 mode for a new caller: it costs the full sort it saves and more, allocates, and reads the
 comparison on the host, so a step that has to stay within §0.4 leaves it off. Where `resort_by_cell!`
 is the full sort (above), `check` does nothing.

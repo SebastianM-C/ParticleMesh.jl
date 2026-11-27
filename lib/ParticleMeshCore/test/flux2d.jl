@@ -552,6 +552,9 @@ end
     end
     @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, 0)
     @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, 4)
+    for c in (true, 2.0, :x)
+        @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, c)
+    end
     # the keyword reaches the patch launches: deposit_flux! refuses a fourth component per launch
     grid = grid2(Float64, flux_g2(Quadratic, (Node(), Node())))
     @test_throws ArgumentError flux2d(Reference(), flux_species_2d(Float64, grid, 50), Quadratic, (Node(), Node()), grid; components = 4)

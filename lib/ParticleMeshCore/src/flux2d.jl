@@ -217,7 +217,7 @@ out included (T-302), and falls back to `Reference()` for element types without 
 stagger))`; it is bitwise across reruns, thread counts and launch shapes (T-303). Its patch kernel
 sums `components` of the three per launch (`flux_components_2d`; by default all three on the CPU,
 and on a GPU one or two for an element type as wide as a `Dual`), the same bits for every choice
-(T-1191); `Fast()` ignores it.
+(T-1191); `Fast()` ignores it, except where it falls back to `Reference()`.
 """
 function deposit_flux!(mode, Jx::AbstractMatrix{T}, Jy::AbstractMatrix{T}, Jz::AbstractMatrix{T}, s::Species{2},
                        shape::Shape, stagger::NTuple{2,Stagger}, grid::PeriodicGrid{2}, ws::Workspace;
@@ -338,6 +338,8 @@ an element type whose three components spill the registers of a GPU work item (a
 component or two at a time. `((1, 2, 3),)`, `((1, 2), (3,))` or `((1,), (2,), (3,))`.
 """
 function flux_components_2d(backend, ::Type{T}, K::Int, components) where {T}
+    components === nothing || components isa Integer && !(components isa Bool) ||
+        throw(ArgumentError("components = $(repr(components)): 1, 2 or 3 components of the 2D flux per launch, or nothing"))
     c = components === nothing ? (backend isa CPU ? 3 : clamp(FLUX_PATCH_BYTES ÷ (sizeof(T) * K), 1, 3)) : Int(components)
     1 <= c <= 3 || throw(ArgumentError("components = $components: 1, 2 or 3 components of the 2D flux per launch, or nothing"))
     return c == 3 ? ((1, 2, 3),) : c == 2 ? ((1, 2), (3,)) : ((1,), (2,), (3,))
