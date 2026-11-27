@@ -24,6 +24,8 @@ using ParticleMeshElectromagnetic: ramp_factor, RampedCosine
             end
             r = ramp_factor(x, v, L)
             @test r isa T
+            sr = sin(clamp((x - v) / L, zero(T), one(T)) * T(π) / 2)
+            @test r === sr * sr                                           # through sin, not sinpi (#545)
             err = max(err, Float64(abs(big(r) - exact) / eps(max(T(exact), floatmin(T)))))
             0 < x - v < L || continue                                     # the derivative inside the ramp
             d = Enzyme.autodiff(Enzyme.Reverse, ramp_factor, Enzyme.Active, Enzyme.Active(x), Enzyme.Const(v), Enzyme.Const(L))[1][1]

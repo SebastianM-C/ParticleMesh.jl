@@ -14,6 +14,7 @@
 
 using Checkpointing: Checkpointing, Revolve, @ad_checkpoint, checkpoint_for
 using Enzyme: Enzyme, autodiff, Reverse, Active, Const, Duplicated
+using ParticleMeshElectromagnetic: kinetic!
 
 const CKPT_EXT = Base.get_extension(ParticleMeshElectromagnetic, :ParticleMeshElectromagneticCheckpointingExt)
 
@@ -267,6 +268,10 @@ const T1170_CASES = (CKPT_CASES..., ("3D trapped-beam case", trapped3d_small))
         @test parentmodule(which(Checkpointing.checkpoint_alloc, Tuple{typeof(body)})) === CKPT_EXT
         w = Checkpointing.checkpoint_alloc(body)
         @test w isa typeof(body) && w.f === body.f && w.params === body.params && w.state !== st
+        # its kinetic-energy cache is computed from its arrays and marked so, and its recorder is its own
+        K_m = bits(kinetic!(deepcopy(st)).K)
+        @test bits(w.state.K) == K_m && w.state.fresh[]
+        @test w.state.recorder !== st.recorder
         # the memory: what the working copy holds that the state does not is the evolved arrays,
         # the kinetic-energy cache and the recorder's histories
         old = reachable_arrays(st)
@@ -291,14 +296,21 @@ const T1170_CASES = (CKPT_CASES..., ("3D trapped-beam case", trapped3d_small))
         @test isempty(wrong)
         # the stepped state's evolved arrays are untouched, and it continues too, through the shared scratch
         @test same_arrays(evolved(st), run_bits[m + 1])
+        # the body steps with no observer: the recorder's histories stay as they are
+        recorded = [bits(a) for a in reachable_arrays(st.recorder)]
         for k in (m + 1):n
             body(k)
         end
         @test same_arrays(evolved(st), run_bits[n + 1])
-        # checkpoint_copy! is a restore of the evolved arrays
+        @test [bits(a) for a in reachable_arrays(st.recorder)] == recorded
+        # checkpoint_copy! is a restore of the evolved arrays, after which the cache is that of them
+        K_n = bits(kinetic!(deepcopy(st)).K)
         poison!(w.state)
+        fill!(w.state.K, poison(eltype(w.state.K)))
+        w.state.fresh[] = false
         @test Checkpointing.checkpoint_copy!(w, body) === w
         @test same_arrays(evolved(w.state), run_bits[n + 1])
+        @test bits(w.state.K) == K_n && w.state.fresh[]
         @test Checkpointing.checkpoint_copy!(w, w) === w
     end
     # Revolve's whole schedule through the working copy, with Checkpointing.jl's own storage, whose
