@@ -1,0 +1,102 @@
+branch = "runs/wp078-cost-5090-t16"
+commit = "c42dd1d6182ce065c3bd3fe8fd94cf64af84938e"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/commit.txt"
+bytes = 41
+sha256 = "b4fd764c5841d20c82127ea7f88120262e524790a7e461f13c48006061cb31a4"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/cost-dual1.log"
+bytes = 806
+sha256 = "6b07d33217190912dbd54b5de58576c1e1b7ab2f52330407a335db9160d046aa"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/cost-dual4.log"
+bytes = 941
+sha256 = "3e64d43c7fe6fcbb45e7e8ba5efedaf063af7b4db60634d3f17373ca0153644f"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/cost-primal.log"
+bytes = 792
+sha256 = "05ab6c49858993d6b374bf8acdec83ab75f695a5853998689fcc0ef864a96781"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/cost-reverse.log"
+bytes = 20638
+sha256 = "82e423c360becf9ef901f99a00758e45fdb105584fbfe79359e201521cf99577"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-dual1-20261127T220020/manifest.toml"
+bytes = 1171
+sha256 = "609fa9feeab573b46dc3966cc423ce89ec84e995fc0e1cd7e6f580fa817579f2"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-dual1-20261127T220020/result.toml"
+bytes = 1315
+sha256 = "6f42c5d533612b17097c52bedfaf92c526f439ea62d4ae3c6c1d33d9e980f1a6"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-dual4-20261127T220135/manifest.toml"
+bytes = 1171
+sha256 = "97efe89ec794f14e5a738942fed454fe641ef3787ccbcfbda9cff6964ca2ba03"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-dual4-20261127T220135/result.toml"
+bytes = 1560
+sha256 = "8349cc3b83c2e914cb07dc283a259f33f587bfa9517650707e9f78587c19defa"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-primal-20261127T215941/manifest.toml"
+bytes = 1172
+sha256 = "07defc01f5e5b3d8ba859aadf79a3d1ea18f34cfa60fa60ea9f635793f3f86ee"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-primal-20261127T215941/result.toml"
+bytes = 1227
+sha256 = "cf4711372b2414ca96ddadcab60e6229b3b9f6b85b7156d90915d73194c00b34"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-reverse-20261127T221003/manifest.toml"
+bytes = 1173
+sha256 = "429afdc180632a42d772ecdc9615a34bcad5df96939174d297193375da2d5523"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/enzyme-trapped-cost-reverse-20261127T221003/result.toml"
+bytes = 1664
+sha256 = "493715cc2252ac52a9c2550d705d2ac0f592d911dbe29b61693d6e5c654d33c8"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/instantiate.log"
+bytes = 0
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/nvidia-smi-end.txt"
+bytes = 1873
+sha256 = "f267a82411c40747b08128143b3392affb122131afe80ab62cc94757ab11b480"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/nvidia-smi-start.txt"
+bytes = 1873
+sha256 = "17643ec0fb284721d710d547fc81f87eb842d647e3e18b582e2b7ebb9bb26950"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/smi-dual1.csv"
+bytes = 15512
+sha256 = "ca980744b6abdc36e4b7f6b0b08dd58cb97d1d8d4b963ad7a2ff446e8d4c4423"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/smi-dual4.csv"
+bytes = 29917
+sha256 = "b3197128315b98256d874cf784f1bf4dadcafd191286994fbbaa9fc2d4e68eea"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/smi-primal.csv"
+bytes = 13793
+sha256 = "25089b800af1353752c806cdb9300175b8e97531fdf8e75951402cd748e5f03f"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t16/smi-reverse.csv"
+bytes = 203554
+sha256 = "c205d76f8c2feccb3d03566992d2079fda9d9560d5793516e9b456f34f0bc40b"
