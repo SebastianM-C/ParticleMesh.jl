@@ -2,6 +2,7 @@
   "rows": [
     {
       "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
       "card_above_idle_GiB": 0.7734375,
       "card_full": false,
       "card_total_MiB": 32607,
@@ -28,6 +29,7 @@
       "idle_MiB": 925,
       "method": "primal",
       "pool_peak_GiB": 0.21357567235827446,
+      "relative_difference_dual1_tau": null,
       "relative_difference_dual4": null,
       "result": "enzyme-trapped-cost-primal-20261127T215941",
       "run": "wp078-cost-5090-t16",
@@ -44,6 +46,7 @@
     },
     {
       "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
       "card_above_idle_GiB": 0.966796875,
       "card_full": false,
       "card_total_MiB": 32607,
@@ -72,6 +75,7 @@
       "idle_MiB": 925,
       "method": "dual1",
       "pool_peak_GiB": 0.36799923330545425,
+      "relative_difference_dual1_tau": null,
       "relative_difference_dual4": 4.2345138695048124e-5,
       "result": "enzyme-trapped-cost-dual1-20261127T220020",
       "run": "wp078-cost-5090-t16",
@@ -88,6 +92,7 @@
     },
     {
       "J": 0.026008574292063713,
+      "J_relative_to_primal": -7.161652900895544e-7,
       "card_above_idle_GiB": 2.3125,
       "card_full": false,
       "card_total_MiB": 32607,
@@ -119,6 +124,7 @@
       "idle_MiB": 925,
       "method": "dual4",
       "pool_peak_GiB": 0.8312699161469936,
+      "relative_difference_dual1_tau": 4.2346931881751965e-5,
       "relative_difference_dual4": null,
       "result": "enzyme-trapped-cost-dual4-20261127T220135",
       "run": "wp078-cost-5090-t16",
@@ -135,6 +141,7 @@
     },
     {
       "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
       "card_above_idle_GiB": 30.5234375,
       "card_full": true,
       "card_total_MiB": 32607,
@@ -171,6 +178,7 @@
         "start_tangent": 0.005443096160888672
       },
       "pool_peak_GiB": 28.715072743594646,
+      "relative_difference_dual1_tau": 6.063517845516971e-6,
       "relative_difference_dual4": 0.00031211460202039084,
       "result": "enzyme-trapped-cost-reverse-20261127T221003",
       "run": "wp078-cost-5090-t16",
@@ -186,6 +194,7 @@
     },
     {
       "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
       "card_above_idle_GiB": 30.5234375,
       "card_full": true,
       "card_total_MiB": 32607,
@@ -222,6 +231,7 @@
         "start_tangent": 0.005445003509521484
       },
       "pool_peak_GiB": 28.715671233832836,
+      "relative_difference_dual1_tau": 7.18919436053908e-6,
       "relative_difference_dual4": 0.0003126683570911546,
       "result": "enzyme-trapped-cost-reverse-20261127T214427",
       "run": "wp078-cost-5090",
@@ -237,6 +247,7 @@
     },
     {
       "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
       "card_above_idle_GiB": 30.5234375,
       "card_full": true,
       "card_total_MiB": 32607,
@@ -273,6 +284,7 @@
         "start_tangent": 0.005445957183837891
       },
       "pool_peak_GiB": 28.715671233832836,
+      "relative_difference_dual1_tau": 5.51806341511702e-6,
       "relative_difference_dual4": 0.00030673050607856134,
       "result": "enzyme-trapped-cost-reverse-20261127T215659",
       "run": "wp078-cost-5090-t1",

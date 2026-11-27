@@ -20,8 +20,11 @@
 # not yet collected), sampled every 20 ms; the bytes of the state's arrays (for the reverse, of the
 # device checkpoints too, each one Float32 state); nvidia-smi's peak memory.used above the idle
 # card's first sample, over the whole process (the warm-up's compilation, the context, the pool's
-# cache and the device malloc heap included); the gradient and its largest relative difference from
-# the first run dir's Dual{4}.
+# cache and the device malloc heap included); J's relative difference from the primal's (which
+# Float32 trajectory a method's device code follows); the gradient, its largest relative difference
+# from the first run dir's Dual{4} and its dJ/dτ's from the Dual{1} (Dual{1}'s J is the primal's
+# bitwise on the RTX 5090, Dual{4}'s is not, so Dual{1} follows the trajectory the reverse
+# differentiates).
 
 using TOML, JSON, Printf
 
@@ -114,19 +117,21 @@ function main(out, dirs)
         append!(rows, rows_of(d, ("reverse",), ref))
     end
     by(m) = only(r for r in rows if r["method"] == m && r["run"] == basename(dirs[1]))
-    primal, dual4 = by("primal"), by("dual4")
+    primal, dual4, dual1 = by("primal"), by("dual4"), by("dual1")
     # one case: J of every method within Float32 rounding of the primal's
     for r in rows
         abs(r["J"] - primal["J"]) <= 1e-5 * abs(primal["J"]) || error("$(r["result"]): J $(r["J"]) against the primal's $(primal["J"])")
         r["times_primal"] = r["seconds"] / primal["seconds"]
         r["times_dual4"] = r["seconds"] / dual4["seconds"]
         g = r["gradient"]
+        r["J_relative_to_primal"] = (r["J"] - primal["J"]) / primal["J"]
+        r["relative_difference_dual1_tau"] = isempty(g) || r["method"] == "dual1" ? nothing : abs(g[1] - dual1["gradient"][1]) / abs(dual1["gradient"][1])
         r["relative_difference_dual4"] = isempty(g) || r["method"] == "dual4" ? nothing :
             maximum(abs(g[j] - dual4["gradient"][j]) / abs(dual4["gradient"][j]) for j in eachindex(g))
     end
     io = IOBuffer()
-    println(io, "| method | Julia threads | one run, compiled (s) | of which reverse phase (s) | × primal | × Dual{4} | pool peak (GiB) | state arrays (GiB) | card peak above idle (GiB) | dJ/dτ | dJ/dw | dJ/dfocus | dJ/dn | largest relative difference from Dual{4} |")
-    println(io, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    println(io, "| method | Julia threads | one run, compiled (s) | of which reverse phase (s) | × primal | × Dual{4} | pool peak (GiB) | state arrays (GiB) | card peak above idle (GiB) | J − J_primal, relative | dJ/dτ | dJ/dw | dJ/dfocus | dJ/dn | largest relative difference from Dual{4} | dJ/dτ's relative difference from Dual{1} |")
+    println(io, "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     f(x) = @sprintf("%.6g", x)
     for r in rows
         g = r["gradient"]
@@ -134,10 +139,12 @@ function main(out, dirs)
         rev = haskey(r, "phases") ? @sprintf("%.1f", r["phases"]["reverse"]) : ""
         card = @sprintf("%.2f", r["card_above_idle_GiB"]) * (r["card_full"] ? " (card full)" : "")
         rd = r["relative_difference_dual4"] === nothing ? "" : @sprintf("%.1e", r["relative_difference_dual4"])
+        r1 = r["relative_difference_dual1_tau"] === nothing ? "" : @sprintf("%.1e", r["relative_difference_dual1_tau"])
+        jr = @sprintf("%.1e", r["J_relative_to_primal"])
         st = @sprintf("%.2f", r["state_GiB"]) * (r["method"] == "reverse" ? " (1 + $(r["checkpoints"]) checkpoints)" : "")
         label = r["method"] == "reverse" ? "reverse (C = $(r["checkpoint_every"]), $(r["checkpoint_memory"]) checkpoints)" : LABEL[r["method"]]
-        @printf(io, "| %s | %d | %.2f | %s | %.2f | %.2f | %.2f | %s | %s | %s | %s | %s | %s | %s |\n", label, r["threads"], r["seconds"], rev,
-                r["times_primal"], r["times_dual4"], r["pool_peak_GiB"], st, card, gs..., rd)
+        @printf(io, "| %s | %d | %.2f | %s | %.2f | %.2f | %.2f | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", label, r["threads"], r["seconds"], rev,
+                r["times_primal"], r["times_dual4"], r["pool_peak_GiB"], st, card, jr, gs..., rd, r1)
     end
     table = String(take!(io))
     print(table)

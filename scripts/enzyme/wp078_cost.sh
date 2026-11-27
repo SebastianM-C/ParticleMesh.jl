@@ -4,8 +4,8 @@
 # (`trapped.jl cost`), with nvidia-smi sampling the card's memory every 100 ms beside each.
 # Run in a worktree of this branch, with the card to itself (no other process in nvidia-smi):
 #     scripts/enzyme/wp078_cost.sh <worktree> <out dir> [julia threads, default 2]
-# The reverse pass's host work (its launches, Enzyme's host code, the GC) gets faster with more Julia
-# threads: on the RTX 5090 its compiled reverse phase took 40.2 s at -t 1 and 29.9 s at -t 2.
+# The reverse gets faster with more Julia threads, for a reason not measured: on the RTX 5090 its
+# compiled reverse phase took 40.2 s at -t 1, 29.9 s at -t 2 and 23.5 s at -t 16.
 # The result.toml and manifest.toml of each method land in <out dir>/enzyme-trapped-cost-<method>-*.
 set -u
 W=$1; OUT=$2; NT=${3:-2}
