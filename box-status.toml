@@ -1,0 +1,20 @@
+branch = "runs/lwfa3d-anim-20261127"
+request_commit = "42a3e702f4afabb10ecd82fd14ea830e40ecc734"
+started = "2026-11-27T15:40:34Z"
+category = "physics"
+outputs = ["scripts/runs/lwfa3d-anim"]
+finished = "2026-11-27T16:15:10Z"
+ok = true
+files_returned = 146
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-27T15:40:34Z"
+exit = 0
+seconds = 2076
