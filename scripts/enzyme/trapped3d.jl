@@ -210,10 +210,15 @@ run_to(st, p, n) = (run!(st, p, n; observer = ()); sync(); ionization_lost(st) =
     st, p, _ = start3(θ, o)
     return measured(() -> run_to(st, p, n))
 end
-"The start's adjoint `dst` contracted with the tangent of the start at θ with parameter `j`'s Dual{1}."
+"""
+The start's adjoint `dst` contracted with the tangent of the start at θ with parameter `j`'s
+Dual{1}. The workspaces are scratch and carry no adjoint (`shadow_of`): their arrays are left out,
+since with `shadow=shared` they hold the primal's scratch values.
+"""
 @noinline function start_tangent(dst, j, o)
     sd = start_state(dual1_theta(THETA, j), o)
-    return array_dot(dst, sd, 1) + scalar_dot(dst, sd, 1)
+    skip = Base.IdSet{Any}(a for ws in ParticleMeshElectromagnetic.deposited_workspaces(dst) for a in values(all_arrays(ws)))
+    return array_dot(dst, sd, 1; skip) + scalar_dot(dst, sd, 1)
 end
 "The reverse pass from a start of its own (no other reference to it), with `measured`'s time and memory."
 @noinline function reverse_from(o, p, n; kw...)
