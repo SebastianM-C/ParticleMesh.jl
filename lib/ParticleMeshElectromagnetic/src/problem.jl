@@ -182,8 +182,6 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
     isempty(lasers) || N >= 2 || throw(ArgumentError("laser antennas are implemented at N = 2 and 3 only"))
     all(is_laser, lasers) || throw(ArgumentError("lasers must be GaussianLaser or ShapedLaser descriptions, got $(map(typeof, lasers))"))
     for l in lasers
-        N == 3 && !(l isa GaussianLaser) &&
-            throw(ArgumentError("a ShapedLaser's profiles are one-dimensional across the beam, so at N = 3 a laser is a GaussianLaser"))
         transverse_axes(l) == N - 1 ||
             throw(ArgumentError("a laser at N = $N takes a center of $(N - 1) coordinate$(N == 3 ? "s (y, z)" : " (y)"), got center = $(l.center)"))
     end

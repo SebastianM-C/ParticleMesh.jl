@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099; WP-083's laser under Enzyme: T-1140. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099; WP-083's laser under Enzyme: T-1140; WP-085's Zernike antenna: T-1168, T-1169. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -294,6 +294,19 @@ else
             same = Array(sin.(xd)) == first.(Array(sincos.(xd))) && Array(cos.(xd)) == last.(Array(sincos.(xd)))
             @info "T-1140 CUDA sin and cos against sincos" T bitwise = same
         end
+    end
+
+    @testset "T-1168 the Zernike antenna on CUDA passes T-1164 with the CPU's tolerances, and its table and Reference step are bitwise across reruns and launch shapes [A2, A4, A8, WP-085]" begin
+        rerun_module_on(GPU, (("T-1164", body_T1164),))
+        first = zernike_digest(; be = GPU)
+        @test zernike_digest(; be = GPU) == first
+        for wgs in (64, 256)
+            @test zernike_digest(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1169 Enzyme's reverse mode through the Zernike table's kernels and the 3D antenna's rows matches ForwardDiff [A3, A7, WP-085]" begin
+        body_T1169(GPU)
     end
 
     @testset "T-196 the module's Reference step on CUDA is bitwise across reruns and launch shapes [A4, A9, WP-013]" begin
