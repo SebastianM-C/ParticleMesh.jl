@@ -72,8 +72,8 @@ end
 
 On `be` (CUDA), Enzyme's reverse mode with runtime activity, as the trapped-beam driver runs it:
 through a kernel that evaluates the 3D refill profile `RampedCosine` (the ramp's `sin`) against
-ForwardDiff on the CPU, with the ratio of T-1140 (|reverse − forward| / (eps(T)·Σ|J|ᵀ|w̄|) per
-input); and through a kernel and an `add_count!` of its integer flags, whose count is the primal's,
+ForwardDiff on the CPU, with T-1140's ratio |reverse − forward| / (eps(T)·scale) per input, its
+scale widened by the Hessian's terms (below); and through a kernel and an `add_count!` of its integer flags, whose count is the primal's,
 whose float gradient is 2x·ȳ exactly, and whose arrays are usable after the pass (#551 freed them).
 """
 function body_T1174(be)
@@ -92,13 +92,21 @@ function body_T1174(be)
         KernelAbstractions.synchronize(be)
         wcpu = [RampedCosine()((x[1][i], x[2][i], x[3][i]), Tuple(p)) for i in 1:n]
         @test maximum(abs.(Array(w) .- wcpu)) <= 8 * eps(T) * maximum(abs, wcpu)   # the reverse pass's primal; the device's sin, cos to an ulp or two
+        # the scale per input k of point i: |w̄_i|·(|J_ik| + Σ_l |H_ikl|·|z_il|), the first-order error
+        # of J_ik with every input rounded by eps (H the Hessian, in Float64): at a point where J_ik
+        # nearly vanishes, as the cosine's slope at its crests, the rounding of the argument alone
+        # moves it by many of its own ulps (the CPU's Float32 against its Float64 reaches 1080 of
+        # them over these points, and 0.37 in this scale), summed over the points for a parameter
+        f(z) = RampedCosine()((z[1], z[2], z[3]), Tuple(z[4:10]))
         gp, sp = zeros(10), zeros(10)
         gx, sx = zeros(n, 3), zeros(n, 3)
         for i in 1:n
             z = vcat(T[x[1][i], x[2][i], x[3][i]], p)
-            J = ForwardDiff.gradient(z -> RampedCosine()((z[1], z[2], z[3]), Tuple(z[4:10])), z)
-            gx[i, :] .= Float64.(J[1:3]) .* Float64(w̄[i]); sx[i, :] .= abs.(Float64.(J[1:3])) .* abs(Float64(w̄[i]))
-            gp .+= Float64.(J) .* Float64(w̄[i]); sp .+= abs.(Float64.(J)) .* abs(Float64(w̄[i]))
+            J = Float64.(ForwardDiff.gradient(f, z))
+            H = ForwardDiff.hessian(f, Float64.(z))
+            s = (abs.(J) .+ abs.(H) * abs.(Float64.(z))) .* abs(Float64(w̄[i]))
+            gx[i, :] .= J[1:3] .* Float64(w̄[i]); sx[i, :] .= s[1:3]
+            gp .+= J .* Float64(w̄[i]); sp .+= s
         end
         rx = maximum(d -> maximum(abs.(Float64.(Array(x̄[d])) .- gx[:, d]) ./ (eps(T) .* max.(sx[:, d], floatmin(Float64)))), 1:3)
         rp = maximum(abs.(Float64.(Array(p̄)) .- gp[4:10]) ./ (eps(T) .* max.(sp[4:10], floatmin(Float64))))
