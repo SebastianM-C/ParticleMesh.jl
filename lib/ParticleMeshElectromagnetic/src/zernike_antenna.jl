@@ -16,8 +16,9 @@ laser's focus, `plane` the [`AntennaPlane`](@ref), `center` the laser's axis, an
 array of the state's backend of size (n_y, n_z, 12), per interior row and layer of the plane the
 real and imaginary parts of six complex numbers: at the place of Ey (y Center, z Node) the profile
 `U` at ξ = x_a − focus, `U − U_yy/2 + U_zz/2` and `U_yz` at ξ = x_a − Δx/2 − focus; at the place of
-Ez (y Node, z Center) `U` at the first ξ, `U + U_yy/2 − U_zz/2` and `U_yz` at the second, the cross
-terms with the antenna's antipode weight. Its numbers ([`PulseShapes.parameter_names`](@ref)) are
+Ez (y Node, z Center) `U` at the first ξ, `U + U_yy/2 − U_zz/2` and `U_yz` at the second, each of
+the nearest image of the axis, and on a row or layer within Δ/1000 of the antipode the mean of the
+two images (the antenna's antipode rule, which for an even beam zeroes the odd cross term). Its numbers ([`PulseShapes.parameter_names`](@ref)) are
 the beam's; replacing them gives the untabulated laser, which the step refuses until it is
 tabulated again.
 """
@@ -66,9 +67,8 @@ end
 
 # The pupil sum at the transverse offsets (dy, dz) for the two distances ξe (the incident E, at the
 # plane) and ξb (the incident B, half a cell behind): (U(ξe), the B combination at ξb with the sign
-# `sgn` of its U_yy − U_zz term, U_yz(ξb) times the antipode weight w), over the sum of the
-# weights, as `profile` sums them.
-@inline function table_sums(P, nq::Int32, ξe, ξb, dy, dz, sgn, w)
+# `sgn` of its U_yy − U_zz term, U_yz(ξb)), over the sum of the weights, as `profile` sums them.
+@inline function table_sums(P, nq::Int32, ξe, ξb, dy, dz, sgn)
     T = eltype(P)
     ue = ub = uyy = uzz = uyz = zero(Complex{T})
     s = zero(T)
@@ -84,7 +84,32 @@ end
     end
     ue, ub, uyy, uzz, uyz = ue / s, ub / s, uyy / s, uzz / s, uyz / s
     um = ub - sgn * (uyy - uzz) / 2
-    return real(ue), imag(ue), real(um), imag(um), w * real(uyz), w * imag(uyz)
+    return real(ue), imag(ue), real(um), imag(um), real(uyz), imag(uyz)
+end
+
+# The other image of the axis across the seam, and whether the offset d lies within Δ/1000 of the
+# antipode (antipode_weight's band), where the two images are equally near.
+@inline seam_image(plane, axis, d) = ifelse(d > 0, d - plane.len[axis], d + plane.len[axis]), iszero(antipode_weight(plane, axis, d))
+
+# table_sums at the nearest image of the axis, and the mean over both images along an axis whose
+# offset lies on the antipode (four at a corner): the branch is taken only on those rows and
+# layers, and the band is wide against roundoff, so every backend takes the same images.
+@inline function image_sums(P, nq::Int32, ξe, ξb, plane, dy, dz, sgn)
+    T = eltype(P)
+    ya, iy = seam_image(plane, 2, dy)
+    za, iz = seam_image(plane, 3, dz)
+    a = table_sums(P, nq, ξe, ξb, dy, dz, sgn)
+    if iy
+        a = a .+ table_sums(P, nq, ξe, ξb, ya, dz, sgn)
+    end
+    if iz
+        a = a .+ table_sums(P, nq, ξe, ξb, dy, za, sgn)
+        if iy
+            a = a .+ table_sums(P, nq, ξe, ξb, ya, za, sgn)
+        end
+    end
+    n = T((1 + iy) * (1 + iz))
+    return a ./ n
 end
 
 # One work item per interior (row, layer) of the plane: the twelve numbers of PlaneTable.
@@ -96,10 +121,8 @@ end
     jr, kr = plane.g + j, plane.g + k
     y1, z1 = antenna_d(plane, 2, center[1], jr, h), antenna_d(plane, 3, center[2], kr, zero(T))
     y2, z2 = antenna_d(plane, 2, center[1], jr, zero(T)), antenna_d(plane, 3, center[2], kr, h)
-    w1 = antipode_weight(plane, 2, y1) * antipode_weight(plane, 3, z1)
-    w2 = antipode_weight(plane, 2, y2) * antipode_weight(plane, 3, z2)
-    a = table_sums(P, nq, ξe, ξb, y1, z1, one(T), w1)
-    b = table_sums(P, nq, ξe, ξb, y2, z2, -one(T), w2)
+    a = image_sums(P, nq, ξe, ξb, plane, y1, z1, one(T))
+    b = image_sums(P, nq, ξe, ξb, plane, y2, z2, -one(T))
     @inbounds ntuple(m -> (V[j, k, m] = a[m]; V[j, k, m + 6] = b[m]; nothing), Val(6))
 end
 

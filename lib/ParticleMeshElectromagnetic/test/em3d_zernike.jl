@@ -142,7 +142,8 @@ end
 
 The largest difference between the table that `tabulate` builds on `be` and the direct pupil sum
 (`profile` on the host) at every staggered place of a 3D plane of 23 × 21 cells (so that rows lie
-on the antipode of an axis near the seams, where the cross terms are zero), all twelve numbers,
+on the antipode of an axis near the seams, where the table holds the mean of the two images),
+all twelve numbers,
 relative to eps(T)·max|U|·√(samples); for duals the partials as well.
 """
 function table_against_direct(::Type{T}, beam; be = CPU()) where {T}
@@ -157,21 +158,27 @@ function table_against_direct(::Type{T}, beam; be = CPU()) where {T}
     a = Antenna(t, plane)
     ξe, ξb = plane.xa - t.focus, plane.xa - plane.hx - t.focus
     worst = 0.0
+    seams = 0
     nq = Int(b.radial) * Int(b.angular)
     comps(x) = x isa ForwardDiff.Dual ? (value_of(x), ForwardDiff.partials(x)...) : (x,)
     for j in 1:Int(grid.n[2]), k in 1:Int(grid.n[3])
         for (p, at, sgn) in ((1, EY_AT, 1), (2, EZ_AT, -1))
             dy, dz = plane_d(a, j, k, at)
-            w = antipode_weight(plane, 2, dy) * antipode_weight(plane, 3, dz)
-            u = profile(b, ξe, dy, dz)[1]
-            ub, uyy, uzz, uyz = profile(b, ξb, dy, dz)
-            um = ub - sgn * (uyy - uzz) / 2
-            ref = (real(u), imag(u), real(um), imag(um), w * real(uyz), w * imag(uyz))
+            # the nearest image, or on the antipode (within Δ/1000) the mean of the two
+            images(d, axis) = abs(2 * abs(d) - plane.len[axis]) * 1000 < plane.dx[axis] ? (d, d - sign(d) * plane.len[axis]) : (d,)
+            ys, zs = images(dy, 2), images(dz, 3)
+            seams += (length(ys) > 1) + (length(zs) > 1)
+            mean(f) = sum(f(y, z) for y in ys, z in zs) / (length(ys) * length(zs))
+            u = mean((y, z) -> profile(b, ξe, y, z)[1])
+            um = mean((y, z) -> (q = profile(b, ξb, y, z); q[1] - sgn * (q[2] - q[3]) / 2))
+            uyz = mean((y, z) -> profile(b, ξb, y, z)[4])
+            ref = (real(u), imag(u), real(um), imag(um), real(uyz), imag(uyz))
             for m in 1:6
                 worst = max(worst, maximum(abs.(comps(V[j, k, 6(p - 1) + m]) .- comps(ref[m]))))
             end
         end
     end
+    seams > 0 || error("no place on the antipode: the test does not reach the seam rule")
     return worst / (base_eps(T) * sqrt(nq))
 end
 
@@ -250,8 +257,9 @@ function body_T1164(be)
     end
 end
 
-# The table is the direct pupil sum at every staggered place (the cross terms zero on the antipode
-# rows), in the A8 matrix with an aberration's partial; a Gaussian pupil filled to 1/4 of the
+# The table is the direct pupil sum at every staggered place (on the antipode rows the mean of the
+# two images, which an aberrated beam makes differ: CUDA's Float32 once took the other image there),
+# in the A8 matrix with an aberration's partial; a Gaussian pupil filled to 1/4 of the
 # aperture (truncated at exp(−16) ≈ 10⁻⁷) gives the GaussianLaser of its waist: the rows the antenna
 # adds for both corrections at an oblique polarization, and the fields of a whole run, to the
 # truncation's 10⁻⁷ (or Float32's roundoff), the duals' partials in a0 and focus included.
