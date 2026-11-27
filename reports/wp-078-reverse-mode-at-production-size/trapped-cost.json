@@ -5,6 +5,23 @@
       "card_above_idle_GiB": 0.7734375,
       "card_full": false,
       "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 0,
+      "checkpoint_memory": "none",
       "checkpoints": 0,
       "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
       "gradient": [],
@@ -30,6 +47,23 @@
       "card_above_idle_GiB": 0.966796875,
       "card_full": false,
       "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 0,
+      "checkpoint_memory": "none",
       "checkpoints": 0,
       "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
       "gradient": [
@@ -57,6 +91,23 @@
       "card_above_idle_GiB": 2.3125,
       "card_full": false,
       "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 0,
+      "checkpoint_memory": "none",
       "checkpoints": 0,
       "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
       "gradient": [
@@ -87,6 +138,23 @@
       "card_above_idle_GiB": 30.5234375,
       "card_full": true,
       "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 20,
+      "checkpoint_memory": "device",
       "checkpoints": 90,
       "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
       "gradient": [
@@ -121,6 +189,23 @@
       "card_above_idle_GiB": 30.5234375,
       "card_full": true,
       "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 20,
+      "checkpoint_memory": "device",
       "checkpoints": 90,
       "commit": "b9f6410922e557a8e4a9b3b050d9ab19e4797fd8",
       "gradient": [
@@ -155,6 +240,23 @@
       "card_above_idle_GiB": 30.5234375,
       "card_full": true,
       "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 20,
+      "checkpoint_memory": "device",
       "checkpoints": 90,
       "commit": "b9f6410922e557a8e4a9b3b050d9ab19e4797fd8",
       "gradient": [

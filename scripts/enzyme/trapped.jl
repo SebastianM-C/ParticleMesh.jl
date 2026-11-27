@@ -32,10 +32,13 @@
 # (reverse: `reverse_run` with `C` and `ckpt`, default 20 and device), the whole run from the
 # start a warm-up time (it compiles) and then `reps` (default 2) timed times. Each run's peak device
 # memory above the baseline before the start was made, sampled every 20 ms by a second thread
-# (`julia -t 2`): the pool's live bytes (arrays allocated and not yet freed, garbage not yet
-# collected included) and the card's used bytes (total − free: the pool's cache, the context and
-# the malloc heap of PM_CUDA_HEAP too). And the bytes of the state's arrays (and of the
-# checkpoints), which do not depend on the sampling.
+# (`julia -t 2`; peaks shorter than that are missed): the pool's live bytes (arrays allocated and not
+# yet freed, garbage not yet collected included) and the card's used bytes (total − free: the pool's
+# cache, the context and the malloc heap of PM_CUDA_HEAP too). The pool keeps its cache between
+# runs, so the card's bytes mean something only for the warm-up; nvidia-smi beside the process is
+# the card's measure. And the bytes of the state's arrays (and of the checkpoints), which do not
+# depend on the sampling. The reverse's run includes `reverse_run`'s `reclaim()` (a full GC) every
+# four segments.
 #
 # Writes result.toml and manifest.toml into scripts/runs/enzyme-trapped-<command>-<stamp>/.
 # Time and GPU memory per phase are printed with UTC stamps, to be read against an nvidia-smi

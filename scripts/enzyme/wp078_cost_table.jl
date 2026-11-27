@@ -6,7 +6,13 @@
 #
 # The first run dir gives every method's row; the others add their reverse row (the same script at
 # another Julia thread count). Writes `trapped-cost.md` and `trapped-cost.json` into <out dir> and
-# prints the table. Refuses runs whose commit, case or J disagree, or whose card was not idle.
+# prints the table. Refuses: a result whose method, case (every key of `case`) or J (every timed
+# run) differs from the first run dir's primal; a reverse other than C = 20 with device checkpoints;
+# a dirty manifest, or commits whose difference from the first run dir's touches more than this
+# script and `wp078_cost.sh` (read with git in this repository); a card with another compute process
+# in nvidia-smi at the start or the end, a first nvidia-smi sample that differs between the
+# processes or shows the card in use; a pool peak below the state's arrays, or a reverse whose
+# phases add up to more than its run.
 #
 # Columns: the best compiled run of each method (the warm-up, which compiles, left out), from the
 # start (`initialize!`) to J and its derivatives; the reverse's own two phases; the pool's peak live
@@ -30,17 +36,27 @@ function result_of(dir, method)
     m = TOML.parsefile(joinpath(dir, ds[1], "manifest.toml"))
     return r, m, ds[1]
 end
-"First and peak memory.used (MiB) of an nvidia-smi CSV (`timestamp, memory.used [MiB], utilization`)."
+"First and peak memory.used (MiB) and the first utilization (%) of an nvidia-smi CSV (`timestamp, memory.used [MiB], utilization`)."
 function smi_mib(file)
-    mib = [parse(Int, m[1]) for m in eachmatch(r", (\d+) MiB", read(file, String))]
-    isempty(mib) && error("$file: no samples")
-    return first(mib), maximum(mib)
+    rows = [(parse(Int, m[1]), parse(Int, m[2])) for m in eachmatch(r", (\d+) MiB, (\d+) %", read(file, String))]
+    isempty(rows) && error("$file: no samples")
+    return first(rows)[1], maximum(first, rows), first(rows)[2]
+end
+const REPO = normpath(joinpath(@__DIR__, "..", ".."))
+const ALLOWED = ("scripts/enzyme/wp078_cost.sh", "scripts/enzyme/wp078_cost_table.jl")
+"Refuse two commits whose difference touches more than the cost scripts."
+function same_code(a, b)
+    a == b && return
+    changed = split(readchomp(`git -C $REPO diff --name-only $a $b`))
+    extra = setdiff(changed, ALLOWED)
+    isempty(extra) || error("commits $a and $b differ in $(join(extra, ", "))")
 end
 total_mib(dir) = parse(Int, match(r"/\s*(\d+)MiB", read(joinpath(dir, "nvidia-smi-start.txt"), String))[1])
 "Compute processes in an nvidia-smi listing (type C, not the desktop's G or C+G)."
 compute_procs(file) = [l for l in eachline(file) if occursin(r"\s+C\s+", l)]
 
 function rows_of(dir, methods, ref)
+    # ref: the first run dir's (commit, case, idle MiB), or nothing for the first run dir itself
     # the control runs' directory has no commit.txt: its manifest names the commit
     cf = joinpath(dir, "commit.txt")
     commit = isfile(cf) ? strip(read(cf, String)) : nothing
@@ -51,14 +67,28 @@ function rows_of(dir, methods, ref)
     rows = Dict{String,Any}[]
     for method in methods
         r, m, name = result_of(dir, method)
+        r["method"] == method || error("$name: method $(r["method"])")
         commit === nothing && (commit = m["commit"])
         m["commit"] == commit || error("$name: commit $(m["commit"]) against $commit")
         m["dirty"] == "false" || error("$name: dirty tree")
         r["case"]["nsteps"] == 1799 && r["case"]["ppl"] == 32 && r["case"]["mode"] == "Reference" || error("$name: not the λ₀/32 case")
+        if method == "reverse"
+            r["checkpoint_memory"] == "device" && r["checkpoint_every"] == 20 && r["checkpoints"] == cld(r["case"]["nsteps"], 20) ||
+                error("$name: not C = 20 with device checkpoints")
+        end
         timed = filter(x -> !x["warmup"], r["rows"])
         isempty(timed) && error("$name: no timed run")
         best = timed[argmin([x["seconds"] for x in timed])]
-        first_mib, peak_mib = smi_mib(joinpath(dir, "smi-$method.csv"))
+        first_mib, peak_mib, first_util = smi_mib(joinpath(dir, "smi-$method.csv"))
+        first_util <= 5 || error("$name: the card was in use ($first_util %) when its process started")
+        if ref !== nothing
+            same_code(ref.commit, commit)
+            r["case"] == ref.case || error("$name: case $(r["case"]) against $(ref.case)")
+            first_mib == ref.idle || error("$name: first nvidia-smi sample $first_mib MiB against $(ref.idle) MiB")
+        end
+        for x in timed
+            abs(x["J"] - best["J"]) <= 1e-6 * abs(best["J"]) || error("$name: timed runs disagree in J")
+        end
         sb = r["state_bytes"] * (method == "reverse" ? 1 + r["checkpoints"] : 1)
         row = Dict{String,Any}("method" => method, "threads" => r["threads"], "run" => basename(dir), "result" => name, "commit" => commit,
                                "seconds" => best["seconds"], "seconds_all" => [x["seconds"] for x in timed], "J" => best["J"],
@@ -67,15 +97,21 @@ function rows_of(dir, methods, ref)
                                "card_above_idle_GiB" => (peak_mib - first_mib) / 1024, "card_full" => peak_mib >= total - 512,
                                "card_total_MiB" => total, "idle_MiB" => first_mib)
         haskey(best, "phases") && (row["phases"] = best["phases"])
+        haskey(best, "phases") && sum(values(best["phases"])) <= best["seconds"] || method != "reverse" || error("$name: phases exceed the run")
+        row["pool_peak_GiB"] >= row["state_GiB"] * 0.95 || error("$name: pool peak $(row["pool_peak_GiB"]) GiB below the state's arrays $(row["state_GiB"]) GiB")
+        row["case"] = r["case"]; row["checkpoint_every"] = r["checkpoint_every"]; row["checkpoint_memory"] = r["checkpoint_memory"]
         push!(rows, row)
+        ref === nothing && (ref = (; commit, case = r["case"], idle = first_mib))
     end
     return rows
 end
 
 function main(out, dirs)
     rows = rows_of(dirs[1], METHODS, nothing)
+    p1 = rows[1]
+    ref = (; commit = p1["commit"], case = p1["case"], idle = p1["idle_MiB"])
     for d in dirs[2:end]
-        append!(rows, rows_of(d, ("reverse",), nothing))
+        append!(rows, rows_of(d, ("reverse",), ref))
     end
     by(m) = only(r for r in rows if r["method"] == m && r["run"] == basename(dirs[1]))
     primal, dual4 = by("primal"), by("dual4")
@@ -99,7 +135,8 @@ function main(out, dirs)
         card = @sprintf("%.2f", r["card_above_idle_GiB"]) * (r["card_full"] ? " (card full)" : "")
         rd = r["relative_difference_dual4"] === nothing ? "" : @sprintf("%.1e", r["relative_difference_dual4"])
         st = @sprintf("%.2f", r["state_GiB"]) * (r["method"] == "reverse" ? " (1 + $(r["checkpoints"]) checkpoints)" : "")
-        @printf(io, "| %s | %d | %.2f | %s | %.2f | %.2f | %.2f | %s | %s | %s | %s | %s | %s | %s |\n", LABEL[r["method"]], r["threads"], r["seconds"], rev,
+        label = r["method"] == "reverse" ? "reverse (C = $(r["checkpoint_every"]), $(r["checkpoint_memory"]) checkpoints)" : LABEL[r["method"]]
+        @printf(io, "| %s | %d | %.2f | %s | %.2f | %.2f | %.2f | %s | %s | %s | %s | %s | %s | %s |\n", label, r["threads"], r["seconds"], rev,
                 r["times_primal"], r["times_dual4"], r["pool_peak_GiB"], st, card, gs..., rd)
     end
     table = String(take!(io))
