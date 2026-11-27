@@ -28,7 +28,8 @@
 # that the timed calls do not compile; its own gradient check against Dual{4} is reported too;
 # `warm_t_end=300`); `run=0` stops after the warm-up; `strict_aliasing=0` turns off Enzyme's strict
 # aliasing in its type analysis; `stable=1|0` whether the push, kick and ionization kernels re-read
-# the sharpened fields in the reverse sweep instead of taping them (active_reduce.jl; WP-086).
+# the sharpened fields in the reverse sweep instead of taping them (active_reduce.jl; WP-086);
+# `shadow=shared|full` whether the start's shadow shares the workspaces with the state (WP-086).
 #
 # What `grad` does, in this order, each phase timed and its peak of device memory recorded:
 #
@@ -63,6 +64,8 @@ struct Trap3Tag end
 # stable=1 (the default, with active_reduce.jl loaded): the sharpened fields count as not
 # overwritten within each of the reverse sweep's per-step Enzyme calls (the patch says why)
 const USE_STABLE = opt("stable", "1") == "1" && isdefined(Main, :stable_within_call!)
+# shadow=shared (the default): the start's shadow shares the workspaces with the state (`shadow_of`)
+const SHARED_SCRATCH = opt("shadow", "shared") == "shared"
 
 """
 The case's sizes from the keys; `warm` for the small box of the warm-up: the same types, 8 cells per
@@ -144,6 +147,28 @@ function run_J!(Je, Jb, st, pr, n, scheme, fade, rise, ::Val{B}) where {B}
 end
 
 """
+The start's shadow and the bytes of its new arrays: `Enzyme.make_zero(st)`, or with
+`shadow=shared` (the default) one whose workspaces are the state's own arrays. Every use of a
+workspace in a step is a call with a reverse rule of the engine (`sort_by_cell!`,
+`resort_by_cell!`, `deposit!`, `deposit_flux!`), and those give the workspace no adjoint and never
+read its shadow; under runtime activity a shadow that is its primal counts as constant. The
+workspaces are scratch, written before they are read within a call (the flux patches, the spare
+sets, the keys and the permutation), most of a full shadow; the run records the bytes of the new arrays.
+"""
+function shadow_of(st)
+    seen = IdDict{Any,Any}()
+    if SHARED_SCRATCH
+        for ws in ParticleMeshElectromagnetic.deposited_workspaces(st), a in values(all_arrays(ws))
+            seen[a] = a
+        end
+    end
+    dst = Enzyme.make_zero(Core.Typeof(st), seen, st)
+    # new: the shadow's arrays that are none of the state's (Enzyme shares some integer arrays itself)
+    primal = Base.IdSet{Any}(values(all_arrays(st)))
+    return dst, sum(a -> a in primal ? 0 : sizeof(a), values(all_arrays(dst)); init = 0)
+end
+
+"""
 The reverse pass of the whole run from the start `st` with `c` checkpoints (device or `host`
 memory): the start's adjoint `dst`, the parameters' `dp` and J from the summands of the reverse
 pass's own forward sweep.
@@ -153,7 +178,7 @@ function reverse_run(st, p, n; c, host, body = :step, fade = TCASE.fade, rise = 
     fill!(Je, 0); fill!(Jb, 0)
     dJe, dJb = similar(Je), similar(Jb)
     fill!(dJe, 1); fill!(dJb, 1)
-    dst = Enzyme.make_zero(st)
+    dst, shadow_new_bytes = shadow_of(st)
     pr, dpr = Ref(p), Ref(Enzyme.make_zero(p))
     scheme = Revolve(c; storage = checkpoint_storage(; host))
     # each Enzyme call of Revolve's reverse sweep covers one step: the sharpened copy is stable
@@ -168,52 +193,74 @@ function reverse_run(st, p, n; c, host, body = :step, fade = TCASE.fade, rise = 
         stable && Main.clear_stable!()
     end
     J = Float64(volume(st)) * (Float64(foldl(+, Array(Je))) + Float64(foldl(+, Array(Jb))))
-    return (; dst, dp = dpr[], J)
+    return (; dst, dp = dpr[], J, shadow_new_bytes)
 end
 
 "J of a run of `n` steps from `st` (any element type)."
 run_to(st, p, n) = (run!(st, p, n; observer = ()); sync(); ionization_lost(st) == 0 || error("$(ionization_lost(st)) births found no free slot: raise `cap`"); trapped_energy3(st))
 
+# Each state below is built inside a function of its own and handed on only as an argument, so
+# that nothing in `sequence`'s frame roots it: the tuple that `start3` returns stays rooted in the
+# frame that destructures it until that frame returns (Julia keeps the temporary), and at λ₀/32
+# the start state held so (11.7 GiB) left no room for a Dual{1} state or the reverse pass.
+"The start state alone, without its tuple."
+@noinline start_state(θ, o) = first(start3(θ, o))
+"J of a run of `n` steps from the start at `θ` (Float32 or duals), with `measured`'s time and memory."
+@noinline function run_from(θ, o, n)
+    st, p, _ = start3(θ, o)
+    return measured(() -> run_to(st, p, n))
+end
+"The start's adjoint `dst` contracted with the tangent of the start at θ with parameter `j`'s Dual{1}."
+@noinline function start_tangent(dst, j, o)
+    sd = start_state(dual1_theta(THETA, j), o)
+    return array_dot(dst, sd, 1) + scalar_dot(dst, sd, 1)
+end
+"The reverse pass from a start of its own (no other reference to it), with `measured`'s time and memory."
+@noinline function reverse_from(o, p, n; kw...)
+    sref = Ref{Any}(start_state(F.(THETA), o))
+    return measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; kw...)))
+end
+"The case's sizes and parameters, from a start state that dies with this frame."
+@noinline function describe(o)
+    st, p, prob = start3(F.(THETA), o)
+    return (; p, prob, n = prob.nsteps, v = Float64(volume(st)), checkpoint = sum(sizeof, evolved(st)),
+            state_float = sum(sizeof, values(leaves(st)); init = 0), state_all = sum(sizeof, values(all_arrays(st)); init = 0),
+            plasma_slots = length(st.species[1].w), born_slots = length(ionization_electrons(st).w))
+end
+
 """
-One pass of the whole sequence at the sizes `o`: the plain run, the reverse pass, the gradient
-from it, the Dual{1} runs of `duals` and Dual{4} with `dual4`. Returns a Dict of the results.
+One pass of the whole sequence at the sizes `o`: the plain run, the Dual{1} runs of `duals`, the
+reverse pass and the gradient from it, Dual{4} with `dual4`. Returns a Dict of the results.
 """
 function sequence(o; c, host, duals, dual4, primal, label, body = :step)
     res = Dict{String,Any}("case" => Dict{String,Any}("ppl" => o.ppl, "nt" => o.nt, "rows" => o.rows, "ppc" => collect(o.ppc), "ion_ppc" => collect(o.ion_ppc),
                                                       "capacity_factor" => o.cap, "t_end" => o.t_end, "a0E" => o.a0E, "theta" => THETA, "eltype" => string(F),
                                                       "gather" => "CompensatedGather(k = 1)", "solver" => "Yee", "mode" => "Reference"),
-                           "checkpoints" => c, "checkpoint_memory" => host ? "host" : "device", "loop_body" => string(body))
-    st0, p, prob = start3(F.(THETA), o)
-    n = prob.nsteps
-    v = Float64(volume(st0))
-    ckpt_bytes = sum(sizeof, evolved(st0))
-    # the floating-point arrays (what the shadow mirrors) and every array of the state
-    state_bytes = sum(sizeof, values(leaves(st0)); init = 0)
-    all_bytes = sum(sizeof, values(all_arrays(st0)); init = 0)
-    merge!(res["case"], Dict{String,Any}("nsteps" => n, "cells" => collect(prob.cells), "plasma_slots" => length(st0.species[1].w),
-                                         "born_slots" => length(ionization_electrons(st0).w), "dt" => Float64(prob.dt)))
-    res["bytes"] = Dict{String,Any}("state_float" => state_bytes, "state_all" => all_bytes, "checkpoint" => ckpt_bytes)
-    mark("$label: $(prob.cells) cells, $n steps, $(length(st0.species[1].w)) plasma slots, $(length(ionization_electrons(st0).w)) born slots; " *
-         @sprintf("state %.2f GiB in floating-point arrays (%.2f GiB in all), one checkpoint %.2f GiB, %d checkpoints in %s memory", gib(state_bytes), gib(all_bytes), gib(ckpt_bytes), c, host ? "host" : "device"))
+                           "checkpoints" => c, "checkpoint_memory" => host ? "host" : "device", "loop_body" => string(body),
+                           "shadow" => SHARED_SCRATCH ? "shared scratch" : "full", "stable_fields" => USE_STABLE)
+    d = describe(o)
+    (; p, prob, n, v) = d
+    merge!(res["case"], Dict{String,Any}("nsteps" => n, "cells" => collect(prob.cells), "plasma_slots" => d.plasma_slots,
+                                         "born_slots" => d.born_slots, "dt" => Float64(prob.dt)))
+    # the floating-point arrays (what a full shadow mirrors) and every array of the state
+    res["bytes"] = Dict{String,Any}("state_float" => d.state_float, "state_all" => d.state_all, "checkpoint" => d.checkpoint)
+    reclaim()
+    mark("$label: $(prob.cells) cells, $n steps, $(d.plasma_slots) plasma slots, $(d.born_slots) born slots; " *
+         @sprintf("state %.2f GiB in floating-point arrays (%.2f GiB in all), one checkpoint %.2f GiB, %d checkpoints in %s memory", gib(d.state_float), gib(d.state_all), gib(d.checkpoint), c, host ? "host" : "device"))
     if primal
-        J, t, peak, base = measured(() -> run_to(deepcopy(st0), p, n))
+        J, t, peak, base = run_from(F.(THETA), o, n)
         res["J"] = Float64(J)
         res["primal"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: plain run %.1f s, J = %.8g, peak %.2f GiB", label, t, J, gib(peak)))
+        reclaim()
     end
-    # the Dual{1} runs first, each from a start of its own, so that a failed reverse pass leaves
-    # them a clean card; their derivatives are compared with the reverse pass's gradient below. The
-    # start is dropped meanwhile (at λ₀/32 a Dual{1} state does not fit beside it) and built again
-    # for the reverse pass, with the same bits (Reference mode, counter-based draws; A4).
-    st0 = nothing
-    reclaim()
+    # the Dual{1} runs before the reverse pass, so that a failed reverse pass leaves them a clean
+    # card; their derivatives are compared with the reverse pass's gradient below
     rows = Dict{String,Any}[]
     for j in duals
         row = Dict{String,Any}("parameter" => PNAMES[j])
         try
-            sd, pdj, _ = start3(dual1_theta(THETA, j), o)
-            Jd, t, peak, base = measured(() -> run_to(sd, pdj, n))
-            sd = nothing
+            Jd, t, peak, base = run_from(dual1_theta(THETA, j), o, n)
             merge!(row, Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "derivative" => Float64(ForwardDiff.partials(Jd, 1)),
                                          "seconds" => t, "peak_bytes" => peak, "base_bytes" => base))
             mark(@sprintf("%s: Dual{1} in %s %.1f s, dJ/d%s %+.8e, peak %.2f GiB", label, PNAMES[j], t, PNAMES[j], row["derivative"], gib(peak)))
@@ -224,15 +271,15 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         push!(rows, row)
         reclaim()
     end
-    # the reverse pass on a start of its own, handed over without another reference to it (a copy
-    # would hold one state more); a failure is recorded with its backtrace
+    # the reverse pass; a failure is recorded with its backtrace
     g = fill(NaN, 4)
     try
-        sref = Ref{Any}(first(start3(F.(THETA), o)))
-        r, t, peak, base = measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; c, host, body)))
+        r, t, peak, base = reverse_from(o, p, n; c, host, body)
         res["J_reverse_forward"] = r.J
-        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base, "stable_fields" => USE_STABLE)
-        mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
+        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base, "stable_fields" => USE_STABLE,
+                                          "shadow_new_bytes" => r.shadow_new_bytes)
+        mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB, shadow %.2f GiB new", label, t,
+                      1e3 * t / n, r.J, gib(peak), gib(r.shadow_new_bytes)))
         dst, dp = r.dst, r.dp
         r = nothing
         reclaim()
@@ -242,9 +289,8 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         g_params = [v * scalar_dot(dp, pd, j) for j in 1:4]
         g_state = zeros(4)
         t_tan = @elapsed for j in 1:4
-            sd, _, _ = start3(dual1_theta(THETA, j), o)
-            g_state[j] = v * (array_dot(dst, sd, 1) + scalar_dot(dst, sd, 1))
-            sd = nothing; reclaim()
+            g_state[j] = v * start_tangent(dst, j, o)
+            reclaim()
         end
         g .= g_state .+ g_params
         res["gradient_reverse"] = g; res["gradient_reverse_start"] = g_state; res["gradient_reverse_params"] = g_params
@@ -253,33 +299,32 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         for j in 1:4
             @printf("    dJ/d%-8s reverse %+.8e (start %+.3e, parameters %+.3e)\n", PNAMES[j], g[j], g_state[j], g_params[j])
         end
-        dst = nothing; reclaim()
+        dst = nothing
     catch e
         res["reverse_error"] = sprint(showerror, e)[1:min(end, 3000)]
-        res["reverse_backtrace"] = sprint(Base.show_backtrace, catch_backtrace())[1:min(end, 20000)]
+        res["reverse_backtrace"] = sprint(Base.show_backtrace, catch_backtrace())[1:min(end, 40000)]
         mark("$label: reverse pass FAILED: " * res["reverse_error"][1:min(end, 600)])
-        println(res["reverse_backtrace"][1:min(end, 6000)])
+        println(res["reverse_backtrace"][1:min(end, 12000)])
     end
     reclaim()
     mark("$label: after the reverse pass")
     for row in rows
         j = findfirst(==(row["parameter"]), PNAMES)
         haskey(row, "derivative") || continue
-        d = row["derivative"]
+        dj = row["derivative"]
         row["reverse"] = g[j]
-        row["relative_difference"] = abs(g[j] - d) / abs(d)
-        mark(@sprintf("%s: dJ/d%s Dual{1} %+.8e, reverse %+.8e, relative difference %.2e", label, PNAMES[j], d, g[j], row["relative_difference"]))
+        row["relative_difference"] = abs(g[j] - dj) / abs(dj)
+        mark(@sprintf("%s: dJ/d%s Dual{1} %+.8e, reverse %+.8e, relative difference %.2e", label, PNAMES[j], dj, g[j], row["relative_difference"]))
     end
     res["dual1"] = rows
     if dual4
-        sd, pdj, _ = start3(dual_theta(THETA, 4), o)
-        Jd, t, peak, base = measured(() -> run_to(sd, pdj, n))
-        d = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:4]
-        rel = abs.(g .- d) ./ abs.(d)
-        res["dual4"] = Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "gradient" => d, "relative_difference" => rel, "seconds" => t,
+        Jd, t, peak, base = run_from(dual_theta(THETA, 4), o, n)
+        d4 = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:4]
+        rel = abs.(g .- d4) ./ abs.(d4)
+        res["dual4"] = Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "gradient" => d4, "relative_difference" => rel, "seconds" => t,
                                         "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: Dual{4} %.1f s, peak %.2f GiB; relative differences %s", label, t, gib(peak), string(round.(rel; sigdigits = 3))))
-        sd = nothing; reclaim()
+        reclaim()
     end
     return res
 end
