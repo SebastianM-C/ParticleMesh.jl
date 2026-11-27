@@ -1130,6 +1130,11 @@ pulse_corners() = [[isodd(k >> (i - 1)) ? PULSE_BOX.hi[i] : PULSE_BOX.lo[i] for 
         @test check_pulse_time(pulse_shape(x)) === nothing
     end
     @test_throws ArgumentError check_pulse_time(pulse_shape([80.0, 0.0, 0.0, 30.0, 0.0]))
+    # each half of the condition alone, and the six durations: the transform-limited pulse spans ±36
+    s0 = pulse_shape(collect(PCASE.x0))
+    @test check_pulse_time(s0; delay = 36.0, start = 72.0) === nothing
+    @test_throws ArgumentError check_pulse_time(s0; delay = 35.5, start = 108.0)   # not started at t = 0
+    @test_throws ArgumentError check_pulse_time(s0; delay = 54.0, start = 89.5)    # not ended when the window passes
     @test_throws ArgumentError pulse_problem([80.0, 0.0, 0.0, 30.0, 0.0]; ppl = 8)
 end
 
@@ -1156,6 +1161,13 @@ end
     ys = range(-half, half; length = 20_001)
     fine = sum(abs2(first(PulseShapes.profile(b, ξ, y))) for y in ys) * step(ys) / first(PulseShapes.profile_moments(b))
     @test lf.interior ≈ fine rtol = 1e-4
+    # and at an aberrated point, odd and even modes, focused away from the base, where |U| has no mirror in y or ξ
+    pa = pulse_problem([100.0, 0.25, -0.2, 0.0, 0.0]; ppl = 16)
+    ba, ξa = pa.lasers[1].profile, pa.lasers[1].position - pa.lasers[1].focus
+    finea = sum(abs2(first(PulseShapes.profile(ba, ξa, y))) for y in ys) * step(ys) / first(PulseShapes.profile_moments(ba))
+    @test launched_fraction(pa).interior ≈ finea rtol = 1e-5
+    yb = range(-BCASE.rows * BCASE.dy / 2, BCASE.rows * BCASE.dy / 2; length = 20_001)
+    @test launched_fraction(pa).box ≈ sum(abs2(first(PulseShapes.profile(ba, ξa, y))) for y in yb) * step(yb) / first(PulseShapes.profile_moments(ba)) rtol = 1e-5
     @test 0.99 < lf.interior < lf.box < 1
     @test launched_fraction(pulse_problem(collect(PCASE.x0); ppl = 32, ny = 2)).interior ≈ lf.interior rtol = 1e-4
     g = born_problem(1.0, 0.0; ppl = 16, shape = (; profile = GaussianBeam(; waist = 10.0), envelope = GaussianEnvelope(; duration = 6.0)))
@@ -1238,11 +1250,30 @@ end
     r = optimize_start(store, starts.r4, dir; maxiters = 50, pgtol = 1e-10, coords = c)
     @test r["free"] ≈ m rtol = 1e-6
     @test isfile(joinpath(dir, "result.json")) && ran[] == store.made
-    # one point of the case at λ₀/8: the record's J is the plain run's, with its gradient and the shape's numbers
-    rec = pulse_run_point(starts.r1; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, grad = true)
-    @test rec["J"] ≈ trapped_energy(pulse_state(starts.r1; ppl = 8, t_end = 190.0, capacity = 60_000)) rtol = 64eps()
-    @test length(rec["gradient"]) == 5 && rec["a0"] == pulse_a0(pulse_shape(starts.r1)) && 0 < rec["strehl"] < 1
+    @test pulse_starts("r1,r3"; seed = 88) == (; r1 = random_start(1; seed = 88), r3 = random_start(3; seed = 88))
+    # one point of the case at λ₀/8 at another budget: the record's J is the plain run's, its gradient the
+    # duals' in the five directions in order, and the shape's numbers at that budget
+    E = budget(2.2)
+    read = (; rise = (0.5, 3.0), fade = BCASE.fade)
+    rec = pulse_run_point(starts.r1; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, grad = true, energy = E, read)
+    xd = [ForwardDiff.Dual{Nothing}(starts.r1[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5]
+    Jd = pulse_small(xd; energy = E)
+    @test rec["J"] > 1e-3 && rec["J"] == ForwardDiff.value(Jd)
+    @test rec["J"] ≈ pulse_small(starts.r1; energy = E) rtol = 64eps()
+    @test rec["gradient"] == collect(ForwardDiff.partials(Jd)) && all(!iszero, rec["gradient"])
+    @test rec["a0"] == pulse_a0(pulse_shape(starts.r1); energy = E) && rec["a0"] > pulse_a0(pulse_shape(starts.r1))
+    @test 0 < rec["strehl"] < 1 && rec["z"] == starts.r1 ./ PULSE_BOX.scale
     @test 0.9 < rec["launched_interior"] <= rec["launched_box"] < 1 && rec["envelope_duration"] > PCASE.duration
+    @test pulse_run_point(starts.r1; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, grad = false, energy = E, read)["J"] ≈ rec["J"] rtol = 64eps()
+    # the check's jobs: a run with duals and the two sides of each direction at ± 2^-power of its scale, under the ids the report reads
+    jobs = pulse_check_jobs(["best" => starts.r2], Dict("power" => 13))
+    @test length(jobs) == 11 && jobs[1] == ("best-f64-grad", Dict{Symbol,Any}(:x => starts.r2, :grad => true))
+    for (i, n) in enumerate(PCASE.names), (sfx, sgn) in (("p", 1), ("m", -1))
+        id, j = only(filter(q -> q[1] == "best-fd-$n-$sfx", jobs))
+        h = PULSE_BOX.scale[i] * 2.0^-13
+        @test j[:h] == h && j[:sign] == sgn && j[:direction] == i && !j[:grad]
+        @test j[:x] == [k == i ? starts.r2[k] + sgn * h : starts.r2[k] for k in 1:5]
+    end
 end
 
 @testset "T-1186 the report's tables, figures and central differences from records [WP-087]" begin
@@ -1278,5 +1309,10 @@ end
     end
     t = read(joinpath(out, "tables.md"), String)
     @test occursin("| r1 |", t) && occursin("| r2 |", t) && occursin("aberration4=hi", t) && occursin("Check at the best point", t)
+    @test occursin("dJ/dz = 8.0, 0.05, 0.075, 4.0, 12.5 (", t)                 # the reference's gradient in z
+    @test occursin("| gdd | 330.0 | 300.0 | 0.1 |", t)                           # central differences 1.1 times the duals: 10 % apart
+    side = JSON.parsefile(joinpath(out, "pulse2d_paths.json"))
+    res = JSON.parsefile(joinpath(dir, "r1", "result.json"))
+    @test side["starts"]["r1"]["J"] == [p["J"] for p in res["path"]]           # the path in the solver's order
     @test pulse_on_bounds(collect(PCASE.x0)) == "none" && pulse_on_bounds(PULSE_BOX.lo) == join(["$n=lo" for n in PCASE.names], ", ")
 end

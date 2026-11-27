@@ -73,25 +73,26 @@ function pulse_starts(names::AbstractString; seed::Integer = 87)
 end
 
 """
-    pulse_run_point(x; ppl, ny, float, backend, gather, grad, energy, kw...) -> Dict
+    pulse_run_point(x; ppl, ny, float, backend, gather, grad, energy, read, kw...) -> Dict
 
 One run of the case at the five parameters `x` on `backend` in `float` with `gather`: J (WP-065's
 `trapped_energy`), its gradient in the five parameters (physical units) when `grad` (duals in
-the five directions; J is the plain run's to roundoff, T-1182), a₀, the vacuum focus's Strehl
+the five directions; J is the plain run's to roundoff, T-1185), a₀, the vacuum focus's Strehl
 ratio, the share of the profile's power the antenna launches ([`launched_fraction`](@ref)), the
-envelope's centroid and duration, the run's seconds and [`trapped_summary`](@ref).
+envelope's centroid and duration, the run's seconds and [`trapped_summary`](@ref). `read` holds
+`fade` and `rise` for J and the summary; the other keywords go to the case's problem.
 """
 function pulse_run_point(x; ppl::Integer, ny::Integer, float::Type{<:AbstractFloat} = Float64, backend = CPU(), gather = nothing,
-                         grad::Bool = true, energy = budget(PCASE.a0_energy), kw...)
+                         grad::Bool = true, energy = budget(PCASE.a0_energy), read = (;), kw...)
     F = float
     n = length(x)
     arg(i) = grad ? ForwardDiff.Dual{Nothing}(F(x[i]), ntuple(j -> F(j == i), n)) : F(x[i])
     xs = [arg(i) for i in 1:n]
     t = @elapsed st = pulse_state(xs; energy = F(energy), ppl, ny, float = F, backend, gather, kw...)
-    J = trapped_energy(st)
+    J = trapped_energy(st; read...)
     shape = pulse_shape(collect(Float64, x))
     prob = pulse_problem(collect(Float64, x); energy = Float64(energy), ppl, ny)
-    out = Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st)))
+    out = Dict{String,Any}(string(k) => v for (k, v) in pairs(trapped_summary(st; read...)))
     out["J"] = Float64(value_of(J))
     out["free"] = collect(Float64, x)
     out["z"] = collect(Float64, x) ./ PULSE_BOX.scale
@@ -205,6 +206,9 @@ end
 
 const PULSE_CHECK_DEFAULTS = (fdppl = 32, fdny = 2, power = 13)
 
+const PULSE_USAGE = "usage: pulse2d_opt.jl opt [dir] [key=value...] | check <dir> [key=value...] | report <out dir> <run dir>"
+abspath(PROGRAM_FILE) == (@__FILE__) && isempty(ARGS) && error(PULSE_USAGE)
+
 if abspath(PROGRAM_FILE) == (@__FILE__)
     # the backend loads at top level, so that the runs that follow see its methods (world age)
     ARGS[1] == "opt" && parse_options(ARGS[2:end], PULSE_OPT_DEFAULTS)[1]["backend"] == "cuda" && opt_backend("cuda")
@@ -222,6 +226,6 @@ if abspath(PROGRAM_FILE) == (@__FILE__)
         include(joinpath(@__DIR__, "pulse2d_opt_report.jl"))
         pulse_report(ARGS[2], ARGS[3])
     else
-        error("usage: pulse2d_opt.jl opt [dir] [key=value...] | check <dir> [key=value...] | report <out dir> <run dir>")
+        error(PULSE_USAGE)
     end
 end
