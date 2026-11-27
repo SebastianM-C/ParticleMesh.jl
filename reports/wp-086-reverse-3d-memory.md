@@ -17,7 +17,7 @@
 |---|---|
 | Work package | WP-086 (`trace/wp/WP-086-reverse-3d-memory.md`); goals A0, A4, A7, A8, A9 |
 | Commits | the runs' commits are in each `manifest.toml`: `4c0e2b19` (run 153821), `9e0ec7ae` (173415, 180317), `5b80e862` (182615, 185444) |
-| Runs | the 9 `enzyme-trapped3d-*` directories in `wp-086-reverse-3d-memory/`. Each `grad` directory holds `result.toml`, `manifest.toml` and `published.toml`; each `gpu` directory holds the runner's `summary.txt` and `published.toml`. The data, with the logs, is on branch `runs/wp086-5090` |
+| Runs | the 9 `enzyme-trapped3d-*` directories in `wp-086-reverse-3d-memory/`. Each `grad` directory holds `result.toml`, `manifest.toml` and `published.toml`; each `gpu` directory holds the runner's `summary.txt` and `published.toml`. The data, with the logs, is on branch `runs/wp086-5090` (commit `ed3a86bd`) |
 | Input hashes | SHA-256 of the driver, `common.jl`, `contract.jl`, `active_reduce.jl`, the case files, the test environment's `Project.toml` and the root `Manifest.toml`, in each manifest |
 | Environment | Julia 1.13.4; Enzyme 0.13.221, Checkpointing 0.13.0, KernelAbstractions 0.10.8, ForwardDiff 1.4.6; NVIDIA GeForce RTX 5090 (32 GB); CUDA backend; `-t 2`. The card held nothing else during the runs except the compositor (64 MiB) |
 | Status | measured, not independently reviewed; no number here is to leave the repository before that review |
