@@ -525,11 +525,13 @@ function counted_loss(x, flags, acc)
     return s
 end
 
-@testset "T-1172 add_count! adds the flags' sum to the counter, and Enzyme takes it as inactive: the reverse pass runs the count as it is, beside a gradient it leaves exact [A7, WP-086]" begin
+@testset "T-1172 add_count! adds the flags' sum to its one-element counter, and Enzyme takes it as inactive: the reverse pass runs the count as it is, beside a gradient it leaves exact [A7, WP-086]" begin
     x = [0.5, -1.25, 2.0, -0.0, 3.5, 1e-300]
     flags, acc = zeros(Int32, length(x)), Int32[7]
     @test PMC.add_count!(acc, Int32[1, 0, 1, 1]) === acc && acc == Int32[10]          # added to what it held
     acc .= Int32(7)
+    @test_throws ArgumentError PMC.add_count!(Int32[0, 0], Int32[1, 1])                 # one counter, not one per flag
+    @test PMC.add_count!(Int32[0], view(Int32[1, 1, 0, 1, 1], 2:5)) == Int32[3]          # a view of the flags
     @test applicable(Enzyme.EnzymeRules.inactive, PMC.add_count!, acc, flags)          # declared inactive (the extension)
     @test applicable(Enzyme.EnzymeRules.inactive, PMC.add_count!, acc, view(flags, 1:3))
     dx = zero(x)

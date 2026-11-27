@@ -111,4 +111,7 @@ slot. Integers carry no derivative, and the extension on EnzymeCore declares the
 (`EnzymeRules.inactive`), so that Enzyme runs it as it is instead of differentiating the backend's
 reduction, which it cannot do for a device array in reverse mode (#551; WP-086).
 """
-add_count!(acc::AbstractVector{<:Integer}, flags::AbstractVector{<:Integer}) = sum!(acc, flags; init = false)
+function add_count!(acc::AbstractVector{<:Integer}, flags::AbstractVector{<:Integer})
+    length(acc) == 1 || throw(ArgumentError("add_count!: the counter has $(length(acc)) elements, not one"))
+    return sum!(acc, flags; init = false)
+end

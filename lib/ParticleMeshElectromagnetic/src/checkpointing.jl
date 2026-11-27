@@ -34,8 +34,8 @@ immutable value could not hold it.
 What the checkpoints are: each holds `sum(sizeof, evolved(state))` bytes per captured state (the
 particles, the fields, the PMLs' convolution fields, the window's counters, the witness bunch, the
 ionization), against the whole state that Checkpointing.jl's default `ArrayStorage` copies
-(workspaces and scratch included). On top of them Checkpointing.jl copies the loop body once, at the
-first u-turn, for the reverse sweep's working state (`Checkpointing.checkpoint_alloc`): of a
+(workspaces and scratch included). On top of them Checkpointing.jl copies the loop body once (at
+`Revolve`'s first u-turn, at the end of `Periodic`'s forward sweep) for the reverse sweep's working state (`Checkpointing.checkpoint_alloc`): of a
 [`StepBody`](@ref) that copy is [`working_state`](@ref)'s, the evolved arrays and the kinetic-energy
 cache, sharing the configuration and the scratch with the stepped state (WP-086); of any other
 body, such as the closure that `@ad_checkpoint` makes, a `deepcopy` of every state it captures,
@@ -45,8 +45,9 @@ reverse pass reads the states the forward pass produced (A4); in `Fast()` mode t
 atomics' roundoff.
 
 Only `Revolve` keeps all its checkpoints in this storage. Checkpointing.jl 0.13's `Periodic`
-takes it for the period's boundaries but holds the steps inside a period in its own `ArrayStorage`
-(whole-body copies), so with `Periodic` the memory is not that of the evolved arrays.
+takes it for the period's boundaries but holds the steps inside a period in its own `ArrayStorage`,
+whose slots are copies of the loop body: of a `StepBody` working copies (evolved arrays), of any
+other body `deepcopy`s. `Online_r2` calls its body without a step index and takes no `StepBody`.
 
 The loop body must evolve nothing but the captured states: another array it writes is neither
 saved nor restored. A body that captures no `EMState` is refused when the first checkpoint is

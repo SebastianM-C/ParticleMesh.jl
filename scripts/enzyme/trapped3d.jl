@@ -27,19 +27,22 @@
 # its time and memory); `warm=1|0` (first the whole sequence on a small box of the same types, so
 # that the timed calls do not compile; its own gradient check against Dual{4} is reported too;
 # `warm_t_end=300`); `run=0` stops after the warm-up; `strict_aliasing=0` turns off Enzyme's strict
-# aliasing in its type analysis.
+# aliasing in its type analysis; `stable=1|0` whether the push, kick and ionization kernels re-read
+# the sharpened fields in the reverse sweep instead of taping them (active_reduce.jl; WP-086).
 #
 # What `grad` does, in this order, each phase timed and its peak of device memory recorded:
 #
 # 1. the plain run (J);
-# 2. the reverse pass: `Enzyme.autodiff` of `run_J!` (the steps under `checkpoint_for`, then a
+# 2. the Dual{1} runs of the listed parameters to the end (dJ/dθ_j each), before the reverse pass so
+#    that a failed reverse pass leaves them the card;
+# 3. the reverse pass: `Enzyme.autodiff` of `run_J!` (the steps under `checkpoint_for`, then a
 #    kernel that writes J's summand per particle slot of both electron species, whose adjoints are
 #    seeded with ones), with `Duplicated` state and a `Ref` of the parameters; it gives the adjoint
 #    of the start state and of the parameters;
-# 3. the gradient dJ/dθ: the start's adjoint contracted with the tangent of `initialize!` (a Dual{1}
+# 4. the gradient dJ/dθ: the start's adjoint contracted with the tangent of `initialize!` (a Dual{1}
 #    start per parameter) and the parameters' with dp/dθ of the problem's parameters with Dual{4}
-#    (no simulation);
-# 4. the Dual{1} runs of the listed parameters to the end (dJ/dθ_j each), and Dual{4} if asked.
+#    (no simulation), compared with the Dual{1} derivatives;
+# 5. Dual{4}, if asked.
 #
 # Writes result.toml and manifest.toml into scripts/runs/enzyme-trapped3d-grad-<stamp>/. The numbers
 # are measurements of single runs, not independently reviewed.
@@ -57,6 +60,9 @@ parse_tuple(s) = Tuple(parse.(Int, split(s, 'x')))
 parse_list(s) = isempty(s) ? Int[] : parse.(Int, split(s, ','))
 const F = Float32
 struct Trap3Tag end
+# stable=1 (the default, with active_reduce.jl loaded): the sharpened fields count as not
+# overwritten within each of the reverse sweep's per-step Enzyme calls (the patch says why)
+const STABLE_FIELDS = opt("stable", "1") == "1" && isdefined(Main, :stable_within_call!)
 
 """
 The case's sizes from the keys; `warm` for the small box of the warm-up: the same types, 8 cells per
@@ -150,9 +156,17 @@ function reverse_run(st, p, n; c, host, body = :step, fade = TCASE.fade, rise = 
     dst = Enzyme.make_zero(st)
     pr, dpr = Ref(p), Ref(Enzyme.make_zero(p))
     scheme = Revolve(c; storage = checkpoint_storage(; host))
-    Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), run_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
-                    Duplicated(pr, dpr), Const(n), Const(scheme), Const(fade), Const(rise), Const(Val(body)))
-    sync()
+    # each Enzyme call of Revolve's reverse sweep covers one step: the sharpened copy is stable
+    # within it (active_reduce.jl), and its kernels re-read the fields instead of taping them
+    stable = STABLE_FIELDS && st.sharpened !== nothing
+    stable && Main.stable_within_call!(st.sharpened)
+    try
+        Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), run_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
+                        Duplicated(pr, dpr), Const(n), Const(scheme), Const(fade), Const(rise), Const(Val(body)))
+        sync()
+    finally
+        stable && Main.clear_stable!()
+    end
     J = Float64(volume(st)) * (Float64(foldl(+, Array(Je))) + Float64(foldl(+, Array(Jb))))
     return (; dst, dp = dpr[], J)
 end
@@ -187,15 +201,34 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         res["primal"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: plain run %.1f s, J = %.8g, peak %.2f GiB", label, t, J, gib(peak)))
     end
-    # the reverse pass on the start itself (a copy would hold one state more; the Dual starts below
-    # are built afresh); a failure is recorded and the duals still run
+    # the Dual{1} runs first, each from a start of its own, so that a failed reverse pass leaves
+    # them a clean card; their derivatives are compared with the reverse pass's gradient below
+    rows = Dict{String,Any}[]
+    for j in duals
+        row = Dict{String,Any}("parameter" => PNAMES[j])
+        try
+            sd, pdj, _ = start3(dual1_theta(THETA, j), o)
+            Jd, t, peak, base = measured(() -> run_to(sd, pdj, n))
+            sd = nothing
+            merge!(row, Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "derivative" => Float64(ForwardDiff.partials(Jd, 1)),
+                                         "seconds" => t, "peak_bytes" => peak, "base_bytes" => base))
+            mark(@sprintf("%s: Dual{1} in %s %.1f s, dJ/d%s %+.8e, peak %.2f GiB", label, PNAMES[j], t, PNAMES[j], row["derivative"], gib(peak)))
+        catch e
+            row["error"] = sprint(showerror, e)[1:min(end, 2000)]
+            mark("$label: Dual{1} in $(PNAMES[j]) FAILED: " * row["error"][1:min(end, 300)])
+        end
+        push!(rows, row)
+        reclaim()
+    end
+    # the reverse pass on the start itself (a copy would hold one state more; the Dual starts are
+    # built afresh); a failure is recorded with its backtrace
     g = fill(NaN, 4)
     try
         sref = Ref{Any}(st0)
         st0 = nothing
         r, t, peak, base = measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; c, host, body)))
         res["J_reverse_forward"] = r.J
-        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
+        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base, "stable_fields" => STABLE_FIELDS)
         mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
         dst, dp = r.dst, r.dp
         r = nothing
@@ -220,25 +253,19 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
         dst = nothing; reclaim()
     catch e
         res["reverse_error"] = sprint(showerror, e)[1:min(end, 3000)]
+        res["reverse_backtrace"] = sprint(Base.show_backtrace, catch_backtrace())[1:min(end, 20000)]
         mark("$label: reverse pass FAILED: " * res["reverse_error"][1:min(end, 600)])
-        reclaim()
+        println(res["reverse_backtrace"][1:min(end, 6000)])
     end
-    # the duals
-    rows = Dict{String,Any}[]
-    for j in duals
-        sd, pdj, _ = start3(dual1_theta(THETA, j), o)
-        Jd, t, peak, base = try
-            measured(() -> run_to(sd, pdj, n))
-        catch e
-            push!(rows, Dict{String,Any}("parameter" => PNAMES[j], "error" => sprint(showerror, e)[1:min(end, 2000)]))
-            mark("$label: Dual{1} in $(PNAMES[j]) FAILED"); sd = nothing; reclaim(); continue
-        end
-        d = Float64(ForwardDiff.partials(Jd, 1))
-        rel = abs(g[j] - d) / abs(d)
-        push!(rows, Dict{String,Any}("parameter" => PNAMES[j], "J" => Float64(ForwardDiff.value(Jd)), "derivative" => d, "reverse" => g[j],
-                                     "relative_difference" => rel, "seconds" => t, "peak_bytes" => peak, "base_bytes" => base))
-        mark(@sprintf("%s: Dual{1} in %s %.1f s, dJ/d%s %+.8e, reverse %+.8e, relative difference %.2e, peak %.2f GiB", label, PNAMES[j], t, PNAMES[j], d, g[j], rel, gib(peak)))
-        sd = nothing; reclaim()
+    reclaim()
+    mark("$label: after the reverse pass")
+    for row in rows
+        j = findfirst(==(row["parameter"]), PNAMES)
+        haskey(row, "derivative") || continue
+        d = row["derivative"]
+        row["reverse"] = g[j]
+        row["relative_difference"] = abs(g[j] - d) / abs(d)
+        mark(@sprintf("%s: dJ/d%s Dual{1} %+.8e, reverse %+.8e, relative difference %.2e", label, PNAMES[j], d, g[j], row["relative_difference"]))
     end
     res["dual1"] = rows
     if dual4

@@ -101,8 +101,9 @@ function Checkpointing.load!(body::FT, s::EvolvedStorage{FT}, i::Integer) where 
     return body
 end
 
-# The reverse sweep's working copy of a `StepBody`: `Revolve` (and `Online_r2`, `Periodic`) take one
-# at the first u-turn and step it through the reverse sweep, and `ArrayStorage` takes its slots so.
+# The reverse sweep's working copy of a `StepBody`: `Revolve` takes one at the first u-turn and
+# `Periodic` at the end of its forward sweep, and each steps it through the reverse sweep;
+# `ArrayStorage` (`Periodic`'s steps inside a period) takes its slots so.
 # Of the state only the evolved arrays are new (`working_state`); the function and the parameters'
 # reference are the body's.
 Checkpointing.checkpoint_alloc(b::StepBody) = StepBody(b.f, working_state(b.state), b.params)
