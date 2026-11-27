@@ -233,3 +233,82 @@ struct KeySortFakeGPU <: KernelAbstractions.Backend end
         @test issorted(wa.key) && wa.perm != collect(1:2000)
     end
 end
+
+"""
+    body_T1190(be)
+
+T-1190 on `be` (gpu.jl reruns it on CUDA, T-1192): `resort_by_cell!(...; check = true)` through
+T-850's moves, frees and appends at N = 1, 2, 3 gives the bits of the full sort and of the
+unchecked resort, and it throws, with the arrays not moved and the order forgotten, when the
+precondition breaks: a particle moved by two cells, more particles appended than `append`. The
+moves and appends are made on host copies (moved to the host and back around them), as in T-892.
+"""
+function body_T1190(be)
+    dev(h) = be isa CPU ? h : todev(be, h)
+    sync!(dst, src) = dst === src || foreach(copyto!, species_arrays(dst), species_arrays(src))
+    hostbits(s) = map(x -> Array(x), species_arrays(s))
+    same(a, wa, b, wb) = all(same_bits(x, y) for (x, y) in zip(hostbits(a), hostbits(b))) && Array(wa.perm) == Array(wb.perm) &&
+                         Array(wa.seg_start) == Array(wb.seg_start) && Array(wa.seg_stop) == Array(wb.seg_stop)
+    for (T, n) in ((Float32, (7,)), (Float64, (16, 12)), (Float32, (5, 4, 3)))
+        N = length(n)
+        cap = 20 * prod(n)                 # room behind the count for the overflowing append below
+        append = 23
+        grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
+        # within the precondition: the checked resort, the unchecked one and the full sort agree
+        hs = [resort_species(T, n, cap, 8 * prod(n); seed = 3) for _ in 1:3]
+        a, b, c = map(dev, hs)
+        wa, wb, wc = Workspace(a, grid), Workspace(b, grid; append), Workspace(c, grid; append)
+        sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb); resort_by_cell!(c, grid, wc; check = true)
+        ok = Bool[]
+        for k in 1:4
+            for (h, d) in zip(hs, (a, b, c))
+                sync!(h, d)
+                rng = ResortLCG(3 + 100k)
+                resort_move!(h, n, rng)
+                iseven(k) && resort_append!(h, n, append, rng; tag0 = 1000k)
+                sync!(d, h)
+            end
+            sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb); resort_by_cell!(c, grid, wc; check = true)
+            push!(ok, same(a, wa, c, wc) && same(b, wb, c, wc))
+        end
+        @test all(ok)
+        @test wc.resort.resorts[] == 4
+        # broken: one particle moved by two cells on axis 1
+        h = hs[3]
+        sync!(h, c)
+        i = findfirst(==(ParticleMeshCore.ALIVE), h.status)
+        h.cell[1][i] = Int32(mod1(h.cell[1][i] + 2, n[1]))
+        sync!(c, h)
+        before = hostbits(c)
+        @test_throws ArgumentError resort_by_cell!(c, grid, wc; check = true)
+        @test !wc.resort.ordered[] && wc.resort.resorts[] == 4
+        @test all(same_bits(x, y) for (x, y) in zip(hostbits(c), before))    # the arrays are not moved
+        # the next sort with the workspace is the full one, which sorts these arrays
+        r = dev(deepcopy(h))
+        wr = Workspace(r, grid)
+        sort_by_cell!(r, grid, wr)
+        @test resort_by_cell!(c, grid, wc; check = true) === c
+        @test same(r, wr, c, wc) && Array(r.count) == Array(c.count) && wc.resort.resorts[] == 4
+        # broken: more particles appended behind the count than the workspace's `append`
+        sync!(h, c)
+        resort_append!(h, n, append + 5, ResortLCG(77); tag0 = 9000, gap = 0)
+        @test h.status[Int(Array(wc.resort.sorted_count)[1]) + append + 1] == ParticleMeshCore.ALIVE   # alive past the tail
+        sync!(c, h)
+        @test_throws ArgumentError resort_by_cell!(c, grid, wc; check = true)
+        @test !wc.resort.ordered[]
+    end
+    # without append scratch resort_by_cell! is the full sort, and check does nothing
+    grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
+    h = resort_species(Float32, (16, 12), 600, 500)
+    s = dev(h)
+    w = Workspace(s, grid)
+    sort_by_cell!(s, grid, w)
+    sync!(h, s)
+    h.cell[1] .= Int32.(mod1.(7 .* (1:600), 16))
+    sync!(s, h)
+    @test resort_by_cell!(s, grid, w; check = true) === s
+end
+
+@testset "T-1190 resort_by_cell!(...; check = true) gives the full sort's bits within its precondition and throws when a particle moved two cells or more particles were appended than its append, at N = 1, 2, 3 [A4, WP-041, #475]" begin
+    body_T1190(CPU())
+end

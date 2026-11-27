@@ -1,4 +1,4 @@
-# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891 and T-892; WP-069, T-989; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
+# WP-013, the engine on CUDA: T-190 to T-194 and T-198; WP-042, T-876 and T-946; WP-041, T-891, T-892 and T-1192; WP-069, T-989; WP-071, T-1004; WP-077, T-1066. Included last by runtests.jl, after the
 # files that define the shared bodies; the testsets run only when the GPU switch says so
 # (gpu_switch.jl), otherwise the suite prints one line.
 
@@ -327,6 +327,10 @@ else
             @test all(same)
             @test wb.resort.resorts[] == 6
         end
+    end
+
+    @testset "T-1192 the 2D flux on CUDA: continuity, Fast against Reference per node, the two frames of the stencil, one to three components per launch; resort_by_cell!'s check [A2, A4, A7, WP-020, WP-041]" begin
+        rerun_on(GPU, (("T-300", body_T300), ("T-302", body_T302), ("T-840", body_T840), ("T-1191", body_T1191), ("T-1190", body_T1190)))
     end
 
     @testset "T-194 Fast and Reference on CUDA agree per node and per face [A4, A7, WP-013]" begin
