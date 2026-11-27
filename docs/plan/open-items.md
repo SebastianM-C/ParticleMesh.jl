@@ -30,7 +30,7 @@ Reactant as a production backend (2D on Reactant-CUDA, sharding, multi-host, TPU
 
 ## D. Dependencies and risks to keep visible
 
-- Checkpointing.jl: a weak dependency of ParticleMeshElectromagnetic only (WP-080). Its extension gives Checkpointing.jl's schemes a storage of the evolved arrays (`checkpoint_storage`), and nothing loads it or Enzyme unless the user loads Checkpointing. Its schedules run one Enzyme call per step, so a change in its rules or its storage interface reaches the reverse pass; T-1112 and T-1113 guard the interface on the CPU. Reactant's traced loops with checkpointing remain the alternative on that path.
+- Checkpointing.jl: a weak dependency of ParticleMeshElectromagnetic only (WP-080). Its extension gives Checkpointing.jl's schemes a storage of the evolved arrays (`checkpoint_storage`) and, through Checkpointing.jl's `checkpoint_alloc`, a reverse-sweep working copy of a `StepBody` loop body that holds the evolved arrays alone (WP-086), and nothing loads it or Enzyme unless the user loads Checkpointing. Its schedules run one Enzyme call per step, so a change in its rules or its storage interface reaches the reverse pass; T-1112, T-1113, T-1170 and T-1171 guard the interface on the CPU. Reactant's traced loops with checkpointing remain the alternative on that path.
 - Reactant and Enzyme-on-CUDA move fast with open correctness bugs (Oct 2026); nothing in phases 1 to 3 may depend on them.
 - MethodOfLines stays a dev dependency of the optional extension only, never of the core.
 - Reactant raising covers a growing but incomplete class of kernels and the compile time of a many-kernel step is unmeasured; the CI smoke test (once Reactant is unparked, A9) and B9 keep this visible without letting phases 1 to 3 depend on it.

@@ -9,9 +9,10 @@
 # `@ad_checkpoint` and checks the gradient against the plain reverse pass of the same loop. T-1150
 # (WP-084) runs Revolve's whole schedule over a small 3D trapped-beam case, its reverse sweep with
 # each step's adjoint replaced by a check of the state it sees. The GPU checks through the full
-# step are `scripts/enzyme/checkpointed.jl` and `scripts/enzyme/trapped3d.jl`.
+# step are `scripts/enzyme/checkpointed.jl` and `scripts/enzyme/trapped3d.jl`. T-1170 and T-1171
+# (WP-086): the reverse sweep's working copy of a `StepBody`, the evolved arrays alone.
 
-using Checkpointing: Checkpointing, Revolve, @ad_checkpoint
+using Checkpointing: Checkpointing, Revolve, @ad_checkpoint, checkpoint_for
 using Enzyme: Enzyme, autodiff, Reverse, Active, Const, Duplicated
 
 const CKPT_EXT = Base.get_extension(ParticleMeshElectromagnetic, :ParticleMeshElectromagneticCheckpointingExt)
@@ -26,12 +27,6 @@ poison(::Type{T}) where {T<:AbstractFloat} = T(NaN)
 poison(::Type{T}) where {T<:Integer} = typemax(T)
 "Overwrites a state's evolved arrays, so that a restore that leaves one out shows even where the run keeps it constant (a counter that stays 0)."
 poison!(st) = foreach(a -> fill!(a, poison(eltype(a))), evolved(st))
-
-struct StepBody{S,P} <: Function
-    st::S
-    p::P
-end
-(b::StepBody)(k) = (step!(b.st, b.p, k; observer = ()); nothing)
 
 """
 `(label, () -> (problem, numerics))` of T-1112: a 2D window over a ramp whose window shifts, with a
@@ -64,11 +59,11 @@ function revolve_forward_check(label, build, host, c)
     @test window_shifts(ref, n) > 0
     st = EMState(prob, num)
     initialize!(st, prob)
-    body = StepBody(st, p)
+    body = StepBody(st, Ref(p))
     scheme = Checkpointing.instantiate(typeof(body), Revolve(c; storage = checkpoint_storage(; host)), n)
     last, _, stored = Checkpointing.fwd_checkpoint_for(body, scheme, 1:n)
     @test same_arrays(evolved(st), run_bits[end])                  # the forward schedule ends on the run's last state
-    @test same_arrays(evolved(last.st), run_bits[n])               # the reverse sweep's working copy is the state before the last step
+    @test same_arrays(evolved(last.state), run_bits[n])               # the reverse sweep's working copy is the state before the last step
     slots = filter(!isnothing, scheme.storage.slots)
     @test length(slots) == stored >= 1
     steps = Int[]
@@ -110,18 +105,19 @@ restore, into a state whose evolved arrays were overwritten, gives the stored st
 u-turns' steps, the restores' steps (the steps run before the restored state) and whether a slot
 was written again.
 """
-function revolve_reverse_check(build, host, c, run_bits)
+function revolve_reverse_check(build, host, c, run_bits; storage = c -> checkpoint_storage(; host))
     prob, num = build()
     n = prob.nsteps
     p = params(prob)
     st = EMState(prob, num)
     initialize!(st, prob)
-    scheme = Checkpointing.instantiate(StepBody{typeof(st),typeof(p)}, Revolve(c; storage = checkpoint_storage(; host)), n)
-    body, storemap, check = Checkpointing.fwd_checkpoint_for(StepBody(st, p), scheme, 1:n)
+    b0 = StepBody(st, Ref(p))
+    scheme = Checkpointing.instantiate(typeof(b0), Revolve(c; storage = storage(c)), n)
+    body, storemap, check = Checkpointing.fwd_checkpoint_for(b0, scheme, 1:n)
     written = Set(values(storemap))
     rewritten = false
     turns, restores, wrong_turns, wrong_restores = Int[], Int[], Int[], Int[]
-    turn!(k) = (push!(turns, k); same_arrays(evolved(body.st), run_bits[k]) || push!(wrong_turns, k); body(k))
+    turn!(k) = (push!(turns, k); same_arrays(evolved(body.state), run_bits[k]) || push!(wrong_turns, k); body(k))
     step = n
     turn!(step)                                                      # the first u-turn, from the working copy
     step -= 1
@@ -145,9 +141,9 @@ function revolve_reverse_check(build, host, c, run_bits)
             # the slot of the state after `iteration` steps (Revolve's keys count from -1)
             k = a.iteration
             push!(restores, k)
-            poison!(body.st)
+            poison!(body.state)
             Checkpointing.load!(body, scheme.storage, storemap[k - 1])
-            same_arrays(evolved(body.st), run_bits[k + 1]) || push!(wrong_restores, k)
+            same_arrays(evolved(body.state), run_bits[k + 1]) || push!(wrong_restores, k)
         elseif a.actionflag == Checkpointing.done
             break
         else
@@ -169,9 +165,9 @@ end
     st = EMState(plasma_step_2d(Float64), EMNumerics())
     s = CKPT_EXT.EvolvedStorage{typeof(identity),false}(2)
     @test_throws r"holds no EMState" Checkpointing.save!(s, identity, 1)
-    sb = CKPT_EXT.EvolvedStorage{StepBody{typeof(st),Nothing},false}(2)
-    @test_throws r"restored before it was stored" Checkpointing.load!(StepBody(st, nothing), sb, 1)
-    @test CKPT_EXT.body_states(StepBody(st, nothing)) === (st,)
+    sb = CKPT_EXT.EvolvedStorage{typeof(StepBody(st, Ref(nothing))),false}(2)
+    @test_throws r"restored before it was stored" Checkpointing.load!(StepBody(st, Ref(nothing)), sb, 1)
+    @test CKPT_EXT.body_states(StepBody(st, Ref(nothing))) === (st,)
     @test CKPT_EXT.body_states((a = 1, b = (st, Ref(st)))) === (st,)
     # a state in an array or nested deep is found too, each state once
     st2 = EMState(plasma_step_2d(Float64), EMNumerics())
@@ -214,6 +210,102 @@ end
     @test rv.rewritten                                               # the reverse sweep wrote slots again
     @test any(isodd, rv.restores) && any(iseven, rv.restores)
     @info "T-1150 reverse schedule" restored_steps = sort(unique(rv.restores)) turns = length(rv.turns)
+end
+
+# --- T-1170 (WP-086) -----------------------------------------------------------------------------
+
+"""
+Every `Array` that `x` reaches through its fields, tuples, references and the entries of arrays of
+non-bits elements, each once (by identity): the memory a value holds. Views count as their parents.
+"""
+reachable_arrays(x) = reachable_arrays!(Base.IdSet{Any}(), Base.IdSet{Any}(), x)
+function reachable_arrays!(out, seen, x)
+    if x isa Array
+        push!(out, x)
+        isbitstype(eltype(x)) || foreach(k -> isassigned(x, k) && reachable_arrays!(out, seen, x[k]), eachindex(x))
+        return out
+    end
+    (isbits(x) || x isa Union{Module,Type,AbstractString,Symbol,Function}) && return out
+    if ismutable(x)
+        x in seen && return out
+        push!(seen, x)
+    end
+    for k in 1:nfields(x)
+        isdefined(x, k) && reachable_arrays!(out, seen, getfield(x, k))
+    end
+    return out
+end
+array_bytes(as) = sum(sizeof, as; init = 0)
+
+"The uninterrupted run of `build()`'s problem: its problem, numerics, parameters and the evolved arrays after every step (host copies, 0 to n)."
+function uninterrupted_bits(build)
+    prob, num = build()
+    p = params(prob)
+    ref = EMState(prob, num)
+    initialize!(ref, prob)
+    bits_ = [evolved_copy(ref)]
+    for k in 1:prob.nsteps
+        step!(ref, p, k; observer = ())
+        push!(bits_, evolved_copy(ref))
+    end
+    return prob, num, p, bits_
+end
+
+const T1170_CASES = (CKPT_CASES..., ("3D trapped-beam case", trapped3d_small))
+
+@testset "T-1170 the reverse sweep's working copy of a StepBody holds new memory for the evolved arrays alone (and its cache and recorder), continues the run bit for bit from where it was taken, and leaves the stepped state's evolved arrays as they are, so that the state continues after it; Revolve's whole schedule through it, with checkpoint_storage and with Checkpointing.jl's ArrayStorage [A4, WP-086]" begin
+    for (label, build) in T1170_CASES
+        prob, num, p, run_bits = uninterrupted_bits(build)
+        n = prob.nsteps
+        m = n ÷ 2
+        st = EMState(prob, num)
+        initialize!(st, prob)
+        for k in 1:m
+            step!(st, p, k; observer = ())
+        end
+        body = StepBody(st, Ref(p))
+        @test parentmodule(which(Checkpointing.checkpoint_alloc, Tuple{typeof(body)})) === CKPT_EXT
+        w = Checkpointing.checkpoint_alloc(body)
+        @test w isa typeof(body) && w.f === body.f && w.params === body.params && w.state !== st
+        # the memory: what the working copy holds that the state does not is the evolved arrays,
+        # the kinetic-energy cache and the recorder's histories
+        old = reachable_arrays(st)
+        new = [a for a in reachable_arrays(w.state) if !(a in old)]
+        ev = evolved(w.state)
+        @test all(a -> any(b -> b === a, new), ev)                          # every evolved array is the copy's own
+        @test !any(a -> any(b -> b === a, old), ev)
+        rec = [a for a in reachable_arrays(w.state.recorder) if !(a in old)]
+        @test array_bytes(new) == array_bytes(ev) + sizeof(w.state.K) + array_bytes(rec)
+        whole = array_bytes(reachable_arrays(deepcopy(st)))
+        @info "T-1170 working copy" label new_bytes = array_bytes(new) evolved_bytes = array_bytes(ev) deepcopy_bytes = whole
+        @test array_bytes(new) < whole
+        @test all(s -> !ParticleMeshCore.owns_arrays(s), w.state.species) && all(ParticleMeshCore.owns_arrays, st.species)
+        # it is the state after m steps, and stepped it continues the run
+        @test same_arrays(evolved(w.state), run_bits[m + 1])
+        wrong = Int[]
+        for k in (m + 1):n
+            w(k)
+            same_arrays(evolved(w.state), run_bits[k + 1]) || push!(wrong, k)
+        end
+        isempty(wrong) || @info "T-1170 the working copy's steps that differ" label wrong
+        @test isempty(wrong)
+        # the stepped state's evolved arrays are untouched, and it continues too, through the shared scratch
+        @test same_arrays(evolved(st), run_bits[m + 1])
+        for k in (m + 1):n
+            body(k)
+        end
+        @test same_arrays(evolved(st), run_bits[n + 1])
+        # checkpoint_copy! is a restore of the evolved arrays
+        poison!(w.state)
+        @test Checkpointing.checkpoint_copy!(w, body) === w
+        @test same_arrays(evolved(w.state), run_bits[n + 1])
+        @test Checkpointing.checkpoint_copy!(w, w) === w
+    end
+    # Revolve's whole schedule through the working copy, with Checkpointing.jl's own storage, whose
+    # slots are working copies too: every u-turn and every restore meets the uninterrupted run
+    prob, num, p, run_bits = uninterrupted_bits(trapped3d_small)
+    rv = revolve_reverse_check(trapped3d_small, false, 3, run_bits; storage = c -> Checkpointing.ArrayStorage)
+    @test rv.rewritten
 end
 
 # --- T-1113 -------------------------------------------------------------------------------------
@@ -291,6 +383,41 @@ transfer_state(N) = (prob = N == 2 ? plasma_step_2d(Float64; nsteps = 6) : plasm
             err = maximum(map((a, b) -> maximum(abs.(a .- b); init = 0.0), float_evolved(dst), ref))
             r = record!("T-1113", Float64, err / (eps(Float64) * scale))
             r <= C || @info "T-1113" N host c r
+            @test r <= C
+        end
+    end
+end
+
+# --- T-1171 (WP-086) -----------------------------------------------------------------------------
+
+transfer_body(st, _, k) = transfer_step!(st)
+
+function transfers_stepbody(st, W, n, scheme)
+    checkpoint_for(StepBody(transfer_body, st, nothing), scheme, 1:n)
+    return field_loss(st, W)
+end
+
+@testset "T-1171 Enzyme through checkpoint_for with a StepBody, whose reverse sweep steps the working copy over the evolved arrays: the gradient of a loop of transfers is the plain reverse pass's, 2D and 3D, Revolve with 1 to 3 checkpoints, device and host slots [A4, A7, WP-086]" begin
+    C = emC("T-1113")
+    n = 6
+    for N in (2, 3)
+        st0 = transfer_state(N)
+        W = lcg_like(st0.fields.Ex, 37)
+        plain = deepcopy(st0)
+        dplain = Enzyme.make_zero(plain)
+        autodiff(Reverse, transfers_plain, Active, Duplicated(plain, dplain), Const(W), Const(n))
+        ref = float_evolved(dplain)
+        scale = maximum(a -> maximum(abs, a), ref)
+        @test scale > 0
+        for host in (false, true), c in (1, 2, 3)
+            st = deepcopy(st0)
+            dst = Enzyme.make_zero(st)
+            scheme = Revolve(c; storage = checkpoint_storage(; host))
+            autodiff(Reverse, transfers_stepbody, Active, Duplicated(st, dst), Const(W), Const(n), Const(scheme))
+            @test same_arrays(evolved(st), evolved(plain))            # the primal ends where the plain run does
+            err = maximum(map((a, b) -> maximum(abs.(a .- b); init = 0.0), float_evolved(dst), ref))
+            r = record!("T-1171", Float64, err / (eps(Float64) * scale))
+            r <= C || @info "T-1171" N host c r
             @test r <= C
         end
     end

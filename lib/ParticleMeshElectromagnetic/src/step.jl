@@ -644,20 +644,26 @@ function current!(::Esirkepov, st::EMState{N}) where {N}
     (; numerics, grid, fields) = st
     T = eltype(st.ρ)
     wgs = numerics.workgroupsize
-    for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
+    # the loops over the species are `map`s over their tuples, unrolled (a `foreach` over two
+    # tuples is a fold over their `zip`): Enzyme's reverse pass of the 3D step fails its type
+    # analysis on `for` loops over them (#384; WP-084, WP-086)
+    map(deposited_species(st), deposited_workspaces(st)) do s, ws
         sorts(st, s) && resort_by_cell!(s, grid, ws; workgroupsize = wgs)
+        return nothing
     end
     fill!(fields.Jx, zero(T))
     fill!(fields.Jy, zero(T))
     fill!(fields.Jz, zero(T))
-    for (s, ws) in zip(deposited_species(st), deposited_workspaces(st))
+    map(deposited_species(st), deposited_workspaces(st)) do s, ws
         deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, rho_stagger(Val(N)), grid, ws;
                       dt = st.dt, transverse_currents(Val(N))..., workgroupsize = wgs)
+        return nothing
     end
     window = window_frame(st)
-    for J in (fields.Jx, fields.Jy, fields.Jz)
+    map((fields.Jx, fields.Jy, fields.Jz)) do J
         zero_x_edges!(window, J; workgroupsize = wgs)
         fold_guards!(J, grid; workgroupsize = wgs)
+        return nothing
     end
     filter_current!(numerics.filter, fields, grid, st.ρ; workgroupsize = wgs, edges = window)
     return st

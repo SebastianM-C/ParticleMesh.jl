@@ -508,3 +508,35 @@ end
         end
     end
 end
+
+# --- T-1172 (WP-086) ----------------------------------------------------------------------------
+
+# A loss whose primal counts the positive entries of `x` into `acc` through `add_count!` beside a
+# differentiable sum: the count carries no derivative, and the sum's gradient is 2x.
+function counted_loss(x, flags, acc)
+    for i in eachindex(x, flags)
+        @inbounds flags[i] = Int32(x[i] > 0)
+    end
+    PMC.add_count!(acc, flags)
+    s = 0.0
+    for v in x
+        s += v * v
+    end
+    return s
+end
+
+@testset "T-1172 add_count! adds the flags' sum to the counter, and Enzyme takes it as inactive: the reverse pass runs the count as it is, beside a gradient it leaves exact [A7, WP-086]" begin
+    x = [0.5, -1.25, 2.0, -0.0, 3.5, 1e-300]
+    flags, acc = zeros(Int32, length(x)), Int32[7]
+    @test PMC.add_count!(acc, Int32[1, 0, 1, 1]) === acc && acc == Int32[10]          # added to what it held
+    acc .= Int32(7)
+    @test applicable(Enzyme.EnzymeRules.inactive, PMC.add_count!, acc, flags)          # declared inactive (the extension)
+    @test applicable(Enzyme.EnzymeRules.inactive, PMC.add_count!, acc, view(flags, 1:3))
+    dx = zero(x)
+    dflags, dacc = zeros(Int32, length(x)), zeros(Int32, 1)
+    autodiff(Reverse, counted_loss, Active, Duplicated(x, dx), Duplicated(flags, dflags), Duplicated(acc, dacc))
+    @test acc == Int32[7 + count(>(0), x)]
+    @test flags == Int32.(x .> 0)
+    @test dx == 2 .* x
+    @test all(iszero, dacc) && all(iszero, dflags)
+end

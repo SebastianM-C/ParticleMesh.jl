@@ -45,6 +45,7 @@ const TEST_FILES = [
     "antenna.jl",             # WP-026: T-400 to T-409
     "shaped_antenna.jl",      # WP-066: T-900 to T-908, shaped pulses (PulseShapes) on the antenna, after antenna.jl (antenna_cases.jl's analysis)
     "antenna_enzyme.jl",      # WP-083: T-1141, sin and cos for sincos, and the body of T-1140 (gpu.jl); its own helpers
+    "enzyme_device.jl",       # WP-086: T-1173, the density ramp through sin, and the body of T-1174 (gpu.jl); its own helpers
     "filter.jl",              # WP-029: T-440 to T-445, after em2d.jl and em2d_step.jl (their helpers)
     "boundaries.jl",          # WP-027: T-450 to T-457, after em2d_step.jl (its helpers) and determinism.jl (T-454's worker runs)
     "pml.jl",                 # WP-034: T-540 to T-549, after boundaries.jl (its helpers)

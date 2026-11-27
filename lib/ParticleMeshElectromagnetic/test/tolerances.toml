@@ -1395,3 +1395,16 @@ scale = "max|plain gradient| over those arrays"
 C = 16
 measured = { Float64 = 4.4 }
 status = "proposed"
+
+["T-1173"]
+quantity = "the density ramp's sin²(πt/2) through sin (ramp_factor) against the exact value at 2001 points of the ramp (C), and its derivative under Enzyme against π/(2L)·sin(πt) (C_derivative)"
+scale = "ulps of the exact value (C); eps(T)·π/(2L), the derivative's largest value (C_derivative)"
+C = 8
+C_derivative = 8
+status = "proposed; the measured values are what the CPU suite records"
+
+["T-1174"]
+quantity = "Enzyme's reverse mode on CUDA through a kernel that evaluates the 3D refill profile (RampedCosine, the ramp through sin) at 4096 points, its parameters in a device array, against ForwardDiff's gradients on the CPU: the adjoints of the positions and of the parameters"
+scale = "Σ_i |J_i||w̄_i|, the sum of the terms' magnitudes, per input (T-1140's ratio)"
+C = 8
+status = "proposed; not yet measured on a GPU"
