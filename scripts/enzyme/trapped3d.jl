@@ -27,9 +27,7 @@
 # its time and memory); `warm=1|0` (first the whole sequence on a small box of the same types, so
 # that the timed calls do not compile; its own gradient check against Dual{4} is reported too;
 # `warm_t_end=300`); `run=0` stops after the warm-up; `strict_aliasing=0` turns off Enzyme's strict
-# aliasing in its type analysis; `stable=1|0` whether the push, kick and ionization kernels re-read
-# the sharpened fields in the reverse sweep instead of taping them (active_reduce.jl; WP-086);
-# `shadow=shared|full` whether the start's shadow shares the workspaces with the state (WP-086).
+# aliasing in its type analysis; `shadow=shared|full` whether the start's shadow shares the workspaces with the state (WP-086).
 #
 # What `grad` does, in this order, each phase timed and its peak of device memory recorded:
 #
@@ -61,9 +59,6 @@ parse_tuple(s) = Tuple(parse.(Int, split(s, 'x')))
 parse_list(s) = isempty(s) ? Int[] : parse.(Int, split(s, ','))
 const F = Float32
 struct Trap3Tag end
-# stable=1 (the default, with active_reduce.jl loaded): the sharpened fields count as not
-# overwritten within each of the reverse sweep's per-step Enzyme calls (the patch says why)
-const USE_STABLE = opt("stable", "1") == "1" && isdefined(Main, :stable_within_call!)
 # shadow=shared (the default): the start's shadow shares the workspaces with the state (`shadow_of`)
 const SHARED_SCRATCH = opt("shadow", "shared") == "shared"
 
@@ -181,17 +176,9 @@ function reverse_run(st, p, n; c, host, body = :step, fade = TCASE.fade, rise = 
     dst, shadow_new_bytes = shadow_of(st)
     pr, dpr = Ref(p), Ref(Enzyme.make_zero(p))
     scheme = Revolve(c; storage = checkpoint_storage(; host))
-    # each Enzyme call of Revolve's reverse sweep covers one step: the sharpened copy is stable
-    # within it (active_reduce.jl), and its kernels re-read the fields instead of taping them
-    stable = USE_STABLE && st.sharpened !== nothing
-    stable && Main.stable_within_call!(st.sharpened)
-    try
-        Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), run_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
-                        Duplicated(pr, dpr), Const(n), Const(scheme), Const(fade), Const(rise), Const(Val(body)))
-        sync()
-    finally
-        stable && Main.clear_stable!()
-    end
+    Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), run_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
+                    Duplicated(pr, dpr), Const(n), Const(scheme), Const(fade), Const(rise), Const(Val(body)))
+    sync()
     J = Float64(volume(st)) * (Float64(foldl(+, Array(Je))) + Float64(foldl(+, Array(Jb))))
     return (; dst, dp = dpr[], J, shadow_new_bytes)
 end
@@ -242,7 +229,7 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
                                                       "capacity_factor" => o.cap, "t_end" => o.t_end, "a0E" => o.a0E, "theta" => THETA, "eltype" => string(F),
                                                       "gather" => "CompensatedGather(k = 1)", "solver" => "Yee", "mode" => "Reference"),
                            "checkpoints" => c, "checkpoint_memory" => host ? "host" : "device", "loop_body" => string(body),
-                           "shadow" => SHARED_SCRATCH ? "shared scratch" : "full", "stable_fields" => USE_STABLE)
+                           "shadow" => SHARED_SCRATCH ? "shared scratch" : "full")
     d = describe(o)
     (; p, prob, n, v) = d
     merge!(res["case"], Dict{String,Any}("nsteps" => n, "cells" => collect(prob.cells), "plasma_slots" => d.plasma_slots,
@@ -281,7 +268,7 @@ function sequence(o; c, host, duals, dual4, primal, label, body = :step)
     try
         r, t, peak, base = reverse_from(o, p, n; c, host, body)
         res["J_reverse_forward"] = r.J
-        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base, "stable_fields" => USE_STABLE,
+        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base,
                                           "shadow_new_bytes" => r.shadow_new_bytes)
         mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB, shadow %.2f GiB new", label, t,
                       1e3 * t / n, r.J, gib(peak), gib(r.shadow_new_bytes)))

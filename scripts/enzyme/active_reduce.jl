@@ -21,22 +21,6 @@ const ACTIVE_SEEN = Set{String}()
 # writes by later kernels: the ionization's birth slots read the electrons' count, which the next
 # kernel advances)
 const ALL_OVERWRITTEN = get(ENV, "PM_ENZYME_ALL_OVERWRITTEN", "1") == "1"
-# WP-086: the exception to that. A driver registers the sharpened copy of E and B of a state with a
-# CompensatedGather (`stable_within_call!(st.sharpened)`) around an Enzyme call that covers one
-# step, as each of Revolve's reverse steps is, and `clear_stable!()` after it. `sharpen_gather!`
-# writes that copy at the step's start and nothing writes it again within the step, and the kernels
-# given `particle_fields(st)` (the push, the half-step kick, the ionization) read only its E and B
-# (`fields_at`). A kernel argument holding the registered arrays under their names then counts as
-# not overwritten, and the reverse kernel reads the fields again instead of taping the gather's
-# values: 27 points of 6 components per particle in 3D, 648 bytes per thread at Float32, 11.1 GiB
-# for the 18.35M plasma slots of the λ₀/32 case. Wrong across steps (the next step rewrites the
-# copy), and without a CompensatedGather (`particle_fields` is then the evolved E and B).
-const STABLE_FIELDS = NamedTuple[]
-stable_within_call!(nt::NamedTuple) = (push!(STABLE_FIELDS, nt); nothing)
-clear_stable!() = (empty!(STABLE_FIELDS); nothing)
-_holds_stable(x::NamedTuple) = any(s -> all(k -> haskey(x, k) && getfield(x, k) === getfield(s, k), keys(s)), STABLE_FIELDS)
-_holds_stable(x) = false
-_holds_stable(a::Enzyme.EnzymeCore.Annotation) = _holds_stable(a.val)
 @eval KAExt begin
     function _mixed_as_duplicated(func, a::EnzymeCore.MixedDuplicated)
         push!(Main.ACTIVE_SEEN, string(nameof(func.val.f)) * " :: mixed " * string(nameof(typeof(a.val))) * " (scalar adjoints dropped)")
@@ -46,11 +30,10 @@ _holds_stable(a::Enzyme.EnzymeCore.Annotation) = _holds_stable(a.val)
 
     # what the reverse kernel must take as changed since the forward one: an Active argument is
     # passed by value and never changes (taken as changed, Enzyme tapes it, and a laser struct's
-    # tape type then holds `Any`, which a device array cannot), nor does a registered sharpened copy
-    # within the call (above)
+    # tape type then holds `Any`, which a device array cannot)
     function _modified_between(config, args, ::Val{N}) where {N}
         ow = overwritten(config)
-        rest = ntuple(i -> !(args[i] isa EnzymeCore.Active) && !Main._holds_stable(args[i]) && (Main.ALL_OVERWRITTEN || ow[i + 1]), Val(N))
+        rest = ntuple(i -> Main.ALL_OVERWRITTEN ? !(args[i] isa EnzymeCore.Active) : (ow[i + 1] && !(args[i] isa EnzymeCore.Active)), Val(N))
         return (Main.ALL_OVERWRITTEN || ow[1], false, rest...)
     end
 
