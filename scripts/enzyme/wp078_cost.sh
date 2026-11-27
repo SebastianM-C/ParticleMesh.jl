@@ -3,10 +3,12 @@
 # and the reverse gradient (C = 20, device checkpoints), each in its own process
 # (`trapped.jl cost`), with nvidia-smi sampling the card's memory every 100 ms beside each.
 # Run in a worktree of this branch, with the card to itself (no other process in nvidia-smi):
-#     scripts/enzyme/wp078_cost.sh <worktree> <out dir>
+#     scripts/enzyme/wp078_cost.sh <worktree> <out dir> [julia threads, default 2]
+# The reverse pass's host work (its launches, Enzyme's host code, the GC) gets faster with more Julia
+# threads: on the RTX 5090 its compiled reverse phase took 40.2 s at -t 1 and 29.9 s at -t 2.
 # The result.toml and manifest.toml of each method land in <out dir>/enzyme-trapped-cost-<method>-*.
 set -u
-W=$1; OUT=$2
+W=$1; OUT=$2; NT=${3:-2}
 mkdir -p "$OUT"
 stamp() { date -u +%H:%M:%S; }
 cd "$W"
@@ -21,7 +23,7 @@ for m in primal dual1 dual4 reverse; do
     nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -lms 100 > "$OUT/smi-$m.csv" 2>&1 &
     SMI=$!
     PM_BACKEND=cuda PM_CUDA_HEAP=1073741824 PM_ENZYME_PATCH="$P" JULIA_LOAD_PATH="@:$W:@stdlib" \
-        timeout 5400 julia +1.13 -t 2 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped.jl cost method=$m reps=$reps \
+        timeout 5400 julia +1.13 -t $NT --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped.jl cost method=$m reps=$reps \
         > "$OUT/cost-$m.log" 2>&1
     echo "[$(stamp)] cost: $m exit $?"
     kill $SMI; wait $SMI 2>/dev/null
