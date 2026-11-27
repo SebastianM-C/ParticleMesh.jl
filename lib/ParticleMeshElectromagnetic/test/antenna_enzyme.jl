@@ -74,7 +74,7 @@ end
 function laser_of(c::Shaped, P, ::Type{S}) where {S}
     l, D = c.laser, eltype(P)
     b = shaped_profile(l.profile, P)
-    return ShapedLaser{D,S,typeof(b),typeof(l.envelope)}(D(l.a0), D(l.delay), P[1], P[2], D(l.phase), b, l.envelope, l.position, l.center)
+    return ShapedLaser{D,S,typeof(b),typeof(l.envelope),typeof(l.center)}(D(l.a0), D(l.delay), P[1], P[2], D(l.phase), b, l.envelope, l.position, l.center)
 end
 
 # the four values the kernels add at the row q (at N = 3 the q-th (row, layer) of the plane, rows

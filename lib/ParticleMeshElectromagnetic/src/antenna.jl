@@ -441,7 +441,7 @@ end
 # guards included) of a field whose rows sit at (j₀ − 1 + s)·Δ, with j₀ the interior row j
 # aliases: the guards get the bits of their interior images, and the nearest periodic image of
 # the axis keeps the profile continuous across the seam.
-@inline function antenna_d(a::Antenna, axis, c, j::Int32, s)
+@inline function antenna_d(a::Union{Antenna,AntennaPlane}, axis, c, j::Int32, s)
     T = typeof(a.xa)
     j0 = mod(j - a.g - Int32(1), a.n[axis])
     dy = (T(j0) + s) * a.dx[axis] - c
@@ -453,7 +453,7 @@ end
 # terms are continuous where the images meet, at the antipode of the axis, but the cross term ∂_y∂_z u
 # of the 3D B is odd in each offset and changes sign there; a row within Δ/1000 of the antipode takes
 # the mean of the two images, zero, so that moving the axis by whole cells moves the field with it.
-@inline function antipode_weight(a::Antenna, axis, d)
+@inline function antipode_weight(a::Union{Antenna,AntennaPlane}, axis, d)
     T = typeof(a.xa)
     return ifelse(abs(2 * abs(d) - a.len[axis]) * 1000 < a.dx[axis], zero(T), one(T))
 end

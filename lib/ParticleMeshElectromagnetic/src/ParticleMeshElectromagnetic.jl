@@ -43,7 +43,9 @@ solver's sub-steps.
 
 The laser antennas launch a [`GaussianLaser`](@ref) or a [`ShapedLaser`](@ref), whose transverse
 profile and temporal envelope come from the submodule [`PulseShapes`](@ref) (a spectral phase,
-a near field and wavefront aberrations; WP-066), which depends on nothing of this package.
+a near field and wavefront aberrations; WP-066), which depends on nothing of this package. In 3D a
+ShapedLaser's [`ZernikeBeam`](@ref) (a round pupil with Zernike modes, WP-085) reaches the antenna
+through the table of its plane, built once per parameter point by [`tabulate`](@ref).
 
 With SciMLBase and RecursiveArrayTools loaded, a package extension wraps the step as a
 `DiscreteProblem` (WP-008): `DiscreteProblem(problem, numerics)`, solved with `FunctionMap`,
@@ -80,6 +82,7 @@ export checkpoint_storage
 export state_partition, remake_reload, harness_state
 export GaussianLaser, AxisTime, WavefrontTime, Antenna, AntennaPlane, AntennaPlanes, laser_energy, laser_field
 export ShapedLaser, PulseShapes, GaussianEnvelope, SpectralEnvelope, GaussianBeam, PupilBeam, GaussianPupil, SuperGaussianPupil, UniformPupil
+export ZernikeBeam, PlaneTable, tabulate, launched_energy
 export BinomialFilter, binomial!, filter_current!, binomial_transfer
 export CompensatedGather, sharpening_beta, gather_transfer, sharpen_x!, particle_fields, sharpen_gather!
 export GalerkinGather, GalerkinRead, read_shape, component_shape
@@ -92,7 +95,8 @@ export MovingWindow, DensityRamp, WindowFrame, WindowEdges, WindowClock, window_
 include("PulseShapes/PulseShapes.jl")
 using .PulseShapes: PulseShapes, TemporalEnvelope, GaussianEnvelope, SpectralEnvelope, TransverseProfile, GaussianBeam, PupilBeam,
                     GaussianPupil, SuperGaussianPupil, UniformPupil, envelope, envelope_extent, envelope_energy, profile,
-                    profile_moments, aliasing_period, parameter_names, parameter_values, with_parameter_values, convert_eltype
+                    profile_moments, aliasing_period, parameter_names, parameter_values, with_parameter_values, convert_eltype,
+                    ZernikeBeam, transverse_dimensions, quadrature_radius, pupil_sample, pupil_terms, radial_node
 
 include("layout.jl")
 include("yee.jl")
@@ -108,6 +112,7 @@ include("gather.jl")
 include("step3d.jl")
 include("antenna.jl")
 include("shaped.jl")
+include("zernike_antenna.jl")
 include("m4_antenna.jl")
 include("boundaries.jl")
 include("pml.jl")

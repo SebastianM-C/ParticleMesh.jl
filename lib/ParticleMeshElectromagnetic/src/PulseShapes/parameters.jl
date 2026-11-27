@@ -10,7 +10,8 @@ order of [`parameter_values`](@ref): `(:duration, :chirp)` for a [`GaussianEnvel
 `(:duration, :gdd, :tod, :fod)` for a [`SpectralEnvelope`](@ref), `(:waist,)` for a
 [`GaussianBeam`](@ref), and for a [`PupilBeam`](@ref) `:na`, its amplitude's (`:fill` of a
 [`GaussianPupil`](@ref), `:radius` of a [`SuperGaussianPupil`](@ref), none of a
-[`UniformPupil`](@ref)) and `:aberration1` to `:aberration<M>`.
+[`UniformPupil`](@ref)) and `:aberration1` to `:aberration<M>`, and for a [`ZernikeBeam`](@ref)
+the same, `:aberration<j>` the coefficient of the OSA/ANSI index j.
 """
 function parameter_names end
 
@@ -71,3 +72,11 @@ end
 """
 convert_eltype(::Type{T}, x) where {T} = with_parameter_values(x, map(T, parameter_values(x)))
 convert_eltype(::Type{T}, p::UniformPupil) where {T} = p
+
+parameter_names(b::ZernikeBeam) = (:na, parameter_names(b.amplitude)..., ntuple(n -> Symbol(:aberration, n), length(b.aberrations))...)
+parameter_values(b::ZernikeBeam) = (b.na, parameter_values(b.amplitude)..., b.aberrations...)
+function with_parameter_values(b::ZernikeBeam, v::Tuple)
+    na = length(parameter_values(b.amplitude))
+    amplitude = with_parameter_values(b.amplitude, v[2:(1 + na)])
+    return ZernikeBeam(; na = v[1], amplitude, aberrations = v[(2 + na):end], radial = b.radial, angular = b.angular)
+end
