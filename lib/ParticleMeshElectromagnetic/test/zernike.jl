@@ -147,6 +147,15 @@ end
     @info "T-1161 Airy" airy axial
     @test airy <= 1e-13
     @test axial <= 1e-13
+    # quadrature_radius: the Airy pattern holds out to it, and four times further out the angular
+    # rule's alias J_K(na·r)·cos(K·φ) (K samples) is of order one (radial nodes to spare)
+    ua = ZernikeBeam(; na = 0.2, radial = 40, angular = 16)
+    ra = quadrature_radius(ua)
+    @test ra == 16 / (4 * 0.2)
+    alias(r) = maximum(φ -> abs(profile(ua, 0.0, r * cos(φ), r * sin(φ))[1] - 2besselj1(ua.na * r) / (ua.na * r)), range(0, π / 8; length = 9))
+    @info "T-1161 quadrature radius" ra inside = alias(ra) outside = alias(4ra)
+    @test alias(ra) <= 1e-6
+    @test alias(4ra) >= 1e-2
     function root(f, a, b)                       # bisection to the last bit
         fa = f(a)
         for _ in 1:200
@@ -258,7 +267,12 @@ end
     zR = w^2 / 2
     ξa = 4√6 * π * c / na^2
     bs = ZernikeBeam(; na, amplitude = GaussianPupil(; fill = f), aberrations = (0, 0, 0, 0, c), radial = 64, angular = 240)
-    @test quadrature_radius(bs) >= 120
+    # its quadrature by convergence (quadrature_radius is pessimistic for a Gaussian pupil)
+    bf = ZernikeBeam(; na, amplitude = GaussianPupil(; fill = f), aberrations = (0, 0, 0, 0, c), radial = 96, angular = 320)
+    conv = maximum(((ξ, y, z),) -> abs(profile(bs, ξ, y, z)[1] - profile(bf, ξ, y, z)[1]),
+                   ((ξa, 120.0, 0.0), (-ξa, 0.0, 120.0), (ξa, 0.0, -60.0), (0.0, 85.0, 0.0), (2ξa, -120.0, 0.0)))
+    @info "T-1163 strong astigmatism quadrature" conv
+    @test conv <= 1e-9
     function width(ξ, axis)
         s = s2 = 0.0
         for x in -120:1.0:120

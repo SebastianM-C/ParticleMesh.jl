@@ -12,7 +12,7 @@ using Enzyme: Enzyme
 using ParticleMeshElectromagnetic: Antenna, AntennaPlane, PlaneTable, tabulate, launched_energy, laser_field, antenna_b_rows,
                                    antenna_e_rows, antenna_d, antipode_weight, time_factor, check_params
 using ParticleMeshElectromagnetic.PulseShapes: ZernikeBeam, profile, profile_moments, quadrature_radius, pupil_sample, radial_node,
-                                               GaussianEnvelope, GaussianPupil, SuperGaussianPupil, GaussianBeam
+                                               GaussianEnvelope, GaussianPupil, SuperGaussianPupil, GaussianBeam, envelope_energy
 
 "The Gaussian pupil whose focus is the round Gaussian beam of waist `w` (fill 1/4: truncated at exp(−16)), resolved on a box of half diagonal `r`."
 gaussian_zernike(w; r = 18, aberrations = ()) = (na = 8 / w;
@@ -204,6 +204,20 @@ function gaussian_rows_difference(::Type{T}; be = CPU()) where {T}
     return worst / kw.a0
 end
 
+# The host's incident field of an untabulated 3D ShapedLaser (laser_field, by the pupil sum) for the
+# Gaussian pupil against the GaussianLaser's of the same waist: (e, bp, bs, byz) at points across
+# and along the beam and times on the pulse, relative to a0.
+function gaussian_field_difference()
+    kw = (; a0 = 1.3, delay = 30.0, focus = 14.0, position = 6.0, center = (11.0, 12.0), polarization = 0.6, phase = 0.2)
+    gl = GaussianLaser(; kw..., waist = 4.0, duration = 5.0, chirp = 0.01)
+    zl = ShapedLaser(; kw..., profile = gaussian_zernike(4), envelope = GaussianEnvelope(; duration = 5.0, chirp = 0.01))
+    worst = 0.0
+    for ξ in (-9.0, -0.5, 6.0), dy in (-7.0, 0.0, 2.5, 6.0), dz in (-5.5, 0.3, 4.0), s in (-4.0, 0.7, 3.0)
+        worst = max(worst, maximum(abs.(laser_field(zl, ξ, dy, dz, s) .- laser_field(gl, ξ, dy, dz, s))))
+    end
+    return worst / kw.a0
+end
+
 # Two runs of the same problem, the Zernike laser of the Gaussian pupil and the GaussianLaser of its
 # waist: every field relative to its largest value, and with duals the partials in a0 and focus (the
 # third, a spherical aberration's, has no counterpart and must reach the fields).
@@ -265,6 +279,9 @@ end
 # truncation's 10⁻⁷ (or Float32's roundoff), the duals' partials in a0 and focus included.
 @testset "T-1164 the plane's table is the pupil sum; a Gaussian pupil's table and run are the 3D GaussianLaser's to the truncation, in the A8 matrix [A2, A3, A8, WP-085]" begin
     body_T1164(CPU())
+    f = gaussian_field_difference()
+    @info "T-1164 host laser_field" f
+    @test f <= 1e-6
 end
 
 # --- T-1165 ---------------------------------------------------------------------------------
@@ -280,10 +297,12 @@ end
 # cut by the box launches the fraction erf(L_y/(√2·w_y))·erf(L_z/(√2·w_z)) of laser_energy.
 @testset "T-1165 the launched Zernike beam is the Yee propagation of its incident field to the antenna's order and carries the energy the plane drives; a phase-only wavefront keeps it [A2, A7, WP-085]" begin
     C, Cx = emC("T-1165"), emC("T-1165", "C_cross")
-    beam = flat_zernike()
+    # a cross-section of 48 holds the beam: in one of 30 the wings past 15 from the axis (1 to 2 %
+    # of the energy) set the error instead of the antenna's order
+    beam = flat_zernike(; radial = 24, angular = 160)
     k4 = k4_moment(beam)
     for θ in (0.0, 0.6)
-        prob = zernike_problem(Float64; beam, duration = 8, position = 6, focus = 16, polarization = θ, tend = 130, length = (140, 30, 30))
+        prob = zernike_problem(Float64; beam, duration = 8, position = 6, focus = 16, polarization = θ, tend = 130, length = (140, 48, 48))
         r = zernike_run(prob; probes = (6, 12, 20, 30))
         e = table_angular_error(r; component = :Ey)
         x = θ == 0 ? table_angular_error(r; component = :Ez, against = :Ey) : [(; err = 0.0)]
@@ -294,11 +313,14 @@ end
         θ == 0 && (record!("T-1165 cross", Float64, worst_x); @test worst_x <= Cx)
     end
     # the energy
-    Ce, Ck, Cks = emC("T-1165", "C_energy"), emC("T-1165", "C_kept"), emC("T-1165", "C_kept_strong")
+    # (a cross-section of 48 holds all three beams to 2·10⁻³: an na-1/2 beam six past the plane
+    # spreads its wings past 15 from the axis, which the periodic box would fold back)
+    Ce, Ck = emC("T-1165", "C_energy"), emC("T-1165", "C_kept")
     W, Lw = Dict{Symbol,Float64}(), Dict{Symbol,Float64}()
     Δ2 = 0.0
-    for (name, b) in ((:plain, flat_zernike(; aberrations = ())), (:aberrated, beam), (:strong, flat_zernike(; aberrations = (0, 0, 0.25, 0, 0.3, 0, 0.2))))
-        prob = zernike_problem(Float64; beam = b, position = 6, focus = 12, polarization = 0.6, tend = 60, length = (100, 30, 30))
+    wide(ab) = flat_zernike(; aberrations = ab, radial = 24, angular = 160)
+    for (name, b) in ((:plain, wide(())), (:aberrated, wide(beam.aberrations)), (:strong, wide((0, 0, 0.1, 0, 0.12, 0, 0.08))))
+        prob = zernike_problem(Float64; beam = b, position = 6, focus = 12, polarization = 0.6, tend = 60, length = (100, 48, 48))
         r = zernike_run(prob)
         fwd, _ = forward_window_3d(r, 58)
         W[name] = conserved_energy_3d(map(Array, r.st.fields), r.st.grid, prob.dt; cols = fwd)
@@ -309,12 +331,12 @@ end
         @info "T-1165 energy" name W = W[name] launched = Lw[name] laser = laser_energy(l) rel
         record!("T-1165 energy $name", Float64, rel)
         @test laser_energy(l) == laser_energy(only(params(prob).lasers))       # the table does not change it
+        @test Lw[name] / laser_energy(l) >= 1 - 2e-3                            # the beam inside the box launches laser_energy
         @test rel <= Ce
     end
-    @test laser_energy(only(zernike_problem(Float64; beam = flat_zernike(; aberrations = ())).lasers)) ==
+    @test laser_energy(only(zernike_problem(Float64; beam = wide(())).lasers)) ==
           laser_energy(only(zernike_problem(Float64; beam).lasers))
-    @test Lw[:strong] < (1 - 1e-3) * Lw[:plain]                                # its wings leave the cross-section
-    for (name, c) in ((:aberrated, Ck), (:strong, Cks))
+    for (name, c) in ((:aberrated, Ck), (:strong, Ck))
         kept = abs(W[name] / W[:plain] - Lw[name] / Lw[:plain]) / Δ2
         @info "T-1165 kept" name kept
         record!("T-1165 kept $name", Float64, kept)
@@ -338,8 +360,22 @@ end
         got = launched_energy(lt) / laser_energy(lt)
         @info "T-1165 cut beam" θ frac got
         @test frac < 0.99
-        @test got ≈ frac rtol = 1e-3                # the plane's places sample the cut edges: measured ≤ 3·10⁻⁴
+        @test got ≈ frac rtol = 5e-4                # the plane's places sample the cut edges: measured ≤ 2·10⁻⁴
     end
+    # launched_energy weighs |U|² at Ey's places by cos²θ and at Ez's by sin²θ: against the direct
+    # pupil sum on each set of places, which the cut makes differ (an axis off the antipodes)
+    pol(θ) = tabulate(ShapedLaser(; a0 = 1.0, delay = 30.0, focus = 20.0, position = 6.0, center = (3.3, 16.9), profile = b,
+                                  envelope = GaussianEnvelope(; duration = 5.0), polarization = θ), plane, CPU())
+    l0, l90 = pol(0.0), pol(π / 2)
+    a = Antenna(l0, plane)
+    ξ = plane.xa - l0.focus
+    direct(at) = 1 / 2 * envelope_energy(l0.envelope) * plane.dx[2] * plane.dx[3] *
+                 sum(abs2(profile(b, ξ, plane_d(a, Int32(j), Int32(k), at)...)[1]) for j in 1:Int(grid.n[2]), k in 1:Int(grid.n[3]))
+    ey, ez = direct(EY_AT), direct(EZ_AT)
+    @info "T-1165 polarization weights" ey ez rel = ey / ez - 1
+    @test launched_energy(l0) ≈ ey rtol = 1e-10
+    @test launched_energy(l90) ≈ ez rtol = 1e-10
+    @test abs(ey / ez - 1) > 1e-7
 end
 
 # --- T-1166 ---------------------------------------------------------------------------------
@@ -407,7 +443,7 @@ end
 
 # The checks: a ShapedLaser's center has as many coordinates as its profile has transverse axes;
 # the 3D problem takes a ZernikeBeam laser; the step refuses it untabulated, with a table for
-# another focus or plane, with the M4 solver, or with a quadrature that does not reach the box's
+# another focus, center or plane, with the M4 solver, or with a quadrature that does not reach the box's
 # corners; initialize!(state, problem) tabulates. Replacing the beam's numbers (with_tunables)
 # drops the table, and tabulating again gives the same bits, as a second tabulate of a tabulated
 # laser does; the Reference step is bitwise across reruns and launch shapes, and the table across
@@ -427,7 +463,7 @@ end
     @test_throws ArgumentError EMProblem("x", ok.length[1:2], ok.cells[1:2], ok.dt, 2, (), 1, (1, 0); lasers = (l,))
     st = EMState(ok, EMNumerics())
     p = params(ok)
-    @test_throws ArgumentError initialize!(st, p)                        # untabulated
+    @test_throws "call `params = tabulate(state, params)`" initialize!(st, p)       # untabulated
     pt = tabulate(st, p)
     lt = only(pt.lasers)
     @test lt.profile isa PlaneTable && size(lt.profile.values) == (ok.cells[2], ok.cells[3], 12)
@@ -437,6 +473,9 @@ end
     moved = EMParams(pt; lasers = (ShapedLaser(lt.a0, lt.delay, lt.focus + 1, lt.polarization, lt.phase, lt.profile, lt.envelope, lt.position,
                                                lt.center),))
     @test_throws ArgumentError check_params(st, moved)
+    shifted = EMParams(pt; lasers = (ShapedLaser(lt.a0, lt.delay, lt.focus, lt.polarization, lt.phase, lt.profile, lt.envelope, lt.position,
+                                                 lt.center .+ (1.0, 0.0)),))
+    @test_throws "another plane, center or focus" check_params(st, shifted)      # the table of another center
     po = zernike_problem(T; beam, length = (30, 24, 24), tend = 20, nct = (6, 5), center = l.center)
     other = EMState(po, EMNumerics())
     @test_throws ArgumentError check_params(other, EMParams(params(po); lasers = pt.lasers))     # the table of another plane

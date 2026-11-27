@@ -1408,31 +1408,31 @@ status = "proposed"
 quantity = "the plane's table against the direct pupil sum at every staggered place of a 23 × 21 plane, twelve numbers, the partials for duals (C); the antenna's rows of the Gaussian pupil (fill 1/4) against the 3D GaussianLaser's over the plane at two times (C_rows), and the fields of a whole run, the partials in a0 and focus for duals (C_run), relative to the largest value"
 scale = "C: eps(T)·max|U|·√(samples); C_rows: max(10⁻⁶, 64·eps(T)); C_run: max(10⁻⁶, eps(T)·nsteps); 10⁻⁶ above the truncation exp(−16) of the pupil"
 C = 8
-C_rows = 4
+C_rows = 2
 C_run = 4
-measured = { table_Float32 = 0.981, table_Float64 = 0.0417, table_Dual = 0.960, rows_Float32 = 0.911, rows_Float64 = 0.0577, run_Float32 = 2.26e-5, run_Float64 = 1.15e-7, run_Dual = 2.40e-5 }
-status = "proposed; the run's values are the relative differences before scaling (98 steps). Float64's run difference 1.2·10⁻⁷ is the pupil's truncation"
+measured = { table_Float32 = 0.981, table_Float64 = 0.0417, table_Dual = 0.960, table_Float32_CUDA = 0.898, table_Float64_CUDA = 0.146, rows_Float32 = 0.911, rows_Float64 = 0.0577, run_Float32 = 1.93, run_Float64 = 0.115, run_Dual = 2.03 }
+status = "proposed; the CUDA values on the RTX 5090. The host laser_field of the Gaussian pupil against the GaussianLaser's (8.4·10⁻⁸, bound 10⁻⁶) is checked in the CPU testset alone"
 
 ["T-1165"]
-quantity = "the ω₀ component of the launched aberrated beam on probe planes at x = 6, 12, 20, 30 against the Yee angular-spectrum propagation of its incident ω₀ transform (from the table), relative L² error over ⟨k_⊥⁴⟩ (C), and the lacking component (C_cross); |W/launched_energy − 1| of the conserved energy past the plane (C_energy); the aberrated runs' energy ratio to the unaberrated one against the ratio of their launched energies, a mild wavefront (C_kept) and a strong one whose wings leave the cross-section (C_kept_strong)"
-scale = "C, C_cross: ⟨k_⊥⁴⟩ of the beam's angular spectrum; C_energy, C_kept, C_kept_strong: Δt² + Δx², the discrete flux's order (T-1023)"
-C = 32
-C_cross = 6
-C_energy = 0.25
-C_kept = 0.005
-C_kept_strong = 0.05
-measured = { angular = 20.5, cross = 2.93, energy_plain = 0.125, energy_aberrated = 0.126, energy_strong = 0.164, kept_aberrated = 5.8e-4, kept_strong = 0.030 }
-status = "proposed; energy_plain is T-1023's flux constant 0.119 again. The strong wavefront's larger energy error is attributed to its wider angular spectrum, not checked by refining the grid"
+quantity = "in a cross-section of 48 that holds the beam: the ω₀ component of the launched aberrated beam on probe planes at x = 6, 12, 20, 30 against the Yee angular-spectrum propagation of its incident ω₀ transform (from the table), relative L² error over ⟨k_⊥⁴⟩ (C), and the lacking component (C_cross); |W/launched_energy − 1| of the conserved energy past the plane, unaberrated, aberrated and strongly aberrated (σ = 0.18 waves) (C_energy); the aberrated runs' energy ratio to the unaberrated one against the ratio of their launched energies (C_kept)"
+scale = "C, C_cross: ⟨k_⊥⁴⟩ of the beam's angular spectrum; C_energy, C_kept: Δt² + Δx², the discrete flux's order (T-1023)"
+C = 8
+C_cross = 1.5
+C_energy = 0.15
+C_kept = 5e-4
+measured = { angular = 5.3, cross = 0.64, energy_plain = 0.1252, energy_aberrated = 0.1253, energy_strong = 0.1254, kept_aberrated = 5.3e-5, kept_strong = 1.7e-4 }
+status = "proposed; energy is T-1023's flux constant 0.119 again, and an independent check found 0.123 to 0.128 at six other resolutions and five polarizations. In a cross-section of 30 the wings that leave it (1 to 30 % of the energy) dominated both numbers (angular 20, strong energy 0.164 and rising under refinement). An independent check found angular 2.3 at na 0.7 and 3.6 at na 0.5 in a cross-section of 50, so ⟨k_⊥⁴⟩ is the order but not an exact scale"
 
 ["T-1166"]
 quantity = "ForwardDiff's derivative of the on-axis ω₀ intensity at a probe plane past the focus against a spherical aberration, a coma, the numerical aperture and the focus, relative to the best central difference of fd_scan, in units of its floor"
 scale = "fd_scan's floor (A7)"
-C = 10
+C = 0.5
 measured = { spherical = 0.112, coma = 0.112, na = 0.112, focus = 0.117 }
-status = "proposed"
+status = "proposed; here the floor is the h² truncation spread of the scan's two smallest steps, so an exact derivative gives about 1/8 by construction and C = 0.5 allows about 4 times that. An independent check of other derivatives (launched energy in na and the pupil radius, run energy in a coma, on-axis Ez in Z5 and na) found ForwardDiff and central differences agree to 10⁻¹¹ to 10⁻⁹ at h = 10⁻⁵"
 
 ["T-1169"]
 quantity = "Enzyme's reverse mode on CUDA through the pupil kernel (the beam's numbers from a device array), the engine's table kernel and the 3D antenna's rows, against ForwardDiff through the same kernels on the CPU: the adjoint of na, the fill and twelve aberrations for a random adjoint of every row's four values"
 scale = "eps(T)·√samples·Σ_q |J_q|ᵀ|w̄_q|"
-C = 16
-status = "proposed"
+C = 4
+measured = { Float32_CUDA = 0.31, Float64_CUDA = 0.17 }
+status = "proposed; on the RTX 5090, the largest of two runs (0.18 to 0.31 in Float32, 0.15 to 0.17 in Float64)"

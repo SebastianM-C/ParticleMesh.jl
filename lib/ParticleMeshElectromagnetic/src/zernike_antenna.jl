@@ -175,8 +175,9 @@ end
 
 function check_quadrature(a::AntennaPlane, b::ZernikeBeam)
     r = sqrt(a.len[2]^2 + a.len[3]^2) / 2
-    quadrature_radius(b) >= r ||
-        throw(ArgumentError("the ZernikeBeam's pupil sum resolves the beam to $(quadrature_radius(b)) from its axis, less than the half diagonal $r of the box's cross-section: raise its radial nodes or angular points (PulseShapes.quadrature_radius)"))
+    q = quadrature_radius(b)
+    q >= r ||
+        throw(ArgumentError("the ZernikeBeam's pupil sum resolves the beam and its wavefront to $q from its axis, less than the half diagonal $r of the box's cross-section: raise its radial nodes or angular points (PulseShapes.quadrature_radius)"))
     return nothing
 end
 
@@ -190,7 +191,6 @@ function check_profile(a::AntennaPlane{<:Any,3}, l::ShapedLaser)
         throw(ArgumentError("the 3D ShapedLaser's $(nameof(typeof(t))) reaches the antenna through the table of its plane: call `params = tabulate(state, params)` once per parameter point"))
     t.plane === a && t.center === l.center && t.focus === l.focus ||
         throw(ArgumentError("the 3D ShapedLaser's table was built for another plane, center or focus than the laser's: tabulate it again (`tabulate(state, params)`)"))
-    check_quadrature(a, t.beam)
     return nothing
 end
 

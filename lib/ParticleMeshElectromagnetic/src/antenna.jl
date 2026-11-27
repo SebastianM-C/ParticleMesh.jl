@@ -440,7 +440,8 @@ end
 # The transverse distance from the axis (its coordinate `c`) along `axis` of the row j (any index,
 # guards included) of a field whose rows sit at (j₀ − 1 + s)·Δ, with j₀ the interior row j
 # aliases: the guards get the bits of their interior images, and the nearest periodic image of
-# the axis keeps the profile continuous across the seam.
+# the axis keeps the profile continuous across the seam for a beam even in the offset (a Gaussian),
+# and for any beam whose field is negligible there.
 @inline function antenna_d(a::Union{Antenna,AntennaPlane}, axis, c, j::Int32, s)
     T = typeof(a.xa)
     j0 = mod(j - a.g - Int32(1), a.n[axis])
@@ -449,10 +450,13 @@ end
 end
 @inline antenna_dy(a::Antenna, j::Int32, s) = antenna_d(a, 2, a.laser.center, j, s)
 
-# The incident field across a periodic axis is that of the nearest image of the beam's axis. Its even
-# terms are continuous where the images meet, at the antipode of the axis, but the cross term ∂_y∂_z u
-# of the 3D B is odd in each offset and changes sign there; a row within Δ/1000 of the antipode takes
-# the mean of the two images, zero, so that moving the axis by whole cells moves the field with it.
+# The incident field across a periodic axis is that of the nearest image of the beam's axis. For a
+# beam even in each offset (the GaussianLaser) its even terms are continuous where the images meet,
+# at the antipode of the axis, but the cross term ∂_y∂_z u of the 3D B is odd in each offset and
+# changes sign there; a row within Δ/1000 of the antipode takes the mean of the two images, zero, so
+# that moving the axis by whole cells moves the field with it. A beam that is not even (an aberrated
+# ZernikeBeam) differs between the images there unless its field is negligible at the seam; its
+# table takes the mean of the two images for every term on those rows.
 @inline function antipode_weight(a::Union{Antenna,AntennaPlane}, axis, d)
     T = typeof(a.xa)
     return ifelse(abs(2 * abs(d) - a.len[axis]) * 1000 < a.dx[axis], zero(T), one(T))

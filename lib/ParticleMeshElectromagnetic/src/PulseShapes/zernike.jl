@@ -25,6 +25,9 @@ end
 
 The Zernike radial polynomial R_n^m(ρ), m ≥ 0, n − m even:
 Σ_s (−1)^s (n − s)!/(s!·((n + m)/2 − s)!·((n − m)/2 − s)!)·ρ^(n − 2s), by Horner's rule in ρ².
+The alternating sum cancels as n grows (an independent check in Float64 against BigFloat:
+2·10⁻¹⁴ at n = 8, 4·10⁻¹² at n = 14, 6·10⁻¹⁰ at n = 20, 3·10⁻⁶ at n = 30): fine for the low orders
+of a wavefront, not for n beyond about 20.
 """
 @inline function zernike_radial(n::Integer, m::Integer, ρ)
     a, b = (n + m) ÷ 2, (n - m) ÷ 2
@@ -89,8 +92,8 @@ changes phases only, so the beam keeps its energy ([`profile_moments`](@ref)) an
 intensity: Maréchal's Strehl ratio exp(−(2πσ)²) for a small rms σ.
 
 The quadrature resolves the field out to the radius [`quadrature_radius`](@ref) from the axis:
-`angular` must exceed the harmonics of the pupil's plane waves at that radius, about na·r, and
-`radial` their oscillations along ρ. `angular` is a multiple of four, so the samples have the
+`angular` must exceed the harmonics of the pupil's plane waves at that radius, about na·r, and of
+its wavefront, and `radial` their oscillations along ρ. `angular` is a multiple of four, so the samples have the
 symmetries of the square (y ↔ z and y → −y) and an unaberrated beam is round to roundoff.
 `radial` and `angular` are configuration, not parameters.
 """
@@ -218,14 +221,34 @@ end
 """
     quadrature_radius(b::ZernikeBeam) -> r
 
-The distance from the axis up to which the pupil sum resolves the beam, the smaller of two
-estimates from the error bounds of the rules (not measured beyond T-1161): `angular/(4·na)`, where
-the trapezoid rule's first alias, a Bessel function of order `angular` at na·r, is below
-(e/8)^angular/√(2π·angular) of the beam (10⁻¹⁵ at 32 points), and `radial/na`, where the
-oscillation of the plane waves along ρ, na·r radians, stays below the degree 2·radial − 1 that
-Gauss–Legendre integrates exactly. A box needs it at least at its half diagonal.
+The distance from the axis up to which the pupil sum resolves the plane waves of the beam and its
+wavefront, the smaller of two estimates from the error bounds of the rules (measured in T-1161,
+not proven). The phase of a sample is na·ρ·r·cos(θ − φ) + 2π·W(ρ, θ) + na²ρ²ξ/2. With
+Φ = 2π·Σ_j |c_j|·N_j, a bound of |2πW| (|Z_j| ≤ N_j, its normalization), and
+Φ_m = 2π·Σ_j |m_j|·|c_j|·N_j, a bound of the harmonics of 2πW along θ: `angular ≥ 4·na·r + 2·Φ_m`,
+where the trapezoid rule's first alias of the plane waves alone, a Bessel function of order
+`angular` at na·r ≤ angular/4, is below (e/8)^angular·√(2π·angular)⁻¹ of the beam (10⁻¹⁶ at 32
+points), and `radial ≥ na·r + Φ`, where the phase's oscillation along ρ stays below the degree
+2·radial − 1 that Gauss–Legendre integrates exactly. Unaberrated it is `min(angular/(4·na),
+radial/na)`. A box needs it at least at its half diagonal ([`tabulate`](@ref) refuses less).
+
+Not in the estimate: the defocus phase na²ρ²ξ/2 far from the focus, which wants more radial nodes
+(an independent check, na 1/2, a super-Gaussian pupil and 16 nodes: 2·10⁻¹⁰ relative at ξ = −8,
+3·10⁻⁶ at −100), and a pupil amplitude that vanishes before the rim (a Gaussian pupil), for which
+it is pessimistic, since the outer nodes carry little of the sum.
 """
-quadrature_radius(b::ZernikeBeam) = min(b.angular / (4 * b.na), b.radial / b.na)
+function quadrature_radius(b::ZernikeBeam)
+    T = typeof(b.na)
+    Φ = Φm = zero(T)
+    for (j, c) in enumerate(b.aberrations)
+        n, m = zernike_index(j)
+        N = m == 0 ? sqrt(T(n + 1)) : sqrt(T(2 * (n + 1)))
+        Φ += abs(c) * N
+        Φm += abs(m) * abs(c) * N
+    end
+    Φ, Φm = 2 * T(π) * Φ, 2 * T(π) * Φm
+    return min((b.angular - 2 * Φm) / (4 * b.na), (b.radial - Φ) / b.na)
+end
 
 """
     profile_moments(b::ZernikeBeam) -> (power, ky2)
