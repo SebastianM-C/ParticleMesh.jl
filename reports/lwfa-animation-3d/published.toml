@@ -1,0 +1,732 @@
+branch = "runs/lwfa3d-anim-20261127"
+commit = "b1eacc28e71f4ef7a7a3619905d353dd330af480"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/case.toml"
+bytes = 4617
+sha256 = "74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0001.h5"
+bytes = 17043
+sha256 = "2c220d9061b86bb868c892314af4680f6baa6e8101a718bb70cbfdfe084b7fbf"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0002.h5"
+bytes = 17043
+sha256 = "5309153de5060ad161990387c310c499f0cfb430de957f695899561051882cf8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0003.h5"
+bytes = 17043
+sha256 = "843762e936826c94382d1520dd2cd89f7ec23ee0cfdf1e34a3c70e3b7d571298"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0004.h5"
+bytes = 17043
+sha256 = "72dcd8c61c674c1162339b8276e478ff6fcaa6a2220bfd6ea9961d56daa22ea9"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0005.h5"
+bytes = 17043
+sha256 = "2fbc45aafa47220d869a1bc0e8eb1da4746ec151e3c5ddbc3e14a1ff376af7e9"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0006.h5"
+bytes = 17043
+sha256 = "924a5ec062a13f682aa75823bed032322d6dea346de40dbc29194906924fbc5c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0007.h5"
+bytes = 17043
+sha256 = "20c0571b18b34095ec1aac8c2428788d8b9a6fa8711608665b2527efbe9fbfa0"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0008.h5"
+bytes = 17043
+sha256 = "feaa66da541a6813995ae37ded7438bcf6fd3700fd1870f23d61f66a763662f4"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0009.h5"
+bytes = 17043
+sha256 = "f26d187bf67a2ea28172f70df917e79a92b5d653558fdd251f1699b27ace6606"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0010.h5"
+bytes = 17043
+sha256 = "bead9e1a855b65a8a8227e0ec46575a862855908086ce5d7646b52e62532755b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0011.h5"
+bytes = 17043
+sha256 = "6b88e882a0e3439349e4813365995841eefca825a0b1a8f463261d4970a870dc"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0012.h5"
+bytes = 17043
+sha256 = "b0cfa92859ed1c5372f8f58b6e2403961fdc6c0dc83e9e2fa5dbe4d1f7890345"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0013.h5"
+bytes = 17043
+sha256 = "1e7e9aec385c293ad1c308393c7fc89b3031af48082d7ab15d64bfc0b072a59c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0014.h5"
+bytes = 17043
+sha256 = "673c04c8052fa4eed5635b5d1e9435d326fff659adf0202c3303ca9e0a311974"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0015.h5"
+bytes = 18263
+sha256 = "3ffc23689f200de66b6ab89d8d0ba0157446ebe3ff9bc7e68b18039ff570c473"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0016.h5"
+bytes = 21611
+sha256 = "fa8adec3ce8e5491438ad878e281868a6ecd73fb075424a4f1fd2b9f4630392b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0017.h5"
+bytes = 22415
+sha256 = "cb99b0b5fb3f38e9626aa69e11af638954c6918b4debd2d10860248fbd385ca8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0018.h5"
+bytes = 24696
+sha256 = "881226e1e7477cc263fc038d674fa2e15e67bf830e8deb2607d1c3ba2a55aba1"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0019.h5"
+bytes = 26158
+sha256 = "3d6b470d930c32b0768a68883fcec198d0d24e24515b18bad5dd6452ec200e8d"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0020.h5"
+bytes = 27546
+sha256 = "e57a02d7640d48692140a5524b0af4ed8c4fedce80e2234ce0e476fa3ecbc432"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0021.h5"
+bytes = 28925
+sha256 = "583420f8f1f46ea8737052874143f984bc978839556fb3bcfa18b02fbf428c7b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0022.h5"
+bytes = 29625
+sha256 = "f6fe6bb71be2238bc797d7687b3a4b9a9c53321a9eeca10e13973fc1f59379b7"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0023.h5"
+bytes = 29961
+sha256 = "2a1c206f5b88198c969c86291bbb08323952e7919363d2dc77313e2bc3709008"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0024.h5"
+bytes = 32003
+sha256 = "d3f55bc5bbf4cd177f2ad2f987b15393eeb99dc8f2cf46d646b0eea3c5582a99"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0025.h5"
+bytes = 35197
+sha256 = "f8818ea64176993b8d442da1883a3545d3651201230cd9f25c59227eb21c2c88"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0026.h5"
+bytes = 39381
+sha256 = "bf633131c0ae40adf2f9140abb44b9691bbf6340a6ae1907e88a7a0d71e2251f"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0027.h5"
+bytes = 43330
+sha256 = "f2cc460eeb9ae2653720460e3459a263de60d49613cb7a27aeb3b4e11801b524"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0028.h5"
+bytes = 46439
+sha256 = "8ed1cd9bbe821b2017ccb892647714e57bbf81042030645fe6fcb9dec4ef009f"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0029.h5"
+bytes = 49317
+sha256 = "0515454f551d1b0b3b3b4b39e56205ceceafd26a332f9366d0819d5fd82b5083"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0030.h5"
+bytes = 51762
+sha256 = "aa1dce9b0ed59c70ffcd2dd5357a94d21901c6c161bbfa5dbf7e1ad6ea5b9fb1"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0031.h5"
+bytes = 52556
+sha256 = "5e7db13863c7f2bd375ed8b720180f8d571a66015abfdbc698400c74e6e10843"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0032.h5"
+bytes = 54615
+sha256 = "177b13a2a97ff9a9bbda35348f88e9848ace3b26179ca8b1baa97a8ee5405b26"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0033.h5"
+bytes = 55047
+sha256 = "f608d0de1b9b9c099fb97bd7428d632f6b19566d96e47a3c98b98b206ddd105c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0034.h5"
+bytes = 55756
+sha256 = "933c2582fab0541b69a0be86f61849f206f2595ebba121c0da30b9b66398f7f5"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0035.h5"
+bytes = 57056
+sha256 = "f1419a60f6c832d86e01164c065b90daf26f42755f89e453582ab434e5623bf2"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0036.h5"
+bytes = 56943
+sha256 = "a0a6d91c1b03ed8f13b8eb7c08f7f60d0970e194dc1e3dc1c7381ebdea0a6345"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0037.h5"
+bytes = 56290
+sha256 = "d28e0a5d808a2ac2a7edd6f96ea40357fe8a47cdfabbcd46b66c8534b4f46be1"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0038.h5"
+bytes = 56117
+sha256 = "7bdf932a3ec22a44beeab494b9a18146cd6c851152b649d63bd5b69ab904e5b2"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0039.h5"
+bytes = 56974
+sha256 = "0a9561361752466c2806e487ee1626297874e78e7672433b922c19f0c7ccd0ad"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0040.h5"
+bytes = 56873
+sha256 = "337e04406f6724a0f713c500a5d3c79364790edf86c5e67255662c76ca75879c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0041.h5"
+bytes = 57206
+sha256 = "a27b8ca85622b005c5658a1390a519c8cd6d3d594ac52ff4c115c0f19b01b55b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0042.h5"
+bytes = 57550
+sha256 = "fa16265c2b65ba9a0a196abb6a5cf195c712d6b9efee33476fa30ad1fedba793"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0043.h5"
+bytes = 57855
+sha256 = "2c8b77f885f5e8016877487df2284827d76164184dc3c7c8ab7a517adfe0ca68"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0044.h5"
+bytes = 58282
+sha256 = "67c657979208bf618471b6c7888cfad359d3dce2985b72aa828b303eaa0de8fe"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0045.h5"
+bytes = 58952
+sha256 = "a9ac4c56afac0d1361788beae7d7c437b9be465db652b9c9519448ca8ba316b2"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0046.h5"
+bytes = 59477
+sha256 = "c4a95d416fe2abdecdcef094c85d6678b4bfe2eeb5876afef6a2f34816de8fe3"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0047.h5"
+bytes = 59695
+sha256 = "8b768ff339fa1dba4b8c1f12018c5233d2a3a1e121ac571399a47cd1bd41c9b1"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0048.h5"
+bytes = 59977
+sha256 = "6657551124f74fdc97e6d043faa83708a18ab84f1fda77ecd18a79d49656ccc7"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0049.h5"
+bytes = 60723
+sha256 = "d1a0d57315562a0d14eb0bbdbc83d263374a7212c2081769793d0d9619c44fc8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0050.h5"
+bytes = 61485
+sha256 = "7b1956662b6d9df00462649dc010516db1e0edfd8e500e69a3e81fca351800be"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0051.h5"
+bytes = 63388
+sha256 = "28e63f0549142bb3699f165a73c510c44fb344075c81681023f25ab8a15c03a3"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0052.h5"
+bytes = 64295
+sha256 = "0e6c5a596c3b11f4ee8f4243c3d277f1681f00600d591b270a028cdcdcb234bf"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0053.h5"
+bytes = 63586
+sha256 = "94b258e8d264f7cfd08ae14bebf0d308b2810b55c04d036db134cea1fe52bc02"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0054.h5"
+bytes = 63155
+sha256 = "a519b38ada31bbf94df40abf916577a7c6751813ac4fb3b460233380085ca404"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0055.h5"
+bytes = 63663
+sha256 = "1b69d1b60b1c005306a10c24829bd33a9ab26c5f1dbe3815f7a2d72e1cf37f3f"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0056.h5"
+bytes = 63874
+sha256 = "0cd936c483ba1435b35039a295a380a3b2a0e4d993236ac021f007d9126d707e"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0057.h5"
+bytes = 64959
+sha256 = "482d32c4292d20ec65aa8ca5981c7945b0670eaee1789a79d474b799cbdabbb7"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0058.h5"
+bytes = 67149
+sha256 = "28d5acafc05d8be0e8007b7ed41d30a4ad76d8b02b629c90bddc64c3ec603558"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0059.h5"
+bytes = 69169
+sha256 = "a65e4f842445a983b02c459f563b8a16b1dd2c2598178b50311ed442eaf11691"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0060.h5"
+bytes = 72773
+sha256 = "8e97130d60ebc827c4dd7b57a47f18dccb296c0d9af9fb0b049cb5f567311129"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0061.h5"
+bytes = 76067
+sha256 = "67a5f55b2bf9be77862d2826fe8de4ea6325682588fc3609803345c2e9cf6cb1"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0062.h5"
+bytes = 80457
+sha256 = "03cdd36706ee62447ef0cfdee6333bc9f5cf1cfc55b6f49d8f3795afa1a35dbc"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0063.h5"
+bytes = 84692
+sha256 = "da063e70d11a9f31cea033fc0a384fb74bb8180113057138be5e267fb08e1e9b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0064.h5"
+bytes = 89326
+sha256 = "3712a20d73a4cdb2e45d0fcba9117729bff7bb68c2c0071dbe1b96705f1ada6b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0065.h5"
+bytes = 93624
+sha256 = "0b27130aa310fac15643974b2203dcc81f6ddddc2e72d57481012dbb1193f093"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0066.h5"
+bytes = 97503
+sha256 = "1e1d6f77307cc715e1575e8b2f5d40def8bb4ab0a6573acbbfa1b7d957d7529b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0067.h5"
+bytes = 103468
+sha256 = "22917b6d4eb6031ddccb83754a14b8d8d9638629141670ed586b5ec5492b3f20"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0068.h5"
+bytes = 107538
+sha256 = "877dbda278765532390b885cad3b94e629ac800344f8bca6f93ccd333d64cc7c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0069.h5"
+bytes = 113747
+sha256 = "426b2848b69d2786a39b3856d809264e7769ccf40fef34c4b1c1ce59cfb96dfb"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0070.h5"
+bytes = 117753
+sha256 = "4a655b3c91ab89d071721b69e0520f9ce48f19a4c8cd94e904f9f6a8c0879aeb"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0071.h5"
+bytes = 120116
+sha256 = "7ef051bb1d2e945aa410b653c912d67abaf84e1de789185589c49ded6dfffbc2"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0072.h5"
+bytes = 123603
+sha256 = "0a91e655066dd30c4376fce56104e223c5a000b65212c4284d70c00328631c2a"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0073.h5"
+bytes = 126516
+sha256 = "df396e11269e830aa432595384da53c86e76eff50d4b4c086d1e145f413bff5b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0074.h5"
+bytes = 129917
+sha256 = "a518c6272c383e057dcdadc658dc8a95a1a27bfc1ba9506784dfea59e63cd75a"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0075.h5"
+bytes = 135656
+sha256 = "27780aedcd9d67165d21e65f6598a4f35d09a3ea10119315391ae2873e80837b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0076.h5"
+bytes = 143634
+sha256 = "2eee232c4014e8f3b3d05699023d4d92958c118038f1ec3525c2c99b7bddfdf9"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0077.h5"
+bytes = 152355
+sha256 = "12de07bb6f217268b0fab6d05c3da12fb83769f31da3451f757b95dd675c8d44"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0078.h5"
+bytes = 157737
+sha256 = "7e8ef4c30e007b5ff42d962de83a5d3875bd28446c347a07f0f0e1acd39c8f21"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0079.h5"
+bytes = 162929
+sha256 = "06a92e9772fe17edd8e51b24060a3dd1f05dfc07451d7e63ae3e6cbb9d475759"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0080.h5"
+bytes = 165056
+sha256 = "2291e575ed2f4a74b40fdb5b6d23ebeeebfb2215b2f082abddea00f7cf0f2353"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0081.h5"
+bytes = 168127
+sha256 = "f82c4480d5c35705f014c437f87492465c90e74afc450255b6483992486cae86"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0082.h5"
+bytes = 175098
+sha256 = "9076be0b0ef2a4a64109ec60a85fbc91e8486c6b6ce7cb261bb4843b3eefc49f"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0083.h5"
+bytes = 180334
+sha256 = "fe3c49bc9dabdf6d6731818d973f8794e96da560596230b6c2c848af17b14ddb"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0084.h5"
+bytes = 186139
+sha256 = "29854964a35808ca86d4a92ec6c6b9f9ba3f99bac61ecc271adb7df40ddd260c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0085.h5"
+bytes = 188980
+sha256 = "7b11f880773ae2112c43effc8fcd164d36da4de3866825934c183e88e6b873bf"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0086.h5"
+bytes = 187104
+sha256 = "dd8fbf628bfaa523c8275e9b96ef190def63c2b079564491df24ffd119623bec"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0087.h5"
+bytes = 185714
+sha256 = "afa208d641400f87429ef5e24765e87faf0e3dd761de57491a979c4cc8bece72"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0088.h5"
+bytes = 186326
+sha256 = "e333022685e1d107d2c07a1c8062c7223839456a7d2f70e10cd4326326cdf2f8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0089.h5"
+bytes = 178626
+sha256 = "207e88e486faa6c57a98732b8037d79f680b25292fa265e9257ea140a0d130c7"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0090.h5"
+bytes = 174330
+sha256 = "aa98bb032e00adb63df442404254a3a0b823cd931e656c478bcc07c6429e9e93"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0091.h5"
+bytes = 174607
+sha256 = "2876484e1873365a990d0af81254906a22589d451d61933c53275ef94dc2c7b8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0092.h5"
+bytes = 192827
+sha256 = "bce5b95db32abdb3a4c28dd32c8c62175496b5a3c2deaf38515ceb81195c6be4"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0093.h5"
+bytes = 232579
+sha256 = "1cd4220b3fa1aa029695dd3ddb9ad936951ee0c4e7153414519dd90d8bb4ef16"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0094.h5"
+bytes = 269901
+sha256 = "1a42ba13df3d72da38a5e28e7189a9b8913592f0c4cc2f10c6233bbd59d9fc0b"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0095.h5"
+bytes = 275289
+sha256 = "b54ca28801c85a2ae6aa3911e48a4bf90e751f9e5dd40198a2e075fe70491049"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0096.h5"
+bytes = 272099
+sha256 = "281e9a7a24dc681aca66f35d5a37b0355084b8764f77dff77275f1b225e08e32"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0097.h5"
+bytes = 280686
+sha256 = "e8ea28d2ebaade012c11416179524e3feae4892001de14f3d346c2ae255708b4"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0098.h5"
+bytes = 284344
+sha256 = "a241e1f69b8e11df19f67a753612967fc62b461d2678ad5c3e90d9f1df3ba0fe"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0099.h5"
+bytes = 287366
+sha256 = "6436ba95de515ac5d7c0b0123baa9890eb62fac00f9fc43d647cacb93fc23cf6"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0100.h5"
+bytes = 286419
+sha256 = "4f914adf6d90a11e2a939ffc57154d996e8dd9bc47162bfb52a5a2e8b034b1e9"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0101.h5"
+bytes = 285444
+sha256 = "22d698a36cfaa2df327c0059c7b7eaa24d46f73eff6077bd3176e80f678f2962"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0102.h5"
+bytes = 288400
+sha256 = "7ca942861bbd74dc144ac2c50e1fc09ca6788a9495b86be5850d80cc333bd089"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0103.h5"
+bytes = 285845
+sha256 = "9eb0a287a37eed883edb364603874061b207b8a81e1a2616d793d00c09e7d4ff"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0104.h5"
+bytes = 287899
+sha256 = "e3fe61c1f8734289ec27ad1b5ee9d9c40d96f9610424261862f873f0f43b7c70"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0105.h5"
+bytes = 292024
+sha256 = "e0df0c601be4f6c072dbc038f131dd66d78f7556b0f9995fa47597ecc11743ff"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0106.h5"
+bytes = 292168
+sha256 = "375a00568a6ad323a8c8f410bebc3bcf03c2e35f8ec1789782b477bb1e411b42"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0107.h5"
+bytes = 293239
+sha256 = "830321e2871e19449b0e3d5302fb5174d3e7cf9de67636011fd34bf0b3d857ac"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0108.h5"
+bytes = 291529
+sha256 = "59b5d262263226008f5c5e466bc19fbbc6adaee7ff74c9098c5cf1566d69c2a8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0109.h5"
+bytes = 291868
+sha256 = "8a8eabffee04b78cfd5507f4703eabfceb2f9f539def08d8b93bcc78095cfad4"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0110.h5"
+bytes = 289561
+sha256 = "2947bb6c0ba59ed69d06faaf41b89bd54f832b9bde92fd54ac1704af3d142278"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0111.h5"
+bytes = 290846
+sha256 = "3042a7839634f11d127ced33f35c12c838b61bc72403316390bcb828f5b4d9f6"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0112.h5"
+bytes = 290016
+sha256 = "8e7529772fb9a9c64e19bc32eee3e18b96bcdeed53d4ed0b71d1bc6807489dd6"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0113.h5"
+bytes = 289290
+sha256 = "a670986d68a20695de5fd9aec210e17bbfe3b30d9646b313e90d80bc8a56441e"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0114.h5"
+bytes = 287681
+sha256 = "7c8909ed7c2e279e453e40e96e19a22c6e5dd361853164217c91d427dc2d578d"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0115.h5"
+bytes = 287311
+sha256 = "35a44a3c8698859520360fc01e6db813a2e94c2bea2cfef9a8e08f60c6de392c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0116.h5"
+bytes = 282293
+sha256 = "b83d052489682b33b8a42b84dbc769d44aba21a7ad17a089619ee4f55e73a900"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0117.h5"
+bytes = 286383
+sha256 = "b017280819cb640d580b0da3475e354955aedaf4855422f8eadc792c7ae81fec"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0118.h5"
+bytes = 285835
+sha256 = "aea7c3a6e25d2d4edb315a81bfed3ec449b13933c98d002f3ec10dee3677a9ed"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0119.h5"
+bytes = 284359
+sha256 = "ca76a9852643cffef8ab2751cae5e944b85bfce50804c5c7af76597bbca0c5ce"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0120.h5"
+bytes = 284846
+sha256 = "cd1a7182e878b795d54666efe972c57e7c1504cd0067993b0bb7e4ef6c818d7d"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0121.h5"
+bytes = 284741
+sha256 = "c9cdb15ab04cec2f730a68e30dfca478d92587774dd9f04e1aaa916ebd42b305"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0122.h5"
+bytes = 283642
+sha256 = "c62f9876135397d3886e6fc7632aa74fbd8ecc88a1254ea594b30c62e8fd6df8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0123.h5"
+bytes = 285296
+sha256 = "cd746f09676eca1a3bdee46d308230684f4b9ff4fbd6f910dec7bb42f25bc300"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0124.h5"
+bytes = 285466
+sha256 = "eafcc698d8c5ed34ec448e93d5eecdca2ef8ff666790bbe33f2e694e683a5319"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0125.h5"
+bytes = 280532
+sha256 = "c9c129dfa533a03ddb95e5a79d14edd14ecbcc968550160c05e1545e6f531c82"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0126.h5"
+bytes = 281105
+sha256 = "0f0620b7d79b4959e1e45e6485b8817718df45ef2832c14c8012068df53c0800"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0127.h5"
+bytes = 278921
+sha256 = "66b3e154ed9b7113a33273734fd1885a0943ab846bef4e4ea75d2c76a3dc3c95"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0128.h5"
+bytes = 279301
+sha256 = "bec4afb8b8ccd09b2dd2217e05dfbf2064993d0647605f4d5830df4df969bbd2"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0129.h5"
+bytes = 275378
+sha256 = "4e35bf42b2f57877ad4397d52c5382e49ca57bbbb131b14dd1f1ec62aef20e67"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0130.h5"
+bytes = 274841
+sha256 = "735af7ab7ee20d0ff6b7dd6241bf58d1c38b68978e87d1a061cacebdc0f414e7"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0131.h5"
+bytes = 273843
+sha256 = "479cfa9ca21a8765979d789d0c18aa1fd4a116eae3778ddb6ee07c42afa91f23"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0132.h5"
+bytes = 271507
+sha256 = "d6b702203c89666ad9831b2c7ee745efcb86e4820b1ad467c67a2bad97c84385"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0133.h5"
+bytes = 266086
+sha256 = "cb16d22e8a709b64cd75c537fe3263635ae892707a561c1a5c6c61eeb1ac8ca6"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0134.h5"
+bytes = 266914
+sha256 = "5c9d0fe906a1fc8359a6a4f310ff91097bab838f0d49304590b7511c6426fbcd"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0135.h5"
+bytes = 264169
+sha256 = "3f2f4bc6394fdcbd4dee7ee05fd1b7179f6b4fc6b9351d1f8b95d0b783dbc6c5"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0136.h5"
+bytes = 262434
+sha256 = "99bd2bc5b11ed06aab2f7bf7f15475b8f00414832d3777acff96c87e239d482c"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0137.h5"
+bytes = 261947
+sha256 = "8136abb157293528e52bf98ea1390c1f561f6d7ad3e580b8984aa4698acbb7bc"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0138.h5"
+bytes = 258693
+sha256 = "52bd46edc9792e2cc779d5f427096d8ab59c846bec370e3116d9dfdad856e1db"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0139.h5"
+bytes = 255660
+sha256 = "adfd593bb3413698f620d16e1166a413b644567c90b4d3fdd7783d5548336c74"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0140.h5"
+bytes = 253195
+sha256 = "c30ef23e6c7b16cd47732fdbe4a66eabf55d9f1f55d69cdf7d78fc3a93014594"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0141.h5"
+bytes = 256190
+sha256 = "10bcc0de7e2ce8e81460222bce74873269e167fd83c3814a0937a2db21fd95f3"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0142.h5"
+bytes = 253125
+sha256 = "3003aca5a501ba0a02165bb6473694ee18287c150e441a38f86f910d41093df8"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/frames/frame0143.h5"
+bytes = 253091
+sha256 = "ed9181106f18c4d06378377c177854683e757e6cbd7ccb5ff4c774dc7f77c8fb"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/manifest.toml"
+bytes = 434
+sha256 = "21ccc818cf87a53dc0932131400d7985e5ead1eb49da94408be678a211641a7e"
+
+[[files]]
+path = "scripts/runs/lwfa3d-anim/request.txt"
+bytes = 86
+sha256 = "e4ef1b72e1fafadcb00dd0b5eb3415cffb5fbab27347e26cb7dcd32df53f41d4"

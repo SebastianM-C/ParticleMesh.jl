@@ -1,0 +1,18 @@
+T = "Float32"
+backend = "KernelAbstractions CPU"
+commit = "42a3e702f4afabb10ecd82fd14ea830e40ecc734"
+cpu = "AMD EPYC 9655 96-Core Processor"
+dirty = false
+every = 12
+frames = 143
+gpu = "none"
+julia = "1.13.3"
+lost_births = 0
+mode = "fast"
+nsteps = 1704
+run_seconds = 2037.4544138908386
+threads = 16
+updated = "2026-11-27T16:15:10.353Z"
+
+[inputs]
+"case.toml" = "sha256:74cc0e700334a3f7fcb71365acec98fd411610db191919aeb8ec70c437d0c5e8"

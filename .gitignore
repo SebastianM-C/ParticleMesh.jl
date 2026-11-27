@@ -1,6 +1,7 @@
 Manifest*.toml
 !/Manifest.toml
 !/scripts/Manifest.toml
+!/scripts/lwfa/render3d/Manifest.toml
 .claude/worktrees/
 .claude/settings.local.json
 trace/build/
