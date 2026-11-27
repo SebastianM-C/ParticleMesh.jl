@@ -1,0 +1,60 @@
+card_peak_GiB_max = 0.0
+method = "dual4"
+seconds_min = 11.495296955108643
+checkpoint_memory = "none"
+pool_peak_GiB_max = 0.8312699161469936
+checkpoint_every = 0
+state_bytes = 873100508
+threads = 16
+checkpoints = 0
+
+[case]
+ppl = 32
+eltype = "Float32"
+gather = "CompensatedGather(k = 1)"
+theta = [6.0, 10.0, 80.0, 0.072]
+ny = 2
+a0E = 1.9
+mode = "Reference"
+nsteps = 1799
+
+[[rows]]
+baseline_pool_GiB = 0.0
+seconds = 29.705440044403076
+J = 0.026008574292063713
+warmup = true
+pool_peak_GiB = 0.8238193355500698
+card_peak_GiB = 1.81640625
+baseline_card_GiB = 1.39892578125
+gradient = [-0.006169208325445652, 0.0007670227787457407, 0.0020378353074193, 1.651904821395874]
+rep = 0
+[[rows]]
+baseline_pool_GiB = 0.0
+seconds = 11.502043008804321
+J = 0.026008574292063713
+warmup = false
+pool_peak_GiB = 0.8312699161469936
+card_peak_GiB = 0.0
+baseline_card_GiB = 3.21533203125
+gradient = [-0.006169208325445652, 0.0007670227787457407, 0.0020378353074193, 1.651904821395874]
+rep = 1
+[[rows]]
+baseline_pool_GiB = 0.0
+seconds = 11.495296955108643
+J = 0.026008574292063713
+warmup = false
+pool_peak_GiB = 0.8312699161469936
+card_peak_GiB = 0.0
+baseline_card_GiB = 3.21533203125
+gradient = [-0.006169208325445652, 0.0007670227787457407, 0.0020378353074193, 1.651904821395874]
+rep = 2
+[[rows]]
+baseline_pool_GiB = 0.0
+seconds = 11.496330976486206
+J = 0.026008574292063713
+warmup = false
+pool_peak_GiB = 0.8312699161469936
+card_peak_GiB = 0.0
+baseline_card_GiB = 3.21533203125
+gradient = [-0.006169208325445652, 0.0007670227787457407, 0.0020378353074193, 1.651904821395874]
+rep = 3
