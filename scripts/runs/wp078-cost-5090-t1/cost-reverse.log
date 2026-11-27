@@ -1,0 +1,196 @@
+[21:48:29] start: ppl 32 ny 2 a0E 1.9 θ [6.0, 10.0, 80.0, 0.072], method reverse, C 20, checkpoints in device memory (pool used 0.00 GiB, reserved 0.00 GiB)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func265, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception254)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func265, ptr nonnull @di_file276, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2804)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func281, ptr nonnull @di_file2826, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2804)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func281, ptr nonnull @di_file2826, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2804)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func281, ptr nonnull @di_file2826, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func1865, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception1854)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func1865, ptr nonnull @di_file1876, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception124)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func135, ptr nonnull @di_file146, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception124)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func135, ptr nonnull @di_file146, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[21:56:14] warm-up 0: 450.47 s, J 0.026008593, gradient [-0.0061689, 0.000767261, 0.00203786, 1.65184]; peak above baseline: pool 28.90 GiB, card 29.75 GiB (pool used 1.02 GiB, reserved 4.09 GiB)
+[21:56:58] rep 1: 43.89 s, J 0.026008593, gradient [-0.00616891, 0.000767258, 0.00203786, 1.65184]; peak above baseline: pool 28.72 GiB, card 24.62 GiB (pool used 1.02 GiB, reserved 10.41 GiB)
+┌ Warning: one thread: the memory sampler runs only when the main task yields (run with `julia -t 2`)
+└ @ Main ~/pm-wp078/scripts/enzyme/trapped.jl:477
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different data layouts: 'start' is 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128-ni:10:11:12:13' whereas 'start' is 'e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64-ni:10:11:12:13'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: Linking two modules of different target triples: 'start' is 'x86_64-linux-gnu' whereas 'start' is 'nvptx64-nvidia-cuda'
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from start with 'i32 2' from start)
+└ @ LLVM ~/.julia/packages/LLVM/mSonp/src/core/context.jl:231
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+wrote scripts/runs/enzyme-trapped-cost-reverse-20261127T215659
+exit 0

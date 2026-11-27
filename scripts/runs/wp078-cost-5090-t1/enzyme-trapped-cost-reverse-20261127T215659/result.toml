@@ -1,0 +1,50 @@
+card_peak_GiB_max = 24.625
+method = "reverse"
+seconds_min = 43.885968923568726
+checkpoint_memory = "device"
+pool_peak_GiB_max = 28.715671233832836
+checkpoint_every = 20
+state_bytes = 225431372
+threads = 1
+checkpoints = 90
+
+[case]
+ppl = 32
+eltype = "Float32"
+gather = "CompensatedGather(k = 1)"
+theta = [6.0, 10.0, 80.0, 0.072]
+ny = 2
+a0E = 1.9
+mode = "Reference"
+nsteps = 1799
+
+[[rows]]
+baseline_pool_GiB = 0.0
+seconds = 450.47114300727844
+J = 0.026008592918515205
+warmup = true
+pool_peak_GiB = 28.904322862625122
+card_peak_GiB = 29.75
+baseline_card_GiB = 1.67626953125
+gradient = [-0.0061689040191888755, 0.0007672605412424614, 0.0020378580427951945, 1.6518364244007584]
+rep = 0
+
+    [rows.phases]
+    primal_with_checkpoints = 5.86475131
+    start_tangent = 5.050934076309204
+    reverse = 433.16473506
+[[rows]]
+baseline_pool_GiB = 0.0
+seconds = 43.885968923568726
+J = 0.026008592918515205
+warmup = false
+pool_peak_GiB = 28.715671233832836
+card_peak_GiB = 24.625
+baseline_card_GiB = 6.78564453125
+gradient = [-0.006168913048822228, 0.0007672580480308391, 0.002037858011187805, 1.6518364019145804]
+rep = 1
+
+    [rows.phases]
+    primal_with_checkpoints = 2.135831929
+    start_tangent = 0.005445957183837891
+    reverse = 40.224782864
