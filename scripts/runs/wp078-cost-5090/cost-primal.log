@@ -1,0 +1,6 @@
+[21:33:17] start: ppl 32 ny 2 a0E 1.9 θ [6.0, 10.0, 80.0, 0.072], method primal (pool used 0.00 GiB, reserved 0.00 GiB)
+[21:33:37] warm-up 0: 18.41 s, J 0.026008593, gradient Float64[]; peak above baseline: pool 0.21 GiB, card 0.28 GiB (pool used 0.21 GiB, reserved 0.22 GiB)
+[21:33:39] rep 1: 2.09 s, J 0.026008593, gradient Float64[]; peak above baseline: pool 0.21 GiB, card 0.00 GiB (pool used 0.21 GiB, reserved 0.22 GiB)
+[21:33:41] rep 2: 2.08 s, J 0.026008593, gradient Float64[]; peak above baseline: pool 0.21 GiB, card 0.00 GiB (pool used 0.21 GiB, reserved 0.22 GiB)
+[21:33:44] rep 3: 2.08 s, J 0.026008593, gradient Float64[]; peak above baseline: pool 0.21 GiB, card 0.00 GiB (pool used 0.21 GiB, reserved 0.22 GiB)
+wrote scripts/runs/enzyme-trapped-cost-primal-20261127T213344

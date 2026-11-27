@@ -1,0 +1,10 @@
+Precompiling packages...
+   1.2 s  ✓ ParticleMeshCore
+   0.6 s  ✓ ParticleMesh
+   0.6 s  ✓ ParticleMeshCore → ParticleMeshCoreEnzymeCoreExt
+   1.5 s  ✓ ParticleMeshElectromagnetic
+   0.6 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticSciMLStructuresExt
+   0.8 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticSciMLExt
+   0.8 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticOrdinaryDiffEqCoreExt
+   1.0 s  ✓ ParticleMeshElectromagnetic → ParticleMeshElectromagneticCheckpointingExt
+  8 dependencies successfully precompiled in 4 seconds. 289 already precompiled.

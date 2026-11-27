@@ -1,0 +1,6 @@
+[21:34:32] start: ppl 32 ny 2 a0E 1.9 θ [6.0, 10.0, 80.0, 0.072], method dual4 (pool used 0.00 GiB, reserved 0.00 GiB)
+[21:35:03] warm-up 0: 29.60 s, J 0.026008574, gradient [-0.00616921, 0.000767023, 0.00203784, 1.6519]; peak above baseline: pool 0.83 GiB, card 1.82 GiB (pool used 0.83 GiB, reserved 0.84 GiB)
+[21:35:15] rep 1: 11.50 s, J 0.026008574, gradient [-0.00616921, 0.000767023, 0.00203784, 1.6519]; peak above baseline: pool 0.83 GiB, card 0.00 GiB (pool used 0.83 GiB, reserved 0.84 GiB)
+[21:35:26] rep 2: 11.50 s, J 0.026008574, gradient [-0.00616921, 0.000767023, 0.00203784, 1.6519]; peak above baseline: pool 0.83 GiB, card 0.00 GiB (pool used 0.83 GiB, reserved 0.84 GiB)
+[21:35:38] rep 3: 11.50 s, J 0.026008574, gradient [-0.00616921, 0.000767023, 0.00203784, 1.6519]; peak above baseline: pool 0.83 GiB, card 0.00 GiB (pool used 0.83 GiB, reserved 0.84 GiB)
+wrote scripts/runs/enzyme-trapped-cost-dual4-20261127T213538
