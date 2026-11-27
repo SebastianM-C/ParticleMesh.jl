@@ -294,8 +294,16 @@ function body_T1190(be)
         resort_append!(h, n, append + 5, ResortLCG(77); tag0 = 9000, gap = 0)
         @test h.status[Int(Array(wc.resort.sorted_count)[1]) + append + 1] == ParticleMeshCore.ALIVE   # alive past the tail
         sync!(c, h)
+        before = hostbits(c)                      # the count included (the tests' species_arrays)
         @test_throws ArgumentError resort_by_cell!(c, grid, wc; check = true)
-        @test !wc.resort.ordered[]
+        @test !wc.resort.ordered[] && wc.resort.resorts[] == 4
+        @test all(same_bits(x, y) for (x, y) in zip(hostbits(c), before))    # the count put back: this resort had changed it
+        # without check the same broken state is not detected: no throw, the order kept
+        sort_by_cell!(c, grid, wc)
+        sync!(h, c)
+        resort_append!(h, n, append + 5, ResortLCG(78); tag0 = 9500, gap = 0)
+        sync!(c, h)
+        @test resort_by_cell!(c, grid, wc) === c && wc.resort.ordered[] && wc.resort.resorts[] == 5
     end
     # without append scratch resort_by_cell! is the full sort, and check does nothing
     grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
@@ -311,4 +319,33 @@ end
 
 @testset "T-1190 resort_by_cell!(...; check = true) gives the full sort's bits within its precondition and throws when a particle moved two cells or more particles were appended than its append, at N = 1, 2, 3 [A4, WP-041, #475]" begin
     body_T1190(CPU())
+end
+
+@testset "T-1193 each comparison of resort_by_cell!'s check counts on its own: one permutation entry, one segment start, one segment stop, the count [A4, WP-041, #475]" begin
+    # The two broken cases of T-1190 differ from the full sort in the permutation and the segments
+    # both, so there each comparison hides the others; here each one sees a single difference.
+    PMC = ParticleMeshCore
+    grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
+    s = resort_species(Float64, (16, 12), 600, 500)
+    ws = Workspace(s, grid)
+    sort_by_cell!(s, grid, ws)                       # ws.key sorted, ws.perm, the segments and the count from it
+    cap, ncell = 600, prod(grid.n)
+    function bad_of(; perm = copy(ws.perm), start = copy(ws.seg_start), stop = copy(ws.seg_stop), count = copy(s.count))
+        bad = zeros(Int32, 3)
+        PMC.launcher(PMC.resort_perm_check_kernel!, backend, nothing)(bad, perm, ws.key, Int64(cap); ndrange = cap)
+        PMC.launcher(PMC.resort_segments_check_kernel!, backend, nothing)(bad, start, stop, ws.seg_start, ws.seg_stop; ndrange = ncell)
+        PMC.launcher(PMC.resort_count_check_kernel!, backend, nothing)(bad, count, s.count; ndrange = 1)
+        return bad
+    end
+    @test bad_of() == [0, 0, 0]
+    p = copy(ws.perm); p[cap] = p[1]
+    @test bad_of(perm = p) == [1, 0, 0]
+    p = copy(ws.perm); p[1], p[2] = p[2], p[1]
+    @test bad_of(perm = p) == [2, 0, 0]
+    L = findlast(>(0), ws.seg_stop)                  # the last non-empty bin: every slot and bin is compared
+    a = copy(ws.seg_start); a[L] += 1
+    @test bad_of(start = a) == [0, 1, 0]
+    b = copy(ws.seg_stop); b[L] -= 1
+    @test bad_of(stop = b) == [0, 1, 0]
+    @test bad_of(count = s.count .- Int32(1)) == [0, 0, 1]
 end

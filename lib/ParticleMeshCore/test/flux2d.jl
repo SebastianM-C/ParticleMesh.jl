@@ -546,11 +546,13 @@ end
     @test split(SplitFakeGPU(), Dual{Nothing,Float32,3}, 25) == ((1, 2), (3,))
     @test split(SplitFakeGPU(), Dual{Nothing,Float64,2}, 25) == ((1,), (2,), (3,))
     @test split(SplitFakeGPU(), Float64, 36) == ((1, 2), (3,))
-    for c in (1, 2, 3)
-        @test split(SplitFakeGPU(), Float64, 25) |> length == 1
-        @test ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, c) ==
-              (((1,), (2,), (3,)), ((1, 2), (3,)), ((1, 2, 3),))[c]
+    @test split(SplitFakeGPU(), Dual{Nothing,Float64,3}, 36) == ((1,), (2,), (3,))    # 1152 bytes a component: still one per launch
+    for be in (CPU(), SplitFakeGPU()), c in (1, 2, 3)
+        @test ParticleMeshCore.flux_components_2d(be, Float32, 25, c) == (((1,), (2,), (3,)), ((1, 2), (3,)), ((1, 2, 3),))[c]
     end
     @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, 0)
     @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, 4)
+    # the keyword reaches the patch launches: deposit_flux! refuses a fourth component per launch
+    grid = grid2(Float64, flux_g2(Quadratic, (Node(), Node())))
+    @test_throws ArgumentError flux2d(Reference(), flux_species_2d(Float64, grid, 50), Quadratic, (Node(), Node()), grid; components = 4)
 end
