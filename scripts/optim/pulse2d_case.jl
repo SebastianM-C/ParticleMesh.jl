@@ -149,9 +149,15 @@ The share of the profile's power ([`PulseShapes.profile_moments`](@ref), the int
 all y) that falls on the antenna's rows at the antenna plane: over the whole box height (`box`)
 and over the rows inside the y absorbers (`interior`). An aberrated pupil's wings that leave the
 box are energy the budget counts and the box never launches (#487), so a point well below 1 is
-not at the fixed energy.
+not at the fixed energy. It is a share of the incident profile, not a measurement of the run: in a
+vacuum run the box holds `box` of the energy to 0.3 % (relative to the base Gaussian, which removes
+the antenna's own discretization), and the interior rows hold more than `interior`, since the
+converging beam carries part of what the absorber rows launch inward (T-1187). The flat-top's
+ringing reaches the box's y walls at 4 % (focus 80) to 18 % (the worst corner) of the peak field;
+in a box 1.5 times as high (`rows = 192`) the objective changes by −2.3 to +1.2 % at four points at
+λ₀/16, within the box's other errors (J changes by tens of percent from λ₀/16 to λ₀/32, WP-065).
 """
-function launched_fraction(prob; absorber_cells::Integer = BCASE.pml_y * (prob.cells[2] ÷ BCASE.rows))
+function launched_fraction(prob; absorber_cells::Integer = BCASE.pml_y * round(Int, BCASE.dy * prob.cells[2] / Float64(value_of(prob.length[2]))))
     l = prob.lasers[1]
     b = PulseShapes.convert_eltype(Float64, l.profile)
     ξ = Float64(value_of(l.position)) - Float64(value_of(l.focus))

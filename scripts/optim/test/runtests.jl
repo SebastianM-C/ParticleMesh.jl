@@ -1316,3 +1316,41 @@ end
     @test side["starts"]["r1"]["J"] == [p["J"] for p in res["path"]]           # the path in the solver's order
     @test pulse_on_bounds(collect(PCASE.x0)) == "none" && pulse_on_bounds(PULSE_BOX.lo) == join(["$n=lo" for n in PCASE.names], ", ")
 end
+
+"The field energy Σ(E² + B²)/2·Δx·Δy of a 2D state over the box's columns and the rows `rows` (guards left out)."
+function box_energy(st, rows)
+    f, n, h = st.fields, ncells(st.grid), cellsize(st.grid)
+    return h[1] * h[2] * sum(map((:Ex, :Ey, :Ez, :Bx, :By, :Bz)) do c
+        a = Array(getfield(f, c))
+        g = (size(a) .- n) .÷ 2
+        sum(abs2, a[(g[1] + 1):(g[1] + n[1]), g[2] .+ rows]) / 2
+    end)
+end
+
+@testset "T-1187 in a vacuum run the box holds the energy launched_fraction gives it, and a wider box keeps the case [A3, WP-087]" begin
+    # In vacuum at λ₀/16, at t = 85 (the pulse launched, the window not yet moving): the shaped pulse's
+    # field energy over the box, relative to the base Gaussian's (which launches all of its energy,
+    # so this ratio removes the antenna's own discretization, 2 % low at λ₀/16), is launched_fraction's
+    # share over the box's rows; inside the absorbers it is at least the interior share (the converging
+    # beam carries some of what the absorber rows launch inward).
+    kw = (; ppl = 16, t_end = 85.0, capacity = 1000, density = 0.0, delay = PCASE.delay)
+    energy(p) = (st = run_to_end(start_of(p; ppl = 16, ny = 1)); n = p.cells[2]; k = BCASE.pml_y; (all = box_energy(st, 1:n), interior = box_energy(st, (k + 1):(n - k))))
+    g = energy(born_problem(a0_for_energy(6.0, 10.0), 0.0; kw...))
+    @test 0.97 < g.all / budget(1.9) < 1
+    @test g.interior ≈ g.all rtol = 1e-5
+    for x in (collect(PCASE.x0), [110.0, 0.3, -0.3, -12.0, -30.0])
+        sh = pulse_shape(x)
+        p = born_problem(pulse_a0(sh), 0.0; kw..., focus = x[1], shape = sh)
+        s, lf = energy(p), launched_fraction(p)
+        @test s.all / g.all ≈ lf.box rtol = 3e-3
+        @test lf.interior <= s.interior / g.all < lf.box
+    end
+    # rows widens the box, keeping the cells, the absorbers, the dopant's rows and the laser on the axis
+    w = pulse_problem(collect(PCASE.x0); ppl = 16, rows = 192)
+    b = pulse_problem(collect(PCASE.x0); ppl = 16)
+    @test w.cells == (b.cells[1], 192)
+    @test w.length[2] ≈ 192 * BCASE.dy rtol = 1e-14
+    @test w.lasers[1].center ≈ 96 * BCASE.dy rtol = 1e-14
+    @test w.ionization.rows[2] - w.ionization.rows[1] ≈ b.ionization.rows[2] - b.ionization.rows[1] rtol = 1e-14
+    @test launched_fraction(w).interior > 0.9995 && launched_fraction(w).interior > launched_fraction(b).interior
+end

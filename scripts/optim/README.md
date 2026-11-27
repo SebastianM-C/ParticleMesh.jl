@@ -47,4 +47,4 @@ sol.u .* WAKE_BOX.scale                                       # the optimum; sol
 
 The reports of WP-045 to WP-052 record runs made with the hand-written projected BFGS that Optimization.jl replaced, so their call counts and paths are that optimizer's.
 
-Tests: `julia +1.13 --project=scripts scripts/optim/test/runtests.jl` (T-760 to T-763 for the layer, T-660 to T-665 and T-680 to T-682, T-830 to T-835 and T-910 to T-914 for the cases, T-970 to T-977 for the WP-068 driver, T-1180 to T-1186 for WP-087's case and driver, and T-620 to T-623 for the Bayesian optimizer).
+Tests: `julia +1.13 --project=scripts scripts/optim/test/runtests.jl` (T-760 to T-763 for the layer, T-660 to T-665 and T-680 to T-682, T-830 to T-835 and T-910 to T-914 for the cases, T-970 to T-977 for the WP-068 driver, T-1180 to T-1187 for WP-087's case and driver, and T-620 to T-623 for the Bayesian optimizer).
