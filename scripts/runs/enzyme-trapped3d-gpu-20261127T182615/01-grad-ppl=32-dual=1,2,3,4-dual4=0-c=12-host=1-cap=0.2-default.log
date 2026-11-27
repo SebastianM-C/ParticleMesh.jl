@@ -1,0 +1,180 @@
+[18:26:24] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "0", "ppl" => "32", "dual" => "1,2,3,4", "c" => "12", "cap" => "0.2", "host" => "1"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[18:26:42] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB in floating-point arrays (0.77 GiB in all), one checkpoint 0.10 GiB, 4 checkpoints in host memory (pool used 0.00 GiB)
+[18:26:50] warm-up: plain run 5.7 s, J = 0.00034263774, peak 0.77 GiB (pool used 0.77 GiB)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2774)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func2785, ptr nonnull @di_file2796, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2774)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func2785, ptr nonnull @di_file2796, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2774)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func2785, ptr nonnull @di_file2796, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func335, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func335, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func335, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func335, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func355, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func355, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func355, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func355, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func355, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception204)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func21, ptr nonnull @di_file226, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception204)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func21, ptr nonnull @di_file226, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[18:32:56] warm-up: reverse pass 365.6 s (524.5 ms per step), J from its forward sweep 0.00034263773, peak 9.76 GiB, shadow 0.13 GiB new (pool used 5.32 GiB)
+    dJ/dduration reverse -1.31526481e-04 (start +0.000e+00, parameters -1.315e-04)
+    dJ/dwaist    reverse -3.90166974e-04 (start +0.000e+00, parameters -3.902e-04)
+    dJ/dfocus    reverse +4.52094509e-05 (start +0.000e+00, parameters +4.521e-05)
+    dJ/ddensity  reverse +4.44907256e-02 (start +3.001e-03, parameters +4.149e-02)
+[18:33:10] warm-up: after the reverse pass (pool used 0.00 GiB)
+[18:33:48] warm-up: Dual{4} 29.7 s, peak 3.30 GiB; relative differences [4.39e-7, 4.04e-6, 5.01e-7, 3.62e-6] (pool used 3.30 GiB)
+[18:33:50] run: (448, 128, 128) cells, 1706 steps, 18350080 plasma slots, 1974067 born slots; state 9.16 GiB in floating-point arrays (10.85 GiB in all), one checkpoint 1.12 GiB, 12 checkpoints in host memory (pool used 0.00 GiB)
+[18:35:13] run: plain run 82.7 s, J = 0.0027650339, peak 10.92 GiB (pool used 10.92 GiB)
+[18:38:58] run: Dual{1} in duration 221.9 s, dJ/dduration +3.91766720e-04, peak 20.16 GiB (pool used 20.16 GiB)
+[18:42:37] run: Dual{1} in waist 217.8 s, dJ/dwaist -1.27444288e-03, peak 20.16 GiB (pool used 20.16 GiB)
+[18:46:16] run: Dual{1} in focus 217.9 s, dJ/dfocus +6.11830328e-04, peak 20.16 GiB (pool used 20.16 GiB)
+[18:49:55] run: Dual{1} in density 217.9 s, dJ/ddensity +4.72409934e-01, peak 20.16 GiB (pool used 20.16 GiB)
+[18:54:41] run: reverse pass FAILED: Out of GPU memory trying to allocate 70.000 MiB
+Effective GPU memory usage: 99.97% (31.434 GiB/31.445 GiB)
+Memory pool usage: 27.379 GiB (27.469 GiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+ (pool used 27.38 GiB)
+
+Stacktrace:
+  [1] _pool_alloc
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:72 [inlined]
+  [2] macro expansion
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:30 [inlined]
+  [3] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [4] pool_alloc
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:29 [inlined]
+  [5] #893
+    @ ~/.julia/packages/CUDACore/UHVBW/src/array.jl:96
+  [6] cached_alloc
+    @ ~/.julia/packages/GPUArrays/zDfQ9/src/host/alloc_cache.jl:36
+  [7] CuArray
+    @ ~/.julia/packages/CUDACore/UHVBW/src/array.jl:95
+  [8] similar
+    @ ~/.julia/packages/CUDACore/UHVBW/src/array.jl:202 [inlined]
+  [9] copy
+    @ ~/.julia/packages/CUDACore/UHVBW/src/array.jl:210 [inlined]
+ [10] map
+    @ ./tuple.jl:356 [inlined]
+ [11] snapshot
+    @ ~/pm-wp086/lib/ParticleMeshCore/ext/ParticleMeshCoreEnzymeCoreExt.jl:46
+ [12] species_taped
+    @ ~/pm-wp086/lib/ParticleMeshCore/ext/ParticleMeshCoreEnzymeCoreExt.jl:53 [inlined]
+ [13] #augmented_primal#10
+    @ ~/pm-wp086/lib/ParticleMeshCore/ext/ParticleMeshCoreEnzymeCoreExt.jl:122 [inlined]
+ [14] augmented_primal
+    @ ~/pm-wp086/lib/ParticleMeshCore/ext/ParticleMeshCoreEnzymeCoreExt.jl:117 [inlined]
+ [15] #current!##2
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/step.jl:658 [inlined]
+ [16] map
+    @ ./tuple.jl:382 [inlined]
+ [17] current!
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/step.jl:657
+ [18] #step!#125
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/step.jl:762
+ [19] step!
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/step.jl:743 [inlined]
+ [20] step_params_ref!
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/checkpointing.jl:84 [inlined]
+ [21] StepBody
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/checkpointing.jl:81 [inlined]
+ [22] StepBody
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/checkpointing.jl:0 [inlined]
+ [23] diffejulia_StepBody_240439_inner_3619wrap
+    @ ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/checkpointing.jl:0
+ [24] macro expansion
+    @ ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:8093 [inlined]
+ [25] enzyme_call
+    @ ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:7508 [inlined]
+ [26] CombinedAdjointThunk
+    @ ~/.julia/packages/Enzyme/5cjcV/src/compiler.jl:7390 [inlined]
+ [27] autodiff
+    @ ~/.julia/packages/Enzyme/5cjcV/src/Enzyme.jl:630 [inlined]
+ [28] rev_checkpoint_for(config::EnzymeCore.EnzymeRules.RevConfigWidth{1, false, false, (false, false, true, false), true, false}, tape::Tuple{StepBody{typeof(ParticleMeshElectromagnetic.step_params_ref!), EMState{3, Float32, EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}, PeriodicGrid{3, Float32}, Tuple{Species{3, Float32, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}}}, Tuple{Workspace{CuArray{Int64, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, AcceleratedKernels.Workspace{AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.RadixSort, @NamedTuple{temp::AcceleratedKernels.Scratch{Int64, 1}, hist::AcceleratedKernels.Scratch{UInt32, 1}, scan::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.ScanPrefixes, @NamedTuple{prefixes::AcceleratedKernels.Scratch{UInt32, 1}}}, key_range::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.BlockReduce, @NamedTuple{partials::AcceleratedKernels.Scratch{Tuple{UInt64, UInt64}, 1}}}}}, @NamedTuple{temp::CuArray{Int64, 1, CUDACore.DeviceMemory}, hist::CuArray{UInt32, 1, CUDACore.DeviceMemory}, scan::@NamedTuple{prefixes::CuArray{UInt32, 1, CUDACore.DeviceMemory}}, key_range::@NamedTuple{partials::CuArray{Tuple{UInt64, UInt64}, 1, CUDACore.DeviceMemory}}}}, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}, CuArray{Float32, 2, CUDACore.DeviceMemory}, Tuple{Shape{2}, Tuple{Node, Node, Node}}, ParticleMeshCore.CellMajor, Nothing, NodeBins{Shape{2}, Tuple{Center, Node, Node}}}}, @NamedTuple{Ex::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ey::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ez::CuArray{Float32, 3, CUDACore.DeviceMemory}, Bx::CuArray{Float32, 3, CUDACore.DeviceMemory}, By::CuArray{Float32, 3, CUDACore.DeviceMemory}, Bz::CuArray{Float32, 3, CUDACore.DeviceMemory}, Jx::CuArray{Float32, 3, CUDACore.DeviceMemory}, Jy::CuArray{Float32, 3, CUDACore.DeviceMemory}, Jz::CuArray{Float32, 3, CUDACore.DeviceMemory}}, @NamedTuple{Ex::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ey::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ez::CuArray{Float32, 3, CUDACore.DeviceMemory}, Bx::CuArray{Float32, 3, CUDACore.DeviceMemory}, By::CuArray{Float32, 3, CUDACore.DeviceMemory}, Bz::CuArray{Float32, 3, CUDACore.DeviceMemory}}, CuArray{Float32, 3, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, HistoryRecorder{3, @NamedTuple{}, Tuple{Int64, Int64, Int64}, @NamedTuple{khat::Tuple{Float32, Float32, Float32}, tables::Tuple{CuArray{Float32, 2, CUDACore.DeviceMemory}, CuArray{Float32, 2, CUDACore.DeviceMemory}, CuArray{Float32, 2, CUDACore.DeviceMemory}}, partials::CuArray{Float32, 2, CUDACore.DeviceMemory}, lines::CuArray{Float32, 3, CUDACore.DeviceMemory}}, ParticleMeshElectromagnetic.RecordSelection{false, false, false}}, Tuple{@NamedTuple{name::Symbol, ppc::Tuple{Int64, Int64, Int64}, stream::Int64, momentum::Symbol}}, Tuple{PMLFields{2, CuArray{Float32, 1, CUDACore.DeviceMemory}, @NamedTuple{Bx::CuArray{Float32, 3, CUDACore.DeviceMemory}, Bz::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ex::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ez::CuArray{Float32, 3, CUDACore.DeviceMemory}}, CuArray{Float32, 3, CUDACore.DeviceMemory}, 3, Float32, YeeStencil}, PMLFields{3, CuArray{Float32, 1, CUDACore.DeviceMemory}, @NamedTuple{Bx::CuArray{Float32, 3, CUDACore.DeviceMemory}, By::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ex::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ey::CuArray{Float32, 3, CUDACore.DeviceMemory}}, CuArray{Float32, 3, CUDACore.DeviceMemory}, 3, Float32, YeeStencil}, BackPMLFields{CuArray{Float32, 1, CUDACore.DeviceMemory}, @NamedTuple{By::CuArray{Float32, 3, CUDACore.DeviceMemory}, Bz::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ey::CuArray{Float32, 3, CUDACore.DeviceMemory}, Ez::CuArray{Float32, 3, CUDACore.DeviceMemory}}, CuArray{Float32, 3, CUDACore.DeviceMemory}, 3, Float32, YeeStencil}, AntennaPlanes{Tuple{AntennaPlane{Float32, 3, YeeStencil}}, WindowClock{Float32}}, WindowEdges}, @NamedTuple{spectral::SpectralWorkspace{3, CuArray{Float32, 3, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, 2}, φ::CuArray{Float32, 3, CUDACore.DeviceMemory}, window::WindowFrame{MovingWindow{Float32}, Float32, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}}, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}}}, witness::Nothing, ionization::ParticleMeshElectromagnetic.IonizationFrame{Species{3, Float32, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{pending::CuArray{Float32, 1, CUDACore.DeviceMemory}, emitted::CuArray{Float32, 1, CUDACore.DeviceMemory}, bound_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, bound_2::CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{pending::CuArray{Float32, 1, CUDACore.DeviceMemory}, emitted::CuArray{Float32, 1, CUDACore.DeviceMemory}, bound_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, bound_2::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}}, Workspace{CuArray{Int64, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, AcceleratedKernels.Workspace{AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.MergeSort, @NamedTuple{temp::AcceleratedKernels.Scratch{Int64, 1}}}, @NamedTuple{temp::CuArray{Int64, 1, CUDACore.DeviceMemory}}}, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, NTuple{4, CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{pending::CuArray{Float32, 1, CUDACore.DeviceMemory}, emitted::CuArray{Float32, 1, CUDACore.DeviceMemory}, bound_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, bound_2::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}, CuArray{Float32, 2, CUDACore.DeviceMemory}, Nothing, ParticleMeshCore.CellMajor, Nothing, CellBins}, Species{3, Float32, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{Float32, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{Float32, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{Float32, 1, CUDACore.DeviceMemory}}}}}, Workspace{CuArray{Int64, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, AcceleratedKernels.Workspace{AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.RadixSort, @NamedTuple{temp::AcceleratedKernels.Scratch{Int64, 1}, hist::AcceleratedKernels.Scratch{UInt32, 1}, scan::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.ScanPrefixes, @NamedTuple{prefixes::AcceleratedKernels.Scratch{UInt32, 1}}}, key_range::AcceleratedKernels.Plan{CUDABackend, AcceleratedKernels.Blo
+[18:54:42] run: after the reverse pass (pool used 0.00 GiB)
+[18:54:42] run: dJ/dduration Dual{1} +3.91766720e-04, reverse +NaN, relative difference NaN (pool used 0.00 GiB)
+[18:54:42] run: dJ/dwaist Dual{1} -1.27444288e-03, reverse +NaN, relative difference NaN (pool used 0.00 GiB)
+[18:54:42] run: dJ/dfocus Dual{1} +6.11830328e-04, reverse +NaN, relative difference NaN (pool used 0.00 GiB)
+[18:54:42] run: dJ/ddensity Dual{1} +4.72409934e-01, reverse +NaN, relative difference NaN (pool used 0.00 GiB)
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+wrote scripts/runs/enzyme-trapped3d-grad-20261127T185442

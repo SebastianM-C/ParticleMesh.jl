@@ -1,0 +1,33 @@
+# commit 4c0e2b198442c931966d695b2710a98717ed827f, patches scripts/enzyme/active_reduce.jl, started 2026-11-27T15:38:21Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 925 MiB
+== 15:38:22 grad ppl=32 dual=1,2,3,4 dual4=0 c=12 host=1 (heap default)
+   exit 1 at 15:52:28
+[15:38:30] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "0", "ppl" => "32", "dual" => "1,2,3,4", "c" => "12", "host" => "1"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[15:38:47] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB in floating-point arrays (0.77 GiB in all), one checkpoint 0.10 GiB, 4 checkpoints in host memory (pool used 0.77 GiB)
+[15:38:57] warm-up: plain run 8.4 s, J = 0.00034263774, peak 1.54 GiB (pool used 1.54 GiB)
+[15:45:10] warm-up: reverse pass 373.3 s (535.5 ms per step), J from its forward sweep 0.00034263773, peak 10.24 GiB (pool used 5.39 GiB)
+    dJ/dduration reverse -1.31526538e-04 (start +0.000e+00, parameters -1.315e-04)
+    dJ/dwaist    reverse -3.90166974e-04 (start +0.000e+00, parameters -3.902e-04)
+    dJ/dfocus    reverse +4.52094473e-05 (start +0.000e+00, parameters +4.521e-05)
+    dJ/ddensity  reverse +4.44907260e-02 (start +3.001e-03, parameters +4.149e-02)
+[15:46:02] warm-up: Dual{4} 31.8 s, peak 4.07 GiB; relative differences [8.67e-7, 4.04e-6, 4.23e-7, 3.63e-6] (pool used 4.07 GiB)
+[15:46:03] run: (448, 128, 128) cells, 1706 steps, 18350080 plasma slots, 7547904 born slots; state 9.60 GiB in floating-point arrays (11.68 GiB in all), one checkpoint 1.34 GiB, 12 checkpoints in host memory (pool used 12.44 GiB)
+[15:47:31] run: plain run 87.3 s, J = 0.0027650339, peak 23.45 GiB (pool used 23.45 GiB)
+[15:52:24] run: reverse pass FAILED: Out of GPU memory trying to allocate 11.758 GiB
+ERROR: LoadError: Out of GPU memory trying to allocate 6.836 GiB
+== 15:52:28 grad ppl=32 dual=1,2,3,4 dual4=0 c=12 host=1 (heap 1073741824)
+   exit 1 at 16:06:30
+[15:52:36] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "0", "ppl" => "32", "dual" => "1,2,3,4", "c" => "12", "host" => "1"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[15:52:53] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB in floating-point arrays (0.77 GiB in all), one checkpoint 0.10 GiB, 4 checkpoints in host memory (pool used 0.77 GiB)
+[15:53:03] warm-up: plain run 8.4 s, J = 0.00034263774, peak 1.54 GiB (pool used 1.54 GiB)
+[15:59:12] warm-up: reverse pass 368.9 s (529.3 ms per step), J from its forward sweep 0.00034263773, peak 11.29 GiB (pool used 7.26 GiB)
+    dJ/dduration reverse -1.31526410e-04 (start +0.000e+00, parameters -1.315e-04)
+    dJ/dwaist    reverse -3.90166889e-04 (start +0.000e+00, parameters -3.902e-04)
+    dJ/dfocus    reverse +4.52094438e-05 (start +0.000e+00, parameters +4.521e-05)
+    dJ/ddensity  reverse +4.44907226e-02 (start +3.001e-03, parameters +4.149e-02)
+[16:00:05] warm-up: Dual{4} 32.4 s, peak 4.07 GiB; relative differences [1.05e-7, 3.82e-6, 3.45e-7, 3.55e-6] (pool used 4.07 GiB)
+[16:00:06] run: (448, 128, 128) cells, 1706 steps, 18350080 plasma slots, 7547904 born slots; state 9.60 GiB in floating-point arrays (11.68 GiB in all), one checkpoint 1.34 GiB, 12 checkpoints in host memory (pool used 12.44 GiB)
+[16:01:34] run: plain run 87.4 s, J = 0.0027650339, peak 23.45 GiB (pool used 23.45 GiB)
+[16:06:27] run: reverse pass FAILED: Out of GPU memory trying to allocate 11.758 GiB
+ERROR: LoadError: Out of GPU memory trying to allocate 6.836 GiB
+# finished 2026-11-27T16:06:30Z

@@ -1,0 +1,167 @@
+[15:52:36] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "0", "ppl" => "32", "dual" => "1,2,3,4", "c" => "12", "host" => "1"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[15:52:53] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB in floating-point arrays (0.77 GiB in all), one checkpoint 0.10 GiB, 4 checkpoints in host memory (pool used 0.77 GiB)
+[15:53:03] warm-up: plain run 8.4 s, J = 0.00034263774, peak 1.54 GiB (pool used 1.54 GiB)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2774)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func278, ptr nonnull @di_file2796, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2774)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func278, ptr nonnull @di_file2796, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception2774)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func278, ptr nonnull @di_file2796, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func33, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func33, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func33, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception324)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func33, ptr nonnull @di_file346, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func3555, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func3555, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func3555, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func3555, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception3544)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func3555, ptr nonnull @di_file3566, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception204)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func21, ptr nonnull @di_file226, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception({ ptr, i32 } %state, ptr nonnull @enz_exception204)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_report_exception_frame({ ptr, i32 } %state, i32 1, ptr nonnull @di_func21, ptr nonnull @di_file226, i32 0)
+inlinable function call in a function with debug info must have a !dbg location
+  call fastcc void @gpu_signal_exception({ ptr, i32 } %state)
+[15:59:12] warm-up: reverse pass 368.9 s (529.3 ms per step), J from its forward sweep 0.00034263773, peak 11.29 GiB (pool used 7.26 GiB)
+    dJ/dduration reverse -1.31526410e-04 (start +0.000e+00, parameters -1.315e-04)
+    dJ/dwaist    reverse -3.90166889e-04 (start +0.000e+00, parameters -3.902e-04)
+    dJ/dfocus    reverse +4.52094438e-05 (start +0.000e+00, parameters +4.521e-05)
+    dJ/ddensity  reverse +4.44907226e-02 (start +3.001e-03, parameters +4.149e-02)
+[16:00:05] warm-up: Dual{4} 32.4 s, peak 4.07 GiB; relative differences [1.05e-7, 3.82e-6, 3.45e-7, 3.55e-6] (pool used 4.07 GiB)
+[16:00:06] run: (448, 128, 128) cells, 1706 steps, 18350080 plasma slots, 7547904 born slots; state 9.60 GiB in floating-point arrays (11.68 GiB in all), one checkpoint 1.34 GiB, 12 checkpoints in host memory (pool used 12.44 GiB)
+[16:01:34] run: plain run 87.4 s, J = 0.0027650339, peak 23.45 GiB (pool used 23.45 GiB)
+[16:06:27] run: reverse pass FAILED: Out of GPU memory trying to allocate 11.758 GiB
+Effective GPU memory usage: 99.94% (31.424 GiB/31.445 GiB)
+Memory pool usage: 23.364 GiB (26.469 GiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+ (pool used 23.36 GiB)
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+┌ Warning: The NVPTX back-end reported:
+│ warning: ignoring invalid debug info in <input>
+└ @ GPUCompiler ~/.julia/packages/GPUCompiler/Do44q/src/utils.jl:96
+ERROR: LoadError: Out of GPU memory trying to allocate 6.836 GiB
+Effective GPU memory usage: 99.94% (31.424 GiB/31.445 GiB)
+Memory pool usage: 24.851 GiB (26.469 GiB reserved)
+Library handles: 0 active, 0 reusable (released at reclaim)
+
+Stacktrace:
+  [1] _pool_alloc
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:72 [inlined]
+  [2] macro expansion
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:30 [inlined]
+  [3] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [4] pool_alloc
+    @ ~/.julia/packages/CUDACore/UHVBW/src/resources/backends.jl:29 [inlined]
+  [5] (::CUDACore.var"#893#894"{CUDACore.DeviceMemory, Int64})()
+    @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:96
+  [6] cached_alloc(f::CUDACore.var"#893#894"{CUDACore.DeviceMemory, Int64}, key::Tuple{UnionAll, CuDevice, DataType, Int64})
+    @ GPUArrays ~/.julia/packages/GPUArrays/zDfQ9/src/host/alloc_cache.jl:36
+  [7] CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 2, CUDACore.DeviceMemory}(::UndefInitializer, dims::Tuple{Int64, Int64})
+    @ CUDACore ~/.julia/packages/CUDACore/UHVBW/src/array.jl:95
+  [8] allocate
+    @ ~/.julia/packages/CUDACore/UHVBW/src/CUDAKernels.jl:31 [inlined]
+  [9] #zeros#42
+    @ ~/.julia/packages/KernelInterface/mLtM8/src/host.jl:417 [inlined]
+ [10] zeros
+    @ ~/.julia/packages/KernelInterface/mLtM8/src/host.jl:416 [inlined]
+ [11] zeros
+    @ ~/.julia/packages/KernelInterface/mLtM8/src/host.jl:415 [inlined]
+ [12] Workspace(s::Species{3, ForwardDiff.Dual{Trap3Tag, Float32, 1}, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}}}}}, grid::PeriodicGrid{3, ForwardDiff.Dual{Trap3Tag, Float32, 1}}; flux::Tuple{Shape{2}, Tuple{Node, Node, Node}}, flux_layout::ParticleMeshCore.CellMajor, append::Nothing, bins::NodeBins{Shape{2}, Tuple{Center, Node, Node}}, key_sort::AcceleratedKernels.RadixSort, swap::Bool)
+    @ ParticleMeshCore ~/pm-wp086/lib/ParticleMeshCore/src/sort.jl:98
+ [13] (::ParticleMeshElectromagnetic.var"#168#169"{EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}, Tuple{Shape{2}, Tuple{Node, Node, Node}}, WindowFrame{MovingWindow{ForwardDiff.Dual{Trap3Tag, Float32, 1}}, ForwardDiff.Dual{Trap3Tag, Float32, 1}, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}}, Tuple{CuArray{Int32, 1, CUDACore.DeviceMemory}}}, PeriodicGrid{3, ForwardDiff.Dual{Trap3Tag, Float32, 1}}, Tuple{Int64, Int64, Int64}})(s::Species{3, ForwardDiff.Dual{Trap3Tag, Float32, 1}, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, CuArray{Int32, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}}, Base.RefValue{ParticleMeshCore.SpeciesArrays{3, CuArray{Int32, 1, CUDACore.DeviceMemory}, CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, CuArray{UInt8, 1, CUDACore.DeviceMemory}, @NamedTuple{old_cell_1::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_2::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_cell_3::CuArray{Int32, 1, CUDACore.DeviceMemory}, old_offset_1::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_2::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}, old_offset_3::CuArray{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 1, CUDACore.DeviceMemory}}}}}, d::SpeciesDescription{ForwardDiff.Dual{Trap3Tag, Float32, 1}, Tuple{Int64, Int64, Int64}})
+    @ ParticleMeshElectromagnetic ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/step3d.jl:81
+ [14] map
+    @ ./tuple.jl:381 [inlined]
+ [15] EMState(problem::EMProblem{3, ForwardDiff.Dual{Trap3Tag, Float32, 1}, Tuple{SpeciesDescription{ForwardDiff.Dual{Trap3Tag, Float32, 1}, Tuple{Int64, Int64, Int64}}}, Tuple{ForwardDiff.Dual{Trap3Tag, Float32, 1}, ForwardDiff.Dual{Trap3Tag, Float32, 1}, ForwardDiff.Dual{Trap3Tag, Float32, 1}}, Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64, Int64}, Tuple{GaussianLaser{ForwardDiff.Dual{Trap3Tag, Float32, 1}, ForwardDiff.Dual{Trap3Tag, Float32, 1}, AxisTime, Tuple{ForwardDiff.Dual{Trap3Tag, Float32, 1}, ForwardDiff.Dual{Trap3Tag, Float32, 1}}}}, Tuple{Symbol, Symbol, Symbol}, MovingWindow{ForwardDiff.Dual{Trap3Tag, Float32, 1}}, DensityRamp{ForwardDiff.Dual{Trap3Tag, Float32, 1}}, Nothing, FieldIonization{ForwardDiff.Dual{Trap3Tag, Float32, 1}, 2, DopantSection{ForwardDiff.Dual{Trap3Tag, Float32, 1}}, Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{ADKLevel{ForwardDiff.Dual{Trap3Tag, Float32, 1}}, ADKLevel{ForwardDiff.Dual{Trap3Tag, Float32, 1}}}, Tuple{Int64, Int64, Int64}}}, numerics::EMNumerics{Shape{2}, Reference, Boris, Yee, Nothing, Esirkepov, PML, PML, CompensatedGather}; backend::CUDABackend, every::Int64, record::Tuple{})
+    @ ParticleMeshElectromagnetic ~/pm-wp086/lib/ParticleMeshElectromagnetic/src/step3d.jl:81
+ [16] trapped3d_start(free::Vector{ForwardDiff.Dual{Trap3Tag, Float32, 1}}; backend::CUDABackend, ppl::Int64, nt::Int64, solver::Yee, gather::CompensatedGather, kw::@Kwargs{rows::Int64, ppc::Tuple{Int64, Int64, Int64}, ion_ppc::Tuple{Int64, Int64, Int64}, capacity::Int64, t_end::Float64, energy::Float32, float::DataType})
+    @ Main ~/pm-wp086/scripts/optim/trapped3d_case.jl:108
+ [17] trapped3d_start
+    @ ~/pm-wp086/scripts/optim/trapped3d_case.jl:106 [inlined]
+ [18] start3(θ::Vector{ForwardDiff.Dual{Trap3Tag, Float32, 1}}, o::@NamedTuple{ppl::Int64, nt::Int64, rows::Int64, ppc::Tuple{Int64, Int64, Int64}, ion_ppc::Tuple{Int64, Int64, Int64}, cap::Float64, t_end::Float64, a0E::Float64})
+    @ Main ~/pm-wp086/scripts/enzyme/trapped3d.jl:110
+ [19] sequence(o::@NamedTuple{ppl::Int64, nt::Int64, rows::Int64, ppc::Tuple{Int64, Int64, Int64}, ion_ppc::Tuple{Int64, Int64, Int64}, cap::Float64, t_end::Float64, a0E::Float64}; c::Int64, host::Bool, duals::Vector{Int64}, dual4::Bool, primal::Bool, label::String, body::Symbol)
+    @ Main ~/pm-wp086/scripts/enzyme/trapped3d.jl:229
+ [20] main_grad()
+    @ Main ~/pm-wp086/scripts/enzyme/trapped3d.jl:299
+ [21] top-level scope
+    @ ~/pm-wp086/scripts/enzyme/trapped3d.jl:308
+ [22] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [23] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [24] _start()
+    @ Base ./client.jl:577
+in expression starting at ~/pm-wp086/scripts/enzyme/trapped3d.jl:308
