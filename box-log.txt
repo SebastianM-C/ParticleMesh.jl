@@ -1,0 +1,141 @@
+## step 0 (julia): exit 1 after 198s
+ E0=0.1 v∥ = 0.000609, BorisExactRotation E0=0.1 v⊥ = 0.000813, BorisExactRotation E0=0.5 v∥ = 0.000293, BorisExactRotation E0=0.5 v⊥ = 0.00039, BorisExactRotation E0=0.9 v∥ = 2.54e-5, BorisExactRotation E0=0.9 v⊥ = 3.39e-5, BorisExactRotation E0=0.99 v∥ = 6.18e-6, BorisExactRotation E0=0.99 v⊥ = 7.45e-6, HigueraCary E0=0.1 v∥ = 1.59e-13, HigueraCary E0=0.1 v⊥ = 1.59e-13, HigueraCary E0=0.5 v∥ = 0.0, HigueraCary E0=0.5 v⊥ = 0.0, HigueraCary E0=0.9 v∥ = 1.88e-13, HigueraCary E0=0.9 v⊥ = 1.88e-13, HigueraCary E0=0.99 v∥ = 1.73e-13, HigueraCary E0=0.99 v⊥ = 1.73e-13, Vay E0=0.1 v∥ = 1.59e-13, Vay E0=0.1 v⊥ = 1.59e-13, Vay E0=0.5 v∥ = 0.0, Vay E0=0.5 v⊥ = 0.0, Vay E0=0.9 v∥ = 1.88e-13, Vay E0=0.9 v⊥ = 1.88e-13, Vay E0=0.99 v∥ = 1.73e-13, Vay E0=0.99 v⊥ = 1.73e-13
+  T-233 stays at E×B HigueraCary: Float32 = 0.142, Float64 = 0.108
+  T-233 stays at E×B Vay: Float32 = 0.072, Float64 = 0.0781
+  T-234 Boris γ=1: Dual{Float32,3} = 0.741, Float32 = 0.741, Float64 = 1.0
+  T-234 Boris γ=10: Dual{Float32,3} = 0.667, Float32 = 0.667, Float64 = 1.5
+  T-234 Boris γ=100: Dual{Float32,3} = 1.01, Float32 = 1.01, Float64 = 1.0
+  T-234 Boris γ=1000: Dual{Float32,3} = 0.591, Float32 = 0.591, Float64 = 1.5
+  T-234 BorisExactRotation γ=1: Dual{Float32,3} = 0.919, Float32 = 0.919, Float64 = 1.0
+  T-234 BorisExactRotation γ=10: Dual{Float32,3} = 0.81, Float32 = 0.81, Float64 = 1.5
+  T-234 BorisExactRotation γ=100: Dual{Float32,3} = 1.01, Float32 = 1.01, Float64 = 1.0
+  T-234 BorisExactRotation γ=1000: Dual{Float32,3} = 0.591, Float32 = 0.591, Float64 = 1.5
+  T-234 HigueraCary γ=1: Dual{Float32,3} = 0.869, Float32 = 0.869, Float64 = 1.5
+  T-234 HigueraCary γ=10: Dual{Float32,3} = 0.909, Float32 = 0.909, Float64 = 1.0
+  T-234 HigueraCary γ=100: Dual{Float32,3} = 1.01, Float32 = 1.01, Float64 = 1.5
+  T-234 HigueraCary γ=1000: Dual{Float32,3} = 0.591, Float32 = 0.591, Float64 = 1.5
+  T-234 Vay 1000-step product: |prod − 1|: Float32 = 3.4e-5, Float64 = 4.09e-5
+  T-234 Vay 1000-step product: |prod − J(u⁰)/J(uᴺ)|/eps: Float32 = 57.4, Float64 = 6.0
+  T-234 Vay γ=1: Dual{Float32,3} = 1.29, Float32 = 1.29, Float64 = 2.0
+  T-234 Vay γ=10: Dual{Float32,3} = 1.52, Float32 = 1.52, Float64 = 2.0
+  T-234 Vay γ=100: Dual{Float32,3} = 1.27, Float32 = 1.27, Float64 = 2.0
+  T-234 Vay γ=1000: Dual{Float32,3} = 2.0, Float32 = 2.0, Float64 = 2.0
+  T-235 closure error constant e/Δt² at Δt = 0.025: Boris a0=0.5 Float64 = 0.023, Boris a0=2.0 Dual{Float32,3} = 1.84, Boris a0=2.0 Float32 = 1.84, Boris a0=2.0 Float64 = 1.89, BorisExactRotation a0=0.5 Float64 = 0.0284, BorisExactRotation a0=2.0 Dual{Float32,3} = 2.05, BorisExactRotation a0=2.0 Float32 = 2.05, BorisExactRotation a0=2.0 Float64 = 2.16, HigueraCary a0=0.5 Float64 = 0.0235, HigueraCary a0=2.0 Dual{Float32,3} = 0.427, HigueraCary a0=2.0 Float32 = 0.427, HigueraCary a0=2.0 Float64 = 0.374, Vay a0=0.5 Float64 = 0.00125, Vay a0=2.0 Dual{Float32,3} = 9.73, Vay a0=2.0 Float32 = 9.73, Vay a0=2.0 Float64 = 9.83
+  T-235 closure |order − 2| on the asserted pair: Boris a0=0.5 Float64 = 2.32e-5, Boris a0=2.0 Dual{Float32,3} = 0.0374, Boris a0=2.0 Float32 = 0.0374, Boris a0=2.0 Float64 = 0.00182, BorisExactRotation a0=0.5 Float64 = 3.14e-5, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.0656, BorisExactRotation a0=2.0 Float32 = 0.0656, BorisExactRotation a0=2.0 Float64 = 0.00221, HigueraCary a0=0.5 Float64 = 1.78e-5, HigueraCary a0=2.0 Dual{Float32,3} = 0.177, HigueraCary a0=2.0 Float32 = 0.177, HigueraCary a0=2.0 Float64 = 0.0138, Vay a0=0.5 Float64 = 0.000433, Vay a0=2.0 Dual{Float32,3} = 0.0145, Vay a0=2.0 Float32 = 0.0145, Vay a0=2.0 Float64 = 8.19e-5
+  T-235 closure |order − 2| over the WP's Δt: Boris a0=0.5 Float64 = 0.0432, Boris a0=2.0 Dual{Float32,3} = 0.0504, Boris a0=2.0 Float32 = 0.0504, Boris a0=2.0 Float64 = 0.0518, BorisExactRotation a0=0.5 Float64 = 0.0338, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.0656, BorisExactRotation a0=2.0 Float32 = 0.0656, BorisExactRotation a0=2.0 Float64 = 0.00736, HigueraCary a0=0.5 Float64 = 0.0426, HigueraCary a0=2.0 Dual{Float32,3} = 0.177, HigueraCary a0=2.0 Float32 = 0.177, HigueraCary a0=2.0 Float64 = 0.0615, Vay a0=0.5 Float64 = 0.518, Vay a0=2.0 Dual{Float32,3} = 0.0694, Vay a0=2.0 Float32 = 0.0694, Vay a0=2.0 Float64 = 0.0692
+  T-235 closure ∂/∂a₀ orders (Dual): Boris a0=2.0 Dual{Float32,3} = 0.0867, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.994, HigueraCary a0=2.0 Dual{Float32,3} = 0.0587, Vay a0=2.0 Dual{Float32,3} = 1.77
+  T-235 u_x + qA_x error constant e/Δt² at Δt = 0.025: Boris a0=0.5 Float64 = 0.0103, Boris a0=2.0 Dual{Float32,3} = 0.223, Boris a0=2.0 Float32 = 0.223, Boris a0=2.0 Float64 = 0.22, BorisExactRotation a0=0.5 Float64 = 0.0102, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.288, BorisExactRotation a0=2.0 Float32 = 0.288, BorisExactRotation a0=2.0 Float64 = 0.283, HigueraCary a0=0.5 Float64 = 0.0103, HigueraCary a0=2.0 Dual{Float32,3} = 0.272, HigueraCary a0=2.0 Float32 = 0.272, HigueraCary a0=2.0 Float64 = 0.272, Vay a0=0.5 Float64 = 0.0112, Vay a0=2.0 Dual{Float32,3} = 0.0576, Vay a0=2.0 Float32 = 0.0576, Vay a0=2.0 Float64 = 0.0563
+  T-235 u_x + qA_x |order − 2| over the WP's Δt: Boris a0=0.5 Float64 = 0.000518, Boris a0=2.0 Dual{Float32,3} = 0.0155, Boris a0=2.0 Float32 = 0.0155, Boris a0=2.0 Float64 = 0.0112, BorisExactRotation a0=0.5 Float64 = 0.000286, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.0212, BorisExactRotation a0=2.0 Float32 = 0.0212, BorisExactRotation a0=2.0 Float64 = 0.00726, HigueraCary a0=0.5 Float64 = 0.00037, HigueraCary a0=2.0 Dual{Float32,3} = 0.00792, HigueraCary a0=2.0 Float32 = 0.00792, HigueraCary a0=2.0 Float64 = 0.00709, Vay a0=0.5 Float64 = 0.00212, Vay a0=2.0 Dual{Float32,3} = 0.0156, Vay a0=2.0 Float32 = 0.0156, Vay a0=2.0 Float64 = 0.00404
+  T-235 u_x + qA_x ∂/∂a₀ orders (Dual): Boris a0=2.0 Dual{Float32,3} = 1.61, BorisExactRotation a0=2.0 Dual{Float32,3} = 2.0, HigueraCary a0=2.0 Dual{Float32,3} = 1.94, Vay a0=2.0 Dual{Float32,3} = 0.989
+  T-235 γ − u_z error constant e/Δt² at Δt = 0.025: Boris a0=0.5 Float64 = 0.00154, Boris a0=2.0 Dual{Float32,3} = 0.0684, Boris a0=2.0 Float32 = 0.0684, Boris a0=2.0 Float64 = 0.0652, BorisExactRotation a0=0.5 Float64 = 0.00274, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.183, BorisExactRotation a0=2.0 Float32 = 0.183, BorisExactRotation a0=2.0 Float64 = 0.184, HigueraCary a0=0.5 Float64 = 0.00167, HigueraCary a0=2.0 Dual{Float32,3} = 0.13, HigueraCary a0=2.0 Float32 = 0.13, HigueraCary a0=2.0 Float64 = 0.13, Vay a0=0.5 Float64 = 0.00334, Vay a0=2.0 Dual{Float32,3} = 0.259, Vay a0=2.0 Float32 = 0.259, Vay a0=2.0 Float64 = 0.259
+  T-235 γ − u_z |order − 2| over the WP's Δt: Boris a0=0.5 Float64 = 0.00301, Boris a0=2.0 Dual{Float32,3} = 0.069, Boris a0=2.0 Float32 = 0.069, Boris a0=2.0 Float64 = 0.015, BorisExactRotation a0=0.5 Float64 = 0.00349, BorisExactRotation a0=2.0 Dual{Float32,3} = 0.00785, BorisExactRotation a0=2.0 Float32 = 0.00785, BorisExactRotation a0=2.0 Float64 = 0.00798, HigueraCary a0=0.5 Float64 = 0.00185, HigueraCary a0=2.0 Dual{Float32,3} = 0.00998, HigueraCary a0=2.0 Float32 = 0.00998, HigueraCary a0=2.0 Float64 = 0.00977, Vay a0=0.5 Float64 = 0.000849, Vay a0=2.0 Dual{Float32,3} = 0.00629, Vay a0=2.0 Float32 = 0.00629, Vay a0=2.0 Float64 = 0.00618
+  T-235 γ − u_z ∂/∂a₀ orders (Dual): Boris a0=2.0 Dual{Float32,3} = 0.494, BorisExactRotation a0=2.0 Dual{Float32,3} = 1.99, HigueraCary a0=2.0 Dual{Float32,3} = 1.95, Vay a0=2.0 Dual{Float32,3} = 1.97
+  T-236 HC system p_y0=1.625: drift rate |d(ΔH/H)/dt|: Boris Float32 = 4.86e-10, Boris Float64 = 4.18e-12, BorisExactRotation Float32 = 9.94e-11, BorisExactRotation Float64 = 4.18e-12, HigueraCary Float32 = 5.16e-11, HigueraCary Float64 = 4.18e-12, Vay Float32 = 6.11e-9, Vay Float64 = 4.29e-9
+  T-236 HC system p_y0=1.625: max |ΔH/H|: Boris Float32 = 0.000545, Boris Float64 = 0.000538, BorisExactRotation Float32 = 0.000542, BorisExactRotation Float64 = 0.000538, HigueraCary Float32 = 0.000548, HigueraCary Float64 = 0.000538, Vay Float32 = 0.031, Vay Float64 = 0.031
+  T-236 HC system p_y0=1.625: max |ΔI_y|: Boris Float32 = 4.6e-5, Boris Float64 = 1.06e-13, BorisExactRotation Float32 = 0.000137, BorisExactRotation Float64 = 2.94e-13, HigueraCary Float32 = 6.34e-5, HigueraCary Float64 = 2.48e-13, Vay Float32 = 0.66, Vay Float64 = 0.66
+  T-236 HC system p_y0=1.625: max |Δp_z|: Boris Float32 = 0.0192, Boris Float64 = 0.0191, BorisExactRotation Float32 = 0.00336, BorisExactRotation Float64 = 0.00317, HigueraCary Float32 = 0.00437, HigueraCary Float64 = 0.00435, Vay Float32 = 0.00143, Vay Float64 = 0.00143
+  T-236 HC system p_y0=1.775: drift rate |d(ΔH/H)/dt|: Boris Float32 = 5.94e-11, Boris Float64 = 1.3e-12, BorisExactRotation Float32 = 3.05e-10, BorisExactRotation Float64 = 1.3e-12, HigueraCary Float32 = 4.06e-11, HigueraCary Float64 = 1.3e-12, Vay Float32 = 3.06e-9, Vay Float64 = 3.77e-9
+  T-236 HC system p_y0=1.775: max |ΔH/H|: Boris Float32 = 0.000508, Boris Float64 = 0.000479, BorisExactRotation Float32 = 0.000491, BorisExactRotation Float64 = 0.000479, HigueraCary Float32 = 0.000495, HigueraCary Float64 = 0.000479, Vay Float32 = 0.0297, Vay Float64 = 0.0297
+  T-236 HC system p_y0=1.775: max |ΔI_y|: Boris Float32 = 0.000133, Boris Float64 = 1.43e-13, BorisExactRotation Float32 = 0.000187, BorisExactRotation Float64 = 2.34e-13, HigueraCary Float32 = 0.000144, HigueraCary Float64 = 4.71e-13, Vay Float32 = 0.604, Vay Float64 = 0.604
+  T-236 HC system p_y0=1.775: max |Δp_z|: Boris Float32 = 0.0213, Boris Float64 = 0.0212, BorisExactRotation Float32 = 0.00455, BorisExactRotation Float64 = 0.00444, HigueraCary Float32 = 0.00509, HigueraCary Float64 = 0.00489, Vay Float32 = 0.00141, Vay Float64 = 0.0013
+  T-236 drift rate |d(ΔH/H)/dt| nonrelativistic: Boris Float32 = 1.62e-12, Boris Float64 = 1.26e-13, BorisExactRotation Float32 = 6.12e-12, BorisExactRotation Float64 = 3.6e-14, HigueraCary Float32 = 2.7e-12, HigueraCary Float64 = 5.23e-14, Vay Float32 = 6.17e-12, Vay Float64 = 1.45e-13
+  T-236 drift rate |d(ΔH/H)/dt| γ₀ ≈ 1.42: Boris Float32 = 1.96e-11, Boris Float64 = 3.96e-12, BorisExactRotation Float32 = 1.94e-10, BorisExactRotation Float64 = 3.15e-12, HigueraCary Float32 = 2.15e-11, HigueraCary Float64 = 7.96e-13, Vay Float32 = 8.13e-11, Vay Float64 = 5.93e-11
+  T-236 max |ΔH/H| nonrelativistic: Boris Float32 = 3.76e-6, Boris Float64 = 3.45e-6, BorisExactRotation Float32 = 3.52e-6, BorisExactRotation Float64 = 3.45e-6, HigueraCary Float32 = 3.64e-6, HigueraCary Float64 = 3.45e-6, Vay Float32 = 3.99e-6, Vay Float64 = 3.7e-6
+  T-236 max |ΔH/H| γ₀ ≈ 1.42: Boris Float32 = 6.0e-5, Boris Float64 = 5.88e-5, BorisExactRotation Float32 = 7.4e-5, BorisExactRotation Float64 = 5.9e-5, HigueraCary Float32 = 6.06e-5, HigueraCary Float64 = 5.89e-5, Vay Float32 = 0.000102, Vay Float64 = 8.81e-5
+  T-320: Dual{Float32,3} = 0.139, Float32 = 0.139, Float64 = 0.135
+  T-320 phase and amplitude: Dual{Float32,3} = 0.13, Float32 = 0.13, Float64 = 0.121
+  T-321 |order − 2|: Float64 = 0.0153
+  T-322 div B: Dual{Float32,3} = 0.0471, Float32 = 0.0379, Float64 = 0.0328
+  T-322 div B at N = 3: Dual{Float32,3} = 0.227, Float32 = 0.171, Float64 = 0.191
+  T-322 div E with J: Dual{Float32,3} = 0.388, Float32 = 0.354, Float64 = 0.323
+  T-323 vacuum: Dual{Float32,3} = 0.0172, Float32 = 0.00492, Float64 = 0.00996
+  T-323 with J: Dual{Float32,3} = 0.0828, Float32 = 0.0998, Float64 = 0.0969
+  T-324 exchange: Dual{Float32,3} = 0.0379, Float32 = 0.05, Float64 = 0.0322
+  T-324 y-invariant: Dual{Float32,3} = 0.0, Float32 = 0.0, Float64 = 0.0
+  T-325 closed form at 0.99: Dual{Float32,3} = 0.396, Float32 = 0.396, Float64 = 0.612
+  T-325 energy at 0.99: Dual{Float32,3} = 0.0365, Float32 = 0.0365, Float64 = 0.0383
+  T-325 growth at 1.01: Dual{Float32,3} = 3.16, Float32 = 3.16, Float64 = 3.31
+  T-328 partials: Dual{Float32,3} = 0.0
+  T-328 primal: Dual{Float32,3} = 0.0
+  T-881: Dual{Float32,3} = 0.123, Float32 = 0.0996, Float64 = 0.114
+  T-881 charge: Dual{Float32,3} = 2.93, Float32 = 2.93, Float64 = 3.0
+  T-881 field: Dual{Float32,3} = 1.42, Float32 = 1.45, Float64 = 2.96
+  T-882: Dual{Float32,3} = 0.907, Float32 = 1.18, Float64 = 0.984
+  T-882 modes: Dual{Float32,3} = 0.116, Float32 = 0.0468, Float64 = 0.0686
+  T-882 pure mode: Dual{Float32,3} = 1.18, Float32 = 1.18, Float64 = 0.5
+  T-883: Dual{Float32,3} = 0.0347, Float32 = 0.0298, Float64 = 0.107
+  T-883 kinetic: Dual{Float32,3} = 4.23, Float32 = 4.21, Float64 = 0.717
+
+ParticleMeshElectromagnetic: Error During Test at /home/pm/jobs/wp085-em-suite-743025c/lib/ParticleMeshElectromagnetic/test/runtests.jl:86
+  Got exception outside of a @test
+  LoadError: ArgumentError: Package OrdinaryDiffEqCore [bbf590c4-e513-4bbe-9b18-05decba2e5d8] is required but does not seem to be installed:
+   - Run `Pkg.instantiate()` to install all recorded dependencies.
+  Stacktrace:
+    [1] __require_prelocked(pkg::Base.PkgId, env::String)
+      @ Base ./loading.jl:2761
+    [2] _require_prelocked(uuidkey::Base.PkgId, env::String)
+      @ Base ./loading.jl:2641
+    [3] macro expansion
+      @ ./loading.jl:2569 [inlined]
+    [4] macro expansion
+      @ ./lock.jl:376 [inlined]
+    [5] __require(into::Module, mod::Symbol)
+      @ Base ./loading.jl:2533
+    [6] require
+      @ ./loading.jl:2509 [inlined]
+    [7] eval_import_path
+      @ ./module.jl:36 [inlined]
+    [8] eval_import_path_all(at::Module, path::Expr, keyword::String)
+      @ Base ./module.jl:60
+    [9] _eval_import(::Bool, ::Module, ::Expr, ::Expr, ::Vararg{Expr})
+      @ Base ./module.jl:101
+   [10] top-level scope
+      @ ~/jobs/wp085-em-suite-743025c/lib/ParticleMeshElectromagnetic/test/pushers_sciml.jl:9
+   [11] include(mod::Module, _path::String)
+      @ Base ./Base.jl:309
+   [12] include_test_files(mod::Module, dir::String, files::Vector{String})
+      @ Main ~/jobs/wp085-em-suite-743025c/lib/ParticleMeshCore/test/groups.jl:53
+   [13] top-level scope
+      @ ~/jobs/wp085-em-suite-743025c/lib/ParticleMeshElectromagnetic/test/runtests.jl:87
+   [14] macro expansion
+      @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:1967 [inlined]
+   [15] macro expansion
+      @ ~/jobs/wp085-em-suite-743025c/lib/ParticleMeshElectromagnetic/test/runtests.jl:88 [inlined]
+   [16] include(mod::Module, _path::String)
+      @ Base ./Base.jl:309
+   [17] exec_options(opts::Base.JLOptions)
+      @ Base ./client.jl:344
+   [18] _start()
+      @ Base ./client.jl:577
+  in expression starting at /home/pm/jobs/wp085-em-suite-743025c/lib/ParticleMeshElectromagnetic/test/pushers_sciml.jl:9
+Test Summary:                                                                                                                                      |  Pass  Error  Total     Time
+ParticleMeshElectromagnetic                                                                                                                        | 93689      1  93690  2m44.1s
+  T-210 Yee in vacuum: exact discrete dispersion and staggered energy [A1, A2, A7, A8, WP-014]                                                     |    24            24     4.3s
+  T-320 discrete dispersion: an oblique eigenmode in each polarization follows the exact Yee relation [A2, A7, WP-022, WP-042]                     |    72            72    11.3s
+  T-321 convergence to Maxwell: the phase-velocity error falls as Δ² at Courant number 0.95 [A2, A7, WP-022]                                       |     6             6     2.0s
+  T-322 divergence identities: ∇·B is kept, and ∇·E changes by −Δt·∇·J [A2, A7, WP-022, WP-042]                                                    |    18            18     5.0s
+  T-323 discrete energy: conserved in vacuum, changed by the discrete Poynting work term with J [A7, WP-022, WP-042]                               |    18            18     5.3s
+  T-324 reductions and symmetry: a y-invariant 2D run is the 1D run; the axis exchange maps runs onto runs [A7, WP-022]                            |     6             6     2.3s
+  T-325 the Courant limit is where the scheme becomes unstable: bounded at 0.99, growth (S + √(S² − 1))² at 1.01 [A2, A7, WP-022]                  |    48            48     2.6s
+  T-326 the state constructor and check_courant reject Δt at or above the Courant limit, naming it [A2, A7, WP-022]                                |    36            36     5.5s
+  T-327 the solver is bitwise across reruns, 1 and 4 threads and launch shapes, at N = 1, 2 and 3 [A4, WP-022, WP-042]                             |    25            25    39.3s
+  T-328 Dual: the partials evolve as the solver applied to the partials; the primal as the Float32 run [A8, WP-022, WP-042]                        |    12            12     1.5s
+  T-329 guards are periodic images after solve_fields!, and its allocation does not grow with the grid [A7, WP-022, WP-042]                        |    66            66     0.6s
+  T-1080 discrete dispersion: an oblique eigenmode in each polarization follows the exact M4 relation [A7, A8, WP-079]                             |    38            38     7.2s
+  T-1081 convergence to Maxwell: M4's phase-velocity error falls as Δ⁴ along the axis and the diagonal, Yee's as Δ² [A7, WP-079]                   |     9             9     1.6s
+  T-1082 divergence identities: M4's own ∇·B is kept, Yee's is not, and ∇·E changes by −Δt·∇·J [A7, A8, WP-079]                                    |    24            24     2.6s
+  T-1083 M4's Courant limit is Yee's: bounded at 0.99, growth (μ + √(μ² − 1))² with μ² = S²(4 − S²)/3 at 1.01 [A7, WP-079]                         |    21            21     1.3s
+  T-1084 the M4 stencil: Lu et al.'s coefficients, Yee's bits where they vanish, a y-invariant run is the 1D run, two guards [A7, A8, A10, WP-079] |    21            21     1.2s
+  T-880 the field layout at N = 3 is the Yee cell [A2, WP-042]                                                                                     |    15            15     0.2s
+  T-881 the 3D initial field of a loaded cosine charge: Gauss's law at every node and the closed form [A2, A3, A7, A8, WP-042]                     |   124           124    20.5s
+  T-882 the 3D recorder: energies, kinetic energy and the mode's amplitudes at each component's own stagger [A7, A8, WP-042]                       |   149           149    16.3s
+  T-883 a 3D state: the kinetic-energy cache, the initial field and observe! [A7, A8, WP-042]                                                      |    69            69     2.0s
+  T-211 Boris: exact gyration and the E×B drift [A2, A7, A8, WP-014]                                                                               | 18008         18008     0.6s
+  T-230 the pusher slot: a Landau run with each pusher, bitwise reproducible [A2, A4, A10, WP-015]                                                 |    13            13     7.1s
+  T-231 uniform B: |u| and the gyrophase per step [A2, A7, A8, WP-015]                                                                             | 72069         72069     0.6s
+  T-232 uniform E, B = 0: exact u, second-order position error [A1, A2, A7, WP-015, WP-037]                                                        |  2428          2428     0.1s
+  T-233 crossed fields: the E×B drift and its second-order error [A2, A7, WP-015, WP-037]                                                          |   136           136     1.8s
+  T-234 phase-space volume: det ∂u′/∂u [A2, A7, A8, WP-015]                                                                                        |    50            50     6.3s
+  T-235 the figure-8 orbit: second order in γ − u_z, u_x + qA_x and closure [A1, A2, A7, WP-015]                                                   |    60            60     1.3s
+  T-236 long-run energy in static non-uniform fields stays within its proposed bounds [A2, A7, WP-015, WP-037]                                     |   124           124     7.1s
+RNG of the outermost testset: Xoshiro(0x0a015ec4406cbefe, 0xcdc24a3f5fe338e6, 0x644b344e3b74c81b, 0x024371510b13efa0, 0x78985c40d6e9df97)
