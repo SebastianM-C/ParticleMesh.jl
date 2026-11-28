@@ -1,0 +1,28 @@
+commit = "9e0ec7ae0d06eac26960cb83a400ac0ca4d00560"
+backend = "CUDABackend(false, false, false)"
+dirty = "false"
+cuda_heap = "default"
+cpu = "AMD Ryzen 9 9950X 16-Core Processor"
+threads = 2
+args = ["grad", "ppl=16", "dual=1,2,3,4", "dual4=0", "c=12", "host=1"]
+work_package = "WP-086"
+patches = "scripts/enzyme/active_reduce.jl"
+julia = "1.13.4"
+gpu = "NVIDIA GeForce RTX 5090"
+
+[versions]
+Enzyme = "0.13.221"
+ForwardDiff = "1.4.6"
+KernelAbstractions = "0.10.8"
+Checkpointing = "0.13.0"
+
+[inputs]
+"scripts/enzyme/common.jl" = "4702d96d795b727454dfe0193470a7e65928f4087ec5d3e0ab2a379fc3bbb741"
+"scripts/enzyme/contract.jl" = "aa7f9ae499087149890e41f81502851244e57c4c404a4a04090e6536450317ce"
+"scripts/enzyme/trapped3d.jl" = "aec2d283528dc66dca26d661196a351da3041b5adeaa4be99dcb4e05203707ee"
+"scripts/optim/trapped3d_case.jl" = "45de67d723a955b5c9a9c22ace4155fb3cddc9eb64836602af04799b7eb67d89"
+"scripts/optim/trapped2d_case.jl" = "f90819fe49c4b8b27510864ab734c754fc3c1d394a04c7b11556e3169509cb39"
+"scripts/enzyme/active_reduce.jl" = "ebba878bd977fa759b3ad742909e477795b1a5fb757afe19d26ceb6fb41983ec"
+"scripts/optim/born2d_case.jl" = "ebb13d12f3c67ac85bfca2170dcd4dbf4e257313a3d56bd8ae20def52dab4463"
+"lib/ParticleMeshElectromagnetic/test/Project.toml" = "1839723cf4f006d0ff377939ea38c19f227f230b815baf83142b598ef0bd4f47"
+"Manifest.toml" = "0916f64b796fea92d365af99d01acc1014b6e44edc1c427212daedff716c2722"

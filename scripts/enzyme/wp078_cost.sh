@@ -16,7 +16,10 @@ git rev-parse HEAD > "$OUT/commit.txt"
 nvidia-smi > "$OUT/nvidia-smi-start.txt" 2>&1
 echo "[$(stamp)] instantiate"
 julia +1.13 --project -e 'using Pkg; Pkg.instantiate(workspace = true)' > "$OUT/instantiate.log" 2>&1
-P="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl"
+# The runs in reports/wp-078-reverse-mode-at-production-size.md also loaded
+# scripts/enzyme/spike/unrolled_species.jl, at b3e46201. Since WP-086 the engine carries its
+# flag sum and ramp (through sin rather than a sinpi rule), so only active_reduce.jl is patched in.
+P="scripts/enzyme/active_reduce.jl"
 for m in primal dual1 dual4 reverse; do
     reps=3; [ "$m" = reverse ] && reps=2
     echo "[$(stamp)] cost: $m"
