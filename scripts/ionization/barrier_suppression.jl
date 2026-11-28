@@ -1,7 +1,7 @@
 # The measurements of WP-063, the level with the barrier-suppression factor of Tong and Lin
 # (reports/wp-063-barrier-suppression.md).
 #
-# 1. The rates (bsi_rates.png): the helium-like ions of `tong_lin.toml` at 0.8 µm, each
+# 1. The rates (bsi_rates.png): the helium-like ions of `lib/Wakefields/data/tong_lin.toml` at 0.8 µm, each
 #    as `tong_lin_level` makes it and as the same level without the factor (`adk_level` with the
 #    fit's conventions), in atomic units against the field over the field at which the barrier is
 #    gone, with the MCTDHF rates of Lötstedt, Ciappina and Yamanouchi (`tong_lin.toml`) on top, and
@@ -40,7 +40,7 @@ band(x) = x < 0.7 ? "below 0.7 E_bs" : x <= 1.75 ? "0.7 to 1.75 E_bs" : "above 1
 
 function reference_rows()
     rows = Dict{String,Any}[]
-    for ion in TONG_LIN["mctdhf"]["ions"]
+    for ion in Wakefields.TONG_LIN["mctdhf"]["ions"]
         el, Z = Symbol(ion["element"]), ion["Z"]
         tl, adk = fit_levels(el, Z - 1)
         num = tong_lin_numbers(ionization_energy(el, Z - 1), Z - 1; alpha = tong_lin_alpha(el, Z - 1), wavelength = WAVELENGTH, lstar = 0)
@@ -282,10 +282,10 @@ end
 
 function bsi_report()
     dir = run_dir("barrier-suppression", @__FILE__; work_package = "WP-063", prefix = "ionization",
-                  extra_inputs = [joinpath(@__DIR__, "atomic.jl"), joinpath(@__DIR__, "tong_lin.toml"),
+                  extra_inputs = [joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl"), joinpath(REPO, "lib", "Wakefields", "data", "tong_lin.toml"),
                                   joinpath(@__DIR__, "ionization.jl"), joinpath(EM_TEST, "ionization_cases.jl")],
                   params = Dict{String,Any}("wavelength_m" => WAVELENGTH, "type" => "Float64", "mode" => "Reference",
-                                            "atomic_data" => atomic_record(ion["element"] for ion in TONG_LIN["mctdhf"]["ions"]),
+                                            "atomic_data" => atomic_record(ion["element"] for ion in Wakefields.TONG_LIN["mctdhf"]["ions"]),
                                             "vacuum" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(VAC)),
                                             "vacuum_a0" => [1.8, 2.2, 2.6], "vacuum_cells_per_wavelength" => 32,
                                             "injection" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(INJ))))

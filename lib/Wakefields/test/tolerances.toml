@@ -1,0 +1,24 @@
+# Tolerances of the Wakefields tests (A7: measure, then propose), as the module's tolerances.toml:
+# each entry's constants are proposals the tests hold, with the measured values beside them. T-783
+# and T-821 moved here from ParticleMeshElectromagnetic's suite with the unit layer they test
+# (WP-092).
+
+["T-783"]
+quantity = "the ADK level built from an ionization energy and a wavelength (Wakefields' adk_level) against FBPIC 0.27.1's coefficient lines, every level of H, He, N and Ar at 0.8 µm, a₀ = 0.25 to 8: with half a Hartree as the unit of energy, the rates (rate) and n*, C² (nstar); with FBPIC's own unit (hydrogen's measured ionization energy), the rates above 1e-12 ω₀ (rate_fbpic)"
+scale = "relative"
+rate = 1e-7
+nstar = 1e-9
+rate_fbpic = 0.1
+measured = { "rate, half a Hartree" = 1.85e-8, "n*, half a Hartree" = 7.12e-12, "C², half a Hartree" = 1.64e-11, "rate, FBPIC's unit" = 0.0407, "n*, FBPIC's unit" = 2.67e-4 }
+status = "proposed; with the formula's own unit the difference is the rounding of the constants' printed digits times the exponent (up to several hundred where the rate is 1e-300); with FBPIC's unit the 4 % is at a rate of 1e-12 ω₀ and falls to below 1 % for rates above 1e-3 ω₀ (scripts/ionization/ionization.jl prints both)"
+
+["T-821"]
+quantity = "the Tong–Lin level built from an ionization energy and a wavelength (Wakefields' tong_lin_level, α of data/tong_lin.toml) against the MCTDHF static-field rates of helium-like ions of Lötstedt, Ciappina and Yamanouchi (Phys. Rev. A 102, 013112, supplementary table), He, Li⁺, N⁵⁺, O⁶⁺, Ne⁸⁺ and Ar¹⁶⁺: |W/W_ref − 1| for fields from 0.7 to 1.75 of the barrier's field E_bs (rate), below (rate_below, down to 0.43 E_bs) and above (rate_above, up to 2.9 E_bs for He); and the least ratio of the ADK rate without the factor to the reference from 0.95 E_bs on (adk_over_min)"
+scale = "relative (an empirical fit against another method's rates, not a roundoff bound)"
+rate = 0.15
+rate_below = 0.35
+rate_above = 0.55
+adk_over_min = 1.8
+measured = { "0.7 to 1.75 E_bs" = 0.119, "below 0.7 E_bs" = 0.314, "above 1.75 E_bs" = 0.479, "least ADK/reference from 0.95 E_bs" = 1.91 }
+status = "proposed; the reference's own numerical accuracy is not stated in the file; the paper gives about 10 % for the fitting formula against it"
+
