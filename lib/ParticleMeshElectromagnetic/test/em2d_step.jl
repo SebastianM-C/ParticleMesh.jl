@@ -442,12 +442,12 @@ end
     nospread = deepcopy(lo)
     delete!(nospread["species"][1], "thermal_velocity")
     @test_throws ArgumentError problem_from_case(nospread, Float64)
-    # the current: Esirkepov() at N = 1 and 2 (the default), NoCurrent() at N = 2 only
+    # the current: Esirkepov() (the default) or NoCurrent() at every N (WP-093, T-1257), and nothing else
     @test EMNumerics().current isa Esirkepov
     @test EMState(plasma_step_2d(Float64), EMNumerics()) isa EMState{2}
     @test_throws ArgumentError EMState(plasma_step_2d(Float64), EMNumerics(; current = nothing))
     @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; current = nothing))
-    @test_throws ArgumentError EMState(beams_1d(Float64), EMNumerics(; current = NoCurrent()))
+    @test EMState(beams_1d(Float64), EMNumerics(; current = NoCurrent())) isa EMState{1}
 end
 
 # --- T-369 ----------------------------------------------------------------------------------

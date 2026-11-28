@@ -314,8 +314,84 @@ function body_T1254(be)
     end
 end
 
-@testset "T-1254 beside an open axis the filtered Gauss law holds to roundoff off the absorbers with particles leaving, at N = 2 and 3, the layer and the PML, both modes [A2, A7, A8, WP-093]" begin
+"""
+    edge_crossers(T, N; passes, mode, be) -> (state, problem)
+
+A box open along its last axis (N = 2: 8 × 16 cells of 1/2; N = 3: 6 × 6 × 12 cells of 1 × 1 × 1/2)
+behind an absorbing layer of guards + `passes` cells, with `passes` filter passes, initialized, in
+which only the electrons of the last cell row of the open axis carry weight, placed at the offset
+0.95 along it with u = 10 along it and 1 along the other two: with no field (a neutral, cold,
+uniform plasma) one step moves them across the edge by more than half a cell, the farthest a
+leaving particle's stencil reaches into the other side.
+"""
+function edge_crossers(::Type{T}, N; passes, mode, be) where {T}
+    cells = N == 2 ? (8, 16) : (6, 6, 12)
+    L = N == 2 ? (T(4), T(8)) : (T(6), T(6), T(6))
+    dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:N))) / 10
+    m = ntuple(d -> d == 1 ? 1 : 0, N)
+    ppc = ntuple(_ -> 2, N)
+    sp = (SpeciesDescription{T}(:electron, -one(T), one(T), one(T), zero(T), m, ppc, zero3(T), zero3(T), 1),
+          SpeciesDescription{T}(:positive, one(T), one(T), one(T), zero(T), m, ppc, zero3(T), zero3(T), 2))
+    prob = EMProblem("edge-crossers", L, cells, T(dt), 1, sp, 1, m; boundaries = ntuple(d -> d == N ? :open : :periodic, N))
+    g = ParticleMeshElectromagnetic.em_guard_width(EMNumerics().shape, EMNumerics().solver)
+    st = EMState(prob, EMNumerics(; mode, absorber = AbsorbingLayer(; cells = g + passes, strength = 1), filter = BinomialFilter(passes));
+                 backend = be)
+    initialize!(st, prob)
+    e, positive = st.species
+    w = Array(e.w)
+    w[Array(e.cell[N]) .!= Int32(cells[N])] .= zero(T)
+    copyto!(e.w, w)
+    copyto!(positive.w, zero(Array(positive.w)))
+    copyto!(e.offset[N], fill(T(19) / 20, capacity(e)))
+    for c in 1:3
+        copyto!(e.u[c], fill(c == N ? T(10) : one(T), capacity(e)))
+    end
+    return st, prob
+end
+
+# How far the current of a leaving particle reaches into the other side of an open axis, the
+# number behind `check_filter_fits`: the grid under the open axis is periodic, so the last move of
+# a particle that crosses the edge by more than half a cell is deposited on the node rows 1 to g
+# of the other side (g = 3, the quadratic shape's guard width: the stencil about its new place),
+# and p filter passes carry it to row g + p and no further. So for the two components at the
+# nodes of the open axis row g + p holds current and the rows from g + p + 1 to the near side's
+# hold exactly zero: with the thinnest absorber the state takes (g + p cells) nothing of it lies
+# between the absorbers, and an absorber of one cell less would leave some in the first row it
+# does not cover. The component along the open axis sits on its faces and ends one row earlier
+# (face g + p − 1); behind it the Reference deposit leaves the roundoff sum of the weight changes
+# on the stencil's last faces (T-840), at most to face g + p + 1, within the tolerance's `tail`
+# times eps of the component, and exact zeros from there on. Every element type and mode, p = 0
+# (the rule of T-451) to 2.
+function body_T1254_reach(be)
+    tail = emC("T-1254", "tail")
+    for (N, ps) in ((2, (0, 1, 2)), (3, (0, 1))), passes in ps, T in TYPES, mode in (Reference(), Fast())
+        st, prob = edge_crossers(T, N; passes, mode, be)
+        step!(st, params(prob), 1)
+        g, n = guards(st.grid), ncells(st.grid)[N]
+        reach = g + passes
+        J = map(c -> Array(getfield(st.fields, c)), (:Jx, :Jy, :Jz))
+        rows(A, r) = selectdim(A, N, g .+ r)                       # interior rows r of the open axis
+        @test alive_total(st) < sum(capacity, st.species)          # the particles of the last row left
+        for c in 1:3
+            if c == N                                              # along the open axis, on its faces
+                top = Float64(maximum(absmax, J[c]))
+                @test maximum(absmax, rows(J[c], reach - 1)) > 1e3 * base_eps(T) * top     # current, not a tail
+                worst = Float64(maximum(absmax, rows(J[c], reach:(reach + 1)))) / (base_eps(T) * top)
+                record!("T-1254 tail $(N)D", T, worst, be)
+                @test worst <= tail
+                @test all(iszero, rows(J[c], (reach + 2):(n - passes - 1)))
+            else                                                   # at the nodes of the open axis
+                @test any(!iszero, rows(J[c], reach))
+                @test all(iszero, rows(J[c], (reach + 1):(n - passes - 1)))
+                @test any(!iszero, rows(J[c], n - passes))         # the near side: the stencil about the old place, p rows on
+            end
+        end
+    end
+end
+
+@testset "T-1254 beside an open axis the filtered Gauss law holds to roundoff off the absorbers with particles leaving, at N = 2 and 3, the layer and the PML, both modes; a leaving particle's current reaches guards + passes rows of the other side and no further [A2, A7, A8, WP-093]" begin
     body_T1254(CPU())
+    body_T1254_reach(CPU())
 end
 
 # --- T-1255 ---------------------------------------------------------------------------------

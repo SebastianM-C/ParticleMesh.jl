@@ -1479,6 +1479,8 @@ status = "proposed; measured is E in Reference mode, where J is the host filter 
 quantity = "with p filter passes beside an open axis, after every step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| on the node rows off the absorbers, particles leaving; N = 2 (open y, 40 steps, p = 2, absorbers of 5 cells) and N = 3 (open y and z, 20 steps, p = 1, absorbers of 4 cells), the layer and the PML, both modes"
 scale = "(Σ_d n_d)·max|ρ|·√(k + 1) after k steps"
 C = 2
-measured = { Float32 = 0.104, Float64 = 0.122, "Dual{Float32,3}" = 0.0522 }
+tail = 4
+measured = { Float32 = 0.122, Float64 = 0.122, "Dual{Float32,3}" = 0.0522 }
+measured_tail = { Float32 = 0.35, Float64 = 0.863, "Dual{Float32,3}" = 0.35 }
 effect = "on the absorbers' rows the same ratio is 2.5e4 (Float32) to 2.8e13 (Float64), and the test asserts more than 1e4 there; 735 to 768 of 2880 particles leave at N = 2 and 3604 to 3843 of 16128 at N = 3"
-status = "proposed; the largest over N, the absorbers and the modes"
+status = "proposed; the largest over N, the absorbers and the modes (Fast's moves from run to run at more than one thread). tail: of a leaving particle's current, the component along the open axis on the two faces after its last one, relative to eps(T)·max|component| (the Reference deposit's roundoff sum of the weight changes, T-840; exact zeros in Fast with atomics)"
