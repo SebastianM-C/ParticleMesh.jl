@@ -47,7 +47,8 @@ function sorted_state(s, ws, n)
     m = Int(ws.resort.sorted_count[1])
     return all(1:m) do i
         s.status[i] == ParticleMeshCore.ALIVE || return false
-        L = ParticleMeshCore.linear_cell(ParticleMeshCore.particle_bin(ws.bins, s, i, Int32.(n)), Int32.(n))
+        nb = ParticleMeshCore.nbins(ws.bins, Int32.(n))   # one more than the cells on an open axis
+        L = ParticleMeshCore.linear_cell(ParticleMeshCore.particle_bin(ws.bins, s, i, nb), nb)
         return ws.seg_start[L] <= i <= ws.seg_stop[L]
     end
 end
