@@ -1858,3 +1858,6 @@ end
 
 # the ionization case (WP-081)
 include(joinpath(@__DIR__, "ionization.jl"))
+
+# the 3D GPU benchmark against PIConGPU (WP-090), which builds on the ionization case
+include(joinpath(@__DIR__, "..", "..", "bench3d", "test", "bench3d.jl"))

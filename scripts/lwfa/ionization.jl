@@ -715,23 +715,24 @@ end
 const PIC_BORN, PIC_DOPANT = "eb", "N"
 
 """
-    picongpu_ion_param_files(case; kind, seed) -> Dict{String,String}
+    picongpu_ion_param_files(case; kind, seed, precision = "Float64") -> Dict{String,String}
 
 picongpu.jl's .param files of `picongpu_ion_lab(case)` with the species of the ionization case
 in place of its electrons: the plasma's electrons `e`, the born electrons `eb`, and the dopant
 `N`, loaded as N⁵⁺ (`ChargeState`, `boundElectrons` = 2) on a 16 × 16 quiet lattice, static (the
 probe pusher without a push) and without current, ionized by `ADKCircPol` into `eb` without an
-ionization current. The seed of the random numbers is the run's.
+ionization current. The seed of the random numbers is the run's; `precision` is PIConGPU's
+`float_X` (WP-082's runs took the default, Float64; WP-090's benchmark Float32).
 """
-function picongpu_ion_param_files(case; kind, seed)
+function picongpu_ion_param_files(case; kind, seed, precision = "Float64")
     lab = picongpu_ion_lab(case)
     d0 = ion_derived(case)
     plasma, dopant = kind != "vacuum", kind ∉ ("vacuum", "plasma-nodopant")
-    f = picongpu_param_files(lab; plasma)
+    f = picongpu_param_files(lab; plasma, precision)
     plasma || return d0.N == 3 ? picongpu_ion_3d!(f, case) : f
     d, D = ion_derived(case), case["dopant"]
     D["element"] == "N" && Int(D["charge"]) == 5 && Int.(D["levels"]) == [6, 7] || error("the PIConGPU deck loads N⁵⁺ and ionizes the K shell")
-    p = picongpu_parameters(lab; plasma)
+    p = picongpu_parameters(lab; plasma, precision)
     cf, H = PIConGPUDeck.cfloat, PIConGPUDeck.HEADER * "/* ionization case \"$(case["name"])\" ($kind), scripts/lwfa/ionization.jl */\n"
     e, eb, N = PIC_SPECIES, PIC_BORN, PIC_DOPANT
     ions = dopant ? ", PIC_$eb, PIC_$N" : ""
@@ -945,11 +946,11 @@ function picongpu_ion_arguments(case, p)
     return a
 end
 
-"Write a PIConGPU directory of the ionization case into `dir` (params/, run.sh); the input files for the manifest."
-function prepare_picongpu_ion(dir, case; kind, seed, tag)
+"Write a PIConGPU directory of the ionization case into `dir` (params/, run.sh) in `precision`; the input files for the manifest."
+function prepare_picongpu_ion(dir, case; kind, seed, tag, precision = "Float64")
     lab = picongpu_ion_lab(case)
-    p = picongpu_parameters(lab; plasma = kind != "vacuum")
-    files = picongpu_ion_param_files(case; kind, seed)
+    p = picongpu_parameters(lab; plasma = kind != "vacuum", precision)
+    files = picongpu_ion_param_files(case; kind, seed, precision)
     mkpath(joinpath(dir, "params"))
     for (n, text) in files
         write(joinpath(dir, "params", n), text)

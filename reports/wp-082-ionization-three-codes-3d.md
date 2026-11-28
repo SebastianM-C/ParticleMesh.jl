@@ -15,7 +15,7 @@
 | Work package | WP-082 (`trace/wp/WP-082-ionization-three-codes-3d.md`); goals A5, A7 |
 | Case | `scripts/lwfa/cases/ionization-3d.toml`; driver `scripts/lwfa/ionization.jl`, tests T-1127 and T-1128 |
 | Code and runs | Each run's manifest and `published.toml` are in `wp-082-ionization-three-codes-3d/runs/<run>/`. ParticleMesh and Smilei at `361a0a3`: ParticleMesh in runs/ion3d-5090, Smilei in runs/ion3d-smilei-&lt;run&gt;. ParticleMesh at each code's peak field at `3677708`, in runs/ion3d-5090-a0. Its CPU cross-check is in runs/ion3d-pm-plasma-rates-smilei-a0. PIConGPU at `11b4926`, with one openPMD file per output, in runs/ion3d-5090 (summaries and logs only). The comparison is at `6946e79`, and `compare/manifest.toml` has the hashes of the summaries compared |
-| Environment | ParticleMesh: Julia 1.13.4, Float32, Reference mode, plain gather, on an RTX 5090. Smilei v5.1 on 16 threads of an AMD EPYC 9655. PIConGPU 0.8.0, CUDA 12.9, 2 ranks on one RTX 5090 |
+| Environment | ParticleMesh: Julia 1.13.4, Float32, Reference mode, plain gather, on an RTX 5090. Smilei v5.1 on 16 threads of an AMD EPYC 9655. PIConGPU 0.8.0 in Float64 (`precision64Bit`, the deck's default), CUDA 12.9, 2 ranks on one RTX 5090 |
 | Data | `wp-082-ionization-three-codes-3d/compare/`: `comparison.json` and five figures with sidecars |
 | Review | none yet |
 
@@ -55,5 +55,5 @@ The other codes' peak field over ParticleMesh's in vacuum, from the summaries' e
 
 - Why PIConGPU loses more born electrons from the window between t = 225 and 300 than the other codes. Its wake is the one that differs most (4.4 % from Smilei's), and its PML damps particle weights (Lehe 2022) on four open sides here. Its plasma weight in the window is 28 % below the others' at the read-out, and it drops already at t = 25, before the pulse arrives. Neither is checked against the born electrons' loss.
 - PIConGPU's vacuum run: 5 of its 13 outputs, those before the window moves (steps 0 to 568), have broken HDF5 metadata and are left out (`unreadable_outputs` in its summary), so its vacuum comparison starts at t = 125. The plasma decks' outputs read. The same deck with one file for all outputs also hung at shutdown on the 5090.
-- Runtimes are in `comparison.json` ("seconds"): ParticleMesh steps in 92 s and PIConGPU in 105 s on the RTX 5090, Smilei in 510 s on 16 CPU threads. They come from different hardware and precisions, so they compare nothing.
+- Runtimes are in `comparison.json` ("seconds"): ParticleMesh steps in 92 s and PIConGPU in 105 s on the RTX 5090, Smilei in 510 s on 16 CPU threads. They come from different hardware, precisions (PIConGPU in Float64, ParticleMesh in Float32) and boxes (PIConGPU's hidden domain makes its 128 × 1104 × 128 cells), and include outputs and, for ParticleMesh, the first step's compilation, so they compare nothing; WP-090 is the like-for-like timing.
 - The case is the 3D variant at one resolution, with one plasma electron per cell and Δy = Δz = 4Δx (a waist of 12.7 cells). A 3D grid study is not done.
