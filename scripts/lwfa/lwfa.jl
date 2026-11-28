@@ -1052,8 +1052,8 @@ function compare(runs, out)
     end
     write_manifest(out; root = REPO,
                    extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"],
-                                            "summaries" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "summary.json")) for k in kinds),
-                                            "maps" => Dict(k => "sha256:" * RunManifest.file_hash(joinpath(runs, k, "maps.h5")) for k in kinds
+                                            "summaries" => Dict(k => "sha256:" * RunManifests.file_hash(joinpath(runs, k, "summary.json")) for k in kinds),
+                                            "maps" => Dict(k => "sha256:" * RunManifests.file_hash(joinpath(runs, k, "maps.h5")) for k in kinds
                                                            if endswith(k, "plasma") && isfile(joinpath(runs, k, "maps.h5")))))
     return result
 end
@@ -1111,8 +1111,8 @@ function compare_pair(dir_a, dir_b, out)
     open(io -> JSON.print(io, result, 2), joinpath(out, "pair.json"), "w")
     write_manifest(out; root = REPO,
                    extra = Dict{String,Any}("case" => case["name"],
-                                            "summaries" => Dict("a" => "sha256:" * RunManifest.file_hash(joinpath(dir_a, "summary.json")),
-                                                                "b" => "sha256:" * RunManifest.file_hash(joinpath(dir_b, "summary.json")))))
+                                            "summaries" => Dict("a" => "sha256:" * RunManifests.file_hash(joinpath(dir_a, "summary.json")),
+                                                                "b" => "sha256:" * RunManifests.file_hash(joinpath(dir_b, "summary.json")))))
     return result
 end
 
@@ -1899,7 +1899,7 @@ function compare_scan(out, runs)
     plot_scan(out, result)
     write_manifest(out; root = REPO,
                    extra = Dict{String,Any}("cases" => result["cases"], "runs" => [relpath(r, REPO) for r in runs],
-                                            "summaries" => Dict("r$c/$code-$medium" => "sha256:" * RunManifest.file_hash(joinpath(r, "$code-$medium", "summary.json"))
+                                            "summaries" => Dict("r$c/$code-$medium" => "sha256:" * RunManifests.file_hash(joinpath(r, "$code-$medium", "summary.json"))
                                                                 for (r, c) in zip(runs, cells) for code in codes for medium in media)))
     return result
 end

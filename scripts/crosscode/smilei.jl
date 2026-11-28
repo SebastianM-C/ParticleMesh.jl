@@ -22,8 +22,7 @@ module SmileiDeck
 using TOML
 using SHA: sha256
 
-include(joinpath(@__DIR__, "manifest.jl"))
-using .RunManifest
+using RunManifests
 
 export load_case, case_view, case_seeds, smilei_parameters, namelist, prepare_run, cli_options
 

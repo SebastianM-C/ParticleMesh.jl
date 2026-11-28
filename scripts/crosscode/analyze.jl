@@ -14,11 +14,10 @@
 
 include(joinpath(@__DIR__, "read.jl"))
 include(joinpath(@__DIR__, "analysis.jl"))
-include(joinpath(@__DIR__, "manifest.jl"))
 include(joinpath(@__DIR__, "theory.jl"))
 include(joinpath(@__DIR__, "ensemble.jl"))
 include(joinpath(@__DIR__, "ensemble_report.jl"))
-using .SmileiRead, .PIConGPURead, .Observables, .RunManifest, .Theory, .Ensemble, .EnsembleReport
+using .SmileiRead, .PIConGPURead, .Observables, RunManifests, .Theory, .Ensemble, .EnsembleReport
 using Statistics: median, mean
 using Dates: DateTime, Millisecond
 using CairoMakie
@@ -68,9 +67,10 @@ code, recorded in the run's manifest next to the preparation commit.
 function analysis_record()
     root = dirname(dirname(@__DIR__))
     c = git_commit(root)
-    files = ("analyze.jl", "analysis.jl", "ensemble.jl", "ensemble_report.jl", "read.jl", "manifest.jl")
-    return Dict{String,Any}("commit" => c.commit, "dirty" => coalesce(c.dirty, "unknown"),
-        "inputs" => Dict{String,Any}("scripts/crosscode/" * f => "sha256:" * file_hash(joinpath(@__DIR__, f)) for f in files))
+    files = ("analyze.jl", "analysis.jl", "ensemble.jl", "ensemble_report.jl", "read.jl")
+    inputs = Dict{String,Any}("scripts/crosscode/" * f => "sha256:" * file_hash(joinpath(@__DIR__, f)) for f in files)
+    inputs[relpath(pathof(RunManifests), root)] = "sha256:" * file_hash(pathof(RunManifests))
+    return Dict{String,Any}("commit" => c.commit, "dirty" => coalesce(c.dirty, "unknown"), "inputs" => inputs)
 end
 
 "The per-run observable of a case (a seeded case also has the ensemble one)."

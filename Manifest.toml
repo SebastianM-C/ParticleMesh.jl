@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "b4f8af741e2392e66d77bc99904fde6eb7a765a7"
+project_hash = "89e576b75e1acfd58ebd041fb4c10ecd000edad6"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1506,6 +1506,12 @@ weakdeps = ["Distributed"]
 
     [deps.Revise.extensions]
     DistributedExt = "Distributed"
+
+[[deps.RunManifests]]
+deps = ["Dates", "SHA", "TOML"]
+path = "lib/RunManifests"
+uuid = "3118dd14-20dc-4d63-ac04-2bff4dee2f1e"
+version = "0.1.0-DEV"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "PrecompileTools", "SHA", "Serialization"]
