@@ -460,8 +460,9 @@ end
     # filter and the sort from the last order it takes: T-1250 to T-1257)
     @test EMState(prob, EMNumerics(; filter = BinomialFilter(1), resort = true)) isa EMState{3,T}
     @test EMState(prob, EMNumerics(; gather = CompensatedGather())).sharpened isa NamedTuple   # WP-076 (T-1056 checks it)
-    @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4)))
-    @test_throws ArgumentError EMState(prob, EMNumerics(; back_absorber = PML(; cells = 4)))
+    @test_throws "needs an open transverse axis" EMState(prob, EMNumerics(; absorber = PML(; cells = 4)))
+    # on a box long enough for the PML itself, so that the refusal is the missing window's
+    @test_throws "needs a moving window" EMState(plasma_step_3d(T; cells = (16, 7, 6)), EMNumerics(; back_absorber = PML(; cells = 4)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; current = nothing))
     fast = EMProblem("fast", L, n, 2 * prob.dt, 2, prob.species, 1, prob.kmode)
     @test_throws ArgumentError EMState(fast, EMNumerics())

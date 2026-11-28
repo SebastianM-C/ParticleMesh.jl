@@ -1,12 +1,15 @@
 # WP-093: what the 3D step lacked without a reason in the physics, T-1250 to T-1258 (T-1259 is
 # their rerun on CUDA, in gpu.jl). The binomial current filter at N = 3 (T-1250 to T-1253, T-1258): the
 # kernel and the step's use of it are one method over N, so the 2D theory of filter.jl carries
-# over with one more axis. The filter beside an open axis at N = 2 and 3 (T-1254). The sort from
+# over with one more axis, and in a moving window it keeps the window's edges (T-1252). The filter
+# beside an open axis at N = 2 and 3 (T-1254). The sort from
 # the order of the last sort at N = 3 (T-1255, T-1256). What a state of each N takes (T-1257).
 # Reuses no other test file: the host references are filter_cases.jl's, the problems
 # em3d_cases.jl's and boundaries_cases.jl's, the runs shared with the worker nd_features_cases.jl's.
 
-using ParticleMeshElectromagnetic: check_filter_fits, state_view
+using ParticleMeshElectromagnetic: check_filter_fits, state_view, current!, push_kernel!, retire_x!, rho_stagger, window_frame, zero_x_edges!,
+                                   deposit_mode
+using ParticleMeshCore: launcher
 
 "Start nd_features_worker.jl at `nt` threads, its output going to a file; once per suite."
 function start_features_worker(nt)
@@ -206,8 +209,75 @@ function body_T1252(be)
     end
 end
 
-@testset "T-1252 the 3D step filters the folded Jx, Jy, Jz and the mesh solve takes the filtered current, both modes [A2, A7, A8, WP-093]" begin
+# T-757's window part and T-478 at N = 3. The current of a 3D moving-window state with two filter
+# passes against its pieces written out: the sort, the deposit, the x-guards of the deposited
+# current dropped before the fold, and the filter with the window's edges (zero x-guards in every
+# pass); a filter that wraps along x gives another current. The state is the one `current!` finds:
+# fourteen steps in, then the push and the retirement at the x edges of the next step. And
+# `binomial!` with the window's edges on a 3D field: a current in the back column stays out of the
+# front columns, which the periodic filter reaches across the seam, and loses what leaves through
+# the back edge, while away from the x edges it is the periodic filter, seams of y and z included.
+function body_T1252_window(be)
+    for T in TYPES
+        tenth = one(T) / 10
+        prob = window_plasma_3d(T; nsteps = 30, thermal = (tenth, tenth, tenth), drift = (2tenth, zero(T), -tenth))
+        function mk()
+            st = EMState(prob, EMNumerics(; filter = BinomialFilter(2), headroom = 1 / 2); backend = be)
+            initialize!(st, prob)
+            run!(st, params(prob), 14; observer = nothing)
+            (; numerics, grid, dt) = st
+            for s in st.species
+                launcher(push_kernel!, get_backend(s), nothing)(s, st.fields, numerics.pusher, numerics.shape, Int32(guards(grid)), s.q / s.m * dt / 2,
+                                                                map(h -> dt / h, grid.dx), Int32.(grid.n); ndrange = capacity(s))
+            end
+            retire_x!(window_frame(st), st)
+            return st
+        end
+        function written_out!(st; edges = window_frame(st))
+            (; numerics, grid, fields) = st
+            for (s, ws) in zip(st.species, st.ws)
+                sort_by_cell!(s, grid, ws)
+            end
+            foreach(J -> fill!(J, zero(T)), (fields.Jx, fields.Jy, fields.Jz))
+            for (s, ws) in zip(st.species, st.ws)
+                deposit_flux!(deposit_mode(st, s), fields.Jx, fields.Jy, fields.Jz, s, numerics.shape, rho_stagger(Val(3)), grid, ws; dt = st.dt)
+            end
+            for J in (fields.Jx, fields.Jy, fields.Jz)
+                zero_x_edges!(window_frame(st), J)
+                fold_guards!(J, grid)
+            end
+            filter_current!(numerics.filter, fields, grid, st.ρ; edges)
+            return map(J -> bits(Array(J)), (fields.Jx, fields.Jy, fields.Jz))
+        end
+        a, b, c = mk(), mk(), mk()
+        @test window_shifts(a, 14) > 4
+        current!(Esirkepov(), a)
+        @test all(J -> any(!iszero, Array(J)), (a.fields.Jx, a.fields.Jy, a.fields.Jz))
+        ja = map(J -> bits(Array(J)), (a.fields.Jx, a.fields.Jy, a.fields.Jz))
+        @test ja == written_out!(b)
+        @test ja != written_out!(c; edges = nothing)          # a filter that wraps along x gives another current
+    end
+    st = EMState(window_plasma_3d(Float64), EMNumerics(); backend = be)
+    grid = st.grid
+    g, n = guards(grid), ncells(grid)
+    inner = ntuple(d -> (g + 1):(g + n[d]), 3)
+    filtered(h; kw...) = (a = copyto!(field(be, Float64, grid), h); binomial!(a, field(be, Float64, grid), grid, 2; kw...); Array(a))
+    h = field(CPU(), Float64, grid)
+    h[g + 1, g + 3, g + 2] = 1.0
+    a, b = filtered(h; edges = st.aux.window), filtered(h)
+    @test all(iszero, a[(g + n[1] - 2):(g + n[1]), :, :])
+    @test maximum(abs, b[(g + n[1] - 1):(g + n[1]), :, :]) > 0
+    @test sum(a[inner...]) < 1 == sum(b[inner...])            # what left through the back edge is gone; the periodic filter keeps the sum
+    h = field(CPU(), Float64, grid)
+    h[g + n[1] ÷ 2, g + 1, g + n[3]] = 1.0                    # away from the x edges, at the seams of y and z
+    a, b = filtered(h; edges = st.aux.window), filtered(h)
+    @test same_bits(a[inner...], b[inner...]) && sum(a[inner...]) == 1
+    @test a[g + n[1] ÷ 2, g + n[2], g + 1] > 0                # across both seams
+end
+
+@testset "T-1252 the 3D step filters the folded Jx, Jy, Jz and the mesh solve takes the filtered current, both modes, and in a moving window the filter keeps the window's edges [A2, A7, A8, WP-093]" begin
     body_T1252(CPU())
+    body_T1252_window(CPU())
 end
 
 # --- T-1253 ---------------------------------------------------------------------------------
@@ -355,9 +425,11 @@ end
 # of the other side (g = 3, the quadratic shape's guard width: the stencil about its new place),
 # and p filter passes carry it to row g + p and no further. So for the two components at the
 # nodes of the open axis row g + p holds current and the rows from g + p + 1 to the near side's
-# hold exactly zero: with the thinnest absorber the state takes (g + p cells) nothing of it lies
-# between the absorbers, and an absorber of one cell less would leave some in the first row it
-# does not cover. The component along the open axis sits on its faces and ends one row earlier
+# hold exactly zero: with the thinnest absorber the state takes (g + p cells) all of it lies on
+# rows inside the layer, as the deposit's does without a filter (cells ≥ g, T-451); an absorber of
+# one cell less would hold its last row on the layer's inner edge (node row g + p, which the free
+# rows of T-451 and of `body_T1254` leave out, so their Gauss law would not see it). The
+# component along the open axis sits on its faces and ends one row earlier
 # (face g + p − 1); behind it the Reference deposit leaves the roundoff sum of the weight changes
 # on the stencil's last faces (T-840), at most to face g + p + 1, within the tolerance's `tail`
 # times eps of the component, and exact zeros from there on. Every element type and mode, p = 0
@@ -403,13 +475,14 @@ order_hash(h, ws) = foldl((x, a) -> hash(Array(a), x), Iterators.flatten(map(w -
     resort_digests_3d(T; resort, mode, nsteps, be) -> (digests, used, shifts, nborn, resorts)
 
 `resort_window_3d`'s run (the window's refills behind the count after every shift, the dopant's
-births behind the electrons' count, retirements at the back edge) with `EMNumerics(; resort)`:
-the digest of everything the state evolves after every step, and of the workspaces' permutation
-and segments, as `resort_digests` at N = 2 (T-852).
+births behind the electrons' count, retirements at the back edge) with `EMNumerics(; resort)` and
+one filter pass (the filter with the window and the dopant, which the 3D state refused before
+WP-093): the digest of everything the state evolves after every step, and of the workspaces'
+permutation and segments, as `resort_digests` at N = 2 (T-852).
 """
 function resort_digests_3d(::Type{T}; resort, mode = Reference(), nsteps = 110, be = CPU()) where {T}
     prob = resort_window_3d(T; nsteps)
-    st = EMState(prob, EMNumerics(; mode, resort); backend = be)
+    st = EMState(prob, EMNumerics(; mode, resort, filter = BinomialFilter(1)); backend = be)
     initialize!(st, prob)
     p = params(prob)
     fr = st.aux.ionization
@@ -441,9 +514,9 @@ end
 # T-852 at N = 3. The sort from the order of the last sort and the full sort give the same order,
 # so the same bits of everything the step evolves, after every step: in the periodic plasma whose
 # particles cross cells and the seams of every axis, in the same plasma open along y and z, where
-# particles are retired at the open faces between the sorts, and in the window with a dopant,
-# where each shift appends a column of fresh particles and the births append electrons. `runs`
-# are the (element type, mode) pairs of the window's run.
+# particles are retired at the open faces between the sorts, and in the window with a dopant and
+# one filter pass, where each shift appends a column of fresh particles and the births append
+# electrons. `runs` are the (element type, mode) pairs of the window's run.
 function body_T1255(be; runs = ((Float32, Reference()), (Float64, Reference()), (D3, Reference()), (D3, Fast())))
     for T in TYPES
         prob = plasma_step_3d(T)
@@ -473,10 +546,23 @@ end
 
 # --- T-1256 ---------------------------------------------------------------------------------
 
-# T-854 at N = 3: the order of the last sort belongs to the workspaces, not to the evolved state,
-# so a restart into a state that ran on, into a new state, and a state over copies of saved arrays
-# each sort anew and continue the uninterrupted run's bits.
-@testset "T-1256 a restart into a used 3D state, or a state over saved arrays, sorts anew and continues the run's bits [A4, WP-093]" begin
+"""
+The status, the count and the bits of the alive slots of every species of a state with a dopant
+(the plasma, the atoms and the born electrons), and the fields' bits: what a state initialized
+again repeats, as T-855's record (its free slots keep what the run before left).
+"""
+function alive_record_3d(st)
+    fr = st.aux.ionization
+    rec(s) = (alive = Array(s.status) .== ParticleMeshCore.ALIVE;
+              (Array(s.status), Array(s.count), map(a -> bits(Array(a)[alive]), (s.cell..., s.offset..., s.u..., s.w))...))
+    return (map(rec, (st.species..., fr.atoms, fr.electrons)), map(a -> bits(Array(a)), values(st.fields)))
+end
+
+# T-854 and T-855 at N = 3: the order of the last sort belongs to the workspaces, not to the
+# evolved state, so a restart into a state that ran on, into a new state, and a state over copies
+# of saved arrays each sort anew and continue the uninterrupted run's bits, and a used state
+# initialized again repeats the run (its alive particles and fields).
+@testset "T-1256 a restart into a used 3D state, a used state initialized again, or a state over saved arrays, sorts anew and continues the run's bits [A4, WP-093]" begin
     nsteps, k0 = 110, 70
     prob = resort_window_3d(Float32; nsteps)
     p = params(prob)
@@ -492,6 +578,7 @@ end
     end
     @test window_shifts(ref, nsteps) - window_shifts(ref, k0) > 5 && nborn > 0
     want = digest(ref)
+    want_alive = alive_record_3d(ref)
     for st in (ref, new_state())
         restore!(st, snap)
         foreach(k -> step!(st, p, k), (k0 + 1):nsteps)
@@ -502,6 +589,9 @@ end
     view = state_view(used, map(copy, snap.arrays))
     foreach(k -> step!(view, p, k), (k0 + 1):nsteps)
     @test digest(view) == want
+    initialize!(used, prob)                                   # its workspaces hold the order of step 110's particles
+    foreach(k -> step!(used, p, k), 1:nsteps)
+    @test alive_record_3d(used) == want_alive
 end
 
 # --- T-1257 ---------------------------------------------------------------------------------
@@ -510,7 +600,8 @@ end
 # open axis at N = 2 and 3: the filter with an absorber of at least g + p cells, and no thinner
 # one. At N = 1: a step without current (prescribed fields); its Ex then keeps the bits of the
 # initial field, since no current changes it and the curl has no x component, while the particles
-# move in it, and with the current on the same field changes. One constructor serves N = 2 and 3,
+# move in it, and with the current on the same field changes; its kinetic energy density is the
+# deposit of the particles where they are. One constructor serves N = 2 and 3,
 # so a refusal names the state's N. What stays refused says why: a profile without a window (the
 # static box is the window that never starts).
 @testset "T-1257 what a state of each N takes: the filter and the resort at N = 3, the filter beside an open axis, the current-free step at N = 1 [A2, A10, WP-093]" begin
@@ -555,8 +646,30 @@ end
     @test maximum(abs, free.E0) > 0
     @test same_bits(free.s1.fields.Ex, free.E0) && !same_bits(driven.s1.fields.Ex, driven.E0)
     @test all(c -> all_plus_zero(getfield(free.s1.fields, c)), (:Jx, :Jy, :Jz, :Ey, :Ez, :By, :Bz))
-    @test maximum(abs, free.s1.species[1].u[1] .- free.u0) > 1e-4
+    @test maximum(abs, sort(Array(free.s1.species[1].u[1])) .- sort(Array(free.u0))) > 1e-4   # as sets: the step's sort permutes the slots
     @test same_bits(free.E0, driven.E0) && same_bits(free.u0, driven.u0)                 # the same start
+    # the kinetic energy at N = 1 is a deposition from the segments of the step's sort, and a step
+    # without current sorts all the same: K as the step leaves it has the bits of a sort and a new
+    # deposit (`refresh_caches!`, the identity permutation), the two modes agree on it to the
+    # roundoff of their sums (the momenta are the same bits: the pushes read a field nothing
+    # changes); the particles have changed cells, so the order of `initialize!` is stale
+    kin = map((Reference(), Fast())) do mode
+        s1 = EMState(p1, EMNumerics(; current = NoCurrent(), mode))
+        initialize!(s1, p1)
+        cells() = map(s -> copy(Array(s.cell[1])), s1.species)
+        folded() = (a = copy(s1.K); fold_guards!(a, s1.grid); collect(interior_view(Array(a), s1.grid)))
+        start = cells()
+        run!(s1, params(p1), 30)
+        ParticleMeshElectromagnetic.kinetic!(s1)
+        K, order = folded(), cells()
+        ParticleMeshElectromagnetic.refresh_caches!(s1)
+        (; K, again = folded(), same_order = order == cells(), moved = order != start)
+    end
+    @test same_bits(kin[1].K, kin[1].again) && kin[1].same_order && kin[1].moved
+    worstK = maximum(abs, kin[1].K .- kin[2].K) / (eps(T) * maximum(abs, kin[1].K))
+    record!("T-1257 K", T, worstK)
+    @test worstK <= emC("T-1257")
+    @test sum(kin[1].K) ≈ sum(kin[2].K) rtol = 64 * eps(T)
     # a profile without a window stays refused, and the message says how to get the static box
     wp = window_plasma_3d(T)
     @test_throws "MovingWindow(; start = Inf)" EMProblem("p", wp.length, wp.cells, wp.dt, 2, wp.species, 1, wp.kmode; profile = wp.profile)

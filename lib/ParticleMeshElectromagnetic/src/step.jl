@@ -634,8 +634,18 @@ transverse_currents(::Val{1}) = (; quantity_y = CurrentY(), quantity_z = Current
 transverse_currents(::Val{2}) = (; quantity_z = CurrentZ())
 transverse_currents(::Val{3}) = (;)
 
-# The current of the step, by the numerics' choice: none, or the charge-conserving one.
+# The current of the step, by the numerics' choice: none, or the charge-conserving one. Without a
+# current nothing in the step at N ≥ 2 reads the particles' order. At N = 1 the kinetic energy is
+# a deposition (`kinetic!`), which in a mode that sorts reads the segments of the step's sort, so
+# the 1D step sorts here as the step with a current does (T-1257).
 current!(::NoCurrent, st::EMState) = st
+function current!(::NoCurrent, st::EMState{1})
+    map(deposited_species(st), deposited_workspaces(st)) do s, ws
+        sorts(st, s) && resort_by_cell!(s, st.grid, ws; workgroupsize = st.numerics.workgroupsize)
+        return nothing
+    end
+    return st
+end
 
 # Sort where the deposition mode needs it (the old positions in the extras follow the
 # particles), zero Jx, Jy, Jz, add every species' current with the engine's `deposit_flux!`
@@ -701,7 +711,8 @@ previous step left in `K`; `nothing` observes nothing); then the module's step o
    species' current with the engine's `deposit_flux!` (charge-conserving along the resolved axes,
    `q·w·u/γ` along the others: Jy and Jz at N = 1, Jz at N = 2, none at N = 3), fold the guards, then apply the
    numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`).
-   `NoCurrent()`: J stays as it is;
+   `NoCurrent()`: J stays as it is (at N = 1 the step still sorts where the mode needs it, for
+   the kinetic energy's deposition);
 5. with an open axis 2 (WP-027), retire the particles that crossed the box edge, after the current
    of their last move is deposited;
 6. the mesh solve of the numerics, [`solve_fields!`](@ref) (Yee: B half step, E full step with J,

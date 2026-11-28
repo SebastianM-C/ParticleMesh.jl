@@ -1485,19 +1485,26 @@ measured_tail = { Float32 = 0.35, Float64 = 0.863, "Dual{Float32,3}" = 0.35 }
 effect = "on the absorbers' rows the same ratio is 2.5e4 (Float32) to 2.8e13 (Float64), and the test asserts more than 1e4 there; 735 to 768 of 2880 particles leave at N = 2 and 3604 to 3843 of 16128 at N = 3"
 status = "proposed; the largest over N, the absorbers and the modes (Fast's moves from run to run at more than one thread). tail: of a leaving particle's current, the component along the open axis on the two faces after its last one, relative to eps(T)·max|component| (the Reference deposit's roundoff sum of the weight changes, T-840; exact zeros in Fast with atomics)"
 
+["T-1257"]
+quantity = "the 1D step without current, Reference against Fast after 30 steps of the two beams in their initial field: the kinetic energy density K, folded, the largest difference over the cells"
+scale = "eps(T)·max|K| (the momenta are the same bits in both modes, so the difference is the order of the deposit's sums; 8 particles per cell)"
+C = 16
+measured = { Float64 = 4.27 }
+status = "proposed; in Reference mode K is also the bits of a sort and a new deposit, which the test asserts; Fast's sums move from run to run at more than one thread"
+
 ["T-1260"]
 quantity = "a 3D witness in a uniform Ex: |u_x − (u₀ₓ + n·(q/m)·Ex·Δt)| after n pushes, the largest over the bunch (C); the gain and the weighted mean against m·(γ − γ₀) of that momentum, in the same units; weights: the largest |w − exp(−Σ z_d²/2)|/w over the lattice, in eps(T)"
 scale = "n·eps(T)·u_x (40 steps, 34 pushes, u_x about 3.2); m·n·eps(T)·u_x for the gain (m = 4)"
 C = 1
 weights = 16
-measured = { Float32 = 0.499, Float64 = 0.201, "Dual{Float32,3}" = 0.499, weights = { Float32 = 1.3, Float64 = 0.86, "Dual{Float32,3}" = 1.3 } }
+measured = { Float32 = 0.398, Float64 = 0.595, "Dual{Float32,3}" = 0.398, weights = { Float32 = 1.07, Float64 = 0.954, "Dual{Float32,3}" = 1.07 } }
 status = "proposed; C is T-640's"
 
 ["T-1261"]
 quantity = "a 3D witness of u₀ = 10 in an empty moving window: its window position against lattice point + n·v·Δt − cells moved since the injection, the largest over the bunch"
 scale = "n·eps(T)·L₁ (L₁ = 12, 60 steps)"
 C = 1
-measured = { Float32 = 0.00567, Float64 = 0.00694, "Dual{Float32,3}" = 0.00567 }
+measured = { Float32 = 0.00517, Float64 = 0.0133, "Dual{Float32,3}" = 0.00517 }
 status = "proposed; C is T-641's"
 
 ["T-1262"]

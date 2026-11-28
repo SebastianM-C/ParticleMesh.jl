@@ -162,7 +162,9 @@ distance from the focus shifted by mΔx) a time m·kΔx later, k M4's wavenumber
 their nodes, polarized by cos θ and sin θ. Over every array row (and layer), both components,
 relative to the largest |E| of each column. `laser` is the laser on the plane and `reference` the
 one whose field is written out (for a tabulated 3D ShapedLaser the untabulated laser, whose
-`laser_field` is the pupil sum at the point).
+`laser_field` is the pupil sum at the point). The reference is the field of one image, so for a
+tabulated laser the plane must hold no row on a seam's antipode, where the table has the mean of
+two images (`image_mean`; T-1266 holds those numbers against the pupil sum itself).
 """
 function incident_column_error(st, prob, t; laser = only(params(prob).lasers), reference = laser)
     a = Antenna(laser, only(antenna_planes(st)))

@@ -131,7 +131,7 @@ else
     end
 
     @testset "T-1259 the filter and the sort from the last order of the 3D step on CUDA pass T-1250 to T-1252, T-1254 and T-1255 with the CPU's tolerances, the Reference step bitwise across reruns and launch shapes, and Fast agrees with it [A2, A4, A5, A7, A8, WP-093]" begin
-        rerun_module_on(GPU, (("T-1250", body_T1250), ("T-1251", body_T1251), ("T-1252", body_T1252), ("T-1253", body_T1253_modes),
+        rerun_module_on(GPU, (("T-1250", body_T1250), ("T-1251", body_T1251), ("T-1252", body_T1252), ("T-1252 window", body_T1252_window), ("T-1253", body_T1253_modes),
                               ("T-1254", body_T1254), ("T-1255", be -> body_T1255(be; runs = ((Float32, Reference()), (D3, Reference()))))))
         first = features3d_digests(; be = GPU)
         @test features3d_digests(; be = GPU) == first

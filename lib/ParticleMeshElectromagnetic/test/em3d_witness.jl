@@ -3,7 +3,7 @@
 # along axis 1 and the width along both transverse axes. Reuses no other test file: the problems
 # are em3d_cases.jl's or built here.
 
-using ParticleMeshElectromagnetic: witness_frame, witness_placement
+using ParticleMeshElectromagnetic: witness_frame, witness_placement, check_setup
 
 """
     witness_lattice(b, h, n) -> (points, cells)
@@ -34,18 +34,19 @@ with_witness(p::EMProblem, wb) =
 # --- T-1260 ---------------------------------------------------------------------------------
 
 """
-    witness_in_E_3d(T; nsteps, Ex, center, len, wid, momentum, region, boundaries) -> EMProblem{3}
+    witness_in_E_3d(T; nsteps, Ex, center, len, wid, momentum, region, boundaries, cells, h) -> EMProblem{3}
 
-`witness_in_E` of witness.jl in 3D: a periodic box (`cells`, 16 × 8 × 6 unless given, of 1/2, Δt at
-0.9 of the Courant limit) with no plasma (one species of zero density) and a uniform background field
-`E0 = (Ex, 0, 0)`, and a witness bunch of 2 × 1 × 2 points per cell on the cells with centres in
-((2.1, 5.9), (1, 3), (0.6, 2.4)) (8 × 4 × 4 cells), injected at t = 5.5·Δt (step 7) with
-u₀ = (3, 1/2, 1/4), of charge −2 and mass 4. `boundaries` and an absorber make an axis open.
+`witness_in_E` of witness.jl in 3D: a periodic box (`cells`, 16 × 8 × 6 unless given, of the sizes
+`h`, 1/2 on every axis unless given, Δt at 0.9 of the Courant limit) with no plasma (one species of
+zero density) and a uniform background field `E0 = (Ex, 0, 0)`, and a witness bunch of 2 × 1 × 2
+points per cell on the cells with centres in ((2.1, 5.9), (1, 3), (0.6, 2.4)) (8 × 4 × 4 cells of
+1/2; 8 × 3 × 2 cells of 1/2 × 5/8 × 3/4), injected at t = 5.5·Δt (step 7) with u₀ = (3, 1/2, 1/4),
+of charge −2 and mass 4. `boundaries` and an absorber make an axis open.
 """
 function witness_in_E_3d(::Type{T}; nsteps = 40, Ex = -1 // 20, center = (T(4), T(2), T(3) / 2), len = one(T), wid = T(3) / 2,
                          momentum = (T(3), T(1) / 2, T(1) / 4), region = ((2.1, 5.9), (1, 3), (0.6, 2.4)),
-                         boundaries = (:periodic, :periodic, :periodic), cells = (16, 8, 6)) where {T}
-    L = ntuple(d -> T(cells[d]) / 2, 3)
+                         boundaries = (:periodic, :periodic, :periodic), cells = (16, 8, 6), h = (1 // 2, 1 // 2, 1 // 2)) where {T}
+    L = ntuple(d -> T(cells[d]) * T(h[d]), 3)
     dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:3))) / 10
     e = SpeciesDescription{T}(:electron, -one(T), one(T), zero(T), zero(T), (1, 0, 0), (1, 1, 1), ZERO3(T), ZERO3(T), 1)
     wb = WitnessBunch(; inject = 5.5 * Float64(value_of(dt)), region, ppc = (2, 1, 2), momentum, center, length = len, width = wid,
@@ -60,15 +61,17 @@ end
 # here from the definition in slot order: the length along x, the width along y and along z; with
 # the centre's x and z and the width duals (one partial each) their partials are the closed forms
 # ∂w/∂c_x = w·(x − c_x)/ℓ², ∂w/∂c_z = w·(z − c_z)/σ² and ∂w/∂σ = w·((y − c_y)² + (z − c_z)²)/σ³,
-# while the positions carry none (A3). Across an open z the witnesses of u₀ = (0, 0, 3) whose
-# straight orbit has passed the edge are retired, and no others.
+# while the positions carry none (A3). The cells are 1/2 × 5/8 × 3/4, a different size on every
+# axis, so a weight or a lattice taken with another axis' cell size is another number. Across an
+# open z the witnesses of u₀ = (0, 0, 3) whose straight orbit has passed the edge are retired, and
+# no others.
 function body_T1260(be)
     for T in TYPES
         D = T === D3
         # a centre off the lattice's planes of symmetry along every axis, so that no two points of a line share a weight
         center = (D ? mkdual(65 // 16, 1, 0, 0) : T(65) / 16, T(17) / 8, D ? mkdual(23 // 16, 0, 1, 0) : T(23) / 16)
         wid = D ? mkdual(3 // 2, 0, 0, 1) : T(3) / 2
-        prob = witness_in_E_3d(T; center, wid)
+        prob = witness_in_E_3d(T; center, wid, h = (1 // 2, 5 // 8, 3 // 4))
         @test prob.witness isa WitnessBunch{T,3}
         st = EMState(prob, EMNumerics(; current = NoCurrent()); backend = be)
         initialize!(st, prob)
@@ -85,8 +88,9 @@ function body_T1260(be)
         step!(st, p, k0)
         h = Float64.(value_of.(cellsize(st.grid)))
         pts, cells = witness_lattice(prob.witness, h, ncells(st.grid))
-        @test map(length, cells) == [8, 4, 4]
-        @test witness_alive(st) == length(pts) == 8 * 4 * 4 * 4
+        @test h == [1 / 2, 5 / 8, 3 / 4]
+        @test map(length, cells) == [8, 3, 2] && map(first, cells) == [5, 3, 2]
+        @test witness_alive(st) == length(pts) == 8 * 3 * 2 * 4
         s = witness_frame(st).species
         @test capacity(s) == length(pts)
         for k in (k0 + 1):prob.nsteps
@@ -155,10 +159,10 @@ end
 
 # --- T-1261 ---------------------------------------------------------------------------------
 
-"A 3D window in vacuum (24 × 6 × 6 cells of 1/2, no plasma, moving from t = 0) with a witness bunch of `momentum` on the cells with centres in `region`, 2 × 1 × 2 points per cell, injected at t = 3."
+"A 3D window in vacuum (24 × 6 × 6 cells of 1/2 × 5/8 × 3/4, no plasma, moving from t = 0) with a witness bunch of `momentum` on the cells with centres in `region`, 2 × 1 × 2 points per cell, injected at t = 3."
 function witness_in_window_3d(::Type{T}; momentum, region, nsteps = 60) where {T}
     cells = (24, 6, 6)
-    L = (T(12), T(3), T(3))
+    L = (T(12), T(15) / 4, T(9) / 2)
     dt = 9 * inv(sqrt(sum(d -> (cells[d] / L[d])^2, 1:3))) / 10
     e = SpeciesDescription{T}(:electron, -one(T), one(T), zero(T), zero(T), (1, 0, 0), (1, 1, 1), ZERO3(T), ZERO3(T), 1; momentum = :gaussian_velocity)
     wb = WitnessBunch(; inject = 3, region, ppc = (2, 1, 2), momentum, center = (T(6), T(3) / 2, T(3) / 2), length = T(2))
@@ -168,7 +172,8 @@ end
 
 # T-641 at N = 3: the bunch in the coordinates of the 3D moving window (WP-074's, empty). A fast
 # witness (u₀ = 10 along x) is at its lattice point plus (n − k₀ + 1)·v·Δt minus the cells the
-# window moved since the injection, its y and z the lattice's, and gains nothing; a bunch at rest
+# window moved since the injection, its y and z the lattice's (on cells of another size along
+# each axis), and gains nothing; a bunch at rest
 # moves one cell back with every shift and is retired behind the back edge, so the alive count
 # after each step is the number of lattice points whose cell lies behind no more than the shifts
 # since the injection; a bunch moving backwards leaves through the back edge between shifts and
@@ -194,6 +199,7 @@ function body_T1261(be)
         err = maximum(abs, value_of.(g.x) .- x) / (npush * base_eps(T) * 12)
         record!("T-1261", T, err, be)
         @test err <= emC("T-1261")
+        @test h == [1 / 2, 5 / 8, 3 / 4] && length(unique(q -> q[2], pts)) == 1 && length(unique(q -> q[3], pts)) == 4
         @test value_of.(g.y) ≈ [q[2] for q in pts] rtol = 4 * base_eps(T)
         @test value_of.(g.z) ≈ [q[3] for q in pts] rtol = 4 * base_eps(T)
 
@@ -372,30 +378,44 @@ end
     @test_throws "of 3 axes" with_witness(p3, b2)
     @test_throws "of 2 axes" with_witness(p2, b3)
     @test_throws "N = 2 and 3 only" with_witness(beams_1d(T), b2)
-    # a region outside the box along the third axis is refused by the state
-    far = WitnessBunch(; inject = 1, region = ((1, 2), (1, 2), (0.5, 1e3)), momentum = 1, center = (1, 1, 1), length = 1)
-    @test_throws "axis 3" EMState(with_witness(p3, far), EMNumerics())
-    # the placement on the grid, host integers per axis
-    st = EMState(with_witness(p3, b3), EMNumerics())
+    # the placement on the grid, host integers per axis. The box has 8 × 7 × 6 cells of about
+    # 0.785 × 0.673 × 0.654, so the cells with centres in the region differ from axis to axis:
+    # centres 1.18 and 1.96 along x, 1.01 to 3.03 along y, 0.98 to 2.95 along z
+    bunch(; region = ((1, 2), (0.9, 3.2), (0.5, 3.4)), kw...) = WitnessBunch(; inject = 1, region, momentum = 1, center = (1, 1, 1), length = 1, kw...)
+    pb = with_witness(p3, bunch())
+    st = EMState(pb, EMNumerics())
     f = witness_frame(st)
-    pts, cells = witness_lattice(b3, Float64.(cellsize(st.grid)), ncells(st.grid))
-    @test f.c0 == Tuple(Int32.(map(first, cells))) && f.nc == Tuple(Int32.(map(length, cells))) && f.ppc == (1, 1, 1)
-    @test witness_placement(b3, st.grid, st.dt) == (f.kinj, f.c0, f.nc, f.ppc)
-    @test capacity(f.species) == length(pts) > 0
-    # the tunables: the centre's third coordinate after the second, in the description and the parameters
-    prob = plasma_witness_3d(T)
+    pts, cells = witness_lattice(pb.witness, Float64.(cellsize(st.grid)), ncells(st.grid))
+    @test f.kinj == 4 && f.c0 == (2, 2, 2) && f.nc == (2, 4, 4) && f.ppc == (1, 1, 1)
+    @test f.c0 == Tuple(map(first, cells)) && f.nc == Tuple(map(length, cells))
+    @test capacity(f.species) == length(pts) == 2 * 4 * 4
+    # a region that reaches one cell past the box along the third axis (centre 4.25 of 6 cells to 3.93) is refused by the state
+    @test_throws "axis 3" EMState(with_witness(p3, bunch(; region = ((1, 2), (0.9, 3.2), (0.5, 4.3)))), EMNumerics())
+    @test_throws "axis 2" EMState(with_witness(p3, bunch(; region = ((1, 2), (0.9, 5.1), (0.5, 3.4)))), EMNumerics())
+    # a state takes a problem whose bunch differs in its parameters, and refuses another lattice, injection step, charge or mass
+    @test check_setup(st, with_witness(p3, bunch(; momentum = 2, center = (2, 1, 3), length = 3, width = 2))) isa EMProblem
+    for other in (bunch(; region = ((1, 2), (0.9, 3.2), (0.5, 2.7))), bunch(; region = ((1, 2), (0.9, 2.6), (0.5, 3.4))), bunch(; ppc = (1, 1, 2)),
+                  bunch(; inject = 2), bunch(; charge = 1), bunch(; mass = 2))
+        @test_throws ArgumentError check_setup(st, with_witness(p3, other))
+        @test_throws ArgumentError initialize!(st, with_witness(p3, other))
+    end
+    # the tunables: the centre's third coordinate after the second, then the length and the width, in
+    # the description and the parameters (every value another number, so that each has its place)
+    prob = plasma_witness_3d(T; c = (2.0, 1.5, 1.25), len = 0.75, wid = 1.75)
     names = tunable_names(prob)
     at = findfirst(==(:witness_center_x), names)
     @test names[(at - 3):(at + 4)] == [:witness_momentum_x, :witness_momentum_y, :witness_momentum_z, :witness_center_x, :witness_center_y,
                                        :witness_center_z, :witness_length, :witness_width]
     @test tunable_names(params(prob)) == names
     v = tunables(prob)
-    @test v[(at - 3):(at + 4)] == [2.0, 0.25, -0.5, 2.0, 1.5, 1.0, 1.0, 1.0]
+    @test v[(at - 3):(at + 4)] == [2.0, 0.25, -0.5, 2.0, 1.5, 1.25, 0.75, 1.75]
     w = copy(v)
-    w[at + 2] = 2.25
-    q = with_tunables(prob, w)
-    @test q.witness isa WitnessBunch{T,3} && q.witness.center == (2.0, 1.5, 2.25) && q.witness.region == prob.witness.region
-    @test with_tunables(params(prob), w).witness.center == (2.0, 1.5, 2.25)
+    w[(at + 2):(at + 4)] = [2.25, 0.5, 3.0]
+    q = with_tunables(prob, w).witness
+    @test q isa WitnessBunch{T,3} && q.center == (2.0, 1.5, 2.25) && q.length == 0.5 && q.width == 3.0 && q.region == prob.witness.region
+    qp = with_tunables(params(prob), w).witness
+    @test qp isa ParticleMeshElectromagnetic.WitnessParams{T,3} && qp.momentum == (2.0, 0.25, -0.5) && qp.center == (2.0, 1.5, 2.25) && qp.length == 0.5 && qp.width == 3.0
+    @test with_tunables(prob, v).witness.length == 0.75 && with_tunables(params(prob), v).witness.width == 1.75
     @test tunables(with_tunables(prob, v)) == v
     # the 2D bunch keeps its seven
     n2 = tunable_names(with_witness(p2, b2))

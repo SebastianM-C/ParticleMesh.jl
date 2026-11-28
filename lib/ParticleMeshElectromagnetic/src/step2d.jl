@@ -112,8 +112,10 @@ The binomial filter beside an open axis. The grid under an open axis is periodic
 folds the current of a particle near one edge into the first rows of the other side, at most the
 guard width `g` of rows, and every filter pass carries it one row further. Those rows belong to
 the absorber as long as it has at least `g + passes` cells, and then no current reaches the rows
-between the two layers from across the edge; a thinner absorber is an `ArgumentError`. On the rows
-between the layers the filter is the periodic one (T-1254).
+between the two layers from across the edge; a thinner absorber is an `ArgumentError`. This is the
+unfiltered rule (an absorber of at least `g` cells) with the passes added: the current from across
+the edge stays inside the layer, off its inner edge. On the rows between the layers the filter is
+the periodic one (T-1254).
 """
 function check_filter_fits(f::BinomialFilter, absorber, grid)
     g = guards(grid)
