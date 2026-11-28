@@ -72,7 +72,7 @@ function write_manifest(dir; inputs = String[], extra = Dict{String,Any}(), root
     hashes = get(m, "inputs", Dict{String,Any}())
     for p in inputs
         full = isabspath(p) ? p : joinpath(dir, p)
-        rel = startswith(abspath(full), abspath(dir)) ? relpath(full, dir) : p
+        rel = startswith(abspath(full), joinpath(abspath(dir), "")) ? relpath(full, dir) : p
         hashes[rel] = "sha256:" * file_hash(full)
     end
     m["inputs"] = hashes

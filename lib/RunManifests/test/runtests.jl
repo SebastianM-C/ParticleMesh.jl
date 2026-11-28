@@ -26,6 +26,31 @@ using TOML: TOML
         @test m2["inputs"]["case.toml"] == m["inputs"]["case.toml"] && haskey(m2["inputs"], "summary.json")
         @test m2["step"] == "prepare" && m2["analyzed"] === true
         @test m2 == TOML.parsefile(joinpath(d, "run", "manifest.toml"))
+        # an entry of extra overwrites the one before it, and the time stamp moves
+        sleep(0.01)
+        write_manifest(joinpath(d, "run"); extra = Dict{String,Any}("step" => "analyze"))
+        m3 = read_manifest(joinpath(d, "run"))
+        @test m3["step"] == "analyze" && m3["updated"] > m2["updated"] && m3["inputs"] == m2["inputs"]
+        # the file's keys are sorted, so two runs of the same steps write the same bytes
+        keys_in_file = [m.captures[1] for m in eachmatch(r"^(\w+) ="m, read(joinpath(d, "run", "manifest.toml"), String))]
+        @test issorted(keys_in_file) && "step" in keys_in_file
+        # the bytes as they are, against sha256sum: a final newline, a CR, and a file past 1 MiB
+        write(joinpath(d, "nl.txt"), "abc\n")
+        write(joinpath(d, "crlf.txt"), "a\r\nb\n")
+        write(joinpath(d, "big.txt"), repeat("a", 2^21))
+        @test file_hash(joinpath(d, "nl.txt")) == "edeaaff3f1774ad2888673770c6d64097e391bc362d7d6fb34982ddf0efd18cb"
+        @test file_hash(joinpath(d, "crlf.txt")) == "953bba9ac9726eaea07e844abcf144a0afe998039257c7a88b6665819597f39d"
+        @test file_hash(joinpath(d, "big.txt")) == "5256ec18f11624025905d057d6befb03d77b243511ac5f77ed5e0221ce6d84b5"
+        # three inputs, one given relative but outside, one in a sibling directory whose name
+        # starts with the run directory's: both are outside and recorded by the path given
+        mkpath(joinpath(d, "run2"))
+        sibling = joinpath(d, "run2", "x.txt")
+        write(sibling, "x")
+        write_manifest(joinpath(d, "run"); inputs = ["../nl.txt", sibling, "case.toml"])
+        h = read_manifest(joinpath(d, "run"))["inputs"]
+        @test h["../nl.txt"] == "sha256:edeaaff3f1774ad2888673770c6d64097e391bc362d7d6fb34982ddf0efd18cb"
+        @test h[sibling] == "sha256:" * file_hash(sibling) && !haskey(h, "../run2/x.txt")
+        @test h["case.toml"] == m["inputs"]["case.toml"]
     end
 end
 
@@ -49,6 +74,11 @@ end
     write(txt, "# image: particlemesh-smilei:e4f0148b8952fc87 sha256:$id\n# podman run finished: exit 0\n")
     @test image_from_header(nothing, txt).id == id
     @test image_from_header(joinpath(dir, "absent.log")).id == "unknown"
+    # the first image line wins, an upper-case id is stored in lower case, and a short id or a
+    # line that does not start with the header's mark is no image
+    two = joinpath(dir, "two.txt")
+    write(two, "x # image: other $id\n# image: short id 0123abcd\n# image: first ID $(uppercase(id))\n# image: second $id\n")
+    @test image_from_header(two) == (; name = "first", id)
     write_manifest(dir; extra = Dict{String,Any}("image" => Dict{String,Any}("id" => img.id, "name" => img.name)))
     m = read_manifest(dir)
     @test m["image"]["id"] == id
@@ -65,8 +95,10 @@ end
             @test (c.commit, c.commit_source) == ("unknown", "none")
             @test c.dirty === missing
         end
-        withenv("PM_COMMIT" => "not-a-commit") do
-            @test git_commit(d).commit == "unknown"
+        for bad in ("not-a-commit", sha[1:7], "x" * sha, sha * "0")
+            withenv("PM_COMMIT" => bad) do
+                @test git_commit(d).commit == "unknown"
+            end
         end
         withenv("PM_COMMIT" => sha) do
             c = git_commit(d)
@@ -87,7 +119,14 @@ end
         withenv("PM_COMMIT" => sha) do
             c = git_commit(root)
             @test c.commit_source == "git"
-            @test c.commit != sha && occursin(r"^[0-9a-f]{40}$", c.commit)
+            @test c.commit != sha && occursin(r"^[0-9a-f]{40}$", c.commit) && c.dirty isa Bool
+            # under git the manifest drops a commit_source left by a run without git
+            mktempdir() do d
+                write(joinpath(d, "manifest.toml"), "commit = \"$sha\"\ncommit_source = \"PM_COMMIT\"\n")
+                write_manifest(d; root)
+                m = read_manifest(d)
+                @test m["commit"] == c.commit && !haskey(m, "commit_source") && m["dirty"] == c.dirty
+            end
         end
     else
         println("T-460: the checkout's .git is not visible here; its git half is skipped")
@@ -110,6 +149,18 @@ end
         @test stamp_intervals(f, "# compile start:", "# compile end:") == [100.0, 60.0]
         @test stamp_interval(f, "# never start:", "# never end:") === nothing
         @test stamp_intervals(joinpath(d, "absent.txt"), "a", "b") == Float64[]
+        # milliseconds count; with two complete runs stamp_interval gives the first; an end line
+        # without a start before it adds nothing
+        g = joinpath(d, "two.txt")
+        write(g, """
+            # run a start: 2026-11-02T10:00:00.250Z
+            # run a end: 2026-11-02T10:00:01.500Z
+            # run a end: 2026-11-02T10:00:09.000Z
+            # run a start: 2026-11-02T10:00:10.000Z
+            # run a end: 2026-11-02T10:00:12.000Z
+            """)
+        @test stamp_intervals(g, "# run a start:", "# run a end:") == [1.25, 2.0]
+        @test stamp_interval(g, "# run a start:", "# run a end:") == 1.25
     end
 end
 
@@ -117,6 +168,8 @@ using Aqua
 @testset "T-1242 RunManifests patches nothing: no piracy, no eval, no stale dependencies or missing compat [A6, WP-092]" begin
     Aqua.test_all(RunManifests)
     # no method added to another module's function from outside, and no code evaluated into one
-    src = read(pathof(RunManifests), String)
-    @test !occursin(r"@eval|\beval\(|Core\.eval|Base\.eval", src)
+    srcdir = dirname(pathof(RunManifests))
+    for f in filter(endswith(".jl"), readdir(srcdir; join = true))
+        @test !occursin(r"@eval|\beval\(|Core\.eval|Base\.eval|include_string|Symbol\(\"ev", read(f, String))
+    end
 end
