@@ -179,8 +179,11 @@ end
     @test ForwardDiff.value(Jd) ≈ J rtol = 64eps()
     @test J > 0.05
     ad = ForwardDiff.partials(Jd)
+    # J has small jumps: along the coma, one of about 4e-8 (2e-7 of J) lies between 2^-18 and 2^-16
+    # of its scale from this point, so a step of 2^-16 misses by 1.1 %. The step is small enough that
+    # the interval rarely holds one: at 2^-18 all three directions agree to 5e-10.
     for (q, i) in enumerate(dirs)
-        h = PULSE3_BOX.scale[i] * 2.0^-16
+        h = PULSE3_BOX.scale[i] * 2.0^-18
         xp, xm = copy(x0), copy(x0)
         xp[i] += h; xm[i] -= h
         fd = (pulse3_small(xp) - pulse3_small(xm)) / 2h
