@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "7af01edfd544ea726bd8ad79faeaf1b627c18429"
+project_hash = "5157e49f2398dad644331b5feaeaae5dc63fda2c"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -928,6 +928,24 @@ version = "2.23.4"
     NVPTX_LLVM_Backend_jll = "ef6e0fe3-e6ef-59c0-bde6-4989574699e0"
     SPIRV_LLVM_Backend_jll = "4376b9bf-cff8-51b6-bb48-39421dff0d0c"
     SPIRV_LLVM_Translator_jll = "4a5d46fc-d8cf-5151-a261-86b458210efb"
+
+[[deps.GPUDiagnostics]]
+deps = ["Adapt", "KernelAbstractions", "LinearAlgebra", "Statistics", "TOML", "Tables"]
+git-tree-sha1 = "0f6e3859f22d3520fbac64c5036d26d40777c39d"
+repo-rev = "681f6691cbf4bc59c6a4ff179c60a57cc0aa5df9"
+repo-url = "https://github.com/SebastianM-C/GPUDiagnostics.jl"
+uuid = "5ccc9b3c-1187-41e2-9266-b19f02873332"
+version = "0.6.0"
+
+    [deps.GPUDiagnostics.extensions]
+    GPUDiagnosticsAMDGPUExt = ["AMDGPU", "GPUCompiler", "LLVM"]
+    GPUDiagnosticsCUDAExt = ["CUDA", "GPUCompiler", "LLVM"]
+
+    [deps.GPUDiagnostics.weakdeps]
+    AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+    GPUCompiler = "61eb1bfa-7361-4325-ad38-22787b887f55"
+    LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
 
 [[deps.GPUToolbox]]
 git-tree-sha1 = "5d825bab8a72d96e350e47e30616cf6a4b02fb49"

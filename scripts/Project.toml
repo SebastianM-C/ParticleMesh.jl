@@ -5,6 +5,7 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GPUDiagnostics = "5ccc9b3c-1187-41e2-9266-b19f02873332"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
@@ -24,6 +25,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [sources]
+GPUDiagnostics = {rev = "681f6691cbf4bc59c6a4ff179c60a57cc0aa5df9", url = "https://github.com/SebastianM-C/GPUDiagnostics.jl"}
 ParticleMesh = {path = ".."}
 ParticleMeshElectromagnetic = {path = "../lib/ParticleMeshElectromagnetic"}
 
@@ -32,6 +34,7 @@ CUDA = "6.5"
 CUDACore = "6"
 DifferentiationInterface = "0.7"
 ForwardDiff = "1"
+GPUDiagnostics = "0.6"
 HDF5 = "0.17"
 KernelAbstractions = "0.10.8"
 MadNLP = "0.11"
