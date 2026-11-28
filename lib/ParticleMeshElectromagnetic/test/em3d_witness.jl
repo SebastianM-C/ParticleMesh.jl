@@ -88,7 +88,7 @@ function body_T1260(be)
         step!(st, p, k0)
         h = Float64.(value_of.(cellsize(st.grid)))
         pts, cells = witness_lattice(prob.witness, h, ncells(st.grid))
-        @test h == [1 / 2, 5 / 8, 3 / 4]
+        @test h == (1 / 2, 5 / 8, 3 / 4)
         @test map(length, cells) == [8, 3, 2] && map(first, cells) == [5, 3, 2]
         @test witness_alive(st) == length(pts) == 8 * 3 * 2 * 4
         s = witness_frame(st).species
@@ -199,7 +199,7 @@ function body_T1261(be)
         err = maximum(abs, value_of.(g.x) .- x) / (npush * base_eps(T) * 12)
         record!("T-1261", T, err, be)
         @test err <= emC("T-1261")
-        @test h == [1 / 2, 5 / 8, 3 / 4] && length(unique(q -> q[2], pts)) == 1 && length(unique(q -> q[3], pts)) == 4
+        @test h == (1 / 2, 5 / 8, 3 / 4) && length(unique(q -> q[2], pts)) == 1 && length(unique(q -> q[3], pts)) == 4
         @test value_of.(g.y) ≈ [q[2] for q in pts] rtol = 4 * base_eps(T)
         @test value_of.(g.z) ≈ [q[3] for q in pts] rtol = 4 * base_eps(T)
 
