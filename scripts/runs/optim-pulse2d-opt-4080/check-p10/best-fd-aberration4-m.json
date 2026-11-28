@@ -1,0 +1,52 @@
+{
+  "J": 0.22629124565294143,
+  "J_born": 0.22629124565294143,
+  "J_plasma": 0.0,
+  "a0": 1.8976211123533206,
+  "cells": [
+    448,
+    256
+  ],
+  "dark_energy": 10.546931105334487,
+  "dark_weight": 0.6567020781815812,
+  "direction": 3,
+  "eltype": "Float64",
+  "envelope_centroid": -0.41666666666666663,
+  "envelope_duration": 8.370605528993243,
+  "fast_born_window": 0.011742989744332567,
+  "fast_plasma_window": 0.6567020781815812,
+  "free": [
+    110.0,
+    -0.0058053959097951234,
+    -0.11873083650309205,
+    10.477399863393817,
+    -30.0
+  ],
+  "gather": "compensated",
+  "gradient": null,
+  "h": 0.000244140625,
+  "id": "best-fd-aberration4-m",
+  "launched_box": 0.9961714896746632,
+  "launched_interior": 0.9848800695551522,
+  "mean_energy_born": 19.105368034815665,
+  "mean_energy_plasma": 0.0,
+  "ny": 2,
+  "particles": 520823,
+  "point": "best",
+  "ppl": 32,
+  "seconds": 54.936273096,
+  "sign": -1,
+  "start": "r1",
+  "strehl": 0.955088321777428,
+  "ux_max_born": 25.42561005203007,
+  "ux_max_plasma": 21.94030786974581,
+  "weight_born": 0.011844380345909665,
+  "weight_plasma": 0.0,
+  "z": [
+    1.375,
+    -0.023221583639180494,
+    -0.4749233460123682,
+    1.0477399863393817,
+    -1.2
+  ]
+}
