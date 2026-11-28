@@ -47,6 +47,7 @@ ulps(a, b) = abs(Float64(a) - Float64(b)) / Float64(eps(max(abs(b), floatmin(typ
 if GPU_BACKEND === nothing
     println(gpu_skip_line(GPU_SWITCH))
 else
+    gpu_hold() === nothing || println("GPU queue: the GPU testsets got their turn through PM_GPU_HOLD")
     CUDACore.allowscalar(false)
     const GPU = GPU_BACKEND
     println("GPU tests (WP-013) on ", CUDACore.name(CUDACore.device()), ": ", GPU_SWITCH.reason)
