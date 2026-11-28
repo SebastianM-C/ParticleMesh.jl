@@ -1,0 +1,5 @@
+# smilei binary: /usr/local/bin/smilei
+# threads: 16, cpus: 16
+# cpu model: AMD EPYC 9655 96-Core Processor
+# start: 2026-11-28T06:31:06.179755932Z
+# end: 2026-11-28T06:49:09.865988122Z
