@@ -1,0 +1,6 @@
+timeout = 14400
+category = "test"
+outputs = []
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "scripts/optim/test/pulse3d.jl"]
