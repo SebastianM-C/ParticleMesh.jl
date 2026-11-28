@@ -28,7 +28,7 @@ function body_T440(be)
     for T in TYPES, g0 in FILTER_GRIDS, p in (1, 2, 3, 5)
         grid = grid_T(g0, T)
         n, N = grid.n, length(grid.n)
-        A = [rand_T(rng, T) for _ in CartesianIndices(n)]
+        A = [filter_rand(rng, T) for _ in CartesianIndices(n)]
         a, s = guarded(grid, A, T(1000), T(NaN))
         a, s = todev(be, a), todev(be, s)
         binomial!(a, s, grid, p)
@@ -92,7 +92,7 @@ function body_T440(be)
             @test all_plus_zero(collect(interior_view(Array(a), grid)))
             # mirror symmetry along d: j − 1 ↦ −(j − 1) mod n_d
             mirror(I) = CartesianIndex(ntuple(k -> k == d ? mod(-(I[k] - 1), n[k]) + 1 : I[k], N))
-            B = [rand_T(rng, T) for _ in CartesianIndices(n)]
+            B = [filter_rand(rng, T) for _ in CartesianIndices(n)]
             S = [B[I] + B[mirror(I)] for I in CartesianIndices(n)]
             a, s = guarded(grid, S, zero(T), T(NaN))
             a, s = todev(be, a), todev(be, s)
@@ -101,7 +101,7 @@ function body_T440(be)
             @test all(I -> same_bits([O[I]], [O[mirror(I)]]), CartesianIndices(n))
             @test !all(I -> same_bits([O[I]], [O[CartesianIndices(n)[1]]]), CartesianIndices(n))   # not trivially constant
         end
-        A = [rand_T(rng, T) for _ in CartesianIndices(n)]
+        A = [filter_rand(rng, T) for _ in CartesianIndices(n)]
         a, s = guarded(grid, A, T(7), T(NaN))
         a0, s0 = copy(a), copy(s)
         a, s = todev(be, a), todev(be, s)
@@ -292,9 +292,9 @@ end
         grid = grid_T(FILTER_GRIDS[2], T)
         rng = Xoshiro(444)
         f = em_fields(CPU(), T, grid)
-        foreach(a -> (a .= [rand_T(rng, T) for _ in CartesianIndices(a)]), f)
+        foreach(a -> (a .= [filter_rand(rng, T) for _ in CartesianIndices(a)]), f)
         s = field(CPU(), T, grid)
-        s .= [rand_T(rng, T) for _ in CartesianIndices(s)]
+        s .= [filter_rand(rng, T) for _ in CartesianIndices(s)]
         f0, s0 = map(copy, f), copy(s)
         filter_current!(BinomialFilter(0), f, grid, s)
         @test all(c -> same_bits(getfield(f, c), getfield(f0, c)), keys(f)) && same_bits(s, s0)

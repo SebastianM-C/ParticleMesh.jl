@@ -48,7 +48,7 @@ function body_T1250(be)
     for T in TYPES, p in (1, 2, 3)
         grid = grid_T(FILTER_GRID_3D, T)
         n = grid.n
-        A = [rand_T(rng, T) for _ in CartesianIndices(n)]
+        A = [filter_rand(rng, T) for _ in CartesianIndices(n)]
         a, s = guarded(grid, A, T(1000), T(NaN))
         a, s = todev(be, a), todev(be, s)
         binomial!(a, s, grid, p)
@@ -84,7 +84,7 @@ function body_T1250(be)
         @test all(x -> same_bits([x], [c]), collect(interior_view(Array(a), grid)))
         for d in 1:3
             mirror(I) = CartesianIndex(ntuple(k -> k == d ? mod(-(I[k] - 1), n[k]) + 1 : I[k], 3))
-            B = [rand_T(rng, T) for _ in CartesianIndices(n)]
+            B = [filter_rand(rng, T) for _ in CartesianIndices(n)]
             S = [B[I] + B[mirror(I)] for I in CartesianIndices(n)]
             a, s = guarded(grid, S, zero(T), T(NaN))
             a, s = todev(be, a), todev(be, s)
@@ -99,7 +99,7 @@ function body_T1250(be)
             binomial!(a, s, grid, 1)
             @test all_plus_zero(collect(interior_view(Array(a), grid)))
         end
-        A = [rand_T(rng, T) for _ in CartesianIndices(n)]
+        A = [filter_rand(rng, T) for _ in CartesianIndices(n)]
         a, s = guarded(grid, A, T(7), T(NaN))
         a0, s0 = copy(a), copy(s)
         a, s = todev(be, a), todev(be, s)

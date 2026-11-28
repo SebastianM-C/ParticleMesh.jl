@@ -18,8 +18,8 @@ function binomial_host(a::AbstractArray{T,N}, passes) where {T,N}
 end
 
 "A random value of `T` in [−1, 1) (each partial of a dual drawn too)."
-rand_T(rng, ::Type{T}) where {T<:AbstractFloat} = T(2rand(rng) - 1)
-rand_T(rng, ::Type{Dual{Nothing,V,N}}) where {V,N} = Dual{Nothing}(V(2rand(rng) - 1), ntuple(_ -> V(2rand(rng) - 1), N)...)
+filter_rand(rng, ::Type{T}) where {T<:AbstractFloat} = T(2rand(rng) - 1)
+filter_rand(rng, ::Type{Dual{Nothing,V,N}}) where {V,N} = Dual{Nothing}(V(2rand(rng) - 1), ntuple(_ -> V(2rand(rng) - 1), N)...)
 
 "The value and each partial of an array of `T`, as BigFloat arrays (exact conversions)."
 component_arrays(A::AbstractArray{<:AbstractFloat}) = [BigFloat.(A)]
