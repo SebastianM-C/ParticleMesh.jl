@@ -92,7 +92,7 @@ function pulse3_run_point(x; ppl::Integer, nt::Integer = 1, float::Type{<:Abstra
     dirs = collect(directions)
     runs = grad ? [dirs[c] for c in gradient_chunks(length(dirs), chunk)] : [Int[]]
     Js, gradient, seconds = Float64[], zeros(n), Float64[]
-    summary, launched, cells = nothing, nothing, nothing
+    summary, launched, cells, state_eltype = nothing, nothing, nothing, ""
     for c in runs
         arg(i) = grad ? ForwardDiff.Dual{Nothing}(F(x[i]), ntuple(j -> F(c[j] == i), length(c))) : F(x[i])
         xs = [arg(i) for i in 1:n]
@@ -105,7 +105,7 @@ function pulse3_run_point(x; ppl::Integer, nt::Integer = 1, float::Type{<:Abstra
         push!(Js, Float64(value_of(J)))
         grad && (gradient[c] .= Float64.(ForwardDiff.partials(J)))
         push!(seconds, t)
-        summary === nothing && (summary = trapped_summary3(st; read...))
+        summary === nothing && (summary = trapped_summary3(st; read...); state_eltype = string(eltype(st.ρ)))
         cells = collect(ncells(st.grid))
         st = nothing
         GC.gc()
@@ -127,6 +127,7 @@ function pulse3_run_point(x; ppl::Integer, nt::Integer = 1, float::Type{<:Abstra
     out["seconds"] = sum(seconds)
     out["seconds_runs"] = seconds
     out["eltype"] = string(F)
+    out["state_eltype"] = state_eltype
     out["ppl"], out["nt"] = ppl, nt
     out["cells"] = cells
     return out

@@ -128,6 +128,9 @@ end
     @test_throws ArgumentError trapped3d_problem(6.0, 10.0, 80.0, 54.0, 0.072; shape = pulse3_shape(x))      # a shape needs its a0
     # Float32 by default, as the 3D case; duals of Float32 stay Float32 duals through the table
     @test eltype(params(pulse3_problem(x; ppl = 8))) === Float32
+    xd32 = [ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32(j == i), 3)) for (i, v) in enumerate(x)]
+    @test eltype(params(pulse3_problem(xd32; ppl = 8))) === ForwardDiff.Dual{Nothing,Float32,3}      # the energy and a₀ do not promote the duals to Float64
+    @test pulse3_a0(pulse3_shape(xd32)) isa ForwardDiff.Dual{Nothing,Float32,3}
     st, p, _ = pulse3_start([ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32((i, j) in ((5, 1), (13, 2))), 2)) for (i, v) in enumerate(x)];
                             merge(SMALL3, (; float = Float32))..., capacity = 1000)
     t = p.lasers[1].profile
@@ -225,6 +228,7 @@ end
     @test rec["a0"] == pulse3_a0(pulse3_shape(x)) && 0 < rec["strehl"] < 1 && rec["z"] == x ./ PULSE3_BOX.scale
     @test 0 < rec["launched_interior"] < rec["launched_box"] < 1 && rec["envelope_duration"] > PCASE3.duration
     @test rec["cells"] == [112, 48, 48] && rec["chunk"] == 2 && length(rec["seconds_runs"]) == 2
+    @test rec["state_eltype"] == string(ForwardDiff.Dual{Nothing,Float64,2})        # the run's own element type, the partials of a chunk
 end
 
 @testset "T-1237 the 3D check's directions and central differences from records [WP-087]" begin

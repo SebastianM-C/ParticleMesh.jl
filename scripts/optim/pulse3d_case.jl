@@ -100,18 +100,23 @@ end
 "The case's numerical aperture, `PCASE3.na`: the one whose unaberrated round focus has the base Gaussian's intensity FWHM, to 10⁻⁶ (T-1230)."
 pulse3_na() = PCASE3.na
 
-"The 3D antenna's laser of `shape` at `a0` with the case's delay and `focus`, its center the 3D case's axis at `rows`·`nt` cells (only the energy and the shape are read from it)."
-pulse3_unit(shape; a0 = 1.0, focus = PCASE3.x0[1], rows::Integer = BCASE.rows, nt::Integer = 1) =
-    ShapedLaser(; a0, delay = PCASE3.delay, focus, position = 0.0, center = (rows * π / 8, rows * π / 8), shape.profile, shape.envelope)
+"The 3D antenna's laser of `shape` at a₀ = 1 with the case's delay and `focus`, in the element type `T` (the shape's), its center the 3D case's axis (only the energy and the shape are read from it)."
+pulse3_unit(shape; T = typeof(shape.profile.na), focus = PCASE3.x0[1], rows::Integer = BCASE.rows) =
+    ShapedLaser(; a0 = one(T), delay = T(PCASE3.delay), focus = T(focus), polarization = zero(T), phase = zero(T), position = 0.0,
+                center = (rows * π / 8, rows * π / 8), shape.profile, shape.envelope)
 
 """
     pulse3_a0(shape; energy = budget3()) -> a₀
 
 The a₀ at which a 3D [`ShapedLaser`](@ref) of `shape` carries `energy` (`laser_energy`), in the
-shape's element type. A phase-only shape's energy does not depend on the free parameters, so
-neither does a₀, exactly: its partials are zero.
+shape's element type (a Float32 dual stays one: the energy and the unit laser are taken in it). A
+phase-only shape's energy does not depend on the free parameters, so neither does a₀, exactly: its
+partials are zero.
 """
-pulse3_a0(shape; energy = budget3(PCASE3.a0_energy)) = sqrt(energy / laser_energy(pulse3_unit(shape)))
+function pulse3_a0(shape; energy = budget3(PCASE3.a0_energy))
+    T = typeof(shape.profile.na)
+    return sqrt(convert(T, energy) / laser_energy(pulse3_unit(shape; T)))
+end
 
 """
     check_pulse3_time(shape; delay, start)
