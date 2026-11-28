@@ -4,7 +4,8 @@ name: Janitor
 # minor findings the review gate files as `follow-up` issues become small pull requests, one per issue,
 # closed by `Fixes #<n>`. A cheap job first checks whether any open follow-up issue still has something
 # for the janitor (unchecked items, no open janitor PR for it, and not parked by the janitor's own last
-# comment) and skips the session when none does or when three janitor PRs are already open. It acts on
+# comment) and skips the session when none does or when three janitor PRs are already open, unless one
+# of the janitor's own PRs has a "changes requested" review to answer. It acts on
 # GitHub as the factory app, like the package manager, so its PRs trigger CI and the review gate. Sonnet
 # at high effort: the work is mechanical by design, and the brief sends everything else back to the issue.
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN, FACTORY_APP_ID, FACTORY_APP_PRIVATE_KEY.
@@ -49,13 +50,23 @@ jobs:
           owned=$(gh pr list --state open --limit 100 --json headRefName \
             --jq '[.[] | .headRefName | select(startswith("janitor/")) | ltrimstr("janitor/") | tonumber?]')
           pending=$(printf '%s' "$owned" | jq 'length')
+          # A janitor PR whose current head has a "changes requested" review is the janitor's to answer
+          # (it pushes the fix or closes the PR, step 1 of the brief), and that does not wait for the cap
+          # below, or three rejected PRs would stop every run. A review made on an earlier head is not
+          # counted, so a pushed fix waits for the gate and does not start a session each hour.
+          answer=$(gh pr list --state open --limit 100 --json headRefName,headRefOid,reviews \
+            --jq '[.[] | select(.headRefName | startswith("janitor/"))
+              | select(.headRefOid as $h
+                | [(.reviews // [])[] | select(.state == "CHANGES_REQUESTED" or .state == "APPROVED")]
+                | sort_by(.submittedAt) | last
+                | . != null and .state == "CHANGES_REQUESTED" and .commit.oid == $h)] | length')
           # An unchecked item is work unless the janitor's own comment (the factory app, starting `Janitor:`)
           # parked the issue. A parked issue comes back when someone else comments (the gate adding items,
           # the owner asking for a re-triage) or when a PR named in its `<!-- janitor: blocked-by=... -->`
           # marker is no longer open. A PR closes once, and the next comment can name only PRs open then,
           # so each blocker releases an issue at most once and nothing the janitor does re-wakes it in a loop.
           open_prs=$(gh pr list --state open --limit 200 --json number --jq '[.[].number]')
-          open=$(gh issue list --label follow-up --state open --limit 100 --json number,body,comments \
+          open=$(gh issue list --label follow-up --state open --limit 500 --json number,body,comments \
             | jq --argjson owned "$owned" --argjson prs "$open_prs" '
               def blockers: [capture("<!-- janitor: blocked-by=(?<l>[0-9, ]+) -->") | .l
                 | split(",")[] | gsub(" "; "") | select(length > 0) | tonumber];
@@ -68,9 +79,11 @@ jobs:
               | select(.number as $n | $owned | index($n) | not)
               | select(parked | not)
             ] | length')
-          echo "follow-up issues with work for the janitor: $open; janitor PRs open: $pending"
+          echo "follow-up issues with work for the janitor: $open; janitor PRs open: $pending, of them with a review to answer: $answer"
           # The cap keeps a failing gate or a waiting owner from turning the hourly schedule into a pile.
-          if [ "$open" = 0 ] || [ "$pending" -ge 3 ]; then
+          if [ "$answer" -gt 0 ]; then
+            echo "work=true" >> "$GITHUB_OUTPUT"
+          elif [ "$open" = 0 ] || [ "$pending" -ge 3 ]; then
             echo "work=false" >> "$GITHUB_OUTPUT"
           else
             echo "work=true" >> "$GITHUB_OUTPUT"
@@ -114,7 +127,8 @@ jobs:
           prompt: |
             REPO: ${{ github.repository }}
             You are the janitor role of this repository. Your brief is .claude/agents/janitor.md in this
-            checkout of the default branch; the contract is CLAUDE.md. Work through the open `follow-up`
+            checkout of the default branch; the contract is CLAUDE.md. Answer your own pull requests that
+            have a "changes requested" review first, then work through the open `follow-up`
             issues as the brief says: one `janitor/<issue>` branch and one pull request per issue, pushed
             with `git push -u origin HEAD`, opened with `gh pr create --body-file`, auto-merge enabled with
             `gh pr merge --auto --squash`, and a comment on the issue with what you took and what you left.
@@ -122,4 +136,4 @@ jobs:
           claude_args: |
             --model claude-sonnet-5-5
             --max-turns 60
-            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git ls-remote:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin HEAD),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Read,Edit,Write,Grep,Glob"
+            --allowedTools "Bash(julia:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git fetch:*),Bash(git ls-remote:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git restore:*),Bash(git commit:*),Bash(git push -u origin HEAD),Bash(git push origin HEAD),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Read,Edit,Write,Grep,Glob"
