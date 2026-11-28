@@ -1,0 +1,17 @@
+branch = "runs/wp086-5090"
+commit = "ed3a86bd374ac14f341ba8bd8701ce7c64f3bbf0"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261127T182615/01-grad-ppl=32-dual=1,2,3,4-dual4=0-c=12-host=1-cap=0.2-default.log"
+bytes = 22864
+sha256 = "10f741f22b86221ccdf69ab6eb0f5f960e411a2d90f88ffd0fc70975be8180b7"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261127T182615/01-grad-ppl=32-dual=1,2,3,4-dual4=0-c=12-host=1-cap=0.2-default.nvsmi.csv"
+bytes = 70060
+sha256 = "0db76e466f2499dea7f668e952351a82f42174373200cee03f46d195043bda89"
+
+[[files]]
+path = "scripts/runs/enzyme-trapped3d-gpu-20261127T182615/summary.txt"
+bytes = 3023
+sha256 = "ccb4e3e742fcfb09fa6e27850ca3d214849b2f907b28ae2322fbe344da353fb0"

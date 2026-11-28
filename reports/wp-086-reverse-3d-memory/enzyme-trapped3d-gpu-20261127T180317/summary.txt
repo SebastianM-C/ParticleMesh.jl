@@ -1,0 +1,33 @@
+# commit 9e0ec7ae0d06eac26960cb83a400ac0ca4d00560, patches scripts/enzyme/active_reduce.jl, started 2026-11-27T18:03:17Z
+NVIDIA GeForce RTX 5090, 615.71.09, 32607 MiB, 925 MiB
+== 18:03:17 grad ppl=16 dual=1,2,3,4 dual4=0 c=12 host=1 (heap default)
+# 18:03:17 other thread's pid 2004485 at this run's start: gone; all compute apps: 60044, /usr/bin/kwin_wayland, 64 MiB;
+   exit 0 at 18:26:13
+[18:03:25] start: θ [6.0, 10.0, 80.0, 0.072], keys Dict("dual4" => "0", "ppl" => "16", "dual" => "1,2,3,4", "c" => "12", "host" => "1"), backend CUDABackend(false, false, false) (pool used 0.00 GiB)
+[18:03:43] warm-up: (112, 64, 64) cells, 697 steps, 1146880 plasma slots, 580608 born slots; state 0.63 GiB in floating-point arrays (0.77 GiB in all), one checkpoint 0.10 GiB, 4 checkpoints in host memory (pool used 0.00 GiB)
+[18:03:51] warm-up: plain run 5.7 s, J = 0.00034263774, peak 0.77 GiB (pool used 0.77 GiB)
+[18:09:58] warm-up: reverse pass 366.8 s (526.2 ms per step), J from its forward sweep 0.00034263773, peak 9.73 GiB, shadow 0.13 GiB new (pool used 5.31 GiB)
+    dJ/dduration reverse -1.31526538e-04 (start +0.000e+00, parameters -1.315e-04)
+    dJ/dwaist    reverse -3.90166974e-04 (start +0.000e+00, parameters -3.902e-04)
+    dJ/dfocus    reverse +4.52094509e-05 (start +0.000e+00, parameters +4.521e-05)
+    dJ/ddensity  reverse +4.44907181e-02 (start +3.001e-03, parameters +4.149e-02)
+[18:10:13] warm-up: after the reverse pass (pool used 0.00 GiB)
+[18:10:51] warm-up: Dual{4} 29.7 s, peak 3.30 GiB; relative differences [8.67e-7, 4.04e-6, 5.01e-7, 3.45e-6] (pool used 3.30 GiB)
+[18:10:52] run: (224, 128, 128) cells, 985 steps, 9175040 plasma slots, 2032128 born slots; state 4.66 GiB in floating-point arrays (5.58 GiB in all), one checkpoint 0.60 GiB, 12 checkpoints in host memory (pool used 0.00 GiB)
+[18:11:18] run: plain run 24.5 s, J = 0.0036936977, peak 5.62 GiB (pool used 5.62 GiB)
+[18:12:27] run: Dual{1} in duration 66.6 s, dJ/dduration -4.28706961e-04, peak 10.33 GiB (pool used 10.33 GiB)
+[18:13:31] run: Dual{1} in waist 62.6 s, dJ/dwaist -9.26968700e-04, peak 10.33 GiB (pool used 10.33 GiB)
+[18:14:35] run: Dual{1} in focus 62.6 s, dJ/dfocus +8.58044194e-04, peak 10.33 GiB (pool used 10.33 GiB)
+[18:15:38] run: Dual{1} in density 62.6 s, dJ/ddensity +6.36448383e-01, peak 10.33 GiB (pool used 10.33 GiB)
+[18:26:07] run: reverse pass 627.6 s (637.2 ms per step), J from its forward sweep 0.0036936978, peak 25.47 GiB, shadow 0.79 GiB new (pool used 24.60 GiB)
+    dJ/dduration reverse -4.28697466e-04 (start +0.000e+00, parameters -4.287e-04)
+    dJ/dwaist    reverse -9.27000688e-04 (start +0.000e+00, parameters -9.270e-04)
+    dJ/dfocus    reverse +8.58047326e-04 (start +0.000e+00, parameters +8.580e-04)
+    dJ/ddensity  reverse +6.36456620e-01 (start +1.613e-02, parameters +6.203e-01)
+[18:26:11] run: after the reverse pass (pool used 0.00 GiB)
+[18:26:12] run: dJ/dduration Dual{1} -4.28706961e-04, reverse -4.28697466e-04, relative difference 2.21e-05 (pool used 0.00 GiB)
+[18:26:12] run: dJ/dwaist Dual{1} -9.26968700e-04, reverse -9.27000688e-04, relative difference 3.45e-05 (pool used 0.00 GiB)
+[18:26:12] run: dJ/dfocus Dual{1} +8.58044194e-04, reverse +8.58047326e-04, relative difference 3.65e-06 (pool used 0.00 GiB)
+[18:26:12] run: dJ/ddensity Dual{1} +6.36448383e-01, reverse +6.36456620e-01, relative difference 1.29e-05 (pool used 0.00 GiB)
+wrote scripts/runs/enzyme-trapped3d-grad-20261127T182612
+# finished 2026-11-27T18:26:13Z

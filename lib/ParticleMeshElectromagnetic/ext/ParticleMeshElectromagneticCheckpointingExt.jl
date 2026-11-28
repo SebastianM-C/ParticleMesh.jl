@@ -5,12 +5,14 @@ A storage backend for Checkpointing.jl's schemes over loops that step `EMState`s
 `EvolvedStorage`, which `checkpoint_storage` returns. It implements Checkpointing.jl's storage
 interface (`save!`, `load!`, `similar`, `length`, as its own `ArrayStorage` and `HDF5Storage` do):
 a checkpoint is a copy of the `evolved` arrays of every state the loop body captures, allocated at
-the first store into a slot and copied into after that, and a restore is `restore!`.
+the first store into a slot and copied into after that, and a restore is `restore!`. And the working copy of a
+`StepBody` (`checkpoint_alloc`, `checkpoint_copy!`): a `StepBody` over `working_state`, the evolved
+arrays alone (WP-086).
 """
 module ParticleMeshElectromagneticCheckpointingExt
 
 using ParticleMeshElectromagnetic
-using ParticleMeshElectromagnetic: EMState, evolved, restore!, copy_arrays!
+using ParticleMeshElectromagnetic: EMState, StepBody, evolved, restore!, copy_arrays!, working_state
 import Checkpointing
 using Checkpointing: AbstractStorage
 
@@ -97,6 +99,18 @@ function Checkpointing.load!(body::FT, s::EvolvedStorage{FT}, i::Integer) where 
     slot === nothing && throw(ArgumentError("checkpoint_storage: checkpoint $i was restored before it was stored"))
     foreach(restore!, states_of(body), slot)
     return body
+end
+
+# The reverse sweep's working copy of a `StepBody`: `Revolve` takes one at the first u-turn and
+# `Periodic` at the end of its forward sweep, and each steps it through the reverse sweep;
+# `ArrayStorage` (`Periodic`'s steps inside a period) takes its slots so.
+# Of the state only the evolved arrays are new (`working_state`); the function and the parameters'
+# reference are the body's.
+Checkpointing.checkpoint_alloc(b::StepBody) = StepBody(b.f, working_state(b.state), b.params)
+
+function Checkpointing.checkpoint_copy!(dst::StepBody, src::StepBody)
+    dst === src || restore!(dst.state, evolved(src.state))
+    return dst
 end
 
 end

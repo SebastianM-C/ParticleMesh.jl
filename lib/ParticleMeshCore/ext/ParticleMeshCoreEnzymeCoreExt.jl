@@ -7,7 +7,8 @@ Enzyme differentiates `deposit!`, `gather!`, `deposit_flux!` (N = 1 to 3), `sort
 hand-written pullbacks (`deposit_pullback!`, `gather_pullback!`, `flux_pullback!`,
 `sort_pullback!`) instead of differentiating the kernels. So Enzyme keeps no tape of the transfer
 kernels, and the sort, whose permutation of the species' arrays Enzyme does not differentiate
-(#509 and the WP-050 notes), is the inverse permutation of the shadow.
+(#509 and the WP-050 notes), is the inverse permutation of the shadow. `add_count!`, an integer
+count, is declared inactive (WP-086).
 
 What the rules tape: a copy of the species' arrays (the pullbacks read the positions, weights and
 quantities of the forward call, which a later push or sort overwrites, and Enzyme's `overwritten`
@@ -63,6 +64,9 @@ field_shadow(x::Const) = fill!(similar(x.val), zero(eltype(x.val)))
 for f in (:deposit!, :gather!, :deposit_flux!, :sort_by_cell!, :resort_by_cell!)
     @eval EnzymeRules.inactive_kwarg(::typeof($f), args...; kwargs...) = nothing
 end
+
+# A module's integer counts of flagged slots: no derivative, run as they are (#551, WP-086).
+EnzymeRules.inactive(::typeof(ParticleMeshCore.add_count!), args...) = nothing
 
 # --- deposit! ---------------------------------------------------------------------------------
 
