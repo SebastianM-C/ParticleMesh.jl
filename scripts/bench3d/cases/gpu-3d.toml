@@ -14,9 +14,10 @@ courant = 0.95                    # Δt = 0.95/√(3/Δx²) = 0.1077
 density = 0.072
 thermal_velocity = 0.05           # v_th per component (c); PIConGPU's T = mₑv_th² = 1.28 keV
 float = "Float32"
-steps = 400
-warmup = 100                      # the steady time per step counts from the first timing point at or after this step
-block = 20                        # ParticleMesh synchronizes every block steps; PIConGPU prints every 5 % (20 steps of 400)
+steps = 800
+warmup = 400                      # the steady time per step counts from the first timing point at or after this step; Fast mode's
+                                  # atomics slow down over the first ~200 steps as the thermal particles leave the load's lattice order
+block = 40                        # ParticleMesh synchronizes every block steps; PIConGPU prints every 5 % (40 steps of 800)
 modes = ["reference", "fast"]     # ParticleMesh's deposition modes: sort plus segmented reduction, and atomics
 
 [[uniform]]
@@ -40,9 +41,16 @@ cells = [256, 256, 256]
 ppc = [1, 1, 1]
 
 [[uniform]]
-name = "c256-p8"
+name = "c256-p4"                  # 67M particles: 256³ × 8 would need about 30 GB in ParticleMesh (about 220 B per particle on the CPU)
 cells = [256, 256, 256]
+ppc = [2, 2, 1]
+
+[[uniform]]
+name = "c128-p8-r2"               # PIConGPU alone as two ranks on the one GPU, the LWFA case's layout: its price
+cells = [128, 128, 128]
 ppc = [2, 2, 2]
+ranks = 2
+modes = []
 
 [[uniform]]
 name = "c128-p8-f64"
@@ -55,5 +63,5 @@ case = "scripts/lwfa/cases/ionization-3d.toml"   # WP-082's case, 448 × 128 × 
 kinds = ["plasma-nodopant", "plasma"]
 modes = ["reference", "fast"]
 float = "Float32"
-warmup = 170                      # PIConGPU prints every 85 steps (5 % of 1704)
-block = 85
+warmup = 765                      # past ParticleMesh's first window shift (step ~614) and its compilation; PIConGPU prints every 85 steps (5 % of 1704)
+block = 85                        # also the period of PIConGPU's macro-particle counters

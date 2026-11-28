@@ -38,7 +38,7 @@ param_number(text, key) = parse(Float64, match(Regex("\\b$key = ([-0-9.e]+)"), t
         @test occursin("particles::pusher::Boris", f["species.param"]) && occursin("maxwellSolver::Yee", f["fieldSolver.param"])
         @test occursin("FileOutputParticles = MakeSeq_t<>", f["fileOutput.param"])
         args = picongpu_uniform_arguments(u)
-        @test occursin("-d 1 1 1 ", args) && occursin("-g $(u.cells[1]) $(u.cells[2]) $(u.cells[3]) ", args) && occursin("-s $(u.steps) ", args)
+        @test occursin("-d 1 $(u.ranks) 1 ", args) && occursin("-g $(u.cells[1]) $(u.cells[2]) $(u.cells[3]) ", args) && occursin("-s $(u.steps) ", args)
         @test occursin("--periodic 1 1 1 ", args) && occursin("--currentInterpolation none", args) && !occursin("openPMD", args)
         @test occursin("--fields_energy.period $(u.steps)", args) && occursin("--e_energy.period $(u.steps)", args)
     end
@@ -51,12 +51,21 @@ param_number(text, key) = parse(Float64, match(Regex("\\b$key = ([-0-9.e]+)"), t
     bad = deepcopy(case)
     bad["uniform"][1]["cells"] = [100, 128, 128]
     @test_throws ErrorException uniform_entries(bad)               # not a multiple of PIConGPU's supercell
+    bad = deepcopy(case)
+    bad["uniform"][1]["ranks"] = 2
+    @test_throws ErrorException uniform_entries(bad)               # two ranks with ParticleMesh modes
     # prepare: one directory per entry and mode, PIConGPU's with its params, build.sh and run.sh
     root = prepare_bench(BENCH_CASE_FILE, "t1200-$(getpid())")
     try
         names = readlines(joinpath(root, "runs.txt"))
-        @test length(names) == 3 * length(case["uniform"]) + 3 * length(case["lwfa"]["kinds"])
-        @test "pm-c128-p8-fast" in names && "picongpu-c256-p8" in names && "pm-lwfa-plasma-reference" in names && "picongpu-lwfa-plasma" in names
+        @test length(names) == sum(u -> 1 + length(u.modes), uniform_entries(case)) + 3 * length(case["lwfa"]["kinds"])
+        @test "pm-c128-p8-fast" in names && "picongpu-c256-p4" in names && "pm-lwfa-plasma-reference" in names && "picongpu-lwfa-plasma" in names
+        # the two-rank entry is PIConGPU's alone, two ranks on the one GPU split along y
+        @test "picongpu-c128-p8-r2" in names && !any(n -> startswith(n, "pm-c128-p8-r2"), names)
+        @test occursin("mpiexec -n 2 setup/bin/picongpu -d 1 2 1 -g 128 128 128", read(joinpath(root, "picongpu-c128-p8-r2", "run.sh"), String))
+        lw = read(joinpath(root, "picongpu-lwfa-plasma", "arguments.txt"), String)
+        @test occursin("--e_macroParticlesCount.period 85", lw) && occursin("--eb_macroParticlesCount.period 85", lw)
+        @test !occursin("eb_macroParticlesCount", read(joinpath(root, "picongpu-lwfa-plasma-nodopant", "arguments.txt"), String))
         run_sh = read(joinpath(root, "picongpu-c128-p1", "run.sh"), String)
         @test occursin("mpiexec -n 1 setup/bin/picongpu -d 1 1 1 -g 128 128 128", run_sh) && occursin("PIC_SEED=1", run_sh)
         @test occursin("pic-build", read(joinpath(root, "picongpu-c128-p1", "build.sh"), String)) && !occursin("pic-build", run_sh)
@@ -80,7 +89,9 @@ end
     a = picongpu_ion_arguments(lcase, p)
     b = picongpu_bench_lwfa_arguments(a, d.steps)
     @test !occursin("openPMD", b) && !occursin("energyHistogram", b) && occursin("--fields_energy.period $(d.steps)", b)
-    @test count("--fields_energy.period", b) == 1
+    @test count("--fields_energy.period", b) == 1 && !occursin("macroParticlesCount", b)
+    bc = picongpu_bench_lwfa_arguments(a, d.steps; count_every = 85, species = ("e", "eb"))
+    @test bc == b * " --e_macroParticlesCount.period 85 --eb_macroParticlesCount.period 85"
     for keep in ("-d 1 2 1", "-r 2", "-g 128 1104 128", "-s $(d.steps)", "--periodic 0 0 0", "-m", "--windowMovePoint", "--fieldAbsorber pml",
                  "--currentInterpolation none", "--autoAdjustGrid 0")
         @test occursin(keep, b)
@@ -114,6 +125,17 @@ end
     @test_throws ErrorException steady_step(r.marks, 1701)          # no point after it
     @test_throws ErrorException steady_step(r.marks, 1700)          # one point is no interval
     @test read_picongpu_log("no timing here").marks == Tuple{Int,Float64}[] && read_picongpu_log("").init === nothing
+    # the mean of a count over the steady steps, trapezoidal between its points and held at the ends
+    @test mean_count([(0, 10), (100, 30)], 0, 100) ≈ 20
+    @test mean_count([(0, 10), (100, 30), (200, 30)], 50, 200) ≈ (50 * 25 + 100 * 30) / 150
+    @test mean_count([(85, 4), (170, 4)], 100, 160) ≈ 4
+    # PIConGPU's counters: the plasma's and the born electrons' summed by step
+    mktempdir() do dir
+        @test picongpu_counts(dir) == Tuple{Int,Int}[]
+        write(joinpath(dir, "e_macroParticlesCount.dat"), "#step count\n0 100\n85 120\n")
+        write(joinpath(dir, "eb_macroParticlesCount.dat"), "#step count\n85 7\n")
+        @test picongpu_counts(dir) == [(0, 100), (85, 127)]
+    end
 end
 
 @testset "T-1203 ParticleMesh's timer on the CPU: the particle count, the timing points every block, the steady interval, and a plasma at the loaded temperature [A5, A7, WP-090]" begin
@@ -158,7 +180,8 @@ end
         U = reference_units(0.8e-6)
         J = U.energy * U.density * U.length^3
         write(joinpath(pic, "fields_energy.dat"), "#step total Bx By Bz Ex Ey Ez\n0 0 0 0 0 0 0 0\n40 $(6J) 1 0 $(J) $(2J) $(3J) 0\n")
-        write(joinpath(pic, "e_energy_all.dat"), "#step Ekin_Joule E_Joule\n0 $(K0 * J) 0\n40 $(K0 * J) 0\n")
+        rest = case["uniform_defaults"]["density"] * V                 # Σ w mₑc²: E_Joule is the total energy, Ekin_Joule a threshold form
+        write(joinpath(pic, "e_energy_all.dat"), "#step Ekin_Joule E_Joule\n0 0 $((K0 + rest) * J)\n40 0 $((K0 + rest) * J)\n")
         write(joinpath(pic, "container.txt"), "# compile start: 2026-11-28T08:00:00.000000000Z\n# compile end: 2026-11-28T08:01:10.500000000Z\n")
         r = read_picongpu_bench(pic)
         @test r["steady"]["seconds_per_step"] ≈ 0.18 / 18 && r["particles"] == 16^3 * 8 && r["compile_seconds"] == 70.5

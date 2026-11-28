@@ -26,24 +26,35 @@
 #   `precision32Bit`/`precision64Bit` for every operation, sqrt, exp and trigonometric included).
 # - The load: a quiet lattice of `ppc` particles per cell in both; the momenta thermal, v_th per
 #   component, Maxwell–Jüttner in ParticleMesh and PIConGPU's non-relativistic Maxwellian in
-#   momentum at T = mₑv_th² (`Temperature`), which agree to O(v_th²). Electrons only: neither code
-#   solves Poisson's equation, the immobile neutralizing ions enter nothing.
+#   momentum at T = mₑv_th² (`Temperature`), which agree to O(v_th²). Electrons only, the immobile
+#   neutralizing ions enter nothing: PIConGPU solves no Poisson equation, ParticleMesh's initial
+#   solve of the neutral load gives zero (its cost is in the set-up).
 # - Diagnostics: none in the loop. ParticleMesh records no history (`record = ()`); PIConGPU runs
 #   its field and particle energy plugins at period `steps`, at step 0 and the last, which are the
 #   cross-check that both ran the same plasma (the kinetic energy at the start, the field energy
 #   the thermal noise grows).
 # - Timing. The steady time per step is the time from the first timing point at or after
-#   `warmup` steps to the last, over the steps between: ParticleMesh synchronizes the device every
+#   `warmup` steps to the last, over the steps between (the warm-up is long enough for Fast mode's
+#   atomics to lose the load's lattice order, which slows them): ParticleMesh synchronizes the device every
 #   `block` steps, PIConGPU prints its elapsed time every 5 % of the run (`picongpu.log`), and the
 #   steps between their first points differ by at most one block. Start-up is recorded apart:
-#   ParticleMesh's package load, the state's construction and initialization, and its first step
-#   (Julia compiles the step there); PIConGPU's `initialization time` and its compile (`build.sh`,
-#   once per binary, from container.txt).
+#   ParticleMesh's package load (the engine and module apart from the scripts' plotting and I/O
+#   stack), the state's construction and initialization (with their compilation), and its first
+#   step (Julia compiles the step there); PIConGPU's `initialization time` (no compilation) and its
+#   compile (`build.sh`, once per binary, from container.txt). An entry with `ranks = 2` runs
+#   PIConGPU alone as two ranks on the one GPU, as the LWFA case must: the price of that layout.
 # - The push rate is particles × steps per second over the steady steps; ParticleMesh's particle
 #   count is its alive count, PIConGPU's the cells times the lattice (its quiet start fills every
-#   cell, `QuietImpl`, and a periodic box loses none).
+#   cell, `QuietImpl`, and a periodic box loses none). In the LWFA case both codes count their
+#   electrons at every timing point (ParticleMesh its alive counts, PIConGPU its macro-particle
+#   counter plugin), and the push rate takes their mean over the steady steps: PIConGPU's hidden
+#   domain holds plasma too. With the dopant the codes ionize differently (Monte Carlo on a
+#   4 × 4 × 4 lattice of macro-ions against expected values on one macro-atom per cell), so that
+#   kind is an application timing, not a like-for-like one.
 
 const T_START = time()
+using ParticleMesh, ParticleMeshElectromagnetic, KernelAbstractions
+const T_PACKAGES = time()
 isdefined(@__MODULE__, :pm_ion_problem) || include(joinpath(@__DIR__, "..", "lwfa", "ionization.jl"))   # once, when the LWFA tests have it already
 
 const BENCH = @__DIR__
@@ -56,7 +67,8 @@ const PIC_BENCH_SUPERCELL = (8, 8, 4)
 
 One `[[uniform]]` entry with the case's common numbers: `name`, `cells` (3), the lattice `ppc` (3),
 `float` ("Float32" or "Float64"), the cubic cell `dx`, Δt = courant/√(Σ 1/Δ²), the density, v_th,
-`steps`, `warmup`, `block`, the particles `cells × ppc` and the cells.
+`steps`, `warmup`, `block`, PIConGPU's `ranks` along y (1, or 2 for an entry of PIConGPU alone), the
+ParticleMesh `modes`, the particles `cells × ppc` and the cells.
 """
 function uniform_entry(case, e)
     U = case["uniform_defaults"]
@@ -69,9 +81,14 @@ function uniform_entry(case, e)
     dt = Float64(U["courant"]) / sqrt(3 / dx^2)
     steps, warmup, block = Int(U["steps"]), Int(U["warmup"]), Int(U["block"])
     0 < warmup < steps && steps % block == 0 && warmup % block == 0 || error("steps, warmup and block: 0 < warmup < steps, both multiples of block")
-    all(cells[k] % PIC_BENCH_SUPERCELL[k] == 0 for k in 1:3) || error("$(e["name"]): cells $cells are not multiples of PIConGPU's supercell $PIC_BENCH_SUPERCELL")
+    ranks = Int(get(e, "ranks", 1))
+    ranks in (1, 2) || error("$(e["name"]): ranks = $ranks, 1 or 2")
+    modes = String.(get(e, "modes", U["modes"]))
+    ranks == 1 || isempty(modes) || error("$(e["name"]): a two-rank entry is PIConGPU's alone (modes = [])")
+    all(k -> cells[k] % (PIC_BENCH_SUPERCELL[k] * (k == 2 ? ranks : 1)) == 0, 1:3) ||
+        error("$(e["name"]): cells $cells are not multiples of PIConGPU's supercell $PIC_BENCH_SUPERCELL (times the ranks along y)")
     return (; name = String(e["name"]), cells, ppc, float, dx, dt, density = Float64(U["density"]), vth = Float64(U["thermal_velocity"]),
-              steps, warmup, block, particles = prod(cells) * prod(ppc), ncells = prod(cells),
+              steps, warmup, block, ranks, modes, particles = prod(cells) * prod(ppc), ncells = prod(cells),
               lambda0 = Float64(case["lambda0_um"]) * 1e-6)
 end
 
@@ -115,25 +132,37 @@ sync(be) = KernelAbstractions.synchronize(be)
     timed_steps!(st, p, be, steps, block) -> (; first_step, marks)
 
 Step 1 alone (it compiles), then steps 2:steps with the device synchronized every `block` steps;
-`marks` the (step, seconds since the end of step 1) pairs, (1, 0) first.
+`marks` the (step, seconds since the end of step 1) pairs, (1, 0) first and the last step last;
+with a `counter`, `counts` its value of the state at each mark (outside the timed interval's
+synchronization, after the mark is taken).
 """
-function timed_steps!(st, p, be, steps, block; first = 1)
+function timed_steps!(st, p, be, steps, block; first = 1, counter = nothing)
     sync(be)
     t = time_ns()
     step!(st, p, first)
     sync(be)
     t1 = time_ns()
     marks = Tuple{Int,Float64}[(first, 0.0)]
+    counts = Tuple{Int,Int}[]
+    counter === nothing || push!(counts, (first, counter(st)))
     for k in (first + 1):(first + steps - 1)
         step!(st, p, k)
-        if (k - first + 1) % block == 0
+        if (k - first + 1) % block == 0 || k == first + steps - 1
             sync(be)
             push!(marks, (k, (time_ns() - t1) / 1e9))
+            counter === nothing || push!(counts, (k, counter(st)))     # after the mark: a 4-byte read per block
         end
     end
-    sync(be)
-    marks[end][1] == first + steps - 1 || push!(marks, (first + steps - 1, (time_ns() - t1) / 1e9))
-    return (; first_step = (t1 - t) / 1e9, marks)
+    return (; first_step = (t1 - t) / 1e9, marks, counts)
+end
+
+"The mean of a piecewise linear count over [a, b] from its points (step, count), by the trapezoid rule."
+function mean_count(counts, a, b)
+    pts = sort([(Float64(k), Float64(c)) for (k, c) in counts])
+    at(x) = (i = searchsortedlast(first.(pts), x); i == 0 ? pts[1][2] : i == length(pts) ? pts[end][2] :
+             pts[i][2] + (pts[i + 1][2] - pts[i][2]) * (x - pts[i][1]) / (pts[i + 1][1] - pts[i][1]))
+    xs = sort(unique([a; b; [x for (x, _) in pts if a < x < b]]))
+    return sum((xs[j + 1] - xs[j]) * (at(xs[j]) + at(xs[j + 1])) / 2 for j in 1:(length(xs) - 1)) / (b - a)
 end
 
 "The steady seconds per step from timing points (step, seconds): from the first point at or after step `warmup` to the last."
@@ -169,7 +198,8 @@ function run_pm_uniform(dir; backend = CPU())
     e1 = host_energies(st)
     out = Dict{String,Any}("code" => "ParticleMesh", "kind" => "uniform", "entry" => u.name, "mode" => mode, "float" => u.float,
         "cells" => collect(u.cells), "ppc" => collect(u.ppc), "particles" => np, "computed_cells" => u.ncells, "steps" => u.steps,
-        "load_seconds" => t_build - T_START, "setup_seconds" => t_ready - t_build, "first_step_seconds" => r.first_step,
+        "load_seconds" => T_PACKAGES - T_START, "scripts_load_seconds" => t_build - T_PACKAGES, "setup_seconds" => t_ready - t_build,
+        "first_step_seconds" => r.first_step, "loop_after_first_seconds" => r.marks[end][2],
         "marks" => [[m[1], m[2]] for m in r.marks],
         "loop_seconds" => r.first_step + r.marks[end][2],
         "steady" => Dict("seconds_per_step" => s.seconds, "from" => s.from, "to" => s.to,
@@ -185,7 +215,7 @@ end
 """
 Run a ParticleMesh `lwfa` directory (case.toml, kind.txt, entry.toml) into timing.json: the
 problem and numerics of `run_pm_ion` in the entry's mode and element type, every step without an
-output, and at the end the field energies and the born electrons' weight in the window
+output, the plasma's and the born electrons' alive counts at each timing point, and at the end the field energies and the born electrons' weight in the window
 (`pm_ion_output`), the check against WP-082's run of the same kind.
 """
 function run_pm_lwfa(dir; backend = CPU())
@@ -200,10 +230,13 @@ function run_pm_lwfa(dir; backend = CPU())
     initialize!(st, p)
     sync(backend)
     t_ready = time()
-    d = ion_derived(case)
     block = Int(ent["block"])
-    r = timed_steps!(st, p, backend, prob.nsteps, block)
+    born = ionization_frame(st) !== nothing
+    counter(st) = alive_count(st.species[1]) + (born ? alive_count(ionization_electrons(st)) : 0)
+    r = timed_steps!(st, p, backend, prob.nsteps, block; counter)
     s = steady_step(r.marks, Int(ent["warmup"]))
+    born && ionization_lost(st) != 0 && error("$(ionization_lost(st)) births found no free slot: raise dopant.capacity")
+    np = mean_count(r.counts, s.from, s.to)
     o = pm_ion_output(st, case, prob.nsteps)
     check = Dict{String,Any}("energy_end" => host_energies(st), "Ey_absmax" => o["Ey_absmax"])
     haskey(o, "born") && (check["born_weight"] = o["born"]["weight"])
@@ -211,9 +244,12 @@ function run_pm_lwfa(dir; backend = CPU())
     ncell = prod(ncells(st.grid))
     out = Dict{String,Any}("code" => "ParticleMesh", "kind" => "lwfa", "entry" => kind, "mode" => ent["mode"], "float" => ent["float"],
         "cells" => collect(ncells(st.grid)), "computed_cells" => ncell, "steps" => prob.nsteps,
-        "load_seconds" => t_build - T_START, "setup_seconds" => t_ready - t_build, "first_step_seconds" => r.first_step,
+        "load_seconds" => T_PACKAGES - T_START, "scripts_load_seconds" => t_build - T_PACKAGES, "setup_seconds" => t_ready - t_build,
+        "first_step_seconds" => r.first_step, "loop_after_first_seconds" => r.marks[end][2],
         "marks" => [[m[1], m[2]] for m in r.marks], "loop_seconds" => r.first_step + r.marks[end][2],
-        "steady" => Dict("seconds_per_step" => s.seconds, "from" => s.from, "to" => s.to, "ns_per_cell_step" => 1e9 * s.seconds / ncell),
+        "steady" => Dict("seconds_per_step" => s.seconds, "from" => s.from, "to" => s.to, "ns_per_cell_step" => 1e9 * s.seconds / ncell,
+                         "mean_particles" => np, "ns_per_particle_step" => 1e9 * s.seconds / np),
+        "counts" => [[c[1], c[2]] for c in r.counts], "capacity" => sum(capacity, st.species) + (born ? capacity(ionization_electrons(st)) : 0),
         "check" => check, "backend" => backend_label(backend), "gpu" => gpu_label(backend),
         "cpu" => Sys.cpu_info()[1].model, "threads" => Threads.nthreads(), "julia" => string(VERSION))
     write_timing(dir, out)
@@ -457,8 +493,8 @@ function picongpu_uniform_param_files(u)
     return f
 end
 
-"The command line of a `uniform` entry: one device, the grid, periodic on all sides, no current filter, the energies at step 0 and the last."
-picongpu_uniform_arguments(u) = join(["-d 1 1 1", "-g $(u.cells[1]) $(u.cells[2]) $(u.cells[3])", "-s $(u.steps)", "--periodic 1 1 1",
+"The command line of a `uniform` entry: `ranks` devices along y (on the one GPU), the grid, periodic on all sides, no current filter, the energies at step 0 and the last."
+picongpu_uniform_arguments(u) = join(["-d 1 $(u.ranks) 1", "-g $(u.cells[1]) $(u.cells[2]) $(u.cells[3])", "-s $(u.steps)", "--periodic 1 1 1",
                                       "--currentInterpolation none", "--fields_energy.period $(u.steps)",
                                       "--e_energy.period $(u.steps)", "--e_energy.filter all"], " ")
 
@@ -466,10 +502,10 @@ picongpu_uniform_arguments(u) = join(["-d 1 1 1", "-g $(u.cells[1]) $(u.cells[2]
     picongpu_bench_lwfa_arguments(args, steps) -> String
 
 WP-082's PIConGPU command line without its outputs: the openPMD dumps and the energy histogram
-dropped, the field energies at step 0 and the last; the rest (the grid, the ranks, the window, the
-absorber) unchanged.
+dropped, the field energies at step 0 and the last, with `count_every` the macro-particle counters
+of `species` at that period; the rest (the grid, the ranks, the window, the absorber) unchanged.
 """
-function picongpu_bench_lwfa_arguments(args, steps)
+function picongpu_bench_lwfa_arguments(args, steps; count_every = nothing, species = (PIC_SPECIES,))
     w = split(args)
     out, i = String[], 1
     while i <= length(w)
@@ -480,6 +516,7 @@ function picongpu_bench_lwfa_arguments(args, steps)
         end
     end
     push!(out, "--fields_energy.period", string(steps))
+    count_every === nothing || foreach(sp -> push!(out, "--$(sp)_macroParticlesCount.period", string(count_every)), species)
     return join(out, " ")
 end
 
@@ -563,6 +600,21 @@ function read_pic_dat(file)
     return rows
 end
 
+"""
+    picongpu_counts(dir) -> Vector{Tuple{Int,Int}}
+
+The electrons per step from the macro-particle counters (`<species>_macroParticlesCount.dat`,
+the step and the count first on each row) of the plasma's electrons and, with the dopant, the
+born ones, summed; empty without the plasma's file.
+"""
+function picongpu_counts(dir)
+    f(sp) = joinpath(dir, "$(sp)_macroParticlesCount.dat")
+    isfile(f(PIC_SPECIES)) || return Tuple{Int,Int}[]
+    tab(sp) = isfile(f(sp)) ? Dict(Int(r[1]) => round(Int, r[2]) for r in read_pic_dat(f(sp))) : Dict{Int,Int}()
+    e, b = tab(PIC_SPECIES), tab(PIC_BORN)
+    return sort([(k, c + get(b, k, 0)) for (k, c) in e])
+end
+
 "The compile seconds from container.txt's compile stamps, or nothing."
 function container_seconds(dir, a, b)
     f = joinpath(dir, "container.txt")
@@ -588,10 +640,13 @@ function read_picongpu_bench(dir)
         s = steady_step(log.marks, u.warmup)
         U = reference_units(u.lambda0)
         J = U.energy * U.density * U.length^3                # J per mₑc² n_c (c/ω₀)³
+        rest = u.density * u.ncells * u.dx^3                 # Σ w mₑc² of the electrons, in those units
         F, K = read_pic_dat(joinpath(dir, "fields_energy.dat")), read_pic_dat(joinpath(dir, "e_energy_all.dat"))
         energy(k) = (i = findfirst(r -> Int(r[1]) == k, F); j = findfirst(r -> Int(r[1]) == k, K);
                      i === nothing || j === nothing ? nothing :
-                     Dict{String,Any}("WE" => sum(F[i][6:8]) / J, "WB" => sum(F[i][3:5]) / J, "K" => K[j][2] / J))
+                     Dict{String,Any}("WE" => sum(F[i][6:8]) / J, "WB" => sum(F[i][3:5]) / J,
+                                      # E_Joule is the exact Σ γmc² (Ekin_Joule is p²/2m below γ = 1.005, scripts/crosscode/read.jl)
+                                      "K" => K[j][3] / J - rest))
         merge!(out, Dict{String,Any}("entry" => u.name, "cells" => collect(u.cells), "ppc" => collect(u.ppc), "particles" => u.particles,
             "computed_cells" => u.ncells, "steps" => u.steps,
             "steady" => Dict("seconds_per_step" => s.seconds, "from" => s.from, "to" => s.to,
@@ -605,9 +660,12 @@ function read_picongpu_bench(dir)
         F = read_pic_dat(joinpath(dir, "fields_energy.dat"))
         U = reference_units(Float64(case["lambda0_um"]) * 1e-6)
         J = U.energy * U.density * U.length^3
+        counts = picongpu_counts(dir)
+        np = isempty(counts) ? nothing : mean_count(counts, s.from, s.to)
         merge!(out, Dict{String,Any}("entry" => strip(read(joinpath(dir, "kind.txt"), String)), "cells" => [lay.cells[2], lay.cells[1], d.nz],
-            "window_cells" => [lay.window, d.ny, d.nz], "computed_cells" => ncell, "steps" => d.steps,
-            "steady" => Dict("seconds_per_step" => s.seconds, "from" => s.from, "to" => s.to, "ns_per_cell_step" => 1e9 * s.seconds / ncell),
+            "window_cells" => [lay.window, d.ny, d.nz], "computed_cells" => ncell, "steps" => d.steps, "counts" => [[c[1], c[2]] for c in counts],
+            "steady" => Dict("seconds_per_step" => s.seconds, "from" => s.from, "to" => s.to, "ns_per_cell_step" => 1e9 * s.seconds / ncell,
+                             "mean_particles" => np, "ns_per_particle_step" => np === nothing ? nothing : 1e9 * s.seconds / np),
             "check" => Dict{String,Any}("energy_end" => (i = findfirst(r -> Int(r[1]) == d.steps, F);
                                          i === nothing ? nothing : Dict("WE" => sum(F[i][6:8]) / J, "WB" => sum(F[i][3:5]) / J)))))
     end
@@ -666,12 +724,12 @@ function prepare_bench(case_path, tag)
         u = uniform_entry(case, e)
         base = Dict{String,Any}(k => v for (k, v) in e)
         base["kind"] = "uniform"
-        for m in case["uniform_defaults"]["modes"]
+        for m in u.modes
             make("pm-$(u.name)-$m", "ParticleMesh", merge(base, Dict{String,Any}("mode" => m)))
         end
         args = picongpu_uniform_arguments(u)
-        make("picongpu-$(u.name)", "PIConGPU 0.8.0", merge(base, Dict{String,Any}("ranks" => 1, "float" => u.float)),
-             pic = (; files = picongpu_uniform_param_files(u), build = picongpu_build_script(), run = picongpu_bench_run_script(args), args))
+        make("picongpu-$(u.name)", "PIConGPU 0.8.0", merge(base, Dict{String,Any}("ranks" => u.ranks, "float" => u.float)),
+             pic = (; files = picongpu_uniform_param_files(u), build = picongpu_build_script(), run = picongpu_bench_run_script(args; ranks = u.ranks), args))
     end
     if haskey(case, "lwfa")
         Lw = case["lwfa"]
@@ -686,7 +744,8 @@ function prepare_bench(case_path, tag)
             lab = picongpu_ion_lab(lcase)
             p = picongpu_parameters(lab; plasma = kind != "vacuum", precision = Lw["float"])
             files = picongpu_ion_param_files(lcase; kind, seed = 1, precision = Lw["float"])
-            args = picongpu_bench_lwfa_arguments(picongpu_ion_arguments(lcase, p), d.steps)
+            args = picongpu_bench_lwfa_arguments(picongpu_ion_arguments(lcase, p), d.steps; count_every = Int(Lw["block"]),
+                                                 species = kind == "plasma" ? (PIC_SPECIES, PIC_BORN) : (PIC_SPECIES,))
             # no particle dump, so WP-082's shadowed WriteSpecies.hpp (picongpu.jl) is not needed
             make("picongpu-lwfa-$kind", "PIConGPU 0.8.0", merge(common, Dict{String,Any}("ranks" => p.layout.devices)); kind, case_file = lcase_path,
                  pic = (; files, build = picongpu_build_script(), run = picongpu_bench_run_script(args; ranks = p.layout.devices), args))
@@ -791,20 +850,22 @@ function bench_table(c)
         end
     end
     println(io)
-    println(io, "| LWFA | code | cells computed | ms per step (steady) | loop s | ns per computed cell-step | PIConGPU / this |")
-    println(io, "|---|---|---|---|---|---|---|")
+    println(io, "| LWFA | code | cells computed | electrons (steady mean) | ms per step (steady) | loop after step 1 (s) | ns per cell-step | ns per particle-step | PIConGPU / this |")
+    println(io, "|---|---|---|---|---|---|---|---|---|")
     for g in gs
         g["kind"] == "lwfa" || continue
         for (l, name) in BENCH_LABELS
             r = get(g["rows"], l, nothing)
             r === nothing && continue
             ratio = l == "picongpu" ? "" : fmt(get(get(g, "picongpu_over_pm", Dict()), l, nothing))
-            println(io, "| $(g["entry"]) | $name | $(join(r["cells"], " × ")) | $(fmt(1e3 * r["steady"]["seconds_per_step"])) | $(fmt(r["loop_seconds"])) | ",
-                    "$(fmt(r["steady"]["ns_per_cell_step"])) | $ratio |")
+            st = r["steady"]
+            loop = l == "picongpu" ? r["loop_seconds"] : r["loop_after_first_seconds"]   # PIConGPU's loop has no compilation in its first step
+            println(io, "| $(g["entry"]) | $name | $(join(r["cells"], " × ")) | $(fmt(get(st, "mean_particles", nothing))) | $(fmt(1e3 * st["seconds_per_step"])) | ",
+                    "$(fmt(loop)) | $(fmt(st["ns_per_cell_step"])) | $(fmt(get(st, "ns_per_particle_step", nothing))) | $ratio |")
         end
     end
     println(io)
-    println(io, "| start-up (s) | code | load | set-up and initialization | first step | PIConGPU compile |")
+    println(io, "| start-up (s) | code | package load | set-up and initialization (with compilation) | first step (with compilation) | PIConGPU compile |")
     println(io, "|---|---|---|---|---|---|")
     for g in gs, (l, name) in BENCH_LABELS
         r = get(g["rows"], l, nothing)
