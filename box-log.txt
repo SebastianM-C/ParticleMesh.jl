@@ -1,0 +1,24 @@
+## step 0 (julia): exit 0 after 1649s
+best-f64-grad: J = 0.22629715319237498 in 274.6 s
+best-fd-focus-p: J = 0.22629378282079785 in 67.4 s
+best-fd-focus-m: J = 0.22628192315385467 in 54.3 s
+best-fd-aberration3-p: J = 0.22629016993726744 in 54.6 s
+best-fd-aberration3-m: J = 0.22629695719665252 in 54.6 s
+best-fd-aberration4-p: J = 0.2262967068311831 in 54.8 s
+best-fd-aberration4-m: J = 0.2262970937806771 in 54.6 s
+best-fd-gdd-p: J = 0.22628340146851525 in 54.8 s
+best-fd-gdd-m: J = 0.22629094891796078 in 55.5 s
+best-fd-tod-p: J = 0.22629458270570477 in 55.6 s
+best-fd-tod-m: J = 0.22629757061735972 in 55.3 s
+reference-f64-grad: J = 0.025013376068813473 in 250.9 s
+reference-fd-focus-p: J = 0.02503165975127572 in 54.7 s
+reference-fd-focus-m: J = 0.024995067974841283 in 53.2 s
+reference-fd-aberration3-p: J = 0.02501376305775451 in 51.1 s
+reference-fd-aberration3-m: J = 0.025012987047394294 in 48.0 s
+reference-fd-aberration4-p: J = 0.025001537037562742 in 55.2 s
+reference-fd-aberration4-m: J = 0.025025214731706602 in 54.9 s
+reference-fd-gdd-p: J = 0.02501591749859258 in 54.7 s
+reference-fd-gdd-m: J = 0.025010830747596455 in 54.5 s
+reference-fd-tod-p: J = 0.025013494383394827 in 54.7 s
+reference-fd-tod-m: J = 0.02501325763111685 in 54.7 s
+check done: scripts/runs/optim-pulse2d-opt-4080/check

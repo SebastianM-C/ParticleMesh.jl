@@ -1,0 +1,52 @@
+{
+  "J": 0.024995067974841283,
+  "J_born": 0.024995067974841283,
+  "J_plasma": 0.0,
+  "a0": 1.8976211123533206,
+  "cells": [
+    448,
+    256
+  ],
+  "dark_energy": 0.0,
+  "dark_weight": 0.0,
+  "direction": 1,
+  "eltype": "Float64",
+  "envelope_centroid": 0.0,
+  "envelope_duration": 6.0,
+  "fast_born_window": 0.001961724733257224,
+  "fast_plasma_window": 0.0,
+  "free": [
+    79.990234375,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "gather": "compensated",
+  "gradient": null,
+  "h": 0.009765625,
+  "id": "reference-fd-focus-m",
+  "launched_box": 0.9981898530191876,
+  "launched_interior": 0.9939159033887797,
+  "mean_energy_born": 12.291352881846324,
+  "mean_energy_plasma": 0.0,
+  "ny": 2,
+  "particles": 498350,
+  "point": "reference",
+  "ppl": 32,
+  "seconds": 53.188048217,
+  "sign": -1,
+  "start": "r1",
+  "strehl": 0.9999999999999998,
+  "ux_max_born": 19.45929420945015,
+  "ux_max_plasma": 0.40576014143052447,
+  "weight_born": 0.002033548968540125,
+  "weight_plasma": 0.0,
+  "z": [
+    0.9998779296875,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}
