@@ -1444,10 +1444,12 @@ quantity = "the density ramp's sin²(πt/2) through sin (ramp_factor) against th
 scale = "ulps of the exact value (C); eps(T)·π/(2L), the derivative's largest value (C_derivative)"
 C = 8
 C_derivative = 8
-status = "proposed; the measured values are what the CPU suite records"
+measured = { Float32 = 3.55, Float64 = 3.43, derivative_Float32 = 1.69, derivative_Float64 = 1.53 }
+status = "proposed; one CPU run, in the process of T-1174's RTX 5090 run at 765c50d"
 
 ["T-1174"]
 quantity = "Enzyme's reverse mode on CUDA through a kernel that evaluates the 3D refill profile (RampedCosine, the ramp through sin) at 4096 points, its parameters in a device array, against ForwardDiff's gradients on the CPU: the adjoints of the positions and of the parameters"
 scale = "per input k, Σ_i |w̄_i|·(|J_ik| + Σ_l |H_ikl|·|z_il|) over the points that reach it (one for a position, all for a parameter): the first-order error of the gradient with every input rounded by eps; the bare Σ|J||w̄| of T-1140 counts a nearly vanishing slope's argument rounding as error (1080 of it between the CPU's own Float32 and Float64, 930 and 21800 on the RTX 4080 SUPER)"
 C = 8
-status = "proposed; the CPU's Float32 ForwardDiff against its Float64 reaches 0.37 in this scale, not yet measured on a GPU in it"
+measured = { positions_Float32_CUDA = 0.65, parameters_Float32_CUDA = 0.039, positions_Float64_CUDA = 0.64, parameters_Float64_CUDA = 0.055 }
+status = "proposed; one run on the RTX 5090 at 765c50d; the CPU's Float32 ForwardDiff against its Float64 reaches 0.37 in this scale"

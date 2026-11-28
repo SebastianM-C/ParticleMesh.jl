@@ -54,7 +54,7 @@
 - T-1172 (CPU) covers `add_count!`. T-1173 (CPU) covers the ramp's bits, value and derivative. T-1174 (CUDA) runs Enzyme on the device through the ramped profile and through `add_count!`.
 - On the RTX 4080 SUPER, at 4c0e2b19, the module's whole suite with the GPU tests passed 151,135 of 151,138. The three failures were these:
   - T-610's pinned values moved by 1.1·10⁻⁵ through the ramp's rounding, and were re-pinned.
-  - T-1174's positions measured 930 (Float32) and 21,800 (Float64) against a scale that counts a nearly vanishing slope's argument rounding as error. The CPU's own Float32 against Float64 gives 1,080 in that scale, and 0.37 in the scale with the Hessian's terms that T-1174 now takes. T-1174 has not yet run on a GPU in the new scale.
+  - T-1174's positions measured 930 (Float32) and 21,800 (Float64) against a scale that counts a nearly vanishing slope's argument rounding as error. The CPU's own Float32 against Float64 gives 1,080 in that scale, and 0.37 in the scale with the Hessian's terms that T-1174 now takes. On the RTX 5090, at 765c50d, T-1174 passes in that scale (C = 8): its positions measure 0.65 (Float32) and 0.64 (Float64), its parameters 0.039 and 0.055.
 - Breakers:
   - The physics breaker found no bitwise discrepancy. It continued the working copy at many split points over 2D, 3D, 1D, Float32, Float64, Dual, Fast, resort, witness and ionization cases, and ran whole schedules through `rev_checkpoint_for`. It measured the ramp at 2.7 eps for `sin` against 1.5 for `sinpi`, and showed observables changed only at roundoff. Its doc findings and the one-element counter are fixed.
   - The mutation breaker planted 23 defects. 18 were caught and 1 was equivalent. The 4 survivors (the cache refresh, a shared recorder, a dropped observer) now fail T-1170.
@@ -62,5 +62,4 @@
 ## Open issues
 
 - λ₀/32 on 32 GB needs a smaller push tape. Gathering E and B through the engine's `gather!` rule would tape a copy of the fields once per step, about 0.2 GiB at λ₀/32, instead of 162 values per particle. The push would then read six per-particle values.
-- T-1174 in its new scale is still to be measured on a GPU.
 - The memory per reverse step at λ₀/16 is not broken down: 25.5 GiB against a 5.6 GiB state, of which the push tapes are about 7.2 GiB.
