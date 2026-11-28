@@ -3,12 +3,14 @@
 # steady-state steps of the optimization's cases (`workload.jl`).
 #
 #   julia +1.13 --project=scripts scripts/counters/study.jl probe <out dir>
+#   julia +1.13 --project=scripts scripts/counters/study.jl known <out dir>
 #   julia +1.13 --project=scripts scripts/counters/study.jl collect <out dir> [cell ...]
 #   julia +1.13 --project=scripts scripts/counters/study.jl reduce <out dir>
 #
 # `probe` checks that counters can be collected at all: the tool, the driver's profiling setting,
 # GPUDiagnostics' known-count kernel (131072 DFMA thread instructions per launch, `probe_kernel.jl`)
-# and one step of a small 2D case through the whole pipeline; a few minutes. `collect` runs each
+# and one step of a small 2D case through the whole pipeline; a few minutes. `known` is the
+# known-count check alone, into `<out dir>/known/`. `collect` runs each
 # cell (all of `CELLS` by default) twice under ncu, both times inside the workload's profiling
 # window only (`profile_from_start = false`):
 #
@@ -140,22 +142,29 @@ function write_run_manifest(dir, cells, what)
             extra = merge(Dict{String,Any}("gpu" => gpu, "gpudiagnostics" => string(pkgversion(GPUDiagnostics))), tool_info()))
 end
 
-function probe(dir)
-    mkpath(dir)
+"GPUDiagnostics' known count: launches 2 and 3 of `probe_kernel.jl` under ncu must count 131072 DFMA thread instructions each."
+function known(dir)
     info = tool_info()
-    foreach(((k, v),) -> println("study.jl probe: ", k, " = ", v), info)
+    foreach(((k, v),) -> println("study.jl known: ", k, " = ", v), info)
     # the known count: launches 2 and 3 of counter_probe, 131072 DFMA thread instructions each
     kdir = mkpath(joinpath(dir, "known"))
     cmd = hw_counter_command(NsightCompute(), julia_cmd(joinpath(@__DIR__, "probe_kernel.jl")); set = :fp64, dir = kdir, name = "probe",
                              kernel = "counter_probe", launch_skip = 1, launch_count = 2, timeout_s = 600)
     ok = success(pipeline(cmd; stdout = joinpath(kdir, "probe.log"), stderr = joinpath(kdir, "probe.log")))
-    println("study.jl probe: known-count run ", ok ? "ran" : "FAILED (see $(joinpath(kdir, "probe.log")) and probe_ncu.csv)")
+    println("study.jl known: known-count run ", ok ? "ran" : "FAILED (see $(joinpath(kdir, "probe.log")) and probe_ncu.csv)")
     if ok
         hc = hw_counters(kdir; name = "probe", kernel = "counter_probe", slots = 4096 * 32,
                          required_metrics = COUNTER_SETS[:nvidia][:fp64].metrics)
         dfma = hc["smsp__sass_thread_inst_executed_op_dfma_pred_on.sum"]
-        println("study.jl probe: DFMA per launch ", dfma, " (expected 131072 each): ", all(==(131072), dfma) ? "ok" : "WRONG")
+        println("study.jl known: DFMA per launch ", dfma, " (expected 131072 each): ", all(==(131072), dfma) ? "ok" : "WRONG")
+        open(io -> TOML.print(io, Dict("dfma_per_launch" => collect(dfma), "expected" => 131072, "ok" => all(==(131072), dfma))), joinpath(kdir, "known.toml"), "w")
     end
+    return ok
+end
+
+function probe(dir)
+    mkpath(dir)
+    known(dir)
     write_run_manifest(dir, [PROBE_CELL], "probe")
     collect_cell(dir, PROBE_CELL; timeout_s = 900) || return println("study.jl probe: the small case FAILED")
     print_cell(reduce_cell(joinpath(dir, first(PROBE_CELL))); n = 40)
@@ -166,11 +175,15 @@ function main(args)
     cmd, dir = args[1], abspath(args[2])
     if cmd == "probe"
         probe(dir)
+    elseif cmd == "known"
+        mkpath(dir)
+        known(dir)
     elseif cmd == "collect"
         names = length(args) > 2 ? args[3:end] : first.(CELLS)
         cells = [c for c in CELLS if first(c) in names]
         length(cells) == length(names) || error("study.jl: unknown cell in $names (cells: $(first.(CELLS)))")
         mkpath(dir)
+        known(dir)
         write_run_manifest(dir, cells, "collect")
         for c in cells
             collect_cell(dir, c) && print_cell(reduce_cell(joinpath(dir, first(c))))

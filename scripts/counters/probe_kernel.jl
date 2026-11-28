@@ -4,7 +4,7 @@
 # each. `study.jl probe` runs it under ncu and checks the count.
 #
 #   julia +1.13 --project=scripts scripts/counters/probe_kernel.jl
-using CUDA, KernelAbstractions, Adapt
+using CUDA, KernelAbstractions
 
 @kernel function counter_probe!(out, @Const(x), niter)
     i = @index(Global, Linear)
@@ -19,7 +19,7 @@ end
 
 const BE = CUDABackend()
 n, niter = 4096, 32
-x = Adapt.adapt(BE, fill(0.5, n))
+x = copyto!(KernelAbstractions.allocate(BE, Float64, n), fill(0.5, n))
 out = similar(x)
 for _ in 1:3
     counter_probe!(BE, 256)(out, x, Int32(niter); ndrange = n)
