@@ -10,10 +10,11 @@
 #       plain), maxiters=25, pgtol=<rel> (the stopping tolerance on the projected gradient in z,
 #       relative to the largest component of the reference point's gradient; default 2⁻⁶),
 #       starts=r1,r2,r3,r4,r5 (random starts, `random_start`), seed=87
-#   julia +1.13 --project=scripts -t 2 scripts/optim/pulse2d_opt.jl check <dir> [fdppl=32 fdny=2 power=13]
+#   julia +1.13 --project=scripts -t 2 scripts/optim/pulse2d_opt.jl check <dir> [fdppl=32 fdny=2 power=13 backend=cpu]
 #       at the best optimum of <dir>'s starts and at the reference point: a Float64 run with duals
-#       and Float64 central differences at a relative step 2^-power of each parameter's scale in
-#       the five directions, at fdppl×fdny, into <dir>/check/
+#       and Float64 central differences at a step 2^-power of each parameter's scale in the five
+#       directions, at fdppl×fdny, into <dir>/check/, on the optimization's backend or `backend`
+#       (Float64 is slow on a consumer GPU)
 #   julia +1.13 --project=scripts scripts/optim/pulse2d_opt.jl report <out dir> <run dir>
 #       the figures (pulse2d_paths.png, pulse2d_shapes.png), each with its JSON sidecar, and
 #       tables.md, into <out dir> (pulse2d_opt_report.jl)
@@ -187,7 +188,7 @@ function main_pulse_check(dir, o)
     isempty(results) && error("no start in $dir has a result")
     best = argmax(n -> results[n]["J"], collect(keys(results)))
     m = TOML.parsefile(joinpath(dir, "manifest.toml"))["parameters"]
-    cfg = pulse_config(m)
+    cfg = pulse_config(merge(Dict{String,Any}(m), isempty(o["backend"]) ? Dict{String,Any}() : Dict{String,Any}("backend" => o["backend"])))
     cdir = joinpath(dir, "check")
     mkpath(cdir)
     points = ["best" => Float64.(results[best]["free"]), "reference" => collect(PCASE.x0)]
@@ -204,7 +205,10 @@ function main_pulse_check(dir, o)
     println("check done: $cdir")
 end
 
-const PULSE_CHECK_DEFAULTS = (fdppl = 32, fdny = 2, power = 13)
+const PULSE_CHECK_DEFAULTS = (fdppl = 32, fdny = 2, power = 13, backend = "")
+
+"The backend a check runs on: its `backend=` option, or the optimization's from the run's manifest."
+check_backend(args) = (o = parse_options(args[3:end], PULSE_CHECK_DEFAULTS)[1]; isempty(o["backend"]) ? TOML.parsefile(joinpath(args[2], "manifest.toml"))["parameters"]["backend"] : o["backend"])
 
 const PULSE_USAGE = "usage: pulse2d_opt.jl opt [dir] [key=value...] | check <dir> [key=value...] | report <out dir> <run dir>"
 abspath(PROGRAM_FILE) == (@__FILE__) && isempty(ARGS) && error(PULSE_USAGE)
@@ -212,7 +216,7 @@ abspath(PROGRAM_FILE) == (@__FILE__) && isempty(ARGS) && error(PULSE_USAGE)
 if abspath(PROGRAM_FILE) == (@__FILE__)
     # the backend loads at top level, so that the runs that follow see its methods (world age)
     ARGS[1] == "opt" && parse_options(ARGS[2:end], PULSE_OPT_DEFAULTS)[1]["backend"] == "cuda" && opt_backend("cuda")
-    ARGS[1] == "check" && TOML.parsefile(joinpath(ARGS[2], "manifest.toml"))["parameters"]["backend"] == "cuda" && opt_backend("cuda")
+    ARGS[1] == "check" && check_backend(ARGS) == "cuda" && opt_backend("cuda")
 end
 
 if abspath(PROGRAM_FILE) == (@__FILE__)
