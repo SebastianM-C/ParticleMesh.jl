@@ -50,7 +50,8 @@ end
 
 """
 Step the case's plasma run on `backend` and write a frame every `every` steps into `out/frames/`
-(header); `t_end` (c/ω₀) overrides the case's end, rounded to a whole number of frames.
+(header); `t_end` (c/ω₀) overrides the case's end. Frames are written at the steps that are
+multiples of `every`, so the steps past the last such multiple write no frame.
 """
 function run_frames3d(case_path, out; backend = "cpu", every = 12, mode = "fast", t_end = nothing,
                       half_width = 25.0, xstride = 2)
