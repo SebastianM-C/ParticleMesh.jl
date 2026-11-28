@@ -978,8 +978,9 @@ C = 16
 measured = { Float32 = 4.01, Float64 = 5.26 }
 measured_wider = { ppc_5 = 5.13, cells_16x14x12_ppc_3 = 5.15, order1_ppc_5 = 2.96, steps_100 = 5.01 }
 measured_device = { "Float32 on CUDABackend" = 4.76, "Float64 on CUDABackend" = 4.76 }
-measured_filter_resort = { Float32 = 3.24, Float64 = 4.86 }
-status = "proposed; measured_filter_resort is T-1253 (two filter passes and the sort from the last order); measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
+measured_filter_resort = { Float32 = 3.51, Float64 = 4.86 }
+measured_filter_resort_device = { "Float32 on CUDABackend" = 4.05, "Float64 on CUDABackend" = 4.59 }
+status = "proposed; measured_filter_resort is T-1253 (two filter passes and the sort from the last order), the larger of a cloud container's run and the CUDA machine's CPU run, and measured_filter_resort_device its rerun in T-1259 on an RTX 4080 SUPER at 368e8db; measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
 
 ["T-953"]
 quantity = "a 3D run invariant along one axis against the 2D run (its plane mapped cyclically onto the other two axes), after initialize! and after every step: every component on every line of the invariant axis; 20 steps of two cold counter-streaming beams, one perturbed along mode (1, 1)"
@@ -1460,22 +1461,25 @@ quantity = "binomial! at N = 3 on a random field (value and partials), 8 × 6 ×
 scale = "3p·max|input| (normalized DFT, computed in BigFloat)"
 C = 2
 measured = { Float32 = 0.00591, Float64 = 0.00359, "Dual{Float32,3}" = 0.00448 }
-status = "proposed; the output is also the host filter bit for bit, which the test asserts"
+measured_device = { "Float32 on CUDABackend" = 0.00591, "Float64 on CUDABackend" = 0.00359, "Dual{Float32,3} on CUDABackend" = 0.00448 }
+status = "proposed; the output is also the host filter bit for bit, which the test asserts; measured_device is T-1259 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1251"]
 quantity = "with p filter passes, after every 3D step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| (C) and |Σ(D⁻·Eⁿ − (ρⁿ − mean ρ))| (the same C); the plasma of T-950 (20 steps) with p = 1, 2; both modes"
 scale = "(n₁ + n₂ + n₃)·max|ρ|·√(k + 1) after k steps, times Π n_d for the sum"
 C = 2
-measured = { Float32 = 0.141, Float64 = 0.169, "Dual{Float32,3}" = 0.127, sum = { Float32 = 0.0372, Float64 = 0.0447, "Dual{Float32,3}" = 0.0893 } }
-effect = "max over the run of max|D⁻·Eⁿ − (ρⁿ − mean ρ)| / max|ρⁿ − mean ρ|, every type and mode: p = 1 0.987, p = 2 1.09 (the grid-scale charge noise, where H_p ≈ 0, as T-441)"
-status = "proposed; the largest over the passes and the modes"
+measured = { Float32 = 0.141, Float64 = 0.197, "Dual{Float32,3}" = 0.127, sum = { Float32 = 0.0388, Float64 = 0.0447, "Dual{Float32,3}" = 0.0893 } }
+measured_device = { "Float32 on CUDABackend" = 0.127, "Float64 on CUDABackend" = 0.225, "Dual{Float32,3} on CUDABackend" = 0.127, sum = { "Float32 on CUDABackend" = 0.0304, "Float64 on CUDABackend" = 0.0422, "Dual{Float32,3} on CUDABackend" = 0.101 } }
+effect = "max over the run of max|D⁻·Eⁿ − (ρⁿ − mean ρ)| / max|ρⁿ − mean ρ|, every type and mode, on the CPU and on CUDA: p = 1 0.987, p = 2 1.09 (the grid-scale charge noise, where H_p ≈ 0, as T-441)"
+status = "proposed; the largest over the passes and the modes, and over the CPU runs of a cloud container and of the CUDA machine (Fast's moves from run to run at more than one thread: 0.169 and 0.197 in Float64); measured_device is T-1259 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1252"]
 quantity = "one 3D step with two passes against one without, from the same state: |J_filtered − F_host(J)| per component (C), |(E₁ − E₀) + Δt(J₁ − J₀)| (C)"
 scale = "3p·max|J| for J; max|E| + Δt·max|J| for E; in Fast mode both times √(prod ppc), against T-951's C (the two states' atomic depositions differ in association order)"
 C = 2
-measured = { Float32 = 0.679, Float64 = 0.692, "Dual{Float32,3}" = 0.679, fast = { Float32 = 0.218, Float64 = 0.179, "Dual{Float32,3}" = 0.24 } }
-status = "proposed; measured is E in Reference mode, where J is the host filter of the unfiltered current bit for bit (ratio 0); fast is E in Fast mode against T-951's C, at one thread (J's ratio 0 there too)"
+measured = { Float32 = 0.679, Float64 = 0.692, "Dual{Float32,3}" = 0.679, fast = { Float32 = 0.218, Float64 = 0.179, "Dual{Float32,3}" = 0.24 }, fast_threads = { E = 0.834, J = 0.0805 } }
+measured_device = { "Float32 on CUDABackend" = 0.415, "Float64 on CUDABackend" = 0.388, "Dual{Float32,3} on CUDABackend" = 0.388, fast = { "Float32 on CUDABackend" = 0.818, "Float64 on CUDABackend" = 1.14, "Dual{Float32,3} on CUDABackend" = 0.137 }, fast_J = 0.0805 }
+status = "proposed; measured is E in Reference mode, where J is the host filter of the unfiltered current bit for bit (ratio 0, on CUDA too); fast is E in Fast mode against T-951's C, at one thread (J's ratio 0 there too); fast_threads is the largest of E and of J in Fast mode in the CUDA machine's CPU run, at more than one thread; measured_device is T-1259 on an RTX 4080 SUPER at 368e8db, fast_J its largest J ratio in Fast mode"
 
 ["T-1254"]
 quantity = "with p filter passes beside an open axis, after every step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| on the node rows off the absorbers, particles leaving; N = 2 (open y, 40 steps, p = 2, absorbers of 5 cells) and N = 3 (open y and z, 20 steps, p = 1, absorbers of 4 cells), the layer and the PML, both modes"
@@ -1484,8 +1488,9 @@ C = 2
 tail = 4
 measured = { Float32 = 0.122, Float64 = 0.122, "Dual{Float32,3}" = 0.0522 }
 measured_tail = { Float32 = 0.35, Float64 = 0.863, "Dual{Float32,3}" = 0.35 }
+measured_device = { "Float32 on CUDABackend" = 0.0973, "Float64 on CUDABackend" = 0.113, "Dual{Float32,3} on CUDABackend" = 0.0629 }
 effect = "on the absorbers' rows the same ratio is 2.5e4 (Float32) to 2.8e13 (Float64), and the test asserts more than 1e4 there; 735 to 768 of 2880 particles leave at N = 2 and 3604 to 3843 of 16128 at N = 3"
-status = "proposed; the largest over N, the absorbers and the modes (Fast's moves from run to run at more than one thread). tail: of a leaving particle's current, the component along the open axis on the two faces after its last one, relative to eps(T)·max|component| (the Reference deposit's roundoff sum of the weight changes, T-840; exact zeros in Fast with atomics)"
+status = "proposed; the largest over N, the absorbers and the modes (Fast's moves from run to run at more than one thread). tail: of a leaving particle's current, the component along the open axis on the two faces after its last one, relative to eps(T)·max|component| (the Reference deposit's roundoff sum of the weight changes, T-840; exact zeros in Fast with atomics). measured_device is T-1259 on an RTX 4080 SUPER at 368e8db, without the tail, which runs on the CPU only"
 
 ["T-1257"]
 quantity = "the 1D step without current, Reference against Fast after 30 steps of the two beams in their initial field: the kinetic energy density K, folded, the largest difference over the cells"
@@ -1500,21 +1505,24 @@ scale = "n·eps(T)·u_x (40 steps, 34 pushes, u_x about 3.2); m·n·eps(T)·u_x 
 C = 1
 weights = 16
 measured = { Float32 = 0.398, Float64 = 0.595, "Dual{Float32,3}" = 0.398, weights = { Float32 = 1.07, Float64 = 0.954, "Dual{Float32,3}" = 1.07 } }
-status = "proposed; C is T-640's"
+measured_device = { "Float32 on CUDABackend" = 0.398, "Float64 on CUDABackend" = 0.595, "Dual{Float32,3} on CUDABackend" = 0.398, weights = { "Float32 on CUDABackend" = 1.66, "Float64 on CUDABackend" = 0.954, "Dual{Float32,3} on CUDABackend" = 1.66 } }
+status = "proposed; C is T-640's; measured_device is T-1265 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1261"]
 quantity = "a 3D witness of u₀ = 10 in an empty moving window: its window position against lattice point + n·v·Δt − cells moved since the injection, the largest over the bunch"
 scale = "n·eps(T)·L₁ (L₁ = 12, 60 steps)"
 C = 1
 measured = { Float32 = 0.00517, Float64 = 0.0133, "Dual{Float32,3}" = 0.00517 }
-status = "proposed; C is T-641's"
+measured_device = { "Float32 on CUDABackend" = 0.0015, "Float64 on CUDABackend" = 0.0133, "Dual{Float32,3} on CUDABackend" = 0.00517 }
+status = "proposed; C is T-641's; measured_device is T-1265 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1262"]
 quantity = "the gain of every witness of a 3D run invariant along one axis against the gain of the 2D witness at its place in the plane, along each of the three axes (T-953's two beams, 20 steps, the bunch injected at step 4)"
 scale = "k·(n₁ + n₂)·√(prod(ppc))·eps(T)·max|2D gain| after k = 20 steps, n and ppc the 2D run's"
 C = 8
 measured = { Float32 = 1.68, Float64 = 2.74, "Dual{Float32,3}" = 0.175 }
-status = "proposed; the largest over the three axes; T-953's scale for the fields of the two runs"
+measured_device = { "Float32 on CUDABackend" = 1.47, "Float64 on CUDABackend" = 2.63, "Dual{Float32,3} on CUDABackend" = 0.131 }
+status = "proposed; the largest over the three axes; T-953's scale for the fields of the two runs; measured_device is T-1265 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1266"]
 quantity = "the eight numbers of an M4 plane's table for the columns beside the plane against the direct pupil sum, with a dual's partials (C); C_incident: the incident E that M4's B corrections read on the three columns against the untabulated laser's field there (the pupil sum at the point, a time m·kΔx later), relative to the largest of each column"
@@ -1522,10 +1530,12 @@ scale = "eps(T)·√(pupil samples) (576)"
 C = 8
 C_incident = 4
 measured = { columns = { Float32 = 0.94, Float64 = 0.0417, "Dual{Float32,3}" = 0.94 }, incident = { Float32 = 0.119, Float64 = 0.0549, "Dual{Float32,3}" = 0.119 } }
-status = "proposed; C is T-1164's for the first twelve numbers"
+measured_device = { columns = { "Float32 on CUDABackend" = 0.848, "Float64 on CUDABackend" = 0.125, "Dual{Float32,3} on CUDABackend" = 0.848 }, incident = { "Float32 on CUDABackend" = 0.219, "Float64 on CUDABackend" = 0.141, "Dual{Float32,3} on CUDABackend" = 0.219 } }
+status = "proposed; C is T-1164's for the first twelve numbers; measured_device is T-1269 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1267"]
 quantity = "the 3D shaped beam launched with M4: the B corrections against the M4 half step's split (T-1086's C_operator), the run of a Gaussian pupil against the GaussianLaser's M4 run (T-1164's C_run), the launched ω₀ transform against M4's propagation of the incident field on probes from the plane on (T-1165's C), M4's conserved energy of the launched pulse against launched_energy (T-1165's C_energy), the energy behind the plane (T-1021's C) and a0·∂/∂a0 against the fields (T-1021's C_linear)"
 scale = "as T-1086, T-1164, T-1165 and T-1021"
 measured = { operator = 0.195, run = { Float32 = 1.93, Float64 = 0.115, "Dual{Float32,3}" = 2.04 }, Ey = 4.12, Ez = 3.49, yee_propagation = 46.6, energy = 0.0874, leak = 6.74e-4, linear = 0.0 }
-status = "proposed; Yee's propagation of the same incident field misses the M4 beam by 46.6 of the scale, 11 times M4's own"
+measured_device = { run = { "Float32 on CUDABackend" = 1.9, "Float64 on CUDABackend" = 0.115, "Dual{Float32,3} on CUDABackend" = 2.05 } }
+status = "proposed; Yee's propagation of the same incident field misses the M4 beam by 46.6 of the scale, 11 times M4's own; measured_device is the Gaussian run of T-1269 on an RTX 4080 SUPER at 368e8db"
