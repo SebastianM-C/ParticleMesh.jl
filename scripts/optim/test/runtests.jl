@@ -1354,3 +1354,5 @@ end
     @test w.ionization.rows[2] - w.ionization.rows[1] ≈ b.ionization.rows[2] - b.ionization.rows[1] rtol = 1e-14
     @test launched_fraction(w).interior > 0.9995 && launched_fraction(w).interior > launched_fraction(b).interior
 end
+
+include(joinpath(@__DIR__, "pulse3d.jl"))

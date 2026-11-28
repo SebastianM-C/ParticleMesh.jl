@@ -57,15 +57,22 @@ each transverse axis, `ppc` plasma electrons and `ion_ppc` dopant atoms per cell
 `cfl` hundredths of the Courant limit, a₀ from [`a0_for_energy3`](@ref) at `energy`, the dopant at
 `TCASE.dopant_fraction` of `density` with the ADK rates of N⁵⁺ and N⁶⁺, and `capacity` born-electron
 slots. The element type is `float` for plain arguments, or the duals' when an argument is one.
+With `shape = (; profile, envelope)` of [`PulseShapes`](@ref) (a `ZernikeBeam` profile, and
+optionally a carrier `phase`) and its `a0`, the pulse is a [`ShapedLaser`](@ref) at `a0`, `delay`
+and `focus` in place of the Gaussian (`duration`, `waist` and `energy` then unused, WP-087); its
+table is built on the state ([`tabulate`](@ref)).
 """
 function trapped3d_problem(duration, waist, focus, delay, density; float::Type{<:AbstractFloat} = Float32, energy = budget3(),
                            ppl::Integer = 16, nt::Integer = 1, rows::Integer = BCASE.rows, ppc = (2, 1, 1), ion_ppc = (1, 1, 1), cfl::Integer = 95,
-                           every::Integer = BCASE.every, capacity::Integer = trapped3d_capacity(ppl; nt, ion_ppc, every), t_end = BCASE.t_end)
+                           every::Integer = BCASE.every, capacity::Integer = trapped3d_capacity(ppl; nt, ion_ppc, every), t_end = BCASE.t_end,
+                           shape = nothing, a0 = nothing)
     ppl % 8 == 0 || throw(ArgumentError("ppl must be a multiple of 8, got $ppl"))
+    (shape === nothing) == (a0 === nothing) || throw(ArgumentError("a shaped pulse takes its a0, a Gaussian one takes it from the energy: pass both or neither"))
     base(x) = x isa AbstractFloat ? float : typeof(x)
-    T = promote_type(base(duration), base(waist), base(focus), base(delay), base(density), float)
+    shaped = shape === nothing ? () : (a0, PulseShapes.parameter_values(shape.profile)..., PulseShapes.parameter_values(shape.envelope)...)
+    T = promote_type(base(duration), base(waist), base(focus), base(delay), base(density), map(base, shaped)..., float)
     R(x) = x isa AbstractFloat ? T(x) : convert(T, x)
-    a0 = a0_for_energy3(R(duration), R(waist); energy = convert(T, energy))
+    a0 = shape === nothing ? a0_for_energy3(R(duration), R(waist); energy = convert(T, energy)) : R(a0)
     dopant = convert(T, TCASE.dopant_fraction) * R(density)
     z3 = (zero(T), zero(T), zero(T))
     h = 2 * T(π) / ppl
@@ -75,8 +82,11 @@ function trapped3d_problem(duration, waist, focus, delay, density; float::Type{<
     nsteps = ceil(Int, t_end / Float64(value_of(dt)))
     yc = cells[2] * Float64(value_of(ht)) / 2
     hw = BCASE.half_rows * π / 4
-    pulse = GaussianLaser(; a0, waist = R(waist), duration = R(duration), delay = R(delay), focus = R(focus),
-                          position = max(12, 192 ÷ ppl) * (2 * T(π) / 32), center = (cells[2] * ht / 2, cells[3] * ht / 2))
+    position, center = max(12, 192 ÷ ppl) * (2 * T(π) / 32), (cells[2] * ht / 2, cells[3] * ht / 2)
+    pulse = shape === nothing ?
+            GaussianLaser(; a0, waist = R(waist), duration = R(duration), delay = R(delay), focus = R(focus), position, center) :
+            ShapedLaser(; a0, delay = R(delay), focus = R(focus), position, center, profile = PulseShapes.convert_eltype(T, shape.profile),
+                        envelope = PulseShapes.convert_eltype(T, shape.envelope), phase = R(get(shape, :phase, 0)))
     e = SpeciesDescription{T}(:electron, -one(T), one(T), R(density), zero(T), (1, 0, 0), Tuple(ppc), z3, z3, 1)
     levels = (adk_level(T, :N, 6; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff),
               adk_level(T, :N, 7; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff))
@@ -105,8 +115,14 @@ the other keywords as [`trapped3d_problem`](@ref).
 """
 function trapped3d_start(free; backend = CPU(), ppl::Integer = 16, nt::Integer = 1, solver = Yee(), gather = CompensatedGather(; k = 1), kw...)
     prob = trapped3d_problem(trapped_point(free)...; ppl, nt, kw...)
+    return trapped3d_start(prob; backend, ppl, nt, solver, gather)
+end
+
+"The start of the 3D problem `prob` (a [`trapped3d_problem`](@ref)): its state on `backend` and its parameters, a shaped laser's table built on the state ([`tabulate`](@ref))."
+function trapped3d_start(prob::EMProblem; backend = CPU(), ppl::Integer = 16, nt::Integer = 1, solver = Yee(), gather = CompensatedGather(; k = 1))
     st = EMState(prob, trapped3d_numerics(ppl, nt; solver, gather); record = (), backend)
     p = params(prob)
+    any(l -> l isa ShapedLaser, p.lasers) && (p = tabulate(st, p))
     initialize!(st, p)
     return st, p, prob
 end
