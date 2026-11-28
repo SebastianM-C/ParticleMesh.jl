@@ -33,7 +33,7 @@
 # - Ionization. The one physics in which the codes are not the same scheme:
 #   * ParticleMesh (`FieldIonization`, WP-059): macro-atoms on a 1 × 1 lattice that release the
 #     expected fraction of an electron every step, ADK with FBPIC's l* (from the neutral's first
-#     ionization energy, `scripts/ionization/atomic.jl`), no ionization current, no random numbers.
+#     ionization energy, Wakefields' `adk_level`), no ionization current, no random numbers.
 #   * Smilei v5.1 (`ionization_model = "tunnel"`, `Ionization/IonizationTunnel.cpp`): Monte Carlo
 #     per macro-ion and step, ADK with l* = n* − 1 (`beta_tunnel` = 2^{2n*}(2l + 1)/(n*Γ(2n*))·I),
 #     several levels in one step by the cumulative probability, and the ionization current.
@@ -60,7 +60,7 @@
 #   the born electrons' kinetic-energy spectrum.
 
 isdefined(@__MODULE__, :smilei_namelist) || include(joinpath(@__DIR__, "lwfa.jl"))     # once, when the tests have it already
-include(joinpath(REPO, "scripts", "ionization", "atomic.jl"))
+using Wakefields
 using SpecialFunctions: gamma
 using ParticleMeshElectromagnetic: ionization_state, ionization_electrons, ionization_lost, ionization_frame, window_back_band
 

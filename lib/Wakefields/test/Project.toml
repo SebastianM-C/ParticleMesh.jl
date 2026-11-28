@@ -1,0 +1,17 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ParticleMeshElectromagnetic = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Wakefields = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
+
+[sources]
+ParticleMeshElectromagnetic = {path = "../../ParticleMeshElectromagnetic"}
+Wakefields = {path = ".."}
+
+[compat]
+Aqua = "0.8"
+ParticleMeshElectromagnetic = "0.1"
+TOML = "1"
+Test = "1"
+Wakefields = "0.1"
