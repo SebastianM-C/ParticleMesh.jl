@@ -149,6 +149,28 @@ function piece!(st, p, k, ::Val{P}) where {P}
     end
     return nothing
 end
+# PM_CHECK_CTX=1 (WP-088): the piece where the step runs it, after the pieces of step kmid + 1 that
+# precede it (the deposit after the push, which rewrites the old positions, and after the sort, which
+# writes the segments; at the step's start the window's last shift has moved the cells and not the
+# old cells, and the refill's particles hold stale old positions, which no step deposits)
+const STEP_ORDER = (:sharpen, :ionize, :push, :retire_x, :current, :retire_open, :solve, :window)
+parent_piece(P) = P in STEP_ORDER ? P : P in (:ionize_k, :ionize_nobirth, :ionize_v1, :ionize_v2) ? :ionize :
+                  P in (:resort_e, :resort_b, :dep_e, :dep_b, :edges, :filter) ? :current :
+                  P in (:w_fields, :w_absorbers, :w_species, :w_load, :w_ionization) ? :window : nothing
+function context_pieces(P)
+    q = parent_piece(P)
+    (q === nothing || P === :step) && return Symbol[]
+    pre = collect(STEP_ORDER[1:(findfirst(==(q), STEP_ORDER) - 1)])
+    P in (:dep_e, :dep_b) && push!(pre, P === :dep_e ? :resort_e : :resort_b)
+    return pre
+end
+if get(ENV, "PM_CHECK_CTX", "0") == "1"
+    for q in context_pieces(Symbol(piece))
+        piece!(st, p, kmid + 1, Val(q))
+    end
+    sync()
+    println("in context: ran ", context_pieces(Symbol(piece)), " of step $(kmid + 1) first")
+end
 @kernel function sq_kernel!(out, @Const(a))
     i = @index(Global, Linear)
     @inbounds out[i] = a[i] * a[i]
