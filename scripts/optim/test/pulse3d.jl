@@ -23,8 +23,8 @@ pulse3_small(x; phase = 0.0, kw...) = pulse3_objective(x; SMALL3..., phase, SMAL
 "Duals of the fourteen parameters at `x`, the partials of the directions `dirs` (unit vectors in the order given)."
 duals3(x, dirs = 1:length(x)) = [ForwardDiff.Dual{Nothing}(Float64(x[i]), ntuple(j -> Float64(dirs[j] == i), length(dirs))) for i in eachindex(x)]
 
-"The corner of the box with the least share launched inside the absorbers of 82 sign patterns of the modes at focus 64 and 110 (`questions/wp-087-pulse-shape-study.md` §8)."
-pulse3_corner() = [110.0; PULSE3_MODE_BOUND .* [-1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1]; 12.0; -30.0]
+"The corner of the box with the least share launched inside the absorbers, of all 4096 sign patterns of the modes at focus 64 and 110 at λ₀/8 and λ₀/16 (`questions/wp-087-pulse-shape-study.md` §8)."
+pulse3_corner() = [110.0; PULSE3_MODE_BOUND .* [1, -1, 1, -1, 1, -1, -1, -1, 1, 1, -1]; 12.0; -30.0]
 
 "The ±1 signs of the eleven modes under the mirror y → −y (θ → π − θ): (−1)^m for cos mθ (m ≥ 0), −(−1)^|m| for sin |m|θ (m < 0)."
 mirror_y_signs() = [(m = zernike_index(j)[2]; m >= 0 ? (-1)^m : -(-1)^abs(m)) for j in PCASE3.modes]
@@ -51,11 +51,23 @@ end
     @test focal_fwhm3(PCASE3.na) ≈ TCASE.x0[2] * sqrt(2 * log(2)) rtol = 1e-5
     @test focal_fwhm3(PCASE3.na; radial = PCASE3.radial, angular = PCASE3.angular) ≈ focal_fwhm3(PCASE3.na) rtol = 1e-9
     @test focal_fwhm3(2 * PCASE3.na) ≈ focal_fwhm3(PCASE3.na) / 2 rtol = 1e-9
-    # the modes: j = 1, 2, 4 stay zero, the others are the free numbers in order; the spectral phase is the envelope's
+    # the modes: j = 1, 2 stay zero, j = 4 balances the spherical mode, the others are the free numbers in order; the spectral phase is the envelope's
     x = [90.0; collect(range(-0.09, 0.08; length = 11)); 3.0; -7.0]
     sh = pulse3_shape(x)
     ab = sh.profile.aberrations
-    @test length(ab) == 14 && ab[1] == ab[2] == ab[4] == 0 && [ab[j] for j in PCASE3.modes] == x[2:12]
+    x12 = x[1 + findfirst(==(12), PCASE3.modes)]
+    @test length(ab) == 14 && ab[1] == ab[2] == 0 && ab[4] == -PULSE3_BALANCE * x12 && [ab[j] for j in PCASE3.modes] == x[2:12]
+    # the balance: none on a pupil that is flat over the whole disk, where the Zernike modes are orthogonal; on the case's
+    # flat-top, 0.1 waves of the balanced mode keep the on-axis peak within 2 c/ω₀ of the focus, where Z₁₂ alone moved it by 45
+    @test abs(spherical_balance(; radius = 10.0)) < 1e-6 && -2 < PULSE3_BALANCE < -1
+    onaxis(b, ξs) = ξs[argmax([abs2(first(PulseShapes.profile(b, ξ, 0.0, 0.0))) for ξ in ξs])]
+    for v in (-0.1, 0.1)
+        xb = [80.0; [j == 12 ? v : 0.0 for j in PCASE3.modes]; 0.0; 0.0]
+        @test abs(onaxis(pulse3_shape(xb; quadrature = (32, 64)).profile, -60:1.0:60)) <= 2
+        bz = ZernikeBeam(; na = PCASE3.na, amplitude = SuperGaussianPupil(; radius = PCASE3.radius, order = PCASE3.order),
+                         aberrations = ntuple(j -> j == 12 ? v : 0.0, 12), radial = 32, angular = 64)
+        @test abs(onaxis(bz, -60:1.0:60)) > 30
+    end
     @test (sh.envelope.duration, sh.envelope.gdd, sh.envelope.tod, sh.envelope.fod) === (6.0, 3.0, -7.0, 0.0)
     @test (sh.profile.radial, sh.profile.angular) == (PCASE3.radial, PCASE3.angular) && pulse3_shape(x; quadrature = (16, 64)).profile.radial == 16
     @test_throws ArgumentError pulse3_shape(x[1:13])
@@ -64,7 +76,7 @@ end
     @test PulseShapes.quadrature_radius(pulse3_shape(PULSE3_BOX.hi).profile) > 1.1 * r
     # the Strehl ratio: 1 unaberrated; for spherical aberration alone the on-axis value of the pupil sum, |Σ w a e^{2πiW}|²/(Σ w a)²
     @test strehl3(pulse3_shape(collect(PCASE3.x0))) ≈ 1 rtol = 1e-10
-    xs = [80.0; [j == 12 ? 0.06 : 0.0 for j in PCASE3.modes]; 0.0; 0.0]
+    xs = [80.0; [j == 12 ? 0.1 : 0.0 for j in PCASE3.modes]; 0.0; 0.0]
     b = pulse3_shape(xs).profile
     num, den = 0.0im, 0.0
     for i in 1:b.radial, k in 1:b.angular
@@ -74,7 +86,7 @@ end
         den += wa
     end
     @test strehl3(pulse3_shape(xs)) ≈ abs2(num / den) rtol = 1e-6
-    @test strehl3(pulse3_shape(xs)) < 0.9 && strehl3(pulse3_shape(x)) < strehl3(pulse3_shape(xs))
+    @test strehl3(pulse3_shape(xs)) < 0.95 && strehl3(pulse3_shape(x)) < strehl3(pulse3_shape(xs))
     # coma moves the peak off the axis: the search finds it, the largest of a fine grid around it
     xc = [80.0; [j == 8 ? 0.08 : 0.0 for j in PCASE3.modes]; 0.0; 0.0]
     bc = pulse3_shape(xc).profile
@@ -128,8 +140,8 @@ end
     end
     s0 = share(collect(PCASE3.x0))[1]
     @test 0.99 < s0.interior < s0.box < 1
-    @test 0.8 < share(pulse3_corner())[1].interior < 0.85               # the worst corner tried loses 17 %
-    @test all(share(random_start3(k))[1].interior > 0.98 for k in 1:4)
+    @test 0.88 < share(pulse3_corner())[1].interior < 0.9               # the worst of the 4096 corners at focus 64 and 110 loses 11 %
+    @test all(share(random_start3(k))[1].interior > 0.97 for k in 1:4)
 end
 
 @testset "T-1232 the 3D shaped problem is WP-084's case with the ShapedLaser in place of the Gaussian, and the shape's duals reach the table [WP-084, WP-085, WP-087]" begin

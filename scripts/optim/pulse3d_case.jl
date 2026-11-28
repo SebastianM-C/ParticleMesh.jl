@@ -3,11 +3,13 @@
 # fixed round super-Gaussian near field focused by a lens of fixed numerical aperture, with a
 # wavefront of Zernike modes up to radial order 4, and a Gaussian spectrum with a spectral phase.
 # Its fourteen parameters are the focus, eleven Zernike modes (OSA j = 3 and 5 to 14, in waves of
-# unit rms: no piston, no tilts, no defocus), the GDD and the TOD. Everything the optimizer moves is
-# a phase (the focus moves the lens), so the pulse carries the same energy at every point and a₀ is
-# a constant of the case, as in the 2D pilot (pulse2d_case.jl).
+# unit rms: no piston, no tilts, no defocus, and the spherical mode balanced against defocus), the
+# GDD and the TOD. Everything the optimizer moves is a phase (the focus moves the lens), so the
+# pulse carries the same energy at every point and a₀ is a constant of the case, as in the 2D pilot
+# (pulse2d_case.jl).
 isdefined(@__MODULE__, :budget3) || include(joinpath(@__DIR__, "trapped3d_case.jl"))
 using ParticleMeshElectromagnetic: tabulate, launched_energy
+using ParticleMeshElectromagnetic.PulseShapes: radial_node, zernike
 
 """
 Fixed parameters of the 3D case beyond [`TCASE`](@ref), [`BCASE`](@ref) and the 3D case of
@@ -25,8 +27,9 @@ Fixed parameters of the 3D case beyond [`TCASE`](@ref), [`BCASE`](@ref) and the 
 - The spectrum is Gaussian with the transform-limited `duration` of the base pulse, through
   [`PulseShapes.SpectralEnvelope`](@ref) with `spectral_samples` points.
 - `modes` are the Zernike modes (OSA/ANSI j) the optimizer moves; j = 1, 2 (tilts) and 4 (defocus)
-  stay at zero, since tilts steer the beam off the axis and defocus moves the focus, which `focus`
-  already does. With E along y (polarization 0), the modes with m < 0 (sin mθ: 3, 6, 7, 10, 11) are
+  are not free, since tilts steer the beam off the axis and defocus moves the focus, which `focus`
+  already does; j = 12 is the spherical mode balanced against defocus ([`spherical_balance`](@ref)),
+  so j = 4 carries its balance and is zero otherwise. With E along y (polarization 0), the modes with m < 0 (sin mθ: 3, 6, 7, 10, 11) are
   odd under the mirror z → −z, which keeps the polarization, so their gradient vanishes at an
   unaberrated pulse (T-1233); a mode odd under y → −y is paired with the opposite carrier phase.
 - `x0` is the unaberrated, transform-limited pulse focused at the base point's 80; `names` and
@@ -41,10 +44,10 @@ const PCASE3 = (a0_energy = 1.9, density = 0.072, delay = 54.0, duration = 6.0, 
 """
 The optimizer's box (the 3D half of WP-087): the focus over WP-068's 64 to 110, each Zernike mode
 within ±`PULSE3_MODE_BOUND` waves rms, the GDD within ±12 and the TOD within ±30 (1/ω₀² and 1/ω₀³),
-the 2D pilot's spectral box. Eleven modes at their bounds together are a wavefront of
-`PULSE3_MODE_BOUND·√11` = 0.33 waves rms, whose wings leave the box's cross-section: the share of
-the energy driven inside the transverse absorbers is 99.3 % at the unaberrated pulse and falls to
-83 % at the worst corner tried (`questions/wp-087-pulse-shape-study.md` §8, T-1231), so every
+the 2D pilot's spectral box. Eleven modes at their bounds together are a wavefront of about a third
+of a wave rms, whose wings leave the box's cross-section: the share of the energy driven inside the
+transverse absorbers is 99.2 % at the unaberrated pulse (98 % at focus 110) and falls to 88.5 % at
+the worst of the box's corners (`questions/wp-087-pulse-shape-study.md` §8, T-1231), so every
 point records its share ([`launched_share3`](@ref)).
 """
 const PULSE3_MODE_BOUND = 0.1
@@ -60,7 +63,8 @@ pulse3_nparams() = length(PCASE3.x0)
 The pulse's transverse profile and temporal envelope at the fourteen parameters `x` (focus, the
 modes of `PCASE3.modes`, GDD, TOD), in their promoted element type: a
 [`PulseShapes.ZernikeBeam`](@ref) with the aberration of mode j at `x[1 + k]` for the k-th of
-`PCASE3.modes` and zero for the others, and a [`PulseShapes.SpectralEnvelope`](@ref). The focus is
+`PCASE3.modes`, −α·x for j = 4 with x the spherical mode's ([`spherical_balance`](@ref)), and zero
+for j = 1, 2, and a [`PulseShapes.SpectralEnvelope`](@ref). The focus is
 the laser's, not the shape's. `quadrature` is the pupil sum's radial nodes and angular points
 (the CPU tests take fewer on their smaller box).
 """
@@ -68,13 +72,41 @@ function pulse3_shape(x; na = pulse3_na(), quadrature = (PCASE3.radial, PCASE3.a
     length(x) == pulse3_nparams() || throw(ArgumentError("pulse3_shape takes the $(pulse3_nparams()) parameters, got $(length(x))"))
     T = promote_type(map(typeof, Tuple(x))...)
     n = maximum(PCASE3.modes)
-    aberrations = ntuple(m -> (k = findfirst(==(m), PCASE3.modes); k === nothing ? zero(T) : T(x[1 + k])), n)
+    c = ntuple(m -> (k = findfirst(==(m), PCASE3.modes); k === nothing ? zero(T) : T(x[1 + k])), n)
+    aberrations = ntuple(m -> m == 4 ? -T(PULSE3_BALANCE) * c[12] : c[m], n)     # the spherical mode balanced against defocus
     profile = ZernikeBeam(; na = T(na), amplitude = SuperGaussianPupil(; radius = T(PCASE3.radius), order = PCASE3.order), aberrations,
                           radial = quadrature[1], angular = quadrature[2])
     k = length(PCASE3.modes)
     envelope = SpectralEnvelope(; duration = T(PCASE3.duration), gdd = T(x[2 + k]), tod = T(x[3 + k]), samples = PCASE3.spectral_samples)
     return (; profile, envelope)
 end
+
+"""
+    spherical_balance(; radius, order, nodes = 256) -> α
+
+The defocus in the case's near field's Z₁₂ (primary spherical aberration): the coefficient of Z₄
+in the least-squares fit of Z₁₂ by piston and Z₄ over the pupil, weighted by the field's
+amplitude, ρ·a(ρ) dρ, on `nodes` Gauss–Legendre nodes. Zernike modes are orthogonal over the
+uniform disk, not over this flat-top, whose amplitude falls off before the rim: there 0.1 waves
+of Z₁₂ alone move the beam's on-axis peak by about 45 c/ω₀, nearly the focus box's width (the
+physics breaker of WP-087's 3D half). So the case's mode j = 12 is Z₁₂ − α·Z₄, whose
+amplitude-weighted defocus is zero: to first order in the wavefront it keeps the peak at `focus`
+and the focus parameter and the mode do not trade for each other (T-1230).
+"""
+function spherical_balance(; radius = PCASE3.radius, order = PCASE3.order, nodes::Integer = 256)
+    a = SuperGaussianPupil(; radius, order)
+    s = sz4 = sz12 = s44 = s412 = 0.0
+    for i in 1:nodes
+        ρ, wρ = radial_node(nodes, i, Float64)
+        w = ρ * wρ * PulseShapes.pupil_amplitude(a, ρ)
+        z4, z12 = zernike(4, ρ, 0.0), zernike(12, ρ, 0.0)
+        s += w; sz4 += w * z4; sz12 += w * z12; s44 += w * z4^2; s412 += w * z4 * z12
+    end
+    return (s412 / s - sz4 * sz12 / s^2) / (s44 / s - (sz4 / s)^2)
+end
+
+"The case's balance of Z₁₂ against defocus, [`spherical_balance`](@ref)."
+const PULSE3_BALANCE = spherical_balance()
 
 """
     focal_fwhm3(na; radius, order, radial, angular) -> FWHM

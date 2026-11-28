@@ -45,9 +45,9 @@ z_of(::Pulse3Coords, free) = collect(Float64, free) ./ PULSE3_BOX.scale
 The k-th random start: the focus, the GDD and the TOD uniform over `PULSE3_BOX` with `margin` of
 their width left free at each side, and every Zernike mode uniform in ±`spread` waves, from the
 counter-based [`uniform01`](@ref), so the starts are the same on every machine. The modes start
-small: eleven modes drawn over their whole box would be a wavefront of 0.19 waves rms on average
-(a Strehl ratio near 0.25), where little is trapped; at ±0.05 it is about 0.1 waves, a Strehl ratio
-near 0.7 (`questions/wp-087-pulse-shape-study.md` §7). Every mode is away from zero (with
+small: eleven modes drawn over their whole box give Strehl ratios of 0.35 to 0.82 (0.63 on average
+over eight draws), where less is trapped, and at ±0.05 the first eight starts have 0.81 to 0.96
+(0.88 on average; `questions/wp-087-pulse-shape-study.md` §7). Every mode is away from zero (with
 probability one), so the modes odd under the mirror z → −z start with a gradient.
 """
 function random_start3(k::Integer; seed::Integer = 873, spread::Real = 0.05, margin::Real = 0.1)
