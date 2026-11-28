@@ -1,0 +1,20 @@
+## step 0 (julia): exit 0 after 1909s
+Test Summary:                                                                                                                                                                                      | Pass  Total   Time
+T-1230 the 3D pulse's shape: a round flat-top focus as wide as the base Gaussian's, eleven Zernike modes, a pupil sum that resolves the box and a spectral phase that fits the window [A3, WP-087] |   21     21  23.6s
+Test Summary:                                                                                                                                    | Pass  Total     Time
+T-1231 the 3D energy is the budget at every point with no derivative in any parameter, and the share the antenna drives is recorded [A3, WP-087] |   28     28  2m30.3s
+Test Summary:                                                                                                                                               | Pass  Total   Time
+T-1232 the 3D shaped problem is WP-084's case with the ShapedLaser in place of the Gaussian, and the shape's duals reach the table [WP-084, WP-085, WP-087] |   10     10  20.3s
+Test Summary:                                                                                                                      | Pass  Total      Time
+T-1233 ForwardDiff through the 3D run gives the objective's gradient: duals in chunks against central differences [A3, A7, WP-087] |    8      8  11m09.8s
+Test Summary:                                                                                                                                            | Pass  Total     Time
+T-1234 the 3D box's mirrors: modes odd in z have no gradient at the unaberrated pulse, and y → −y pairs the modes with the opposite carrier [A7, WP-087] |    6      6  8m00.4s
+  point 1: u = [0.86485, -0.05388, 0.22859, -0.3081, -0.05869, 0.00054, 0.24482, 0.2157, 0.15743, 0.31471, 0.2119, 0.13216, 0.07626, 0.955]  objective = -0.9617163359762488  2.2 s
+  point 2: u = [1.375, -1.0, -1.0, -0.3719, -0.36131, -0.16054, -0.14482, 0.1443, 0.46257, 0.56529, 0.9281, 1.0, -0.87626, -0.155]  objective = -0.3532180745346558  2.6 s
+  point 3: u = [1.15, -0.6, -0.47, -0.34, -0.21, -0.08, 0.05, 0.18, 0.31, 0.44, 0.57, 0.7, -0.4, 0.4]  objective = 1.0  2.6 s
+Test Summary:                                                                                            | Pass  Total   Time
+T-1235 the 3D random starts, coordinates, chunks and the store's L-BFGS-B on the 3D box [WP-068, WP-087] |   22     22  46.5s
+Test Summary:                                                                                                                             | Pass  Total     Time
+T-1236 a 3D point's record: J and the gradient in chunks of duals, the same partials whatever the chunk, and the shape's numbers [WP-087] |   10     10  8m18.7s
+Test Summary:                                                                  | Pass  Total  Time
+T-1237 the 3D check's directions and central differences from records [WP-087] |    9      9  1.3s

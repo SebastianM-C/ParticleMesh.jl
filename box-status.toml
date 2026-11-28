@@ -1,0 +1,20 @@
+branch = "runs/wp087-3d-tests-b729ea9"
+request_commit = "5aee07fd40ff7ad88ce054642db2cfcd06ce0327"
+started = "2026-11-28T07:13:27Z"
+category = "test"
+outputs = []
+finished = "2026-11-28T07:45:17Z"
+ok = true
+files_returned = 0
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-28T07:13:27Z"
+exit = 0
+seconds = 1909
