@@ -10,6 +10,14 @@ param_number(text, key) = parse(Float64, match(Regex("\\b$key = ([-0-9.e]+)"), t
 @testset "T-1200 the uniform benchmark is one plasma in both codes: the box, Δt, density, lattice, temperature, element type and algorithms of ParticleMesh's problem are PIConGPU's deck [A1, A5, WP-090]" begin
     case = TOML.parsefile(BENCH_CASE_FILE)
     U = reference_units(Float64(case["lambda0_um"]) * 1e-6)
+    # an anisotropic entry next to the case's: every axis of the box and the lattice keeps its place
+    aniso = deepcopy(case)
+    push!(aniso["uniform"], Dict{String,Any}("name" => "aniso", "cells" => [16, 24, 32], "ppc" => [1, 2, 3]))
+    ua = last(uniform_entries(aniso))
+    @test uniform_problem(ua).cells == (16, 24, 32) && only(uniform_problem(ua).species).ppc == (1, 2, 3)
+    @test occursin("mCT::Int<1, 2, 3>", picongpu_uniform_param_files(ua)["particle.param"])
+    @test occursin("-g 16 24 32 ", picongpu_uniform_arguments(ua)) && ua.particles == 16 * 24 * 32 * 6
+    @test occursin("mCT::Int<8, 8, 4>", picongpu_uniform_param_files(ua)["memory.param"])
     for u in uniform_entries(case)
         @test u.dt == 0.95 / sqrt(3 / u.dx^2) && u.dx == 2π / 32
         prob = uniform_problem(u)
@@ -40,7 +48,8 @@ param_number(text, key) = parse(Float64, match(Regex("\\b$key = ([-0-9.e]+)"), t
         args = picongpu_uniform_arguments(u)
         @test occursin("-d 1 $(u.ranks) 1 ", args) && occursin("-g $(u.cells[1]) $(u.cells[2]) $(u.cells[3]) ", args) && occursin("-s $(u.steps) ", args)
         @test occursin("--periodic 1 1 1 ", args) && occursin("--currentInterpolation none", args) && !occursin("openPMD", args)
-        @test occursin("--fields_energy.period $(u.steps)", args) && occursin("--e_energy.period $(u.steps)", args)
+        @test count("--periodic", args) == 1 && count("--currentInterpolation", args) == 1
+        @test occursin("--fields_energy.period $(u.steps)", args) && occursin("--e_energy.period $(u.steps)", args) && occursin("--e_energy.filter all", args)
     end
     # ParticleMesh's numerics: the same algorithms, no filter
     for m in ("reference", "fast")
@@ -70,7 +79,22 @@ param_number(text, key) = parse(Float64, match(Regex("\\b$key = ([-0-9.e]+)"), t
         @test occursin("mpiexec -n 1 setup/bin/picongpu -d 1 1 1 -g 128 128 128", run_sh) && occursin("PIC_SEED=1", run_sh)
         @test occursin("pic-build", read(joinpath(root, "picongpu-c128-p1", "build.sh"), String)) && !occursin("pic-build", run_sh)
         @test TOML.parsefile(joinpath(root, "pm-c128-p8-f64-reference", "entry.toml"))["float"] == "Float64"
-        @test isfile(joinpath(root, "picongpu-lwfa-plasma", "params", "precision.param"))
+        lroot = joinpath(root, "picongpu-lwfa-plasma")
+        @test occursin("precision32Bit", read(joinpath(lroot, "params", "precision.param"), String))
+        lrun = read(joinpath(lroot, "run.sh"), String)
+        @test occursin("mpiexec -n 2 setup/bin/picongpu -d 1 2 1 -r 2 -g 128 1104 128 -s 1704 ", lrun) && !occursin("openPMD", lrun)
+        @test occursin(strip(read(joinpath(lroot, "arguments.txt"), String)), lrun)
+        @test TOML.parsefile(joinpath(lroot, "entry.toml"))["ranks"] == 2
+        for n in names
+            startswith(n, "picongpu-") || continue
+            b = read(joinpath(root, n, "build.sh"), String)
+            @test findfirst("# compile start", b).start < findfirst("pic-build", b).start < findfirst("# compile end", b).start
+            @test !occursin("openPMD", read(joinpath(root, n, "run.sh"), String))
+        end
+        pmu = TOML.parsefile(joinpath(root, "pm-c128-p8-fast", "entry.toml"))
+        @test pmu["mode"] == "fast" && uniform_entry(case, pmu).float == "Float32" && pmu["kind"] == "uniform"
+        @test TOML.parsefile(joinpath(root, "pm-lwfa-plasma-nodopant-reference", "entry.toml"))["float"] == "Float32"
+        @test strip(read(joinpath(root, "pm-lwfa-plasma-nodopant-reference", "kind.txt"), String)) == "plasma-nodopant"
     finally
         rm(root; recursive = true)
     end
@@ -153,6 +177,8 @@ end
         @test s["from"] == 20 && s["to"] == 40
         @test s["seconds_per_step"] ≈ (out["marks"][end][2] - out["marks"][3][2]) / 20
         @test s["ns_per_particle_step"] ≈ 1e9 * s["seconds_per_step"] / out["particles"]
+        @test s["ns_per_cell_step"] ≈ 1e9 * s["seconds_per_step"] / 16^3
+        @test out["loop_seconds"] == out["first_step_seconds"] + out["marks"][end][2] && out["loop_after_first_seconds"] == out["marks"][end][2]
         # the loaded kinetic energy is the temperature's, 3/2·v_th² per unit mass and weight (θ = v_th² ≪ 1; 32768
         # particles with three components drawn, a relative sampling error of about √(2/(3·32768)) = 0.45 %)
         V = (16 * case["uniform_defaults"]["dx"])^3
@@ -182,16 +208,78 @@ end
         write(joinpath(pic, "fields_energy.dat"), "#step total Bx By Bz Ex Ey Ez\n0 0 0 0 0 0 0 0\n40 $(6J) 1 0 $(J) $(2J) $(3J) 0\n")
         rest = case["uniform_defaults"]["density"] * V                 # Σ w mₑc²: E_Joule is the total energy, Ekin_Joule a threshold form
         write(joinpath(pic, "e_energy_all.dat"), "#step Ekin_Joule E_Joule\n0 0 $((K0 + rest) * J)\n40 0 $((K0 + rest) * J)\n")
-        write(joinpath(pic, "container.txt"), "# compile start: 2026-11-28T08:00:00.000000000Z\n# compile end: 2026-11-28T08:01:10.500000000Z\n")
+        write(joinpath(pic, "container.txt"), "# compile start: 2026-11-28T08:00:00.000000000Z\n# compile end: 2026-11-28T08:01:10.500000000Z\n" *
+                                              "# gpu at run: NVIDIA GeForce RTX 5090, 1.0\n# start: 2026-11-28T09:00:00.000000000Z\n# end: 2026-11-28T09:00:02.250000000Z\n")
         r = read_picongpu_bench(pic)
         @test r["steady"]["seconds_per_step"] ≈ 0.18 / 18 && r["particles"] == 16^3 * 8 && r["compile_seconds"] == 70.5
+        @test r["init_seconds"] == 1.0 && r["loop_seconds"] == 0.5 && r["full_seconds"] == 1.6 && r["wall_seconds"] == 2.25
+        @test r["steady"]["ns_per_particle_step"] ≈ 1e9 * 0.01 / (16^3 * 8) && r["steady"]["ns_per_cell_step"] ≈ 1e9 * 0.01 / 16^3
+        @test r["gpu"] == "NVIDIA GeForce RTX 5090, 1.0"
         @test r["energy_end"]["WE"] ≈ 5 && r["energy_end"]["WB"] ≈ (1 + J) / J && r["energy_start"]["K"] ≈ K0
         cp(dir * "/timing.json", mkpath(joinpath(dir, "runs", "pm-c16-p8-reference")) * "/timing.json")
         c = compare_bench(joinpath(dir, "runs"), joinpath(dir, "cmp"))
         g = c["groups"]["uniform/c16-p8"]
         @test g["picongpu_over_pm"]["pm-reference"] ≈ r["steady"]["seconds_per_step"] / s["seconds_per_step"]
         t = bench_table(JSON.parsefile(joinpath(dir, "cmp", "comparison.json")))
-        @test occursin("| c16-p8 | Float32 | 32768 | PIConGPU 0.8.0 | 10.0 |", t) && occursin("ParticleMesh, Reference", t)
+        @test occursin("| c16-p8 | Float32 | 32768 | PIConGPU 0.8.0 | 10.0 | $(fmt(1e9 * 0.01 / 32768)) | $(fmt(1e9 * 0.01 / 4096)) |  |", t)
+        @test occursin("| c16-p8 | Float32 | 32768 | ParticleMesh, Reference | $(fmt(1e3 * s["seconds_per_step"])) | $(fmt(s["ns_per_particle_step"])) | " *
+                       "$(fmt(s["ns_per_cell_step"])) | $(fmt(0.01 / s["seconds_per_step"])) |", t)
         @test isfile(joinpath(dir, "cmp", "steps.png")) && isfile(joinpath(dir, "cmp", "steps.json"))
+    end
+end
+
+# a stand-in state that records the steps it is given: timed_steps! must step exactly 1:steps, once each
+struct CountingState
+    ks::Vector{Int}
+end
+ParticleMeshElectromagnetic.step!(st::CountingState, p, k::Integer) = (push!(st.ks, k); st)
+
+@testset "T-1204 the timers step every step once, the host energies read the interior only, and PIConGPU's LWFA directory reads into cells, counts and energies [A5, A7, WP-090]" begin
+    for (steps, block) in ((40, 10), (37, 10), (1704, 85))
+        st = CountingState(Int[])
+        r = timed_steps!(st, nothing, CPU(), steps, block; counter = s -> length(s.ks))
+        @test st.ks == collect(1:steps)
+        @test [m[1] for m in r.marks] == [1; [k for k in block:block:steps]; (steps % block == 0 ? Int[] : [steps])]
+        @test r.counts == [(m[1], m[1]) for m in r.marks]
+    end
+    # the field energy of one interior value, with the guards filled: ½E²ΔV of the interior alone
+    case = TOML.parsefile(BENCH_CASE_FILE)
+    u = uniform_entry(case, Dict{String,Any}("name" => "c8", "cells" => [8, 8, 8], "ppc" => [1, 1, 1], "float" => "Float64"))
+    st = EMState(uniform_problem(u), bench_numerics(Reference()); record = ())
+    initialize!(st, params(uniform_problem(u)))
+    g = guards(st.grid)
+    for c in (:Ex, :Ey, :Ez, :Bx, :By, :Bz)
+        fill!(getfield(st.fields, c), 1.0)
+        getfield(st.fields, c)[(g + 1):(g + 8), (g + 1):(g + 8), (g + 1):(g + 8)] .= 0
+    end
+    st.fields.Ey[g + 3, g + 4, g + 5] = 2.0
+    st.fields.Bz[g + 1, g + 8, g + 2] = 3.0
+    e = host_energies(st)
+    @test e["WE"] ≈ 0.5 * 4 * u.dx^3 && e["WB"] ≈ 0.5 * 9 * u.dx^3
+    # PIConGPU's LWFA directory: the box it computes, the window, the steady interval, the electrons' mean, the energies
+    lcase_path = joinpath(REPO, "scripts", "lwfa", "cases", "ionization-3d.toml")
+    mktempdir() do dir
+        cp(lcase_path, joinpath(dir, "case.toml"))
+        write(joinpath(dir, "kind.txt"), "plasma\n")
+        open(io -> TOML.print(io, Dict("kind" => "lwfa", "float" => "Float32", "warmup" => 765, "block" => 85, "ranks" => 2)), joinpath(dir, "entry.toml"), "w")
+        write(joinpath(dir, "picongpu.log"), """
+        initialization time:  3sec 0msec = 3.0 sec
+         44 % =      765 | time elapsed:            30sec 0msec | avg time per step:  40msec
+         99 % =     1700 | time elapsed:       1min 10sec 0msec | avg time per step:  40msec
+        calculation  simulation time:  1min 11sec 0msec = 71.0 sec
+        full simulation time:  1min 15sec 0msec = 75.0 sec
+        """)
+        U = reference_units(0.8e-6)
+        J = U.energy * U.density * U.length^3
+        write(joinpath(dir, "fields_energy.dat"), "#step total Bx By Bz Ex Ey Ez\n0 0 0 0 0 0 0 0\n1704 $(10J) $(J) 0 0 $(2J) $(7J) 0\n")
+        write(joinpath(dir, "e_macroParticlesCount.dat"), "0 100\n765 1000\n1700 3000\n")
+        write(joinpath(dir, "eb_macroParticlesCount.dat"), "765 0\n1700 200\n")
+        r = read_picongpu_bench(dir)
+        @test r["cells"] == [1104, 128, 128] && r["computed_cells"] == 1104 * 128 * 128 && r["window_cells"] == [552, 128, 128] && r["steps"] == 1704
+        @test r["steady"]["from"] == 765 && r["steady"]["to"] == 1700 && r["steady"]["seconds_per_step"] ≈ 40 / 935
+        @test r["steady"]["mean_particles"] ≈ (1000 + 3200) / 2 && r["steady"]["ns_per_particle_step"] ≈ 1e9 * (40 / 935) / 2100
+        @test r["steady"]["ns_per_cell_step"] ≈ 1e9 * (40 / 935) / (1104 * 128 * 128)
+        @test r["check"]["energy_end"]["WE"] ≈ 9 && r["check"]["energy_end"]["WB"] ≈ 1
+        @test r["ranks"] == 2 && r["init_seconds"] == 3.0 && r["loop_seconds"] == 71.0 && r["entry"] == "plasma"
     end
 end
