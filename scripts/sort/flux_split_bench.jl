@@ -110,7 +110,7 @@ function bench(sizename, tname; reps)
             r[c === nothing ? "default" : string(c)] = median_time(() -> dep(c); reps)
             r["same_bits_" * (c === nothing ? "default" : string(c))] = map(bits, J) == ref
         end
-        r["default_launches"] = length(PMC.flux_components_2d(BE, T, prod(PMC.flux_widths(Quadratic, RHO, ws.bins)), nothing))
+        r["default_launches"] = length(PMC.flux_components_2d(nothing))
         out[label] = r
     end
     return out

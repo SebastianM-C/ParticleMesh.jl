@@ -514,9 +514,6 @@ end
     body_T840(CPU())
 end
 
-"A non-CPU backend type for T-1191: `flux_components_2d` reads only the backend's type."
-struct SplitFakeGPU <: KernelAbstractions.Backend end
-
 "T-1191's bits on `be` (gpu.jl reruns it on CUDA, T-1192): the 2D Reference flux with 1, 2 or 3 components per launch against the default."
 function body_T1191(be)
     for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, bins in (CellBins(), NodeBins(shape, st))
@@ -531,29 +528,14 @@ function body_T1191(be)
     end
 end
 
-@testset "T-1191 the 2D Reference flux gives the same bits with one, two or three components per launch of its patch kernel, and the default takes all three on the CPU and as many as fit FLUX_PATCH_BYTES elsewhere [A4, WP-041]" begin
+@testset "T-1191 the 2D Reference flux gives the same bits with one, two or three components per launch of its patch kernel, and the default takes all three [A4, WP-041]" begin
     body_T1191(CPU())
-    split(be, T, K) = ParticleMeshCore.flux_components_2d(be, T, K, nothing)
-    for T in TYPES, K in (16, 25, 36)
-        @test split(CPU(), T, K) == ((1, 2, 3),)
+    @test ParticleMeshCore.flux_components_2d(nothing) == ((1, 2, 3),)
+    for c in (1, 2, 3)
+        @test ParticleMeshCore.flux_components_2d(c) == (((1,), (2,), (3,)), ((1, 2), (3,)), ((1, 2, 3),))[c]
     end
-    # 5 × 5 values per component (order 2 on nodes by NodeBins): 100, 200, 300, 400 and 600 bytes
-    # per component against the 800 of FLUX_PATCH_BYTES
-    @test ParticleMeshCore.FLUX_PATCH_BYTES == 800
-    @test split(SplitFakeGPU(), Float32, 25) == ((1, 2, 3),)
-    @test split(SplitFakeGPU(), Float64, 25) == ((1, 2, 3),)
-    @test split(SplitFakeGPU(), Dual{Nothing,Float32,2}, 25) == ((1, 2), (3,))
-    @test split(SplitFakeGPU(), Dual{Nothing,Float32,3}, 25) == ((1, 2), (3,))
-    @test split(SplitFakeGPU(), Dual{Nothing,Float64,2}, 25) == ((1,), (2,), (3,))
-    @test split(SplitFakeGPU(), Float64, 36) == ((1, 2), (3,))
-    @test split(SplitFakeGPU(), Dual{Nothing,Float64,3}, 36) == ((1,), (2,), (3,))    # 1152 bytes a component: still one per launch
-    for be in (CPU(), SplitFakeGPU()), c in (1, 2, 3)
-        @test ParticleMeshCore.flux_components_2d(be, Float32, 25, c) == (((1,), (2,), (3,)), ((1, 2), (3,)), ((1, 2, 3),))[c]
-    end
-    @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, 0)
-    @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, 4)
-    for c in (true, 2.0, :x)
-        @test_throws ArgumentError ParticleMeshCore.flux_components_2d(CPU(), Float32, 25, c)
+    for c in (0, 4, true, 2.0, :x)
+        @test_throws ArgumentError ParticleMeshCore.flux_components_2d(c)
     end
     # the keyword reaches the patch launches: deposit_flux! refuses a fourth component per launch
     grid = grid2(Float64, flux_g2(Quadratic, (Node(), Node())))
