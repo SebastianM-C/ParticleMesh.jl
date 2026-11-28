@@ -49,7 +49,11 @@ type follows the arguments. `ppl` cells per λ₀ along x at the same box (it mu
 8), and `ny` times as many cells along y as the case's 128 of Δy = π/4 (Δy = π/(4·ny), with the
 PMLs and the dopant's rows the same width); `t_end` the read-out time, `ramp` the length of the
 plasma's density ramp (the dopant's `section` does not move with it: pass both); `waist`,
-`delay` and `focus` the pulse's ([`GaussianLaser`](@ref)); `extend` whole wavelengths added to
+`delay` and `focus` the pulse's ([`GaussianLaser`](@ref)), or with `shape = (; profile, envelope)`
+of [`PulseShapes`](@ref) (and optionally a carrier `phase`) a [`ShapedLaser`](@ref) of that profile
+and envelope at `a0`, `delay` and `focus` in place of the Gaussian (`waist` and `duration` then unused, WP-087); `rows` the box's
+height in cells of Δy = π/4 (the case's 128; the absorbers' and the dopant's widths stay, WP-087
+widens it to check what its flat-top pulse loses at the y edges); `extend` whole wavelengths added to
 the window behind the case's 14, with the window's start delayed by as much, so that the box at
 every time holds the case's box and that much more of the wake behind it (the front, the plasma
 and the pulse are where they are in the case, in the lab frame). The element type is `float`
@@ -67,22 +71,26 @@ resolution of it (2⁻²⁴), where the difference of two Float32 runs is roundo
 function born_problem(a0 = BCASE.a0, dopant = BCASE.dopant; t_end = BCASE.t_end, ppl::Integer = BCASE.ppl, ny::Integer = 1, every::Integer = BCASE.every,
                       capacity::Integer = BCASE.capacity, section = BCASE.section, duration = BCASE.duration, density = BCASE.density, ramp = BCASE.ramp,
                       waist = BCASE.waist, delay = BCASE.delay, focus = BCASE.focus, extend::Integer = 0,
-                      float::Type{<:AbstractFloat} = Float64)
+                      float::Type{<:AbstractFloat} = Float64, shape = nothing, rows::Integer = BCASE.rows)
     ppl % 8 == 0 || throw(ArgumentError("ppl must be a multiple of 8 to keep Δy = π/4, got $ppl"))
     ny >= 1 || throw(ArgumentError("ny must be at least 1, got $ny"))
     extend >= 0 || throw(ArgumentError("extend must be at least 0, got $extend"))
     base(x) = x isa AbstractFloat ? float : typeof(x)
-    T = promote_type(base(a0), base(dopant), base(duration), base(density), base(waist), base(delay), base(focus), float)
+    shaped = shape === nothing ? () : (PulseShapes.parameter_values(shape.profile)..., PulseShapes.parameter_values(shape.envelope)...)
+    T = promote_type(base(a0), base(dopant), base(duration), base(density), base(waist), base(delay), base(focus), map(base, shaped)..., float)
     z3 = (zero(T), zero(T), zero(T))
     h = 2 * T(π) / ppl
     hy = (ppl ÷ 8) * h / ny
-    cells = ((BCASE.length_wavelengths + extend) * ppl, BCASE.rows * ny)
+    cells = ((BCASE.length_wavelengths + extend) * ppl, rows * ny)
     dt = T(95) / 100 / sqrt(1 / h^2 + 1 / hy^2)
     nsteps = ceil(Int, t_end / Float64(value_of(dt)))
     hy64 = Float64(value_of(hy))
     yc = cells[2] * hy64 / 2
-    pulse = GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = T(delay), focus = T(focus),
-                          position = max(12, 192 ÷ ppl) * (2 * T(π) / 32), center = cells[2] * hy / 2)
+    position, center = max(12, 192 ÷ ppl) * (2 * T(π) / 32), cells[2] * hy / 2
+    pulse = shape === nothing ?
+            GaussianLaser(; a0 = T(a0), waist = T(waist), duration = T(duration), delay = T(delay), focus = T(focus), position, center) :
+            ShapedLaser(; a0 = T(a0), delay = T(delay), focus = T(focus), position, center, profile = PulseShapes.convert_eltype(T, shape.profile),
+                        envelope = PulseShapes.convert_eltype(T, shape.envelope), phase = T(get(shape, :phase, 0)))
     e = SpeciesDescription{T}(:electron, -one(T), one(T), T(density), zero(T), (1, 0), BCASE.ppc, z3, z3, 1)
     levels = (adk_level(T, :N, 6; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff),
               adk_level(T, :N, 7; wavelength = BCASE.wavelength, cutoff = BCASE.cutoff))

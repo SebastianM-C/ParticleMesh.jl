@@ -131,7 +131,7 @@ fmt_hi(x) = isinteger(x) ? string(Int(x)) : string(x)
 duration_max(c::Coords) = c.cap === nothing ? TRAPPED_BOX.hi[1] : c.duration_hi
 
 "The gradient in the solver's coordinates at `z` from `g`, the gradient in the free parameters (the chain rule through [`free_of`](@ref))."
-grad_z(c::Coords, z, g) = ForwardDiff.jacobian(u -> free_of(c, u), collect(Float64, z))' * collect(Float64, g)
+grad_z(c, z, g) = ForwardDiff.jacobian(u -> free_of(c, u), collect(Float64, z))' * collect(Float64, g)
 
 "The coordinates of a run's options (or manifest parameters): `cap = none`, `cetal25` or `cetal35` (CETAL's 25 fs limit or its measured 35 fs), with `duration_hi`."
 function coords_of(o)
@@ -292,7 +292,7 @@ L-BFGS-B over the bounds of `coords` (`TRAPPED_BOX` without a cap) in its coordi
 `dir/result.json` (the solution, the record of every point the solver reported, the calls) and
 returns it.
 """
-function optimize_start(store::PointStore, start, dir; maxiters::Integer, pgtol::Real, coords::Coords = Coords())
+function optimize_start(store::PointStore, start, dir; maxiters::Integer, pgtol::Real, coords = Coords())
     mkpath(dir)
     calls = Dict{String,Any}[]
     J = stored_objective(store, calls)
@@ -593,7 +593,8 @@ end
 
 const SCAN_DEFAULTS = (n = 11, shard = "1/1")
 
-if length(ARGS) >= 1 && ARGS[1] in ("opt", "check", "scan")
+# the driver's commands run only when this file is the script, not when another driver includes it (pulse2d_opt.jl)
+if abspath(PROGRAM_FILE) == (@__FILE__) && length(ARGS) >= 1 && ARGS[1] in ("opt", "check", "scan")
     # the backend loads at top level, so that the runs that follow see its methods (world age)
     ARGS[1] == "opt" && parse_options(ARGS[2:end], OPT_DEFAULTS)[1]["backend"] == "cuda" && opt_backend("cuda")
     if ARGS[1] in ("check", "scan")
@@ -602,7 +603,8 @@ if length(ARGS) >= 1 && ARGS[1] in ("opt", "check", "scan")
     end
 end
 
-if length(ARGS) >= 1 && ARGS[1] == "opt"
+if abspath(PROGRAM_FILE) != (@__FILE__)
+elseif length(ARGS) >= 1 && ARGS[1] == "opt"
     o, rest = parse_options(ARGS[2:end], OPT_DEFAULTS)
     main_opt(isempty(rest) ? nothing : rest[1], o)
 elseif length(ARGS) >= 2 && ARGS[1] == "check"
