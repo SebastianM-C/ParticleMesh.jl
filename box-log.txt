@@ -1,0 +1,22 @@
+## step 0 (julia): exit 1 after 212s
+ERROR: LoadError: Some tests did not pass: 7 passed, 1 failed, 0 errored, 0 broken.
+in expression starting at /home/pm/jobs/wp087-3d-tests-b4233d8/scripts/optim/test/pulse3d.jl:119
+Test Summary:                                                                                                                                                                                      | Pass  Total   Time
+T-1230 the 3D pulse's shape: a round flat-top focus as wide as the base Gaussian's, eleven Zernike modes, a pupil sum that resolves the box and a spectral phase that fits the window [A3, WP-087] |   21     21  20.7s
+Test Summary:                                                                                                                                    | Pass  Total     Time
+T-1231 the 3D energy is the budget at every point with no derivative in any parameter, and the share the antenna drives is recorded [A3, WP-087] |   28     28  2m33.2s
+
+T-1232 the 3D shaped problem is WP-084's case with the ShapedLaser in place of the Gaussian, and the shape's duals reach the table [WP-084, WP-085, WP-087]: Test Failed at /home/pm/jobs/wp087-3d-tests-b4233d8/scripts/optim/test/pulse3d.jl:134
+  Expression: t isa PlaneTable && eltype(t.values) === ForwardDiff.Dual{Nothing, Float32, 2}
+  Stacktrace:
+   [1] top-level scope
+     @ ~/jobs/wp087-3d-tests-b4233d8/scripts/optim/test/pulse3d.jl:120
+   [2] macro expansion
+     @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:1967 [inlined]
+   [3] macro expansion
+     @ ~/jobs/wp087-3d-tests-b4233d8/scripts/optim/test/pulse3d.jl:134 [inlined]
+   [4] macro expansion
+     @ ~/.julia/juliaup/julia-1.13.3+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:758 [inlined]
+Test Summary:                                                                                                                                               | Pass  Fail  Total   Time
+T-1232 the 3D shaped problem is WP-084's case with the ShapedLaser in place of the Gaussian, and the shape's duals reach the table [WP-084, WP-085, WP-087] |    7     1      8  20.9s
+RNG of the outermost testset: Random.Xoshiro(0xdea4a7778c316e8f, 0x18e8fd6e58800251, 0x82d2b08c5a46c3e5, 0x664599bbc17466f4, 0x836446a2a34219a7)
