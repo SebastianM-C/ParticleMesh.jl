@@ -1,10 +1,11 @@
 # How many components of the 2D Reference flux one launch of its patch kernel should sum (WP-041):
 # `deposit_flux!(Reference(), ...; components = c)` for c = 3 (all of them, one launch), 2 (Jx and
 # Jy, then Jz) and 1 (one launch per component), every choice the same bits, on a sorted state,
-# for the two bins the electromagnetic module uses at order 2: the periodic box's nearest-node bins
-# (`NodeBins` at `(Node(), Node())`, a 5 × 5 frame) and the moving window's, whose x axis bins by
-# cell (`NodeBins` at `(Center(), Node())`, a 6 × 5 frame; the `n + 1` bins on x the deposition
-# study proposed would give the window the 5 × 5 frame).
+# for the bins the electromagnetic module uses at order 2: the periodic box's nearest-node bins
+# (`NodeBins` at `(Node(), Node())`, a 5 × 5 frame), the moving window's with its x axis open
+# (`NodeBins(...; open = (true, false))`, the `n + 1` bins on x of the deposition study, 5 × 5), and
+# the window's before them, whose x axis binned by cell (`NodeBins` at `(Center(), Node())`, a 6 × 5
+# frame).
 #
 #   julia +1.13 -t 4 --project=scripts scripts/sort/flux_split_bench.jl [cpu|cuda] [S,M,L] [Float32,Float64,Dual32x2,Dual32x3,Dual64x2]
 #
@@ -41,7 +42,8 @@ const TYPES = Dict("Float32" => Float32, "Float64" => Float64, "Dual32x2" => Dua
                    "Dual32x3" => Dual{Nothing,Float32,3}, "Dual64x2" => Dual{Nothing,Float64,2})
 const SIZE_LIST = length(ARGS) >= 2 ? split(ARGS[2], ",") : ["S", "M", "L"]
 const TYPE_LIST = length(ARGS) >= 3 ? split(ARGS[3], ",") : ["Float32", "Float64", "Dual32x2", "Dual32x3", "Dual64x2"]
-const BINS = (("periodic 5x5", (Node(), Node())), ("window 6x5", (Center(), Node())))
+const BINS = (("periodic 5x5", NodeBins(Quadratic, (Node(), Node()))), ("window open 5x5", NodeBins(Quadratic, (Node(), Node()); open = (true, false))),
+               ("window 6x5", NodeBins(Quadratic, (Center(), Node()))))
 const RHO = (Node(), Node())
 
 host_value(::Type{T}, x) where {T<:AbstractFloat} = T(x)
@@ -97,9 +99,9 @@ function bench(sizename, tname; reps)
     grid = PeriodicGrid(n, (T(0.1), T(0.1)), 3)
     s = Species(BE, T, cap; q = -1, m = 1, N = 2, extras = flux_extras(T, 2))
     out = Dict{String,Any}("particles" => cap)
-    for (label, bst) in BINS
+    for (label, bins) in BINS
         fill_state!(s, n, MersenneTwister(1))
-        ws = Workspace(s, grid; flux = (Quadratic, RHO), bins = NodeBins(Quadratic, bst))
+        ws = Workspace(s, grid; flux = (Quadratic, RHO), bins)
         sort_by_cell!(s, grid, ws)
         J = (field(BE, T, grid), field(BE, T, grid), field(BE, T, grid))
         dep(c) = (foreach(x -> fill!(x, zero(T)), J);

@@ -174,12 +174,12 @@ end
 # `CellBins()`) whose flux stencil reaches the node in increasing order, within a bin its particles
 # in slot order.
 @kernel function flux_sorted_kernel!(Jx, Jy, Jz, s, @Const(seg_start), @Const(seg_stop), shape, stagger, bins,
-                                     n::Int32, g::Int32, lo::Int32, hi::Int32, sx, quantity_y, quantity_z)
+                                     n::Int32, nb::Int32, g::Int32, lo::Int32, hi::Int32, sx, quantity_y, quantity_z)
     a = Int32(@index(Global, Linear))
     T = eltype(Jx)
     j = a - g
     ax, ay, az = zero(T), zero(T), zero(T)
-    @inbounds for b in max(Int32(1), j - hi):min(n, j - lo)
+    @inbounds for b in max(Int32(1), j - hi):min(nb, j - lo)
         for i in seg_start[b]:seg_stop[b]
             l, jx, jy, jz = flux_stencil(s, i, shape, stagger, n, sx, quantity_y, quantity_z)
             k = j - (b - bin_shift(bins, 1, s.offset[1][i])) - l       # the particle's cell, unwrapped from its bin
@@ -257,9 +257,10 @@ end
 function _deposit_flux!(::Reference, Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, qy, qz, workgroupsize)
     check_workspace(ws, s, grid)
     lo, hi = flux_bin_reach(ws.bins, shape, stagger, 1)
-    check_bin_guards(grid, ((lo, hi),))
+    check_bin_guards(grid, guard_reach(ws.bins, ((lo, hi),)))
     launcher(flux_sorted_kernel!, get_backend(s), workgroupsize)(Jx, Jy, Jz, s, ws.seg_start, ws.seg_stop, shape, stagger, ws.bins,
-                                                                Int32(ncells(grid)), Int32(guards(grid)), lo, hi, sx, qy, qz;
+                                                                Int32(ncells(grid)), Int32(nbins(ws.bins, ncells(grid))),
+                                                                Int32(guards(grid)), lo, hi, sx, qy, qz;
                                                                 ndrange = length(Jx))
     return Jx, Jy, Jz
 end

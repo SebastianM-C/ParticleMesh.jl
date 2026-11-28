@@ -47,7 +47,8 @@ function sorted_state(s, ws, n)
     m = Int(ws.resort.sorted_count[1])
     return all(1:m) do i
         s.status[i] == ParticleMeshCore.ALIVE || return false
-        L = ParticleMeshCore.linear_cell(ParticleMeshCore.particle_bin(ws.bins, s, i, Int32.(n)), Int32.(n))
+        nb = ParticleMeshCore.nbins(ws.bins, Int32.(n))   # one more than the cells on an open axis
+        L = ParticleMeshCore.linear_cell(ParticleMeshCore.particle_bin(ws.bins, s, i, nb), nb)
         return ws.seg_start[L] <= i <= ws.seg_stop[L]
     end
 end
@@ -186,7 +187,7 @@ function node_bins_gap(::Type{T}; nsteps = 150) where {T}
     return maximum(values(gaps)), gaps, window_shifts(on, nsteps), nborn
 end
 
-@testset "T-865 the step's deposition by nearest-node bins follows the cells' run to roundoff through the window's shifts and the births, and keeps the cell on the window's x axis [A2, A4, WP-041]" begin
+@testset "T-865 the step's deposition by nearest-node bins follows the cells' run to roundoff through the window's shifts and the births, and does not wrap the window's x axis [A2, A4, WP-041]" begin
     C = emC("T-865")
     for T in (Float32, Float64, D3)
         worst, gaps, shifts, nborn = node_bins_gap(T)
@@ -195,9 +196,10 @@ end
         @test record!("T-865", T, worst) <= C
         @test worst > 0                                  # the bins change the order of the sums
     end
-    # On the window's x axis the bin is the cell. Before the window starts its front is a fixed edge
-    # that the plasma reaches, and a particle past the middle of the last column keeps its charge in
-    # that column; a periodic node bin would move it to the back columns (found by the PR's breaker).
+    # On the window's x axis the bins are open (not wrapped). Before the window starts its front is a
+    # fixed edge that the plasma reaches, and a particle past the middle of the last column keeps its
+    # charge in that column, in the bin past it; a periodic node bin would move it to the back columns
+    # (found by the PR's breaker).
     prob = window_lwfa(Float64; start = 1000, nsteps = 2)
     cols = map((false, true)) do nb
         st = EMState(prob, EMNumerics(; node_bins = nb))
@@ -216,7 +218,7 @@ end
     @test cols[1][1] == cols[2][1] == [cols[1][3]]
     @test cols[2][2] ≈ cols[1][2] rtol = 1e-12
     # Every sorted workspace of a state carries the numerics' bins: the species of a 1D and a 2D
-    # state, and a window's species and born electrons (the cell on x); cells with the flag off. The
+    # state, and a window's species and born electrons (open on x); cells with the flag off. The
     # atoms keep cells either way. (Bits alone cannot show a workspace that ignores the flag: the two
     # runs agree to roundoff.)
     for nb in (true, false)
@@ -226,10 +228,9 @@ end
         win = EMState(ion_window(Float64), num)
         ion = win.aux.ionization
         shape = num.shape
-        xstag = shape === Quadratic ? Center() : Node()      # the stagger whose stencil does not shift
         want1 = nb ? NodeBins(shape, (Node(),)) : CellBins()
         want2 = nb ? NodeBins(shape, (Node(), Node())) : CellBins()
-        wantw = nb ? NodeBins(shape, (xstag, Node())) : CellBins()
+        wantw = nb ? NodeBins(shape, (Node(), Node()); open = (true, false)) : CellBins()
         @test all(w -> w.bins == want1, one_d.ws)
         @test all(w -> w.bins == want2, two_d.ws)
         @test all(w -> w.bins == wantw, (win.ws..., ion.electrons_ws))

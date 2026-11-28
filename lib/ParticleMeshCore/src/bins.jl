@@ -17,13 +17,47 @@ by at most one per axis when its particle moves by less than one cell, as a cell
 The `Reference()` deposition walks the bins in the same mechanism as the cells, with the reach of
 `deposit_reach`; its bits depend on the bins (they are those of the cells for `CellBins()`), and
 are deterministic for either.
+
+`NodeBins(shape, stagger; open)`, `open` one `Bool` per axis (all `false` by default): on an open
+axis the bin is not wrapped, so that a particle near the last node of the axis is in the bin
+`n + 1` past the last cell, and the axis has `n + 1` bins (`nbins`). A caller whose axis is
+not periodic (the moving window's x axis, whose x-guards are dropped instead of folded) takes it
+open, since a wrapped bin there would deposit the particle's stencil at the other edge. The bins
+of an open axis reach one node further past the last cell than its periodic bins where the stencil
+shifts within a cell, as far as its cells reach (checked against the guards). On a periodic grid an open axis gives the same field as
+the periodic one, to roundoff (another order of summation where a particle sits in bin `n + 1`).
 """
 struct CellBins end
-struct NodeBins{S<:Shape,G<:Tuple}
+struct NodeBins{S<:Shape,G<:Tuple,O<:Tuple}
     shape::S
     stagger::G
+    open::O
+    function NodeBins(shape::S, stagger::G, open::O) where {S<:Shape,N,G<:NTuple{N,Stagger},O<:NTuple{N,Bool}}
+        return new{S,G,O}(shape, stagger, open)
+    end
 end
-NodeBins(shape::Shape, stagger::Stagger) = NodeBins(shape, (stagger,))
+NodeBins(shape::Shape, stagger::NTuple{N,Stagger}; open::NTuple{N,Bool} = ntuple(_ -> false, Val(N))) where {N} =
+    NodeBins(shape, stagger, open)
+NodeBins(shape::Shape, stagger::Stagger; open::Bool = false) = NodeBins(shape, (stagger,), (open,))
+
+"""
+    nbins(bins, n) -> bins per axis
+
+The number of bins per axis on a grid of `n` cells per axis (an integer at N = 1, a tuple
+otherwise), of the same integer type: the cells for `CellBins()` and the periodic axes of
+`NodeBins`, `n + 1` on an open axis of `NodeBins`. The segments of a workspace and its flux
+patches are per linear bin, `prod(nbins(bins, n))` of them.
+"""
+nbins(::CellBins, n) = n
+nbins(b::NodeBins, n::Integer) = n + oftype(n, b.open[1])
+nbins(b::NodeBins, n::Tuple) = map((m, o) -> m + oftype(m, o), n, b.open)
+
+# The reach of the bins against the guards: on an open axis the last bin is one past the last
+# cell, and holds particles where the bin's shift can be 1 (`bin_hmax`), so there its nodes reach
+# one further on the high side, as far as the last cell's.
+guard_reach(::CellBins, reach) = reach
+guard_reach(b::NodeBins, reach) =
+    ntuple(d -> (reach[d][1], reach[d][2] + oftype(reach[d][2], b.open[d] * _width(bin_hmax(b, d)))), length(reach))
 
 # The shift `h` of one axis, 0 or 1: the bin is `c + h`.
 @inline bin_shift(::CellBins, ::Int, δ) = Int32(0)
@@ -33,9 +67,11 @@ NodeBins(shape::Shape, stagger::Stagger) = NodeBins(shape, (stagger,))
 end
 
 """
-    particle_bin(bins, species, i, n) -> NTuple{N,Int32}
+    particle_bin(bins, species, i, nb) -> NTuple{N,Int32}
 
-The bin of particle `i` per axis on a periodic grid of `n` cells per axis. Device-callable.
+The bin of particle `i` per axis, `nb` the bins per axis (`nbins`): `c + h`, wrapped to the first
+bin past `nb`, which on a periodic axis (`nb` its cells) is the periodic image and on an open axis
+(`nb` one more) never happens. Device-callable.
 """
 @inline particle_bin(::CellBins, s, i, n::NTuple{N,Int32}) where {N} = @inbounds ntuple(d -> s.cell[d][i], Val(N))
 @inline function particle_bin(b::NodeBins, s, i, n::NTuple{N,Int32}) where {N}

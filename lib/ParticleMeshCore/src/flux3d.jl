@@ -257,14 +257,14 @@ end
 # One work item per node (guards included): the patches of the bins whose frame holds it, in
 # increasing column-major linear index, summed from zero. `lo` is the frame's first node relative
 # to its bin and `D` the component's node counts per axis.
-@kernel function flux_reduce_3d_kernel!(J, @Const(patch), layout, n::NTuple{3,Int32}, g::Int32, lo::NTuple{3,Int32}, D::NTuple{3,Int32})
+@kernel function flux_reduce_3d_kernel!(J, @Const(patch), layout, nb::NTuple{3,Int32}, g::Int32, lo::NTuple{3,Int32}, D::NTuple{3,Int32})
     I = @index(Global, Cartesian)
     T = eltype(J)
     j1, j2, j3 = Int32(I[1]) - g - lo[1], Int32(I[2]) - g - lo[2], Int32(I[3]) - g - lo[3]
     acc = zero(T)
-    @inbounds for c3 in max(Int32(1), j3 - D[3] + Int32(1)):min(n[3], j3), c2 in max(Int32(1), j2 - D[2] + Int32(1)):min(n[2], j2),
-                  c1 in max(Int32(1), j1 - D[1] + Int32(1)):min(n[1], j1)
-        L = c1 + ((c2 - Int32(1)) + (c3 - Int32(1)) * n[2]) * n[1]
+    @inbounds for c3 in max(Int32(1), j3 - D[3] + Int32(1)):min(nb[3], j3), c2 in max(Int32(1), j2 - D[2] + Int32(1)):min(nb[2], j2),
+                  c1 in max(Int32(1), j1 - D[1] + Int32(1)):min(nb[1], j1)
+        L = c1 + ((c2 - Int32(1)) + (c3 - Int32(1)) * nb[2]) * nb[1]
         k = (j1 - c1) + ((j2 - c2) + (j3 - c3) * D[2]) * D[1] + Int32(1)
         acc += patch[patch_index(layout, k, L)...]
     end
@@ -278,16 +278,17 @@ function _deposit_flux_3d!(::Reference, J, s, shape, st, grid, ws, sx, planes, w
         throw(ArgumentError("the Reference() deposit_flux! at N = 3 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger, $((shape, st)); the workspace was built with flux = $(ws.flux)"))
     need = flux_patch_values(shape, st, ws.bins)
-    size(ws.flux_patch) == flux_patch_size(ws.flux_layout, need, prod(ncells(grid))) ||
+    size(ws.flux_patch) == flux_patch_size(ws.flux_layout, need, prod(nbins(ws.bins, ncells(grid)))) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 3 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger: $need values per bin in the layout $(ws.flux_layout), the workspace's patch array " *
                             "is $(size(ws.flux_patch))"))
     backend = get_backend(s)
     n = Int32.(ncells(grid))
+    nb = Int32.(nbins(ws.bins, ncells(grid)))
     g = Int32(guards(grid))
     M = flux_widths(shape, st, ws.bins)
     r = ntuple(d -> flux_bin_reach(ws.bins, shape, st[d], d), 3)
-    check_bin_guards(grid, r)
+    check_bin_guards(grid, guard_reach(ws.bins, r))
     lo = ntuple(d -> r[d][1], 3)
     frame = ws.bins isa CellBins ? CellFrame() : BinFrame(ws.bins)
     for (C, Jc) in zip((Val(1), Val(2), Val(3)), J)
@@ -298,9 +299,9 @@ function _deposit_flux_3d!(::Reference, J, s, shape, st, grid, ws, sx, planes, w
             count = min(step, D[3] - a + 1)
             item_launcher(flux_patch_3d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, frame, n, sx,
                                                                          ws.flux_layout, C, Val((a - 1) * plane), Val(count * plane);
-                                                                         ndrange = prod(n))
+                                                                         ndrange = prod(nb))
         end
-        launcher(flux_reduce_3d_kernel!, backend, workgroupsize)(Jc, ws.flux_patch, ws.flux_layout, n, g, lo, Int32.(D); ndrange = size(Jc))
+        launcher(flux_reduce_3d_kernel!, backend, workgroupsize)(Jc, ws.flux_patch, ws.flux_layout, nb, g, lo, Int32.(D); ndrange = size(Jc))
     end
     return J
 end

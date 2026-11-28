@@ -738,8 +738,8 @@ status = "proposed"
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case on the CPU (primal and the partials in a₀, duration, density), Reference, against the values pinned here: largest relative difference"
 scale = "relative; a Reference run is bitwise on one backend (A4), C leaves room for another CPU's code generation"
 C = 1e-6
-pinned = [0.102090046, 0.08922713, 0.006964941, 0.6515901]
-status = "proposed; the values with the density ramp through sin (#545, WP-086) and WP-041's nearest-node bins, each of which moved the density partial by roundoff over the run (1.1e-5 and 6.8e-6)"
+pinned = [0.10209016, 0.089227274, 0.0069649387, 0.6515818]
+status = "proposed; the values with the density ramp through sin (#545, WP-086) and WP-041's open node bins on the window's x axis (n + 1 bins), each of which moved the density partial by roundoff over the run (1.1e-5, and 1.3e-5 from the periodic node bins)"
 
 ["T-611"]
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case (primal and the partials in a₀, duration, density), Reference, on CUDA against the CPU: largest relative difference"

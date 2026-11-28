@@ -37,14 +37,16 @@ function resort_species(::Type{T}, n::NTuple{N,Int}, cap, np; seed = 1) where {T
 end
 
 # Move every alive particle by less than one cell per axis through the engine's `advance` (by up
-# to `0.98` cells, so particles cross both seams and the corners), and free a fraction of them.
-function resort_move!(s::Species{N}, n, rng; pfree = 1 / 20) where {N}
+# to `0.98` cells, so particles cross both seams and the corners), and free a fraction of them. A
+# particle that crosses the seam of an axis in `open` is freed, as the moving window retires one.
+function resort_move!(s::Species{N}, n, rng; pfree = 1 / 20, open = ntuple(_ -> false, N)) where {N}
     T = eltype(s)
     for i in 1:capacity(s)
         s.status[i] == ParticleMeshCore.ALIVE || continue
         rng() < pfree && (s.status[i] = ParticleMeshCore.FREE; continue)
         Δ = ntuple(_ -> seeded(T, 49 / 50 * (2rng() - 1)), N)
         c, δ = advance(ntuple(d -> s.cell[d][i], N), ntuple(d -> s.offset[d][i], N), Δ, Int32.(n))
+        any(d -> open[d] && abs(c[d] - s.cell[d][i]) > 1, 1:N) && (s.status[i] = ParticleMeshCore.FREE; continue)
         for d in 1:N
             s.cell[d][i], s.offset[d][i] = c[d], δ[d]
         end
@@ -80,16 +82,16 @@ same_sort(a, wa, b, wb) = all(same_bits(x, y) for (x, y) in zip(species_arrays(a
                           wa.perm == wb.perm && wa.seg_start == wb.seg_start && wa.seg_stop == wb.seg_stop
 
 """
-    resort_run(T, n; steps, append, wgs, seed, np, pfree, gap, bins) -> Vector{Bool}
+    resort_run(T, n; steps, append, wgs, seed, np, pfree, gap, bins, open) -> Vector{Bool}
 
 Two copies of one species of `np` particles in `12·prod(n)` slots, one sorted by `sort_by_cell!`
 and one by `resort_by_cell!` with a workspace of `append`, both with `bins`, through `steps` rounds
 of moves, frees and (every second round) `append` particles added behind the count (every `gap`-th
-slot left free, none for `gap = 0`), a fraction `pfree` freed per round; per round whether the two
-hold the same bits.
+slot left free, none for `gap = 0`), a fraction `pfree` freed per round, and the particles that
+cross the seam of an axis in `open` freed (`resort_move!`); per round whether the two hold the same bits.
 """
 function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = nothing, seed = 1, np = 8 * prod(n), pfree = 1 / 20, gap = 3,
-                    bins = CellBins()) where {T,N}
+                    bins = CellBins(), open = ntuple(_ -> false, N)) where {T,N}
     cap = 3 * prod(n) * 4
     grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
     a = resort_species(T, n, cap, np; seed)
@@ -101,7 +103,7 @@ function resort_run(::Type{T}, n::NTuple{N,Int}; steps = 6, append = 23, wgs = n
     for k in 1:steps
         for (s, w) in ((a, wa), (b, wb))
             rng = ResortLCG(seed + 100k)
-            resort_move!(s, n, rng; pfree)
+            resort_move!(s, n, rng; pfree, open)
             iseven(k) && resort_append!(s, n, append, rng; tag0 = 1000k, gap)
         end
         sort_by_cell!(a, grid, wa; workgroupsize = wgs)
