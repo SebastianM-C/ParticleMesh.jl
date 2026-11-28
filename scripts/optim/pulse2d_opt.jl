@@ -168,6 +168,9 @@ end
 At each of `points` (name => parameters): a Float64 run with duals and Float64 central differences
 in each direction at the step 2^-power of the parameter's scale (the modes and the spectral phase
 are near zero, so a step relative to the value would vanish), at `o["fdppl"]`×`o["fdny"]`.
+`main_pulse_check` runs them for the points `o["points"]` names (`best`, `reference`) into
+[`check_dir`](@ref), one directory per step, so that a second step shows whether a difference
+between the two is J's roughness (it changes with the step) or the gradient's (it does not).
 """
 function pulse_check_jobs(points, o)
     jobs = Tuple{String,Dict{Symbol,Any}}[]
@@ -183,15 +186,18 @@ function pulse_check_jobs(points, o)
     return jobs
 end
 
+"Where the check at the step 2^-`power` writes: `check` at the default 13, `check-p<power>` otherwise."
+check_dir(dir, power) = joinpath(dir, power == PULSE_CHECK_DEFAULTS.power ? "check" : "check-p$power")
+
 function main_pulse_check(dir, o)
     results = load_results(dir)
     isempty(results) && error("no start in $dir has a result")
     best = argmax(n -> results[n]["J"], collect(keys(results)))
     m = TOML.parsefile(joinpath(dir, "manifest.toml"))["parameters"]
     cfg = pulse_config(merge(Dict{String,Any}(m), isempty(o["backend"]) ? Dict{String,Any}() : Dict{String,Any}("backend" => o["backend"])))
-    cdir = joinpath(dir, "check")
+    cdir = check_dir(dir, o["power"])
     mkpath(cdir)
-    points = ["best" => Float64.(results[best]["free"]), "reference" => collect(PCASE.x0)]
+    points = filter(p -> p[1] in split(o["points"], ","), ["best" => Float64.(results[best]["free"]), "reference" => collect(PCASE.x0)])
     open(io -> TOML.print(io, Dict("start" => best, "best" => points[1][2], "fdppl" => o["fdppl"], "fdny" => o["fdny"], "power" => o["power"])),
          joinpath(cdir, "check.toml"), "w")
     for (id, j) in pulse_check_jobs(points, o)
@@ -205,7 +211,7 @@ function main_pulse_check(dir, o)
     println("check done: $cdir")
 end
 
-const PULSE_CHECK_DEFAULTS = (fdppl = 32, fdny = 2, power = 13, backend = "")
+const PULSE_CHECK_DEFAULTS = (fdppl = 32, fdny = 2, power = 13, backend = "", points = "best,reference")
 
 "The backend a check runs on: its `backend=` option, or the optimization's from the run's manifest."
 check_backend(args) = (o = parse_options(args[3:end], PULSE_CHECK_DEFAULTS)[1]; isempty(o["backend"]) ? TOML.parsefile(joinpath(args[2], "manifest.toml"))["parameters"]["backend"] : o["backend"])

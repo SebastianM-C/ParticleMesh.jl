@@ -144,8 +144,8 @@ function pulse_report(out, dir)
     secs = [q["seconds"] for q in values(points)]
     println(io, "\n$(length(points)) points run with duals in five directions, median $(pfmt(sort(secs)[cld(length(secs), 2)]; d = 3)) s each; ",
             "lowest launched share in the interior rows over all points $(pfmt(minimum(q["launched_interior"] for q in values(points)); d = 6)).\n")
-    cdir = joinpath(dir, "check")
-    for point in ("best", "reference")
+    cdirs = sort(filter(f -> startswith(f, "check") && isdir(joinpath(dir, f)), readdir(dir)); by = f -> TOML.parsefile(joinpath(dir, f, "check.toml"))["power"])
+    for cdir in joinpath.(dir, cdirs), point in ("best", "reference")
         rows = pulse_check_rows(cdir, point)
         isempty(rows) && continue
         ck = TOML.parsefile(joinpath(cdir, "check.toml"))

@@ -1,0 +1,20 @@
+branch = "runs/wp087-pulse2d-check-cpu"
+request_commit = "4fb143980fd9b16ad38f58d674d09bcefbafb99a"
+started = "2026-11-28T07:45:20Z"
+category = "validation"
+outputs = ["scripts/runs/optim-pulse2d-opt-4080"]
+finished = "2026-11-28T08:12:49Z"
+ok = true
+files_returned = 290
+dumps_over_20MB = []
+
+[hardware]
+cpu = "AMD EPYC 9655 96-Core Processor"
+cpus = 16
+
+[[steps]]
+kind = "julia"
+class = "compute"
+start = "2026-11-28T07:45:20Z"
+exit = 0
+seconds = 1649
