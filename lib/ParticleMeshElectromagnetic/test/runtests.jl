@@ -63,8 +63,8 @@ const TEST_FILES = [
     "checkpointing.jl",       # WP-080, WP-084: T-1112, T-1113, T-1150, checkpointed reverse mode through Checkpointing.jl; the case files' helpers only
     "modifiers.jl",           # WP-057: T-750 to T-754 and T-759, the one field solve and its tuple of modifiers, after restart.jl (its helpers)
     "one_step.jl",            # WP-057: T-755 to T-757, the one step body over N, after modifiers.jl (its helpers)
-    "ionization.jl",          # WP-059: T-770 to T-779 and T-781 to T-785, the field ionization of a dopant; its own helpers
-    "barrier_suppression.jl", # WP-063: T-820 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
+    "ionization.jl",          # WP-059: T-770 to T-779, T-781, T-782, T-784 and T-785, the field ionization of a dopant; its own helpers
+    "barrier_suppression.jl", # WP-063: T-820 and T-822 to T-826, the rate by the level's type and the Tong–Lin level, after ionization.jl (its helpers)
     "resort_step.jl",         # WP-041: T-852, the step's sort from the last order, after ionization.jl (its helpers)
     "quantity_pullbacks.jl",  # WP-077: T-1065, the pullbacks of the module's deposited quantities; its own helpers
     "gather.jl",              # WP-067: T-960 to T-963, the shape-compensated gather; after ionization.jl (its helpers)

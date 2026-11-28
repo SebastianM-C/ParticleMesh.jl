@@ -1,7 +1,6 @@
 # WP-063: the ionization rate as an interface of the level's type, and the level with the
-# barrier-suppression factor of Tong and Lin, T-820 to T-826 (T-827 is their rerun on the GPU,
-# gpu.jl). After ionization.jl, whose helpers (`born`, `all_zero`, the user layer in `ION_ATOMS`,
-# `ion_objectives`' pattern) it uses; the problems are in ionization_cases.jl.
+# barrier-suppression factor of Tong and Lin, T-820 and T-822 to T-826 (T-821, the level from an ionization energy, is in Wakefields' tests; T-827 is their rerun on the GPU,
+# gpu.jl). After ionization.jl, whose helpers (`born`, `all_zero`, `ion_objectives`' pattern) it uses; the problems are in ionization_cases.jl.
 
 using ParticleMeshElectromagnetic: ionization_rate_sq, level_numbers, with_level_numbers, level_eltype, tunables, tunable_names, with_tunables
 import ParticleMeshElectromagnetic as PME
@@ -82,91 +81,6 @@ import ParticleMeshElectromagnetic as PME
     end
     @test_throws ArgumentError TongLinLevel(2, 3, 1, 4; cutoff = 0)
     @test ionization_rate(TongLinLevel(0, 3, 1, 4), 1.0) === 0.0
-end
-
-# --- T-821 ----------------------------------------------------------------------------------
-
-# The user layer (A1): `scripts/ionization/atomic.jl` makes the level's four numbers from an
-# ionization energy, a wavelength and the fitted α of `tong_lin.toml`.
-# - Hydrogen in atomic units with half a Hartree: suppression 24, the barrier gone at 1/16 of the
-#   atomic field, and the rate (4/F)·exp(−2/(3F) − 12F) back in atomic units at any wavelength's
-#   conversion.
-# - Nitrogen's K shell at 0.8 µm: the barrier of N⁵⁺ is gone at I²/(4·6) in atomic units, a laser
-#   amplitude of about 2.2.
-# - Against another method: the static-field rates of helium-like ions that Lötstedt, Ciappina and
-#   Yamanouchi computed with the multiconfiguration time-dependent Hartree–Fock method (their
-#   supplementary table, `tong_lin.toml`), for He, Li⁺, N⁵⁺, O⁶⁺, Ne⁸⁺ and Ar¹⁶⁺. With their α the
-#   level's rate differs from theirs by the measured amounts: least in the band of fields about
-#   the barrier's where an atom ionizes within a few laser cycles (0.7 to 1.75 of it), more below
-#   (the factor acts where the tunnelling rate was right) and above (the fit's end). The rate
-#   without the factor, the same level as an `ADKLevel`, is about twice theirs at the barrier's
-#   field and more above. The energies here are measured ones and theirs a non-relativistic
-#   expansion, which is part of the difference at Z = 18.
-@testset "T-821 the Tong–Lin level from an ionization energy and a wavelength: hydrogen's closed form, the barrier's field, helium-like ions against published MCTDHF rates [A1, A7, WP-063]" begin
-    A = ION_ATOMS
-    λ = 0.8e-6
-    au_field, au_rate = A.field_unit_au(λ), A.photon_energy(λ) / A.FINE_STRUCTURE^2      # mₑcω₀/e and ω₀ in atomic units
-    hartree = A.FINE_STRUCTURE^2 * A.ELECTRON_REST_ENERGY_EV
-    h = A.tong_lin_numbers(hartree / 2, 1; alpha = 6, wavelength = λ)
-    @test h.suppression ≈ 24 rtol = 1.0e-13
-    @test h.barrier_field * au_field ≈ 1 / 16 rtol = 1.0e-13
-    @test (h.prefactor, h.field, h.power) === values(A.adk_numbers(hartree / 2, 1; wavelength = λ))[1:3]
-    hl = TongLinLevel(h.prefactor, h.field, h.power, h.suppression)
-    for F in (0.03, 1 / 16, 0.1, 0.15)
-        @test ionization_rate(hl, F / au_field) * au_rate ≈ 4 / F * exp(-2 / (3 * F) - 12 * F) rtol = 1.0e-11
-    end
-    # the tabulated α, and what the table does not hold
-    @test A.tong_lin_alpha(:H, 1) == 6 == A.tong_lin_alpha(:He, 2) == A.tong_lin_alpha(:N, 7) == A.tong_lin_alpha(:Ar, 18)
-    @test A.tong_lin_alpha(:He, 1) == 7.12 && A.tong_lin_alpha(:N, 6) == 6.38 && A.tong_lin_alpha(:Ar, 17) == 5.62
-    @test A.nuclear_charge(:N) == 7 && A.nuclear_charge(:Ar) == 18
-    @test_throws ArgumentError A.tong_lin_alpha(:N, 5)
-    @test_throws ArgumentError A.tong_lin_alpha(:N, 1)
-    @test_throws ArgumentError A.tong_lin_alpha(:Xx, 1)
-    @test_throws ArgumentError A.tong_lin_numbers(20.0, 1; alpha = -1, wavelength = λ)
-    @test_throws ArgumentError A.tong_lin_numbers(20.0, 1; alpha = Inf, wavelength = λ)
-    @test_throws ArgumentError A.adk_numbers(20.0, 1; wavelength = λ, electrons = 0)
-    # nitrogen's K shell: the barrier's field, the level's defaults (the fit's conventions), its type
-    I6 = A.ionization_energy(:N, 6) / hartree
-    n6 = A.tong_lin_numbers(A.ionization_energy(:N, 6), 6; alpha = 6.38, wavelength = λ)
-    @test n6.barrier_field * au_field ≈ I6^2 / (4 * 6) rtol = 1.0e-12
-    @test 2.15 < n6.barrier_field < 2.25
-    @test n6.suppression ≈ 4 * 6.38 * 6^2 / (2 * I6) rtol = 1.0e-12
-    lv = A.tong_lin_level(Float64, :N, 6; wavelength = λ)
-    same = A.adk_level(Float64, :N, 6; wavelength = λ, lstar = 0, electrons = 2)
-    @test lv isa TongLinLevel{Float64} && (lv.prefactor, lv.field, lv.power, lv.cutoff) === (same.prefactor, same.field, same.power, same.cutoff)
-    @test lv.suppression ≈ n6.suppression rtol = 1.0e-14
-    @test A.adk_level(Float64, :N, 6; wavelength = λ, electrons = 2).prefactor ≈ 2 * A.adk_level(Float64, :N, 6; wavelength = λ).prefactor rtol = 1.0e-15
-    @test A.tong_lin_level(Float32, :N, 7; wavelength = λ) isa TongLinLevel{Float32}
-    @test A.tong_lin_level(Float64, :N, 7; wavelength = λ).prefactor == A.adk_level(Float64, :N, 7; wavelength = λ, lstar = 0).prefactor
-    @test_throws ArgumentError A.tong_lin_level(Float64, :N, 5; wavelength = λ)
-    l5 = A.tong_lin_level(Float64, :N, 5; wavelength = λ, alpha = 8, cutoff = 32)
-    @test l5.cutoff == 32 && l5.prefactor == A.adk_level(Float64, :N, 5; wavelength = λ, lstar = 0).prefactor
-    # the reference rates
-    ions = A.TONG_LIN["mctdhf"]["ions"]
-    @test [ion["element"] for ion in ions] == ["He", "Li", "N", "O", "Ne", "Ar"]
-    worst = Dict("0.7 to 1.75 E_bs" => 0.0, "below 0.7 E_bs" => 0.0, "above 1.75 E_bs" => 0.0)
-    adk_least = Inf
-    for ion in ions
-        el, Z = Symbol(ion["element"]), ion["Z"]
-        @test A.nuclear_charge(el) == Z && length(ion["scaled_field"]) == length(ion["rate"])
-        level = A.tong_lin_level(Float64, el, Z - 1; wavelength = λ, cutoff = 1.0e6)
-        plain = A.adk_level(Float64, el, Z - 1; wavelength = λ, lstar = 0, electrons = 2, cutoff = 1.0e6)
-        Ebs = A.tong_lin_numbers(A.ionization_energy(el, Z - 1), Z - 1; alpha = 0, wavelength = λ).barrier_field
-        for (Fs, Wref) in zip(ion["scaled_field"], ion["rate"])
-            E = Fs * Z^3 / 8 / au_field
-            W, Wadk = ionization_rate(level, E) * au_rate, adk_rate(plain, E) * au_rate
-            band = E < 0.7 * Ebs ? "below 0.7 E_bs" : E <= 1.75 * Ebs ? "0.7 to 1.75 E_bs" : "above 1.75 E_bs"
-            worst[band] = max(worst[band], abs(W / Wref - 1))
-            E >= 0.95 * Ebs && (adk_least = min(adk_least, Wadk / Wref))
-        end
-    end
-    @info "T-821 against the MCTDHF rates of Lötstedt et al.: |W/W_ref − 1| per band of fields, and the least ADK rate over theirs from 0.95 E_bs" worst adk_least
-    merge!(get!(MEASURED, "T-821 relative", Dict{String,Float64}()), worst)
-    MEASURED["T-821 relative"]["least ADK/reference from 0.95 E_bs"] = adk_least
-    @test 0 < worst["0.7 to 1.75 E_bs"] <= emC("T-821", "rate")
-    @test 0 < worst["below 0.7 E_bs"] <= emC("T-821", "rate_below")
-    @test 0 < worst["above 1.75 E_bs"] <= emC("T-821", "rate_above")
-    @test adk_least >= emC("T-821", "adk_over_min")
 end
 
 # --- T-822 ----------------------------------------------------------------------------------

@@ -243,8 +243,65 @@ end
     end
 end
 
+# One work item per slot: whether the resort's permutation entry is the full sort's, decoded from
+# its sorted keys as `perm_from_keys_kernel!` does; counts the slots where it is not.
+@kernel function resort_perm_check_kernel!(bad, @Const(perm), @Const(key), cap::Int64)
+    j = @index(Global, Linear)
+    @inbounds if perm[j] != Int32(key[j] % cap) + Int32(1)
+        Atomix.@atomic bad[1] += Int32(1)
+    end
+end
+
+# One work item per linear bin: whether the resort's new segment bounds are the full sort's.
+@kernel function resort_segments_check_kernel!(bad, @Const(start), @Const(stop), @Const(start_full), @Const(stop_full))
+    L = @index(Global, Linear)
+    @inbounds if start[L] != start_full[L] || stop[L] != stop_full[L]
+        Atomix.@atomic bad[2] += Int32(1)
+    end
+end
+
+@kernel function resort_count_check_kernel!(bad, @Const(count), @Const(count_full))
+    @inbounds count[1] != count_full[1] && (bad[3] = Int32(1))
+end
+
+# The `check` of `resort_by_cell!`: the full sort's keys of the arrays as they stand (before the
+# gather), sorted into `ws.key` as `sort_by_cell!` sorts them, and its segments and count into new
+# arrays; then the resort's permutation (`ws.perm`), its new segments (`r.new_start`, `r.new_stop`)
+# and its count (`species.count`) against them; on a mismatch the count is put back (`count0`) and
+# the order forgotten before the throw. A debug check: it allocates and reads device data
+# on the host, so it is not for a step that has to stay within §0.4.
+function check_resort(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace, r::ResortScratch, count0, workgroupsize) where {N}
+    backend = get_backend(s)
+    cap = capacity(s)
+    ncell = prod(grid.n)
+    launch(k) = launcher(k, backend, workgroupsize)
+    if N == 1
+        launch(sort_key_kernel!)(ws.key, s, ws.bins, Int64(ncell), Int64(cap); ndrange = cap)
+    else
+        launch(sort_key_nd_kernel!)(ws.key, s, ws.bins, Int64.(grid.n), Int64(ncell), Int64(cap); ndrange = cap)
+    end
+    AK.sort!(ws.key; alg = ws.ak.plan.alg, workspace = ws.ak)
+    start_full = KernelAbstractions.ones(backend, Int32, ncell)
+    stop_full = KernelAbstractions.zeros(backend, Int32, ncell)
+    count_full = KernelAbstractions.zeros(backend, Int32, 1)
+    launch(segments_from_keys_kernel!)(start_full, stop_full, count_full, ws.key, Int64(ncell), Int64(cap); ndrange = cap)
+    bad = KernelAbstractions.zeros(backend, Int32, 3)
+    launch(resort_perm_check_kernel!)(bad, ws.perm, ws.key, Int64(cap); ndrange = cap)
+    launch(resort_segments_check_kernel!)(bad, r.new_start, r.new_stop, start_full, stop_full; ndrange = ncell)
+    launch(resort_count_check_kernel!)(bad, s.count, count_full; ndrange = 1)
+    nperm, nseg, ncount = Array(bad)
+    nperm == nseg == ncount == 0 && return nothing
+    copyto!(s.count, count0)             # the species as it came: the resort has moved nothing yet
+    forget_order!(r)                     # the next sort with `ws` is the full one, which sorts these arrays
+    throw(ArgumentError("resort_by_cell!(...; check = true): the sort from the last order differs from the full sort in " *
+                        "$nperm of $cap permutation entries, $nseg of $ncell segment bounds" * (ncount == 0 ? "" : " and the count") *
+                        ", so its precondition broke since the last sort: a particle moved by one cell or more on an axis, more " *
+                        "than append = $(r.append) particles were added behind its count, or the arrays were written otherwise " *
+                        "without forget_order!"))
+end
+
 """
-    resort_by_cell!(species, grid, ws; workgroupsize = nothing)
+    resort_by_cell!(species, grid, ws; workgroupsize = nothing, check = false)
 
 What `sort_by_cell!(species, grid, ws)` does, the same bits in every array, the permutation
 `ws.perm`, the segment bounds and the count, from the order of the last sort of `species` with
@@ -263,15 +320,26 @@ different arrays that step in turn sorts each in full), after [`forget_order!`](
 fewer than 3 cells on an axis; that choice is made on the host from host values and
 reads no device data (§0.4).
 
-Preconditions, not detected: since the last sort, every particle alive then has moved by less
+Preconditions, not detected unless `check`: since the last sort, every particle alive then has moved by less
 than one cell per axis (periodically, the seams and the corners included) or been freed, and
 every particle made alive since then sits in the `append` slots behind that sort's alive count
 (as `load_window_columns!`-style loads and births behind `species.count` place them), in any
 order and at any place. Nothing else may write the arrays in between: whoever does (a restart,
 arrays copied in from elsewhere) calls [`forget_order!`](@ref) on the workspace, and the next
 sort is the full one.
+
+`check = true` detects a broken precondition that changes the result: before the gather it also
+runs the full sort's key sort on the arrays as they stand and throws an `ArgumentError` unless
+the permutation, the segment bounds and the count are the full sort's (#475); a break that still
+gives the full sort's result (any move on an axis of 3 cells, say) passes. The species is then as it came (its
+arrays not moved, its count put back), the workspace has forgotten its order ([`forget_order!`](@ref)), and the next sort of the species
+with it is the full one; the workspace's scratch (`ws.perm`, `ws.key`) holds the rejected sort
+until then. A debug
+mode for a new caller: it costs the full sort it saves and more, allocates, and reads the
+comparison on the host, so a step that has to stay within §0.4 leaves it off. Where `resort_by_cell!`
+is the full sort (above), `check` does nothing.
 """
-function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; workgroupsize = nothing) where {N}
+function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; workgroupsize = nothing, check::Bool = false) where {N}
     r = ws.resort
     (r !== nothing && knows_order(r, s) && all(>=(3), grid.n)) || return sort_by_cell!(s, grid, ws; workgroupsize)
     check_workspace(ws, s, grid)
@@ -280,6 +348,7 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     n = Int32.(grid.n)
     ncell = prod(grid.n)
     launch(k) = launcher(k, backend, workgroupsize)
+    count0 = check ? copy(s.count) : nothing
     launch(resort_count_kernel!)(r.hist, s, ws.bins, ws.seg_start, ws.seg_stop, n; ndrange = ncell)
     if r.append > 0
         launch(tail_key_kernel!)(r.tail_key, s, ws.bins, r.sorted_count, n, Int64(ncell), Int64(r.append), Int32(cap);
@@ -298,6 +367,7 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
         launch(tail_perm_kernel!)(ws.perm, r.tail_key, r.tail_perm, r.tail_start, r.tail_stop, r.new_start, r.cnt, r.sorted_count,
                                   Int64(ncell), Int64(r.append); ndrange = r.append)
     launch(free_perm_kernel!)(ws.perm, s.status, r.free_cum, s.count; ndrange = cap)
+    check && check_resort(s, grid, ws, r, count0, workgroupsize)
     copyto!(ws.seg_start, r.new_start)
     copyto!(ws.seg_stop, r.new_stop)
     permute_species!(s, ws, workgroupsize)

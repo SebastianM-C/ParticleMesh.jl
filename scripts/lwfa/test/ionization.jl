@@ -39,7 +39,7 @@ end
         # Smilei's P = 2^{2n*}(2l + 1)/(n*Γ(2n*))·I is C²·I with l* = n* − 1, so ParticleMesh's over it is the ratio of the C²
         cg = adk_numbers(e, z; wavelength = 0.8e-6, ground_eV = g).C2
         cl = adk_numbers(e, z; wavelength = 0.8e-6, ground_eV = g, lstar = :level).C2
-        @test rate_ratio("pm", e, z; ground_eV = g) ≈ cg / cl rtol = 1e-9          # the hartree in eV against atomic.jl's constants
+        @test rate_ratio("pm", e, z; ground_eV = g) ≈ cg / cl rtol = 1e-9          # the hartree in eV against Wakefields' constants
         @test rate_ratio("smilei", e, z; ground_eV = g) == 1.0
         # PIConGPU's rate (AlgorithmADK.hpp, atomic units) over Smilei's at fields from 0.05 to 2 a.u., in logarithms
         # (the rates underflow at the weak fields): one number

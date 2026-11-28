@@ -1,5 +1,5 @@
 # The numbers of the barrier-suppression factor of Tong and Lin (J. Phys. B 38 (2005) 2593) and the rates
-# they are held against. `scripts/ionization/atomic.jl` reads this file.
+# they are held against. `lib/Wakefields/src/atomic.jl` reads this file.
 #
 # The factor multiplies the tunnelling rate: exp(−α·(Z_c²/I)·F/(2I)^{3/2}) in atomic units, I the ionization
 # energy, Z_c the charge of the ion left behind, F the field, α a fitted number per species. Read in two

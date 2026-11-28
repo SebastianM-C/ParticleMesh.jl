@@ -187,7 +187,7 @@ struct NoQuantity end
 
 """
     deposit_flux!(mode, Jx, Jy, Jz, species::Species{2}, shape, stagger::NTuple{2,Stagger}, grid, ws;
-                  dt, quantity_z, workgroupsize = nothing)
+                  dt, quantity_z, workgroupsize = nothing, components = nothing)
 
 The charge-conserving current of one step at N = 2 (Esirkepov's scheme, `flux_stencil`), added
 into the three fields `Jx`, `Jy`, `Jz` (matrices with ρ's layout and guards). `stagger` is ρ's
@@ -214,11 +214,13 @@ particle's frame (`ParticleFrame()`: 40 adds at order 2 where the cell's frame h
 differs from `Reference()` per node by roundoff, the prefix sums of all weight changes it leaves
 out included (T-302), and falls back to `Reference()` for element types without them (`effective_mode`), sorting first (T-345). `Reference()` needs
 `sort_by_cell!` after the move and a workspace built with `Workspace(species, grid; flux = (shape,
-stagger))`; it is bitwise across reruns, thread counts and launch shapes (T-303).
+stagger))`; it is bitwise across reruns, thread counts and launch shapes (T-303). Its patch kernel
+sums `components` of the three per launch (`flux_components_2d`; by default all three), the same
+bits for every choice (T-1191); `Fast()` ignores it, except where it falls back to `Reference()`.
 """
 function deposit_flux!(mode, Jx::AbstractMatrix{T}, Jy::AbstractMatrix{T}, Jz::AbstractMatrix{T}, s::Species{2},
                        shape::Shape, stagger::NTuple{2,Stagger}, grid::PeriodicGrid{2}, ws::Workspace;
-                       dt, quantity_z, quantity_y = NoQuantity(), workgroupsize = nothing) where {T}
+                       dt, quantity_z, quantity_y = NoQuantity(), workgroupsize = nothing, components = nothing) where {T}
     quantity_y isa NoQuantity ||
         throw(ArgumentError("deposit_flux! at N = 2 takes no quantity_y: Jy is in-plane, from Esirkepov's decomposition"))
     has_flux_extras(s) ||
@@ -229,10 +231,10 @@ function deposit_flux!(mode, Jx::AbstractMatrix{T}, Jy::AbstractMatrix{T}, Jz::A
     all(>=(3), ncells(grid)) || throw(ArgumentError("deposit_flux! needs at least 3 cells per axis"))
     sx = map(h -> h / dt, cellsize(grid))
     fallback_sort!(mode, T, s, grid, ws, workgroupsize)
-    _deposit_flux_2d!(effective_mode(mode, T), Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, quantity_z, workgroupsize)
+    _deposit_flux_2d!(effective_mode(mode, T), Jx, Jy, Jz, s, shape, stagger, grid, ws, sx, quantity_z, workgroupsize, components)
 end
 
-function _deposit_flux_2d!(::Fast, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, workgroupsize)
+function _deposit_flux_2d!(::Fast, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, workgroupsize, components)
     launcher(flux_atomic_2d_kernel!, get_backend(s), workgroupsize)(Jx, Jy, Jz, s, shape, st, Int32.(ncells(grid)),
                                                                    Int32(guards(grid)), sx, qz; ndrange = capacity(s))
     return Jx, Jy, Jz
@@ -291,27 +293,56 @@ flux_patch_size(::CellMajor, values, cells) = (cells, values)
 "Elementwise sum of two tuples of one length."
 @inline tuple_add(a::NTuple{K,Any}, b::NTuple{K,Any}) where {K} = ntuple(k -> a[k] + b[k], Val(K))
 
-# One work item per linear bin (cell, for `CellBins()`): its particles in slot order, each stencil entry summed from zero
-# in a register tuple and written once into the cell's patch (value `k` of cell `L` at
-# `patch_index(layout, k, L)`, the three components one after the other, Jx first). An empty cell
-# writes zeros.
+# One work item per linear bin (cell, for `CellBins()`): its particles in slot order, each stencil
+# entry of the components `CS` (1 = Jx, 2 = Jy, 3 = Jz) summed from zero in a register tuple and
+# written once into the bin's patch (value `k` of component `c` of bin `L` at
+# `patch_index(layout, (c - 1)·K + k, L)`). An empty bin writes zeros. A component's values are the
+# same bits whichever launch forms them: the same particles in the same order, each the same
+# arithmetic (`flux_stencil`, whose other components the compiler drops).
 @kernel function flux_patch_2d_kernel!(patch, s, @Const(seg_start), @Const(seg_stop), shape, st, frame, n::NTuple{2,Int32}, sx,
-                                       quantity_z, layout, ::Val{K}) where {K}
+                                       quantity_z, layout, ::Val{K}, ::Val{CS}) where {K,CS}
     L = Int32(@index(Global, Linear))
     T = eltype(patch)
-    ax = ntuple(_ -> zero(T), Val(K))
-    ay, az = ax, ax
+    acc = ntuple(_ -> ntuple(_ -> zero(T), Val(K)), Val(length(CS)))
     @inbounds for i in seg_start[L]:seg_stop[L]
-        _, _, (jx, jy, jz) = flux_stencil(s, i, shape, st, n, sx, quantity_z, frame)
-        ax = tuple_add(ax, jx)
-        ay = tuple_add(ay, jy)
-        az = tuple_add(az, jz)
+        _, _, j = flux_stencil(s, i, shape, st, n, sx, quantity_z, frame)
+        acc = add_components(acc, j, Val(CS))
     end
-    @inbounds for k in 1:K
-        patch[patch_index(layout, k, L)...] = ax[k]
-        patch[patch_index(layout, K + k, L)...] = ay[k]
-        patch[patch_index(layout, 2K + k, L)...] = az[k]
+    write_components!(patch, layout, acc, L, Val(K), Val(CS))
+end
+
+# The accumulators `acc` of the components `CS` plus those of one particle's stencil `j`.
+@inline add_components(acc::NTuple{C,Any}, j, ::Val{CS}) where {C,CS} = ntuple(c -> tuple_add(acc[c], j[CS[c]]), Val(C))
+
+# Every accumulator of bin `L` into its place in the patch, component by component.
+@inline function write_components!(patch, layout, acc::NTuple{C,Any}, L, ::Val{K}, ::Val{CS}) where {C,K,CS}
+    ntuple(Val(C)) do c
+        @inline
+        a = acc[c]
+        @inbounds for k in 1:K
+            patch[patch_index(layout, (CS[c] - 1) * K + k, L)...] = a[k]
+        end
+        nothing
     end
+    return nothing
+end
+
+"""
+    flux_components_2d(components) -> Tuple of component tuples
+
+The components of the 2D `Reference()` flux that each launch of the patch kernel sums:
+`components` per launch, Jx first, or all three by default (`nothing`). `((1, 2, 3),)`,
+`((1, 2), (3,))` or `((1,), (2,), (3,))`. The bits are the same for every choice (T-1191). One run
+each of `scripts/sort/flux_split_bench.jl`, on a 4-thread CPU and an RTX 5090, found all three in
+one launch the fastest or within a few percent of it, for Float32, Float64 and duals up to
+`Dual{Float64,2}`, in the periodic box and the moving window, so no backend or type splits by default.
+"""
+function flux_components_2d(components)
+    components === nothing || components isa Integer && !(components isa Bool) ||
+        throw(ArgumentError("components = $(repr(components)): 1, 2 or 3 components of the 2D flux per launch, or nothing"))
+    c = components === nothing ? 3 : Int(components)
+    1 <= c <= 3 || throw(ArgumentError("components = $components: 1, 2 or 3 components of the 2D flux per launch, or nothing"))
+    return c == 3 ? ((1, 2, 3),) : c == 2 ? ((1, 2), (3,)) : ((1,), (2,), (3,))
 end
 
 # One work item per node (guards included): the patches of the bins whose flux stencil reaches
@@ -337,7 +368,7 @@ end
     end
 end
 
-function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, workgroupsize)
+function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, qz, workgroupsize, components)
     check_workspace(ws, s, grid)
     ws.flux == (shape, st) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
@@ -354,8 +385,10 @@ function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, 
     check_bin_guards(grid, r)
     lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
     frame = ws.bins isa CellBins ? CellFrame() : BinFrame(ws.bins)
-    item_launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, frame, n, sx, qz,
-                                                                 ws.flux_layout, Val(prod(M)); ndrange = prod(n))
+    for CS in flux_components_2d(components)
+        item_launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, frame, n, sx,
+                                                                     qz, ws.flux_layout, Val(prod(M)), Val(CS); ndrange = prod(n))
+    end
     launcher(flux_reduce_2d_kernel!, backend, workgroupsize)(Jx, Jy, Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), lo, hi,
                                                              Int32.(M); ndrange = size(Jx))
     return Jx, Jy, Jz

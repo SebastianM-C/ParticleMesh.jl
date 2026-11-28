@@ -233,3 +233,119 @@ struct KeySortFakeGPU <: KernelAbstractions.Backend end
         @test issorted(wa.key) && wa.perm != collect(1:2000)
     end
 end
+
+"""
+    body_T1190(be)
+
+T-1190 on `be` (gpu.jl reruns it on CUDA, T-1192): `resort_by_cell!(...; check = true)` through
+T-850's moves, frees and appends at N = 1, 2, 3 gives the bits of the full sort and of the
+unchecked resort, and it throws, with the arrays not moved and the order forgotten, when the
+precondition breaks: a particle moved by two cells, more particles appended than `append`. The
+moves and appends are made on host copies (moved to the host and back around them), as in T-892.
+"""
+function body_T1190(be)
+    dev(h) = be isa CPU ? h : todev(be, h)
+    sync!(dst, src) = dst === src || foreach(copyto!, species_arrays(dst), species_arrays(src))
+    hostbits(s) = map(x -> Array(x), species_arrays(s))
+    same(a, wa, b, wb) = all(same_bits(x, y) for (x, y) in zip(hostbits(a), hostbits(b))) && Array(wa.perm) == Array(wb.perm) &&
+                         Array(wa.seg_start) == Array(wb.seg_start) && Array(wa.seg_stop) == Array(wb.seg_stop)
+    for (T, n) in ((Float32, (7,)), (Float64, (16, 12)), (Float32, (5, 4, 3)))
+        N = length(n)
+        cap = 20 * prod(n)                 # room behind the count for the overflowing append below
+        append = 23
+        grid = PeriodicGrid(n, ntuple(_ -> 1 / 2, N), 1)
+        # within the precondition: the checked resort, the unchecked one and the full sort agree
+        hs = [resort_species(T, n, cap, 8 * prod(n); seed = 3) for _ in 1:3]
+        a, b, c = map(dev, hs)
+        wa, wb, wc = Workspace(a, grid), Workspace(b, grid; append), Workspace(c, grid; append)
+        sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb); resort_by_cell!(c, grid, wc; check = true)
+        ok = Bool[]
+        for k in 1:4
+            for (h, d) in zip(hs, (a, b, c))
+                sync!(h, d)
+                rng = ResortLCG(3 + 100k)
+                resort_move!(h, n, rng)
+                iseven(k) && resort_append!(h, n, append, rng; tag0 = 1000k)
+                sync!(d, h)
+            end
+            sort_by_cell!(a, grid, wa); resort_by_cell!(b, grid, wb); resort_by_cell!(c, grid, wc; check = true)
+            push!(ok, same(a, wa, c, wc) && same(b, wb, c, wc))
+        end
+        @test all(ok)
+        @test wc.resort.resorts[] == 4
+        # broken: one particle moved by two cells on axis 1
+        h = hs[3]
+        sync!(h, c)
+        i = findfirst(==(ParticleMeshCore.ALIVE), h.status)
+        h.cell[1][i] = Int32(mod1(h.cell[1][i] + 2, n[1]))
+        sync!(c, h)
+        before = hostbits(c)
+        @test_throws ArgumentError resort_by_cell!(c, grid, wc; check = true)
+        @test !wc.resort.ordered[] && wc.resort.resorts[] == 4
+        @test all(same_bits(x, y) for (x, y) in zip(hostbits(c), before))    # the arrays are not moved
+        # the next sort with the workspace is the full one, which sorts these arrays
+        r = dev(deepcopy(h))
+        wr = Workspace(r, grid)
+        sort_by_cell!(r, grid, wr)
+        @test resort_by_cell!(c, grid, wc; check = true) === c
+        @test same(r, wr, c, wc) && Array(r.count) == Array(c.count) && wc.resort.resorts[] == 4
+        # broken: more particles appended behind the count than the workspace's `append`
+        sync!(h, c)
+        resort_append!(h, n, append + 5, ResortLCG(77); tag0 = 9000, gap = 0)
+        @test h.status[Int(Array(wc.resort.sorted_count)[1]) + append + 1] == ParticleMeshCore.ALIVE   # alive past the tail
+        sync!(c, h)
+        before = hostbits(c)                      # the count included (the tests' species_arrays)
+        @test_throws ArgumentError resort_by_cell!(c, grid, wc; check = true)
+        @test !wc.resort.ordered[] && wc.resort.resorts[] == 4
+        @test all(same_bits(x, y) for (x, y) in zip(hostbits(c), before))    # the count put back: this resort had changed it
+        # without check the same broken state is not detected: no throw, the order kept
+        sort_by_cell!(c, grid, wc)
+        sync!(h, c)
+        resort_append!(h, n, append + 5, ResortLCG(78); tag0 = 9500, gap = 0)
+        sync!(c, h)
+        @test resort_by_cell!(c, grid, wc) === c && wc.resort.ordered[] && wc.resort.resorts[] == 5
+    end
+    # without append scratch resort_by_cell! is the full sort, and check does nothing
+    grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
+    h = resort_species(Float32, (16, 12), 600, 500)
+    s = dev(h)
+    w = Workspace(s, grid)
+    sort_by_cell!(s, grid, w)
+    sync!(h, s)
+    h.cell[1] .= Int32.(mod1.(7 .* (1:600), 16))
+    sync!(s, h)
+    @test resort_by_cell!(s, grid, w; check = true) === s
+end
+
+@testset "T-1190 resort_by_cell!(...; check = true) gives the full sort's bits within its precondition and throws when a particle moved two cells or more particles were appended than its append, at N = 1, 2, 3 [A4, WP-041]" begin
+    body_T1190(CPU())
+end
+
+@testset "T-1193 each comparison of resort_by_cell!'s check counts on its own: one permutation entry, one segment start, one segment stop, the count [A4, WP-041]" begin
+    # The two broken cases of T-1190 differ from the full sort in the permutation and the segments
+    # both, so there each comparison hides the others; here each one sees a single difference.
+    PMC = ParticleMeshCore
+    grid = PeriodicGrid((16, 12), (1 / 2, 1 / 2), 1)
+    s = resort_species(Float64, (16, 12), 600, 500)
+    ws = Workspace(s, grid)
+    sort_by_cell!(s, grid, ws)                       # ws.key sorted, ws.perm, the segments and the count from it
+    cap, ncell = 600, prod(grid.n)
+    function bad_of(; perm = copy(ws.perm), start = copy(ws.seg_start), stop = copy(ws.seg_stop), count = copy(s.count))
+        bad = zeros(Int32, 3)
+        PMC.launcher(PMC.resort_perm_check_kernel!, backend, nothing)(bad, perm, ws.key, Int64(cap); ndrange = cap)
+        PMC.launcher(PMC.resort_segments_check_kernel!, backend, nothing)(bad, start, stop, ws.seg_start, ws.seg_stop; ndrange = ncell)
+        PMC.launcher(PMC.resort_count_check_kernel!, backend, nothing)(bad, count, s.count; ndrange = 1)
+        return bad
+    end
+    @test bad_of() == [0, 0, 0]
+    p = copy(ws.perm); p[cap] = p[1]
+    @test bad_of(perm = p) == [1, 0, 0]
+    p = copy(ws.perm); p[1], p[2] = p[2], p[1]
+    @test bad_of(perm = p) == [2, 0, 0]
+    L = findlast(>(0), ws.seg_stop)                  # the last non-empty bin: every slot and bin is compared
+    a = copy(ws.seg_start); a[L] += 1
+    @test bad_of(start = a) == [0, 1, 0]
+    b = copy(ws.seg_stop); b[L] -= 1
+    @test bad_of(stop = b) == [0, 1, 0]
+    @test bad_of(count = s.count .- Int32(1)) == [0, 0, 1]
+end
