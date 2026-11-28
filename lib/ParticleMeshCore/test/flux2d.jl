@@ -6,13 +6,18 @@ foreach(start_worker, WORKER_THREADS)   # the thread-count workers (workers.jl) 
 const INPROCESS_FLUX2D = flux2d_digests()
 f2d_worker(nt) = [chopprefix(l, "F2D ") for l in worker_lines(nt) if startswith(l, "F2D ")]
 
-@testset "T-300 discrete continuity at N = 2 [A2, A7, WP-020]" begin
+"T-300's continuity on `be` (gpu.jl reruns it on CUDA, T-1192): every element type, shape, stagger pair and mode."
+function body_T300(be)
     C = tolC("T-300")
     for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, mode in MODES
-        c = folded_2d(continuity_case_2d(T, mode, shape, st))
-        r = record!("T-300", T, continuity_residual_2d(c))
+        c = folded_2d(continuity_case_2d(T, mode, shape, st; be); be)
+        r = record!("T-300", T, continuity_residual_2d(c), be)
         @test r <= C
     end
+end
+
+@testset "T-300 discrete continuity at N = 2 [A2, A7, WP-020]" begin
+    body_T300(CPU())
     # The displacements cross faces on both axes, both seams and the corner.
     grid = grid2(Float64, 3)
     s = flux_species_2d(Float64, grid, 400)
@@ -154,20 +159,25 @@ end
     end
 end
 
-@testset "T-302 Reference and Fast agree per node at N = 2 [A4, WP-020]" begin
+"T-302's per-node agreement of the two modes on `be` (gpu.jl reruns it on CUDA, T-1192)."
+function body_T302(be)
     C = tolC("T-302")
     for T in (Float32, Float64), shape in SHAPES, st in STAGGER_PAIRS
-        cR = continuity_case_2d(T, Reference(), shape, st; np = 192 * 20, seed = 11)
-        cF = continuity_case_2d(T, Fast(), shape, st; np = 192 * 20, seed = 11)
+        cR = continuity_case_2d(T, Reference(), shape, st; np = 192 * 20, seed = 11, be)
+        cF = continuity_case_2d(T, Fast(), shape, st; np = 192 * 20, seed = 11, be)
         A = flux_abs_2d(cR.s, shape, st, cR.grid, cR.dt)
         worst = 0.0
         for (d, (JR, JF)) in enumerate(((cR.Jx, cF.Jx), (cR.Jy, cF.Jy), (cR.Jz, cF.Jz))), a in eachindex(JR)
             A[d][a] == 0 && (@test JR[a] == 0 && JF[a] == 0; continue)
             worst = max(worst, abs(JR[a] - JF[a]) / (eps(T) * A[d][a]))
         end
-        record!("T-302", T, worst)
+        record!("T-302", T, worst, be)
         @test worst <= C
     end
+end
+
+@testset "T-302 Reference and Fast agree per node at N = 2 [A4, WP-020]" begin
+    body_T302(CPU())
 end
 
 @testset "T-303 the 2D Reference flux is bitwise across reruns, threads and launch shapes, and equals recorded bits [A4, WP-020, WP-037]" begin
@@ -438,7 +448,26 @@ end
     end
 end
 
-@testset "T-840 Fast's particle-frame stencil is the cell frame's on its nodes, bit for bit; the cell frame's other nodes hold zeros and, along the component's axis, the roundoff sum of all weight changes [A2, A4, WP-041]" begin
+# One work item per slot: particle `i`'s 2D flux stencil in the cell frame and in its own frame.
+@kernel function stencil_frames_kernel!(out, s, shape, st, n, sx, qz)
+    i = @index(Global, Linear)
+    @inbounds out[i] = (ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, qz),
+                        ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, qz, ParticleMeshCore.ParticleFrame()))
+end
+
+"Per slot of the host species `s`, its flux stencils in the cell frame and in its own frame, evaluated on `be`."
+function stencil_frames(be, s, shape, st, n, sx)
+    host(i) = (ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2),
+               ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2, ParticleMeshCore.ParticleFrame()))
+    be isa CPU && return map(host, 1:capacity(s))
+    out = KernelAbstractions.allocate(be, typeof(host(1)), capacity(s))
+    stencil_frames_kernel!(be)(out, todev(be, s), shape, st, n, sx, QZ2; ndrange = capacity(s))
+    KernelAbstractions.synchronize(be)
+    return Array(out)
+end
+
+"T-840's frames on `be`, both evaluated there (gpu.jl reruns it on CUDA, T-1192)."
+function body_T840(be)
     C = tolC("T-840")
     for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS
         P = order(shape)
@@ -446,11 +475,11 @@ end
         s = flux_species_2d(T, grid, 400)
         n = Int32.(ncells(grid))
         sx = map(h -> h / T(basetype(T)(1 // 4)), cellsize(grid))
+        frames = stencil_frames(be, s, shape, st, n, sx)
         shared, zeros_ok, tails, worst = true, true, 0, 0.0
         for i in 1:capacity(s)
             s.status[i] == ParticleMeshCore.ALIVE || continue
-            lo, M, JC = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2)
-            f, MP, JP = ParticleMeshCore.flux_stencil(s, i, shape, st, n, sx, QZ2, ParticleMeshCore.ParticleFrame())
+            (lo, M, JC), (f, MP, JP) = frames[i]
             @test MP == (P + 2, P + 2) && map(length, JP) == ((P + 1) * (P + 2), (P + 2) * (P + 1), (P + 2)^2)
             @test all(d -> lo[d] <= f[d] && f[d] + P + 1 <= lo[d] + M[d] - 1, 1:2)
             for c in 1:3
@@ -477,6 +506,38 @@ end
         @test shared
         @test zeros_ok
         @test tails > 0
-        @test record!("T-840", T, worst) <= C
+        @test record!("T-840", T, worst, be) <= C
     end
+end
+
+@testset "T-840 Fast's particle-frame stencil is the cell frame's on its nodes, bit for bit; the cell frame's other nodes hold zeros and, along the component's axis, the roundoff sum of all weight changes [A2, A4, WP-041]" begin
+    body_T840(CPU())
+end
+
+"T-1191's bits on `be` (gpu.jl reruns it on CUDA, T-1192): the 2D Reference flux with 1, 2 or 3 components per launch against the default."
+function body_T1191(be)
+    for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, bins in (CellBins(), NodeBins(shape, st))
+        grid = grid2(T, flux_g2(shape, st))
+        J = map((nothing, 1, 2, 3)) do components
+            s = flux_species_2d(T, grid, 400)
+            Jx, Jy, Jz, _ = flux2d(Reference(), s, shape, st, grid; be, bins, components)
+            (Jx, Jy, Jz)
+        end
+        @test all(j -> all(same_bits.(j, J[1])), J)
+        @test any(!iszero, J[1][1]) && any(!iszero, J[1][2]) && any(!iszero, J[1][3])
+    end
+end
+
+@testset "T-1191 the 2D Reference flux gives the same bits with one, two or three components per launch of its patch kernel, and the default takes all three [A4, WP-041]" begin
+    body_T1191(CPU())
+    @test ParticleMeshCore.flux_components_2d(nothing) == ((1, 2, 3),)
+    for c in (1, 2, 3)
+        @test ParticleMeshCore.flux_components_2d(c) == (((1,), (2,), (3,)), ((1, 2), (3,)), ((1, 2, 3),))[c]
+    end
+    for c in (0, 4, true, 2.0, :x)
+        @test_throws ArgumentError ParticleMeshCore.flux_components_2d(c)
+    end
+    # the keyword reaches the patch launches: deposit_flux! refuses a fourth component per launch
+    grid = grid2(Float64, flux_g2(Quadratic, (Node(), Node())))
+    @test_throws ArgumentError flux2d(Reference(), flux_species_2d(Float64, grid, 50), Quadratic, (Node(), Node()), grid; components = 4)
 end

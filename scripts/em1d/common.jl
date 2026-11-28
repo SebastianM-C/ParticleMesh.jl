@@ -14,8 +14,8 @@ const REPO = normpath(joinpath(@__DIR__, "..", ".."))
 const EM_TEST = joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "test")
 const CASES = joinpath(REPO, "scripts", "crosscode", "cases")
 
-include(joinpath(REPO, "scripts", "crosscode", "manifest.jl"))
-using .RunManifest: write_manifest
+using RunManifests
+using RunManifests: write_manifest
 include(joinpath(REPO, "scripts", "crosscode", "analysis.jl"))
 using .Observables: damping_from_peaks, growth_from_window
 include(joinpath(EM_TEST, "theory.jl"))             # Theory (Landau, two-stream) and weibel_cold_growth; reads REPO
@@ -52,7 +52,7 @@ function run_dir(name, script, case_name; params = Dict{String,Any}(), work_pack
     dir = joinpath(REPO, "scripts", "runs", "$prefix-$name-$stamp")
     mkpath(dir)
     # input paths relative to the repository root: absolute paths would carry the machine's home directory
-    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in sort(unique([input_files(script, case_name); extra_inputs])))
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifests.file_hash(f) for f in sort(unique([input_files(script, case_name); extra_inputs])))
     write_manifest(dir; root = REPO,
                    extra = merge(Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => work_package,
                                                   "parameters" => params, "julia" => string(VERSION), "threads" => Threads.nthreads(),

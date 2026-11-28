@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "b4f8af741e2392e66d77bc99904fde6eb7a765a7"
+project_hash = "e9235fcb91ad60f4ce40472816ec328719513bc6"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1507,6 +1507,12 @@ weakdeps = ["Distributed"]
     [deps.Revise.extensions]
     DistributedExt = "Distributed"
 
+[[deps.RunManifests]]
+deps = ["Dates", "SHA", "TOML"]
+path = "lib/RunManifests"
+uuid = "3118dd14-20dc-4d63-ac04-2bff4dee2f1e"
+version = "0.1.0-DEV"
+
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "PrecompileTools", "SHA", "Serialization"]
 git-tree-sha1 = "9bb075002b40849582905394bb3031fb77aa102d"
@@ -1907,6 +1913,12 @@ weakdeps = ["GPUCompiler"]
 
     [deps.UnsafeAtomics.extensions]
     UnsafeAtomicsGPUCompilerExt = "GPUCompiler"
+
+[[deps.Wakefields]]
+deps = ["Mendeleev", "ParticleMeshElectromagnetic", "SpecialFunctions", "TOML", "Unitful"]
+path = "lib/Wakefields"
+uuid = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
+version = "0.1.0-DEV"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "LazyJLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]

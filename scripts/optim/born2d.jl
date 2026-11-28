@@ -86,7 +86,7 @@ function main(ppl)
                                   "fd_powers" => collect(RUN.fd_powers), "box" => [BORN_BOX.lo[1], BORN_BOX.hi[1]])
     dir = run_dir("born2d", @__FILE__; prefix = "optim", work_package = "WP-064",
                   extra_inputs = [joinpath(@__DIR__, "born2d_case.jl"), joinpath(@__DIR__, "problem.jl"),
-                                  joinpath(@__DIR__, "..", "ionization", "atomic.jl")],
+                                  joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl")],
                   params = cfg)
     out = Dict{String,Any}("case" => cfg, "threads" => Threads.nthreads())
     checks = Dict{String,Any}[]

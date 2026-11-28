@@ -150,7 +150,7 @@ function landau3d_run(be; cells, ppc, seeds, float, t_end, amplitude)
     open(io -> JSON.json(io, out; pretty = 2, allownan = true), joinpath(dir, "observables.json"), "w")
     landau3d_figure(dir, ts, coeffs, ens, th, cells, ppc, T)
     write_manifest(dir; root = REPO, extra = Dict{String,Any}("finished" => string(now(UTC)) * "Z",
-        "outputs" => Dict{String,Any}(f => "sha256:" * RunManifest.file_hash(joinpath(dir, f))
+        "outputs" => Dict{String,Any}(f => "sha256:" * RunManifests.file_hash(joinpath(dir, f))
                                       for f in ("observables.json", "landau3d.png", "landau3d.json"))))
     e = out["ensemble"]
     println("ensemble γ = $(e["gamma"]) ± $(e["jackknife"]) (theory $(th.gamma), rel $(e["gamma_rel"])), ω = $(e["omega"]) ",

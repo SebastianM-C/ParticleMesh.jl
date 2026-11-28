@@ -66,12 +66,12 @@ function run_seeds(dir, case_file, seeds; ppc = nothing, cells = nothing, moment
     script = @__FILE__
     files = sort(unique([input_files(script, nothing); case_file;
                          joinpath.(CROSSCODE, ["ensemble.jl", "ensemble_report.jl"]); joinpath(@__DIR__, "crosscode.jl")]))
-    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in files)
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifests.file_hash(f) for f in files)
     perf = Dict{String,Any}()
     record() = write_manifest(dir; root = REPO, extra = Dict{String,Any}("inputs" => inputs, "run_id" => basename(normpath(dir)),
         "work_package" => "WP-032", "julia" => string(VERSION), "threads" => Threads.nthreads(), "backend" => "KernelAbstractions CPU",
         "cpu" => Sys.cpu_info()[1].model, "host" => host_record(), "seeds" => collect(seeds), "per_seed" => perf,
-        "case_sha256" => RunManifest.file_hash(joinpath(dir, "case.toml")),
+        "case_sha256" => RunManifests.file_hash(joinpath(dir, "case.toml")),
         "parameters" => Dict{String,Any}("case" => case["name"], "element_type" => "Float64", "mode" => "Reference",
             "module" => "ParticleMeshElectromagnetic", "current" => "Esirkepov",
             "momenta_at" => string(momenta_at), "density_at" => string(density_at),
@@ -156,9 +156,9 @@ directory, seeds, host and box status) and the hash of every output.
 function merge_requests(out, rdirs; case_file = joinpath(CASES, "$CASE_NAME.toml"))
     case = TOML.parsefile(case_file)
     seeds = case_seeds(case)
-    h = RunManifest.file_hash(case_file)
+    h = RunManifests.file_hash(case_file)
     for r in rdirs
-        RunManifest.file_hash(joinpath(r, "case.toml")) == h || error("merge: $r ran a case file other than $case_file")
+        RunManifests.file_hash(joinpath(r, "case.toml")) == h || error("merge: $r ran a case file other than $case_file")
     end
     where_ = Dict{Int,String}()
     manifests = [TOML.parsefile(joinpath(r, "manifest.toml")) for r in rdirs]
@@ -215,7 +215,7 @@ function merge_requests(out, rdirs; case_file = joinpath(CASES, "$CASE_NAME.toml
     for (root, _, fs) in walkdir(out), f in fs
         f == "manifest.toml" && continue
         p = joinpath(root, f)
-        outputs[relpath(p, out)] = "sha256:" * RunManifest.file_hash(p)
+        outputs[relpath(p, out)] = "sha256:" * RunManifests.file_hash(p)
     end
     write_manifest(out; root = REPO, extra = Dict{String,Any}("run_id" => basename(normpath(out)), "work_package" => "WP-032",
         "inputs" => ref["inputs"], "parameters" => ref["parameters"], "case_sha256" => ref["case_sha256"], "requests" => requests,

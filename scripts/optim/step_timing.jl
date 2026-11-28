@@ -137,7 +137,10 @@ function deposition_kernels(st)
     end
     frame(ws) = binned ? (ws.bins isa PMC.CellBins ? (PMC.CellFrame(),) : (PMC.BinFrame(ws.bins),)) : ()
     layouts = isdefined(PMC, :flux_patch_layout)      # the kernels' arguments differ between the trees this script compares
-    patch_args(ws) = layouts ? (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, frame(ws)..., n, sx, qz, ws.flux_layout, Val(prod(widths(ws)))) :
+    # all three components in one launch, on trees whose patch kernel takes the components (WP-041's `flux_components_2d`)
+    components = isdefined(PMC, :flux_components_2d) ? (Val((1, 2, 3)),) : ()
+    patch_args(ws) = layouts ? (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, frame(ws)..., n, sx, qz, ws.flux_layout, Val(prod(widths(ws))),
+                                components...) :
                      (ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, stg, n, sx, qz, Val(prod(widths(ws))))
     reduce_args(ws) = layouts ? (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), reach(ws)..., Int32.(widths(ws))) :
                       (fields.Jx, fields.Jy, fields.Jz, ws.flux_patch, n, Int32(guards(grid)), reach(ws)..., Int32.(widths(ws)))

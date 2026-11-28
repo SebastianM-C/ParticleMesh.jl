@@ -1,6 +1,6 @@
 """ADK rates as FBPIC computes them (WP-059), the reference of the ionization tests.
 
-    python3 -I fbpic_reference.py <path to fbpic's atomic_data.txt> > fbpic_reference.toml
+    python3 -I fbpic_reference.py <path to fbpic's atomic_data.txt> > ../../lib/Wakefields/test/fbpic_reference.toml
 
 The three coefficient lines are those of FBPIC 0.27.1, `Ionizer.initialize_ADK_parameters`
 (fbpic/particles/elementary_process/ionization/ionizer.py, 3-Clause-BSD-LBNL), without its factor

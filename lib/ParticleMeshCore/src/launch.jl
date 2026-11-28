@@ -13,7 +13,9 @@ element type: PoCL lowers it for kernels with a large private stack, such as the
 with `Dual` elements (for `Dual{Float32,3}`, the quadratic shape and the stagger
 `(Node(), Node())` PoCL reported 983 work-items in #297; the number moves with the kernel's
 code and with the machine: since WP-061's change of it PoCL reported 3269 on one CPU and ran
-the backend's 4096 on another, T-500). It is
+the backend's 4096 on another, T-500). PoCL's reported maximum is not a size it can always
+run: a launch at or near it can crash the process (T-500), so a fixed size stays well below
+it. The maximum is
 known only once KernelAbstractions has compiled the kernel for its arguments, inside the
 launch, and KernelAbstractions has no public query for it, so the engine cannot clamp a
 requested size to it. A launch with a size that does not fit is refused before the kernel

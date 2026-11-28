@@ -167,7 +167,7 @@ function pulse3_manifest(dir, o)
                    extra = cuda ? Dict{String,Any}("gpu" => Base.invokelatest(() -> Main.CUDACore.name(Main.CUDACore.device()))) : Dict{String,Any}(),
                    extra_inputs = [joinpath(@__DIR__, f) for f in ("problem.jl", "trapped2d_opt.jl", "pulse2d_opt.jl", "pulse3d_case.jl", "trapped3d_case.jl",
                                                                    "trapped2d_case.jl", "born2d_case.jl")] ∪
-                                  [joinpath(@__DIR__, "..", "ionization", "atomic.jl")])
+                                  [joinpath(@__DIR__, "..", "..", "lib", "Wakefields", "src", "atomic.jl")])
 end
 
 """

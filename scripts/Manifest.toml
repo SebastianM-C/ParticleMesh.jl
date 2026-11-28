@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "7af01edfd544ea726bd8ad79faeaf1b627c18429"
+project_hash = "df4bd6b8b30628934567d712a92d0c93433be949"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -2295,6 +2295,12 @@ registries = "General"
 uuid = "5eaf0fd0-dfba-4ccb-bf02-d820a40db705"
 version = "0.2.1"
 
+[[deps.RunManifests]]
+deps = ["Dates", "SHA", "TOML"]
+path = "../lib/RunManifests"
+uuid = "3118dd14-20dc-4d63-ac04-2bff4dee2f1e"
+version = "0.1.0-DEV"
+
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "PrecompileTools", "SHA", "Serialization"]
 git-tree-sha1 = "9bb075002b40849582905394bb3031fb77aa102d"
@@ -2867,6 +2873,12 @@ weakdeps = ["GPUCompiler"]
 
     [deps.UnsafeAtomics.extensions]
     UnsafeAtomicsGPUCompilerExt = "GPUCompiler"
+
+[[deps.Wakefields]]
+deps = ["Mendeleev", "ParticleMeshElectromagnetic", "SpecialFunctions", "TOML", "Unitful"]
+path = "../lib/Wakefields"
+uuid = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
+version = "0.1.0-DEV"
 
 [[deps.WebP]]
 deps = ["CEnum", "ColorTypes", "FileIO", "FixedPointNumbers", "ImageCore", "libwebp_jll"]

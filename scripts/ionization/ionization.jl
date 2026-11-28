@@ -1,7 +1,7 @@
 # The measurements of WP-059, the deterministic field ionization (reports/wp-059-field-ionization.md).
 #
-# 1. The rates (adk_rates.png): every level of nitrogen at 0.8 µm from `atomic.jl`, in 1/ω₀ against
-#    a₀, with the rates of FBPIC 0.27.1's coefficient lines (`fbpic_reference.toml`, both variants)
+# 1. The rates (adk_rates.png): every level of nitrogen at 0.8 µm from Wakefields' `adk_level`, in 1/ω₀ against
+#    a₀, with the rates of FBPIC 0.27.1's coefficient lines (`lib/Wakefields/test/fbpic_reference.toml`, both variants)
 #    on top, and the largest relative difference to each variant over every level of H, He, N, Ar.
 # 2. A pulse over test atoms in vacuum (vacuum_fraction.png): a Gaussian pulse (a₀ = 2, waist 10,
 #    duration 20, focused on the atoms' column) passes atoms of zero weight with nitrogen's sixth
@@ -21,7 +21,7 @@ include(joinpath(@__DIR__, "..", "engine2d", "common.jl"))
 const ParticleMeshCore = ParticleMesh.ParticleMeshCore
 using ParticleMeshElectromagnetic
 using ForwardDiff: ForwardDiff
-include(joinpath(@__DIR__, "atomic.jl"))
+using Wakefields
 zero3(::Type{T}) where {T} = (zero(T), zero(T), zero(T))
 bits(a::AbstractArray) = reinterpret(UInt8, vec(collect(a)))
 const TYPES = (Float64,)
@@ -32,7 +32,7 @@ const WAVELENGTH = 0.8e-6
 # --- 1 ------------------------------------------------------------------------------------------
 
 function rate_rows()
-    ref = TOML.parsefile(joinpath(@__DIR__, "fbpic_reference.toml"))
+    ref = TOML.parsefile(joinpath(REPO, "lib", "Wakefields", "test", "fbpic_reference.toml"))
     rows = Dict{String,Any}[]
     for lv in ref["levels"]
         el, Z = Symbol(lv["element"]), lv["charge"]
@@ -268,10 +268,10 @@ end
 
 function ionization_report()
     dir = run_dir("ionization", @__FILE__; work_package = "WP-059", prefix = "ionization",
-                  extra_inputs = [joinpath(@__DIR__, "atomic.jl"), joinpath(@__DIR__, "fbpic_reference.toml"),
+                  extra_inputs = [joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl"), joinpath(REPO, "lib", "Wakefields", "test", "fbpic_reference.toml"),
                                   joinpath(EM_TEST, "ionization_cases.jl")],
                   params = Dict{String,Any}("wavelength_m" => WAVELENGTH, "type" => "Float64", "mode" => "Reference",
-                                            "atomic_data" => atomic_record(unique(lv["element"] for lv in TOML.parsefile(joinpath(@__DIR__, "fbpic_reference.toml"))["levels"])),
+                                            "atomic_data" => atomic_record(unique(lv["element"] for lv in TOML.parsefile(joinpath(REPO, "lib", "Wakefields", "test", "fbpic_reference.toml"))["levels"])),
                                             "vacuum" => Dict(string(k) => (v isa Tuple ? collect(v) : v) for (k, v) in pairs(VAC)),
                                             "vacuum_cells_per_wavelength" => [16, 32, 64], "scan_x0" => collect(X0)))
     summary = rates_figure(dir)

@@ -18,8 +18,7 @@
 
 @isdefined(Observables) || include(joinpath(@__DIR__, "analysis.jl"))   # the test suite has them already
 @isdefined(Ensemble) || include(joinpath(@__DIR__, "ensemble.jl"))
-@isdefined(RunManifest) || include(joinpath(@__DIR__, "manifest.jl"))
-using .Observables, .Ensemble, .RunManifest
+using .Observables, .Ensemble, RunManifests
 using CairoMakie, JSON, TOML
 using Statistics: mean, std, median, quantile
 using Random: Xoshiro, randperm

@@ -8,7 +8,7 @@ using ParticleMeshElectromagnetic
 using ParticleMeshElectromagnetic: window_back_band
 using ParticleMeshElectromagnetic.ParticleMeshCore: ALIVE
 using ForwardDiff: ForwardDiff
-include(joinpath(@__DIR__, "..", "ionization", "atomic.jl"))
+using Wakefields: adk_level
 
 value_of(x::Real) = x
 value_of(d::ForwardDiff.Dual) = ForwardDiff.value(d)
