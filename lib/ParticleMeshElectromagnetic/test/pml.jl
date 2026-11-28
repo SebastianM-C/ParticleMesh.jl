@@ -382,7 +382,9 @@ end
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 8)))
     st = open_state(prob, PML(; cells = 7))
     @test st isa EMState{2} && open_absorber(st) isa PMLFields
-    @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = PML(; cells = 4), filter = BinomialFilter(1)))
+    # the filter beside the open axis: the PML holds the guards and the passes (3 + 1 cells), and no more passes (T-1257)
+    @test EMState(prob, EMNumerics(; absorber = PML(; cells = 4), filter = BinomialFilter(1))) isa EMState{2}
+    @test_throws "filter passes" EMState(prob, EMNumerics(; absorber = PML(; cells = 4), filter = BinomialFilter(2)))
     # the case file: [numerics.pml], exactly one absorber
     case = deepcopy(load_case("weibel-2d"))
     case["grid"]["boundaries"] = ["periodic", "open"]

@@ -592,6 +592,18 @@ end
     initialize!(used, prob)                                   # its workspaces hold the order of step 110's particles
     foreach(k -> step!(used, p, k), 1:nsteps)
     @test alive_record_3d(used) == want_alive
+    # with births from the first step on (T-855's box at N = 3), the born electrons' workspace holds
+    # an order of electrons that initialize! removes, and the new ones take their slots before a sort
+    box = ion_box_3d(Float32; plasma = true, nsteps = 20)
+    pb = params(box)
+    st = EMState(box, EMNumerics(; mode = Reference(), resort = true); backend = CPU())
+    initialize!(st, box)
+    foreach(k -> step!(st, pb, k), 1:20)
+    want_box = alive_record_3d(st)
+    @test Int(st.aux.ionization.electrons.count[1]) > 0
+    initialize!(st, box)
+    foreach(k -> step!(st, pb, k), 1:20)
+    @test alive_record_3d(st) == want_box
 end
 
 # --- T-1257 ---------------------------------------------------------------------------------
