@@ -225,12 +225,20 @@ end
     @test r["t"] == [st * d2.dt for st in steps[6:end] if st * d2.dt >= 50]
     @test all(x -> isapprox(x, 0.01 / 1.01; rtol = 1e-12), r["relrms"])
     @test picongpu_ion_arguments(TOML.parsefile(ION_CASE_FILE), p) == picongpu_arguments(p)
-    # the 3D case has no measured field ratio, so prepare leaves out the run that needs it
+    # the 3D case holds both codes' measured field ratios, so prepare writes both runs at another code's peak field
     root = prepare_ion(joinpath(@__DIR__, "..", "cases", "ionization-3d.toml"), "t1127-$(getpid())"; codes = ("pm", "picongpu"), seeds = 1:1)
     try
         names = readdir(root)
         @test "pm-plasma" in names && ("pm-plasma-rates-picongpu-a0" in names) && ("pm-plasma-rates-smilei-a0" in names) && "picongpu-plasma-s1" in names
         @test occursin("-d 1 2 1 ", read(joinpath(root, "picongpu-plasma-s1", "run.sh"), String))
+    finally
+        rm(root; recursive = true)
+    end
+    # the 2D case holds PIConGPU's ratio alone, so prepare leaves out the run at Smilei's peak field
+    root = prepare_ion(ION_CASE_FILE, "t1127-2d-$(getpid())"; codes = ("pm",), seeds = 1:1)
+    try
+        names = readdir(root)
+        @test "pm-plasma" in names && ("pm-plasma-rates-picongpu-a0" in names) && !("pm-plasma-rates-smilei-a0" in names)
     finally
         rm(root; recursive = true)
     end
