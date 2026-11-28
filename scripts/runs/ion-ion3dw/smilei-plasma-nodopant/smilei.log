@@ -1,0 +1,241 @@
+                    _            _
+  ___           _  | |        _  \ \   Version : 5.1-HEAD
+ / __|  _ __   (_) | |  ___  (_)  | |   
+ \__ \ | '  \   _  | | / -_)  _   | |
+ |___/ |_|_|_| |_| |_| \___| |_|  | |  
+                                 /_/    
+ 
+ 
+
+ Reading the simulation parameters
+ -------------------------------------------------------------------------------
+ HDF5 version 1.10.10
+ Python version 3.12.3
+	 Parsing pyinit.py
+	 Parsing 5.1-HEAD
+	 Parsing pyprofiles.py
+	 Parsing namelist.py
+	 Parsing pycontrol.py
+	 Check for function preprocess()
+	 python preprocess function does not exist
+	 Calling python _smilei_check
+	 Calling python _prepare_checkpoint_dir
+	 Calling python _keep_python_running() :
+[1;36mCAREFUL: Patches distribution: hilbertian
+[0m
+	 Smilei will run on CPU devices
+[;33m
+[WARNING](0) src/Params/Params.cpp:1170 (compute) simulation_time has been redefined from 299.760386 to 299.672454 to match timestep.[0m
+[;33m
+[WARNING](0) src/Params/Params.cpp:1262 (compute) Particles cluster width `cluster_width` set to : 1[0m
+ 
+
+ Geometry: 3Dcartesian
+ -------------------------------------------------------------------------------
+	 Interpolation order : 2
+	 Maxwell solver : Yee
+	 simulation duration = 299.672454,   total number of iterations = 1704
+	 timestep = 0.175864 = 0.950000 x CFL,   time resolution = 5.686208
+	 Grid length: 87.9646, 150.796, 150.796
+	 Cell length: 0.19635, 0.785398, 0.785398
+	 Number of cells: 448, 192, 192
+	 Spatial resolution: 5.09296, 1.27324, 1.27324
+ 
+
+ Electromagnetic boundary conditions
+ -------------------------------------------------------------------------------
+	 xmin silver-muller, absorbing vector [1, 0, 0]
+	 xmax silver-muller, absorbing vector [-1, -0, -0]
+	 ymin silver-muller, absorbing vector [0, 1, 0]
+	 ymax silver-muller, absorbing vector [-0, -1, -0]
+	 zmin silver-muller, absorbing vector [0, 0, 1]
+	 zmax silver-muller, absorbing vector [-0, -0, -1]
+ 
+
+ Vectorization: 
+ -------------------------------------------------------------------------------
+	 Mode: off
+	 Calling python writeInfo
+ 
+
+ Initializing MPI
+ -------------------------------------------------------------------------------
+	 MPI_THREAD_MULTIPLE enabled
+	 Number of MPI processes: 1
+	 Number of threads per MPI process : 16
+	 OpenMP task parallelization not activated
+ 
+	 Number of patches: 32 x 4 x 4
+	 Number of cells in one patch: 14 x 48 x 48
+	 Dynamic load balancing: never
+ 
+
+ Initializing the restart environment
+ -------------------------------------------------------------------------------
+ 
+
+ Initializing moving window
+ -------------------------------------------------------------------------------
+	 Moving window is active:
+		 velocity_x : 1.000000
+		 time_start : 108.000000
+ 
+ 
+ 
+
+ Initializing species
+ -------------------------------------------------------------------------------
+	 
+	 Creating Species #0: electron
+		 > Pusher: boris
+		 > Boundary conditions: remove remove remove remove remove remove
+		 > Density profile: 3D user-defined function (uses numpy)
+ 
+
+ Initializing laser parameters
+ -------------------------------------------------------------------------------
+ 		Laser #0: separable profile
+			omega              : 1
+			chirp_profile      : 1D built-in profile `tconstant` (0.000000)
+			time envelope      : 1D built-in profile `tgaussian` (start: 0.000000, duration: 114.201143, sigma: 36.000000, center: 57.100571, order: 2.000000)
+			space envelope (y) : 2D user-defined function
+			space envelope (z) : 2D user-defined function
+			phase          (y) : 2D user-defined function
+			phase          (z) : 2D user-defined function
+		delay phase      (y) : 0
+		delay phase      (z) : 0
+ 
+
+ Initializing Patches
+ -------------------------------------------------------------------------------
+	 First patch created
+		 Approximately 10% of patches created
+		 Approximately 20% of patches created
+		 Approximately 30% of patches created
+		 Approximately 40% of patches created
+		 Approximately 50% of patches created
+		 Approximately 60% of patches created
+		 Approximately 70% of patches created
+		 Approximately 80% of patches created
+		 Approximately 90% of patches created
+	 All patches created
+ 
+
+ Creating Diagnostics, antennas, and external fields
+ -------------------------------------------------------------------------------
+	 Created ParticleBinning #0: species electron
+		 Axis moving_x from 0 to 87.9646 in 448 steps
+		 Axis px from -10 to 70 in 320 steps
+	 Created ParticleBinning #1: species electron
+		 Axis moving_x from 0 to 87.9646 in 448 steps
+		 Axis px from -10 to 70 in 320 steps
+	 Created ParticleBinning #2: species electron
+		 Axis moving_x from 12 to 87.9646 in 1 steps
+		 Axis ekin from 0 to 40 in 200 steps
+	 Diagnostic Fields #0  :
+		 Ex Ey 
+ 
+
+ Finalize MPI environment
+ -------------------------------------------------------------------------------
+	 Done creating diagnostics, antennas, and external fields
+ 
+
+ Minimum memory consumption (does not include all temporary buffers)
+ -------------------------------------------------------------------------------
+              Particles: Master 248 MB;   Max 248 MB;   Global 0.243 GB
+                 Fields: Master 2710 MB;   Max 2710 MB;   Global 2.65 GB
+            scalars.txt: Master 0 MB;   Max 0 MB;   Global 0 GB
+    ParticleBinning0.h5: Master 1 MB;   Max 1 MB;   Global 0.00107 GB
+    ParticleBinning1.h5: Master 1 MB;   Max 1 MB;   Global 0.00107 GB
+    ParticleBinning2.h5: Master 0 MB;   Max 0 MB;   Global 1.49e-06 GB
+             Fields0.h5: Master 0 MB;   Max 0 MB;   Global 0 GB
+ 
+
+ Initial fields setup
+ -------------------------------------------------------------------------------
+	 Applying external fields at time t = 0
+	 Applying prescribed fields at time t = 0
+	 Applying antennas at time t = 0
+ 
+
+ Open files & initialize diagnostics
+ -------------------------------------------------------------------------------
+ 
+
+ Running diags at time t = 0
+ -------------------------------------------------------------------------------
+ 
+
+ Species creation summary
+ -------------------------------------------------------------------------------
+		 Species 0 (electron) created with 4497408 particles
+ 
+
+ Expected disk usage (approximate)
+ -------------------------------------------------------------------------------
+	 WARNING: disk usage by non-uniform particles maybe strongly underestimated,
+	    especially when particles are created at runtime (ionization, pair generation, etc.)
+	 
+	 Expected disk usage for diagnostics:
+		 File Fields0.h5: 1.37 M
+		 File scalars.txt: 11.27 K
+		 File ParticleBinning0.h5: 13.13 M
+		 File ParticleBinning1.h5: 13.13 M
+		 File ParticleBinning2.h5: 27.71 K
+	 Total disk usage for diagnostics: 27.68 M
+	 
+ 
+
+ Keeping or closing the python runtime environment
+ -------------------------------------------------------------------------------
+	 Checking for cleanup() function:
+	 python cleanup function does not exist
+	 Keeping Python interpreter alive
+ 
+
+ Time-Loop started: number of time-steps n_time = 1704
+ -------------------------------------------------------------------------------
+[1;36mCAREFUL: The following `push time` assumes a global number of 16 cores (hyperthreading is unknown)
+[0m
+    timestep       sim time   cpu time [s]   (    diff [s] )   push time [ns]
+    200/1704     3.5261e+01     7.0841e+01   (  7.0841e+01 )            1260 
+    400/1704     7.0434e+01     1.4166e+02   (  7.0814e+01 )            1259 
+    600/1704     1.0561e+02     2.1285e+02   (  7.1193e+01 )            1266 
+ >>> Window starts moving
+    800/1704     1.4078e+02     3.0794e+02   (  9.5094e+01 )             711 
+   1000/1704     1.7595e+02     4.5623e+02   (  1.4829e+02 )             719 
+   1200/1704     2.1112e+02     6.2177e+02   (  1.6554e+02 )             801 
+   1400/1704     2.4630e+02     7.8709e+02   (  1.6532e+02 )             800 
+   1600/1704     2.8147e+02     9.4066e+02   (  1.5357e+02 )             743 
+ 
+
+ End time loop, time dual = 2.9976e+02
+ -------------------------------------------------------------------------------
+ 
+
+ Time profiling : (print time > 0.001%)
+ -------------------------------------------------------------------------------
+ Time_in_time_loop	1.0274e+03	9.9945e+01% coverage
+ 	           Particles	6.703368e+02	6.5e+01%
+ 	             Maxwell	1.519146e+02	1.5e+01%
+ 	          Maxwell_BC	5.298634e+01	5.2e+00%
+ 	         Diagnostics	9.930365e+00	    <1%
+ 	          Mov window	6.206744e+00	    <1%
+ 	      Sync Particles	1.006567e+01	    <1%
+ 	         Sync Fields	1.268523e+01	1.2e+00%
+ 	      Sync Densities	2.734125e+01	2.7e+00%
+ 
+	 Printed times are averaged per MPI process
+ 		 See advanced metrics in profil.txt
+ 
+	Diagnostics profile :
+ 		         scalars.txt	3.4e+00
+ 		 ParticleBinning0.h5	3.2e-01
+ 		 ParticleBinning1.h5	3.2e-01
+ 		 ParticleBinning2.h5	5.4e+00
+ 		          Fields0.h5	1.1e-01
+ 
+
+ END
+ -------------------------------------------------------------------------------
