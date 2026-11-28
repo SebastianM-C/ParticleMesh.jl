@@ -36,6 +36,8 @@ for r in "${runs[@]}"; do
     echo "[$(stamp)] $r: exit $?"
     kill $SMI 2>/dev/null; wait $SMI 2>/dev/null
 done
+# then the per-piece dot-product checks in the step's context (wp088_checks.sh), unless WP088_CHECKS=0
+[ "${WP088_CHECKS:-1}" = 1 ] && bash scripts/enzyme/wp088_checks.sh "$W" "$OUT"
 cp -r scripts/runs/enzyme-trapped-* "$OUT/" 2>/dev/null
 nvidia-smi > "$OUT/nvidia-smi-end.txt" 2>&1
 echo "[$(stamp)] done"
