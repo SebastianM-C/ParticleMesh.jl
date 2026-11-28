@@ -43,9 +43,10 @@ as its edge cases with no transverse fields.
 - **Two deposition modes.** Fast mode deposits with atomics; Reference mode sorts the particles
   by cell and reduces by segment, and is bitwise reproducible per element type and backend. The
   tests check that the two agree.
-- **Lasers.** A Gaussian beam through a total-field/scattered-field antenna in 2D and 3D, and in 2D
+- **Lasers.** A Gaussian beam through a total-field/scattered-field antenna in 2D and 3D, and
   shaped pulses: spectral phase (GDD, TOD, FOD) and a focus from a near field with wavefront
-  aberrations (`PulseShapes`, a module written to become its own package).
+  aberrations, Legendre modes in 2D and Zernike modes of a round pupil in 3D, whose plane is
+  tabulated once per parameter point (`PulseShapes`, a module written to become its own package).
 - **Boundaries and window.** Periodic or open transverse boundaries with a convolutional PML (or an
   absorbing layer) and particle retirement; a moving window with density ramps, plasma refill and
   a PML on its back edge; a binomial current filter.
@@ -91,7 +92,7 @@ outputs and manifest in `reports/lwfa-animation/`).
 - AMD GPUs (the kernels are KernelAbstractions kernels, but no AMD backend is tested), and more
   than one GPU or node.
 - Reactant, which is parked (A9).
-- Shaped pulses in 3D; Enzyme's reverse mode on the CPU (blocked upstream, #509) and without the
+- Enzyme's reverse mode on the CPU (blocked upstream, #509) and without the
   scripts' workarounds; the reverse pass at λ₀/32 in 3D, which does not fit in 32 GB yet.
 - Gradient-based optimization of a full-size 3D case, and independent reviews of the reports
   above. Performance work continues (WP-041).

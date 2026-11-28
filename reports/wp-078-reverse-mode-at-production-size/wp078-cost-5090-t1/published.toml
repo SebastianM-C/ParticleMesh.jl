@@ -1,0 +1,32 @@
+branch = "runs/wp078-cost-5090-t1"
+commit = "727f71dd341b8b6ef7ae09a7816760f19482ad81"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t1/cost-reverse.log"
+bytes = 20608
+sha256 = "40ab5b6bb9c76dc6dd904f558f487700dd5cdc33226913e9114986ff9de70d91"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t1/enzyme-trapped-cost-reverse-20261127T215659/manifest.toml"
+bytes = 1172
+sha256 = "e0a0eaae43590bc0ebcede0d94de24c28ec10e7a7ecf44cca8b0b239fc796897"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t1/enzyme-trapped-cost-reverse-20261127T215659/result.toml"
+bytes = 1236
+sha256 = "b08ae2bba64c6b8a1e3e439004979c1eb2d920c51d5210a0591d25fa5e5e00ac"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t1/nvidia-smi-end.txt"
+bytes = 1873
+sha256 = "e3751350df3f8acadc61228fd8c44f0b023ddca1890fc3c93cb976452b39d101"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t1/nvidia-smi-start.txt"
+bytes = 1873
+sha256 = "fdca4e68a6ea51dfd17b28fd0e4eea7efbaf9869b1b21dd631e0e1f6c6802a53"
+
+[[files]]
+path = "scripts/runs/wp078-cost-5090-t1/smi-reverse.csv"
+bytes = 207513
+sha256 = "8c8edace8a8d56853bdaba6bc4655f6c3e495fc079a63766c03eb566346c892d"

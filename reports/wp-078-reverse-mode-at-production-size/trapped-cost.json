@@ -1,0 +1,306 @@
+{
+  "rows": [
+    {
+      "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
+      "card_above_idle_GiB": 0.7734375,
+      "card_full": false,
+      "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 0,
+      "checkpoint_memory": "none",
+      "checkpoints": 0,
+      "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
+      "gradient": [],
+      "idle_MiB": 925,
+      "method": "primal",
+      "pool_peak_GiB": 0.21357567235827446,
+      "relative_difference_dual1_tau": null,
+      "relative_difference_dual4": null,
+      "result": "enzyme-trapped-cost-primal-20261127T215941",
+      "run": "wp078-cost-5090-t16",
+      "seconds": 2.08345890045166,
+      "seconds_all": [
+        2.08734393119812,
+        2.08345890045166,
+        2.0838699340820312
+      ],
+      "state_GiB": 0.2099493257701397,
+      "threads": 16,
+      "times_dual4": 0.1812444609815623,
+      "times_primal": 1.0
+    },
+    {
+      "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
+      "card_above_idle_GiB": 0.966796875,
+      "card_full": false,
+      "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 0,
+      "checkpoint_memory": "none",
+      "checkpoints": 0,
+      "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
+      "gradient": [
+        -0.006168947089463472
+      ],
+      "idle_MiB": 925,
+      "method": "dual1",
+      "pool_peak_GiB": 0.36799923330545425,
+      "relative_difference_dual1_tau": null,
+      "relative_difference_dual4": 4.2345138695048124e-5,
+      "result": "enzyme-trapped-cost-dual1-20261127T220020",
+      "run": "wp078-cost-5090-t16",
+      "seconds": 3.006589889526367,
+      "seconds_all": [
+        3.0105788707733154,
+        3.006589889526367,
+        3.007091999053955
+      ],
+      "state_GiB": 0.3607465475797653,
+      "threads": 16,
+      "times_dual4": 0.26154956250957956,
+      "times_primal": 1.4430761695729093
+    },
+    {
+      "J": 0.026008574292063713,
+      "J_relative_to_primal": -7.161652900895544e-7,
+      "card_above_idle_GiB": 2.3125,
+      "card_full": false,
+      "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 0,
+      "checkpoint_memory": "none",
+      "checkpoints": 0,
+      "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
+      "gradient": [
+        -0.006169208325445652,
+        0.0007670227787457407,
+        0.0020378353074193,
+        1.651904821395874
+      ],
+      "idle_MiB": 925,
+      "method": "dual4",
+      "pool_peak_GiB": 0.8312699161469936,
+      "relative_difference_dual1_tau": 4.2346931881751965e-5,
+      "relative_difference_dual4": null,
+      "result": "enzyme-trapped-cost-dual4-20261127T220135",
+      "run": "wp078-cost-5090-t16",
+      "seconds": 11.495296955108643,
+      "seconds_all": [
+        11.502043008804321,
+        11.495296955108643,
+        11.496330976486206
+      ],
+      "state_GiB": 0.8131382130086422,
+      "threads": 16,
+      "times_dual4": 1.0,
+      "times_primal": 5.5174099919209585
+    },
+    {
+      "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
+      "card_above_idle_GiB": 30.5234375,
+      "card_full": true,
+      "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 20,
+      "checkpoint_memory": "device",
+      "checkpoints": 90,
+      "commit": "5d1d5e2fb235c1321a249cc149aa03ee9ea947c0",
+      "gradient": [
+        -0.006168909683942707,
+        0.0007672621777550695,
+        0.0020378576508939174,
+        1.6518366097238764
+      ],
+      "idle_MiB": 925,
+      "method": "reverse",
+      "phases": {
+        "primal_with_checkpoints": 2.127837761,
+        "reverse": 23.48783547,
+        "start_tangent": 0.005443096160888672
+      },
+      "pool_peak_GiB": 28.715072743594646,
+      "relative_difference_dual1_tau": 6.063517845516971e-6,
+      "relative_difference_dual4": 0.00031211460202039084,
+      "result": "enzyme-trapped-cost-reverse-20261127T221003",
+      "run": "wp078-cost-5090-t16",
+      "seconds": 26.134392023086548,
+      "seconds_all": [
+        26.134392023086548,
+        26.23797297477722
+      ],
+      "state_GiB": 19.105388645082712,
+      "threads": 16,
+      "times_dual4": 2.2734855937298883,
+      "times_primal": 12.543752131333637
+    },
+    {
+      "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
+      "card_above_idle_GiB": 30.5234375,
+      "card_full": true,
+      "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 20,
+      "checkpoint_memory": "device",
+      "checkpoints": 90,
+      "commit": "b9f6410922e557a8e4a9b3b050d9ab19e4797fd8",
+      "gradient": [
+        -0.006168902739703846,
+        0.0007672626024978226,
+        0.0020378573742438205,
+        1.651836509164304
+      ],
+      "idle_MiB": 925,
+      "method": "reverse",
+      "phases": {
+        "primal_with_checkpoints": 2.129540615,
+        "reverse": 29.880933777,
+        "start_tangent": 0.005445003509521484
+      },
+      "pool_peak_GiB": 28.715671233832836,
+      "relative_difference_dual1_tau": 7.18919436053908e-6,
+      "relative_difference_dual4": 0.0003126683570911546,
+      "result": "enzyme-trapped-cost-reverse-20261127T214427",
+      "run": "wp078-cost-5090",
+      "seconds": 32.8971791267395,
+      "seconds_all": [
+        32.8971791267395,
+        32.9449999332428
+      ],
+      "state_GiB": 19.105388645082712,
+      "threads": 2,
+      "times_dual4": 2.8617946326405788,
+      "times_primal": 15.789694300956898
+    },
+    {
+      "J": 0.026008592918515205,
+      "J_relative_to_primal": 0.0,
+      "card_above_idle_GiB": 30.5234375,
+      "card_full": true,
+      "card_total_MiB": 32607,
+      "case": {
+        "a0E": 1.9,
+        "eltype": "Float32",
+        "gather": "CompensatedGather(k = 1)",
+        "mode": "Reference",
+        "nsteps": 1799,
+        "ny": 2,
+        "ppl": 32,
+        "theta": [
+          6.0,
+          10.0,
+          80.0,
+          0.072
+        ]
+      },
+      "checkpoint_every": 20,
+      "checkpoint_memory": "device",
+      "checkpoints": 90,
+      "commit": "b9f6410922e557a8e4a9b3b050d9ab19e4797fd8",
+      "gradient": [
+        -0.006168913048822228,
+        0.0007672580480308391,
+        0.002037858011187805,
+        1.6518364019145804
+      ],
+      "idle_MiB": 925,
+      "method": "reverse",
+      "phases": {
+        "primal_with_checkpoints": 2.135831929,
+        "reverse": 40.224782864,
+        "start_tangent": 0.005445957183837891
+      },
+      "pool_peak_GiB": 28.715671233832836,
+      "relative_difference_dual1_tau": 5.51806341511702e-6,
+      "relative_difference_dual4": 0.00030673050607856134,
+      "result": "enzyme-trapped-cost-reverse-20261127T215659",
+      "run": "wp078-cost-5090-t1",
+      "seconds": 43.885968923568726,
+      "seconds_all": [
+        43.885968923568726
+      ],
+      "state_GiB": 19.105388645082712,
+      "threads": 1,
+      "times_dual4": 3.817732512257136,
+      "times_primal": 21.063995509609025
+    }
+  ],
+  "runs": [
+    "wp078-cost-5090-t16",
+    "wp078-cost-5090",
+    "wp078-cost-5090-t1"
+  ]
+}
