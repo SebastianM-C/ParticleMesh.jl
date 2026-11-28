@@ -12,9 +12,8 @@
 
 @isdefined(Observables) || include(joinpath(@__DIR__, "analysis.jl"))
 @isdefined(Ensemble) || include(joinpath(@__DIR__, "ensemble.jl"))
-@isdefined(RunManifest) || include(joinpath(@__DIR__, "manifest.jl"))
 @isdefined(Theory) || include(joinpath(@__DIR__, "theory.jl"))
-using .Observables, .Ensemble, .RunManifest, .Theory
+using .Observables, .Ensemble, RunManifests, .Theory
 using CairoMakie, JSON, TOML
 
 const LOADS = Dict("smilei" => :classical_energy, "picongpu" => :momentum_maxwellian)

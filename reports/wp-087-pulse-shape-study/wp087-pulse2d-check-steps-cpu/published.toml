@@ -1,0 +1,122 @@
+branch = "runs/wp087-pulse2d-check-steps-cpu"
+commit = "c39d3f419555e6bafe308c37455961009703f18a"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-f64-grad.json"
+bytes = 1294
+sha256 = "e06634ec8b24e5c11baec11caeac56448bbf92b9d59e04d11d86e0939e8f36f7"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-aberration3-m.json"
+bytes = 1208
+sha256 = "5b0970c00e563e19b53903de4002caccc0c4d890083e6083dcd33781c621fddb"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-aberration3-p.json"
+bytes = 1206
+sha256 = "6f07c40b592db96e3e1643cc917eb92b78db0967b0fc9341b0907d61eabee997"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-aberration4-m.json"
+bytes = 1208
+sha256 = "55fe2345304f45574c9c290462d4111c2e727f2e7de12f60d8641968c9b4d2ee"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-aberration4-p.json"
+bytes = 1209
+sha256 = "a04b97d096795c0df46be861d7cc6fec4b7754d628d6efba49f3b12b48a35c48"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-focus-m.json"
+bytes = 1211
+sha256 = "288a18f3ac38884704ed8bea7fda72568fccf5ef7d4066e2c6a6973409a6e877"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-focus-p.json"
+bytes = 1208
+sha256 = "d788ad7547b1159b7c824a141bd12ad4671a5d1c9269863127f711279d560828"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-gdd-m.json"
+bytes = 1196
+sha256 = "7d2910e29a6537af463cc43bbd50441ac0700b0dd73b6365e013b2b558918f4b"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-gdd-p.json"
+bytes = 1193
+sha256 = "718ccc6cf645500ef46de60b58decf475341593a08c06040be593d1900326d20"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-tod-m.json"
+bytes = 1215
+sha256 = "7a99f20e5ccd9380b10a2dbc4c10fd5717262f60432e81e256c56f8c07466fb8"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/best-fd-tod-p.json"
+bytes = 1212
+sha256 = "d5fa52db2f09944aeb8582e8f9a26b4d0351ebd6567440aefcd4a82b881214b3"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p10/check.toml"
+bytes = 132
+sha256 = "ac38dacfb80c2df8309adedf444f16b97f19f043d01a487ed91853ab5d0f0580"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-f64-grad.json"
+bytes = 1294
+sha256 = "0e9f329e3c077344f952a7d9d8c0479fe01fd279752b88e9b6d794e45d30bb61"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-aberration3-m.json"
+bytes = 1210
+sha256 = "4990090d57db6d2f7f4d70b59af3cea134752d0f02434fc553a46158769f29c1"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-aberration3-p.json"
+bytes = 1206
+sha256 = "8e7804007d21386fe6860a4b0b497b54b9d1e32b69cb42996ac224cf5cdea5c9"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-aberration4-m.json"
+bytes = 1209
+sha256 = "0e4b1fab47096b46df23b70b0f4ee858ccd2f167826ea4d64cba3d4296e0a768"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-aberration4-p.json"
+bytes = 1212
+sha256 = "6fb4060b18e68a6a01c32784329c1c99c096143a947a4972d774fcdb8258848a"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-focus-m.json"
+bytes = 1227
+sha256 = "8f64d6919fc57665412f2e9a4b117f98add01a0816e3e146be3b425b16b6d26e"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-focus-p.json"
+bytes = 1226
+sha256 = "e6d9b37b9d08364e75a40937dc1890a5c12a4ea884cbbc3f7e5e78ac94896ce2"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-gdd-m.json"
+bytes = 1202
+sha256 = "105e0b639b4436a1a29d6f7a8f91ff6dca8b4f7dd8d765c501a320c34ff5f132"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-gdd-p.json"
+bytes = 1199
+sha256 = "8d51682271e25951404ecad70ad98bd376425defbfe11f633e1bae2879bd337f"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-tod-m.json"
+bytes = 1233
+sha256 = "32903f6f0b6eac56906ab66bc8f241dfbc3896cfa4cf97c5992c8c1fa224357a"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/best-fd-tod-p.json"
+bytes = 1229
+sha256 = "bc5123698265514528fba0418cff4439c0fbc93766c12a1437b65d616bc6abf5"
+
+[[files]]
+path = "scripts/runs/optim-pulse2d-opt-4080/check-p16/check.toml"
+bytes = 132
+sha256 = "1a6a7d318956e3874c97a50e51c76e1202ced54e59a3bca9af4b144c3ce456e9"

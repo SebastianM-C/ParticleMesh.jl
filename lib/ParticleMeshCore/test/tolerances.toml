@@ -1,8 +1,9 @@
-# Tolerances of the WP-010 spike and of WP-011 (A7: measure, then propose). Every entry is a
-# proposal: `C` is the constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
-# backend (Julia 1.13, 1 and 8 threads), with `scale` as stated. The owner accepts a value by
-# editing A7; until then the tests hold these proposals. The test suite prints the measured
-# ratios at the end of every run, so they can be refreshed.
+# Tolerances of the WP-010 spike and of WP-011 (A7: measure, then propose). `C` is the constant
+# the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU backend
+# (Julia 1.13, 1 and 8 threads), with `scale` as stated. A constant stands once it is measured and
+# the review has passed it, which is what `proposed` in a `status` means; a change that loosens
+# one says so in its pull request (A7). The test suite prints the measured ratios at the end of
+# every run, so they can be refreshed.
 
 ["T-130"]
 quantity = "partition of unity |Σw - 1|, orders 1 and 2, both staggers"

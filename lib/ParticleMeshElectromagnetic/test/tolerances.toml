@@ -1,8 +1,10 @@
-# Tolerances of WP-014 (A7: measure, then propose). Every entry is a proposal: `C` is the
-# constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
-# backend (Julia 1.13.3, one thread, the suite's configurations), with `scale` as stated. The
-# owner accepts a value by editing A7; until then the tests hold these proposals. The suite
-# prints the measured ratios after every run, so they can be refreshed.
+# Tolerances of WP-014 (A7: measure, then propose). `C` is the constant the test asserts,
+# `measured` the largest ratio err/(eps(T)·scale) seen on the CPU backend (Julia 1.13.3, one
+# thread, the suite's configurations), with `scale` as stated. A constant stands once it is
+# measured and the review has passed it, which is what `proposed` in a `status` means; the
+# benchmark thresholds the owner accepted say `accepted in A7`. A change that loosens a constant
+# says so in its pull request (A7). The suite prints the measured ratios after every run, so they
+# can be refreshed.
 
 ["T-210"]
 quantity = "Yee in vacuum: field error against the exact discrete mode (C), relative change of the staggered energy (C_energy)"
@@ -736,8 +738,8 @@ status = "proposed"
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case on the CPU (primal and the partials in a₀, duration, density), Reference, against the values pinned here: largest relative difference"
 scale = "relative; a Reference run is bitwise on one backend (A4), C leaves room for another CPU's code generation"
 C = 1e-6
-pinned = [0.1020901, 0.089227244, 0.0069649583, 0.65158296]
-status = "proposed; pinned again with WP-041's nearest-node bins (the cell on the window's x axis), whose summation order moved them by up to 6.8e-6 (the density partial; roundoff over the run, as the factored flux stencil's 1.6e-6 before)"
+pinned = [0.102090046, 0.08922713, 0.006964941, 0.6515901]
+status = "proposed; the values with the density ramp through sin (#545, WP-086) and WP-041's nearest-node bins, each of which moved the density partial by roundoff over the run (1.1e-5 and 6.8e-6)"
 
 ["T-611"]
 quantity = "the Dual{Float32,3} wake amplitude of the WP-043 case (primal and the partials in a₀, duration, density), Reference, on CUDA against the CPU: largest relative difference"
@@ -1436,3 +1438,16 @@ scale = "eps(T)·√samples·Σ_q |J_q|ᵀ|w̄_q|"
 C = 4
 measured = { Float32_CUDA = 0.31, Float64_CUDA = 0.17 }
 status = "proposed; on the RTX 5090, the largest of two runs (0.18 to 0.31 in Float32, 0.15 to 0.17 in Float64)"
+
+["T-1173"]
+quantity = "the density ramp's sin²(πt/2) through sin (ramp_factor) against the exact value at 2001 points of the ramp (C), and its derivative under Enzyme against π/(2L)·sin(πt) (C_derivative)"
+scale = "ulps of the exact value (C); eps(T)·π/(2L), the derivative's largest value (C_derivative)"
+C = 8
+C_derivative = 8
+status = "proposed; the measured values are what the CPU suite records"
+
+["T-1174"]
+quantity = "Enzyme's reverse mode on CUDA through a kernel that evaluates the 3D refill profile (RampedCosine, the ramp through sin) at 4096 points, its parameters in a device array, against ForwardDiff's gradients on the CPU: the adjoints of the positions and of the parameters"
+scale = "per input k, Σ_i |w̄_i|·(|J_ik| + Σ_l |H_ikl|·|z_il|) over the points that reach it (one for a position, all for a parameter): the first-order error of the gradient with every input rounded by eps; the bare Σ|J||w̄| of T-1140 counts a nearly vanishing slope's argument rounding as error (1080 of it between the CPU's own Float32 and Float64, 930 and 21800 on the RTX 4080 SUPER)"
+C = 8
+status = "proposed; the CPU's Float32 ForwardDiff against its Float64 reaches 0.37 in this scale, not yet measured on a GPU in it"

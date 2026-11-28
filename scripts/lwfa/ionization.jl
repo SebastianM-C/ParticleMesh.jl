@@ -1372,7 +1372,7 @@ function compare_ion(runs, out)
     plot_ion_wake(out, S, d)
     write_manifest(out; root = REPO,
                    extra = Dict{String,Any}("runs" => relpath(abspath(runs), REPO), "case" => case["name"],
-                                            "summaries" => Dict(basename(x) => "sha256:" * RunManifest.file_hash(joinpath(x, "summary.json")) for v in values(G) for x in v)))
+                                            "summaries" => Dict(basename(x) => "sha256:" * RunManifests.file_hash(joinpath(x, "summary.json")) for v in values(G) for x in v)))
     return result
 end
 

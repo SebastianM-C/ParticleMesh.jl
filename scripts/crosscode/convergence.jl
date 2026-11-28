@@ -34,7 +34,7 @@ include(joinpath(@__DIR__, "read.jl"))
 include(joinpath(@__DIR__, "analysis.jl"))
 include(joinpath(@__DIR__, "theory.jl"))
 using .SmileiDeck, .SmileiRead, .Observables, .Theory
-using .SmileiDeck.RunManifest: write_manifest, file_hash, git_commit, stamp_interval
+using RunManifests: write_manifest, file_hash, git_commit, stamp_interval
 
 export derive_case, prepare_scan, summarize_scan, point_fits, local_rate, ivp_series, observable_keys
 

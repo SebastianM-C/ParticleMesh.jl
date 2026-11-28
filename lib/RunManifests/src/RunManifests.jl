@@ -1,6 +1,15 @@
-# Run manifests (F3): the commit, the inputs with their hashes, the image, the hardware.
+"""
+    RunManifests
 
-module RunManifest
+The provenance of a run (F3): `manifest.toml` next to a run's outputs, with the commit it ran
+(and whether tracked files differed from it), the SHA-256 of every input, and whatever the
+caller adds (parameters, hardware, the container image, wall times). [`write_manifest`](@ref)
+writes or extends one, [`read_manifest`](@ref) reads it back, [`file_hash`](@ref) is the hash it
+records, [`git_commit`](@ref) the commit; [`image_from_header`](@ref) reads a run's container image
+from its log, and [`stamp_interval`](@ref) and [`stamp_intervals`](@ref) its wall times from the
+time stamps a container writes.
+"""
+module RunManifests
 
 import Dates
 
@@ -10,6 +19,12 @@ using Dates: now, UTC
 
 export file_hash, write_manifest, read_manifest, git_commit, image_from_header, stamp_interval, stamp_intervals
 
+"""
+    file_hash(path) -> String
+
+The SHA-256 of the file at `path`, as 64 lowercase hex digits (a manifest records it as
+`"sha256:" * file_hash(path)`).
+"""
 file_hash(path) = bytes2hex(open(sha256, path))
 
 """
@@ -57,7 +72,7 @@ function write_manifest(dir; inputs = String[], extra = Dict{String,Any}(), root
     hashes = get(m, "inputs", Dict{String,Any}())
     for p in inputs
         full = isabspath(p) ? p : joinpath(dir, p)
-        rel = startswith(abspath(full), abspath(dir)) ? relpath(full, dir) : p
+        rel = startswith(abspath(full), joinpath(abspath(dir), "")) ? relpath(full, dir) : p
         hashes[rel] = "sha256:" * file_hash(full)
     end
     m["inputs"] = hashes
@@ -67,6 +82,7 @@ function write_manifest(dir; inputs = String[], extra = Dict{String,Any}(), root
     return path
 end
 
+"The manifest of the run in `dir`, `dir/manifest.toml` parsed."
 read_manifest(dir) = TOML.parsefile(joinpath(dir, "manifest.toml"))
 
 """

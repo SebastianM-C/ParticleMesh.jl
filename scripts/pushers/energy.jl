@@ -27,8 +27,7 @@ using JSON
 using Dates
 
 const REPO = normpath(joinpath(@__DIR__, "..", ".."))
-include(joinpath(REPO, "scripts", "crosscode", "manifest.jl"))
-using .RunManifest: write_manifest, file_hash
+using RunManifests: write_manifest, file_hash
 
 struct RK4 end
 
@@ -90,7 +89,7 @@ function main(periods)
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = joinpath(REPO, "scripts", "runs", "pushers-energy-$stamp")
     mkpath(dir)
-    inputs = String[@__FILE__, joinpath(REPO, "scripts", "crosscode", "manifest.jl"),
+    inputs = String[@__FILE__, joinpath(REPO, "lib", "RunManifests", "src", "RunManifests.jl"),
                     joinpath(REPO, "Manifest.toml"), joinpath(REPO, "scripts", "Manifest.toml")]
     for (root, _, fs) in walkdir(joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "src")), f in fs
         endswith(f, ".jl") && push!(inputs, joinpath(root, f))

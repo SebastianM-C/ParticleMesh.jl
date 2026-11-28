@@ -613,7 +613,7 @@ end
         @test [spec["pm"][40], spec["smilei"][40], spec["picongpu"][40]] ≈ [1.0e-3, 1.1e-3, 1.2e-3] rtol = 1e-12
         man = TOML.parsefile(joinpath(out, "manifest.toml"))
         @test sort(collect(keys(man["summaries"]))) == sort(["$c-$m" for c in res["codes"] for m in ("vacuum", "plasma")])
-        @test man["summaries"]["pm-plasma"] == "sha256:" * RunManifest.file_hash(joinpath(runs, "pm-plasma", "summary.json"))
+        @test man["summaries"]["pm-plasma"] == "sha256:" * RunManifests.file_hash(joinpath(runs, "pm-plasma", "summary.json"))
         # vacuum runs alone (the check with the focus on the injection plane): the laser's pairs, no wake, no spectrum
         vruns = mkpath(joinpath(root, "vacuum-runs"))
         for c in res["codes"]
@@ -1126,7 +1126,7 @@ end
         on_disk = JSON.parsefile(joinpath(out, "pair.json"))
         @test on_disk["rows"][end]["wake_Ex_shift"] == 1 && on_disk["b"]["code"] == "Smilei"
         man = TOML.parsefile(joinpath(out, "manifest.toml"))
-        @test man["summaries"]["b"] == "sha256:" * RunManifest.file_hash(joinpath(b, "summary.json"))
+        @test man["summaries"]["b"] == "sha256:" * RunManifests.file_hash(joinpath(b, "summary.json"))
         # a vacuum pair has the laser's measures only; runs of different media or cases are refused
         va, vb = write_run(joinpath(root, "va"), "vacuum"), write_run(joinpath(root, "vb"), "vacuum"; scale = 1.5)
         vac = compare_pair(va, vb, joinpath(root, "out-vac"))

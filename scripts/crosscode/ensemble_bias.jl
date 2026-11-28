@@ -17,8 +17,7 @@
 
 @isdefined(Observables) || include(joinpath(@__DIR__, "analysis.jl"))
 @isdefined(Ensemble) || include(joinpath(@__DIR__, "ensemble.jl"))
-@isdefined(RunManifest) || include(joinpath(@__DIR__, "manifest.jl"))
-using .Observables, .Ensemble, .RunManifest
+using .Observables, .Ensemble, RunManifests
 using CairoMakie, JSON, TOML
 using Random: Xoshiro, rand, randn
 using Statistics: mean, std, median

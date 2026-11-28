@@ -616,7 +616,7 @@ function ionize!(fr::IonizationFrame, st::EMState, p::EMParams, k::Integer)
                                       Int32(guards(grid)), dt, -e.q / e.m * dt / 4, birth, Int32(capacity(e)); ndrange = capacity(a))
     if birth
         launcher(bump_count_kernel!, be, wgs)(e.count, Int32(capacity(a)), Int32(capacity(e)); ndrange = 1)
-        sum!(fr.lost, fr.flags; init = false)
+        add_count!(fr.lost, fr.flags)
     end
     return nothing
 end

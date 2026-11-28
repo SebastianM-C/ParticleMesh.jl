@@ -9,12 +9,11 @@
 # whether the loads are identical, bit for bit, or by how much they differ.
 
 include(joinpath(@__DIR__, "read.jl"))
-include(joinpath(@__DIR__, "manifest.jl"))
 
 module LoadCheck
 
 using HDF5, JSON, TOML
-using ..SmileiRead, ..RunManifest
+using ..SmileiRead, RunManifests
 
 export read_track, compare_tracks, compare_loads
 

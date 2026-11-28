@@ -89,10 +89,14 @@ function DensityRamp(; vacuum, ramp)
     return DensityRamp{T}(T(vacuum), T(ramp))
 end
 
-"The profile factor of `r` at the global coordinate `x` (a device function, C¹)."
+"""
+The profile factor of `r` at the global coordinate `x`, sin²(πt/2) with t = (x − vacuum)/ramp
+clamped to [0, 1] (a device function, C¹). Through `sin`, not `sinpi`: Enzyme has no reverse pass
+of the device's `sinpi` (#545; WP-086), and the two differ by a few ulps.
+"""
 @inline function ramp_factor(x, vacuum, ramp)
     t = clamp((x - vacuum) / ramp, zero(x), one(x))
-    s = sinpi(t / 2)
+    s = sin(t * π / 2)
     return s * s
 end
 
@@ -473,7 +477,7 @@ function load_window_columns!(s, grid, load, lost, col0, ncol, origin; fast = no
                                                 nt, Int32(origin), load.vdrift, load.vth, load.key,
                                                 Int32(capacity(s)); ndrange = nnew)
     launcher(refill_count_kernel!, be, workgroupsize)(s.count, lost, Int32(nnew), Int32(capacity(s)); ndrange = 1)
-    fast === nothing || sum!(fast, view(flags, 1:nnew); init = false)
+    fast === nothing || add_count!(fast, view(flags, 1:nnew))
     return s
 end
 

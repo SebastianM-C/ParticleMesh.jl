@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "7af01edfd544ea726bd8ad79faeaf1b627c18429"
+project_hash = "4cec091725c5959152a096f58d0eaa387e544284"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -2294,6 +2294,12 @@ git-tree-sha1 = "40b9edad2e5287e05bd413a38f61a8ff55b9557b"
 registries = "General"
 uuid = "5eaf0fd0-dfba-4ccb-bf02-d820a40db705"
 version = "0.2.1"
+
+[[deps.RunManifests]]
+deps = ["Dates", "SHA", "TOML"]
+path = "../lib/RunManifests"
+uuid = "3118dd14-20dc-4d63-ac04-2bff4dee2f1e"
+version = "0.1.0-DEV"
 
 [[deps.RuntimeGeneratedFunctions]]
 deps = ["ExprTools", "PrecompileTools", "SHA", "Serialization"]
