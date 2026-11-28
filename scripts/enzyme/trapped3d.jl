@@ -2,39 +2,46 @@
 # the antenna, the moving window, PMLs on the four open faces and at the window's back, field
 # ionization, the compensated gather, Reference mode, Float32), on a GPU, over the full run with
 # Checkpointing.jl's Revolve and the engine's `checkpoint_storage` (WP-080), checked against
-# forward-mode duals with one partial per parameter, with the time and the device memory of each.
+# forward-mode duals with one partial per parameter, with the time and the device memory of each
+# (WP-084; WP-086: the loop body a `StepBody`, whose reverse sweep works on a copy of the evolved
+# arrays alone, and the engine's own `current!`, ramp and counts).
 #
-#     PM_BACKEND=cuda PM_ENZYME_PATCH="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl;scripts/enzyme/spike/unrolled_current.jl" \
+#     PM_BACKEND=cuda PM_ENZYME_PATCH=scripts/enzyme/active_reduce.jl \
 #       JULIA_LOAD_PATH=@:<repo>:@stdlib \
 #       julia +1.13 -t 2 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped3d.jl grad [key=value ...]
 #
 # The module's test environment carries Enzyme, Checkpointing, CUDA and CUDACore; the repository's
-# root project is stacked behind it for `ParticleMesh`. The patches: WP-078's two that WP-083 kept,
-# Active kernel arguments with their adjoints (#546) and the one-thread flag sum and the sinpi rule
-# (#551, #545), and `current!` with its species loops unrolled, without which Enzyme's type analysis
-# of the 3D step fails (#384). A second thread samples the device memory.
+# root project is stacked behind it for `ParticleMesh`. The one patch: WP-078's Active kernel
+# arguments with their adjoints, a rule of KernelAbstractions' Enzyme extension (#546; upstream in
+# KernelAbstractions#979). The other two that WP-084 needed are the engine's since WP-086: the
+# species loops of `current!` as `map`s (#384), the flag counts through `add_count!` and the
+# density ramp through `sin` (#551, #545). A second thread samples the device memory.
 #
 # Keys: the case `ppl=16 nt=1 rows=128 ppc=2x1x1 ion_ppc=1x1x1 cap=1` (the born electrons' capacity
 # factor, `trapped3d_capacity`) `t_end=300 a0E=1.9 theta=duration,waist,focus,density` (default the
 # base point); the reverse pass `c=<checkpoints>` (default 12) `host=0|1` (checkpoints on the device
 # or in host memory); the comparison `dual=1,2,3,4` (the parameters whose Dual{1} run is made, by
-# position; `dual=` for none) `dual4=0|1` (one Dual{4} run as well); `primal=1|0` (a plain run for
+# position; `dual=` for none) `dual4=0|1` (one Dual{4} run as well); `body=step|closure` (the loop
+# body: the engine's `StepBody`, whose working copy holds the evolved arrays, or the closure of
+# `@ad_checkpoint`, whose working copy is a `deepcopy` of the state, as in WP-084); `primal=1|0` (a plain run for
 # its time and memory); `warm=1|0` (first the whole sequence on a small box of the same types, so
 # that the timed calls do not compile; its own gradient check against Dual{4} is reported too;
 # `warm_t_end=300`); `run=0` stops after the warm-up; `strict_aliasing=0` turns off Enzyme's strict
-# aliasing in its type analysis.
+# aliasing in its type analysis; `shadow=shared|full` whether the start's shadow shares the workspaces with the state (WP-086).
 #
 # What `grad` does, in this order, each phase timed and its peak of device memory recorded:
 #
 # 1. the plain run (J);
-# 2. the reverse pass: `Enzyme.autodiff` of `run_J!` (the steps under `@ad_checkpoint`, then a
+# 2. the Dual{1} runs of the listed parameters to the end (dJ/dθ_j each), before the reverse pass so
+#    that a failed reverse pass leaves them the card;
+# 3. the reverse pass: `Enzyme.autodiff` of `run_J!` (the steps under `checkpoint_for`, then a
 #    kernel that writes J's summand per particle slot of both electron species, whose adjoints are
 #    seeded with ones), with `Duplicated` state and a `Ref` of the parameters; it gives the adjoint
 #    of the start state and of the parameters;
-# 3. the gradient dJ/dθ: the start's adjoint contracted with the tangent of `initialize!` (a Dual{1}
+# 4. the gradient dJ/dθ: the start's adjoint contracted with the tangent of `initialize!` (a Dual{1}
 #    start per parameter) and the parameters' with dp/dθ of the problem's parameters with Dual{4}
-#    (no simulation);
-# 4. the Dual{1} runs of the listed parameters to the end (dJ/dθ_j each), and Dual{4} if asked.
+#    (no simulation), compared with the Dual{1} derivatives;
+# 5. Dual{4}, if asked.
 #
 # Writes result.toml and manifest.toml into scripts/runs/enzyme-trapped3d-grad-<stamp>/. The numbers
 # are measurements of single runs, not independently reviewed.
@@ -42,7 +49,7 @@
 include(joinpath(@__DIR__, "common.jl"))
 include(joinpath(REPO, "scripts", "optim", "trapped3d_case.jl"))
 include(joinpath(@__DIR__, "contract.jl"))
-using Checkpointing: Checkpointing, Revolve, @ad_checkpoint
+using Checkpointing: Checkpointing, Revolve, @ad_checkpoint, checkpoint_for
 using ParticleMeshElectromagnetic: ionization_electrons, ionization_lost, CompensatedGather, Yee
 
 const COMMAND = get(ARGS, 1, "grad")
@@ -52,6 +59,8 @@ parse_tuple(s) = Tuple(parse.(Int, split(s, 'x')))
 parse_list(s) = isempty(s) ? Int[] : parse.(Int, split(s, ','))
 const F = Float32
 struct Trap3Tag end
+# shadow=shared (the default): the start's shadow shares the workspaces with the state (`shadow_of`)
+const SHARED_SCRATCH = opt("shadow", "shared") == "shared"
 
 """
 The case's sizes from the keys; `warm` for the small box of the warm-up: the same types, 8 cells per
@@ -113,10 +122,18 @@ dual1_theta(θ, j) = dual_theta(θ, 1, [i == j ? 1 : 0 for i in eachindex(θ)])
 volume(st) = prod(cellsize(st.grid))
 summand_buffers(st) = (similar(st.species[1].w), similar(ionization_electrons(st).w))
 
-"The `n` steps under Revolve's checkpointing, then J's summands of the plasma's electrons into `Je` and of the born electrons into `Jb`."
-function run_J!(Je, Jb, st, pr, n, scheme, fade, rise)
-    @ad_checkpoint scheme for k in 1:n
-        step!(st, pr[], k; observer = ())
+"""
+The `n` steps under Revolve's checkpointing, then J's summands of the plasma's electrons into `Je`
+and of the born electrons into `Jb`. The loop body is a `StepBody` (`Val(:step)`), or the closure
+that `@ad_checkpoint` makes (`Val(:closure)`, WP-084's).
+"""
+function run_J!(Je, Jb, st, pr, n, scheme, fade, rise, ::Val{B}) where {B}
+    if B === :closure
+        @ad_checkpoint scheme for k in 1:n
+            step!(st, pr[], k; observer = ())
+        end
+    else
+        checkpoint_for(StepBody(st, pr), scheme, 1:n)
     end
     h1 = cellsize(st.grid)[1]
     summands!(Je, st.species[1], h1, fade, rise)
@@ -125,65 +142,136 @@ function run_J!(Je, Jb, st, pr, n, scheme, fade, rise)
 end
 
 """
+The start's shadow and the bytes of its new arrays: `Enzyme.make_zero(st)`, or with
+`shadow=shared` (the default) one whose workspaces are the state's own arrays. Every use of a
+workspace in a step is a call with a reverse rule of the engine (`sort_by_cell!`,
+`resort_by_cell!`, `deposit!`, `deposit_flux!`), and those give the workspace no adjoint and never
+read its shadow; under runtime activity a shadow that is its primal counts as constant. The
+workspaces are scratch, written before they are read within a call (the flux patches, the spare
+sets, the keys and the permutation), most of a full shadow; the run records the bytes of the new arrays.
+"""
+function shadow_of(st)
+    seen = IdDict{Any,Any}()
+    if SHARED_SCRATCH
+        for ws in ParticleMeshElectromagnetic.deposited_workspaces(st), a in values(all_arrays(ws))
+            seen[a] = a
+        end
+    end
+    dst = Enzyme.make_zero(Core.Typeof(st), seen, st)
+    # new: the shadow's arrays that are none of the state's (Enzyme shares some integer arrays itself)
+    primal = Base.IdSet{Any}(values(all_arrays(st)))
+    return dst, sum(a -> a in primal ? 0 : sizeof(a), values(all_arrays(dst)); init = 0)
+end
+
+"""
 The reverse pass of the whole run from the start `st` with `c` checkpoints (device or `host`
 memory): the start's adjoint `dst`, the parameters' `dp` and J from the summands of the reverse
 pass's own forward sweep.
 """
-function reverse_run(st, p, n; c, host, fade = TCASE.fade, rise = TCASE.rise)
+function reverse_run(st, p, n; c, host, body = :step, fade = TCASE.fade, rise = TCASE.rise)
     Je, Jb = summand_buffers(st)
     fill!(Je, 0); fill!(Jb, 0)
     dJe, dJb = similar(Je), similar(Jb)
     fill!(dJe, 1); fill!(dJb, 1)
-    dst = Enzyme.make_zero(st)
+    dst, shadow_new_bytes = shadow_of(st)
     pr, dpr = Ref(p), Ref(Enzyme.make_zero(p))
     scheme = Revolve(c; storage = checkpoint_storage(; host))
     Enzyme.autodiff(set_runtime_activity(Enzyme.Reverse), run_J!, Const, Duplicated(Je, dJe), Duplicated(Jb, dJb), Duplicated(st, dst),
-                    Duplicated(pr, dpr), Const(n), Const(scheme), Const(fade), Const(rise))
+                    Duplicated(pr, dpr), Const(n), Const(scheme), Const(fade), Const(rise), Const(Val(body)))
     sync()
     J = Float64(volume(st)) * (Float64(foldl(+, Array(Je))) + Float64(foldl(+, Array(Jb))))
-    return (; dst, dp = dpr[], J)
+    return (; dst, dp = dpr[], J, shadow_new_bytes)
 end
 
 "J of a run of `n` steps from `st` (any element type)."
 run_to(st, p, n) = (run!(st, p, n; observer = ()); sync(); ionization_lost(st) == 0 || error("$(ionization_lost(st)) births found no free slot: raise `cap`"); trapped_energy3(st))
 
+# Each state below is built inside a function of its own and handed on only as an argument, so
+# that nothing in `sequence`'s frame roots it: the tuple that `start3` returns stays rooted in the
+# frame that destructures it until that frame returns (Julia keeps the temporary), and at λ₀/32
+# the start state held so (11.7 GiB) left no room for a Dual{1} state or the reverse pass.
+"The start state alone, without its tuple."
+@noinline start_state(θ, o) = first(start3(θ, o))
+"J of a run of `n` steps from the start at `θ` (Float32 or duals), with `measured`'s time and memory."
+@noinline function run_from(θ, o, n)
+    st, p, _ = start3(θ, o)
+    return measured(() -> run_to(st, p, n))
+end
 """
-One pass of the whole sequence at the sizes `o`: the plain run, the reverse pass, the gradient
-from it, the Dual{1} runs of `duals` and Dual{4} with `dual4`. Returns a Dict of the results.
+The start's adjoint `dst` contracted with the tangent of the start at θ with parameter `j`'s
+Dual{1}. The workspaces are scratch and carry no adjoint (`shadow_of`): their arrays are left out,
+since with `shadow=shared` they hold the primal's scratch values.
 """
-function sequence(o; c, host, duals, dual4, primal, label)
+@noinline function start_tangent(dst, j, o)
+    sd = start_state(dual1_theta(THETA, j), o)
+    skip = Base.IdSet{Any}(a for ws in ParticleMeshElectromagnetic.deposited_workspaces(dst) for a in values(all_arrays(ws)))
+    return array_dot(dst, sd, 1; skip) + scalar_dot(dst, sd, 1)
+end
+"The reverse pass from a start of its own (no other reference to it), with `measured`'s time and memory."
+@noinline function reverse_from(o, p, n; kw...)
+    sref = Ref{Any}(start_state(F.(THETA), o))
+    return measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; kw...)))
+end
+"The case's sizes and parameters, from a start state that dies with this frame."
+@noinline function describe(o)
+    st, p, prob = start3(F.(THETA), o)
+    return (; p, prob, n = prob.nsteps, v = Float64(volume(st)), checkpoint = sum(sizeof, evolved(st)),
+            state_float = sum(sizeof, values(leaves(st)); init = 0), state_all = sum(sizeof, values(all_arrays(st)); init = 0),
+            plasma_slots = length(st.species[1].w), born_slots = length(ionization_electrons(st).w))
+end
+
+"""
+One pass of the whole sequence at the sizes `o`: the plain run, the Dual{1} runs of `duals`, the
+reverse pass and the gradient from it, Dual{4} with `dual4`. Returns a Dict of the results.
+"""
+function sequence(o; c, host, duals, dual4, primal, label, body = :step)
     res = Dict{String,Any}("case" => Dict{String,Any}("ppl" => o.ppl, "nt" => o.nt, "rows" => o.rows, "ppc" => collect(o.ppc), "ion_ppc" => collect(o.ion_ppc),
                                                       "capacity_factor" => o.cap, "t_end" => o.t_end, "a0E" => o.a0E, "theta" => THETA, "eltype" => string(F),
                                                       "gather" => "CompensatedGather(k = 1)", "solver" => "Yee", "mode" => "Reference"),
-                           "checkpoints" => c, "checkpoint_memory" => host ? "host" : "device")
-    st0, p, prob = start3(F.(THETA), o)
-    n = prob.nsteps
-    v = Float64(volume(st0))
-    ckpt_bytes = sum(sizeof, evolved(st0))
-    # the floating-point arrays (what the shadow mirrors) and every array of the state
-    state_bytes = sum(sizeof, values(leaves(st0)); init = 0)
-    all_bytes = sum(sizeof, values(all_arrays(st0)); init = 0)
-    merge!(res["case"], Dict{String,Any}("nsteps" => n, "cells" => collect(prob.cells), "plasma_slots" => length(st0.species[1].w),
-                                         "born_slots" => length(ionization_electrons(st0).w), "dt" => Float64(prob.dt)))
-    res["bytes"] = Dict{String,Any}("state_float" => state_bytes, "state_all" => all_bytes, "checkpoint" => ckpt_bytes)
-    mark("$label: $(prob.cells) cells, $n steps, $(length(st0.species[1].w)) plasma slots, $(length(ionization_electrons(st0).w)) born slots; " *
-         @sprintf("state %.2f GiB in floating-point arrays (%.2f GiB in all), one checkpoint %.2f GiB, %d checkpoints in %s memory", gib(state_bytes), gib(all_bytes), gib(ckpt_bytes), c, host ? "host" : "device"))
+                           "checkpoints" => c, "checkpoint_memory" => host ? "host" : "device", "loop_body" => string(body),
+                           "shadow" => SHARED_SCRATCH ? "shared scratch" : "full")
+    d = describe(o)
+    (; p, prob, n, v) = d
+    merge!(res["case"], Dict{String,Any}("nsteps" => n, "cells" => collect(prob.cells), "plasma_slots" => d.plasma_slots,
+                                         "born_slots" => d.born_slots, "dt" => Float64(prob.dt)))
+    # the floating-point arrays (what a full shadow mirrors) and every array of the state
+    res["bytes"] = Dict{String,Any}("state_float" => d.state_float, "state_all" => d.state_all, "checkpoint" => d.checkpoint)
+    reclaim()
+    mark("$label: $(prob.cells) cells, $n steps, $(d.plasma_slots) plasma slots, $(d.born_slots) born slots; " *
+         @sprintf("state %.2f GiB in floating-point arrays (%.2f GiB in all), one checkpoint %.2f GiB, %d checkpoints in %s memory", gib(d.state_float), gib(d.state_all), gib(d.checkpoint), c, host ? "host" : "device"))
     if primal
-        J, t, peak, base = measured(() -> run_to(deepcopy(st0), p, n))
+        J, t, peak, base = run_from(F.(THETA), o, n)
         res["J"] = Float64(J)
         res["primal"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: plain run %.1f s, J = %.8g, peak %.2f GiB", label, t, J, gib(peak)))
+        reclaim()
     end
-    # the reverse pass on the start itself (a copy would hold one state more; the Dual starts below
-    # are built afresh); a failure is recorded and the duals still run
+    # the Dual{1} runs before the reverse pass, so that a failed reverse pass leaves them a clean
+    # card; their derivatives are compared with the reverse pass's gradient below
+    rows = Dict{String,Any}[]
+    for j in duals
+        row = Dict{String,Any}("parameter" => PNAMES[j])
+        try
+            Jd, t, peak, base = run_from(dual1_theta(THETA, j), o, n)
+            merge!(row, Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "derivative" => Float64(ForwardDiff.partials(Jd, 1)),
+                                         "seconds" => t, "peak_bytes" => peak, "base_bytes" => base))
+            mark(@sprintf("%s: Dual{1} in %s %.1f s, dJ/d%s %+.8e, peak %.2f GiB", label, PNAMES[j], t, PNAMES[j], row["derivative"], gib(peak)))
+        catch e
+            row["error"] = sprint(showerror, e)[1:min(end, 2000)]
+            mark("$label: Dual{1} in $(PNAMES[j]) FAILED: " * row["error"][1:min(end, 300)])
+        end
+        push!(rows, row)
+        reclaim()
+    end
+    # the reverse pass; a failure is recorded with its backtrace
     g = fill(NaN, 4)
     try
-        sref = Ref{Any}(st0)
-        st0 = nothing
-        r, t, peak, base = measured(() -> (s = sref[]; sref[] = nothing; reverse_run(s, p, n; c, host)))
+        r, t, peak, base = reverse_from(o, p, n; c, host, body)
         res["J_reverse_forward"] = r.J
-        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base)
-        mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB", label, t, 1e3 * t / n, r.J, gib(peak)))
+        res["reverse"] = Dict{String,Any}("seconds" => t, "peak_bytes" => peak, "base_bytes" => base,
+                                          "shadow_new_bytes" => r.shadow_new_bytes)
+        mark(@sprintf("%s: reverse pass %.1f s (%.1f ms per step), J from its forward sweep %.8g, peak %.2f GiB, shadow %.2f GiB new", label, t,
+                      1e3 * t / n, r.J, gib(peak), gib(r.shadow_new_bytes)))
         dst, dp = r.dst, r.dp
         r = nothing
         reclaim()
@@ -193,9 +281,8 @@ function sequence(o; c, host, duals, dual4, primal, label)
         g_params = [v * scalar_dot(dp, pd, j) for j in 1:4]
         g_state = zeros(4)
         t_tan = @elapsed for j in 1:4
-            sd, _, _ = start3(dual1_theta(THETA, j), o)
-            g_state[j] = v * (array_dot(dst, sd, 1) + scalar_dot(dst, sd, 1))
-            sd = nothing; reclaim()
+            g_state[j] = v * start_tangent(dst, j, o)
+            reclaim()
         end
         g .= g_state .+ g_params
         res["gradient_reverse"] = g; res["gradient_reverse_start"] = g_state; res["gradient_reverse_params"] = g_params
@@ -204,39 +291,32 @@ function sequence(o; c, host, duals, dual4, primal, label)
         for j in 1:4
             @printf("    dJ/d%-8s reverse %+.8e (start %+.3e, parameters %+.3e)\n", PNAMES[j], g[j], g_state[j], g_params[j])
         end
-        dst = nothing; reclaim()
+        dst = nothing
     catch e
         res["reverse_error"] = sprint(showerror, e)[1:min(end, 3000)]
+        res["reverse_backtrace"] = sprint(Base.show_backtrace, catch_backtrace())[1:min(end, 40000)]
         mark("$label: reverse pass FAILED: " * res["reverse_error"][1:min(end, 600)])
-        reclaim()
+        println(res["reverse_backtrace"][1:min(end, 12000)])
     end
-    # the duals
-    rows = Dict{String,Any}[]
-    for j in duals
-        sd, pdj, _ = start3(dual1_theta(THETA, j), o)
-        Jd, t, peak, base = try
-            measured(() -> run_to(sd, pdj, n))
-        catch e
-            push!(rows, Dict{String,Any}("parameter" => PNAMES[j], "error" => sprint(showerror, e)[1:min(end, 2000)]))
-            mark("$label: Dual{1} in $(PNAMES[j]) FAILED"); sd = nothing; reclaim(); continue
-        end
-        d = Float64(ForwardDiff.partials(Jd, 1))
-        rel = abs(g[j] - d) / abs(d)
-        push!(rows, Dict{String,Any}("parameter" => PNAMES[j], "J" => Float64(ForwardDiff.value(Jd)), "derivative" => d, "reverse" => g[j],
-                                     "relative_difference" => rel, "seconds" => t, "peak_bytes" => peak, "base_bytes" => base))
-        mark(@sprintf("%s: Dual{1} in %s %.1f s, dJ/d%s %+.8e, reverse %+.8e, relative difference %.2e, peak %.2f GiB", label, PNAMES[j], t, PNAMES[j], d, g[j], rel, gib(peak)))
-        sd = nothing; reclaim()
+    reclaim()
+    mark("$label: after the reverse pass")
+    for row in rows
+        j = findfirst(==(row["parameter"]), PNAMES)
+        haskey(row, "derivative") || continue
+        dj = row["derivative"]
+        row["reverse"] = g[j]
+        row["relative_difference"] = abs(g[j] - dj) / abs(dj)
+        mark(@sprintf("%s: dJ/d%s Dual{1} %+.8e, reverse %+.8e, relative difference %.2e", label, PNAMES[j], dj, g[j], row["relative_difference"]))
     end
     res["dual1"] = rows
     if dual4
-        sd, pdj, _ = start3(dual_theta(THETA, 4), o)
-        Jd, t, peak, base = measured(() -> run_to(sd, pdj, n))
-        d = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:4]
-        rel = abs.(g .- d) ./ abs.(d)
-        res["dual4"] = Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "gradient" => d, "relative_difference" => rel, "seconds" => t,
+        Jd, t, peak, base = run_from(dual_theta(THETA, 4), o, n)
+        d4 = [Float64(ForwardDiff.partials(Jd, j)) for j in 1:4]
+        rel = abs.(g .- d4) ./ abs.(d4)
+        res["dual4"] = Dict{String,Any}("J" => Float64(ForwardDiff.value(Jd)), "gradient" => d4, "relative_difference" => rel, "seconds" => t,
                                         "peak_bytes" => peak, "base_bytes" => base)
         mark(@sprintf("%s: Dual{4} %.1f s, peak %.2f GiB; relative differences %s", label, t, gib(peak), string(round.(rel; sigdigits = 3))))
-        sd = nothing; reclaim()
+        reclaim()
     end
     return res
 end
@@ -256,7 +336,7 @@ function write_run(result)
               Base.active_project(), joinpath(REPO, "Manifest.toml")]
     open(io -> TOML.print(io, Dict(
         "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),
-        "cpu" => Sys.cpu_info()[1].model, "args" => ARGS, "backend" => string(backend()), "work_package" => "WP-084",
+        "cpu" => Sys.cpu_info()[1].model, "args" => ARGS, "backend" => string(backend()), "work_package" => "WP-086",
         "gpu" => ON_GPU ? CUDACore.name(CUDACore.device()) : "none", "patches" => get(ENV, "PM_ENZYME_PATCH", ""),
         "cuda_heap" => get(ENV, "PM_CUDA_HEAP", "default"),
         "versions" => Dict(string(m) => string(pkgversion(m)) for m in (Enzyme, ForwardDiff, KernelAbstractions, Checkpointing)),
@@ -272,16 +352,18 @@ function main_grad()
     duals = parse_list(opt("dual", "1,2,3,4"))
     dual4 = opt("dual4", "0") == "1"
     primal = opt("primal", "1") == "1"
+    body = Symbol(opt("body", "step"))
+    body in (:step, :closure) || error("body=step|closure, got $body")
     mark("start: θ $THETA, keys $OPTS, backend $(backend())")
     result = Dict{String,Any}()
     # strict_aliasing=0: Enzyme's type analysis without strict aliasing (its advice on an IllegalTypeAnalysisException)
     opt("strict_aliasing", "1") == "0" && Enzyme.API.strictAliasing!(false)
     if opt("warm", "1") == "1"
         # the small box compiles every kernel and every reverse pass the run takes (the same types); its gradient is checked against Dual{4}
-        w = sequence(case_opts(; warm = true); c = 4, host, duals = Int[], dual4 = true, primal = true, label = "warm-up")
+        w = sequence(case_opts(; warm = true); c = 4, host, duals = Int[], dual4 = true, primal = true, label = "warm-up", body)
         result["warm"] = w
     end
-    opt("run", "1") == "1" && (result["run"] = sequence(case_opts(); c, host, duals, dual4, primal, label = "run"))
+    opt("run", "1") == "1" && (result["run"] = sequence(case_opts(); c, host, duals, dual4, primal, label = "run", body))
     write_run(result)
     # a reverse pass that failed for another reason than the card's memory exits non-zero, so that
     # run_trapped3d.sh retries it at a 1 GiB device heap (running out of memory is not retried: a

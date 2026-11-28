@@ -54,14 +54,23 @@ function tdot(a, t, path)
     isfinite(a) || (NONFINITE[path] = get(NONFINITE, path, 0) + 1)
     return a * t
 end
-function adot(A, P, path)
-    bad = Int(sum((.!isfinite.(A) .& (P .!= 0)) .| (.!isfinite.(P) .& (A .!= 0))))
+# Fused reductions over the adjoint and the Dual array, without temporaries: at λ₀/16 a broadcast
+# temporary of a flux patch's size (3.4 GiB) did not fit beside the shadow and the Dual start (WP-086).
+function adot(A, D, j, path)
+    bad = mapreduce(+, A, D; init = 0) do a, d
+        p = ForwardDiff.partials(d, j)
+        return Int((!isfinite(a) & (p != 0)) | (!isfinite(p) & (a != 0)))
+    end
     bad > 0 && (NONFINITE[path] = get(NONFINITE, path, 0) + bad)
     # in Float64: a Float32 sum of large products can overflow to ±Inf and give Inf − Inf
     # an entry with a zero adjoint adds nothing either: uninitialized scratch of the Dual start can
     # hold NaN partials (the electrons' sort workspace), against a zero adjoint
-    v = sum(ifelse.((P .== 0) .| (A .== 0), 0.0, Float64.(A) .* Float64.(P)))
-    isfinite(v) || (println("  non-finite contribution of $path: $v (max |adjoint| ", maximum(abs, A), ", max |tangent| ", maximum(abs, P), ")"); NONFINITE[path * " (sum)"] = 1)
+    v = mapreduce(+, A, D; init = 0.0) do a, d
+        p = ForwardDiff.partials(d, j)
+        return (p == 0) | (a == 0) ? 0.0 : Float64(a) * Float64(p)
+    end
+    isfinite(v) || (println("  non-finite contribution of $path: $v (max |adjoint| ", maximum(abs, A), ", max |tangent| ",
+                            mapreduce(d -> abs(ForwardDiff.partials(d, j)), max, D), ")"); NONFINITE[path * " (sum)"] = 1)
     return v
 end
 "⟨adjoint, tangent j⟩ over the scalars of two structs of the same shape (an adjoint and its Dual twin), by path."
@@ -69,8 +78,12 @@ function scalar_dot(adj, dual, j)
     A, D = scalars(adj), scalars(dual)
     return sum((tdot(Float64(A[k]), Float64(partial(D[k], j)), k) for k in intersect(keys(A), keys(D))); init = 0.0)
 end
-"⟨adjoint, tangent j⟩ over the floating-point arrays of a state's adjoint and a Dual state of the same shape, by path."
-function array_dot(adj, dual, j)
+"""
+⟨adjoint, tangent j⟩ over the floating-point arrays of a state's adjoint and a Dual state of the same
+shape, by path, leaving out the adjoint's arrays in `skip` (identity): a shadow's workspaces when
+they are the primal's scratch (trapped3d.jl's `shadow=shared`), whose values are no adjoint.
+"""
+function array_dot(adj, dual, j; skip = Base.IdSet{Any}())
     A, D = leaves(adj), leaves(dual)
-    return sum((adot(A[k], ForwardDiff.partials.(D[k], j), k) for k in intersect(keys(A), keys(D)) if eltype(D[k]) <: ForwardDiff.Dual); init = 0.0)
+    return sum((adot(A[k], D[k], j, k) for k in intersect(keys(A), keys(D)) if eltype(D[k]) <: ForwardDiff.Dual && !(A[k] in skip)); init = 0.0)
 end

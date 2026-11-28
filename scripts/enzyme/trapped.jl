@@ -2,7 +2,7 @@
 # (`scripts/optim/trapped2d_case.jl`: antenna, moving window, PMLs, field ionization,
 # CompensatedGather, Reference mode), on a GPU, checked against ForwardDiff by the chain rule.
 #
-#     PM_BACKEND=cuda PM_CUDA_HEAP=<bytes> PM_ENZYME_PATCH="scripts/enzyme/active_reduce.jl;scripts/enzyme/spike/unrolled_species.jl" \
+#     PM_BACKEND=cuda PM_CUDA_HEAP=<bytes> PM_ENZYME_PATCH=scripts/enzyme/active_reduce.jl \
 #       JULIA_LOAD_PATH=@:<repo>:@stdlib \
 #       julia +1.13 --project=lib/ParticleMeshElectromagnetic/test scripts/enzyme/trapped.jl <command> [key=value ...]
 #

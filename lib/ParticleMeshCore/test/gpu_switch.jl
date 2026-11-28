@@ -25,3 +25,27 @@ end
 
 "The one line the suite prints when the GPU testsets do not run."
 gpu_skip_line(sw) = "GPU tests (WP-013) not run: $(sw.reason)"
+
+"The hold processes of `gpu_hold`, kept open until this process exits."
+const GPU_HOLD = Base.Process[]
+
+"""
+    gpu_hold(cmd = get(ENV, "PM_GPU_HOLD", "")) -> Union{Nothing,Base.Process}
+
+The GPU testsets' turn in a machine's GPU queue, taken by gpu.jl just before its first GPU
+testset, so that the CPU testsets before it run without holding the card. `PM_GPU_HOLD` unset or
+empty: nothing. Otherwise it is a shell command that waits for the GPU, prints `granted` and keeps
+the GPU until its standard input closes, which happens when this process exits (a queue's hold
+mode, such as `gpu-run --hold -t <tag>`). Any other answer throws.
+"""
+function gpu_hold(cmd::AbstractString = get(ENV, "PM_GPU_HOLD", ""))
+    isempty(cmd) && return nothing
+    p = open(`sh -c $cmd`, "r+")
+    answer = readline(p)
+    if answer != "granted"
+        close(p)
+        error("PM_GPU_HOLD: `$cmd` answered $(repr(answer)) instead of \"granted\"")
+    end
+    push!(GPU_HOLD, p)
+    return p
+end
