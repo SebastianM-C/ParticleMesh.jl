@@ -180,6 +180,8 @@ end
     @test adk_least >= emC("T-821", "adk_over_min")
 end
 
+include("cases2d.jl")
+
 using Aqua
 @testset "T-1243 Wakefields patches nothing: no piracy, no eval, no stale dependencies or missing compat [A6, A9, WP-092]" begin
     Aqua.test_all(Wakefields)

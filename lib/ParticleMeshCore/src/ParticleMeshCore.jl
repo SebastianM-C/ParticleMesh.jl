@@ -46,6 +46,7 @@ export deposit_flux!, gather_flux!, flux_guard_width, flux_extras
 export pullback_quantity!, deposit_pullback!, gather_pullback!, flux_pullback!, sort_pullback!
 export philox4x32, uniform_open, box_muller
 export load_quiet!, quiet_particle, quiet_particle_2d
+public ALIVE
 
 include("launch.jl")
 include("grid.jl")

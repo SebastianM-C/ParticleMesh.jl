@@ -229,12 +229,6 @@ function electron_measures(x, u, w, case, area)
                             "spectrum" => area .* ekin_histogram(g[ahead], w[ahead], ion_spectrum_edges(case)))
 end
 
-"The C² step of born2d_case.jl (`smooth_rise`): 0 at x ≤ lo, 1 at x ≥ hi."
-function smooth_rise(x, lo, hi)
-    s = clamp((x - lo) / (hi - lo), zero(x), one(x))
-    return s * s * s * (10 - 15 * s + 6 * s * s)
-end
-
 # The alive particles of non-zero weight of a species as plain arrays: window x, momenta, weights.
 function pm_particles(s, h1)
     f(a) = Float64.(Array(a))

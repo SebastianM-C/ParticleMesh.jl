@@ -224,7 +224,7 @@ function main_campaign(kind, resarg, dir = nothing)
                 backend = be == "cuda" ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                 extra = be == "cuda" ? Dict{String,Any}("gpu" => gpu_name()) : Dict{String,Any}(),
                 extra_inputs = [joinpath(@__DIR__, "trapped2d_case.jl"), joinpath(@__DIR__, "born2d_case.jl"),
-                                joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl")], params)
+                                joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl"), joinpath(REPO, "lib", "Wakefields", "src", "cases2d.jl")], params)
     open(io -> JSON.print(io, jobs, 2), joinpath(d, "jobs.json"), "w")
     t = @elapsed run_campaign(jobs, d)
     println("campaign $kind done in $(round(t; digits = 1)) s: $d")
