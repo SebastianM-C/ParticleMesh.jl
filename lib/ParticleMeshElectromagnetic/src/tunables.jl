@@ -6,7 +6,9 @@ const LASER_TUNABLES = (:a0, :waist, :duration, :delay, :focus, :chirp, :polariz
 const SHAPED_TUNABLES = (:a0, :delay, :focus, :polarization, :phase)
 const SPECIES_TUNABLES = (:density, :amplitude, :drift_x, :drift_y, :drift_z, :thermal_x, :thermal_y, :thermal_z)
 const PROFILE_TUNABLES = (:vacuum, :ramp)
-const WITNESS_TUNABLES = (:momentum_x, :momentum_y, :momentum_z, :center_x, :center_y, :length, :width)
+# A witness bunch's, per N: its centre has a coordinate per axis.
+witness_tunables(::Val{2}) = (:momentum_x, :momentum_y, :momentum_z, :center_x, :center_y, :length, :width)
+witness_tunables(::Val{3}) = (:momentum_x, :momentum_y, :momentum_z, :center_x, :center_y, :center_z, :length, :width)
 const SECTION_TUNABLES = (:section_start, :section_stop, :section_ramp)
 
 part_values(l::GaussianLaser) = (l.a0, l.waist, l.duration, l.delay, l.focus, l.chirp, l.polarization, l.phase)
@@ -26,7 +28,7 @@ part_values(l::ShapedLaser) = (l.a0, l.delay, l.focus, l.polarization, l.phase, 
 part_names(l::ShapedLaser) = (SHAPED_TUNABLES..., parameter_names(l.profile)..., parameter_names(l.envelope)...)
 part_names(::Union{SpeciesDescription,SpeciesParams}) = SPECIES_TUNABLES
 part_names(::DensityRamp) = PROFILE_TUNABLES
-part_names(::Union{WitnessBunch,WitnessParams}) = WITNESS_TUNABLES
+part_names(::Union{WitnessBunch{<:Any,N},WitnessParams{<:Any,N}}) where {N} = witness_tunables(Val(N))
 part_names(::Nothing) = ()
 # The dopant's names depend on the description: a section or none, and each level's numbers
 # (those of its type: `level_numbers`).
@@ -54,7 +56,7 @@ for a [`GaussianLaser`](@ref), and for a [`ShapedLaser`](@ref) `laser<i>_a0`, `_
 for the `i`-th mobile species `species<i>_density`, `_amplitude`, `_drift_x`, `_drift_y`,
 `_drift_z`, `_thermal_x`, `_thermal_y` and `_thermal_z`; with a density profile `profile_vacuum`
 and `profile_ramp`; with a witness bunch `witness_momentum_x`, `_momentum_y`, `_momentum_z`,
-`witness_center_x`, `_center_y`, `witness_length` and `witness_width`; with a field ionization
+`witness_center_x`, `_center_y` (at N = 3 `_center_z` too), `witness_length` and `witness_width`; with a field ionization
 `ionization_density`, with a section `ionization_section_start`, `_section_stop` and
 `_section_ramp`, and for its `j`-th level the numbers of the level's type
 ([`IonizationLevel`](@ref)): `ionization_level<j>_prefactor`, `_field` and `_power` for an
@@ -203,13 +205,13 @@ function with_part(::Type{S}, ::DensityRamp, v, i) where {S}
     x = take_next!(v, i, length(PROFILE_TUNABLES))
     return DensityRamp(; vacuum = x[1], ramp = x[2])
 end
-function with_part(::Type{S}, b::WitnessBunch, v, i) where {S}
-    x = take_next!(v, i, length(WITNESS_TUNABLES))
-    return WitnessBunch{S}(b.inject, b.region, b.ppc, x[1:3], x[4:5], x[6], x[7], S(b.charge), S(b.mass))
+function with_part(::Type{S}, b::WitnessBunch{<:Any,N}, v, i) where {S,N}
+    x = take_next!(v, i, N + 5)
+    return WitnessBunch{S,N}(b.inject, b.region, b.ppc, x[1:3], x[4:(3 + N)], x[4 + N], x[5 + N], S(b.charge), S(b.mass))
 end
-function with_part(::Type{S}, ::WitnessParams, v, i) where {S}
-    x = take_next!(v, i, length(WITNESS_TUNABLES))
-    return WitnessParams{S}(x[1:3], x[4:5], x[6], x[7])
+function with_part(::Type{S}, ::WitnessParams{<:Any,N}, v, i) where {S,N}
+    x = take_next!(v, i, N + 5)
+    return WitnessParams{S,N}(x[1:3], x[4:(3 + N)], x[4 + N], x[5 + N])
 end
 # The dopant's density, section and levels from the next entries, a level's cutoff kept.
 function ionization_numbers(::Type{S}, d, v, i) where {S}

@@ -120,13 +120,13 @@ background of its own profile (so every species' `amplitude` is zero and `E0`, `
 is refilled behind the front, every species with `momentum = :gaussian_velocity` (the window's
 loads draw in velocity); a window that starts later than t = 0 takes only cold species at
 rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
-finished its pulse before the window passes it (checked by the state). At N = 2 a `witness`, a
-[`WitnessBunch`](@ref) (WP-047), adds test particles injected during the run whose mean energy
+finished its pulse before the window passes it (checked by the state). At N = 2 and 3 a `witness`, a
+[`WitnessBunch`](@ref) of the problem's N (WP-047, WP-093), adds test particles injected during the run whose mean energy
 gain is the optimization objective; they change nothing else in the run. At N = 2 and 3 an
 `ionization`, a [`FieldIonization`](@ref) (WP-059, WP-075), adds a dopant on a fixed lattice that
 the fields ionize without random numbers, its electrons born by weight into a species of their
 own. At N = 3 axis 1 is periodic or the window and the transverse axes are periodic or open
-(WP-072, WP-074), with Gaussian lasers (WP-073) and no witness (WP-042). At N = 1
+(WP-072, WP-074), with Gaussian lasers (WP-073) and shaped lasers of a Zernike pupil (WP-085), each with either field solver (WP-079, WP-093). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -137,7 +137,7 @@ any [`EMNumerics`](@ref).
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2, three at N = 3), that the cells and the particles per cell are positive, at
 N = 2 and 3 that `kmode` is not the zero mode, that the lasers fit the dimension (a `center` of one
-coordinate at N = 2, a [`GaussianLaser`](@ref) with a `center` of two at N = 3, none at N = 1), and that the
+coordinate at N = 2, of two at N = 3, no laser at N = 1), and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
 together with a `window` and the conditions above at N = 2 and 3, and that an `ionization`'s
 lattice has N entries in `ppc` and the `rows` of its N (an `ArgumentError` otherwise).
@@ -218,7 +218,9 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         end
     end
     witness === nothing || witness isa WitnessBunch || throw(ArgumentError("witness must be a WitnessBunch, got $witness"))
-    witness === nothing || N == 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
+    witness === nothing || N >= 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 and 3 only"))
+    witness === nothing || witness isa WitnessBunch{<:Any,N} ||
+        throw(ArgumentError("the witness bunch of a problem at N = $N needs a region, ppc and center of $N axes, got $(length(witness.region))"))
     wb = witness === nothing ? nothing : witness_as(T, witness)
     ionization === nothing || ionization isa FieldIonization || throw(ArgumentError("ionization must be a FieldIonization, got $ionization"))
     iz = ionization === nothing ? nothing : ionization_as(T, ionization, Val(N))
@@ -357,19 +359,20 @@ SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal) where {T,N} =
     SpeciesParams{T,N,T}(T(density), T(amplitude), T.(Tuple(wavevector)), T.(Tuple(drift)), T.(Tuple(thermal)))
 
 """
-    WitnessParams{T}
+    WitnessParams{T,N}
 
 The parameters of a witness bunch (A3, [`WitnessBunch`](@ref)): the `momentum` its particles are
 injected with (u = γv, mₑc) and the `center`, `length` and `width` of the Gaussian averaging
 weights; all may be `Dual`s. The injection time, the region and the lattice are configuration
 of the state, and the charge and mass belong to the bunch's `Species`.
 """
-struct WitnessParams{T}
+struct WitnessParams{T,N}
     momentum::NTuple{3,T}
-    center::NTuple{2,T}
+    center::NTuple{N,T}
     length::T
     width::T
 end
+WitnessParams{T}(momentum, center::NTuple{N,Any}, length, width) where {T,N} = WitnessParams{T,N}(momentum, center, length, width)
 
 """
     EMParams{T}

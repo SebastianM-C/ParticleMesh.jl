@@ -3,8 +3,8 @@
 
 The electromagnetic particle-in-cell module, the only physics module of ParticleMesh (A9), for
 `N = 1`, `N = 2` and `N = 3` (1D3V, 2D3V and 3D3V; periodic, with open transverse axes (y at `N = 2`, y and z at `N = 3`, WP-072)
-through an absorbing layer, WP-027, or a convolutional PML, WP-034, a moving window along axis 1 at `N = 2`, WP-028, and `N = 3`, WP-074, and at `N = 2` a witness bunch of test electrons whose mean energy gain is the
-optimization objective, WP-047, and at `N = 2` and `N = 3` a dopant that the fields ionize by an ADK rate with no random numbers, WP-059, WP-075), with the current a choice of the numerics
+through an absorbing layer, WP-027, or a convolutional PML, WP-034, a moving window along axis 1 at `N = 2`, WP-028, and `N = 3`, WP-074, and at `N = 2` and `N = 3` a witness bunch of test electrons whose mean energy gain is the
+optimization objective, WP-047, WP-093, and a dopant that the fields ionize by an ADK rate with no random numbers, WP-059, WP-075), with the current a choice of the numerics
 (`Esirkepov()`, charge-conserving, or `NoCurrent()` for prescribed fields). It owns the physics
 the engine (`ParticleMeshCore`) leaves out: the field layout (Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz
 with their Yee staggers, [`field_layout`](@ref)), the Yee curl updates in the mesh-solve slot with
@@ -12,7 +12,7 @@ their Courant limit, the relativistic Boris pusher behind a pusher type, the ste
 and the diagnostics. At `N = 3` the module has the 3D3V step (WP-042): the problem
 description, the state, the push, the charge-conserving current, the Yee solver, the initial field
 and the recorder, periodic or open along y and z (WP-072), with the laser antenna of a round Gaussian beam (WP-073) and the
-moving window with its density ramp, its refill and the PML of its back edge (WP-074), the field ionization of a dopant (WP-075), the compensated gather (WP-076), the current filter and the sort from the last order (WP-093), and with no witness. The current comes from the engine's charge-conserving `deposit_flux!`, so
+moving window with its density ramp, its refill and the PML of its back edge (WP-074), the field ionization of a dopant (WP-075), the compensated gather (WP-076), the current filter, the sort from the last order and the witness bunch (WP-093). The current comes from the engine's charge-conserving `deposit_flux!`, so
 Gauss's law holds to roundoff from the initial `cumsum_periodic!` field onwards. The
 electrostatic cases (Landau damping, two-stream) run as edge cases with no transverse momenta
 or fields, as Smilei runs them.
