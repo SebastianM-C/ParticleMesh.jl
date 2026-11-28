@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099; WP-083's laser under Enzyme: T-1140; WP-085's Zernike antenna: T-1168, T-1169; WP-086's ramp and counts under Enzyme: T-1174. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099; WP-083's laser under Enzyme: T-1140; WP-085's Zernike antenna: T-1168, T-1169; WP-086's ramp and counts under Enzyme: T-1174; WP-093's filter and resort of the 3D step: T-1259, its 3D witness bunch: T-1265, and M4 with the 3D shaped antenna: T-1269. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -130,6 +130,16 @@ else
         end
     end
 
+    @testset "T-1259 the filter and the sort from the last order of the 3D step on CUDA pass T-1250 to T-1252, T-1254 and T-1255 with the CPU's tolerances, the Reference step bitwise across reruns and launch shapes, and Fast agrees with it [A2, A4, A5, A7, A8, WP-093]" begin
+        rerun_module_on(GPU, (("T-1250", body_T1250), ("T-1251", body_T1251), ("T-1252", body_T1252), ("T-1252 window", body_T1252_window), ("T-1253", body_T1253_modes),
+                              ("T-1254", body_T1254), ("T-1255", be -> body_T1255(be; runs = ((Float32, Reference()), (D3, Reference()))))))
+        first = features3d_digests(; be = GPU)
+        @test features3d_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test features3d_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
     @testset "T-560 the moving window on CUDA passes T-470 to T-476, T-478's filter and T-479 with the CPU's tolerances [A2, A3, A4, A7, A8, WP-028]" begin
         rerun_module_on(GPU, (("T-470", body_T470), ("T-471", body_T471), ("T-472", body_T472), ("T-473", body_T473), ("T-474", body_T474),
                               ("T-475", body_T475), ("T-476", body_T476), ("T-478", body_T478), ("T-479", body_T479)))
@@ -166,6 +176,10 @@ else
 
     @testset "T-645 the witness bunch on CUDA passes T-640 and T-641 with the CPU's tolerances [A3, A7, A8, WP-047]" begin
         rerun_module_on(GPU, (("T-640", body_T640), ("T-641", body_T641)))
+    end
+
+    @testset "T-1265 the 3D witness bunch on CUDA passes T-1260 to T-1263 with the CPU's tolerances [A3, A4, A7, A8, WP-093]" begin
+        rerun_module_on(GPU, (("T-1260", body_T1260), ("T-1261", body_T1261), ("T-1262", body_T1262), ("T-1263", body_T1263)))
     end
 
     # WP-046: WP-043's gradient with duals on CUDA.
@@ -303,6 +317,15 @@ else
         @test zernike_digest(; be = GPU) == first
         for wgs in (64, 256)
             @test zernike_digest(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1269 the M4 solver with the 3D shaped antenna on CUDA passes T-1266 and the Gaussian limit of T-1267 with the CPU's tolerances, and its table and Reference step are bitwise across reruns and launch shapes [A2, A4, A8, WP-093]" begin
+        rerun_module_on(GPU, (("T-1266", body_T1266), ("T-1267", body_T1267)))
+        first = zernike_digest(; be = GPU, solver = M4())
+        @test zernike_digest(; be = GPU, solver = M4()) == first
+        for wgs in (64, 256)
+            @test zernike_digest(; workgroupsize = wgs, be = GPU, solver = M4()) == first
         end
     end
 

@@ -18,9 +18,13 @@ real and imaginary parts of six complex numbers: at the place of Ey (y Center, z
 `U` at ξ = x_a − focus, `U − U_yy/2 + U_zz/2` and `U_yz` at ξ = x_a − Δx/2 − focus; at the place of
 Ez (y Node, z Center) `U` at the first ξ, `U + U_yy/2 − U_zz/2` and `U_yz` at the second, each of
 the nearest image of the axis, and on a row or layer within Δ/1000 of the antipode the mean of the
-two images (the antenna's antipode rule, which for an even beam zeroes the odd cross term). Its numbers ([`PulseShapes.parameter_names`](@ref)) are
-the beam's; replacing them gives the untabulated laser, which the step refuses until it is
-tabulated again.
+two images (the antenna's antipode rule, which for an even beam zeroes the odd cross term). On a
+plane of the M4 solver the table has eight more numbers per row and layer, (n_y, n_z, 20): `U` at
+ξ = x_a − Δx − focus and at ξ = x_a + Δx − focus, at the place of Ey and then at the place of Ez,
+the incident E on the columns beside the plane that M4's B corrections read (`m4_antenna.jl`);
+the first twelve are the Yee plane's, bit for bit. Its numbers
+([`PulseShapes.parameter_names`](@ref)) are the beam's; replacing them gives the untabulated
+laser, which the step refuses until it is tabulated again.
 """
 struct PlaneTable{T,B<:ZernikeBeam,P<:AntennaPlane,C,A<:AbstractArray{T,3}} <: TransverseProfile
     beam::B
@@ -94,22 +98,40 @@ end
 # table_sums at the nearest image of the axis, and the mean over both images along an axis whose
 # offset lies on the antipode (four at a corner): the branch is taken only on those rows and
 # layers, and the band is wide against roundoff, so every backend takes the same images.
-@inline function image_sums(P, nq::Int32, ξe, ξb, plane, dy, dz, sgn)
-    T = eltype(P)
+@inline image_sums(P, nq::Int32, ξe, ξb, plane, dy, dz, sgn) =
+    image_mean((y, z) -> table_sums(P, nq, ξe, ξb, y, z, sgn), plane, dy, dz, eltype(P))
+
+@inline function image_mean(f::F, plane, dy, dz, ::Type{T}) where {F,T}
     ya, iy = seam_image(plane, 2, dy)
     za, iz = seam_image(plane, 3, dz)
-    a = table_sums(P, nq, ξe, ξb, dy, dz, sgn)
+    a = f(dy, dz)
     if iy
-        a = a .+ table_sums(P, nq, ξe, ξb, ya, dz, sgn)
+        a = a .+ f(ya, dz)
     end
     if iz
-        a = a .+ table_sums(P, nq, ξe, ξb, dy, za, sgn)
+        a = a .+ f(dy, za)
         if iy
-            a = a .+ table_sums(P, nq, ξe, ξb, ya, za, sgn)
+            a = a .+ f(ya, za)
         end
     end
     n = T((1 + iy) * (1 + iz))
     return a ./ n
+end
+
+# The pupil sum U at the two distances ξm and ξp (the columns behind and ahead of an M4 plane) at
+# the transverse offsets (dy, dz), over the sum of the weights, as `table_sums` forms U(ξe).
+@inline function column_sums(P, nq::Int32, ξm, ξp, dy, dz)
+    T = eltype(P)
+    um = up = zero(Complex{T})
+    s = zero(T)
+    for q in Int32(1):nq
+        @inbounds pr, pim, κy, κz, wa = P[q, 1], P[q, 2], P[q, 3], P[q, 4], P[q, 5]
+        um += pupil_terms(pr, pim, κy, κz, ξm, dy, dz)[1]
+        up += pupil_terms(pr, pim, κy, κz, ξp, dy, dz)[1]
+        s += wa
+    end
+    um, up = um / s, up / s
+    return real(um), imag(um), real(up), imag(up)
 end
 
 # One work item per interior (row, layer) of the plane: the twelve numbers of PlaneTable.
@@ -126,6 +148,26 @@ end
     @inbounds ntuple(m -> (V[j, k, m] = a[m]; V[j, k, m + 6] = b[m]; nothing), Val(6))
 end
 
+# The eight numbers more of an M4 plane's table, per interior (row, layer): U on the columns
+# ia − 1 and ia + 1 (ξm and ξp from the focus) at the place of Ey, then at the place of Ez, by the
+# image rule of the first twelve.
+@kernel function zernike_columns_kernel!(V, @Const(P), plane, center, ξm, ξp, nq)
+    J = @index(Global, Cartesian)
+    j, k = Int32(J[1]), Int32(J[2])
+    T = eltype(V)
+    h = one(T) / 2
+    jr, kr = plane.g + j, plane.g + k
+    y1, z1 = antenna_d(plane, 2, center[1], jr, h), antenna_d(plane, 3, center[2], kr, zero(T))
+    y2, z2 = antenna_d(plane, 2, center[1], jr, zero(T)), antenna_d(plane, 3, center[2], kr, h)
+    a = image_mean((y, z) -> column_sums(P, nq, ξm, ξp, y, z), plane, y1, z1, T)
+    b = image_mean((y, z) -> column_sums(P, nq, ξm, ξp, y, z), plane, y2, z2, T)
+    @inbounds ntuple(m -> (V[j, k, m + 12] = a[m]; V[j, k, m + 16] = b[m]; nothing), Val(4))
+end
+
+# The numbers of a plane's table per row and layer: twelve, and M4's eight for the columns beside it.
+table_entries(::YeeStencil) = 12
+table_entries(::M4Stencil) = 20
+
 """
     tabulate(state, params) -> params
     tabulate(laser, plane::AntennaPlane, backend; workgroupsize = nothing) -> laser
@@ -134,7 +176,8 @@ The parameters with the profile of every 3D [`ShapedLaser`](@ref) of a [`Zernike
 replaced by its [`PlaneTable`](@ref) on the state's antenna plane and backend, the other lasers
 as they are; a laser that is tabulated already is tabulated again from its beam (so that a
 changed focus is taken up). Two kernels: one work item per pupil sample (radial × angular), then
-one per interior (row, layer) of the plane, each a sum over every sample. Call it once per
+one per interior (row, layer) of the plane, each a sum over every sample; on a plane of the M4
+solver a third, of the second's shape, for the columns beside the plane. Call it once per
 parameter point, before [`initialize!`](@ref) and the steps (`initialize!(state, problem)` calls
 it); inside a function that is differentiated, it carries the derivatives of the beam's numbers
 and of the focus into the table. It refuses a beam whose [`PulseShapes.quadrature_radius`](@ref)
@@ -164,14 +207,20 @@ function tabulate(l::ShapedLaser{T,<:Any,<:ZernikeBeam}, a::AntennaPlane{S,3}, b
     nq = Int(b.radial) * Int(b.angular)
     P = KernelAbstractions.allocate(backend, T, nq, 5)
     launcher(zernike_pupil_kernel!, backend, workgroupsize)(P, b; ndrange = nq)
-    V = KernelAbstractions.allocate(backend, T, Int(a.n[2]), Int(a.n[3]), 12)
+    V = KernelAbstractions.allocate(backend, T, Int(a.n[2]), Int(a.n[3]), table_entries(a.stencil))
     c = center_as(T, l.center)
     launcher(zernike_table_kernel!, backend, workgroupsize)(V, P, a, c, a.xa - l.focus, a.xa - a.hx - l.focus, Int32(nq);
                                                             ndrange = (Int(a.n[2]), Int(a.n[3])))
+    tabulate_columns!(V, P, a, c, l.focus, Int32(nq), backend, workgroupsize)
     t = PlaneTable(b, l.focus, a, c, V)
     return ShapedLaser{T,typeof(l.position),typeof(t),typeof(l.envelope),typeof(l.center)}(l.a0, l.delay, l.focus, l.polarization,
                                                                                          l.phase, t, l.envelope, l.position, l.center)
 end
+
+tabulate_columns!(V, P, a::AntennaPlane{<:Any,3,YeeStencil}, c, focus, nq, backend, workgroupsize) = nothing
+tabulate_columns!(V, P, a::AntennaPlane{<:Any,3,<:M4Stencil}, c, focus, nq, backend, workgroupsize) =
+    launcher(zernike_columns_kernel!, backend, workgroupsize)(V, P, a, c, a.xa - a.dx[1] - focus, a.xa + a.dx[1] - focus, nq;
+                                                              ndrange = (Int(a.n[2]), Int(a.n[3])))
 
 function check_quadrature(a::AntennaPlane, b::ZernikeBeam)
     r = sqrt(a.len[2]^2 + a.len[3]^2) / 2
@@ -183,9 +232,8 @@ end
 
 # A 3D ShapedLaser reaches the step through its table: refused untabulated, or with a table made
 # for another plane, center or focus (a host comparison of host scalars and types, §0.4 rule 2).
+# The plane carries the solver's stencil, so a Yee plane's table is refused on an M4 plane.
 function check_profile(a::AntennaPlane{<:Any,3}, l::ShapedLaser)
-    a.stencil isa YeeStencil ||
-        throw(ArgumentError("a ShapedLaser's antenna in 3D is implemented for the Yee solver only"))
     t = l.profile
     t isa PlaneTable ||
         throw(ArgumentError("the 3D ShapedLaser's $(nameof(typeof(t))) reaches the antenna through the table of its plane: call `params = tabulate(state, params)` once per parameter point"))
@@ -225,7 +273,7 @@ end
 b_source!(a::Antenna{<:ShapedLaser,<:Any,3,YeeStencil}, f, c, t, wgs) =
     launcher(antenna_b_kernel_3d!, get_backend(f.Bz), wgs)(f.By, f.Bz, a, c, time_factor(a.laser, t - a.laser.delay);
                                                            ndrange = (size(f.Bz, 2), size(f.Bz, 3)))
-e_source!(a::Antenna{<:ShapedLaser,<:Any,3,YeeStencil}, f, c, t, wgs) =
+e_source!(a::Antenna{<:ShapedLaser,<:Any,3}, f, c, t, wgs) =
     launcher(antenna_e_kernel_3d!, get_backend(f.Ey), wgs)(f.Ey, f.Ez, a, c, time_factor(a.laser, t + a.ht - a.laser.delay);
                                                            ndrange = (size(f.Ey, 2), size(f.Ey, 3)))
 

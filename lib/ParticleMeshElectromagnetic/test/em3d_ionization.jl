@@ -677,7 +677,9 @@ end
     end
     @test_throws ArgumentError ionization_charge!(similar(sp.ρ), sp)
     @test step!(st, EMParams(p; ionization = IonizationParams{Float64}(0.5, (ADKLevel(7.0, 1.0, 2.0),))), 1) === st
-    # the filter and the resort stay refused at N = 3 with a dopant too
-    @test_throws ArgumentError EMState(prob, EMNumerics(; filter = BinomialFilter(1)))
-    @test_throws ArgumentError EMState(prob, EMNumerics(; resort = true))
+    # with a dopant the 3D state takes the filter and the sort from the last order too, the released
+    # electrons' workspace included (T-1252 and T-1255 run them)
+    fs = EMState(prob, EMNumerics(; filter = BinomialFilter(1), resort = true))
+    @test fs isa EMState{3} && all(w -> w.resort !== nothing, (fs.ws..., fs.aux.ionization.electrons_ws))
+    @test all(w -> w.resort === nothing, (st.ws..., st.aux.ionization.electrons_ws))
 end

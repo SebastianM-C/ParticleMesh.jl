@@ -22,7 +22,8 @@
 # The incident E of component C (2 or 3) at the array index I as a TF/SF difference seen from a B
 # point of region χp: (χ_q − χp)·E_inc at q = I, zero where q is in the B point's own region. `src`
 # is what the laser's field at the plane is evaluated from: the time t for a GaussianLaser, the
-# time factors of the three columns for a ShapedLaser. Indexed like an array by the stencil.
+# time factors of the three columns for a ShapedLaser (whose profile on the three columns is the
+# pupil sum itself at N = 2 and the plane's table at N = 3). Indexed like an array by the stencil.
 struct IncidentDifference{C,A,S}
     a::A
     src::S
@@ -70,6 +71,17 @@ end
     e, _, _ = shaped_field(l, ξ, antenna_dy(a, Int32(J[1]), C == 2 ? one(T) / 2 : zero(T)), g[m + Int32(2)])
     return polarized(l, e, vc)
 end
+# A tabulated 3D ShapedLaser (zernike_antenna.jl): the table's U on the column ia + m at the place
+# p (1: Ey's, 2: Ez's) of the row j, layer k, the first of the twelve numbers at the plane and an
+# M4 table's own eight beside it, with the time factor of that column's time.
+@inline function column_value(a::Antenna, p, m::Int32, j::Int32, k::Int32)
+    V = a.laser.profile.values
+    j0, k0 = plane_index(a, 2, j), plane_index(a, 3, k)
+    o = ifelse(m == Int32(0), 6 * (p - 1) + 1, 4 * (p - 1) + ifelse(m < Int32(0), 13, 15))
+    @inbounds return Complex(V[j0, k0, o], V[j0, k0, o + 1])
+end
+@inline incident_e(l::ShapedLaser, a::Antenna, g::NTuple{3}, m::Int32, vc::Val{C}, J::NTuple{2}) where {C} =
+    polarized(l, real(column_value(a, C - 1, m, Int32(J[1]), Int32(J[2])) * g[m + Int32(2)]), vc)
 @inline polarized(l, e, ::Val{2}) = e * cos(l.polarization)
 @inline polarized(l, e, ::Val{3}) = e * sin(l.polarization)
 
@@ -117,9 +129,11 @@ end
 
 b_source!(a::Antenna{<:GaussianLaser,<:Any,2,<:M4Stencil}, f, c, t, wgs) = m4_b_source!(a, f, c, t, wgs)
 b_source!(a::Antenna{<:GaussianLaser,<:Any,3,<:M4Stencil}, f, c, t, wgs) = m4_b_source!(a, f, c, t, wgs)
-function b_source!(a::Antenna{<:ShapedLaser,<:Any,2,<:M4Stencil}, f, c, t, wgs)
+# A ShapedLaser's time factors on the columns ia − 1, ia and ia + 1 at the time t: the incident
+# wave on the column ia + m is that of the plane a time m·kΔx later.
+function column_time_factors(a::Antenna{<:ShapedLaser}, t::T) where {T}
     l = a.laser
-    T = typeof(c)
-    g = ntuple(i -> time_factor(l, t - l.delay - T(i - 2) * 2 * a.ht), 3)
-    return m4_b_source!(a, f, c, g, wgs)
+    return ntuple(i -> time_factor(l, t - l.delay - T(i - 2) * 2 * a.ht), 3)
 end
+b_source!(a::Antenna{<:ShapedLaser,<:Any,2,<:M4Stencil}, f, c, t, wgs) = m4_b_source!(a, f, c, column_time_factors(a, t), wgs)
+b_source!(a::Antenna{<:ShapedLaser,<:Any,3,<:M4Stencil}, f, c, t, wgs) = m4_b_source!(a, f, c, column_time_factors(a, t), wgs)

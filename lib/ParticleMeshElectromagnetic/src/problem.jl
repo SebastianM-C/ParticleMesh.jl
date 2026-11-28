@@ -92,6 +92,8 @@ function momentum_distribution(momentum::Symbol, name, drift::NTuple{3,T}, therm
     return GaussianMomentum(map(b -> Γ * b, drift), thermal)
 end
 
+const PROFILE_NEEDS_WINDOW = "a density profile needs the window's edges along axis 1 (a ramp does not close across a periodic seam, and the plasma starts neutral against the profile's own background): for a box that does not move, take boundaries with :window on axis 1 and window = MovingWindow(; start = Inf)"
+
 """
     EMProblem{N,T}
 
@@ -118,13 +120,13 @@ background of its own profile (so every species' `amplitude` is zero and `E0`, `
 is refilled behind the front, every species with `momentum = :gaussian_velocity` (the window's
 loads draw in velocity); a window that starts later than t = 0 takes only cold species at
 rest (before it moves, its front is a fixed edge that a moving plasma reaches); a laser's antenna plane stays at its place in the lab frame and must have
-finished its pulse before the window passes it (checked by the state). At N = 2 a `witness`, a
-[`WitnessBunch`](@ref) (WP-047), adds test particles injected during the run whose mean energy
+finished its pulse before the window passes it (checked by the state). At N = 2 and 3 a `witness`, a
+[`WitnessBunch`](@ref) of the problem's N (WP-047, WP-093), adds test particles injected during the run whose mean energy
 gain is the optimization objective; they change nothing else in the run. At N = 2 and 3 an
 `ionization`, a [`FieldIonization`](@ref) (WP-059, WP-075), adds a dopant on a fixed lattice that
 the fields ionize without random numbers, its electrons born by weight into a species of their
 own. At N = 3 axis 1 is periodic or the window and the transverse axes are periodic or open
-(WP-072, WP-074), with Gaussian lasers (WP-073) and no witness (WP-042). At N = 1
+(WP-072, WP-074), with Gaussian lasers (WP-073) and shaped lasers of a Zernike pupil (WP-085), each with either field solver (WP-079, WP-093). At N = 1
 `kmode` is the diagnostic wavenumber (ω₀/c); at N = 2 and 3 it is an integer mode per axis, the wave
 vector `k_d = 2π·kmode[d]/length[d]`, nonzero. It names no kernel: the same description runs with
 any [`EMNumerics`](@ref).
@@ -135,7 +137,7 @@ any [`EMNumerics`](@ref).
 checks that every species has the problem's dimension (an integer `mode` and `ppc` at N = 1, two
 of each at N = 2, three at N = 3), that the cells and the particles per cell are positive, at
 N = 2 and 3 that `kmode` is not the zero mode, that the lasers fit the dimension (a `center` of one
-coordinate at N = 2, a [`GaussianLaser`](@ref) with a `center` of two at N = 3, none at N = 1), and that the
+coordinate at N = 2, of two at N = 3, no laser at N = 1), and that the
 boundaries are `:periodic` or `:open`, one per axis, with axis 1 periodic, or `:window` on axis 1
 together with a `window` and the conditions above at N = 2 and 3, and that an `ionization`'s
 lattice has N entries in `ppc` and the `rows` of its N (an `ArgumentError` otherwise).
@@ -198,7 +200,7 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         throw(ArgumentError("boundaries = $bd with window = $window: a :window axis 1 and a MovingWindow come together"))
     window === nothing || window isa MovingWindow || throw(ArgumentError("window must be a MovingWindow, got $window"))
     profile === nothing || profile isa DensityRamp || throw(ArgumentError("profile must be a DensityRamp, got $profile"))
-    profile !== nothing && !moving && throw(ArgumentError("a density profile is implemented with the moving window only"))
+    profile !== nothing && !moving && throw(ArgumentError(PROFILE_NEEDS_WINDOW))
     if moving
         for d in species
             iszero(d.amplitude) ||
@@ -216,7 +218,9 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         end
     end
     witness === nothing || witness isa WitnessBunch || throw(ArgumentError("witness must be a WitnessBunch, got $witness"))
-    witness === nothing || N == 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 only"))
+    witness === nothing || N >= 2 || throw(ArgumentError("a witness bunch is implemented at N = 2 and 3 only"))
+    witness === nothing || witness isa WitnessBunch{<:Any,N} ||
+        throw(ArgumentError("the witness bunch of a problem at N = $N needs a region, ppc and center of $N axes, got $(length(witness.region))"))
     wb = witness === nothing ? nothing : witness_as(T, witness)
     ionization === nothing || ionization isa FieldIonization || throw(ArgumentError("ionization must be a FieldIonization, got $ionization"))
     iz = ionization === nothing ? nothing : ionization_as(T, ionization, Val(N))
@@ -249,7 +253,7 @@ struct Esirkepov end
 
 The current choice of an [`EMNumerics`](@ref) that deposits no current: the step pushes the
 particles through the fields and solves Maxwell's equations with J = 0. For prescribed-field
-runs and test particles at N = 2 and 3; the 1D step always deposits the current and refuses it.
+runs and test particles, at every N.
 """
 struct NoCurrent end
 
@@ -265,14 +269,13 @@ the launch shape only). A fixed size has to fit every kernel of the step: the la
 a kernel accepts depends on the backend, the kernel and the element type (on the CPU (PoCL)
 backend the 2D flux deposition with `Dual{Float32,3}` and the quadratic shape takes at most 983
 work-items, as PoCL reported it, #297), and a launch it does not fit stops the step with an
-`ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
-N = 1, 2 and 3, or [`NoCurrent`](@ref)`()` at N = 2 and 3 (prescribed fields); a state refuses
-any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
+`ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, or
+[`NoCurrent`](@ref)`()` (prescribed fields), at N = 1, 2 and 3; a state refuses any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) when a transverse axis of the problem is `:open` (at N = 2
 axis 2, at N = 3 axis 2, 3 or both, each open axis getting its own placed layer; required then,
-refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
-with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
+refused otherwise), `nothing` for a periodic box; with filter passes the absorber has at least
+the guard width plus the passes of cells ([`check_filter_fits`](@ref)). `back_absorber` is a [`PML`](@ref) on
 the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
 back), or `nothing`, the window's field-free outside alone; a state refuses it without a
 window, and refuses a laser antenna that the layer reaches before its pulse is over. `headroom` sizes the particle buffers of
@@ -356,19 +359,20 @@ SpeciesParams{T,N}(density, amplitude, wavevector, drift, thermal) where {T,N} =
     SpeciesParams{T,N,T}(T(density), T(amplitude), T.(Tuple(wavevector)), T.(Tuple(drift)), T.(Tuple(thermal)))
 
 """
-    WitnessParams{T}
+    WitnessParams{T,N}
 
 The parameters of a witness bunch (A3, [`WitnessBunch`](@ref)): the `momentum` its particles are
 injected with (u = γv, mₑc) and the `center`, `length` and `width` of the Gaussian averaging
 weights; all may be `Dual`s. The injection time, the region and the lattice are configuration
 of the state, and the charge and mass belong to the bunch's `Species`.
 """
-struct WitnessParams{T}
+struct WitnessParams{T,N}
     momentum::NTuple{3,T}
-    center::NTuple{2,T}
+    center::NTuple{N,T}
     length::T
     width::T
 end
+WitnessParams{T}(momentum, center::NTuple{N,Any}, length, width) where {T,N} = WitnessParams{T,N}(momentum, center, length, width)
 
 """
     EMParams{T}

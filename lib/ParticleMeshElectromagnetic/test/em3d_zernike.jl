@@ -44,13 +44,13 @@ function zernike_problem(::Type{T}; beam, ncx = 12, nct = 6, length = (60, 24, 2
 end
 
 """
-    zernike_run(prob; mode = Reference(), probes = (), be = CPU(), workgroupsize = nothing) -> (; st, prob, p, A, ip)
+    zernike_run(prob; mode = Reference(), probes = (), be = CPU(), workgroupsize = nothing, solver = Yee()) -> (; st, prob, p, A, ip)
 
 [`antenna3d_run`](@ref) with the parameters tabulated on the state (`p`): `A[q]` the discrete-time
 Fourier transforms at ω = 1 of Ey and Ez on the probe plane nearest to `probes[q]`.
 """
-function zernike_run(prob; mode = Reference(), probes = (), be = CPU(), workgroupsize = nothing)
-    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov()); backend = be)
+function zernike_run(prob; mode = Reference(), probes = (), be = CPU(), workgroupsize = nothing, solver = Yee())
+    st = EMState(prob, EMNumerics(; mode, workgroupsize, current = Esirkepov(), solver); backend = be)
     p = tabulate(st, params(prob))
     initialize!(st, p)
     (; grid, fields) = st
@@ -102,8 +102,8 @@ function table_dtft(r)
     return (; Ey = (U1 .* a .+ conj.(U1) .* b) .* cθ, Ez = (U2 .* a .+ conj.(U2) .* b) .* sθ)
 end
 
-"`angular_error_3d` with the incident transform from the table ([`table_dtft`](@ref))."
-function table_angular_error(r; component = :Ey, against = component)
+"`angular_error_3d` with the incident transform from the table ([`table_dtft`](@ref)); `kx` the solver's wavenumber along x (`m4_kx` for an M4 run)."
+function table_angular_error(r; component = :Ey, against = component, kx = yee_kx_3d)
     a = Antenna(only(r.p.lasers), only(antenna_planes(r.st)))
     h = Float64.(value_of.(a.dx))
     dt = Float64(value_of(r.prob.dt))
@@ -115,7 +115,7 @@ function table_angular_error(r; component = :Ey, against = component)
     for (q, i) in enumerate(r.ip)
         x = (i - 1) * h[1]
         x < xa - h[1] / 2 && continue
-        P = [cis(yee_kx_3d(1.0, ky[p], kz[s], h[1], h[2], h[3], dt) * (x - xa)) for p in eachindex(ky), s in eachindex(kz)]
+        P = [cis(kx(1.0, ky[p], kz[s], h[1], h[2], h[3], dt) * (x - xa)) for p in eachindex(ky), s in eachindex(kz)]
         pred, ref = idft2(S .* P), idft2(Sref .* P)
         meas = complex_host(getfield(r.A[q], component))
         push!(out, (; x, err = sqrt(sum(abs2, meas .- pred) / sum(abs2, ref))))
@@ -221,7 +221,7 @@ end
 # Two runs of the same problem, the Zernike laser of the Gaussian pupil and the GaussianLaser of its
 # waist: every field relative to its largest value, and with duals the partials in a0 and focus (the
 # third, a spherical aberration's, has no counterpart and must reach the fields).
-function gaussian_run_difference(::Type{T}; be = CPU()) where {T}
+function gaussian_run_difference(::Type{T}; be = CPU(), solver = Yee()) where {T}
     D = T === D3
     a0 = D ? mkdual(1, 1, 0, 0) : one(T)
     focus = D ? mkdual(14, 0, 1, 0) : T(14)
@@ -229,8 +229,8 @@ function gaussian_run_difference(::Type{T}; be = CPU()) where {T}
     kw = (; length = (40, 24, 24), position = 6, focus, a0, polarization = 3 // 5, tend = 40, chirp = 1 // 100)
     pg = antenna3d_problem(T; kw..., waist = 4)
     pz = zernike_problem(T; kw..., beam = gaussian_zernike(4; aberrations = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, z12)))
-    rg = antenna3d_run(pg; be)
-    rz = zernike_run(pz; be)
+    rg = antenna3d_run(pg; be, solver)
+    rz = zernike_run(pz; be, solver)
     fg, fz = map(Array, rg.st.fields), map(Array, rz.st.fields)
     worst = worst_p = 0.0
     reach = false
@@ -416,19 +416,19 @@ end
 end
 
 """
-    zernike_digest(; be = CPU(), workgroupsize = nothing) -> UInt64
+    zernike_digest(; be = CPU(), workgroupsize = nothing, solver = Yee()) -> UInt64
 
 T-1167 and T-1168: a Reference run of an aberrated Zernike laser polarized at 0.6 rad into a
 drifting plasma, the digest of its table and of every evolved array.
 """
-function zernike_digest(; be = CPU(), workgroupsize = nothing)
+function zernike_digest(; be = CPU(), workgroupsize = nothing, solver = Yee())
     T = Float64
     tenth = one(T) / 10
     sp = (SpeciesDescription{T}(:electron, -one(T), one(T), tenth, zero(T), (1, 0, 0), (1, 2, 2), (3tenth, tenth, -tenth),
                                 (tenth / 2, tenth / 2, tenth / 2), 1),)
     prob = zernike_problem(T; beam = flat_zernike(; radial = 12, angular = 32), ncx = 8, nct = 6, length = (16, 12, 12), duration = 2,
                            position = 4, focus = 8, polarization = 3 // 5, a0 = 1 // 2, tend = 15, species = sp)
-    s = EMState(prob, EMNumerics(; workgroupsize, current = Esirkepov()); backend = be)
+    s = EMState(prob, EMNumerics(; workgroupsize, current = Esirkepov(), solver); backend = be)
     q = tabulate(s, params(prob))
     initialize!(s, q)
     run!(s, q, prob.nsteps)
@@ -443,8 +443,8 @@ end
 
 # The checks: a ShapedLaser's center has as many coordinates as its profile has transverse axes;
 # the 3D problem takes a ZernikeBeam laser; the step refuses it untabulated, with a table for
-# another focus, center or plane, with the M4 solver, or with a quadrature that does not reach the box's
-# corners; initialize!(state, problem) tabulates. Replacing the beam's numbers (with_tunables)
+# another focus, center or plane (the Yee plane's on an M4 state: T-1268), or with a quadrature that
+# does not reach the box's corners; initialize!(state, problem) tabulates. Replacing the beam's numbers (with_tunables)
 # drops the table, and tabulating again gives the same bits, as a second tabulate of a tabulated
 # laser does; the Reference step is bitwise across reruns and launch shapes, and the table across
 # launch shapes; the table crosses to a device array with Adapt.
@@ -469,7 +469,7 @@ end
     @test lt.profile isa PlaneTable && size(lt.profile.values) == (ok.cells[2], ok.cells[3], 12)
     @test check_params(st, pt) === pt
     @test same_bits(host_table(only(tabulate(st, pt).lasers)), host_table(lt))      # tabulated again from its beam
-    # a table for another focus or plane, the M4 solver, a short quadrature
+    # a table for another focus or plane, a short quadrature
     moved = EMParams(pt; lasers = (ShapedLaser(lt.a0, lt.delay, lt.focus + 1, lt.polarization, lt.phase, lt.profile, lt.envelope, lt.position,
                                                lt.center),))
     @test_throws ArgumentError check_params(st, moved)
@@ -479,7 +479,6 @@ end
     po = zernike_problem(T; beam, length = (30, 24, 24), tend = 20, nct = (6, 5), center = l.center)
     other = EMState(po, EMNumerics())
     @test_throws ArgumentError check_params(other, EMParams(params(po); lasers = pt.lasers))     # the table of another plane
-    @test_throws ArgumentError initialize!(EMState(ok, EMNumerics(; solver = M4())), ok)
     @test_throws ArgumentError tabulate(st, params(zernike_problem(T; beam = flat_zernike(; radial = 12, angular = 16), length = (30, 24, 24), tend = 20)))
     # initialize!(state, problem) tabulates
     st2 = EMState(ok, EMNumerics())

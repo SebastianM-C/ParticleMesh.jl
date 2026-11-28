@@ -1,4 +1,4 @@
-# The witness bunch at N = 2 (WP-047, A0, A3, §0.4): test electrons injected at fixed phases of the
+# The witness bunch at N = 2 and 3 (WP-047, WP-093, A0, A3, §0.4): test electrons injected at fixed phases of the
 # box (of the moving window, when there is one) at a fixed time, pushed with the plasma, and read
 # out as their energy gain. The objective of the 2D LWFA optimization is its weighted mean.
 #
@@ -20,55 +20,66 @@
 #   buffer is empty and the bunch is not pushed.
 # - Edges: the bunch moves and leaves as the plasma does. With a moving window its particles shift
 #   one column back with every shift, and one that falls behind the back edge, or crosses an x
-#   edge, is retired; across an open axis 2 it is retired as the plasma is. A retired witness
+#   edge, is retired; across an open transverse axis it is retired as the plasma is. A retired witness
 #   leaves the mean, which then jumps between neighbouring parameter values, so an objective needs
 #   a bunch that stays inside ([`witness_alive`](@ref) counts the ones left).
 
 """
-    WitnessBunch(; inject, region, momentum, center, length, width = Inf, ppc = (1, 1), charge = -1, mass = 1)
+    WitnessBunch(; inject, region, momentum, center, length, width = Inf, ppc = (1, …, 1), charge = -1, mass = 1)
 
-A bunch of test particles of an [`EMProblem`](@ref) at N = 2 (WP-047), in A1 units. At the time
-`inject` (1/ω₀; the start of the first step at or after it) the particles appear on a lattice of
-`ppc = (p₁, p₂)` points per cell, `((k₁ − ½)/p₁, (k₂ − ½)/p₂)` in each cell, on every cell whose
-centre lies inside `region = ((x_lo, x_hi), (y_lo, y_hi))` (c/ω₀; with a moving window in window
-coordinates, measured from its back edge at the injection, so the lattice is a set of fixed phases
-behind the laser), with the momentum `momentum` (u = γv in mₑc, three components, or a number
-along axis 1). They carry `charge` (e) and `mass` (mₑ) but deposit nothing: test particles.
+A bunch of test particles of an [`EMProblem`](@ref) at N = 2 or 3 (WP-047, WP-093), in A1 units;
+N is the number of axes of `region`. At the time `inject` (1/ω₀; the start of the first step at or
+after it) the particles appear on a lattice of `ppc = (p₁, …, p_N)` points per cell,
+`(k_d − ½)/p_d` along each axis of each cell, on every cell whose centre lies inside
+`region = ((x_lo, x_hi), (y_lo, y_hi))`, with `(z_lo, z_hi)` more at N = 3 (c/ω₀; with a moving
+window in window coordinates, measured from its back edge at the injection, so the lattice is a set
+of fixed phases behind the laser), with the momentum `momentum` (u = γv in mₑc, three components,
+or a number along axis 1). They carry `charge` (e) and `mass` (mₑ) but deposit nothing: test
+particles.
 
 Each particle has an averaging weight `exp(−((x − center[1])/length)²/2 − ((y − center[2])/width)²/2)`,
-a Gaussian bunch of rms `length` and `width` sampled on the fixed lattice: `center`, `length` and
-`width` are the bunch's parameters and enter through the weights only (A3); `width = Inf` weighs
-every row alike. The objective is the weighted mean energy gain, [`witness_energy_gain`](@ref).
-`inject`, `region` and `ppc` are configuration (plain numbers); `momentum`, `center`, `length`,
-`width`, `charge` and `mass` may be `Dual`s.
+at N = 3 with `((z − center[3])/width)²/2` more in the exponent: a Gaussian bunch of rms `length`
+along axis 1 and `width` along every transverse axis (round at N = 3), sampled on the fixed
+lattice. `center`, `length` and `width` are the bunch's parameters and enter through the weights
+only (A3); `width = Inf` weighs every row alike. The objective is the weighted mean energy gain,
+[`witness_energy_gain`](@ref). `inject`, `region` and `ppc` are configuration (plain numbers);
+`momentum`, `center`, `length`, `width`, `charge` and `mass` may be `Dual`s.
 """
-struct WitnessBunch{T}
+struct WitnessBunch{T,N}
     inject::Float64
-    region::NTuple{2,NTuple{2,Float64}}
-    ppc::NTuple{2,Int}
+    region::NTuple{N,NTuple{2,Float64}}
+    ppc::NTuple{N,Int}
     momentum::NTuple{3,T}
-    center::NTuple{2,T}
+    center::NTuple{N,T}
     length::T
     width::T
     charge::T
     mass::T
 end
 
-function WitnessBunch(; inject::Real, region, momentum, center, length, width = Inf, ppc = (1, 1), charge = -1, mass = 1)
+# The bunch from its fields in element type `T`, its N from the region's axes.
+WitnessBunch{T}(inject, region::NTuple{N,NTuple{2,Float64}}, ppc, momentum, center, length, width, charge, mass) where {T,N} =
+    WitnessBunch{T,N}(inject, region, ppc, momentum, center, length, width, charge, mass)
+
+function WitnessBunch(; inject::Real, region, momentum, center, length, width = Inf, ppc = map(_ -> 1, Tuple(region)), charge = -1, mass = 1)
     u = momentum isa Number ? (momentum, zero(momentum), zero(momentum)) : Tuple(momentum)
     T = promote_type(map(typeof, u)..., map(typeof, Tuple(center))..., typeof(length), typeof(width), typeof(charge), typeof(mass))
     T <: AbstractFloat || (T = promote_type(T, Float64))   # integer inputs
-    reg = (Float64.(Tuple(region[1])), Float64.(Tuple(region[2])))
+    N = Base.length(region)
+    N in (2, 3) || throw(ArgumentError("a witness region has a range (lo, hi) per axis of a 2D or 3D box, got $region"))
+    reg = map(r -> Float64.(Tuple(r)), Tuple(region))
+    all(r -> Base.length(r) == 2, reg) || throw(ArgumentError("a witness region has a range (lo, hi) per axis, got $region"))
     pp = Int.(Tuple(ppc))
     Base.length(u) == 3 || throw(ArgumentError("a witness momentum has three components or is a number along axis 1, got $momentum"))
-    Base.length(center) == 2 || throw(ArgumentError("a witness bunch has a centre per axis, got $center"))
-    all(r -> r[1] < r[2], reg) || throw(ArgumentError("the witness region $region needs lo < hi on both axes"))
-    all(>(0), pp) || throw(ArgumentError("the witness lattice needs ppc > 0 on both axes, got $ppc"))
+    Base.length(center) == N || throw(ArgumentError("a witness bunch has a centre per axis of its region ($N), got $center"))
+    Base.length(pp) == N || throw(ArgumentError("the witness lattice has ppc per axis of its region ($N), got $ppc"))
+    all(r -> r[1] < r[2], reg) || throw(ArgumentError("the witness region $region needs lo < hi on every axis"))
+    all(>(0), pp) || throw(ArgumentError("the witness lattice needs ppc > 0 on every axis, got $ppc"))
     inject >= 0 && isfinite(inject) || throw(ArgumentError("the witness injection time must be finite and ≥ 0, got $inject"))
     length > 0 && width > 0 || throw(ArgumentError("the witness bunch needs a positive length and width, got $length and $width"))
     all(isfinite, u) || throw(ArgumentError("the witness momentum must be finite, got $momentum"))
     mass > 0 || throw(ArgumentError("the witness mass must be positive, got $mass"))
-    return WitnessBunch{T}(Float64(inject), reg, pp, T.(u), T.(Tuple(center)), T(length), T(width), T(charge), T(mass))
+    return WitnessBunch{T,N}(Float64(inject), reg, pp, T.(u), T.(Tuple(center)), T(length), T(width), T(charge), T(mass))
 end
 
 "The bunch in element type `T` (the problem's)."
@@ -78,18 +89,18 @@ witness_as(::Type{T}, b::WitnessBunch) where {T} =
 """
     WitnessFrame
 
-The witness bunch placed on a grid by the state: its particles (a `Species{2}` of the bunch's
+The witness bunch placed on a grid by the state: its particles (a `Species{N}` of the bunch's
 charge and mass, one slot per lattice point, with the push's extras; `w` holds the averaging
 weights), the injection step `kinj`, the first cell `c0` and the cells `nc` of the lattice per
 axis, and its points per cell. The bunch's momentum and weights' parameters are not here
 ([`WitnessParams`](@ref)).
 """
-struct WitnessFrame{S}
+struct WitnessFrame{S,N}
     species::S
     kinj::Int
-    c0::NTuple{2,Int32}
-    nc::NTuple{2,Int32}
-    ppc::NTuple{2,Int32}
+    c0::NTuple{N,Int32}
+    nc::NTuple{N,Int32}
+    ppc::NTuple{N,Int32}
 end
 
 "The cells `(first, count)` of one axis whose centre lies inside `[lo, hi]`, for cell size `h` and `n` cells."
@@ -111,54 +122,48 @@ function witness_step(inject, dt)
 end
 
 "A bunch's placement on a grid for a time step, host integers: the injection step, the first cell and the cells of the lattice per axis, and its points per cell."
-function witness_placement(b::WitnessBunch, grid, dt)
+function witness_placement(b::WitnessBunch{<:Any,N}, grid, dt) where {N}
     h = cellsize(grid)
     n = ncells(grid)
-    (a1, n1), (a2, n2) = ntuple(d -> witness_cells(b.region[d]..., h[d], n[d], d), Val(2))
-    return (witness_step(b.inject, dt), Int32.((a1, a2)), Int32.((n1, n2)), Int32.(b.ppc))
+    cells = ntuple(d -> witness_cells(b.region[d]..., h[d], n[d], d), Val(N))
+    return (witness_step(b.inject, dt), Int32.(map(first, cells)), Int32.(map(last, cells)), Int32.(b.ppc))
 end
 
-function WitnessFrame(problem::EMProblem{2,T}, grid, backend) where {T}
+function WitnessFrame(problem::EMProblem{N,T}, grid, backend) where {N,T}
     b = problem.witness
     kinj, c0, nc, ppc = witness_placement(b, grid, problem.dt)
     kinj <= problem.nsteps ||
         throw(ArgumentError("the witness bunch is injected at step $kinj (t = $(b.inject)), after the $(problem.nsteps) steps of the problem"))
-    s = Species(backend, T, prod(nc) * prod(b.ppc); q = b.charge, m = b.mass, N = 2, extras = flux_extras(T, 2))
+    s = Species(backend, T, prod(nc) * prod(b.ppc); q = b.charge, m = b.mass, N, extras = flux_extras(T, N))
     return WitnessFrame(s, kinj, c0, nc, ppc)
 end
 
-# One work item per lattice point, in lattice order (cells along axis 1 fastest, then rows; within
-# a cell axis 1 fastest): its cell, offset, momentum and averaging weight, and alive.
-@kernel function inject_witness_kernel!(s, c0::NTuple{2,Int32}, nc::NTuple{2,Int32}, ppc::NTuple{2,Int32}, dx, u0, center, len, wid)
+# One work item per lattice point, in lattice order (cells along axis 1 fastest, then axis 2, then
+# axis 3; within a cell the same): its cell, offset, momentum and averaging weight, and alive. The
+# cells and the in-cell points are the dopant lattice's (`lattice_cell`, `lattice_offset`).
+@kernel function inject_witness_kernel!(s, c0::NTuple{N,Int32}, nc::NTuple{N,Int32}, ppc::NTuple{N,Int32}, dx, u0, center, len, wid) where {N}
     i = Int32(@index(Global, Linear))
     T = eltype(s.w)
-    K = ppc[1] * ppc[2]
+    K = lattice_points(ppc)
     cell = (i - Int32(1)) ÷ K
     k = (i - Int32(1)) % K
-    c1 = c0[1] + cell % nc[1]
-    c2 = c0[2] + cell ÷ nc[1]
-    δ1 = (T(k % ppc[1]) + one(T) / 2) / T(ppc[1])
-    δ2 = (T(k ÷ ppc[1]) + one(T) / 2) / T(ppc[2])
-    x1 = (T(c1 - Int32(1)) + δ1) * dx[1]
-    x2 = (T(c2 - Int32(1)) + δ2) * dx[2]
-    z1 = (x1 - center[1]) / len
-    z2 = (x2 - center[2]) / wid
+    c = (c0[1] + cell % nc[1], lattice_cell(cell ÷ nc[1], Base.tail(c0), Base.tail(nc))...)
+    δ = lattice_offset(T, k, ppc)
+    z = ntuple(d -> ((T(c[d] - Int32(1)) + δ[d]) * dx[d] - center[d]) / ifelse(d == 1, len, wid), Val(N))
+    set_position!(s, i, c, δ)
+    store_old!(s.extras, i, c, δ)
     @inbounds begin
-        s.cell[1][i] = c1
-        s.cell[2][i] = c2
-        s.offset[1][i] = δ1
-        s.offset[2][i] = δ2
-        s.extras.old_cell_1[i] = c1
-        s.extras.old_cell_2[i] = c2
-        s.extras.old_offset_1[i] = δ1
-        s.extras.old_offset_2[i] = δ2
         s.u[1][i] = u0[1]
         s.u[2][i] = u0[2]
         s.u[3][i] = u0[3]
-        s.w[i] = exp(-(z1 * z1 + z2 * z2) / 2)
+        s.w[i] = exp(-sum_squares(z) / 2)
         s.status[i] = ALIVE
     end
 end
+
+# z₁² + z₂² (+ z₃²), added in the axes' order (at N = 2 the bits of the 2D bunch).
+@inline sum_squares(z::NTuple{2}) = z[1] * z[1] + z[2] * z[2]
+@inline sum_squares(z::NTuple{3}) = z[1] * z[1] + z[2] * z[2] + z[3] * z[3]
 
 "The bunch's particles of a state, as a tuple: `()` without a bunch."
 witness_species(::Nothing) = ()
@@ -184,16 +189,16 @@ end
 # --- observables (host reads, outside a step) ---------------------------------------------------
 
 """
-    witness_gains(state::EMState{2}, params::EMParams) -> NamedTuple
+    witness_gains(state::EMState, params::EMParams) -> NamedTuple
 
 The witness bunch of `state` per particle, in lattice order (host arrays): the position `x` and
-`y` (c/ω₀; window coordinates with a moving window), the averaging weight `w`, the energy gain
+`y`, at N = 3 also `z` (c/ω₀; window coordinates with a moving window), the averaging weight `w`, the energy gain
 `gain = m·(γ − γ₀)` in mₑc² (γ of the momentum at the last half step, γ₀ that of the momentum the
 bunch was injected with, `params.witness.momentum`: the parameters of the run, since the state
 keeps no copy; written `m·(|u|² − |u₀|²)/(γ + γ₀)` against cancellation) and `alive`. An
 `ArgumentError` without a bunch. A device read: never inside a step.
 """
-function witness_gains(st::EMState{2}, p::EMParams)
+function witness_gains(st::EMState{N}, p::EMParams) where {N}
     w = witness_frame(st)
     w === nothing && throw(ArgumentError("the state has no witness bunch (EMProblem(...; witness = WitnessBunch(...)))"))
     p.witness === nothing && throw(ArgumentError("the parameters have no witness bunch, the state has one"))
@@ -209,13 +214,12 @@ function witness_gains(st::EMState{2}, p::EMParams)
         a2 = a * a + b * b + c * c
         m * (a2 - a0) / (sqrt(1 + a2) + g0)
     end
-    x = (Array(s.cell[1]) .- 1 .+ Array(s.offset[1])) .* h[1]
-    y = (Array(s.cell[2]) .- 1 .+ Array(s.offset[2])) .* h[2]
-    return (; x, y, w = Array(s.w), gain, alive)
+    position = NamedTuple{(:x, :y, :z)[1:N]}(ntuple(d -> (Array(s.cell[d]) .- 1 .+ Array(s.offset[d])) .* h[d], N))
+    return (; position..., w = Array(s.w), gain, alive)
 end
 
 """
-    witness_energy_gain(state::EMState{2}, params::EMParams; allow_lost = false) -> T
+    witness_energy_gain(state::EMState, params::EMParams; allow_lost = false) -> T
 
 The objective of WP-047: the weighted mean energy gain of the witness bunch's alive particles,
 `Σ wᵢ·gainᵢ / Σ wᵢ` over [`witness_gains`](@ref), in mₑc², summed on the host in lattice order
@@ -229,7 +233,7 @@ outside the region), or none is alive (before the injection, or all lost), it is
 `ArgumentError` too, never a NaN. So is an alive witness inside a moving window's back band
 ([`window_back_band`](@ref)), where observables are not to be read (#370).
 """
-function witness_energy_gain(st::EMState{2}, p::EMParams; allow_lost::Bool = false)
+function witness_energy_gain(st::EMState, p::EMParams; allow_lost::Bool = false)
     g = witness_gains(st, p)
     any(g.alive) || throw(ArgumentError("no witness particle is alive: the bunch is not injected yet, or every particle left the box"))
     allow_lost || all(g.alive) ||
@@ -248,12 +252,12 @@ function witness_energy_gain(st::EMState{2}, p::EMParams; allow_lost::Bool = fal
 end
 
 """
-    witness_alive(state::EMState{2}) -> Int
+    witness_alive(state::EMState) -> Int
 
 The number of the bunch's particles alive (all of them from the injection until one leaves the
 box). A device read: never inside a step.
 """
-function witness_alive(st::EMState{2})
+function witness_alive(st::EMState)
     w = witness_frame(st)
     w === nothing && throw(ArgumentError("the state has no witness bunch"))
     return count(==(ALIVE), Array(w.species.status))

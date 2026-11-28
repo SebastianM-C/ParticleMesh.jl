@@ -104,7 +104,7 @@ m4_kx(ω, ky, dx, dy, dt) = m4_kx(ω, ky, 0.0, dx, dy, 1.0, dt)
 using ParticleMeshElectromagnetic: incident_e, b_source!, time_factor
 
 """
-    tfsf_operator_error(st, prob, t; h = Δt/2) -> (; scattered, total)
+    tfsf_operator_error(st, prob, t; h = Δt/2, laser = the problem's) -> (; scattered, total)
 
 The M4 antenna's B corrections as an operator, independent of any run (WP-079): put the incident
 E of the state's antenna at the time `t` on the E columns ia − 1, ia and ia + 1 (from the
@@ -116,12 +116,13 @@ full field. `scattered` and `total` are the largest violations on the interior o
 |B| of the full field (`source_solver` applies the B source of an antenna placed for that
 solver instead, the Yee antenna in an M4 step). This checks every column, row, stagger, coefficient and region flag of
 the B corrections against the solver's own half step; the time of the incident wave enters both
-sides alike, so the plane-wave tests check that.
+sides alike, so the plane-wave tests check that. `laser` is the laser on the plane, the
+problem's unless given (a 3D ShapedLaser tabulated on the state's plane).
 """
-function tfsf_operator_error(st, prob, t; h = st.dt / 2, source_solver = nothing)
-    a = Antenna(only(params(prob).lasers), only(antenna_planes(st)))
+function tfsf_operator_error(st, prob, t; h = st.dt / 2, source_solver = nothing, laser = only(params(prob).lasers))
+    a = Antenna(laser, only(antenna_planes(st)))
     # the antenna whose B source is applied: the state's, or one placed for `source_solver` (Yee's two corrections in an M4 step)
-    as = source_solver === nothing ? a : Antenna(only(params(prob).lasers), AntennaPlane(only(prob.lasers).position, st.grid, prob.dt, source_solver))
+    as = source_solver === nothing ? a : Antenna(laser, AntennaPlane(only(prob.lasers).position, st.grid, prob.dt, source_solver))
     T = typeof(a.xa)
     grid = st.grid
     g, n = guards(grid), ncells(grid)
@@ -152,17 +153,21 @@ end
 using ParticleMeshElectromagnetic: antenna_d, laser_field, shaped_field
 
 """
-    incident_column_error(st, prob, t) -> max relative difference
+    incident_column_error(st, prob, t; laser = the problem's, reference = laser) -> max relative difference
 
 The incident E that the M4 antenna's B corrections read on the columns ia + m (m = −1, 0, 1),
 against the beam written out here from its definition: the laser's field at x_a + mΔx (its
 distance from the focus shifted by mΔx) a time m·kΔx later, k M4's wavenumber of ω₀
 (`m4_wavenumber`, not the antenna's stored half-step phase), Ey on the rows' centres and Ez on
 their nodes, polarized by cos θ and sin θ. Over every array row (and layer), both components,
-relative to the largest |E| of each column.
+relative to the largest |E| of each column. `laser` is the laser on the plane and `reference` the
+one whose field is written out (for a tabulated 3D ShapedLaser the untabulated laser, whose
+`laser_field` is the pupil sum at the point). The reference is the field of one image, so for a
+tabulated laser the plane must hold no row on a seam's antipode, where the table has the mean of
+two images (`image_mean`; T-1266 holds those numbers against the pupil sum itself).
 """
-function incident_column_error(st, prob, t)
-    a = Antenna(only(params(prob).lasers), only(antenna_planes(st)))
+function incident_column_error(st, prob, t; laser = only(params(prob).lasers), reference = laser)
+    a = Antenna(laser, only(antenna_planes(st)))
     l = a.laser
     T = typeof(a.xa)
     dx, dt = a.dx[1], T(prob.dt)
@@ -183,7 +188,7 @@ function incident_column_error(st, prob, t)
             e = if N == 3
                 dy = antenna_d(a, 2, l.center[1], j[1], C == 2 ? h : zero(T))
                 dz = antenna_d(a, 3, l.center[2], j[2], C == 3 ? h : zero(T))
-                laser_field(l, ξ, dy, dz, s)[1]
+                laser_field(reference, ξ, dy, dz, s)[1]
             elseif l isa ShapedLaser
                 shaped_field(l, ξ, antenna_dy(a, j[1], C == 2 ? h : zero(T)), time_factor(l, s))[1]
             else
@@ -200,3 +205,18 @@ end
 "`n` with the field solver `solver`, every other choice kept (a case's numerics, which name no solver, run with M4)."
 with_solver(n::EMNumerics, solver) = EMNumerics(n.shape, n.mode, n.pusher, solver, n.workgroupsize, n.current, n.filter, n.absorber,
                                                 n.back_absorber, n.headroom, n.resort, n.node_bins, n.gather)
+
+using ParticleMeshElectromagnetic: faraday_stencil
+
+"`conserved_energy_3d` of M4 (m4_3d.jl, m4_zernike_3d.jl): the half steps of B by M4's difference."
+function conserved_energy_m4_3d(f, grid, dt; cols)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    st = faraday_stencil(M4(), grid, dt)
+    fp, fm = map(copy, f), map(copy, f)
+    m4_b_half!(fp, grid, dt / 2, st)
+    m4_b_half!(fm, grid, -dt / 2, st)
+    I = (g .+ cols, (g + 1):(g + n[2]), (g + 1):(g + n[3]))
+    W = sum(c -> sum(abs2, Array(c)[I...]), (f.Ex, f.Ey, f.Ez))
+    W += sum(k -> sum(Array(getfield(fp, k))[I...] .* Array(getfield(fm, k))[I...]), (:Bx, :By, :Bz))
+    return W * prod(h) / 2
+end

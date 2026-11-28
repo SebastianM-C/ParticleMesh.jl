@@ -241,7 +241,7 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   tuple of arrays): the `species` (the engine's `Species`, a tuple; of each the cells, offsets,
   momenta, weights, status and count), the `fields` of [`field_layout`](@ref)`(Val(N))` with
   guards, and at N = 2 and 3 the convolution fields of a PML (in `modifiers`) and in `aux` the
-  window's counters `lost` and `fast` and a dopant's atoms, populations and electrons, and at N = 2 the witness bunch's particles. With the
+  window's counters `lost` and `fast` and a dopant's atoms, populations and electrons, and the witness bunch's particles. With the
   step index and the parameters they are a complete restart ([`snapshot`](@ref),
   [`restore!`](@ref)).
 - The cache: the kinetic energy buffer `K` for the next observation (at N = 1 the kinetic energy
@@ -262,8 +262,8 @@ allocated once from a problem and its numerics; no parameter of [`EMParams`](@re
   delay, the window's shift count and the witness's injection step are made for it), the `setup`
   of each species (name, particles per cell, Philox stream, kind of momentum distribution), each
   species' charge and mass, and at N = 2 and 3 in `aux` the [`WindowFrame`](@ref) and of the
-  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity, and at N = 2 the
-  [`WitnessFrame`](@ref) (each `nothing` where the problem has none; the witness at N = 3). `aux`
+  [`IonizationFrame`](@ref) the lattice, the birth cadence and the capacity, and the
+  [`WitnessFrame`](@ref) (each `nothing` where the problem has none). `aux`
   is empty at N = 1.
 - `modifiers`: the tuple of [`FieldModifier`](@ref)s that the mesh solve walks
   ([`solve_fields!`](@ref)), in the order [`field_modifiers`](@ref) gives them: the placed
@@ -352,14 +352,16 @@ the workspaces, the fields, and the default [`HistoryRecorder`](@ref) for `probl
 ([`RECORD_GROUPS`](@ref); `record = ()` records nothing). The particles are loaded by [`initialize!`](@ref). Throws an
 `ArgumentError` naming the limit unless `problem.dt < courant_limit(numerics.solver, grid)`
 ([`check_courant`](@ref)): the solver is then stable and every particle moves less than one cell
-per step, as `deposit_flux!` needs.
+per step, as `deposit_flux!` needs. The current is [`Esirkepov`](@ref)`()` or
+[`NoCurrent`](@ref)`()`; an absorber is refused, since the 1D box has no transverse axis to open
+and no moving window.
 """
 function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(), every::Integer = 1, record = RECORD_GROUPS) where {T}
-    numerics.current isa Esirkepov ||
-        throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
+    numerics.current isa Union{Esirkepov,NoCurrent} ||
+        throw(ArgumentError("a 1D state takes current = Esirkepov() or NoCurrent() in EMNumerics, got $(numerics.current)"))
     numerics.absorber === nothing || throw(ArgumentError("the 1D box is periodic: EMNumerics takes no absorber at N = 1"))
     numerics.back_absorber === nothing ||
-        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D and 3D)"))
+        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (it belongs to the moving window, which is 2D and 3D)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
@@ -461,14 +463,14 @@ end
 function check_aux_params(st::EMState, p::EMParams)
     antennas, window = antenna_planes(st), window_frame(st)
     length(p.lasers) == length(antennas) ||
-        throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state$(ndims(st) == 1 ? " (laser antennas are implemented at N = 2 only)" : "")"))
+        throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state$(ndims(st) == 1 ? " (laser antennas are implemented at N = 2 and 3 only)" : "")"))
     foreach((l, a) -> check_plane(a, l), p.lasers, antennas)
     window === nothing || check_window_antennas(window, back_absorber(st), map(Antenna, p.lasers, antennas))
     (p.witness === nothing) == (witness_frame(st) === nothing) ||
         throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
     check_ionization_params(ionization_frame(st), p.ionization)
     p.profile === nothing || window !== nothing ||
-        throw(ArgumentError("a density profile is implemented with the moving window only"))
+        throw(ArgumentError(PROFILE_NEEDS_WINDOW))
     window === nothing || check_window_params(window, p)
     return nothing
 end
@@ -632,8 +634,18 @@ transverse_currents(::Val{1}) = (; quantity_y = CurrentY(), quantity_z = Current
 transverse_currents(::Val{2}) = (; quantity_z = CurrentZ())
 transverse_currents(::Val{3}) = (;)
 
-# The current of the step, by the numerics' choice: none, or the charge-conserving one.
+# The current of the step, by the numerics' choice: none, or the charge-conserving one. Without a
+# current nothing in the step at N ≥ 2 reads the particles' order. At N = 1 the kinetic energy is
+# a deposition (`kinetic!`), which in a mode that sorts reads the segments of the step's sort, so
+# the 1D step sorts here as the step with a current does (T-1257).
 current!(::NoCurrent, st::EMState) = st
+function current!(::NoCurrent, st::EMState{1})
+    map(deposited_species(st), deposited_workspaces(st)) do s, ws
+        sorts(st, s) && resort_by_cell!(s, st.grid, ws; workgroupsize = st.numerics.workgroupsize)
+        return nothing
+    end
+    return st
+end
 
 # Sort where the deposition mode needs it (the old positions in the extras follow the
 # particles), zero Jx, Jy, Jz, add every species' current with the engine's `deposit_flux!`
@@ -677,11 +689,11 @@ Step `k` (from t = (k−1)Δt to kΔt, Δt the state's), a function of the state
 ([`EMParams`](@ref)) with every buffer in the state and no host-side branch on device data
 (§0.4). One method for N = 1, 2 and 3, the 1D case being the case of one resolved axis; what a
 problem does not have (a witness bunch, a dopant, a moving window, an open axis, field modifiers: none of
-them at N = 1, no witness at N = 3) is `nothing` or empty and costs nothing. First the `observer` sees the state at
+them at N = 1) is `nothing` or empty and costs nothing. First the `observer` sees the state at
 the start of the step ([`observe!`](@ref): Eⁿ, Bⁿ and the kinetic energy at n − 1/2 that the
 previous step left in `K`; `nothing` observes nothing); then the module's step order:
 
-1. a witness bunch (WP-047, [`WitnessBunch`](@ref)) is injected at the start of its step with the
+1. a witness bunch (WP-047, WP-093, [`WitnessBunch`](@ref)) is injected at the start of its step with the
    parameters' momentum and weights; from then on it is pushed with the species and moved and
    retired at the edges as they are, and deposits nothing; a dopant (WP-059,
    [`FieldIonization`](@ref)) is ionized by the rates of the parameters' levels in Eⁿ at its
@@ -699,7 +711,8 @@ previous step left in `K`; `nothing` observes nothing); then the module's step o
    species' current with the engine's `deposit_flux!` (charge-conserving along the resolved axes,
    `q·w·u/γ` along the others: Jy and Jz at N = 1, Jz at N = 2, none at N = 3), fold the guards, then apply the
    numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`).
-   `NoCurrent()` (N = 2 and 3): J stays as it is;
+   `NoCurrent()`: J stays as it is (at N = 1 the step still sorts where the mode needs it, for
+   the kinetic energy's deposition);
 5. with an open axis 2 (WP-027), retire the particles that crossed the box edge, after the current
    of their last move is deposited;
 6. the mesh solve of the numerics, [`solve_fields!`](@ref) (Yee: B half step, E full step with J,

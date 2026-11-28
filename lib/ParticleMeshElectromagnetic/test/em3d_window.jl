@@ -477,11 +477,17 @@ end
     @test_throws ArgumentError mk((ep,); boundaries = (:window, :periodic, :periodic), window = w)
     @test_throws ArgumentError window_plasma_3d(T; start = 1.0, thermal = (0.01, 0.01, 0.01))
     @test window_plasma_3d(T; start = 1.0) isa EMProblem{3}
-    @test_throws ArgumentError EMState(window_plasma_3d(T), EMNumerics(; filter = BinomialFilter(1)))
+    # the filter's passes move the injection column back, as at N = 2 (T-477), and a window too
+    # short to keep plasma behind its front margin is refused
+    filt = EMState(window_plasma_3d(T), EMNumerics(; filter = BinomialFilter(2)))
+    @test injection_column(filt.aux.window) == ncells(filt.grid)[1] - 5
+    @test injection_column(EMState(window_plasma_3d(T), EMNumerics()).aux.window) == ncells(filt.grid)[1] - 3
+    @test_throws "filter passes" EMState(window_plasma_3d(T; cells = (8, 6, 6)), EMNumerics(; filter = BinomialFilter(4)))
+    @test EMState(window_plasma_3d(T; cells = (8, 6, 6)), EMNumerics(; filter = BinomialFilter(3))) isa EMState{3}
     @test_throws ArgumentError EMState(window_plasma_3d(T), EMNumerics(; back_absorber = AbsorbingLayer(; cells = 4, strength = 1)))
     @test_throws "needs a moving window" EMState(plasma_step_3d(T; cells = (16, 7, 6)), EMNumerics(; back_absorber = PML(; cells = 4)))   # no window
     @test_throws ArgumentError EMState(window_plasma_3d(T; cells = (8, 6, 6)), EMNumerics(; back_absorber = PML(; cells = 4)))   # 2·4 ≥ 8
-    # the fewest columns the guards allow leave plasma columns behind the front margin (the 2D check of a too short window needs filter passes)
+    # without passes the fewest columns the guards allow leave plasma columns behind the front margin
     @test injection_column(EMState(window_plasma_3d(T; cells = (6, 6, 6)), EMNumerics()).aux.window) == 3
     wp = window_plasma_3d(T)
     @test_throws ArgumentError initialize!(EMState(wp, EMNumerics()), wp; density_at = :cell_centre)

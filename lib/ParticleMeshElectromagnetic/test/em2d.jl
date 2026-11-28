@@ -414,7 +414,8 @@ end
     prob = plasma_2d(T)
     @test_throws ArgumentError EMState(prob, EMNumerics(; current = nothing))                # no current choice at N = 2
     p1 = test_particles_1d(T; dt = 1 // 10, nsteps = 2)
-    @test_throws ArgumentError EMState(p1, EMNumerics(; current = NoCurrent()))              # NoCurrent() at N = 1
+    @test_throws ArgumentError EMState(p1, EMNumerics(; current = nothing))                  # no current choice at N = 1
+    @test EMState(p1, EMNumerics(; current = NoCurrent())) isa EMState{1}                    # NoCurrent() at every N (WP-093, T-1257)
     sd1 = SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), 1, 4, zero3(T), zero3(T), 1)
     sd2 = SpeciesDescription{T}(:e, -one(T), one(T), one(T), zero(T), (1, 0), (2, 2), zero3(T), zero3(T), 1)
     @test_throws ArgumentError EMProblem("x", (T(1), T(1)), (8, 8), T(1) / 20, 2, (sd1,), 1, (1, 0))   # a 1D species in 2D
