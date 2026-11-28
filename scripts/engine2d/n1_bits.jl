@@ -62,7 +62,7 @@ function main()
     end
     axislegend(ax)
     save_plot(dir, "n1_timing_t$nt", fig, Dict("rows" => rows, "threads" => nt, "cpu" => cpu_model()))
-    open(io -> JSON.print(io, Dict("t218_digests" => digests, "commit" => RunManifest.git_commit(REPO).commit), 2),
+    open(io -> JSON.print(io, Dict("t218_digests" => digests, "commit" => RunManifests.git_commit(REPO).commit), 2),
          joinpath(dir, "n1_digests.json"), "w")
     println("n1_bits: outputs in ", relpath(dir, REPO))
     return dir

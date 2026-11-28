@@ -1088,3 +1088,280 @@ end
     @test start_points(Dict{String,Any}("from" => "", "cap" => "cetal25")) == starts_of(coords_of(Dict{String,Any}("cap" => "cetal25")))
     @test_throws ErrorException start_points(Dict{String,Any}("from" => mktempdir()))
 end
+
+include(joinpath(@__DIR__, "..", "pulse2d_opt.jl"))
+include(joinpath(@__DIR__, "..", "pulse2d_opt_report.jl"))
+
+"WP-087's objective at λ₀/8 read at t = 190, with the trapping weight of `trapped_small`; `phase` the carrier phase of the laser (0 in the case)."
+function pulse_small(x; phase = 0.0, kw...)
+    phase == 0 && return pulse_objective(x; ppl = 8, t_end = 190.0, capacity = 60_000, rise = (0.5, 3.0), fade = BCASE.fade, kw...)
+    sh = pulse_shape(x)
+    prob = born_problem(pulse_a0(sh), PCASE.density * TCASE.dopant_fraction; ppl = 8, t_end = 190.0, capacity = 60_000, density = PCASE.density,
+                        delay = PCASE.delay, focus = x[1], shape = (; sh..., phase))
+    return trapped_energy(run_to_end(start_of(prob; ppl = 8, ny = 1)); rise = (0.5, 3.0), fade = BCASE.fade)
+end
+
+"The 2⁵ corners of `PULSE_BOX`."
+pulse_corners() = [[isodd(k >> (i - 1)) ? PULSE_BOX.hi[i] : PULSE_BOX.lo[i] for i in 1:5] for k in 0:31]
+
+@testset "T-1180 the pulse's shape: a flat-top focus as wide as the base Gaussian's, the free modes P₃ and P₄ and a spectral phase that fits the window [A3, WP-087]" begin
+    @test PCASE.names == ("focus", "aberration3", "aberration4", "gdd", "tod") && PCASE.modes == (3, 4)
+    @test all(PULSE_BOX.lo .< collect(PCASE.x0) .< PULSE_BOX.hi) && PCASE.x0 == (80.0, 0.0, 0.0, 0.0, 0.0)
+    @test PULSE_BOX.scale == collect(PCASE.scale)
+    # the unaberrated focus has the base Gaussian's intensity FWHM, and the near field is flat with a negligible edge
+    @test focal_fwhm(PCASE.na) ≈ TCASE.x0[2] * sqrt(2 * log(2)) rtol = 1e-5
+    @test focal_fwhm(2 * PCASE.na) ≈ focal_fwhm(PCASE.na) / 2 rtol = 1e-9                    # the focus scales as 1/na
+    b0 = pulse_shape(collect(PCASE.x0)).profile
+    @test PulseShapes.pupil_amplitude(b0.amplitude, 1.0) < 1e-4 && PulseShapes.pupil_amplitude(b0.amplitude, 0.5) > 0.95
+    # the modes: P₁ and P₂ stay zero, P₃ and P₄ are the free numbers; the spectral phase is the envelope's
+    sh = pulse_shape([90.0, 0.1, -0.2, 3.0, -7.0])
+    @test sh.profile.aberrations === (0.0, 0.0, 0.1, -0.2)
+    @test (sh.envelope.duration, sh.envelope.gdd, sh.envelope.tod, sh.envelope.fod) === (6.0, 3.0, -7.0, 0.0)
+    @test PulseShapes.wavefront(sh.profile, 0.3) ≈ 0.1 * PulseShapes.legendre(3, 0.3) - 0.2 * PulseShapes.legendre(4, 0.3) rtol = 1e-14
+    @test strehl(pulse_shape(collect(PCASE.x0))) ≈ 1 rtol = 1e-10
+    @test strehl(pulse_shape([80.0, 0.0, 0.05, 0.0, 0.0])) ≈ exp(-(2π * 0.05)^2 / 9) rtol = 0.01  # Maréchal: rms of P₄ over the pupil is 1/3, the flat-top near the uniform pupil
+    @test strehl(sh) < 1
+    xd = [ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32(j == i), 5)) for (i, v) in enumerate((90.0, 0.1, -0.2, 3.0, -7.0))]
+    shd = pulse_shape(xd)
+    @test shd.profile.na isa ForwardDiff.Dual{Nothing,Float32,5} && shd.envelope.tod === xd[5]
+    # a Float32 dual stays one through a₀ and the problem
+    @test pulse_a0(shd; energy = Float32(budget(1.9))) isa ForwardDiff.Dual{Nothing,Float32,5}
+    @test eltype(params(pulse_problem(xd; energy = Float32(budget(1.9)), ppl = 8, float = Float32))) === ForwardDiff.Dual{Nothing,Float32,5}
+    @test eltype(params(pulse_problem(Float32.([90.0, 0.1, -0.2, 3.0, -7.0]); energy = Float32(budget(1.9)), ppl = 8, float = Float32))) === Float32
+    @test_throws ArgumentError pulse_shape([80.0, 0.0, 0.0])
+    # every corner of the box starts after t = 0 and ends before the window passes the antenna; twice the GDD does not
+    for x in pulse_corners()
+        @test check_pulse_time(pulse_shape(x)) === nothing
+    end
+    @test_throws ArgumentError check_pulse_time(pulse_shape([80.0, 0.0, 0.0, 30.0, 0.0]))
+    # each half of the condition alone, and the six durations: the transform-limited pulse spans ±36
+    s0 = pulse_shape(collect(PCASE.x0))
+    @test check_pulse_time(s0; delay = 36.0, start = 72.0) === nothing
+    @test_throws ArgumentError check_pulse_time(s0; delay = 35.5, start = 108.0)   # not started at t = 0
+    @test_throws ArgumentError check_pulse_time(s0; delay = 54.0, start = 89.5)    # not ended when the window passes
+    @test_throws ArgumentError pulse_problem([80.0, 0.0, 0.0, 30.0, 0.0]; ppl = 8)
+end
+
+@testset "T-1181 the energy is the budget at every point with no derivative in any parameter, and the antenna launches it [A3, WP-087]" begin
+    E = budget(PCASE.a0_energy)
+    a0 = pulse_a0(pulse_shape(collect(PCASE.x0)))
+    @test a0 ≈ 1.9 rtol = 2e-3                                        # the flat-top of the Gaussian's FWHM has the Gaussian's a₀ to 0.1 %
+    for x in [pulse_corners(); [collect(PCASE.x0), random_start(1), random_start(2)]]
+        l = pulse_problem(x; ppl = 8).lasers[1]
+        @test l isa ShapedLaser
+        @test laser_energy(l) ≈ E rtol = 8eps()
+        @test l.a0 == a0                                              # a phase moves nothing of the energy
+    end
+    xd = [ForwardDiff.Dual{Nothing}(v, ntuple(j -> Float64(j == i), 5)) for (i, v) in enumerate(random_start(3))]
+    ld = pulse_problem(xd; ppl = 8).lasers[1]
+    @test all(iszero, ForwardDiff.partials(laser_energy(ld))) && all(iszero, ForwardDiff.partials(ld.a0))
+    @test ForwardDiff.partials(ld.focus) == ForwardDiff.partials(xd[1])
+    # the share launched on the box's rows, against a fine quadrature of |U|² over the interior, and for the Gaussian
+    p0 = pulse_problem(collect(PCASE.x0); ppl = 16)
+    lf = launched_fraction(p0)
+    b = p0.lasers[1].profile
+    ξ = p0.lasers[1].position - p0.lasers[1].focus
+    half = (BCASE.rows - 2 * BCASE.pml_y) * BCASE.dy / 2
+    ys = range(-half, half; length = 20_001)
+    fine = sum(abs2(first(PulseShapes.profile(b, ξ, y))) for y in ys) * step(ys) / first(PulseShapes.profile_moments(b))
+    @test lf.interior ≈ fine rtol = 1e-4
+    # and at an aberrated point, odd and even modes, focused away from the base, where |U| has no mirror in y or ξ
+    pa = pulse_problem([100.0, 0.25, -0.2, 0.0, 0.0]; ppl = 16)
+    ba, ξa = pa.lasers[1].profile, pa.lasers[1].position - pa.lasers[1].focus
+    finea = sum(abs2(first(PulseShapes.profile(ba, ξa, y))) for y in ys) * step(ys) / first(PulseShapes.profile_moments(ba))
+    @test launched_fraction(pa).interior ≈ finea rtol = 1e-5
+    yb = range(-BCASE.rows * BCASE.dy / 2, BCASE.rows * BCASE.dy / 2; length = 20_001)
+    @test launched_fraction(pa).box ≈ sum(abs2(first(PulseShapes.profile(ba, ξa, y))) for y in yb) * step(yb) / first(PulseShapes.profile_moments(ba)) rtol = 1e-5
+    @test 0.99 < lf.interior < lf.box < 1
+    @test launched_fraction(pulse_problem(collect(PCASE.x0); ppl = 32, ny = 2)).interior ≈ lf.interior rtol = 1e-4
+    g = born_problem(1.0, 0.0; ppl = 16, shape = (; profile = GaussianBeam(; waist = 10.0), envelope = GaussianEnvelope(; duration = 6.0)))
+    @test launched_fraction(g).interior > 1 - 1e-5
+    @test minimum(launched_fraction(pulse_problem(x; ppl = 16)).interior for x in pulse_corners()) > 0.96   # the most aberrated corners lose up to 3.5 %
+end
+
+@testset "T-1182 a ShapedLaser of the Gaussian's profile and envelope is the case's GaussianLaser, and the shape's duals reach the problem [WP-066, WP-087]" begin
+    a0 = a0_for_energy(6.0, 10.0)
+    kw = (; ppl = 8, t_end = 190.0, capacity = 60_000, density = 0.072)
+    g = born_problem(a0, 0.072 * 0.01; kw...)
+    s = born_problem(a0, 0.072 * 0.01; kw..., shape = (; profile = GaussianBeam(; waist = 10.0), envelope = GaussianEnvelope(; duration = 6.0)))
+    @test g.lasers[1] isa GaussianLaser && s.lasers[1] isa ShapedLaser
+    @test s.lasers[1].position == g.lasers[1].position && s.lasers[1].center == g.lasers[1].center
+    J(p) = trapped_energy(run_to_end(start_of(p; ppl = 8, ny = 1)); rise = (0.5, 3.0), fade = BCASE.fade)
+    Jg, Js = J(g), J(s)
+    @test Jg > 1e-3
+    @test Js ≈ Jg rtol = 1e-12                                         # equal to roundoff here
+    d = ForwardDiff.Dual{Nothing}(0.1f0, 1.0f0)
+    p = born_problem(1.0f0, 0.0f0; ppl = 8, float = Float32, shape = (; profile = PupilBeam(; na = 0.3f0, aberrations = (0.0f0, 0.0f0, d)), envelope = GaussianEnvelope(; duration = 6.0f0)))
+    @test p.lasers[1].a0 isa ForwardDiff.Dual{Nothing,Float32,1} && p.lasers[1].profile.aberrations[3] === d
+end
+
+@testset "T-1183 ForwardDiff through the run gives the objective's gradient in all five parameters of the shape [A3, A7, WP-087]" begin
+    x0 = random_start(1)
+    xd = [ForwardDiff.Dual{Nothing}(x0[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5]
+    Jd = pulse_small(xd)
+    J = pulse_small(x0)
+    @test ForwardDiff.value(Jd) ≈ J rtol = 64eps()
+    @test J > 1.0e-3
+    ad = ForwardDiff.partials(Jd)
+    for i in 1:5
+        h = PULSE_BOX.scale[i] * 2.0^-18
+        xp, xm = copy(x0), copy(x0)
+        xp[i] += h; xm[i] -= h
+        fd = (pulse_small(xp) - pulse_small(xm)) / 2h
+        @test ad[i] ≈ fd rtol = 1.0e-5
+        @test abs(ad[i]) > 1.0e-2 * J / PULSE_BOX.scale[i]           # every parameter moves J
+    end
+end
+
+@testset "T-1184 the box's mirror y → −y maps P₃ to −P₃ and the in-plane carrier to its opposite: J(P₃, φ) = J(−P₃, φ + π), and P₃ has a gradient at the unaberrated pulse [A7, WP-087]" begin
+    # In-plane polarization: the mirror flips E_y, which is the carrier phase moved by π. So the
+    # mirror pairs (P₃, φ) with (−P₃, φ + π), and the case (φ = 0) is not symmetric in P₃ alone: at
+    # this pulse of one cycle the carrier phase matters, and P₃ moves J at P₃ = 0.
+    x = [80.0, 0.12, 0.1, 3.0, 8.0]
+    xm = [80.0, -0.12, 0.1, 3.0, 8.0]
+    Jp, Jmπ, Jm = pulse_small(x), pulse_small(xm; phase = Float64(π)), pulse_small(xm)
+    @test Jmπ ≈ Jp rtol = 1e-12
+    @test abs(Jm - Jp) > 0.05 * Jp
+    # at the unaberrated pulse every mode has a gradient; P₃'s is the carrier phase's
+    x0 = collect(PCASE.x0)
+    g = ForwardDiff.partials(pulse_small([ForwardDiff.Dual{Nothing}(x0[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5])) .* PULSE_BOX.scale
+    @test abs(g[2]) > 0.02 * maximum(abs, g) && abs(g[3]) > 0.1 * maximum(abs, g)
+end
+
+@testset "T-1185 the random starts, the coordinates and the store's L-BFGS-B on the pulse's box [WP-068, WP-087]" begin
+    @test splitmix64(UInt64(0)) == 0xe220a8397b1dcdaf                 # SplitMix64's first output from the seed 0
+    @test random_start(3) == random_start(3) && random_start(3; seed = 88) != random_start(3)
+    starts = pulse_starts(PULSE_OPT_DEFAULTS.starts)
+    @test keys(starts) == (:r1, :r2, :r3, :r4, :r5)
+    w = PULSE_BOX.hi .- PULSE_BOX.lo
+    for s in values(starts)
+        @test all(PULSE_BOX.lo .+ 0.1 .* w .<= s .<= PULSE_BOX.hi .- 0.1 .* w)
+        @test all(!iszero, s[2:3])                                        # every mode starts away from zero
+    end
+    @test length(unique(values(starts))) == 5
+    @test round.(starts.r1; digits = 4) == [77.701, -0.0366, -0.0597, 2.8066, 8.8473]   # the same starts on every machine
+    @test_throws ErrorException pulse_starts("r1,base")
+    c = PulseCoords()
+    @test c.lo == PULSE_BOX.lo ./ PULSE_BOX.scale
+    @test free_of(c, z_of(c, starts.r2)) ≈ starts.r2 rtol = 1e-15
+    @test grad_z(c, z_of(c, starts.r2), [1.0, 2.0, 3.0, 4.0, 5.0]) ≈ [1.0, 2.0, 3.0, 4.0, 5.0] .* PULSE_BOX.scale rtol = 1e-15
+    # WP-068's store and optimize_start on these coordinates: a concave quadratic with its maximum inside the box
+    m = [92.0, -0.15, 0.2, -4.0, 10.0]
+    Jq(x) = 1.0 - sum(((x .- m) ./ PULSE_BOX.scale) .^ 2)
+    ran = Ref(0)
+    store = PointStore(joinpath(mktempdir(), "points"); run = x -> (ran[] += 1; Dict{String,Any}("J" => Jq(x), "gradient" => -2 .* (x .- m) ./ PULSE_BOX.scale .^ 2, "a0" => 1.68)))
+    dir = mktempdir()
+    r = optimize_start(store, starts.r4, dir; maxiters = 50, pgtol = 1e-10, coords = c)
+    @test r["free"] ≈ m rtol = 1e-6
+    @test isfile(joinpath(dir, "result.json")) && ran[] == store.made
+    @test pulse_starts("r1,r3"; seed = 88) == (; r1 = random_start(1; seed = 88), r3 = random_start(3; seed = 88))
+    # one point of the case at λ₀/8 at another budget: the record's J is the plain run's, its gradient the
+    # duals' in the five directions in order, and the shape's numbers at that budget
+    E = budget(2.2)
+    read = (; rise = (0.5, 3.0), fade = BCASE.fade)
+    rec = pulse_run_point(starts.r1; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, grad = true, energy = E, read)
+    xd = [ForwardDiff.Dual{Nothing}(starts.r1[i], ntuple(j -> Float64(i == j), 5)) for i in 1:5]
+    Jd = pulse_small(xd; energy = E)
+    @test rec["J"] > 1e-3 && rec["J"] == ForwardDiff.value(Jd)
+    @test rec["J"] ≈ pulse_small(starts.r1; energy = E) rtol = 64eps()
+    @test rec["gradient"] == collect(ForwardDiff.partials(Jd)) && all(!iszero, rec["gradient"])
+    @test rec["a0"] == pulse_a0(pulse_shape(starts.r1); energy = E) && rec["a0"] > pulse_a0(pulse_shape(starts.r1))
+    @test 0 < rec["strehl"] < 1 && rec["z"] == starts.r1 ./ PULSE_BOX.scale
+    @test 0.9 < rec["launched_interior"] <= rec["launched_box"] < 1 && rec["envelope_duration"] > PCASE.duration
+    @test pulse_run_point(starts.r1; ppl = 8, ny = 1, t_end = 190.0, capacity = 60_000, grad = false, energy = E, read)["J"] ≈ rec["J"] rtol = 64eps()
+    # the check's jobs: a run with duals and the two sides of each direction at ± 2^-power of its scale, under the ids the report reads
+    jobs = pulse_check_jobs(["best" => starts.r2], Dict("power" => 13))
+    @test length(jobs) == 11 && jobs[1] == ("best-f64-grad", Dict{Symbol,Any}(:x => starts.r2, :grad => true))
+    for (i, n) in enumerate(PCASE.names), (sfx, sgn) in (("p", 1), ("m", -1))
+        id, j = only(filter(q -> q[1] == "best-fd-$n-$sfx", jobs))
+        h = PULSE_BOX.scale[i] * 2.0^-13
+        @test j[:h] == h && j[:sign] == sgn && j[:direction] == i && !j[:grad]
+        @test j[:x] == [k == i ? starts.r2[k] + sgn * h : starts.r2[k] for k in 1:5]
+    end
+end
+
+@testset "T-1186 the report's tables, figures and central differences from records [WP-087]" begin
+    dir = mktempdir()
+    fake(x) = Dict{String,Any}("J" => 1.0 + x[3], "gradient" => [0.1, 0.2, 0.3, 0.4, 0.5], "free" => x, "a0" => 1.68, "strehl" => 0.9, "launched_interior" => 0.99,
+                               "launched_box" => 0.995, "envelope_duration" => 6.5, "dark_weight" => 0.0, "seconds" => 1.0)
+    store = PointStore(joinpath(dir, "points"); run = fake)
+    record!(store, collect(PCASE.x0))
+    for (k, n) in enumerate(("r1", "r2"))
+        r = optimize_start(store, random_start(k), joinpath(dir, n); maxiters = 3, pgtol = 1e-12, coords = PulseCoords())
+        @test r["free"][3] == PULSE_BOX.hi[3]                              # J rises along P₄ alone, to its bound
+    end
+    open(io -> TOML.print(io, Dict("commit" => "abc", "parameters" => Dict("ppl" => 8, "ny" => 1, "float" => 64, "backend" => "cpu", "gather" => "plain",
+                                                                            "maxiters" => 3, "pgtol" => 1e-12, "seed" => 87, "na" => PCASE.na))), joinpath(dir, "manifest.toml"), "w")
+    cdir = joinpath(dir, "check")
+    mkpath(cdir)
+    g = [0.5, -0.2, 0.01, 30.0, 4.0]
+    write_job(id, d) = open(io -> JSON.print(io, d), joinpath(cdir, id * ".json"), "w")
+    write_job("best-f64-grad", Dict("J" => 2.0, "gradient" => g))
+    for i in 1:5, (sfx, sgn) in (("p", 1), ("m", -1))
+        h = PULSE_BOX.scale[i] * 2.0^-13
+        write_job("best-fd-$(PCASE.names[i])-$sfx", Dict("J" => 2.0 + sgn * h * 1.1 * g[i], "h" => h))
+    end
+    open(io -> TOML.print(io, Dict("fdppl" => 32, "fdny" => 2, "power" => 13)), joinpath(cdir, "check.toml"), "w")
+    rows = pulse_check_rows(cdir, "best")
+    @test [r["direction"] for r in rows] == collect(PCASE.names)
+    @test all(r -> isapprox(r["fd_z"], 1.1 * r["ad_z"]; rtol = 1e-9), rows) && rows[4]["ad_z"] == 30.0 * PULSE_BOX.scale[4]
+    @test isempty(pulse_check_rows(cdir, "reference"))
+    out = mktempdir()
+    pulse_report(out, dir)
+    for f in ("pulse2d_paths.png", "pulse2d_paths.json", "pulse2d_shapes.png", "pulse2d_shapes.json", "tables.md")
+        @test isfile(joinpath(out, f))
+    end
+    t = read(joinpath(out, "tables.md"), String)
+    @test occursin("| r1 |", t) && occursin("| r2 |", t) && occursin("aberration4=hi", t) && occursin("Check at the best point", t)
+    @test occursin("dJ/dz = 8.0, 0.05, 0.075, 4.0, 12.5 (", t)                 # the reference's gradient in z
+    @test occursin("| gdd | 330.0 | 300.0 | 0.1 |", t)                           # central differences 1.1 times the duals: 10 % apart
+    @test check_dir(dir, 13) == cdir && check_dir(dir, 16) == joinpath(dir, "check-p16")
+    c16 = check_dir(dir, 16)                                                     # a second step, read after the first
+    cp(cdir, c16)
+    open(io -> TOML.print(io, Dict("fdppl" => 32, "fdny" => 2, "power" => 16)), joinpath(c16, "check.toml"), "w")
+    pulse_report(out, dir)
+    t = read(joinpath(out, "tables.md"), String)
+    @test findfirst("central differences at 2^-13", t)[1] < findfirst("central differences at 2^-16", t)[1]
+    side = JSON.parsefile(joinpath(out, "pulse2d_paths.json"))
+    res = JSON.parsefile(joinpath(dir, "r1", "result.json"))
+    @test side["starts"]["r1"]["J"] == [p["J"] for p in res["path"]]           # the path in the solver's order
+    @test pulse_on_bounds(collect(PCASE.x0)) == "none" && pulse_on_bounds(PULSE_BOX.lo) == join(["$n=lo" for n in PCASE.names], ", ")
+end
+
+"The field energy Σ(E² + B²)/2·Δx·Δy of a 2D state over the box's columns and the rows `rows` (guards left out)."
+function box_energy(st, rows)
+    f, n, h = st.fields, ncells(st.grid), cellsize(st.grid)
+    return h[1] * h[2] * sum(map((:Ex, :Ey, :Ez, :Bx, :By, :Bz)) do c
+        a = Array(getfield(f, c))
+        g = (size(a) .- n) .÷ 2
+        sum(abs2, a[(g[1] + 1):(g[1] + n[1]), g[2] .+ rows]) / 2
+    end)
+end
+
+@testset "T-1187 in a vacuum run the box holds the energy launched_fraction gives it, and a wider box keeps the case [A3, WP-087]" begin
+    # In vacuum at λ₀/16, at t = 85 (the pulse launched, the window not yet moving): the shaped pulse's
+    # field energy over the box, relative to the base Gaussian's (which launches all of its energy,
+    # so this ratio removes the antenna's own discretization, 2 % low at λ₀/16), is launched_fraction's
+    # share over the box's rows; inside the absorbers it is at least the interior share (the converging
+    # beam carries some of what the absorber rows launch inward).
+    kw = (; ppl = 16, t_end = 85.0, capacity = 1000, density = 0.0, delay = PCASE.delay)
+    energy(p) = (st = run_to_end(start_of(p; ppl = 16, ny = 1)); n = p.cells[2]; k = BCASE.pml_y; (all = box_energy(st, 1:n), interior = box_energy(st, (k + 1):(n - k))))
+    g = energy(born_problem(a0_for_energy(6.0, 10.0), 0.0; kw...))
+    @test 0.97 < g.all / budget(1.9) < 1
+    @test g.interior ≈ g.all rtol = 1e-5
+    for x in (collect(PCASE.x0), [110.0, 0.3, -0.3, -12.0, -30.0])
+        sh = pulse_shape(x)
+        p = born_problem(pulse_a0(sh), 0.0; kw..., focus = x[1], shape = sh)
+        s, lf = energy(p), launched_fraction(p)
+        @test s.all / g.all ≈ lf.box rtol = 3e-3
+        @test lf.interior <= s.interior / g.all < lf.box
+    end
+    # rows widens the box, keeping the cells, the absorbers, the dopant's rows and the laser on the axis
+    w = pulse_problem(collect(PCASE.x0); ppl = 16, rows = 192)
+    b = pulse_problem(collect(PCASE.x0); ppl = 16)
+    @test w.cells == (b.cells[1], 192)
+    @test w.length[2] ≈ 192 * BCASE.dy rtol = 1e-14
+    @test w.lasers[1].center ≈ 96 * BCASE.dy rtol = 1e-14
+    @test w.ionization.rows[2] - w.ionization.rows[1] ≈ b.ionization.rows[2] - b.ionization.rows[1] rtol = 1e-14
+    @test launched_fraction(w).interior > 0.9995 && launched_fraction(w).interior > launched_fraction(b).interior
+end

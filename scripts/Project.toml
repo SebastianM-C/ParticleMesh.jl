@@ -16,6 +16,7 @@ OptimizationLBFGSB = "22f7324a-a79d-40f2-bebe-3af60c77bd15"
 OptimizationMadNLP = "5d9c809f-c847-4062-9fba-1793bbfef577"
 ParticleMesh = "78bca375-b2c2-42bf-80b9-6bc59552cf25"
 ParticleMeshElectromagnetic = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
+RunManifests = "3118dd14-20dc-4d63-ac04-2bff4dee2f1e"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
@@ -26,6 +27,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [sources]
 ParticleMesh = {path = ".."}
 ParticleMeshElectromagnetic = {path = "../lib/ParticleMeshElectromagnetic"}
+RunManifests = {path = "../lib/RunManifests"}
 
 [compat]
 CUDA = "6.5"
@@ -40,6 +42,7 @@ Optimization = "5"
 OptimizationBase = "5"
 OptimizationLBFGSB = "1.5"
 OptimizationMadNLP = "2.3"
+RunManifests = "0.1"
 SciMLBase = "3"
 SpecialFunctions = "2"
 TimerOutputs = "1"

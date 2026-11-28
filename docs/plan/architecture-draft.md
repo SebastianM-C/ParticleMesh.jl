@@ -119,7 +119,7 @@ Acceptance (A7). Exact identities are held to `C·eps(T)` scaled by the problem 
 
 Reactant (§0.4, A9). Every kernel above keeps rules 1 to 6; three are the likeliest to need work once Reactant is unparked: the Reference deposition loops over data-dependent segment bounds, `cumsum_periodic!` is a one-work-item loop, and the sort is AcceleratedKernels'. The periodic solve of contract 14 runs one loop of static length per work item with a gather from its twiddle tables at an integer index. None is tested under Reactant yet.
 
-Proposals, not yet tested in code: one element type per array so that accumulators may differ from particles (B5); `fill`/`fold`/`exchange` as the three communication points that later carry the multi-device exchange; `Wakefields` as its own package in `lib/`, layered on the electromagnetic module (which is one, WP-014), and the user layer `ParticleMesh` holding unit conversion (A1) and case setup (A5).
+Proposals, not yet tested in code: one element type per array so that accumulators may differ from particles (B5); `fill`/`fold`/`exchange` as the three communication points that later carry the multi-device exchange. The LWFA user layer is `Wakefields`, its own package in `lib/` layered on the electromagnetic module (WP-092): it holds the unit conversion (A1) and the case setup (A5), and the umbrella `ParticleMesh` stays a re-export of the engine.
 
 ### 0.8 The 2D3V periodic slice
 

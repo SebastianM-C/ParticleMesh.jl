@@ -59,7 +59,6 @@ Inside the factory the session starts the run with the machine's GPU command (th
 | `subensembles.jl` | Post hoc: the ensemble rule on disjoint consecutive groups of 4, 8, 16 and all seeds of two runs, from their `seed-coefficients.json`: the measured spread of a g-seed ensemble against its jackknife estimate, and the group-by-group two-run difference (T-392) |
 | `seed_count.jl` | Design: the spread of the ensemble γ and of a two-code difference against the seed count, from synthetic ensembles at two runs' measured noise and from their jackknife errors scaled as 1/√M |
 | `analyze.jl` | Observables, the standard plot set with JSON sidecars, and the manifest update of a finished run of either code; seeded schema-1 and schema-2 cases; Smilei's own time-loop time and the GPU of a GPU run (T-432) |
-| `manifest.jl` | Run manifests (F3); `image_from_header` reads the bare image id from the job's log (T-184) |
 
 ## Case schema, version 1
 
@@ -124,6 +123,7 @@ In 2D (`2Dcartesian`, schema 2), from the same source (`src/Profiles/Profile.cpp
 
 From the v5.1 source (`makefile`, `src/Smilei.cpp`, `src/Params/Params.cpp`, `src/Patch/Patch.cpp`, `src/Particles/ParticleCreator.cpp`, `src/Projector/Projector2D2OrderGPU.cpp`, `doc/Sphinx/Use/install_linux_GPU.rst`, `doc/Sphinx/Understand/GPU_offloading.rst`):
 
+- With a moving window, the GPU build crashed at the first window move on an RTX 5090 (seen in this project's LWFA runs; the cause is not traced and there is no minimal example), so windowed cases run Smilei on the CPU.
 - `make config="gpu_nvidia"` compiles with OpenACC and adds `noopenmp`: one MPI rank per GPU, no threads. A GPU binary refuses `gpu_computing = False` and a CPU binary refuses `True` (Params.cpp), so the namelist carries the line only for the GPU image.
 - The rank picks its GPU from `SLURM_LOCALID` and exits without it (Smilei.cpp); the image sets it to 0.
 - Patches: the guideline is one patch per GPU (GPU_offloading.rst), which `--gpu` uses by default; `--patches` sets any layout the CPU rule accepts.

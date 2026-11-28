@@ -19,7 +19,7 @@ using TOML
 
 include(joinpath(@__DIR__, "smilei.jl"))
 using .SmileiDeck: SmileiDeck, case_view, case_seeds
-using .SmileiDeck.RunManifest: file_hash, write_manifest
+using RunManifests: file_hash, write_manifest
 
 export picongpu_parameters, param_files, run_arguments, run_script, prepare_run, reference_units
 

@@ -249,8 +249,7 @@ end
 
 # WP-012: seed ensembles, the ParticleMesh column through the case files, analysis repairs.
 include(joinpath(CC, "ensemble.jl"))
-include(joinpath(CC, "manifest.jl"))
-using .Ensemble, .RunManifest
+using .Ensemble, RunManifests
 using Random: Xoshiro, randn, rand
 using Statistics: mean, std, var
 using SHA: sha256
@@ -385,32 +384,6 @@ end
     r = damping_from_peaks(t, noisy; fit_start = 3.0, floor_factor = 10.0)
     @test !isfinite(r.gamma)
     @test_throws SeedRefused aggregate_seeds([1, 2], [r, (; gamma = 0.1, t_fit = [1.0, 2.0, 3.0])])
-end
-
-@testset "T-184 the manifest stores the bare image id [A5, WP-012]" begin
-    id = "7030c120c62ce14dbae971cce76a3973f0a031ef63632a6c4bf4fa20e3937b4c"
-    dir = mktempdir()
-    log = joinpath(dir, "runner.log")
-    write(log, """
-    # gpu-run 2026-10-31T17:58:05Z
-    # worktree: <worktree> (HEAD 1b01ce7)
-    # command: smilei scripts/runs/smilei-landau-9a47a107
-    # image: localhost/particlemesh-smilei:e4f0148b8952fc87 id $id
-    # network: off, gpu: no, timeout: 7200s
-    # gpu-run finished: exit 0 after 51s; image: $id; log: <log>
-    """)
-    img = image_from_header(log)
-    @test img.id == id
-    @test img.name == "localhost/particlemesh-smilei:e4f0148b8952fc87"
-    # run-smilei.sh's image.txt writes "# image: <name> <id>" without the word id
-    txt = joinpath(dir, "image.txt")
-    write(txt, "# image: particlemesh-smilei:e4f0148b8952fc87 sha256:$id\n# podman run finished: exit 0\n")
-    @test image_from_header(nothing, txt).id == id
-    @test image_from_header(joinpath(dir, "absent.log")).id == "unknown"
-    write_manifest(dir; extra = Dict{String,Any}("image" => Dict{String,Any}("id" => img.id, "name" => img.name)))
-    m = read_manifest(dir)
-    @test m["image"]["id"] == id
-    @test occursin(r"^[0-9a-f]{64}$", m["image"]["id"])
 end
 
 @testset "T-185 the two-stream resolution pair differs only in resolution [A5, WP-012]" begin
@@ -956,38 +929,4 @@ include(joinpath(@__DIR__, "convergence.jl"))
 include(joinpath(@__DIR__, "gpu.jl"))
 include(joinpath(@__DIR__, "filter.jl"))
 
-@testset "T-460 a run manifest names its commit without git: the runner's PM_COMMIT, and says so [A6]" begin
-    # A sandbox or container that mounts the worktree but not the repository's .git (the CPU box
-    # and the GPU runner before #179's fix) left `commit = "unknown"` in manifests unnoticed.
-    sha = "0123456789abcdef0123456789abcdef01234567"
-    mktempdir() do d                                   # not a git repository
-        withenv("PM_COMMIT" => nothing) do
-            c = RunManifest.git_commit(d)
-            @test (c.commit, c.commit_source) == ("unknown", "none")
-            @test c.dirty === missing
-        end
-        withenv("PM_COMMIT" => "not-a-commit") do
-            @test RunManifest.git_commit(d).commit == "unknown"
-        end
-        withenv("PM_COMMIT" => sha) do
-            c = RunManifest.git_commit(d)
-            @test (c.commit, c.commit_source) == (sha, "PM_COMMIT")
-            @test c.dirty === missing
-            RunManifest.write_manifest(d; root = d)
-            m = RunManifest.read_manifest(d)
-            @test m["commit"] == sha && m["commit_source"] == "PM_COMMIT" && !haskey(m, "dirty")
-            # a manifest first written under git keeps no stale dirty flag next to the new commit
-            write(joinpath(d, "manifest.toml"), "commit = \"old\"\ndirty = true\n")
-            RunManifest.write_manifest(d; root = d)
-            m = RunManifest.read_manifest(d)
-            @test m["commit"] == sha && m["commit_source"] == "PM_COMMIT" && !haskey(m, "dirty")
-        end
-    end
-    root = dirname(dirname(dirname(@__DIR__)))           # this checkout: git sees it
-    withenv("PM_COMMIT" => sha) do
-        c = RunManifest.git_commit(root)
-        @test c.commit_source == "git"
-        @test c.commit != sha && occursin(r"^[0-9a-f]{40}$", c.commit)
-    end
-end
 include(joinpath(@__DIR__, "pm_ensemble.jl"))

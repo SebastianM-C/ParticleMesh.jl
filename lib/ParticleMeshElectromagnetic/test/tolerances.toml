@@ -1,8 +1,10 @@
-# Tolerances of WP-014 (A7: measure, then propose). Every entry is a proposal: `C` is the
-# constant the test asserts, `measured` the largest ratio err/(eps(T)·scale) seen on the CPU
-# backend (Julia 1.13.3, one thread, the suite's configurations), with `scale` as stated. The
-# owner accepts a value by editing A7; until then the tests hold these proposals. The suite
-# prints the measured ratios after every run, so they can be refreshed.
+# Tolerances of WP-014 (A7: measure, then propose). `C` is the constant the test asserts,
+# `measured` the largest ratio err/(eps(T)·scale) seen on the CPU backend (Julia 1.13.3, one
+# thread, the suite's configurations), with `scale` as stated. A constant stands once it is
+# measured and the review has passed it, which is what `proposed` in a `status` means; the
+# benchmark thresholds the owner accepted say `accepted in A7`. A change that loosens a constant
+# says so in its pull request (A7). The suite prints the measured ratios after every run, so they
+# can be refreshed.
 
 ["T-210"]
 quantity = "Yee in vacuum: field error against the exact discrete mode (C), relative change of the staggered energy (C_energy)"
