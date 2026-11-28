@@ -347,15 +347,15 @@ end
 
 # One work item per node (guards included): the patches of the bins whose flux stencil reaches
 # it, in increasing column-major linear index, summed from zero.
-@kernel function flux_reduce_2d_kernel!(Jx, Jy, Jz, @Const(patch), layout, n::NTuple{2,Int32}, g::Int32, lo::NTuple{2,Int32},
+@kernel function flux_reduce_2d_kernel!(Jx, Jy, Jz, @Const(patch), layout, nb::NTuple{2,Int32}, g::Int32, lo::NTuple{2,Int32},
                                         hi::NTuple{2,Int32}, M::NTuple{2,Int32})
     I = @index(Global, Cartesian)
     T = eltype(Jx)
     K = M[1] * M[2]
     j1, j2 = Int32(I[1]) - g, Int32(I[2]) - g
     ax, ay, az = zero(T), zero(T), zero(T)
-    @inbounds for c2 in max(Int32(1), j2 - hi[2]):min(n[2], j2 - lo[2]), c1 in max(Int32(1), j1 - hi[1]):min(n[1], j1 - lo[1])
-        L = c1 + (c2 - Int32(1)) * n[1]
+    @inbounds for c2 in max(Int32(1), j2 - hi[2]):min(nb[2], j2 - lo[2]), c1 in max(Int32(1), j1 - hi[1]):min(nb[1], j1 - lo[1])
+        L = c1 + (c2 - Int32(1)) * nb[1]
         k = (j1 - c1 - lo[1]) + (j2 - c2 - lo[2]) * M[1] + Int32(1)
         ax += patch[patch_index(layout, k, L)...]
         ay += patch[patch_index(layout, K + k, L)...]
@@ -374,22 +374,23 @@ function _deposit_flux_2d!(::Reference, Jx, Jy, Jz, s, shape, st, grid, ws, sx, 
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger, $((shape, st)); the workspace was built with flux = $(ws.flux)"))
     need = flux_patch_values(shape, st, ws.bins)
-    size(ws.flux_patch) == flux_patch_size(ws.flux_layout, need, prod(ncells(grid))) ||
+    size(ws.flux_patch) == flux_patch_size(ws.flux_layout, need, prod(nbins(ws.bins, ncells(grid)))) ||
         throw(ArgumentError("the Reference() deposit_flux! at N = 2 needs Workspace(species, grid; flux = (shape, stagger)) for this " *
                             "shape and stagger: $need values per cell in the layout $(ws.flux_layout), the workspace's patch array " *
                             "is $(size(ws.flux_patch))"))
     backend = get_backend(s)
     n = Int32.(ncells(grid))
+    nb = Int32.(nbins(ws.bins, ncells(grid)))
     M = flux_widths(shape, st, ws.bins)
     r = (flux_bin_reach(ws.bins, shape, st[1], 1), flux_bin_reach(ws.bins, shape, st[2], 2))
-    check_bin_guards(grid, r)
+    check_bin_guards(grid, guard_reach(ws.bins, r))
     lo, hi = (r[1][1], r[2][1]), (r[1][2], r[2][2])
     frame = ws.bins isa CellBins ? CellFrame() : BinFrame(ws.bins)
     for CS in flux_components_2d(components)
         item_launcher(flux_patch_2d_kernel!, backend, workgroupsize)(ws.flux_patch, s, ws.seg_start, ws.seg_stop, shape, st, frame, n, sx,
-                                                                     qz, ws.flux_layout, Val(prod(M)), Val(CS); ndrange = prod(n))
+                                                                     qz, ws.flux_layout, Val(prod(M)), Val(CS); ndrange = prod(nb))
     end
-    launcher(flux_reduce_2d_kernel!, backend, workgroupsize)(Jx, Jy, Jz, ws.flux_patch, ws.flux_layout, n, Int32(guards(grid)), lo, hi,
+    launcher(flux_reduce_2d_kernel!, backend, workgroupsize)(Jx, Jy, Jz, ws.flux_patch, ws.flux_layout, nb, Int32(guards(grid)), lo, hi,
                                                              Int32.(M); ndrange = size(Jx))
     return Jx, Jy, Jz
 end

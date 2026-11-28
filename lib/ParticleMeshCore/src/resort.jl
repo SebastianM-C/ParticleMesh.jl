@@ -273,12 +273,13 @@ end
 function check_resort(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace, r::ResortScratch, count0, workgroupsize) where {N}
     backend = get_backend(s)
     cap = capacity(s)
-    ncell = prod(grid.n)
+    nb = nbins(ws.bins, grid.n)
+    ncell = prod(nb)
     launch(k) = launcher(k, backend, workgroupsize)
     if N == 1
         launch(sort_key_kernel!)(ws.key, s, ws.bins, Int64(ncell), Int64(cap); ndrange = cap)
     else
-        launch(sort_key_nd_kernel!)(ws.key, s, ws.bins, Int64.(grid.n), Int64(ncell), Int64(cap); ndrange = cap)
+        launch(sort_key_nd_kernel!)(ws.key, s, ws.bins, Int64.(nb), Int64(ncell), Int64(cap); ndrange = cap)
     end
     AK.sort!(ws.key; alg = ws.ak.plan.alg, workspace = ws.ak)
     start_full = KernelAbstractions.ones(backend, Int32, ncell)
@@ -311,7 +312,9 @@ and placed after each cell's others; the arrays then move by `sort_by_cell!`'s g
 is per cell and per tail slot, where `sort_by_cell!` sorts a key per slot.
 
 With `NodeBins` (`Workspace(species, grid; bins)`) the bins take the cells' part throughout: a
-particle that moves by less than one cell moves by at most one bin per axis.
+particle that moves by less than one cell moves by at most one bin per axis. On an open axis
+(`NodeBins(...; open)`) a particle that crosses the seam moves by `n` bins or more, outside the
+precondition: its caller retires it first, as the moving window does.
 
 It is `sort_by_cell!` itself for a workspace built without `append` (`Workspace(species, grid;
 append)`), without a sort of `species` with `ws` as the last sort of `ws` (`sort_by_cell!` or
@@ -345,8 +348,8 @@ function resort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; wo
     check_workspace(ws, s, grid)
     backend = get_backend(s)
     cap = capacity(s)
-    n = Int32.(grid.n)
-    ncell = prod(grid.n)
+    n = Int32.(nbins(ws.bins, grid.n))    # the bins per axis; an open axis of `NodeBins` is taken as periodic on them, a superset of its moves
+    ncell = prod(n)
     launch(k) = launcher(k, backend, workgroupsize)
     count0 = check ? copy(s.count) : nothing
     launch(resort_count_kernel!)(r.hist, s, ws.bins, ws.seg_start, ws.seg_stop, n; ndrange = ncell)

@@ -129,14 +129,15 @@ function reference_by_hand_3d(c, shape, st, bins)
     (; s, grid, ws, dt) = c
     T = eltype(s)
     n, g = Int32.(ncells(grid)), guards(grid)
+    nb = ParticleMeshCore.nbins(bins, n)
     sx = map(h -> h / dt, cellsize(grid))
     frame = bin_frame(bins)
     seg_start, seg_stop = Array(ws.seg_start), Array(ws.seg_stop)
     J = fields3(T, grid)
-    bins_ci = CartesianIndices(Int.(n))
+    bins_ci = CartesianIndices(Int.(nb))
     for C in 1:3
         vC = Val(C)
-        for L in 1:prod(n)
+        for L in 1:prod(nb)
             seg_stop[L] >= seg_start[L] || continue
             b = Tuple(bins_ci[L])
             patch, lo, D = nothing, nothing, nothing

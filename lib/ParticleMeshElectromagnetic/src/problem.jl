@@ -289,7 +289,8 @@ the first node of their stencil with the shape and ρ's stagger (the engine's `N
 instead of by cell: at order 2 the `Reference()` deposits then walk 3 bins per axis where they
 walk 4 cells, and the 2D flux patch holds 5 × 5 nodes per bin where a cell's holds 6 × 6; the
 current changes at roundoff (another order of summation), deterministic either way. On the
-window's x axis, which is not periodic, the bin is the cell. The ionization's atoms keep cells.
+window's x axis, which is not periodic, the bins are not wrapped and run to the node past the last
+cell (`NodeBins`' `open`). The ionization's atoms keep cells.
 `gather` is what the particles read: `nothing`, the grid's E and B, or a [`CompensatedGather`](@ref),
 a copy sharpened along axis 1 that undoes the shape's mean loss of field at a wavenumber, the
 laser's by default (WP-067), or a [`GalerkinGather`](@ref), each component read one order lower

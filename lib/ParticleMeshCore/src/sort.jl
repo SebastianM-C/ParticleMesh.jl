@@ -7,7 +7,8 @@ AcceleratedKernels sort workspace, one permutation buffer per element type of th
 arrays (`Int32`, `T`, `UInt8`), the buffers of the species' extras, with `swap` the spare set of
 the species' arrays (`spare`), and the per-cell segment
 bounds `seg_start`, `seg_stop` that `sort_by_cell!` writes and the `Reference` deposition reads,
-one entry per linear bin (`prod(n)` of them; an empty bin has `seg_start = 1`, `seg_stop = 0`).
+one entry per linear bin (`prod(nbins(bins, n))` of them, `prod(n)` but for an open axis of
+`NodeBins`; an empty bin has `seg_start = 1`, `seg_stop = 0`).
 The bins are `bins`: the cells (`CellBins()`, the default) or the first nodes of the particles'
 stencils (`NodeBins(shape, stagger)`, WP-041), which the sort, `resort_by_cell!` and the
 `Reference()` deposits all use.
@@ -89,11 +90,11 @@ function Workspace(s::Species{N,T}, grid::PeriodicGrid{N}; flux = nothing,
     tmp_u8 = KernelAbstractions.zeros(backend, UInt8, cap)
     tmp_extras = extras_buffers(backend, cap, Tuple(values(s.extras)), (tmp_i32, tmp_T, tmp_u8))
     spare = swap ? Ref(similar_arrays(species_data(s))) : nothing
-    n = prod(grid.n)
-    seg_start = KernelAbstractions.ones(backend, Int32, n)
-    seg_stop = KernelAbstractions.zeros(backend, Int32, n)
     bins isa CellBins || bins isa NodeBins && length(bins.stagger) == N ||
         throw(ArgumentError("bins: CellBins() or NodeBins(shape, stagger) with one stagger per axis (N = $N), got $bins"))
+    n = prod(nbins(bins, grid.n))
+    seg_start = KernelAbstractions.ones(backend, Int32, n)
+    seg_stop = KernelAbstractions.zeros(backend, Int32, n)
     patch_size = flux === nothing ? (0, 0) : flux_patch_size(flux_layout, flux_patch_values(flux..., bins), n)
     flux_patch = KernelAbstractions.zeros(backend, T, patch_size...)
     resort = append === nothing ? nothing : ResortScratch(s, n, append)
@@ -119,14 +120,14 @@ end
     check_workspace(ws, species, grid)
 
 Throw an `ArgumentError` unless `ws` was built for a species of this capacity and a grid of this
-many cells. The kernels that read the workspace run under `@inbounds`, so a mismatch would write
+many cells (as many bins, `nbins`). The kernels that read the workspace run under `@inbounds`, so a mismatch would write
 out of bounds. Lengths are static shapes, so the check is host-side and allowed by §0.4.
 """
 function check_workspace(ws::Workspace, s::Species, grid::PeriodicGrid)
     length(ws.key) == capacity(s) ||
         throw(ArgumentError("workspace built for capacity $(length(ws.key)), species has capacity $(capacity(s))"))
-    length(ws.seg_start) == prod(grid.n) ||
-        throw(ArgumentError("workspace built for $(length(ws.seg_start)) cells, grid has $(prod(grid.n))"))
+    length(ws.seg_start) == prod(nbins(ws.bins, grid.n)) ||
+        throw(ArgumentError("workspace built for $(length(ws.seg_start)) bins, the grid has $(prod(nbins(ws.bins, grid.n))) of its bins"))
     return nothing
 end
 
@@ -303,7 +304,7 @@ function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; work
     check_workspace(ws, s, grid)
     backend = get_backend(s)
     cap = capacity(s)
-    n = ncells(grid)
+    n = nbins(ws.bins, ncells(grid))
     launcher(sort_key_kernel!, backend, workgroupsize)(ws.key, s, ws.bins, Int64(n), Int64(cap); ndrange = cap)
     sort_keys!(ws, cap, backend, workgroupsize)
     permute_species!(s, ws, workgroupsize)
@@ -314,8 +315,9 @@ function sort_by_cell!(s::Species{1}, grid::PeriodicGrid{1}, ws::Workspace; work
     return s
 end
 
-# N axes: the key is `(linear cell - 1)·capacity + slot - 1`, free slots `prod(n)·capacity + slot - 1`,
-# with the column-major linear cell of `linear_cell`; unique, so the permutation is fixed (A4).
+# N axes: the key is `(linear bin - 1)·capacity + slot - 1`, free slots `prod(nb)·capacity + slot - 1`,
+# with the column-major linear bin of `linear_cell` on `nb` bins per axis; unique, so the
+# permutation is fixed (A4).
 @kernel function sort_key_nd_kernel!(key, s, bins, n, ncell::Int64, cap::Int64)
     i = @index(Global, Linear)
     @inbounds begin
@@ -328,10 +330,11 @@ function sort_by_cell!(s::Species{N}, grid::PeriodicGrid{N}, ws::Workspace; work
     check_workspace(ws, s, grid)
     backend = get_backend(s)
     cap = capacity(s)
-    ncell = prod(grid.n)
-    ncell <= typemax(Int32) || throw(ArgumentError("$ncell cells exceed the Int32 segment index"))
-    (Int128(ncell) + 1) * cap <= typemax(Int64) || throw(ArgumentError("sort key overflows Int64: $ncell cells × capacity $cap"))
-    launcher(sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s, ws.bins, Int64.(grid.n), Int64(ncell), Int64(cap);
+    nb = nbins(ws.bins, grid.n)
+    ncell = prod(nb)
+    ncell <= typemax(Int32) || throw(ArgumentError("$ncell bins exceed the Int32 segment index"))
+    (Int128(ncell) + 1) * cap <= typemax(Int64) || throw(ArgumentError("sort key overflows Int64: $ncell bins × capacity $cap"))
+    launcher(sort_key_nd_kernel!, backend, workgroupsize)(ws.key, s, ws.bins, Int64.(nb), Int64(ncell), Int64(cap);
                                                           ndrange = cap)
     sort_keys!(ws, cap, backend, workgroupsize)
     permute_species!(s, ws, workgroupsize)

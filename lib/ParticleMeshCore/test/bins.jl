@@ -1,4 +1,5 @@
-# WP-041, the particles binned by the first node of their stencil (`NodeBins`): T-860 to T-864.
+# WP-041, the particles binned by the first node of their stencil (`NodeBins`): T-860 to T-864, and
+# its open axes, T-1194 to T-1197.
 
 "The bins of a shape and stagger (one per axis): the first node of the stencil."
 node_bins(shape, st::ParticleMeshCore.Stagger) = NodeBins(shape, st)
@@ -184,4 +185,164 @@ end
         @test bins_vs_cells_1d(bshape, bst, shape, dst) <= tolC("T-860")
     end
     @test_throws "guard cells" bins_vs_cells_1d(Quadratic, Node(), Quadratic, Center(); g = 2)
+end
+
+# WP-041's leftovers: open axes of `NodeBins` (the moving window's x axis), T-1194 to T-1197; the
+# CUDA rerun of T-1196 is T-1198 in gpu.jl.
+
+@testset "T-1194 an open axis of NodeBins does not wrap: the last cell's particle past its stencil's midpoint is in bin n + 1, the axis has n + 1 bins, and its bins need the cells' guards [A4, WP-041]" begin
+    NB = ParticleMeshCore.nbins
+    n = Int32.((16, 12))
+    b = NodeBins(Quadratic, (Node(), Node()); open = (true, false))
+    @test NB(b, n) === Int32.((17, 12)) && NB(b, (16, 12)) === (17, 12)
+    @test NB(NodeBins(Quadratic, Node(); open = true), 10) === 11 && NB(NodeBins(Quadratic, Node()), Int32(10)) === Int32(10)
+    @test NB(NodeBins(Quadratic, (Node(), Node())), n) == n && NB(CellBins(), n) == n
+    @test NodeBins(Quadratic, (Node(), Node())) == NodeBins(Quadratic, (Node(), Node()); open = (false, false))
+    @test_throws TypeError NodeBins(Quadratic, (Node(), Node()); open = (true,))
+    for T in (Float32, Float64)
+        s = Species(backend, T, 3; q = -1, m = 1, N = 2)
+        s.cell[1] .= Int32[16, 16, 1]; s.cell[2] .= Int32[12, 12, 1]
+        s.offset[1] .= T[3 // 4, 1 // 4, 1 // 4]; s.offset[2] .= T[3 // 4, 1 // 4, 1 // 4]
+        nb = NB(b, n)
+        @test ParticleMeshCore.particle_bin(b, s, 1, nb) == (Int32(17), Int32(1))     # past the last cell on x, wrapped on y
+        @test ParticleMeshCore.particle_bin(b, s, 2, nb) == (Int32(16), Int32(12))
+        @test ParticleMeshCore.particle_bin(b, s, 3, nb) == (Int32(1), Int32(1))
+        # a stagger whose stencil does not shift: bin n + 1 exists and stays empty
+        bc = NodeBins(Quadratic, (Center(), Center()); open = (true, true))
+        @test ParticleMeshCore.particle_bin(bc, s, 1, NB(bc, n)) == (Int32(16), Int32(12))
+    end
+    # the workspace's segments, flux patches and resort scratch are per bin
+    grid = grid2(Float64, 3)
+    sp = flux_species_2d(Float64, grid, 40)
+    ws = Workspace(sp, grid; flux = (Quadratic, (Node(), Node())), bins = b, append = 4)
+    @test length(ws.seg_start) == length(ws.seg_stop) == 17 * 12
+    @test size(ws.flux_patch) == ParticleMeshCore.flux_patch_size(ws.flux_layout, 75, 17 * 12)
+    @test length(ws.resort.cnt) == size(ws.resort.hist, 1) == 17 * 12
+    # the plain deposit's bins with an open axis reach as far as the cells: one guard more than its
+    # periodic bins where the stencil shifts within a cell (order 2 on nodes), checked at N = 1 and 2
+    # (the flux needs `flux_guard_width`, the cells' guards, with any bins)
+    for N in (1, 2)
+        st = N == 1 ? Node() : (Node(), Node())
+        per = N == 1 ? NodeBins(Quadratic, Node()) : NodeBins(Quadratic, st)
+        opn = N == 1 ? NodeBins(Quadratic, Node(); open = true) : NodeBins(Quadratic, st; open = (true, false))
+        g = maximum(r -> max(-r[1], r[2]), ntuple(d -> ParticleMeshCore.deposit_reach(per, Quadratic, Node(), d), N))
+        @test g == 1
+        grd = N == 1 ? PeriodicGrid(10, 1 / 2, g) : grid2(Float64, g)
+        x = N == 1 ? moved_species(Float64, grd, 100; seed = 3) : flux_species_2d(Float64, grd, 100)
+        ρ(bins) = (y = deepcopy(x); w = Workspace(y, grd; bins); sort_by_cell!(y, grd, w);
+                   deposit!(Reference(), field(backend, Float64, grd), y, Quadratic, st, grd, w))
+        @test ρ(per) isa AbstractArray
+        @test_throws "guard cells" ρ(opn)
+        grd2 = N == 1 ? PeriodicGrid(10, 1 / 2, g + 1) : grid2(Float64, g + 1)
+        x = N == 1 ? moved_species(Float64, grd2, 100; seed = 3) : flux_species_2d(Float64, grd2, 100)
+        y = deepcopy(x); w = Workspace(y, grd2; bins = opn); sort_by_cell!(y, grd2, w)
+        @test deposit!(Reference(), field(backend, Float64, grd2), y, Quadratic, st, grd2, w) isa AbstractArray
+    end
+end
+
+"The bins of `shape` and `st` with the axes `open` open (at N = 1 a Bool)."
+open_bins(shape, st::ParticleMeshCore.Stagger, open::Bool) = NodeBins(shape, st; open)
+open_bins(shape, st::Tuple, open::Tuple) = NodeBins(shape, st; open)
+
+"How many alive particles of a sorted case sit in a bin past the last cell of an open axis."
+function past_last(c)
+    b, s, n = c.ws.bins, c.s, Int32.(Tuple(ncells(c.grid)))
+    nb = ParticleMeshCore.nbins(b, n)
+    return count(i -> s.status[i] == ParticleMeshCore.ALIVE &&
+                      any(map((x, m, o) -> o && x > m, ParticleMeshCore.particle_bin(b, s, i, nb), n, b.open)), 1:capacity(s))
+end
+
+@testset "T-1195 the Reference deposits by bins with open axes conserve charge and agree with the cells' to roundoff on a periodic grid, N = 1, 2 and 3, every type, order and stagger [A2, A4, WP-041]" begin
+    C, Cc = tolC("T-860"), tolC("T-860", "C_cells")
+    past = 0
+    for T in TYPES, shape in SHAPES, st in (Node(), Center())
+        c = continuity_case(T, Reference(), shape, st)
+        A = map(a -> (fold_guards!(a, c.grid); a), flux_abs(c, shape, st))
+        b = continuity_case(T, Reference(), shape, st; bins = open_bins(shape, st, true))
+        past += past_last(b)
+        @test record!("T-1195 1D", T, continuity_residual(folded(b))) <= C
+        @test record!("T-1195 1D cells", T, bins_vs_cells(b, folded(c), A, T)) <= Cc
+    end
+    for T in TYPES, shape in SHAPES, st in STAGGER_PAIRS, open in ((true, false), (true, true))
+        c = continuity_case_2d(T, Reference(), shape, st)
+        A = map(a -> (fold_guards!(a, c.grid); a), flux_abs_2d(c.s, shape, st, c.grid, c.dt))
+        b = continuity_case_2d(T, Reference(), shape, st; bins = open_bins(shape, st, open))
+        past += past_last(b)
+        @test record!("T-1195", T, continuity_residual_2d(folded_2d(b))) <= C
+        @test record!("T-1195 cells", T, bins_vs_cells(b, folded_2d(c), A, T)) <= Cc
+    end
+    for T in TYPES
+        b = continuity_case_3d(T, Reference(), Quadratic, NODES3; bins = NodeBins(Quadratic, NODES3; open = (true, false, false)))
+        past += past_last(b)
+        @test record!("T-1195 3D", T, continuity_residual_3d(folded_3d(b))) <= tolC("T-940")
+    end
+    @test past > 100                                     # the cases put particles in the bins past the last cell
+end
+
+# The window's convention on axis 1 (its x-guards dropped before the fold), then the other axes
+# folded: the edges are not periodic.
+function window_folded(a, grid)
+    g = guards(grid)
+    selectdim(a, 1, 1:g) .= 0
+    selectdim(a, 1, (size(a, 1) - g + 1):size(a, 1)) .= 0
+    fold_guards!(a, grid)
+    return a
+end
+
+"The largest |a - b| over `eps·max|b|` per field of two cases, ρ and the three currents."
+case_gap(a, b, T) = maximum(k -> maximum(absdiff.(getfield(a, k), getfield(b, k))) / (base_eps(T) * maximum(absmax, getfield(b, k))),
+                            (:ρnew, :Jx, :Jy, :Jz))
+
+"T-1196 on `be` (gpu.jl reruns it on CUDA, T-1198)."
+function body_T1196(be)
+    Cc = tolC("T-860", "C_cells")
+    for T in TYPES, shape in SHAPES
+        st = (Node(), Node())
+        cases = map((CellBins(), NodeBins(shape, st; open = (true, false)), NodeBins(shape, st))) do bins
+            c = continuity_case_2d(T, Reference(), shape, st; be, bins)
+            foreach(a -> window_folded(a, c.grid), (c.ρnew, c.Jx, c.Jy, c.Jz))
+            c
+        end
+        @test record!("T-1196", T, case_gap(cases[2], cases[1], T), be) <= Cc
+        moving = shape === Quadratic                      # order 2 on nodes: the stencil shifts within a cell
+        moving && @test past_last(cases[2]) > 0 && case_gap(cases[3], cases[1], T) > 1e4
+    end
+    for T in TYPES
+        cases = map((CellBins(), NodeBins(Quadratic, NODES3; open = (true, false, false)), NodeBins(Quadratic, NODES3))) do bins
+            c = continuity_case_3d(T, Reference(), Quadratic, NODES3; be, bins)
+            foreach(a -> window_folded(a, c.grid), (c.ρnew, c.Jx, c.Jy, c.Jz))
+            c
+        end
+        @test record!("T-1196 3D", T, case_gap(cases[2], cases[1], T), be) <= Cc
+        @test past_last(cases[2]) > 0 && case_gap(cases[3], cases[1], T) > 1e4
+    end
+end
+
+@testset "T-1196 with the x-guards dropped, as the moving window drops them, bins with an open x axis give the cells' charge and current to roundoff, at N = 2 and 3, and periodic bins do not [A2, A4, WP-041]" begin
+    body_T1196(CPU())
+end
+
+@testset "T-1197 the sort and the sort from the last order by bins with an open axis give the same bits, N = 1, 2, 3, with the particles that cross the open seam retired first, and every particle lies in its bin's segment [A4, WP-041]" begin
+    for T in TYPES, n in ((7,), (16, 12), (3, 4, 3)), (shape, st) in ((Quadratic, Node()), (Linear, Center()))
+        N = length(n)
+        open = ntuple(d -> d == 1, N)
+        bins = NodeBins(shape, ntuple(_ -> st, N); open)
+        same = resort_run(T, n; bins, open)
+        @test length(same) == 7 && all(same)
+    end
+    n = (16, 12)
+    grid = PeriodicGrid(n, (1 / 2, 1 / 2), 2)
+    s = resort_species(Float64, n, 2304, 1536)
+    b = NodeBins(Quadratic, (Node(), Node()); open = (true, false))
+    ws = Workspace(s, grid; bins = b, append = 40)
+    sort_by_cell!(s, grid, ws)
+    resort_move!(s, n, ResortLCG(5); open = b.open)
+    resort_append!(s, n, 40, ResortLCG(6); tag0 = 5000)
+    resort_by_cell!(s, grid, ws; check = true)
+    nb = ParticleMeshCore.nbins(b, Int32.(n))
+    bin(i) = linear_cell(ParticleMeshCore.particle_bin(b, s, i, nb), nb)
+    alive = Int(s.count[1])
+    @test all(i -> ws.seg_start[bin(i)] <= i <= ws.seg_stop[bin(i)], 1:alive)
+    @test count(i -> ParticleMeshCore.particle_bin(b, s, i, nb)[1] == 17, 1:alive) > 0
+    @test ws.resort.resorts[] == 1
 end
