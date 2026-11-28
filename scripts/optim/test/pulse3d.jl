@@ -75,6 +75,14 @@ end
     end
     @test strehl3(pulse3_shape(xs)) ≈ abs2(num / den) rtol = 1e-6
     @test strehl3(pulse3_shape(xs)) < 0.9 && strehl3(pulse3_shape(x)) < strehl3(pulse3_shape(xs))
+    # coma moves the peak off the axis: the search finds it, the largest of a fine grid around it
+    xc = [80.0; [j == 8 ? 0.08 : 0.0 for j in PCASE3.modes]; 0.0; 0.0]
+    bc = pulse3_shape(xc).profile
+    Ic(y, z) = abs2(first(PulseShapes.profile(bc, 0.0, y, z)))
+    Sc = strehl3(pulse3_shape(xc))
+    yb = argmax(y -> Ic(y, 0.0), range(-6, 6; length = 241))
+    @test Sc > 1.001 * Ic(0.0, 0.0) && abs(yb) > 0.1
+    @test Sc ≈ maximum(Ic(y, z) for y in range(yb - 0.05, yb + 0.05; length = 21), z in range(-0.05, 0.05; length = 21)) rtol = 1e-5
     xd = [ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32(j == i), 14)) for (i, v) in enumerate(x)]
     shd = pulse3_shape(xd)
     @test shd.profile.na isa ForwardDiff.Dual{Nothing,Float32,14} && shd.envelope.tod === xd[14] && shd.profile.aberrations[14] === xd[12]
@@ -83,6 +91,10 @@ end
         @test check_pulse3_time(pulse3_shape([80.0; zeros(11); gdd; tod])) === nothing
     end
     @test_throws ArgumentError pulse3_problem([80.0; zeros(11); 30.0; 0.0]; ppl = 8)
+    s0 = pulse3_shape(collect(PCASE3.x0))                                     # the transform-limited pulse spans ±36
+    @test check_pulse3_time(s0; delay = 36.0, start = 72.0) === nothing
+    @test_throws ArgumentError check_pulse3_time(s0; delay = 35.5, start = 108.0)   # not started at t = 0
+    @test_throws ArgumentError check_pulse3_time(s0; delay = 54.0, start = 89.5)    # not ended when the window passes
 end
 
 @testset "T-1231 the 3D energy is the budget at every point with no derivative in any parameter, and the share the antenna drives is recorded [A3, WP-087]" begin
@@ -95,6 +107,10 @@ end
         @test laser_energy(l) ≈ E rtol = 8eps()
         @test l.a0 == a0
     end
+    E2 = budget3(2.2)
+    l2 = pulse3_problem(random_start3(1); ppl = 8, float = Float64, energy = E2).lasers[1]
+    @test laser_energy(l2) ≈ E2 rtol = 8eps()
+    @test l2.a0 ≈ a0 * 2.2 / 1.9 rtol = 1e-12                                 # another budget scales a₀ as its square root
     xd = duals3(random_start3(3))
     ld = pulse3_problem(xd; ppl = 8, float = Float64).lasers[1]
     @test all(iszero, ForwardDiff.partials(laser_energy(ld))) && all(iszero, ForwardDiff.partials(ld.a0))
@@ -131,6 +147,8 @@ end
     xd32 = [ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32(j == i), 3)) for (i, v) in enumerate(x)]
     @test eltype(params(pulse3_problem(xd32; ppl = 8))) === ForwardDiff.Dual{Nothing,Float32,3}      # the energy and a₀ do not promote the duals to Float64
     @test pulse3_a0(pulse3_shape(xd32)) isa ForwardDiff.Dual{Nothing,Float32,3}
+    sh32 = pulse3_shape(xd32)                                                  # plain focus and plasma, a dual shape: the shape sets the element type
+    @test eltype(params(trapped3d_problem(6.0, 10.0, 80.0, 54.0, 0.072; ppl = 8, shape = sh32, a0 = pulse3_a0(sh32)))) === ForwardDiff.Dual{Nothing,Float32,3}
     st, p, _ = pulse3_start([ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32((i, j) in ((5, 1), (13, 2))), 2)) for (i, v) in enumerate(x)];
                             merge(SMALL3, (; float = Float32))..., capacity = 1000)
     t = p.lasers[1].profile
@@ -187,6 +205,9 @@ end
         @test all(m -> 0 < abs(m) <= 0.05, s[2:12])                       # every mode starts away from zero, within the spread
     end
     @test length(unique(values(starts))) == 4
+    modes = reduce(vcat, [s[2:12] for s in values(starts)])
+    @test count(<(0), modes) > 10 && count(>(0), modes) > 10                     # the modes start on both sides of zero
+    @test pulse3_starts("r1,r3"; seed = 874) == (; r1 = random_start3(1; seed = 874), r3 = random_start3(3; seed = 874))
     @test pulse3_starts("r2"; spread = 0.02).r2[2:12] ≈ 0.4 .* starts.r2[2:12] rtol = 1e-15
     @test round.(starts.r1[[1, 2, 13, 14]]; digits = 4) == round.(random_start3(1)[[1, 2, 13, 14]]; digits = 4)
     @test_throws ErrorException pulse3_starts("r1,base")
@@ -208,7 +229,10 @@ end
     st = pulse3_state(random_start3(1); SMALL3..., t_end = 120.0)
     s3, s2 = trapped_summary3(st; SMALL3_READ...), trapped_summary(st; SMALL3_READ...)
     hz = Float64(cellsize(st.grid)[3])
-    @test s3.J == hz * s2.J && s3.dark_weight == hz * s2.dark_weight && s3.particles == s2.particles && s3.ux_max_plasma == s2.ux_max_plasma
+    scaled = (:J, :J_born, :J_plasma, :weight_born, :weight_plasma, :fast_born_window, :fast_plasma_window, :dark_weight, :dark_energy)
+    @test keys(s3) == keys(s2)
+    @test all(k -> k in scaled ? s3[k] == hz * s2[k] : s3[k] == s2[k], keys(s2))
+    @test s3.J_plasma > 0 && s3.weight_plasma > 0                             # nonzero sums, so a missing Δz would show
     @test s3.J ≈ trapped_energy3(st; SMALL3_READ...) rtol = 1e-12
 end
 
