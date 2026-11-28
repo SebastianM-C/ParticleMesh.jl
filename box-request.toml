@@ -1,0 +1,6 @@
+timeout = 36000
+category = "validation"
+outputs = ["scripts/runs/optim-pulse2d-opt-4080"]
+[[steps]]
+kind = "julia"
+args = ["--project=scripts", "-t", "16", "scripts/optim/pulse2d_opt.jl", "check", "scripts/runs/optim-pulse2d-opt-4080", "backend=cpu"]
