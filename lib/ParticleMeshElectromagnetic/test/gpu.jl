@@ -1,4 +1,4 @@
-# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099; WP-083's laser under Enzyme: T-1140; WP-085's Zernike antenna: T-1168, T-1169; WP-086's ramp and counts under Enzyme: T-1174. Included last by runtests.jl, after physics.jl has
+# WP-013, the module on CUDA: T-195 to T-197 and T-280; WP-023's 2D step: T-380, T-381; WP-029's filter: T-446; WP-028's window: T-560 to T-562; WP-047's witness bunch: T-645; WP-046's dual gradient: T-611 to T-613; WP-055's parameters: T-736; WP-056's restart: T-747; WP-057's field modifiers and one step: T-758; WP-059's field ionization: T-780; WP-062's recorder options: T-813; WP-063's level types: T-827; WP-066's shaped antenna: T-909; WP-067's compensated gather: T-969; WP-070's Galerkin gather: T-999; WP-042's 3D step: T-958; WP-072's open 3D axes: T-1019; WP-073's 3D antenna: T-1029; WP-074's 3D window: T-1039; WP-075's 3D ionization: T-1049; WP-076's 3D compensated gather: T-1059; WP-079's M4 solver: T-1098, T-1099; WP-083's laser under Enzyme: T-1140; WP-085's Zernike antenna: T-1168, T-1169; WP-086's ramp and counts under Enzyme: T-1174; WP-093's filter and resort of the 3D step: T-1259. Included last by runtests.jl, after physics.jl has
 # stored the CPU runs that T-197 compares against; the testsets run only when the GPU switch says
 # so (the engine's gpu_switch.jl), otherwise the suite prints one line.
 
@@ -126,6 +126,16 @@ else
         @test filter_digests(; be = GPU) == first
         for wgs in (64, 256)
             @test filter_digests(; workgroupsize = wgs, be = GPU) == first
+        end
+    end
+
+    @testset "T-1259 the filter and the sort from the last order of the 3D step on CUDA pass T-1250 to T-1252, T-1254 and T-1255 with the CPU's tolerances, the Reference step bitwise across reruns and launch shapes, and Fast agrees with it [A2, A4, A5, A7, A8, WP-093]" begin
+        rerun_module_on(GPU, (("T-1250", body_T1250), ("T-1251", body_T1251), ("T-1252", body_T1252), ("T-1253", body_T1253_modes),
+                              ("T-1254", body_T1254), ("T-1255", be -> body_T1255(be; runs = ((Float32, Reference()), (D3, Reference()))))))
+        first = features3d_digests(; be = GPU)
+        @test features3d_digests(; be = GPU) == first
+        for wgs in (64, 256)
+            @test features3d_digests(; workgroupsize = wgs, be = GPU) == first
         end
     end
 

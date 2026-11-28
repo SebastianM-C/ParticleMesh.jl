@@ -352,14 +352,16 @@ the workspaces, the fields, and the default [`HistoryRecorder`](@ref) for `probl
 ([`RECORD_GROUPS`](@ref); `record = ()` records nothing). The particles are loaded by [`initialize!`](@ref). Throws an
 `ArgumentError` naming the limit unless `problem.dt < courant_limit(numerics.solver, grid)`
 ([`check_courant`](@ref)): the solver is then stable and every particle moves less than one cell
-per step, as `deposit_flux!` needs.
+per step, as `deposit_flux!` needs. The current is [`Esirkepov`](@ref)`()` or
+[`NoCurrent`](@ref)`()`; an absorber is refused, since the 1D box has no transverse axis to open
+and no moving window.
 """
 function EMState(problem::EMProblem{1,T}, numerics::EMNumerics; backend = CPU(), every::Integer = 1, record = RECORD_GROUPS) where {T}
-    numerics.current isa Esirkepov ||
-        throw(ArgumentError("the 1D step deposits the charge-conserving current: EMNumerics needs current = Esirkepov() at N = 1, got $(numerics.current)"))
+    numerics.current isa Union{Esirkepov,NoCurrent} ||
+        throw(ArgumentError("a 1D state takes current = Esirkepov() or NoCurrent() in EMNumerics, got $(numerics.current)"))
     numerics.absorber === nothing || throw(ArgumentError("the 1D box is periodic: EMNumerics takes no absorber at N = 1"))
     numerics.back_absorber === nothing ||
-        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (the moving window is 2D and 3D)"))
+        throw(ArgumentError("the 1D box is periodic: EMNumerics takes no back_absorber at N = 1 (it belongs to the moving window, which is 2D and 3D)"))
     n = problem.cells
     grid = PeriodicGrid(n, problem.length / n, em_guard_width(numerics.shape, numerics.solver))
     check_courant(numerics.solver, grid, problem.dt)
@@ -461,14 +463,14 @@ end
 function check_aux_params(st::EMState, p::EMParams)
     antennas, window = antenna_planes(st), window_frame(st)
     length(p.lasers) == length(antennas) ||
-        throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state$(ndims(st) == 1 ? " (laser antennas are implemented at N = 2 only)" : "")"))
+        throw(ArgumentError("$(length(p.lasers)) lasers in the parameters, $(length(antennas)) antenna planes in the state$(ndims(st) == 1 ? " (laser antennas are implemented at N = 2 and 3 only)" : "")"))
     foreach((l, a) -> check_plane(a, l), p.lasers, antennas)
     window === nothing || check_window_antennas(window, back_absorber(st), map(Antenna, p.lasers, antennas))
     (p.witness === nothing) == (witness_frame(st) === nothing) ||
         throw(ArgumentError("the parameters $(p.witness === nothing ? "have no" : "have a") witness bunch, the state $(witness_frame(st) === nothing ? "has none" : "has one")"))
     check_ionization_params(ionization_frame(st), p.ionization)
     p.profile === nothing || window !== nothing ||
-        throw(ArgumentError("a density profile is implemented with the moving window only"))
+        throw(ArgumentError(PROFILE_NEEDS_WINDOW))
     window === nothing || check_window_params(window, p)
     return nothing
 end

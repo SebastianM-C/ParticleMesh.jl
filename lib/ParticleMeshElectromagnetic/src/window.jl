@@ -63,6 +63,9 @@
 The moving window of an [`EMProblem`](@ref) at N = 2 (WP-028) and N = 3 (WP-074): the box moves at c along axis 1
 (the laser's propagation axis) from the time `start` (1/ω₀, A1), by whole cells: after step k it
 has moved `max(0, floor((k·Δt − start)/Δx₁))` cells. The problem's axis 1 boundary is `:window`.
+With `start = Inf` the box never moves: a static box whose x edges are not periodic and whose
+outside is field-free, which is how a [`DensityRamp`](@ref) runs without a moving window (a ramp
+does not close across a periodic seam; cold species at rest, as for any `start > 0`).
 """
 struct MovingWindow{T}
     start::T

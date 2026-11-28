@@ -92,6 +92,8 @@ function momentum_distribution(momentum::Symbol, name, drift::NTuple{3,T}, therm
     return GaussianMomentum(map(b -> Γ * b, drift), thermal)
 end
 
+const PROFILE_NEEDS_WINDOW = "a density profile needs the window's edges along axis 1 (a ramp does not close across a periodic seam, and the plasma starts neutral against the profile's own background): for a box that does not move, take boundaries with :window on axis 1 and window = MovingWindow(; start = Inf)"
+
 """
     EMProblem{N,T}
 
@@ -198,7 +200,7 @@ function EMProblem(name, box, cells, dt::T, nsteps::Integer, species::Tuple, see
         throw(ArgumentError("boundaries = $bd with window = $window: a :window axis 1 and a MovingWindow come together"))
     window === nothing || window isa MovingWindow || throw(ArgumentError("window must be a MovingWindow, got $window"))
     profile === nothing || profile isa DensityRamp || throw(ArgumentError("profile must be a DensityRamp, got $profile"))
-    profile !== nothing && !moving && throw(ArgumentError("a density profile is implemented with the moving window only"))
+    profile !== nothing && !moving && throw(ArgumentError(PROFILE_NEEDS_WINDOW))
     if moving
         for d in species
             iszero(d.amplitude) ||
@@ -265,14 +267,13 @@ the launch shape only). A fixed size has to fit every kernel of the step: the la
 a kernel accepts depends on the backend, the kernel and the element type (on the CPU (PoCL)
 backend the 2D flux deposition with `Dual{Float32,3}` and the quadratic shape takes at most 983
 work-items, as PoCL reported it, #297), and a launch it does not fit stops the step with an
-`ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, at
-N = 1, 2 and 3, or [`NoCurrent`](@ref)`()` at N = 2 and 3 (prescribed fields); a state refuses
-any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
+`ArgumentError` that names the size and the kernel; `nothing` fits every kernel. `current` is [`Esirkepov`](@ref)`()`, the charge-conserving current, or
+[`NoCurrent`](@ref)`()` (prescribed fields), at N = 1, 2 and 3; a state refuses any other. `filter` is the [`BinomialFilter`](@ref) the step applies to the folded current
 before the mesh solve, with no passes by default. `absorber` realizes an open boundary of the
 problem: an [`AbsorbingLayer`](@ref) or a [`PML`](@ref) when a transverse axis of the problem is `:open` (at N = 2
 axis 2, at N = 3 axis 2, 3 or both, each open axis getting its own placed layer; required then,
-refused otherwise), `nothing` for a periodic box; a 2D state refuses filter passes together
-with either absorber until a test checks the two together. `back_absorber` is a [`PML`](@ref) on
+refused otherwise), `nothing` for a periodic box; with filter passes the absorber has at least
+the guard width plus the passes of cells ([`check_filter_fits`](@ref)). `back_absorber` is a [`PML`](@ref) on
 the moving window's back edge (WP-034: its first `cells` columns, the profile graded towards the
 back), or `nothing`, the window's field-free outside alone; a state refuses it without a
 window, and refuses a laser antenna that the layer reaches before its pulse is over. `headroom` sizes the particle buffers of

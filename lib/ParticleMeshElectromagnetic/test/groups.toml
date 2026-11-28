@@ -34,4 +34,6 @@ groups = [
     ["checkpointing.jl"],
     # the Zernike pupil beam and its table on the 3D antenna, after the 3D antenna (its helpers)
     ["em3d_step.jl", "em3d_open.jl", "em3d_antenna.jl", "zernike.jl", "em3d_zernike.jl"],
+    # the filter and the resort of the 3D step and the filter beside an open axis, which reuse no other file
+    ["nd_features.jl"],
 ]

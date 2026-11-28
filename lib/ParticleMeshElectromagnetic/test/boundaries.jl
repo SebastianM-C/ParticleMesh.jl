@@ -315,8 +315,9 @@ end
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = AbsorbingLayer(; cells = 2, strength = 1)))
     @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = AbsorbingLayer(; cells = 8, strength = 1)))
     @test EMState(prob, EMNumerics(; absorber = AbsorbingLayer(; cells = 7, strength = 1))) isa EMState{2}
-    # the binomial filter is refused with the layer (untested together), zero passes are not
-    @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = ab, filter = BinomialFilter(1)))
+    # the binomial filter beside the layer: as many passes as the layer has cells beyond the guard width (T-1254, T-1257)
+    @test EMState(prob, EMNumerics(; absorber = ab, filter = BinomialFilter(1))) isa EMState{2}
+    @test_throws ArgumentError EMState(prob, EMNumerics(; absorber = ab, filter = BinomialFilter(2)))
     @test EMState(prob, EMNumerics(; absorber = ab, filter = BinomialFilter(0))) isa EMState{2}
     @test EMState(pp, EMNumerics(; filter = BinomialFilter(1))) isa EMState{2}
     # boundaries: one per axis, :periodic or :open, axis 1 periodic; N = 1 periodic

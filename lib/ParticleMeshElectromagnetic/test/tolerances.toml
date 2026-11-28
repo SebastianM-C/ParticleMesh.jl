@@ -976,7 +976,8 @@ C = 16
 measured = { Float32 = 4.01, Float64 = 5.26 }
 measured_wider = { ppc_5 = 5.13, cells_16x14x12_ppc_3 = 5.15, order1_ppc_5 = 2.96, steps_100 = 5.01 }
 measured_device = { "Float32 on CUDABackend" = 4.76, "Float64 on CUDABackend" = 4.76 }
-status = "proposed; measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
+measured_filter_resort = { Float32 = 3.24, Float64 = 4.86 }
+status = "proposed; measured_filter_resort is T-1253 (two filter passes and the sort from the last order); measured_device is T-958 on an RTX 5090, the larger of the runs at 46373e1 and 82c1945; the largest of two runs (Fast's atomics add in another order each run); C is about three times the largest, including the wider runs (measured_wider: 30 steps at 5³ per cell, 20 steps on 16 × 14 × 12 cells at 3³, order 1 at 5³, and 100 steps; the largest of Float32 and Float64, each at step 1). Per component instead of per kind (T-362's rule) a component that is still small divides the current's roundoff by itself: the physics breaker measured 96 against the C = 80 of that rule at 5³ per cell, from Bx at step 1. Over 200 steps at order 1 the two runs separate exponentially (chaotic divergence of the trajectories, the physics breaker: 630 at step 200), so the check is over 20 steps"
 
 ["T-953"]
 quantity = "a 3D run invariant along one axis against the 2D run (its plane mapped cyclically onto the other two axes), after initialize! and after every step: every component on every line of the invariant axis; 20 steps of two cold counter-streaming beams, one perturbed along mode (1, 1)"
@@ -1449,3 +1450,35 @@ quantity = "Enzyme's reverse mode on CUDA through a kernel that evaluates the 3D
 scale = "per input k, Σ_i |w̄_i|·(|J_ik| + Σ_l |H_ikl|·|z_il|) over the points that reach it (one for a position, all for a parameter): the first-order error of the gradient with every input rounded by eps; the bare Σ|J||w̄| of T-1140 counts a nearly vanishing slope's argument rounding as error (1080 of it between the CPU's own Float32 and Float64, 930 and 21800 on the RTX 4080 SUPER)"
 C = 8
 status = "proposed; the CPU's Float32 ForwardDiff against its Float64 reaches 0.37 in this scale, not yet measured on a GPU in it"
+
+# WP-093: the filter and the sort from the last order at N = 3, the filter beside an open axis.
+
+["T-1250"]
+quantity = "binomial! at N = 3 on a random field (value and partials), 8 × 6 × 5 cells, 1, 2 and 3 passes: every DFT coefficient of the output against H_p(m) = Π_d cos^{2p}(π m_d/n_d) times the input's"
+scale = "3p·max|input| (normalized DFT, computed in BigFloat)"
+C = 2
+measured = { Float32 = 0.00591, Float64 = 0.00359, "Dual{Float32,3}" = 0.00448 }
+status = "proposed; the output is also the host filter bit for bit, which the test asserts"
+
+["T-1251"]
+quantity = "with p filter passes, after every 3D step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| (C) and |Σ(D⁻·Eⁿ − (ρⁿ − mean ρ))| (the same C); the plasma of T-950 (20 steps) with p = 1, 2; both modes"
+scale = "(n₁ + n₂ + n₃)·max|ρ|·√(k + 1) after k steps, times Π n_d for the sum"
+C = 2
+measured = { Float32 = 0.141, Float64 = 0.169, "Dual{Float32,3}" = 0.127, sum = { Float32 = 0.0372, Float64 = 0.0447, "Dual{Float32,3}" = 0.0893 } }
+effect = "max over the run of max|D⁻·Eⁿ − (ρⁿ − mean ρ)| / max|ρⁿ − mean ρ|, every type and mode: p = 1 0.987, p = 2 1.09 (the grid-scale charge noise, where H_p ≈ 0, as T-441)"
+status = "proposed; the largest over the passes and the modes"
+
+["T-1252"]
+quantity = "one 3D step with two passes against one without, from the same state: |J_filtered − F_host(J)| per component (C), |(E₁ − E₀) + Δt(J₁ − J₀)| (C)"
+scale = "3p·max|J| for J; max|E| + Δt·max|J| for E; in Fast mode both times √(prod ppc), against T-951's C (the two states' atomic depositions differ in association order)"
+C = 2
+measured = { Float32 = 0.679, Float64 = 0.692, "Dual{Float32,3}" = 0.679, fast = { Float32 = 0.218, Float64 = 0.179, "Dual{Float32,3}" = 0.24 } }
+status = "proposed; measured is E in Reference mode, where J is the host filter of the unfiltered current bit for bit (ratio 0); fast is E in Fast mode against T-951's C, at one thread (J's ratio 0 there too)"
+
+["T-1254"]
+quantity = "with p filter passes beside an open axis, after every step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| on the node rows off the absorbers, particles leaving; N = 2 (open y, 40 steps, p = 2, absorbers of 5 cells) and N = 3 (open y and z, 20 steps, p = 1, absorbers of 4 cells), the layer and the PML, both modes"
+scale = "(Σ_d n_d)·max|ρ|·√(k + 1) after k steps"
+C = 2
+measured = { Float32 = 0.104, Float64 = 0.122, "Dual{Float32,3}" = 0.0522 }
+effect = "on the absorbers' rows the same ratio is 2.5e4 (Float32) to 2.8e13 (Float64), and the test asserts more than 1e4 there; 735 to 768 of 2880 particles leave at N = 2 and 3604 to 3843 of 16128 at N = 3"
+status = "proposed; the largest over N, the absorbers and the modes"

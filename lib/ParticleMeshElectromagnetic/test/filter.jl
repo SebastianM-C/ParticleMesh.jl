@@ -4,46 +4,14 @@
 # mesh solve, it commutes with the backward differences of the continuity equation, so the
 # filtered Gauss law D⁻·Eⁿ − Fρⁿ = D⁻·E⁰ − Fρ⁰ holds to roundoff (T-441), and the plain residual
 # D⁻·Eⁿ − (ρⁿ − mean ρ) is (F − 1)(ρⁿ − ρ⁰), which T-441 measures. Host references: the
-# `circshift` filter `binomial_host` and the DFT below, neither of which uses the module's kernels.
+# `circshift` filter `binomial_host` and the DFT of filter_cases.jl, neither of which uses the
+# module's kernels.
 
 foreach(start_determinism_worker, DETERMINISM_THREADS)   # the worker runs (determinism_cases.jl) beside this file's in-process runs
 
-using ParticleMeshElectromagnetic: RHO_STAGGER_2D, FIELD_LAYOUT_2D
-
-"A random value of `T` in [−1, 1) (each partial of a dual drawn too)."
-rand_T(rng, ::Type{T}) where {T<:AbstractFloat} = T(2rand(rng) - 1)
-rand_T(rng, ::Type{Dual{Nothing,V,N}}) where {V,N} = Dual{Nothing}(V(2rand(rng) - 1), ntuple(_ -> V(2rand(rng) - 1), N)...)
-
-"The value and each partial of an array of `T`, as BigFloat arrays (exact conversions)."
-component_arrays(A::AbstractArray{<:AbstractFloat}) = [BigFloat.(A)]
-component_arrays(A::AbstractArray{<:Dual}) = [BigFloat.(map(x -> components(x)[c], A)) for c in 1:length(components(first(A)))]
-
-"""
-The normalized DFT of a real array in one or two dimensions, Â[m] = Σ_j A[j]·exp(−2πi m·j/n)/Π n,
-in BigFloat, so that its own rounding stays far below eps(Float64) at any test size (in Float64
-it reached 1.4 of T-440's scale at n = 33, measured by the WP-029 physics breaker).
-"""
-function dft(A::AbstractArray{BigFloat,N}) where {N}
-    W(n) = [cispi(-2 * big((k - 1) * (j - 1)) / n) for k in 1:n, j in 1:n]
-    N == 1 && return W(length(A)) * A ./ length(A)
-    return W(size(A, 1)) * A * transpose(W(size(A, 2))) ./ length(A)
-end
-
-"The closed form H_p of the DFT index `m` (1-based) on `n` cells: Π_d cos^{2p}(π(m_d − 1)/n_d)."
-transfer_closed(m::CartesianIndex, n, p) = prod(d -> cospi(big(m[d] - 1) / n[d])^(2p), 1:length(n))
-
-"A field of `grid` with the interior `A` and every guard set to `junk`, and a scratch field filled with `junk2`."
-function guarded(grid, A::AbstractArray{T}, junk, junk2) where {T}
-    a = field(CPU(), T, grid)
-    fill!(a, junk)
-    interior_view(a, grid) .= A
-    s = field(CPU(), T, grid)
-    fill!(s, junk2)
-    return a, s
-end
+using ParticleMeshElectromagnetic: FIELD_LAYOUT_2D
 
 const FILTER_GRIDS = (PeriodicGrid(16, 1 // 4, 2), PeriodicGrid((12, 10), (1 // 4, 1 // 5), 3))
-grid_T(g::PeriodicGrid{N}, ::Type{T}) where {N,T} = PeriodicGrid(g.n, map(d -> T(d), g.dx), guards(g))
 
 # --- T-440 ----------------------------------------------------------------------------------
 
@@ -147,34 +115,6 @@ end
 end
 
 # --- T-441 ----------------------------------------------------------------------------------
-
-"""
-    gauss_parts(state) -> (; divE, ρ)
-
-The backward-difference divergence of E and the charge deposited now in the state's mode, on the
-host, as interior arrays (the species are sorted by their current cells after every step).
-"""
-function gauss_parts(st)
-    (; grid, numerics) = st
-    T = eltype(st.ρ)
-    N = ndims(st)
-    ρd = field(get_backend(st.ρ), T, grid)
-    for (s, ws) in zip(st.species, st.ws)
-        deposit!(numerics.mode, ρd, s, numerics.shape, N == 1 ? RHO_STAGGER : RHO_STAGGER_2D, grid, ws)
-    end
-    fold_guards!(ρd, grid)
-    g, n, h = guards(grid), grid.n, grid.dx
-    ρ = collect(interior_view(Array(ρd), grid))
-    Ex = Array(st.fields.Ex)
-    if N == 1
-        divE = [(Ex[g + j] - Ex[g + j - 1]) / h[1] for j in 1:n[1]]
-    else
-        Ey = Array(st.fields.Ey)
-        divE = [(Ex[g + i, g + j] - Ex[g + i - 1, g + j]) / h[1] + (Ey[g + i, g + j] - Ey[g + i, g + j - 1]) / h[2]
-                for i in 1:n[1], j in 1:n[2]]
-    end
-    return (; divE, ρ)
-end
 
 # Each step changes D⁻·E by −Δt·D⁻·(FJ) = −Δt·F(D⁻·J) = F(ρⁿ⁺¹ − ρⁿ) (the filter is a periodic
 # convolution, so it commutes with D⁻, and deposit_flux! makes the continuity equation hold to
