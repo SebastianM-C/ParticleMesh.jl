@@ -95,8 +95,11 @@ The a₀ at which a [`ShapedLaser`](@ref) of `shape` carries `energy` per unit l
 shape does not depend on the free parameters, so neither does a₀, exactly: its partials are zero.
 """
 function pulse_a0(shape; energy = budget(PCASE.a0_energy))
-    unit = ShapedLaser(; a0 = 1, delay = PCASE.delay, focus = PCASE.x0[1], position = 0.0, center = 0.0, shape.profile, shape.envelope)
-    return sqrt(energy / laser_energy(unit))
+    # the unit laser in the shape's element type, so that a Float32 dual stays one
+    T = typeof(shape.profile.na)
+    unit = ShapedLaser(; a0 = one(T), delay = T(PCASE.delay), focus = T(PCASE.x0[1]), polarization = zero(T), phase = zero(T),
+                       position = zero(T), center = zero(T), shape.profile, shape.envelope)
+    return sqrt(convert(T, energy) / laser_energy(unit))
 end
 
 """

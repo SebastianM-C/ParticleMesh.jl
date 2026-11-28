@@ -105,7 +105,7 @@ function pulse_run_point(x; ppl::Integer, ny::Integer, float::Type{<:AbstractFlo
     out["envelope_centroid"], out["envelope_duration"] = c, h
     out["gradient"] = grad ? collect(Float64, ForwardDiff.partials(J)) : nothing
     out["seconds"] = t
-    out["eltype"] = string(F)
+    out["eltype"] = string(eltype(st.species[1].w))
     out["ppl"], out["ny"] = ppl, ny
     out["gather"] = gather === nothing ? "plain" : "compensated"
     out["cells"] = collect(ncells(st.grid))

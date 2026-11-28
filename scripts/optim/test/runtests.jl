@@ -1124,6 +1124,10 @@ pulse_corners() = [[isodd(k >> (i - 1)) ? PULSE_BOX.hi[i] : PULSE_BOX.lo[i] for 
     xd = [ForwardDiff.Dual{Nothing}(Float32(v), ntuple(j -> Float32(j == i), 5)) for (i, v) in enumerate((90.0, 0.1, -0.2, 3.0, -7.0))]
     shd = pulse_shape(xd)
     @test shd.profile.na isa ForwardDiff.Dual{Nothing,Float32,5} && shd.envelope.tod === xd[5]
+    # a Float32 dual stays one through a₀ and the problem
+    @test pulse_a0(shd; energy = Float32(budget(1.9))) isa ForwardDiff.Dual{Nothing,Float32,5}
+    @test eltype(params(pulse_problem(xd; energy = Float32(budget(1.9)), ppl = 8, float = Float32))) === ForwardDiff.Dual{Nothing,Float32,5}
+    @test eltype(params(pulse_problem(Float32.([90.0, 0.1, -0.2, 3.0, -7.0]); energy = Float32(budget(1.9)), ppl = 8, float = Float32))) === Float32
     @test_throws ArgumentError pulse_shape([80.0, 0.0, 0.0])
     # every corner of the box starts after t = 0 and ends before the window passes the antenna; twice the GDD does not
     for x in pulse_corners()
