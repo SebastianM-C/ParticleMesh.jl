@@ -226,13 +226,19 @@ witness is an `ArgumentError` (`allow_lost = true` averages over the alive ones,
 The weights are a Gaussian truncated to the lattice's region, so the region should cover the
 centre by several lengths and widths; if the weights of the alive witnesses vanish (the centre far
 outside the region), or none is alive (before the injection, or all lost), it is an
-`ArgumentError` too, never a NaN.
+`ArgumentError` too, never a NaN. So is an alive witness inside a moving window's back band
+([`window_back_band`](@ref)), where observables are not to be read (#370).
 """
 function witness_energy_gain(st::EMState{2}, p::EMParams; allow_lost::Bool = false)
     g = witness_gains(st, p)
     any(g.alive) || throw(ArgumentError("no witness particle is alive: the bunch is not injected yet, or every particle left the box"))
     allow_lost || all(g.alive) ||
         throw(ArgumentError("$(count(!, g.alive)) of the $(length(g.alive)) witness particles left the box, so the mean jumps between neighbouring parameter values; widen the window, move the bunch, or pass allow_lost = true"))
+    if st.aux.window !== nothing
+        edge = window_back_band(st) * cellsize(st.grid)[1]
+        any(i -> g.alive[i] && g.x[i] < edge, eachindex(g.x)) &&
+            throw(ArgumentError("a witness particle lies in the window's back absorber band (the first $(window_back_band(st)) columns), where the fields jump between neighbouring parameter values (WP-044); move the bunch forward or widen the window"))
+    end
     num = sum(g.w[i] * g.gain[i] for i in eachindex(g.w) if g.alive[i])
     den = sum(g.w[i] for i in eachindex(g.w) if g.alive[i])
     den > 0 ||
