@@ -317,11 +317,11 @@ function body_T1190(be)
     @test resort_by_cell!(s, grid, w; check = true) === s
 end
 
-@testset "T-1190 resort_by_cell!(...; check = true) gives the full sort's bits within its precondition and throws when a particle moved two cells or more particles were appended than its append, at N = 1, 2, 3 [A4, WP-041, #475]" begin
+@testset "T-1190 resort_by_cell!(...; check = true) gives the full sort's bits within its precondition and throws when a particle moved two cells or more particles were appended than its append, at N = 1, 2, 3 [A4, WP-041]" begin
     body_T1190(CPU())
 end
 
-@testset "T-1193 each comparison of resort_by_cell!'s check counts on its own: one permutation entry, one segment start, one segment stop, the count [A4, WP-041, #475]" begin
+@testset "T-1193 each comparison of resort_by_cell!'s check counts on its own: one permutation entry, one segment start, one segment stop, the count [A4, WP-041]" begin
     # The two broken cases of T-1190 differ from the full sort in the permutation and the segments
     # both, so there each comparison hides the others; here each one sees a single difference.
     PMC = ParticleMeshCore
