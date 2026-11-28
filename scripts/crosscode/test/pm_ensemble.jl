@@ -43,7 +43,7 @@ end
         @test m1["parameters"]["momenta_at"] == "t0" && m1["parameters"]["density_at"] == "particle"   # the start it ran with
         @test m1["seeds"] == seeds[[3, 1]] && sort(collect(keys(m1["per_seed"]))) == sort(string.(seeds[[3, 1]]))
         @test m1["host"]["threads"] == Threads.nthreads() && haskey(m1["host"], "boot_id")
-        @test m1["case_sha256"] == PMEns.RunManifest.file_hash(case_file)
+        @test m1["case_sha256"] == RunManifests.file_hash(case_file)
         # the merge, requests in either order, against the same four seeds simulated here
         out = joinpath(tmp, "merged")
         r = PMEns.merge_requests(out, [r2, r1]; case_file)
@@ -164,8 +164,8 @@ end
         all32 = em2d.reference_ensembles("landau-oblique-2d", tmp)
         @test all(endswith(last(p), "-431f4192") for p in all32)
         # each reference ran the same case file, so its seeds are the run's
-        h = em2d.RunManifest.file_hash(joinpath(tmp, "case.toml"))
-        @test all(em2d.RunManifest.file_hash(joinpath(last(p), "case.toml")) == h for p in all32)
+        h = RunManifests.file_hash(joinpath(tmp, "case.toml"))
+        @test all(RunManifests.file_hash(joinpath(last(p), "case.toml")) == h for p in all32)
         @test all(isfile(joinpath(last(p), "seed-coefficients.json")) for p in all32)
         write(joinpath(tmp, "case.toml"), read(joinpath(tmp, "case.toml"), String) * "\n")
         @test em2d.reference_ensembles("landau-oblique-2d", tmp) == ()
@@ -195,7 +195,7 @@ end
     run = joinpath(REPORTS, "wp-032-pm-landau-ensemble", "em2d-pm-landau-oblique-2d-32")
     case = TOML.parsefile(joinpath(run, "case.toml"))
     seeds = PMEns.case_seeds(case)
-    @test length(seeds) == 32 && PMEns.RunManifest.file_hash(joinpath(run, "case.toml")) == PMEns.RunManifest.file_hash(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
+    @test length(seeds) == 32 && RunManifests.file_hash(joinpath(run, "case.toml")) == RunManifests.file_hash(joinpath(PMEns.CASES, "landau-oblique-2d.toml"))
     # every seed's series gives the committed coefficients, and the ensemble the committed record
     series = [PMEns.seed_series(joinpath(run, "seed-$s"), case) for s in seeds]
     t, s_, c = PMEns.seed_coefficients(run)

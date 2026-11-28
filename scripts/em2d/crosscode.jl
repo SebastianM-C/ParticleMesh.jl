@@ -33,7 +33,7 @@ const SMILEI = Dict("landau-oblique-2d" => (single = joinpath(REPO, "reports", "
                     "weibel-2d" => (single = joinpath(REPO, "reports", "crosscode-smilei-2d", "smilei-weibel-2d-dca1230a"), ensembles = Dict()))
 
 "The reference ensembles of a run's case file (`case.toml` in the run directory), by its hash; none for an unknown file."
-reference_ensembles(name, pmdir) = get(SMILEI[name].ensembles, RunManifest.file_hash(joinpath(pmdir, "case.toml"))[1:8], ())
+reference_ensembles(name, pmdir) = get(SMILEI[name].ensembles, RunManifests.file_hash(joinpath(pmdir, "case.toml"))[1:8], ())
 
 "The seeds of a case: its `seeds` list, or its single `random_seed`."
 case_seeds(case) = haskey(case["numerics"], "seeds") ? Int.(case["numerics"]["seeds"]) : [Int(case["numerics"]["random_seed"])]

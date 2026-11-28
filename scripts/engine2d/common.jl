@@ -14,8 +14,8 @@ const REPO = normpath(joinpath(@__DIR__, "..", ".."))
 const CORE_TEST = joinpath(REPO, "lib", "ParticleMeshCore", "test")
 const EM_TEST = joinpath(REPO, "lib", "ParticleMeshElectromagnetic", "test")
 
-include(joinpath(REPO, "scripts", "crosscode", "manifest.jl"))
-using .RunManifest: write_manifest
+using RunManifests
+using RunManifests: write_manifest
 
 "Files whose content defines a run: the engine and module sources, the test support the run includes, these scripts, the manifests."
 function input_files(script; extra = String[])
@@ -44,7 +44,7 @@ function run_dir(name, script; params = Dict{String,Any}(), extra_inputs = Strin
     stamp = Dates.format(now(UTC), "yyyymmddTHHMMSS")
     dir = dir === nothing ? joinpath(REPO, "scripts", "runs", "$prefix-$name-$stamp") : abspath(dir)
     mkpath(dir)
-    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifest.file_hash(f) for f in input_files(script; extra = extra_inputs))
+    inputs = Dict{String,Any}(relpath(f, REPO) => "sha256:" * RunManifests.file_hash(f) for f in input_files(script; extra = extra_inputs))
     write_manifest(dir; root = REPO,
                    extra = merge(Dict{String,Any}("inputs" => inputs, "run_id" => basename(dir), "work_package" => work_package,
                                                   "parameters" => params, "julia" => string(VERSION), "threads" => Threads.nthreads(),

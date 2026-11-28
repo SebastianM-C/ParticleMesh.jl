@@ -289,19 +289,6 @@ json_close(a, b; rtol) = a == b
         w = [complex.(randn(Xoshiro(395), 5), randn(Xoshiro(396), 5)) for _ in 1:3]
         write_seed_coefficients(out, collect(0.0:4.0), [1, 2, 3], w; observable = "x")
         @test seed_coefficients(out) == (collect(0.0:4.0), [1, 2, 3], w)
-        # wall times from an appended container.txt: a killed start is superseded by the next one
-        f = joinpath(out, "container.txt")
-        write(f, """
-            # compile start: 2026-11-02T10:00:00.000Z
-            # compile end: 2026-11-02T10:01:40.000Z
-            # run seed-1 seed 1 start: 2026-11-02T10:01:40.000Z
-            # compile start: 2026-11-02T11:00:00.000Z
-            # compile end: 2026-11-02T11:01:00.000Z
-            # run seed-1 seed 1 start: 2026-11-02T11:01:00.000Z
-            # run seed-1 seed 1 end: 2026-11-02T11:06:30.000Z
-            """)
-        @test stamp_interval(f, "# run seed-1 seed 1 start:", "# run seed-1 seed 1 end:") == 330.0
-        @test stamp_intervals(f, "# compile start:", "# compile end:") == [100.0, 60.0]
     end
 end
 
