@@ -17,8 +17,8 @@ Factory: the owner sets the goals (A0) and plans and reviews outside the reposit
    ▲                                                                      ▼
  planning and review, outside the repository ◄────────── coverage  ◄── repository
  dashboard                                                 ▲   ▲   ▲        ▲
- steering session                                          │   │   │        │
-                      factory sessions / workflows ────────┘   │   └── GPU runs on the 4080 (on demand)
+ project chat                                              │   │   │        │
+                      project threads ─────────────────────┘   │   └── GPU runs on the owner's machines (on demand)
                       agent session records via hooks/OTel ────┘       run manifests, plots, sidecars
 ```
 
@@ -28,7 +28,7 @@ The full text is in `docs/goals/` (A0 to A10) and in `factory-and-observability.
 
 A0 Aims · A1 Units and normalization · A2 Baseline numerical scheme · A3 How parameters enter the simulation · A4 Determinism policy · A5 Canonical benchmark cases with numbers · A6 Repository and environment · A7 Acceptance criteria and budgets per work package · A8 Element type is a user-level choice · A9 Scope: a generic particle–mesh framework · A10 Problem description separated from numerical implementation · factory settings: F1 Package environments · F2 Dependencies · F3 Results, plots and reports · F4 Merge policy.
 
-Derived design choices without a goal id (2D Cartesian first with the envelope model instead of quasi-3D RZ, ForwardDiff first with about three parameters, the KernelAbstractions core, Checkpointing.jl only as a weak dependency, saved workflows as the production line with Managed Agents as a bounded track) are in `architecture-draft.md` (constraints, §3), `open-items.md` D and `factory-and-observability.md` §4.
+Derived design choices without a goal id (2D Cartesian first with the envelope model instead of quasi-3D RZ, ForwardDiff first with about three parameters, the KernelAbstractions core, Checkpointing.jl only as a weak dependency, threads of the owner's Claude project as the production line with Managed Agents as a bounded track) are in `architecture-draft.md` (constraints, §3), `open-items.md` D and `factory-and-observability.md` §4.
 
 ## 3. Design decisions still open, by when they bite
 
@@ -36,14 +36,14 @@ Derived design choices without a goal id (2D Cartesian first with the envelope m
 1. **Budget per role.** The roles are defined in `.claude/agents/` (model, effort and tools in their frontmatter, per-run overrides in the workflows that start them); what each role may spend is open.
 2. **Cloud environment.** An environment exists and has been through a few test rounds. Open: the network access list (the Julia allowlist), which still needs refining; the setup script within the five-minute cache window; the depot strategy for the SciML stack (SessionStart hook versus a prebuilt Docker depot image), environment variables, what secrets if any.
 3. **The A5 expected values**, committed, so sessions do not guess: WP-012, WP-014 (Weibel) and WP-017 propose them, and the owner accepts them in A5.
-4. **Safety of unattended runs.** Unattended sessions run under a separate configuration directory with the Bash sandbox on and the deny rules of `.claude/settings.json`; CI's leak scan rejects IP addresses, ssh URLs and private keys. Open: a separate user account or container with no access to the owner's credentials, and a check that also rejects hostnames and private package names.
+4. **Safety of unattended runs.** Threads run in cloud containers in auto mode, inside the deny rules of `.claude/settings.json`; CI's leak scan rejects IP addresses, ssh URLs and private keys. Open: threads act as the owner's GitHub account, so only the contract and a deny rule keep them from merging (F4); and a check that also rejects hostnames and private package names.
 
 ### Before the first GPU package
-5. **Testing and CI design.** Test tiers (unit, conservation, benchmark, cross-code, gradient), runtime budgets per tier, which run on GitHub Actions and which on the local GPU or the nightly loop, where expected values and cross-code reference outputs live (size, LFS or a self-hosted server), how failures become trace records.
+5. **Testing and CI design.** Test tiers (unit, conservation, benchmark, cross-code, gradient), runtime budgets per tier, which run on GitHub Actions and which on the GPU machines, where expected values and cross-code reference outputs live (size, LFS or a self-hosted server), how failures become trace records.
 6. **Artifact and data management.** Run record format (reuse EDM's manifests or generalize them), where plots and large outputs go, retention, the publishing path to the dashboard, content addressing of inputs.
 7. **Dashboard.** Reuse the EDM dashboard pattern (static viewer plus builder) with the trace views added, or build new; hosting and access.
 8. **Differentiable diagnostics** (B3), **FP32 drift test** (B5), **symbolic spike criteria** (B6), **Reactant compatibility spike** (B9), **Molly interface study** (B10).
-9. **The GPU loop.** The Agent SDK script: cadence, what it runs, how it reports, API key handling, budget caps, container versus bare metal, reuse of the EDM campaign recipes.
+9. **Unattended GPU work.** How validation and benchmark campaigns run without a thread driving them: cadence, what runs, how it reports, budget caps, rented GPU VMs versus the owner's machines, reuse of the EDM campaign recipes.
 10. **Observability backend.** Where OTLP goes (a self-hosted Grafana stack, a hosted one, or a file collector at first), retention, how cost is attributed per work package.
 
 ### Before the first scientific result

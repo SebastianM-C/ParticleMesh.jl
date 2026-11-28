@@ -1,7 +1,7 @@
 # ParticleMesh.jl
 
 > **Experimental, and built by Claude.** This package is being developed largely by Claude
-> (Anthropic's Claude Code, running as autonomous agents and saved workflows) under the direction
+> (Anthropic's Claude Code, running as autonomous agents) under the direction
 > and review of @SebastianM-C. It is also an experiment in how such a software
 > factory should be organized. Expect gaps, churn and unverified claims until a release says
 > otherwise; every number that leaves this repository is meant to pass an independent review first.
@@ -114,7 +114,7 @@ record in `docs/plan/` (start with `overview.md`) says where the project is goin
 | `scripts/` | user code that produces results (benchmark cases, validation and cross-code runs, campaigns, figures); its own environment with a committed manifest |
 | `reports/` | Markdown reports with their figures, one directory per report |
 | `questions/` | assumptions agents made instead of asking |
-| `.claude/` | agent roles, saved workflows and settings used by the Claude Code sessions |
+| `.claude/` | agent roles and settings used by the Claude Code sessions |
 
 ## License
 
