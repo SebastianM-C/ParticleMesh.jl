@@ -182,7 +182,9 @@ function f!(o1, o2, st, p, k, v)
     sq_kernel!(get_backend(o2))(o2, st.species[1].u[1]; ndrange = length(o2))
     return nothing
 end
-if get(ARGS, 5, "") != "check"
+if get(ARGS, 5, "") == "lib"
+    # included by another script (ionize_probe.jl) for the state and `piece!`
+elseif get(ARGS, 5, "") != "check"
     o1 = similar(st.fields.Ey); fill!(o1, 0); d1 = similar(o1); fill!(d1, 1)
     o2 = similar(st.species[1].u[1]); fill!(o2, 0); d2 = similar(o2); fill!(d2, 1)
     dst = Enzyme.make_zero(st)
