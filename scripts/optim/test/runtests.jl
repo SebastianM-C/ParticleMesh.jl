@@ -1315,6 +1315,13 @@ end
     @test occursin("| r1 |", t) && occursin("| r2 |", t) && occursin("aberration4=hi", t) && occursin("Check at the best point", t)
     @test occursin("dJ/dz = 8.0, 0.05, 0.075, 4.0, 12.5 (", t)                 # the reference's gradient in z
     @test occursin("| gdd | 330.0 | 300.0 | 0.1 |", t)                           # central differences 1.1 times the duals: 10 % apart
+    @test check_dir(dir, 13) == cdir && check_dir(dir, 16) == joinpath(dir, "check-p16")
+    c16 = check_dir(dir, 16)                                                     # a second step, read after the first
+    cp(cdir, c16)
+    open(io -> TOML.print(io, Dict("fdppl" => 32, "fdny" => 2, "power" => 16)), joinpath(c16, "check.toml"), "w")
+    pulse_report(out, dir)
+    t = read(joinpath(out, "tables.md"), String)
+    @test findfirst("central differences at 2^-13", t)[1] < findfirst("central differences at 2^-16", t)[1]
     side = JSON.parsefile(joinpath(out, "pulse2d_paths.json"))
     res = JSON.parsefile(joinpath(dir, "r1", "result.json"))
     @test side["starts"]["r1"]["J"] == [p["J"] for p in res["path"]]           # the path in the solver's order
