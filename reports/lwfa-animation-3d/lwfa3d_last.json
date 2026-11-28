@@ -1,0 +1,16 @@
+{
+  "born_count": 94840,
+  "born_in_file": 15000,
+  "cut": "y <= 0 and z >= 0 (from the axis)",
+  "ey_faces_above": 0.1,
+  "gamma_colorrange": [
+    3,
+    15
+  ],
+  "iso_Ey_over_frame_max": 0.4,
+  "iso_ne_over_n0": 2.0,
+  "ne_grey_max": 3.0,
+  "source": "frame0143.h5",
+  "step": 1704,
+  "t": 299.6724541787818
+}

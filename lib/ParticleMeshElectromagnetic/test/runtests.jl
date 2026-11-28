@@ -72,6 +72,8 @@ const TEST_FILES = [
     "em3d_step.jl",           # WP-042: T-950 to T-957, the periodic 3D3V step; its own helpers and worker (T-952)
     "em3d_open.jl",           # WP-072: T-1010 to T-1018, the open transverse boundaries of the 3D step, after em3d_step.jl (its helpers and worker)
     "em3d_antenna.jl",        # WP-073: T-1020 to T-1028, the laser antenna of the 3D step, after em3d_step.jl (its helpers and worker)
+    "zernike.jl",             # WP-085: T-1160 to T-1163, the round beam of a Zernike pupil in PulseShapes; its own helpers
+    "em3d_zernike.jl",        # WP-085: T-1164 to T-1167, the Zernike beam on the 3D antenna, and the bodies of T-1168, T-1169 (gpu.jl), after em3d_antenna.jl (its helpers)
     "m4_3d.jl",               # WP-079: T-1094 to T-1097, the M4 solver in the 3D step, after em3d_step.jl, em3d_open.jl and em3d_antenna.jl (their helpers)
     "em3d_window.jl",         # WP-074: T-1030 to T-1038, the moving window of the 3D step, after em3d_step.jl (its helpers and worker)
     "m4_window_3d.jl",        # WP-079: T-1100, the M4 solver in the 3D moving window, after em3d_window.jl (its helpers)

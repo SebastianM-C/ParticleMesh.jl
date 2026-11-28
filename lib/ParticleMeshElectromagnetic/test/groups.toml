@@ -32,4 +32,6 @@ groups = [
     ["em3d_gather.jl"],
     # checkpointed reverse mode through Checkpointing.jl, which reuses no other file
     ["checkpointing.jl"],
+    # the Zernike pupil beam and its table on the 3D antenna, after the 3D antenna (its helpers)
+    ["em3d_step.jl", "em3d_open.jl", "em3d_antenna.jl", "zernike.jl", "em3d_zernike.jl"],
 ]

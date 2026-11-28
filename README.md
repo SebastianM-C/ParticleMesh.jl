@@ -7,66 +7,98 @@
 > otherwise; every number that leaves this repository is meant to pass an independent review first.
 
 ParticleMesh.jl is a differentiable particle–mesh simulation engine in Julia with pluggable
-physics modules. The engine owns what every particle–mesh method shares: particle sets, structured
-grids, the particle↔mesh transfers (deposition and gather) with shape functions, mesh operators,
-the time loop, diagnostics, parallel exchange, and the differentiation and backend machinery.
-Physics modules supply what is deposited, which mesh equations are solved, which force acts on a
-particle and which pusher integrates it.
+physics modules. Its first module is a 1D, 2D and 3D electromagnetic particle-in-cell code for
+laser-wakefield acceleration, built to optimize laser and plasma parameters by gradient: the same
+KernelAbstractions kernels run on the CPU and on NVIDIA GPUs, in Float32, Float64 and
+ForwardDiff duals, and on the GPU Enzyme differentiates whole runs in reverse mode.
 
-The first module is an electromagnetic particle-in-cell model for laser-wakefield acceleration,
-built to optimize laser and plasma parameters by gradient. It is the only physics module planned and the
-proof that the engine/module split holds; electrostatic cases such as Landau damping and two-stream
-run as its edge cases with no transverse fields. Long term the project is a showcase and stress test for
-Julia and Reactant compiler technology: the same KernelAbstractions kernels run natively on
-NVIDIA and AMD GPUs and, through Reactant, as a traced, raised and sharded program.
+![A 3D laser wakefield in ParticleMesh with a quarter of the box cut away: the laser pulse (red and blue) drives a plasma bubble in the electron density (grey), and electrons born by ionization inside it are caught and accelerated (points coloured by their energy)](reports/lwfa-animation-3d/lwfa3d.gif)
 
-## Status
+Ionization injection in 3D: WP-082's nitrogen-doped case (a₀ = 1.9, waist 10 c/ω₀, 0.072 n_c,
+448 × 128 × 128 cells at λ₀/32, 1704 steps), run in Float32 in Fast mode on 16 CPU threads (AMD EPYC
+9655). A quarter of the box is cut away along the laser axis. The cut faces show the electron
+density with the laser's E_y over it, the laser's isosurfaces stand out of them, and the points are
+the electrons born from the dopant's K shell that the wake holds (u_x > 3), coloured by γ. This is a
+preliminary GLMakie rendering (`scripts/lwfa/animate3d.jl`, `scripts/lwfa/render3d/`; manifests in
+`reports/lwfa-animation-3d/`); raytraced versions are planned. The same case run in Smilei and
+PIConGPU is compared in `reports/wp-082-ionization-three-codes-3d.md`, which has not had an
+independent review yet.
 
-The engine core (`lib/ParticleMeshCore`) and the electromagnetic module
-(`lib/ParticleMeshElectromagnetic`) run 1D and 2D electromagnetic particle-in-cell cases on the
-CPU and on NVIDIA GPUs (CUDA) from the same KernelAbstractions kernels. What exists now:
+## What it does
 
-- **Engine.** Particle sets and structured grids at N = 1 and N = 2; deposition and gather with
-  shape functions, both as atomics (Fast mode) and as sort plus segmented reduction (Reference
-  mode, bitwise reproducible); Esirkepov charge-conserving current deposition; a periodic
-  Poisson solve; counter-based random numbers and quiet-start loading.
-- **Electromagnetic module.** The Yee solver in N dimensions; swappable relativistic pushers
-  (Boris, Vay, Higuera–Cary and a quadratic-unitary scheme) with a resolution rule in a₀·ω₀Δt;
-  a laser antenna; a binomial current filter; open transverse boundaries with particle
-  retirement; a convolutional PML (PIConGPU's scheme) on the transverse axis and on the moving
-  window's back edge; the moving window; Maxwell–Jüttner quiet starts for thermal species; and
-  the step as a SciML `DiscreteProblem`.
-- **Element types.** Every test runs in Float32, Float64 and `Dual{Float32,3}`; the CPU and CUDA
-  test suites pass, the GPU one on an RTX 4080 SUPER (`reports/gpu-cuda.md`).
-- **Cross-code checks.** Landau damping, two-stream and Weibel (1D and oblique 2D) against linear
-  theory and against Smilei, with PIConGPU on the 2D cases, including seed ensembles and a
-  resolution scan of the common offsets from theory.
-- **Laser wakefield.** A5's first 2D LWFA case runs with the moving window on the GPU. The
-  animation is its ParticleMesh run at λ₀/48 on an RTX 4080 SUPER: the electron density in grey,
-  the laser's E_y in red and blue, a₀ = 2 into 0.01 n_c (`scripts/lwfa/animate.jl`, outputs and
-  manifest in `reports/lwfa-animation/`). The same case was run in ParticleMesh, Smilei v5.1 and
-  PIConGPU 0.8.0 with the three codes launching the same pulse: ParticleMesh's wake field on the
-  axis, over the first 1.5 plasma wavelengths behind the pulse, is within 0.16 % rms of Smilei's
-  and 0.13 % of PIConGPU's, and its laser amplitude in vacuum within 0.004 % of Smilei's and
-  0.07 % of PIConGPU's. This is one run per code at λ₀/48 in Float64: agreement between three
-  implementations of the same scheme, not a convergence result and not an acceptance test. The
-  report says what matching the launches took and what is left unexplained
-  (`reports/lwfa-2d-a5.md`, reviewed independently, `reports/lwfa-2d-a5/review.md`). A scan over
-  λ₀/32, λ₀/48 and λ₀/64 in the three codes shows the laser converging at second order, its
-  change with the grid within 2.5 % of the Yee dispersion relation's in ParticleMesh, and the
-  scheme's own error at λ₀/48 about ten to a thousand times the distance between the codes
-  (`reports/wp-054-lwfa-resolution-scan.md`, reviewed independently).
+The engine core (`lib/ParticleMeshCore`) owns what every particle–mesh method shares: particle
+sets, structured grids, the particle↔mesh transfers with shape functions, mesh operators, the time
+loop and diagnostics. The electromagnetic module (`lib/ParticleMeshElectromagnetic`) supplies the
+fields, the forces and the pushers; electrostatic cases such as Landau damping and two-stream run
+as its edge cases with no transverse fields.
+
+- **Dimensions.** 1D, 2D and 3D (3V in all), with the moving window, the laser antenna, the open
+  boundaries, field ionization and the compensated gather in 3D as in 2D.
+- **Field solvers.** Yee, and the low-dispersion M4 solver (Lu et al. 2020) with the same antenna,
+  PML, window and back-edge PML in 1D, 2D and 3D.
+- **Particles.** Boris, Vay, Higuera–Cary and quadratic-unitary pushers; Esirkepov's
+  charge-conserving current; a plain gather, a gather compensated for the particle shape's loss of
+  laser field, and a Galerkin gather that is the transpose of the current deposition; cold and
+  Maxwell–Jüttner quiet starts; counter-based random numbers.
+- **Two deposition modes.** Fast mode deposits with atomics; Reference mode sorts the particles
+  by cell and reduces by segment, and is bitwise reproducible per element type and backend. The
+  tests check that the two agree.
+- **Lasers.** A Gaussian beam through a total-field/scattered-field antenna in 2D and 3D, and
+  shaped pulses: spectral phase (GDD, TOD, FOD) and a focus from a near field with wavefront
+  aberrations, Legendre modes in 2D and Zernike modes of a round pupil in 3D, whose plane is
+  tabulated once per parameter point (`PulseShapes`, a module written to become its own package).
+- **Boundaries and window.** Periodic or open transverse boundaries with a convolutional PML (or an
+  absorbing layer) and particle retirement; a moving window with density ramps, plasma refill and
+  a PML on its back edge; a binomial current filter.
+- **Field ionization.** Dopants as macro-atoms that release the expected fraction of an electron
+  each step (no random numbers, so it differentiates), with ADK and barrier-suppression
+  (Tong–Lin) rate laws per level, in 2D and 3D.
+- **Gradients.** Forward-mode duals through the whole step on the CPU and on CUDA. Enzyme's
+  reverse mode on CUDA, with hand-written reverse rules for the deposition, the gather and the
+  sort, checkpointed over full-length runs with Checkpointing.jl's Revolve; it runs through the
+  whole 3D trapped-beam case (antenna, window, PMLs, field ionization, compensated gather) at λ₀/16 on one
+  32 GB GPU, with three workarounds that still live in `scripts/enzyme/` (#384).
+- **Interfaces.** The step as a SciML `DiscreteProblem`; optimization drivers on Optimization.jl
+  in `scripts/optim/`.
+
+## How it is checked
+
+- Every test runs in Float32, Float64 and `Dual{Float32,3}` on the CPU; the GPU suites run on CUDA
+  (RTX 4080 SUPER and RTX 5090), with device tolerances where atomics reorder sums.
+- Against theory: Landau damping, two-stream and Weibel in 1D and 2D, Landau damping in 3D, the Yee and M4
+  dispersion relations, the Gaussian beam's focus, the closed-form ADK and Tong–Lin populations,
+  Gauss's law to roundoff across window shifts and open faces.
+- Against other codes, from one case file run in ParticleMesh, Smilei and PIConGPU: the linear
+  cases (`reports/crosscode-*`), A5's 2D laser wakefield and its resolution scan
+  (`reports/lwfa-2d-a5.md`, `reports/wp-054-lwfa-resolution-scan.md`), and ionization injection in
+  2D and 3D (`reports/wp-081-ionization-three-codes.md`,
+  `reports/wp-082-ionization-three-codes-3d.md`). These are agreements between implementations at
+  one resolution, not convergence results.
+- Gradients against finite differences and against each other: duals, Enzyme's reverse pass and
+  the hand-written rules by the chain rule.
+
+The cross-code comparisons on the linear cases, the 2D LWFA comparison and its resolution scan
+have had an independent review (`review*.md` next to each report); the other reports, the
+ionization comparisons, the gradient studies and every performance number among them, have not,
+so their numbers are not validated claims.
 
 ![A 2D laser wakefield in ParticleMesh: the laser pulse (red and blue) drives plasma wake buckets in the electron density (grey) as the window moves with it](reports/lwfa-animation/lwfa.gif)
 
-Not done yet: a script that checks A7's bounds for the LWFA case on demand, and the injecting
-case; gradients and optimization on a full-size LWFA run (they
-exist on small 2D cases, in reports that are not yet independently reviewed); AMD GPUs; performance work (WP-041); Reactant, which is parked (A9). The
-work packages and their state are in `trace/wp/`, the results in `reports/`. The cross-code
-comparisons on the linear cases have had a fresh reviewer (`reports/crosscode-*/review*.md`);
-the other reports, the LWFA comparison among them, have not, so their numbers are not validated
-claims. The aims
-and decisions in `docs/goals/` are binding for anyone, human or agent, who works here; the design
+The 2D animation is A5's LWFA case at λ₀/48 on an RTX 4080 SUPER (`scripts/lwfa/animate.jl`,
+outputs and manifest in `reports/lwfa-animation/`).
+
+## Not done yet
+
+- AMD GPUs (the kernels are KernelAbstractions kernels, but no AMD backend is tested), and more
+  than one GPU or node.
+- Reactant, which is parked (A9).
+- Enzyme's reverse mode on the CPU (blocked upstream, #509) and without the
+  scripts' workarounds; the reverse pass at λ₀/32 in 3D, which does not fit in 32 GB yet.
+- Gradient-based optimization of a full-size 3D case, and independent reviews of the reports
+  above. Performance work continues (WP-041).
+
+The work packages and their state are in `trace/wp/`, the results in `reports/`. The aims and
+decisions in `docs/goals/` are binding for anyone, human or agent, who works here; the design
 record in `docs/plan/` (start with `overview.md`) says where the project is going.
 
 ## Layout

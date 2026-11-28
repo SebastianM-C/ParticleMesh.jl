@@ -28,6 +28,18 @@
 # four partials), and the parameters' with dp/dθ of `params(trapped_problem(...))` with duals in
 # the four free parameters (no simulation). The comparison: the same Dual{4} run to the end.
 #
+# `cost` (WP-078's per-method cost): one method per process, `method=primal|dual1|dual4|reverse`
+# (reverse: `reverse_run` with `C` and `ckpt`, default 20 and device), the whole run from the
+# start a warm-up time (it compiles) and then `reps` (default 2) timed times. Each run's peak device
+# memory above the baseline before the start was made, sampled every 20 ms by a second thread
+# (`julia -t 2`; peaks shorter than that are missed): the pool's live bytes (arrays allocated and not
+# yet freed, garbage not yet collected included) and the card's used bytes (total − free: the pool's
+# cache, the context and the malloc heap of PM_CUDA_HEAP too). The pool keeps its cache between
+# runs, so the card's bytes mean something only for the warm-up; nvidia-smi beside the process is
+# the card's measure. And the bytes of the state's arrays (and of the checkpoints), which do not
+# depend on the sampling. The reverse's run includes `reverse_run`'s `reclaim()` (a full GC) every
+# four segments.
+#
 # Writes result.toml and manifest.toml into scripts/runs/enzyme-trapped-<command>-<stamp>/.
 # Time and GPU memory per phase are printed with UTC stamps, to be read against an nvidia-smi
 # log sampled beside the run.
@@ -430,4 +442,94 @@ function main_opt()
     end
 end
 
-COMMAND == "steps" ? main_steps() : COMMAND == "grad" ? main_grad() : COMMAND == "opt" ? main_opt() : error("trapped.jl steps|grad|opt [key=value ...]")
+# ---------------------------------------------------------------- per-method cost
+"Bytes of every array of a state (each array once)."
+state_bytes(st) = sum(a -> sizeof(a), values(all_arrays(st)); init = 0)
+"""
+`f()` with the peak device memory above `base` (a `devmem_bytes()`) sampled every `dt` seconds on
+another thread meanwhile: the seconds, `f`'s value and the two peaks in bytes.
+"""
+function sampled(f, base; dt = 0.02)
+    peak = Threads.Atomic{Int}(0); peakcard = Threads.Atomic{Int}(0); done = Threads.Atomic{Bool}(false)
+    sampler = Threads.@spawn while !done[]
+        m = devmem_bytes()
+        Threads.atomic_max!(peak, m.pool - base.pool); Threads.atomic_max!(peakcard, m.card - base.card)
+        sleep(dt)
+    end
+    t0 = time()
+    v = f()
+    sync()
+    t = time() - t0
+    m = devmem_bytes()
+    Threads.atomic_max!(peak, m.pool - base.pool); Threads.atomic_max!(peakcard, m.card - base.card)
+    done[] = true; wait(sampler)
+    return (; seconds = t, value = v, pool_peak = peak[], card_peak = peakcard[])
+end
+function devmem_bytes()
+    ON_GPU || return (; pool = 0, card = 0)
+    m = CUDACore.MemoryInfo()
+    return (; pool = something(m.pool_used_bytes, 0), card = m.total_bytes - m.free_bytes)
+end
+
+const REVERSE_STATE_BYTES = Ref(0)
+function main_cost()
+    method = opt("method", "primal")
+    reps = parse(Int, opt("reps", "2"))
+    reps >= 1 || error("reps ≥ 1")
+    C = parse(Int, opt("C", "20")); ckpt = opt("ckpt", "device")
+    Threads.nthreads() > 1 || @warn "one thread: the memory sampler runs only when the main task yields (run with `julia -t 2`)"
+    mark("start: ppl $PPL ny $NY a0E $A0E θ $THETA, method $method" * (method == "reverse" ? ", C $C, checkpoints in $ckpt memory" : ""))
+    # one run from the start: J and its derivatives in the four free parameters (dual1: in the first)
+    run_once = if method == "primal"
+        () -> begin
+            st, p, prob = make_start(F.(THETA))
+            run!(st, p, prob.nsteps; observer = ()); sync()
+            parts = trapped_parts(st)
+            (; J = Float64(parts.born + parts.plasma), gradient = Float64[], nsteps = prob.nsteps, state_bytes = state_bytes(st))
+        end
+    elseif method in ("dual1", "dual4")
+        N = method == "dual1" ? 1 : 4
+        () -> begin
+            st, p, prob = make_start(dual_theta(THETA, N, 0))
+            run!(st, p, prob.nsteps; observer = ()); sync()
+            parts = trapped_parts(st); J = parts.born + parts.plasma
+            (; J = Float64(ForwardDiff.value(J)), gradient = [Float64(ForwardDiff.partials(J, j)) for j in 1:N], nsteps = prob.nsteps, state_bytes = state_bytes(st))
+        end
+    elseif method == "reverse"
+        () -> begin
+            r = reverse_run(THETA; C, ckpt, verbose = false, summary = false)
+            (; J = r.J, gradient = r.gradient, nsteps = r.nsteps, state_bytes = REVERSE_STATE_BYTES[], checkpoints = r.checkpoints,
+             phases = Dict("primal_with_checkpoints" => r.seconds.primal, "reverse" => r.seconds.reverse, "start_tangent" => r.seconds.tangent))
+        end
+    else
+        error("method primal, dual1, dual4 or reverse, got $method")
+    end
+    # the reverse's state bytes: a Float32 start's (one checkpoint holds every array of it)
+    method == "reverse" && (REVERSE_STATE_BYTES[] = state_bytes(first(make_start(F.(THETA)))))
+    rows = Dict{String,Any}[]
+    v = nothing
+    for rep in 0:reps
+        reclaim()
+        base = devmem_bytes()
+        s = sampled(run_once, base)
+        v = s.value
+        s = merge(s, (; value = nothing))
+        row = Dict{String,Any}("rep" => rep, "warmup" => rep == 0, "seconds" => s.seconds, "J" => v.J, "gradient" => v.gradient,
+                               "pool_peak_GiB" => s.pool_peak / 2^30, "card_peak_GiB" => s.card_peak / 2^30,
+                               "baseline_pool_GiB" => base.pool / 2^30, "baseline_card_GiB" => base.card / 2^30)
+        haskey(v, :phases) && (row["phases"] = v.phases)
+        push!(rows, row)
+        mark(@sprintf("%s %d: %.2f s, J %.8g, gradient %s; peak above baseline: pool %.2f GiB, card %.2f GiB",
+                      rep == 0 ? "warm-up" : "rep", rep, s.seconds, v.J, string(round.(v.gradient; sigdigits = 6)), s.pool_peak / 2^30, s.card_peak / 2^30))
+    end
+    timed = rows[2:end]
+    write_run("cost-$method", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "eltype" => "Float32", "nsteps" => v.nsteps,
+                                                  "gather" => "CompensatedGather(k = 1)", "mode" => "Reference"),
+                                   "method" => method, "checkpoint_every" => method == "reverse" ? C : 0, "checkpoint_memory" => method == "reverse" ? ckpt : "none",
+                                   "checkpoints" => get(v, :checkpoints, 0), "state_bytes" => v.state_bytes,
+                                   "seconds_min" => minimum(r -> r["seconds"], timed), "pool_peak_GiB_max" => maximum(r -> r["pool_peak_GiB"], timed),
+                                   "card_peak_GiB_max" => maximum(r -> r["card_peak_GiB"], timed), "threads" => Threads.nthreads(), "rows" => rows))
+end
+
+COMMAND == "steps" ? main_steps() : COMMAND == "grad" ? main_grad() : COMMAND == "opt" ? main_opt() : COMMAND == "cost" ? main_cost() :
+    error("trapped.jl steps|grad|opt|cost [key=value ...]")

@@ -622,7 +622,8 @@ end
 # 1D sum and the 2D spectral solve give different bits for the same charge.
 initial_field!(st::EMState{1}) = (cumsum_periodic!(st.fields.Ex, st.ρ, st.grid; workgroupsize = st.numerics.workgroupsize); st)
 
-initialize!(st::EMState, problem::EMProblem; kw...) = (check_setup(st, problem); initialize!(st, params(problem); kw...))
+# From a problem: its parameters, with the profiles of 3D shaped lasers tabulated on the state's planes (`tabulate`).
+initialize!(st::EMState, problem::EMProblem; kw...) = (check_setup(st, problem); initialize!(st, tabulate(st, params(problem)); kw...))
 
 # The transverse components the engine's `deposit_flux!` takes as per-particle quantities, the
 # currents along the axes that are not resolved: Jy and Jz at N = 1, Jz at N = 2, none at N = 3
