@@ -5,6 +5,9 @@ on:
   pull_request:
     # ready_for_review: a draft is not reviewed, so marking it ready runs the workflow again for its review.
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # Once a week on main, so that a new Julia pre-release is tested in a week without merges.
+    - cron: '17 3 * * 4'
 
 # A new push to a pull request replaces the run of the commit before it, its review included.
 concurrency:
@@ -16,13 +19,14 @@ jobs:
   # other jobs skip their steps when a pull request touches no code, instead of skipping the job: a
   # skipped matrix job reports under its unexpanded name, which would leave a required check waiting
   # forever; the test groups are skipped as a job, and the required "Julia 1.13" job below reports for
-  # them. Pushes to main always run everything.
+  # them. Pushes to main and the weekly run always run everything.
   changes:
     name: Changed paths
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.diff.outputs.code }}
       manifests: ${{ steps.diff.outputs.manifests }}
+      versions: ${{ steps.versions.outputs.versions }}
       suites: ${{ steps.groups.outputs.suites }}
     steps:
       - uses: actions/checkout@v7
@@ -59,6 +63,19 @@ jobs:
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "manifests=$manifests" >> "$GITHUB_OUTPUT"
           echo "code: $code, manifests: $manifests"
+      - id: versions
+        name: The Julia versions the tests run on
+        # The pre-release is allowed to fail (A6) and cannot block a pull request, so it runs on pushes
+        # to main and on the weekly run, not on pull requests.
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            echo 'versions=["1.13"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'versions=["1.13","pre"]' >> "$GITHUB_OUTPUT"
+          fi
+          grep '^versions=' "$GITHUB_OUTPUT"
       - id: groups
         name: The test groups, one job each
         # The root package's suite, then every lib/ package (ParticleMeshReactant has its own job) in
@@ -85,8 +102,9 @@ jobs:
           EOF
           grep '^suites=' "$GITHUB_OUTPUT"
 
-  # The Julia tests, one job per suite group, in parallel, on 1.13 and on the pre-release. Each job
-  # instantiates the workspace and runs one group in a fresh process (`PM_TEST_GROUP`).
+  # The Julia tests, one job per suite group, in parallel, on 1.13 and, outside pull requests, on the
+  # pre-release (`versions` above). Each job instantiates the workspace and runs one group in a fresh
+  # process (`PM_TEST_GROUP`).
   julia:
     name: Julia ${{ matrix.version }} (${{ matrix.suite.name }})
     needs: changes
@@ -96,7 +114,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.13', 'pre']
+        version: ${{ fromJSON(needs.changes.outputs.versions) }}
         suite: ${{ fromJSON(needs.changes.outputs.suites) }}
     steps:
       - uses: actions/checkout@v7
@@ -121,8 +139,8 @@ jobs:
         run: julia --color=yes --project="$PROJECT" -e 'using Pkg; Pkg.test()'
 
   # The required check for the Julia tests: it passes when every 1.13 group passed, or when a pull
-  # request touches no code and the groups were skipped. The pre-release groups continue on error
-  # (A6), so they do not fail it.
+  # request touches no code and the groups were skipped. Where the pre-release groups run, they
+  # continue on error (A6), so they do not fail it.
   test:
     name: Julia 1.13
     needs: [changes, julia]
@@ -293,9 +311,8 @@ jobs:
   # github_token input and grant `id-token: write` to the lens job instead.
   lenses:
     name: Choose the review lenses
-    # The review depends on the tests: it starts when every CI job above has succeeded (the `Julia pre`
-    # groups may fail, they continue on error), so a lens always has the test result of the commit it
-    # reviews.
+    # The review depends on the tests: it starts when every CI job above has succeeded, so a lens always
+    # has the test result of the commit it reviews.
     needs: [test, reactant, manifests, trace, leak-scan, report-size]
     # Drafts are not reviewed. Dependabot PRs and PRs from forks see no repository secrets, so they
     # skip too; the package-manager role approves Dependabot, a human reviews fork PRs.
@@ -394,7 +411,7 @@ jobs:
           fi
       - name: The CI jobs of this run
         # They have all finished and succeeded, or this job would not run (`needs` of the lenses job); the
-        # list tells the lens which ran and how the `Julia pre` groups, which may fail, ended.
+        # list tells the lens which ran.
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD: ${{ github.event.pull_request.head.sha }}
@@ -403,7 +420,7 @@ jobs:
             echo "# CI on ${HEAD:0:7}"
             gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json jobs \
               -q '[.jobs[] | select(.status == "completed") | "- \(.name): \(.conclusion)"] | join("\n")'
-            echo "Every job this review depends on has passed. The \`Julia pre (...)\` jobs are allowed to fail (CLAUDE.md, A6)."
+            echo "Every job this review depends on has passed. The tests ran on Julia 1.13; the pre-release runs on main and weekly, not on pull requests (A6)."
           } > "$RUNNER_TEMP/ci.md"
           cat "$RUNNER_TEMP/ci.md"
       - uses: julia-actions/setup-julia@v3
@@ -425,9 +442,9 @@ jobs:
             ${{ runner.temp }}/brief.md and the contract every change must respect is
             ${{ runner.temp }}/contract.md; both come from the base branch (only a brief that is new in
             this PR comes from the PR itself). The CI jobs of this commit finished before this review
-            started and are listed in ${{ runner.temp }}/ci.md: every one of them passed (the
-            `Julia pre (...)` jobs may have failed, which is allowed). The Julia jobs run the tests of the
-            root package and of every lib/ package, split into the groups of each package's
+            started and are listed in ${{ runner.temp }}/ci.md: every one of them passed. The Julia jobs
+            run the tests of the root package and of every lib/ package on Julia 1.13 (the pre-release is
+            tested on main and weekly, not on pull requests), split into the groups of each package's
             test/groups.toml, and only when the diff touches src/, lib/, test/, benchmark/, a root
             Project or Manifest file or this workflow; the trace job runs the tests of scripts/trace,
             scripts/crosscode, scripts/lwfa and scripts/optim. For those tests, that is the result your
