@@ -1451,18 +1451,18 @@ status = "proposed; the output is also the host filter bit for bit, which the te
 quantity = "with p filter passes, after every 3D step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| (C) and |Σ(D⁻·Eⁿ − (ρⁿ − mean ρ))| (the same C); the plasma of T-950 (20 steps) with p = 1, 2; both modes"
 scale = "(n₁ + n₂ + n₃)·max|ρ|·√(k + 1) after k steps, times Π n_d for the sum"
 C = 2
-measured = { Float32 = 0.141, Float64 = 0.197, "Dual{Float32,3}" = 0.127, sum = { Float32 = 0.0388, Float64 = 0.0447, "Dual{Float32,3}" = 0.0893 } }
+measured = { Float32 = 0.155, Float64 = 0.197, "Dual{Float32,3}" = 0.127, sum = { Float32 = 0.0388, Float64 = 0.0447, "Dual{Float32,3}" = 0.0893 } }
 measured_device = { "Float32 on CUDABackend" = 0.127, "Float64 on CUDABackend" = 0.225, "Dual{Float32,3} on CUDABackend" = 0.127, sum = { "Float32 on CUDABackend" = 0.0304, "Float64 on CUDABackend" = 0.0422, "Dual{Float32,3} on CUDABackend" = 0.101 } }
 effect = "max over the run of max|D⁻·Eⁿ − (ρⁿ − mean ρ)| / max|ρⁿ − mean ρ|, every type and mode, on the CPU and on CUDA: p = 1 0.987, p = 2 1.09 (the grid-scale charge noise, where H_p ≈ 0, as T-441)"
-status = "proposed; the largest over the passes and the modes, and over the CPU runs of a cloud container and of the CUDA machine (Fast's moves from run to run at more than one thread: 0.169 and 0.197 in Float64); measured_device is T-1259 on an RTX 4080 SUPER at 368e8db"
+status = "proposed; the largest over the passes and the modes, and over the CPU runs of a cloud container and of the CUDA machine (Fast's moves from run to run at more than one thread: 0.169 and 0.197 in Float64, 0.12 to 0.155 in Float32); measured_device is T-1259 on an RTX 4080 SUPER at 368e8db"
 
 ["T-1252"]
 quantity = "one 3D step with two passes against one without, from the same state: |J_filtered − F_host(J)| per component (C), |(E₁ − E₀) + Δt(J₁ − J₀)| (C)"
 scale = "3p·max|J| for J; max|E| + Δt·max|J| for E; in Fast mode both times √(prod ppc), against T-951's C (the two states' atomic depositions differ in association order)"
 C = 2
-measured = { Float32 = 0.679, Float64 = 0.692, "Dual{Float32,3}" = 0.679, fast = { Float32 = 0.218, Float64 = 0.179, "Dual{Float32,3}" = 0.24 }, fast_threads = { E = 0.834, J = 0.0805 } }
+measured = { Float32 = 0.679, Float64 = 0.692, "Dual{Float32,3}" = 0.679, fast = { Float32 = 0.218, Float64 = 0.179, "Dual{Float32,3}" = 0.24 }, fast_threads = { E = 1.88, J = 0.0805 } }
 measured_device = { "Float32 on CUDABackend" = 0.415, "Float64 on CUDABackend" = 0.388, "Dual{Float32,3} on CUDABackend" = 0.388, fast = { "Float32 on CUDABackend" = 0.818, "Float64 on CUDABackend" = 1.14, "Dual{Float32,3} on CUDABackend" = 0.137 }, fast_J = 0.0805 }
-status = "proposed; measured is E in Reference mode, where J is the host filter of the unfiltered current bit for bit (ratio 0, on CUDA too); fast is E in Fast mode against T-951's C, at one thread (J's ratio 0 there too); fast_threads is the largest of E and of J in Fast mode in the CUDA machine's CPU run, at more than one thread; measured_device is T-1259 on an RTX 4080 SUPER at 368e8db, fast_J its largest J ratio in Fast mode"
+status = "proposed; measured is E in Reference mode, where J is the host filter of the unfiltered current bit for bit (ratio 0, on CUDA too); fast is E in Fast mode against T-951's C, at one thread (J's ratio 0 there too); fast_threads is the largest of E and of J in Fast mode at more than one thread, where the atomics add in another order each run (E 0.455 to 1.88 over three runs, in a cloud container at two threads and on the CUDA machine's CPU); measured_device is T-1259 on an RTX 4080 SUPER at 368e8db, fast_J its largest J ratio in Fast mode"
 
 ["T-1254"]
 quantity = "with p filter passes beside an open axis, after every step: |(D⁻·Eⁿ − Fρⁿ) − (D⁻·E⁰ − Fρ⁰)| on the node rows off the absorbers, particles leaving; N = 2 (open y, 40 steps, p = 2, absorbers of 5 cells) and N = 3 (open y and z, 20 steps, p = 1, absorbers of 4 cells), the layer and the PML, both modes"
