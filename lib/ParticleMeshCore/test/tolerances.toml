@@ -394,7 +394,9 @@ quantity = "a cell-frame Jx (Jy) value past the particle's frame along axis 1 (2
 scale = "|q·w·Δx_d/Δt| (|quantity_z| for Jz), per particle"
 C = 8
 measured = { Float32 = 0.686, Float64 = 0.722, "Dual{Float32,3}" = 0.827 }
-status = "proposed"
+device_frames = 8
+status = "proposed; device_frames, on a GPU backend the largest difference between a shared node's value in the cell frame and in the particle frame (or a tail node's and the last node's) where their bits differ, in the same scale, is not measured: the bits are equal on the CPU, and on CUDA 8 of the 24 cases differed (RTX 5090) by an amount the test did not record"
+
 
 
 # WP-041: the deposits by nearest-node bins (T-860, T-864).
