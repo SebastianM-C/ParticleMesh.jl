@@ -50,11 +50,11 @@ end
         @test !same_bits(Array(s.offset[1]), before[1])
     end
     laser = GaussianLaser(; a0 = 1.0, waist = 4.0, duration = 2.0, delay = 12.0, focus = 12.0, position = 1.0, center = 1.0)
-    @test_throws "implemented at N = 2 only" check_params(st1, EMParams(p1; lasers = (laser,)))
+    @test_throws "implemented at N = 2 and 3 only" check_params(st1, EMParams(p1; lasers = (laser,)))
     @test_throws "0 antenna planes in the state" check_params(st2, EMParams(p2; lasers = (laser,)))
     @test_throws ArgumentError step!(st1, EMParams(p1; lasers = (laser,)), 5)
     @test_throws "witness bunch" check_params(st1, EMParams(p1; witness = WitnessParams{Float64}((1.0, 0.0, 0.0), (1.0, 1.0), 1.0, 1.0)))
-    @test_throws "moving window only" check_params(st1, EMParams(p1; profile = DensityRamp(; vacuum = 1.0, ramp = 1.0)))
+    @test_throws "needs the window's edges" check_params(st1, EMParams(p1; profile = DensityRamp(; vacuum = 1.0, ramp = 1.0)))
     @test_throws ArgumentError initialize!(st1, prob2)
     @test_throws ArgumentError initialize!(st2, prob1)
     # a Float64 description with a mass that is not exact in the problem's element type is the state's own
