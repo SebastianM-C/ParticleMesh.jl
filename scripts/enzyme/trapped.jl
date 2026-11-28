@@ -132,6 +132,14 @@ function reverse_steps!(dst, st, p, first, k)
 end
 
 include(joinpath(@__DIR__, "contract.jl"))
+"Copy the saved arrays of a state (by path, as `all_arrays` names them) into `st`'s arrays of the same paths."
+function restore_paths!(st, saved)
+    for (path, a) in all_arrays(st)
+        haskey(saved, path) && copyto!(a, saved[path])
+    end
+    return st
+end
+
 "The same, term by term (for the cancellation)."
 array_terms(adj, dual, j) = [Float64(sum(A .* ForwardDiff.partials.(D, j))) for (A, D) in
                              ((leaves(adj)[k], leaves(dual)[k]) for k in intersect(keys(leaves(adj)), keys(leaves(dual))) if eltype(leaves(dual)[k]) <: ForwardDiff.Dual)]
@@ -149,7 +157,7 @@ function write_run(name, result)
         "commit" => commit, "dirty" => string(dirty), "julia" => string(VERSION), "threads" => Threads.nthreads(),
         "cpu" => Sys.cpu_info()[1].model, "args" => ARGS, "backend" => string(backend()),
         "gpu" => ON_GPU ? CUDACore.name(CUDACore.device()) : "none", "patches" => get(ENV, "PM_ENZYME_PATCH", ""),
-        "cuda_heap" => get(ENV, "PM_CUDA_HEAP", "default"), "work_package" => "WP-078",
+        "cuda_heap" => get(ENV, "PM_CUDA_HEAP", "default"), "work_package" => opt("wp", "WP-078"),
         "versions" => Dict(string(m) => string(pkgversion(m)) for m in (Enzyme, ForwardDiff, KernelAbstractions)),
         "inputs" => Dict(relpath(f, REPO) => hashfile(f) for f in inputs if isfile(f)))), joinpath(out, "manifest.toml"), "w")
     println("wrote ", relpath(out, REPO))
@@ -279,7 +287,8 @@ start and from the parameters), the final primal state's `trapped_summary`, the 
 (`std0`, `pd`) for a forward comparison, and the seconds of each phase.
 """
 function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fade, rise = TCASE.rise, objective = "any", kappa = 0.05,
-                     ppl = PPL, ny = NY, energy = budget(A0E), verbose = true, summary = true, ckpt = opt("ckpt", "host"))
+                     ppl = PPL, ny = NY, energy = budget(A0E), verbose = true, summary = true, ckpt = opt("ckpt", "host"),
+                     inner::Integer = parse(Int, opt("inner", "0")))
     st, p, prob = make_start(F.(θ); ppl, ny, extend, energy)
     nsteps = prob.nsteps
     s0area = Float64(area(st))
@@ -313,10 +322,28 @@ function reverse_run(θ; C::Integer = 100, extend::Integer = 0, fade = TCASE.fad
         first = 1 + (i - 1) * C
         k = min(C, nsteps - first + 1)
         sc = work
-        for (path, a) in all_arrays(work)
-            haskey(saved[i], path) && copyto!(a, saved[i][path])
-        end
-        t = @elapsed if dst === nothing
+        restore_paths!(work, saved[i])
+        t = @elapsed if inner > 0
+            # the segment's k steps as autodiff calls of at most `inner` steps each (WP-088, #548):
+            # the states before each call kept on the device, the calls reversed from the last
+            sub = Any[]
+            for f in first:inner:(first + k - 1)
+                push!(sub, (f, min(inner, first + k - f), Dict(path => copy(a) for (path, a) in all_arrays(work))))
+                steps_only!(work, p, f, min(inner, first + k - f))
+            end
+            for (f, kk, sv) in Iterators.reverse(sub)
+                restore_paths!(work, sv)
+                if dst === nothing
+                    r = reverse_J(work, p, f, kk; fade, rise, seeds = F.(seeds))
+                    dst, Jrev = r.dst, r.J
+                    push!(dps, r.dp)
+                    r = nothing
+                else
+                    push!(dps, reverse_steps!(dst, work, p, f, kk))
+                end
+            end
+            sub = nothing
+        elseif dst === nothing
             r = reverse_J(sc, p, first, k; fade, rise, seeds = F.(seeds))
             dst, Jrev = r.dst, r.J
             push!(dps, r.dp)
@@ -361,7 +388,8 @@ function main_grad()
     end
     println("  kernel arguments with dropped adjoints: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "n/a")
     write_run("grad", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "eltype" => "Float32", "nsteps" => r.nsteps,
-                                          "checkpoint_every" => C, "checkpoints" => r.checkpoints, "checkpoint_memory" => opt("ckpt", "host"), "objective" => objective,
+                                          "checkpoint_every" => C, "steps_per_call" => parse(Int, opt("inner", "0")) > 0 ? parse(Int, opt("inner", "0")) : C,
+                                          "checkpoints" => r.checkpoints, "checkpoint_memory" => opt("ckpt", "host"), "objective" => objective,
                                           "gather" => "CompensatedGather(k = 1)", "mode" => "Reference"),
                            "J" => r.J, "J_born" => r.born, "J_plasma" => r.plasma, "J_dual" => Float64(ForwardDiff.value(Jd)), "J_reverse_forward" => r.J_reverse_forward,
                            "gradient_reverse" => g, "gradient_reverse_start" => r.g_state, "gradient_reverse_params" => r.g_params,
@@ -531,5 +559,103 @@ function main_cost()
                                    "card_peak_GiB_max" => maximum(r -> r["card_peak_GiB"], timed), "threads" => Threads.nthreads(), "rows" => rows))
 end
 
+# ---------------------------------------------------------------- WP-088: one call against chained calls
+# The reverse pass of the n steps before a fixed final state (steps s0 + N - n … s0 + N - 1) as one
+# Enzyme call through the n steps, against n chained one-step calls (each from its stored state,
+# the shadow carried between them), with the same random adjoint r on every floating-point array
+# of the final state but the scratch. Both are the reverse pass of the same function, so they agree
+# to roundoff unless a value that one call through several steps reads in its reverse sweep has
+# changed since its forward sweep (#548). Per n: the relative difference per array of the
+# adjoints of the start state, and of the parameters' adjoint.
+#     trapped.jl segcheck s0=<first step> ns=1,2,5,10,20,30,40 [ckpt=host|device] [seed=11]
+scratch_path(k) = occursin(".ws.", k) || occursin("_ws.", k) || occursin("flux_patch", k) || occursin(".scratch", k) || k == "st.ρ"
+function seed_random!(dst, rng)
+    for (k, a) in leaves(dst)
+        scratch_path(k) && continue
+        copyto!(a, randn(rng, eltype(a), size(a)))
+    end
+    return dst
+end
+snapshot_leaves(dst) = Dict(k => Array(a) for (k, a) in leaves(dst))
+function compare_leaves(A, B)
+    rows = []
+    for k in sort!(collect(intersect(keys(A), keys(B))))
+        a, b = Float64.(A[k]), Float64.(B[k])
+        nb = sqrt(sum(abs2, b)); d = sqrt(sum(abs2, a .- b))
+        (nb > 0 || d > 0) && push!(rows, (k, d / max(nb, floatmin()), nb, count(a .!= b)))
+    end
+    return sort!(rows; by = r -> -r[2])
+end
+function main_segcheck()
+    s0 = parse(Int, opt("s0", "900"))
+    ns = sort!(parse.(Int, split(opt("ns", "1,2,5,10,20,30,40"), ",")))
+    N = maximum(ns)
+    ckpt = opt("ckpt", "host")
+    mark("start: ppl $PPL ny $NY θ $THETA, steps $s0 to $(s0 + N - 1), n = $ns, states in $ckpt memory")
+    st, p, prob = make_start(F.(THETA))
+    steps_only!(st, p, 1, s0 - 1); sync()
+    S = Any[]
+    for j in 1:N
+        push!(S, Dict(path => (ckpt == "device" ? copy(a) : Array(a)) for (path, a) in all_arrays(st)))
+        step!(st, p, s0 + j - 1; observer = ())
+    end
+    sync()
+    final = Dict(path => copy(a) for (path, a) in all_arrays(st))
+    mark("primal to step $(s0 + N - 1) done; born alive $(alive_count(ionization_electrons(st)))")
+    R = seed_random!(Enzyme.make_zero(st), Xoshiro(SEED))
+    Rh = snapshot_leaves(R)
+    # chained one-step calls from the end
+    dst = R
+    dpsum = Dict{String,Float64}()
+    chain = Dict{Int,Any}()
+    t_chain = @elapsed for j in N:-1:1
+        restore_paths!(st, S[j])
+        dp = reverse_steps!(dst, st, p, s0 + j - 1, 1)
+        for (k, v) in scalars(dp)
+            dpsum[k] = get(dpsum, k, 0.0) + Float64(v)
+        end
+        n = N - j + 1
+        n in ns && (chain[n] = (snapshot_leaves(dst), copy(dpsum)))
+    end
+    mark(@sprintf("chained one-step reverse of %d steps %.1f s", N, t_chain))
+    dst = nothing; R = nothing; reclaim()
+    rows = []
+    for n in ns
+        restore_paths!(st, S[N - n + 1])
+        d1 = Enzyme.make_zero(st)
+        L1 = leaves(d1)
+        for (k, a) in Rh
+            haskey(L1, k) && copyto!(L1[k], a)
+        end
+        t = @elapsed dp1 = reverse_steps!(d1, st, p, s0 + N - n, n)
+        A1 = snapshot_leaves(d1); d1 = nothing; reclaim()
+        # the primal replay of the one call must end on the stored final state
+        replay = maximum((Float64(maximum(abs.(Array(a) .- Array(final[k])); init = zero(eltype(a)))) for (k, a) in all_arrays(st)
+                          if haskey(final, k) && eltype(a) <: Real && size(a) == size(final[k])); init = 0.0)
+        Ac, dpc = chain[n]
+        cmp = compare_leaves(A1, Ac)
+        sc1 = Dict(k => Float64(v) for (k, v) in scalars(dp1))
+        dprows = sort!([(k, abs(sc1[k] - dpc[k]) / max(abs(dpc[k]), floatmin()), dpc[k], sc1[k]) for k in keys(dpc) if haskey(sc1, k) && (dpc[k] != 0 || sc1[k] != 0)];
+                       by = r -> -r[2])
+        worst = isempty(cmp) ? 0.0 : cmp[1][2]
+        @printf("n = %2d: one call %.1f s; replay gap %.3g; largest relative difference of the start adjoint %.3e (%s); of the parameters' %.3e (%s)\n",
+                n, t, replay, worst, isempty(cmp) ? "-" : cmp[1][1], isempty(dprows) ? 0.0 : dprows[1][2], isempty(dprows) ? "-" : dprows[1][1])
+        for r in cmp[1:min(end, 8)]
+            @printf("    %-60s rel %.3e  |chain| %.3e  entries differing %d\n", r...)
+        end
+        for r in dprows[1:min(end, 6)]
+            @printf("    param %-54s rel %.3e  chain %+.6e  one call %+.6e\n", r...)
+        end
+        flush(stdout)
+        push!(rows, Dict("n" => n, "seconds" => t, "replay_gap" => replay, "worst_array" => isempty(cmp) ? "" : cmp[1][1], "worst_relative" => worst,
+                         "arrays" => [Dict("path" => r[1], "relative" => r[2], "norm_chain" => r[3], "differing" => r[4]) for r in cmp[1:min(end, 20)]],
+                         "params" => [Dict("path" => r[1], "relative" => r[2], "chain" => r[3], "one_call" => r[4]) for r in dprows[1:min(end, 20)]]))
+    end
+    println("  kernel arguments with dropped adjoints: ", isdefined(Main, :ACTIVE_SEEN) ? sort!(collect(ACTIVE_SEEN)) : "n/a")
+    write_run("segcheck", Dict("case" => Dict("ppl" => PPL, "ny" => NY, "a0E" => A0E, "theta" => THETA, "eltype" => "Float32", "s0" => s0, "ns" => ns,
+                                              "seed" => SEED, "gather" => "CompensatedGather(k = 1)", "mode" => "Reference", "state_memory" => ckpt),
+                               "seconds_chain" => t_chain, "rows" => rows))
+end
+
 COMMAND == "steps" ? main_steps() : COMMAND == "grad" ? main_grad() : COMMAND == "opt" ? main_opt() : COMMAND == "cost" ? main_cost() :
-    error("trapped.jl steps|grad|opt|cost [key=value ...]")
+    COMMAND == "segcheck" ? main_segcheck() : error("trapped.jl steps|grad|opt|cost|segcheck [key=value ...]")
