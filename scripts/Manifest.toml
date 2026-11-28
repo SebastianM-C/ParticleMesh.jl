@@ -2875,7 +2875,7 @@ weakdeps = ["GPUCompiler"]
     UnsafeAtomicsGPUCompilerExt = "GPUCompiler"
 
 [[deps.Wakefields]]
-deps = ["Mendeleev", "ParticleMeshElectromagnetic", "SpecialFunctions", "TOML", "Unitful"]
+deps = ["ForwardDiff", "KernelAbstractions", "Mendeleev", "ParticleMeshCore", "ParticleMeshElectromagnetic", "SpecialFunctions", "TOML", "Unitful"]
 path = "../lib/Wakefields"
 uuid = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
 version = "0.1.0-DEV"

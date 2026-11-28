@@ -15,8 +15,8 @@ module ParticleMesh
 
 using ParticleMeshCore
 export ParticleMeshCore
-for name in names(ParticleMeshCore)
-    name === :ParticleMeshCore || @eval export $name
+for name in names(ParticleMeshCore)                       # exported and public names
+    name === :ParticleMeshCore || !Base.isexported(ParticleMeshCore, name) || @eval export $name
 end
 
 end

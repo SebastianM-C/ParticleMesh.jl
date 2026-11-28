@@ -127,5 +127,6 @@ KernelAbstractions.get_backend(s::Species) = get_backend(s.w)
 "Host copy of the alive count (a device read; never call it inside a step)."
 alive_count(s::Species) = Int(Array(s.count)[1])
 
+"The status of a slot that holds a particle (a free slot's is `FREE`)."
 const ALIVE = 0x01
 const FREE = 0x00

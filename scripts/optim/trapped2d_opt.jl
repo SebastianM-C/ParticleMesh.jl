@@ -388,7 +388,7 @@ function run_manifest(name, dir, o; extra_params = Dict{String,Any}())
                    backend = cuda ? "KernelAbstractions CUDA (CUDACore)" : "KernelAbstractions CPU",
                    extra = cuda ? Dict{String,Any}("gpu" => Base.invokelatest(() -> Main.CUDACore.name(Main.CUDACore.device()))) : Dict{String,Any}(),
                    extra_inputs = [joinpath(@__DIR__, "problem.jl"), joinpath(@__DIR__, "trapped2d_case.jl"), joinpath(@__DIR__, "born2d_case.jl"),
-                                   joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl")])
+                                   joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl"), joinpath(REPO, "lib", "Wakefields", "src", "cases2d.jl")])
 end
 
 """

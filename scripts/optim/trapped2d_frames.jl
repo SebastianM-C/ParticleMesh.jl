@@ -82,7 +82,7 @@ function main_frames(out, label, rundir, at, o)
                   params = merge(Dict{String,Any}(o), Dict{String,Any}("label" => label, "run" => basename(normpath(rundir)), "free" => free,
                                                                        "objective" => setup.objective, "kappa" => setup.kappa, "extend" => setup.extend)),
                   extra_inputs = [joinpath(@__DIR__, "trapped2d_opt.jl"), joinpath(@__DIR__, "problem.jl"), joinpath(@__DIR__, "trapped2d_case.jl"),
-                                  joinpath(@__DIR__, "born2d_case.jl"), joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl")])
+                                  joinpath(@__DIR__, "born2d_case.jl"), joinpath(REPO, "lib", "Wakefields", "src", "atomic.jl"), joinpath(REPO, "lib", "Wakefields", "src", "cases2d.jl")])
     x = trapped_point(F.(free))
     prob = trapped_problem(x...; energy = F(energy), ppl = o["ppl"], ny = o["ny"], float = F, extend = setup.extend)
     st, p, _ = start_of(prob; ppl = o["ppl"], ny = o["ny"], backend, gather)

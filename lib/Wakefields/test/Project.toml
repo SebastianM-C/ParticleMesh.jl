@@ -1,16 +1,21 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+ParticleMeshCore = "5afebaaa-41db-49a8-b96f-38d33e49b288"
 ParticleMeshElectromagnetic = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Wakefields = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
 
 [sources]
+ParticleMeshCore = {path = "../../ParticleMeshCore"}
 ParticleMeshElectromagnetic = {path = "../../ParticleMeshElectromagnetic"}
 Wakefields = {path = ".."}
 
 [compat]
 Aqua = "0.8"
+ForwardDiff = "1"
+ParticleMeshCore = "0.1"
 ParticleMeshElectromagnetic = "0.1"
 TOML = "1"
 Test = "1"
