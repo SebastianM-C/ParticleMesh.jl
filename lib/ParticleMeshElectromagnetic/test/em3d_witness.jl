@@ -202,6 +202,9 @@ function body_T1261(be)
         @test h == (1 / 2, 5 / 8, 3 / 4) && length(unique(q -> q[2], pts)) == 1 && length(unique(q -> q[3], pts)) == 4
         @test value_of.(g.y) ≈ [q[2] for q in pts] rtol = 4 * base_eps(T)
         @test value_of.(g.z) ≈ [q[3] for q in pts] rtol = 4 * base_eps(T)
+        # as T-641: the bunch drifted back into the window's back band, where an observable is not to be read (#370)
+        @test any(<(window_back_band(st) * h[1]), value_of.(g.x))
+        @test_throws "back absorber band" witness_energy_gain(st, params(prob))
 
         prob = witness_in_window_3d(T; momentum = zero(T), region = ((1, 4), (0, 3), (0, 3)))
         st = EMState(prob, EMNumerics(); backend = be)
