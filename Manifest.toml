@@ -2,7 +2,7 @@
 
 julia_version = "1.13.4"
 manifest_format = "2.1"
-project_hash = "89e576b75e1acfd58ebd041fb4c10ecd000edad6"
+project_hash = "e9235fcb91ad60f4ce40472816ec328719513bc6"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1913,6 +1913,12 @@ weakdeps = ["GPUCompiler"]
 
     [deps.UnsafeAtomics.extensions]
     UnsafeAtomicsGPUCompilerExt = "GPUCompiler"
+
+[[deps.Wakefields]]
+deps = ["Mendeleev", "ParticleMeshElectromagnetic", "SpecialFunctions", "TOML", "Unitful"]
+path = "lib/Wakefields"
+uuid = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
+version = "0.1.0-DEV"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "LazyJLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]

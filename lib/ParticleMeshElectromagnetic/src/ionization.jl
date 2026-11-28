@@ -103,7 +103,7 @@ In atomic units, for the ionization energy I and the charge Z of the ion left be
 `field = 2(2I)^{3/2}`, `power = 2n* − |m| − 1` with `n* = Z/√(2I)` and
 `prefactor = C²·B·I`, `C² = 2^{2n*}/(n*·Γ(n* + l* + 1)·Γ(n* − l*))`,
 `B = (2l + 1)(l + |m|)!/(2^{|m|}·|m|!·(l − |m|)!)`. The conversion to A1 units depends on the
-laser frequency and lives in the user layer (A1; `scripts/ionization/atomic.jl` builds a level
+laser frequency and lives in the user layer (A1; `Wakefields.adk_level` builds a level
 from an ionization energy in eV and a wavelength). All three numbers may be `Dual`s.
 
 The rate is taken to zero where it is negligible, smoothly (the AD-smoothness rule of A2): for
@@ -165,7 +165,7 @@ same `prefactor`, `field`, `power` and `cutoff`, times the empirical factor of T
 In atomic units the factor is `exp(−α·(Z²/I)·E/(2I)^{3/2})` with the fitted number α of the
 species (6 for hydrogen), I the ionization energy and Z the charge of the ion left behind, so
 `suppression = 4α·n*²`, a pure number (`n* = Z/√(2I)`; the user layer computes it,
-`scripts/ionization/atomic.jl`). The barrier is gone at `E_bs = I²/(4Z) = field/(32n*)`, where
+`Wakefields.tong_lin_level`). The barrier is gone at `E_bs = I²/(4Z) = field/(32n*)`, where
 the factor is `exp(−α·n*/8)`.
 
 The factor is smooth in the field and in the level's four numbers, which may all be `Dual`s; at

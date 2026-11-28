@@ -1,4 +1,4 @@
-# The user layer of the field ionization (WP-059, WP-063, A1): atomic data and the conversion of a
+# The unit layer of the field ionization (WP-059, WP-063, A1): atomic data and the conversion of a
 # level to the engine's normalized units, where the laser frequency ω₀ is the reference. The
 # engine's `ADKLevel` holds three numbers in those units and its `TongLinLevel` a fourth; this file
 # makes them from an ionization energy in eV and a laser wavelength in metres.
@@ -20,7 +20,7 @@
 # l* = n*₀ − 1 (n*₀ that of the neutral atom's first ionization) are those of FBPIC 0.27.1
 # (`fbpic/particles/elementary_process/ionization/ionizer.py`, which cites Chen et al., J. Comput.
 # Phys. 236 (2013), eq. 2, with l = m = 0), read in its source; `fbpic_reference.toml` holds rates
-# computed with FBPIC's lines and T-783 compares. `lstar = :level` takes l* = n* − 1 per level
+# computed with FBPIC's lines (in this package's tests) and T-783 compares. `lstar = :level` takes l* = n* − 1 per level
 # instead, the convention the author remembers Smilei's documentation to state (not checked: its
 # site could not be reached from the session that wrote this).
 #
@@ -31,13 +31,8 @@
 #
 #     suppression = 4α·n*²                            a pure number
 #
-# with the fitted α of `tong_lin.toml`, which names where the factor and the numbers were read.
+# with the fitted α of `data/tong_lin.toml`, which names where the factor and the numbers were read.
 
-using TOML: TOML
-using SpecialFunctions: gamma
-using Mendeleev: Mendeleev, chem_elements
-using Unitful: @u_str, ustrip
-using ParticleMeshElectromagnetic: ADKLevel, TongLinLevel
 
 "CODATA 2022, as scipy 1.18.1's `scipy.constants` lists them: α, mₑc² in eV, and h·c in eV·m (exact since 2019)."
 const FINE_STRUCTURE = 7.2973525643e-3
@@ -136,8 +131,11 @@ function adk_level(::Type{T}, element, charge::Integer; wavelength::Real, cutoff
     return ADKLevel(T(a.prefactor), T(a.field), T(a.power); cutoff = T(cutoff))
 end
 
-"The factor of Tong and Lin: its fitted numbers α and the reference rates of helium-like ions (`tong_lin.toml`, which names its sources)."
-const TONG_LIN = TOML.parsefile(joinpath(@__DIR__, "tong_lin.toml"))
+const TONG_LIN_PATH = joinpath(dirname(@__DIR__), "data", "tong_lin.toml")
+include_dependency(TONG_LIN_PATH)
+
+"The factor of Tong and Lin: its fitted numbers α and the reference rates of helium-like ions (`data/tong_lin.toml`, which names its sources)."
+const TONG_LIN = TOML.parsefile(TONG_LIN_PATH)
 
 "The nuclear charge of `element`."
 nuclear_charge(element) = chem_element(element).atomic_number

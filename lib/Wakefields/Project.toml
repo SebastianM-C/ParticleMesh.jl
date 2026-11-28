@@ -1,0 +1,25 @@
+name = "Wakefields"
+uuid = "5bac17cb-53d0-4222-aee2-a23d4db0f8e8"
+version = "0.1.0-DEV"
+authors = ["Sebastian Micluța-Câmpeanu <sebastian.mc95@proton.me>"]
+
+[workspace]
+projects = ["test"]
+
+[deps]
+Mendeleev = "c116f080-063d-490a-9873-2b5b2cce4c34"
+ParticleMeshElectromagnetic = "e509d1cf-e6ab-4eda-a7a7-b1af209199bb"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[sources]
+ParticleMeshElectromagnetic = {path = "../ParticleMeshElectromagnetic"}
+
+[compat]
+Mendeleev = "1"
+ParticleMeshElectromagnetic = "0.1"
+SpecialFunctions = "2"
+TOML = "1"
+Unitful = "1"
+julia = "1.13"
