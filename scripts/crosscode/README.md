@@ -124,6 +124,7 @@ In 2D (`2Dcartesian`, schema 2), from the same source (`src/Profiles/Profile.cpp
 
 From the v5.1 source (`makefile`, `src/Smilei.cpp`, `src/Params/Params.cpp`, `src/Patch/Patch.cpp`, `src/Particles/ParticleCreator.cpp`, `src/Projector/Projector2D2OrderGPU.cpp`, `doc/Sphinx/Use/install_linux_GPU.rst`, `doc/Sphinx/Understand/GPU_offloading.rst`):
 
+- With a moving window, the GPU build crashed at the first window move on an RTX 5090 (seen in this project's LWFA runs; the cause is not traced and there is no minimal example), so windowed cases run Smilei on the CPU.
 - `make config="gpu_nvidia"` compiles with OpenACC and adds `noopenmp`: one MPI rank per GPU, no threads. A GPU binary refuses `gpu_computing = False` and a CPU binary refuses `True` (Params.cpp), so the namelist carries the line only for the GPU image.
 - The rank picks its GPU from `SLURM_LOCALID` and exits without it (Smilei.cpp); the image sets it to 0.
 - Patches: the guideline is one patch per GPU (GPU_offloading.rst), which `--gpu` uses by default; `--patches` sets any layout the CPU rule accepts.
