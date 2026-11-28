@@ -34,13 +34,15 @@ engine_refusal(err, wg, kernel) =
     # #297: Dual{Float32,3}, Quadratic, 2D at 512 and 1024 (PoCL reported 983 work-items as the
     # flux patch kernel's maximum at this stagger in #297; the maximum moves with the kernel's code
     # and with the machine: since WP-061's change of it PoCL reported 3269 on one CPU and ran 4096
-    # on CI's runners), and at the backend's maximum, which the sort kernels before the flux patch
-    # take. A size past the backend's limit is T-501's.
+    # on CI's runners). Not at the backend's maximum: PoCL accepts sizes at or near the maximum it
+    # reports for a kernel and then crashes the process in some of them (on a 4-thread Xeon the
+    # flux patch of main segfaulted at its reported 3276, and that of PR #582 on a CI runner at
+    # 4096), so no launch there can be part of a test. A size past the backend's limit is T-501's.
     ref = flux2d_or_refusal(D3, Quadratic, st, 32)
     @test ref.err === nothing
     @test same_bits.(flux2d_or_refusal(D3, Quadratic, st, nothing).J, ref.J) == (true, true, true)
     outcomes = Dict{Any,Symbol}()
-    for wg in (512, 1024, wmax)
+    for wg in (512, 1024)
         r = flux2d_or_refusal(D3, Quadratic, st, wg)
         if r.err === nothing
             outcomes[wg] = :ran
@@ -51,18 +53,16 @@ engine_refusal(err, wg, kernel) =
         end
     end
     # The per-kernel refusal of #297 needs a flux patch whose own maximum is below the backend's.
-    # PoCL derives the maximum from the kernel's private memory, so where Dual{Float32,3} runs at
-    # the backend's limit, Dual{Float64,8}, with 4.5 times the bytes per value, is the kernel that
-    # is refused there (PoCL reported 727 work-items for it where it reported 3269 for the former).
+    # PoCL derives the maximum from the kernel's private memory, so Dual{Float64,8}, with 4.5 times
+    # the bytes per value of Dual{Float32,3}, is refused at the backend's limit (PoCL reported 727
+    # and 511 work-items for it on two CPUs, where it reported 3269 and 3276 for the former).
     heavy = Dual{Nothing,Float64,8}
-    if outcomes[wmax] === :ran
-        r = flux2d_or_refusal(heavy, Quadratic, st, wmax)
-        outcomes[heavy] = r.err === nothing ? :ran : :refused
-        @test r.err !== nothing && engine_refusal(r.err, wmax, :flux_patch_2d_kernel!)
-    end
+    r = flux2d_or_refusal(heavy, Quadratic, st, wmax)
+    outcomes[heavy] = r.err === nothing ? :ran : :refused
+    @test r.err !== nothing && engine_refusal(r.err, wmax, :flux_patch_2d_kernel!)
     println("T-500 Dual{Float32,3} Quadratic 2D flux on $(nameof(typeof(backend))): ",
-            join(("workgroupsize $wg $(outcomes[wg])" for wg in (512, 1024, wmax)), ", "),
-            haskey(outcomes, heavy) ? "; Dual{Float64,8} at workgroupsize $wmax $(outcomes[heavy])" : "")
+            join(("workgroupsize $wg $(outcomes[wg])" for wg in (512, 1024)), ", "),
+            "; Dual{Float64,8} at workgroupsize $wmax $(outcomes[heavy])")
     @test :refused in values(outcomes)
     # Float32 and Float64 at 1024: the bits of 32.
     for T in (Float32, Float64)
