@@ -701,7 +701,7 @@ previous step left in `K`; `nothing` observes nothing); then the module's step o
    species' current with the engine's `deposit_flux!` (charge-conserving along the resolved axes,
    `q·w·u/γ` along the others: Jy and Jz at N = 1, Jz at N = 2, none at N = 3), fold the guards, then apply the
    numerics' [`BinomialFilter`](@ref) (nothing with zero passes; the scratch is `ρ`).
-   `NoCurrent()` (N = 2 and 3): J stays as it is;
+   `NoCurrent()`: J stays as it is;
 5. with an open axis 2 (WP-027), retire the particles that crossed the box edge, after the current
    of their last move is deposited;
 6. the mesh solve of the numerics, [`solve_fields!`](@ref) (Yee: B half step, E full step with J,

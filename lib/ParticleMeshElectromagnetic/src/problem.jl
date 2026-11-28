@@ -251,7 +251,7 @@ struct Esirkepov end
 
 The current choice of an [`EMNumerics`](@ref) that deposits no current: the step pushes the
 particles through the fields and solves Maxwell's equations with J = 0. For prescribed-field
-runs and test particles at N = 2 and 3; the 1D step always deposits the current and refuses it.
+runs and test particles, at every N.
 """
 struct NoCurrent end
 
