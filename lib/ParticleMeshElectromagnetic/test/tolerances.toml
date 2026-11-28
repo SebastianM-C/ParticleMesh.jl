@@ -1516,7 +1516,7 @@ measured = { columns = { Float32 = 0.94, Float64 = 0.0417, "Dual{Float32,3}" = 0
 status = "proposed; C is T-1164's for the first twelve numbers"
 
 ["T-1267"]
-quantity = "the 3D shaped beam launched with M4: the B corrections against the M4 half step's split (T-1086's C_operator), the run of a Gaussian pupil against the GaussianLaser's M4 run (T-1164's C_run), the launched ω₀ transform against M4's propagation of the incident field on probes from the plane on (T-1165's C), the energy behind the plane (T-1021's C) and a0·∂/∂a0 against the fields (T-1021's C_linear)"
+quantity = "the 3D shaped beam launched with M4: the B corrections against the M4 half step's split (T-1086's C_operator), the run of a Gaussian pupil against the GaussianLaser's M4 run (T-1164's C_run), the launched ω₀ transform against M4's propagation of the incident field on probes from the plane on (T-1165's C), M4's conserved energy of the launched pulse against launched_energy (T-1165's C_energy), the energy behind the plane (T-1021's C) and a0·∂/∂a0 against the fields (T-1021's C_linear)"
 scale = "as T-1086, T-1164, T-1165 and T-1021"
-measured = { operator = 0.195, run = { Float32 = 1.93, Float64 = 0.115, "Dual{Float32,3}" = 2.04 }, Ey = 4.12, Ez = 3.49, yee_propagation = 46.6, leak = 6.74e-4, linear = 0.0 }
+measured = { operator = 0.195, run = { Float32 = 1.93, Float64 = 0.115, "Dual{Float32,3}" = 2.04 }, Ey = 4.12, Ez = 3.49, yee_propagation = 46.6, energy = 0.0874, leak = 6.74e-4, linear = 0.0 }
 status = "proposed; Yee's propagation of the same incident field misses the M4 beam by 46.6 of the scale, 11 times M4's own"

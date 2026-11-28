@@ -4,10 +4,10 @@
 # of its table. After em3d_antenna.jl and em3d_zernike.jl (their helpers: plane_d, EY_AT, EZ_AT,
 # flat_zernike, gaussian_zernike, zernike_problem, zernike_run, host_table, table_angular_error,
 # k4_moment, gaussian_run_difference, zernike_digest) and m4_cases.jl (tfsf_operator_error,
-# incident_column_error, m4_kx).
+# incident_column_error, m4_kx, conserved_energy_m4_3d).
 
 using ForwardDiff: ForwardDiff
-using ParticleMeshElectromagnetic: Antenna, AntennaPlane, PlaneTable, tabulate, check_params
+using ParticleMeshElectromagnetic: Antenna, AntennaPlane, PlaneTable, tabulate, check_params, launched_energy
 using ParticleMeshElectromagnetic.PulseShapes: GaussianEnvelope, profile
 
 # --- T-1266 ---------------------------------------------------------------------------------
@@ -120,7 +120,10 @@ end
 # components of a beam polarized at 0.6 rad, where Yee's propagation of the same incident field
 # misses it by several times that. It launches one way: the energy behind the plane within
 # T-1021's fraction of the energy ahead (T-1095's box, where the wrapped backward wave lies outside
-# the forward window), in the A8 matrix, and the fields are linear in a0 (a0·∂E/∂a0 = E).
+# the forward window), in the A8 matrix, and the fields are linear in a0 (a0·∂E/∂a0 = E). And the
+# pulse carries what the plane drives: M4's conserved energy of the launched pulse is
+# launched_energy (from the table) to the antenna's order and the flux's Δ² (T-1165's check, whose
+# bound it takes; a cross-section of 48 holds the beam).
 @testset "T-1267 the 3D shaped beam launched with M4 is M4's propagation of its incident field, its B corrections the M4 split to roundoff, and a Gaussian pupil launches the GaussianLaser's M4 run [A2, A3, A7, A8, WP-093]" begin
     for T in TYPES
         s = m4_zernike_plane(T)
@@ -143,6 +146,16 @@ end
         record!("T-1267 $comp", Float64, worst)
         @test worst <= C
         @test naive > 3 * worst
+    end
+    let prob = zernike_problem(Float64; beam, position = 6, focus = 12, polarization = 0.6, tend = 60, length = (100, 48, 48))
+        r = zernike_run(prob; solver = M4())
+        fwd, _ = forward_window_3d(r, 58)
+        W = conserved_energy_m4_3d(map(Array, r.st.fields), r.st.grid, prob.dt; cols = fwd)
+        L = launched_energy(only(r.p.lasers))
+        rel = abs(W / L - 1) / (prob.dt^2 + (prob.length[1] / prob.cells[1])^2)
+        @info "T-1267 energy" W launched = L rel
+        record!("T-1267 energy", Float64, rel)
+        @test rel <= emC("T-1165", "C_energy")
     end
     for T in TYPES
         D = T === D3

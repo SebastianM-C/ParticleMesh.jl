@@ -203,3 +203,18 @@ end
 "`n` with the field solver `solver`, every other choice kept (a case's numerics, which name no solver, run with M4)."
 with_solver(n::EMNumerics, solver) = EMNumerics(n.shape, n.mode, n.pusher, solver, n.workgroupsize, n.current, n.filter, n.absorber,
                                                 n.back_absorber, n.headroom, n.resort, n.node_bins, n.gather)
+
+using ParticleMeshElectromagnetic: faraday_stencil
+
+"`conserved_energy_3d` of M4 (m4_3d.jl, m4_zernike_3d.jl): the half steps of B by M4's difference."
+function conserved_energy_m4_3d(f, grid, dt; cols)
+    g, n, h = guards(grid), ncells(grid), cellsize(grid)
+    st = faraday_stencil(M4(), grid, dt)
+    fp, fm = map(copy, f), map(copy, f)
+    m4_b_half!(fp, grid, dt / 2, st)
+    m4_b_half!(fm, grid, -dt / 2, st)
+    I = (g .+ cols, (g + 1):(g + n[2]), (g + 1):(g + n[3]))
+    W = sum(c -> sum(abs2, Array(c)[I...]), (f.Ex, f.Ey, f.Ez))
+    W += sum(k -> sum(Array(getfield(fp, k))[I...] .* Array(getfield(fm, k))[I...]), (:Bx, :By, :Bz))
+    return W * prod(h) / 2
+end

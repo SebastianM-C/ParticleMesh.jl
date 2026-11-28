@@ -4,7 +4,7 @@
 # em3d_step.jl (`invariant_error_3d`), em3d_open.jl (`alive_3d`, `open_residuals_3d`, `free_rows`)
 # and em3d_antenna.jl (`angular_error_3d`, `incident_dtft_3d`, `forward_window_3d`), and
 # m4_step.jl's `m4_divergence` and `m4_div_scale`, which are defined again here when the group
-# runs without it.
+# runs without it. `conserved_energy_m4_3d` is m4_cases.jl's.
 
 using ForwardDiff: ForwardDiff
 using ParticleMeshElectromagnetic: faraday_stencil, forward_difference
@@ -22,19 +22,6 @@ if !isdefined(@__MODULE__, :m4_divergence)
         I = ntuple(d -> (g + 1):(g + n[d]), N)
         return sum(d -> 2 / Float64(value_of(h[d])), 1:N) * maximum(c -> Float64(maximum(absmax, Array(getfield(st.fields, c))[I...])), (:Bx, :By, :Bz))
     end
-end
-
-"`conserved_energy_3d` of M4: the half steps of B by M4's difference."
-function conserved_energy_m4_3d(f, grid, dt; cols)
-    g, n, h = guards(grid), ncells(grid), cellsize(grid)
-    st = faraday_stencil(M4(), grid, dt)
-    fp, fm = map(copy, f), map(copy, f)
-    m4_b_half!(fp, grid, dt / 2, st)
-    m4_b_half!(fm, grid, -dt / 2, st)
-    I = (g .+ cols, (g + 1):(g + n[2]), (g + 1):(g + n[3]))
-    W = sum(c -> sum(abs2, Array(c)[I...]), (f.Ex, f.Ey, f.Ez))
-    W += sum(k -> sum(Array(getfield(fp, k))[I...] .* Array(getfield(fm, k))[I...]), (:Bx, :By, :Bz))
-    return W * prod(h) / 2
 end
 
 # --- T-1094 ---------------------------------------------------------------------------------
